@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-:books: <a href="https://docs.crowdsec.net">CrowdSec Documentation</a>
-:diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">CrowdSec Hub</a>
-:speech_balloon: <a href="https://discourse.crowdsec.net">CrowdSec Discourse </a>
+:books: <a href="https://docs.crowdsec.net">Documentation</a>
+:diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">Hub</a>
+:speech_balloon: <a href="https://discourse.crowdsec.net">Discourse </a>
 </p>
 
 ## About the crowdsec project
