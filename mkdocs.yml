@@ -1,0 +1,236 @@
+site_name: Crowdsec
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Concepts : getting_started/concepts.md
+    - Installation : getting_started/installation.md
+    - Crowdsec Tour: getting_started/crowdsec-tour.md
+    - Glossary : getting_started/glossary.md
+    - FAQ: getting_started/FAQ.md
+  - Guide:
+    - Overview: guide/crowdsec/overview.md
+    - Acquisition: guide/crowdsec/acquisition.md
+    - Parsers: guide/crowdsec/parsers.md
+    - Enrichers: guide/crowdsec/enrichers.md
+    - Scenarios: guide/crowdsec/scenarios.md
+    - Cscli: guide/cscli.md
+  - Cheat Sheets:
+    - Ban Management: cheat_sheets/ban-mgmt.md
+    - Configuration Management: cheat_sheets/config-mgmt.md
+  - Observability:
+    - Overview: observability/overview.md
+    - Logs: observability/logs.md
+    - Metrics: observability/metrics.md
+    - Dashboard: observability/dashboard.md
+  - References:
+    - Parsers format: references/parsers.md
+    - Scenarios format: references/scenarios.md
+    - Outputs format: references/output.md
+  - Write Configurations:
+    - Requirements: write_configurations/requirements.md
+    - Acquisition: write_configurations/acquisition.md
+    - Parsers: write_configurations/parsers.md
+    - Scenarios: write_configurations/scenarios.md
+    - Whitelist: write_configurations/whitelist.md
+  - Blockers:
+    - Overview : blockers/index.md
+    - Nginx:
+      - Installation : blockers/nginx/installation.md
+      - Configuration : blockers/nginx/configuration.md
+    - Wordpress:
+      - Installation : blockers/wordpress/installation.md
+      - Configuration : blockers/wordpress/configuration.md
+    - Netfilter:
+      - Installation : blockers/netfilter/installation.md
+      - Configuration : blockers/netfilter/configuration.md
+  - Contributing: contributing/
+  - Cscli commands:
+    - API: cscli/cscli_api.md
+    - Backup: cscli/cscli_backup.md
+    - Bans: cscli/cscli_ban.md
+    - Metrics: cscli/cscli_metrics.md
+    - Update: cscli/cscli_update.md
+    - Install configurations: cscli/cscli_install.md
+    - Remove configurations: cscli/cscli_remove.md
+    - Upgrade configurations: cscli/cscli_upgrade.md
+    - List configurations: cscli/cscli_list.md
+    - Inspect configurations: cscli/cscli_inspect.md
+    - Dashboard: cscli/cscli_dashboard.md
+  - About: about.md
+markdown_extensions:
+  - codehilite:
+      guess_lang: false
+  - toc:
+      permalink: true
+  - admonition
+theme: 
+  name: material
+  logo: assets/images/crowdsec2.png
+  favicon: assets/images/crowdsec2.png
+  palette:
+    primary: "#3d85c6" 
+  language: en
+  font:
+    text: Montserrat
+  highlightjs: true
+  hljs_languages:
+      - yaml
+repo_url: https://github.com/crowdsecurity/crowdsec
+repo_name: GitHub
+plugins:
+    - search
+    - macros
+extra:
+    doc:
+        new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
+        discourse: "[CrowdSecurity discourse](http://discourse.crowdsec.net)"
+        community: "[community](http://discourse.crowdsec.net)"
+    hub:
+        name: Crowdsec Hub
+        htmlname: "[Crowdsec Hub](https://master.d3padiiorjhf1k.amplifyapp.com/)"
+        url: "https://master.d3padiiorjhf1k.amplifyapp.com/"
+        plugins_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#blockers"
+        scenarios_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#configurations"
+        parsers_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#configurations"
+        collections_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#collections"
+    crowdsec:
+        name: Crowdsec
+        Name: Crowdsec
+        bin: crowdsec-agent
+        path: /usr/bin/crowdsec-agent
+        url: https://github.com/crowdsecurity/crowdsec
+        bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
+        main_log: "/var/log/crowdsec.log"
+        download_url: https://github.com/crowdsecurity/crowdsec/releases/latest
+    cli:
+        name: cscli
+        Name: Cscli
+        bin: cscli
+        path: /usr/bin/cscli
+        main_doc: /cscli/cscli/
+        url: "https://github.com/crowdsecurity/crowdsec"
+        bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
+        api_doc: /cscli/cscli_api/
+        ban_doc: /cscli/cscli_ban/
+        metrics_doc: /cscli/cscli_metrics/
+        remove_doc: /cscli/cscli_remove/
+        install_doc: /cscli/cscli_install/
+        list_doc: /cscli/cscli_list/
+        update_doc: /cscli/cscli_update/
+        upgrade_doc: /cscli/cscli_upgrade/
+        backup_doc: /cscli/cscli_backup/
+    config:
+        cli_dir: /etc/crowdsec/cscli/
+        crowdsec_dir: "/etc/crowdsec/config/"
+        acquis_path: "/etc/crowdsec/config/acquis.yaml"
+    plugins:
+        name: blockers
+        url: "https://master.d3padiiorjhf1k.amplifyapp.com/"
+        binpath: "/var/lib/crowdsec/plugins/"
+        configpath: "/etc/crowdsec/plugins/"
+    metabase:
+        name: metabase
+        url: https://github.com/crowdsecurity/crowdsec
+    wizard:
+        name: wizard
+        url: "https://github.com/crowdsecurity/crowdsec"
+        bin: "./wizard.sh"
+        bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
+    ref:
+        parser: "[parser](/references/parsers/)"
+        Parser: "[Parser](/references/parsers/)"
+        scenario: "[scenarios](/references/scenarios/)"
+        Scenario: "[Scenarios](/references/scenarios/)"
+        acquis: "[acquisition](/references/acquis/)"
+        Acquis: "[Acquisition](/references/acquis/)"
+        output: "[output](/references/output/)"
+        Output: "[Output](/references/output/)"
+# All the technical terms
+    event:
+        name: event
+        Name: Event
+        htmlname: "[event](/getting_started/glossary/#event)"
+        Htmlname: "[Event](/getting_started/glossary/#event)" 
+    expr:
+        name: expr
+        Name: Expr
+        htmlname: "[expr](https://github.com/antonmedv/expr)"
+        Htmlname: "[Expr](https://github.com/antonmedv/expr)"
+    stages:
+        name: stages
+        name: Stages
+        htmlname: "[stages](/getting_started/glossary/#stages)"
+        Htmlname: "[Stages](/getting_started/glossary/#stages)"
+    filter:
+        name: filter
+        Name: Filter
+        htmlname: "[filter](/references/parsers/#filter)"
+        Htmlname: "[Filter](/references/parsers/#filter)"
+    onsuccess:
+        name: onsuccess
+        Name: Onsuccess
+        htmlname: "[onsuccess](/references/parsers/#onsuccess)"  
+        Htmlname: "[Onsuccess](/references/parsers/#onsuccess)"  
+    statics:
+        name: statics
+        Name: Statics
+        htmlname: "[statics](/references/parsers/#statics)"
+        Htmlname: "[Statics](/references/parsers/#statics)"
+    parsers:
+        name: parsers
+        Name: Parsers
+        htmlname: "[parsers](/getting_started/glossary/#parser)"
+        Htmlname: "[Parsers](/getting_started/glossary/#parser)"
+    scenarios:
+        name: scenarios
+        Name: Scenarios
+        htmlname: "[scenarios](/getting_started/glossary/#scenario)"
+        Htmlname: "[Scenarios](/getting_started/glossary/#scenario)"
+    collections:
+        name: collections
+        Name: Collections
+        htmlname: "[collections](/getting_started/glossary/#collection)"
+        Htmlname: "[Collections](/getting_started/glossary/#collection)"
+    timeMachine:
+        name: timeMachine
+        Name: TimeMachine
+        htmlname: "[timeMachine](/getting_started/glossary/#timemachine)"
+        Htmlname: "[TimeMachine](/getting_started/glossary/#timemachine)"
+    overflow:
+        name: overflow
+        Name: Overflow
+        htmlname: "[overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
+        Htmlname: "[Overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
+    signal:
+        name: signal
+        Name: Signal
+        htmlname: "[signal](/getting_started/glossary/#overflow-or-signaloccurence)"
+        Htmlname: "[Signal](/getting_started/glossary/#overflow-or-signaloccurence)"
+    blockers:
+        name: blockers
+        Name: Blockers
+        htmlname: "[blockers](/blockers/)"
+        Htmlname: "[blockers](/blockers/)"
+#scenario stuff
+    leakspeed:
+        name: leakspeed
+        Name: Leakspeed
+        htmlname: "[leakspeed](/references/scenarios/#leakspeed)"
+        Htmlname: "[Leakspeed](/references/scenarios/#leakspeed)"
+    capacity:
+        name: capacity
+        Name: Capacity
+        htmlname: "[capacity](/references/scenarios/#capacity)"
+        Htmlname: "[Capacity](/references/scenarios/#capacity)"
+    duration:
+        name: duration
+        Name: Duration
+        htmlname: "[duration](/references/scenarios/#duration)"
+        Htmlname: "[Duration](/references/scenarios/#duration)"
+    api:
+        name: API
+        htmlname: "[API](TBD)"
+        topX:
+            name: topX
+            htmlname: "[topX](TBD)"
+
