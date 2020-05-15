@@ -11,8 +11,9 @@
 </p>
 
 <p align="center">
-:closed_book: <a href="https://docs.crowdsec.net">CrowdSec Documentation</a>
+:books: <a href="https://docs.crowdsec.net">CrowdSec Documentation</a>
 :diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">CrowdSec Hub</a>
+:speech_balloon: <a href="https://discourse.crowdsec.net">CrowdSec Discourse </a>
 </p>
 
 ## About the crowdsec project
