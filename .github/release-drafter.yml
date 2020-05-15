@@ -1,0 +1,11 @@
+template: |
+  Crowdwatch $NEXT_PATCH_VERSION
+  
+  ## What’s Changed
+
+  $CHANGES
+
+  ## Geolite2 notice
+
+  This product includes GeoLite2 data created by MaxMind, available from <a href="https://www.maxmind.com">https://www.maxmind.com</a>.
+  
