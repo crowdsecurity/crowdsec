@@ -7,7 +7,7 @@ GOGET=$(GOCMD) get
 
 CROWDSEC_BIN=crowdsec
 PREFIX?="/"
-CFG_PREFIX = $(PREFIX)"/etc/crowdsec/crowdsec/"
+CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"

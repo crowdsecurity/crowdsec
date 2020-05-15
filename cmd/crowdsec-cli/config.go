@@ -29,11 +29,11 @@ type cliConfig struct {
 func interactiveCfg() error {
 	var err error
 	reader := bufio.NewReader(os.Stdin)
-	fmt.Print("crowdsec installation directory (default: /etc/crowdsec/crowdsec/): ")
+	fmt.Print("crowdsec installation directory (default: /etc/crowdsec/config/): ")
 	config.InstallFolder, err = reader.ReadString('\n')
 	config.InstallFolder = strings.Replace(config.InstallFolder, "\n", "", -1) //CRLF to LF (windows)
 	if config.InstallFolder == "" {
-		config.InstallFolder = "/etc/crowdsec/crowdsec/"
+		config.InstallFolder = "/etc/crowdsec/config/"
 	}
 	if err != nil {
 		log.Fatalf("failed to read input : %v", err.Error())
@@ -131,7 +131,7 @@ If no commands are specified, config is in interactive mode.`,
 	var cmdConfigInstalldir = &cobra.Command{
 		Use:   "installdir [value]",
 		Short: `Configure installation directory`,
-		Long:  `Configure the installation directory of crowdsec, such as /etc/crowdsec/crowdsec/`,
+		Long:  `Configure the installation directory of crowdsec, such as /etc/crowdsec/config/`,
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			config.InstallFolder = args[0]

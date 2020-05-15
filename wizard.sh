@@ -19,7 +19,7 @@ CROWDSEC_PLUGIN_DIR="${CROWDSEC_LIB_DIR}/plugins"
 CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
 CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_CONFIG_PATH="/etc/crowdsec"
-CROWDSEC_CONFIG_PATH="${CROWDSEC_CONFIG_PATH}/crowdsec"
+CROWDSEC_CONFIG_PATH="${CROWDSEC_CONFIG_PATH}/config"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 
@@ -462,7 +462,7 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/crowdsec/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/crowdsec/api.yaml || log_err "unable to register, skipping crowdsec api registration"
+        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
         log_info "Crowdsec api registered"
 
 
