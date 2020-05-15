@@ -115,4 +115,4 @@ release: check_release build
 	@bash ./scripts/build_plugins.sh
 	@mkdir -p "$(RELDIR)/plugins/backend"
 	@find ./plugins -type f -name "*.so" -exec install -Dm 644 {} "$(RELDIR)/{}" \; || exiting 
-	@tar cvzf crowdsec-release.tgz $(RELDIR)	
+	@tar cvzf crowdsec-$(BUILD_VERSION).tgz $(RELDIR)	
