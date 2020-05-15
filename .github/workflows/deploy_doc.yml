@@ -5,6 +5,7 @@ on:
     paths:
       - 'docs/**'
       - 'mkdocs.yml'
+      - '.github/workflows/deploy_doc.yml'
 name: Deploy documentation
 jobs:
   deploy:
