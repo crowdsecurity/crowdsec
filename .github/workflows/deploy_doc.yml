@@ -14,7 +14,7 @@ jobs:
       # Checkout source form Github
       - uses: actions/checkout@master
         with:
-          ref: master
+          ref: gh_pages_deploy
       # Install Python runtime and dependencies
       - uses: actions/setup-python@v1
         with:
