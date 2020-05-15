@@ -1,0 +1,12 @@
+select count(*) == 1 from signal_occurences where source_ip = "139.199.192.143" and scenario = "specialized_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "139.199.192.143" and scenario = "base_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "207.38.89.99" and scenario = "base_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "207.38.89.99" and scenario = "specialized_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "51.159.56.89" and scenario = "base_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "103.212.97.45" and scenario = "base_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "103.212.97.45" and scenario = "specialized_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "35.180.132.238" and scenario = "specialized_consensus"
+select count(*) == 1 from signal_occurences where source_ip = "35.180.132.238" and scenario = "base_consensus"
+
+
+

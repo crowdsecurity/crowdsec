@@ -1,0 +1,18 @@
+RUUID \s{32}
+# rails controller with action
+RAILS_CONSTROLLER [^#]+
+RAIL_ACTION \w+
+RCONTROLLER %{RAILS_CONSTROLLER:controller}#%{RAIL_ACTION:action}
+
+# this will often be the only line:
+RAILS_TIMESTAMP %{YEAR}-%{MONTHNUM}-%{MONTHDAY} %{HOUR}:%{MINUTE}:%{SECOND} %{ISO8601_TIMEZONE}
+RAILS3HEAD (?m)Started %{WORD:verb} "%{URIPATHPARAM:request}" for %{IPORHOST:clientip} at %{RAILS_TIMESTAMP:timestamp}
+# for some a strange reason, params are stripped of {} - not sure that's a good idea.
+RPROCESSING \W*Processing by %{RCONTROLLER} as %{NOTSPACE:format}(?:\W*Parameters: {%{DATA:params}}\W*)?
+RAILS3PROFILE (?:\(Views: %{NUMBER:viewms}ms \| ActiveRecord: %{NUMBER:activerecordms}ms|\(ActiveRecord: %{NUMBER:activerecordms}ms)?
+RAILS3FOOT Completed %{NUMBER:response}%{DATA} in %{NUMBER:totalms}ms %{RAILS3PROFILE}%{GREEDYDATA}
+
+RAILS_CONTEXT (?:%{DATA}\n)*
+
+# putting it all together
+RAILS3 %{RAILS3HEAD}(?:%{RPROCESSING})?%{RAILS_CONTEXT:context}(?:%{RAILS3FOOT})?

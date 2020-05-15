@@ -1,0 +1,35 @@
+#this one won't due to leakspeed / delay
+lines:
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE3 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:06Z
+    Meta:
+      source_ip: 1.2.3.4
+      uniq_key: baa
+#this one will be discarded because of uniq
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE3 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:07Z
+    Meta:
+      source_ip: 1.2.3.4
+      uniq_key: baa
+#not this one
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE4 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:08Z
+    Meta:
+      source_ip: 1.2.3.4
+      uniq_key: bab
+results:
+  - Overflow:
+      scenario: test/simple-leaky
+      Source_ip: 1.2.3.4
+      Events_count: 4
+
+

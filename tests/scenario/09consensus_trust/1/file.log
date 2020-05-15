@@ -1,0 +1,1701 @@
+
+{
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "7e159c83f45e4cabfe4c2d8653a24ac79506a703",
+   "scenario": "http_404-scan",
+   "bucket_id": "morning-sea",
+   "alert_message": "106.54.3.52 performed 'http_404-scan' (6 events over 2s) at 2020-01-02 15:31:32 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-02T15:31:30Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-02T19:31:32Z",
+     "StartIp": 1781924660,
+     "EndIp": 1781924660,
+     "IpText": "106.54.3.52",
+     "Reason": "ban on ip 106.54.3.52",
+     "Scenario": "",
+     "SignalOccurenceID": 985
+    }
+   ],
+   "stop_at": "2020-01-02T15:31:32Z",
+   "Source_ip": "106.54.3.52",
+   "Source_range": "\u003cnil\u003e",
+   "Source_AutonomousSystemNumber": "0",
+   "Source_AutonomousSystemOrganization": "",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "106.54.3.52": {
+     "Ip": "106.54.3.52",
+     "Range": {
+      "IP": "",
+      "Mask": null
+     },
+     "AutonomousSystemNumber": "0",
+     "AutonomousSystemOrganization": "",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "6cb069c62a51317feca844ed141e5f1cb61ed1c9",
+   "scenario": "http_404-scan",
+   "bucket_id": "purple-star",
+   "alert_message": "139.199.192.143 performed 'http_404-scan' (6 events over 3s) at 2020-01-01 18:27:32 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-01T18:27:29Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-01T22:27:32Z",
+     "StartIp": 2345123983,
+     "EndIp": 2345123983,
+     "IpText": "139.199.192.143",
+     "Reason": "ban on ip 139.199.192.143",
+     "Scenario": "",
+     "SignalOccurenceID": 986
+    }
+   ],
+   "stop_at": "2020-01-01T18:27:32Z",
+   "Source_ip": "139.199.192.143",
+   "Source_range": "139.199.0.0/16",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "139.199.192.143": {
+     "Ip": "139.199.192.143",
+     "Range": {
+      "IP": "139.199.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "04cd7cbe460be2f36d193041c486da7fdffc9056",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "restless-tree",
+   "alert_message": "139.199.192.143 performed 'aggresive_crawl' (101 events over 30s) at 2020-01-01 18:27:59 +0000 UTC",
+   "events_count": 101,
+   "start_at": "2020-01-01T18:27:29Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-01T22:27:59Z",
+     "StartIp": 2345123983,
+     "EndIp": 2345123983,
+     "IpText": "139.199.192.143",
+     "Reason": "ban on ip 139.199.192.143",
+     "Scenario": "",
+     "SignalOccurenceID": 987
+    }
+   ],
+   "stop_at": "2020-01-01T18:27:59Z",
+   "Source_ip": "139.199.192.143",
+   "Source_range": "139.199.0.0/16",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "139.199.192.143": {
+     "Ip": "139.199.192.143",
+     "Range": {
+      "IP": "139.199.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "04cd7cbe460be2f36d193041c486da7fdffc9056",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "divine-rain",
+   "alert_message": "139.199.192.143 performed 'aggresive_crawl' (195 events over 1m17s) at 2020-01-01 18:29:35 +0000 UTC",
+   "events_count": 195,
+   "start_at": "2020-01-01T18:28:18Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-01T22:29:35Z",
+     "StartIp": 2345123983,
+     "EndIp": 2345123983,
+     "IpText": "139.199.192.143",
+     "Reason": "ban on ip 139.199.192.143",
+     "Scenario": "",
+     "SignalOccurenceID": 988
+    }
+   ],
+   "stop_at": "2020-01-01T18:29:35Z",
+   "Source_ip": "139.199.192.143",
+   "Source_range": "139.199.0.0/16",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "139.199.192.143": {
+     "Ip": "139.199.192.143",
+     "Range": {
+      "IP": "139.199.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "04cd7cbe460be2f36d193041c486da7fdffc9056",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "twilight-mountain",
+   "alert_message": "139.199.192.143 performed 'aggresive_crawl' (89 events over 24s) at 2020-01-01 18:30:56 +0000 UTC",
+   "events_count": 89,
+   "start_at": "2020-01-01T18:30:32Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-01T22:30:56Z",
+     "StartIp": 2345123983,
+     "EndIp": 2345123983,
+     "IpText": "139.199.192.143",
+     "Reason": "ban on ip 139.199.192.143",
+     "Scenario": "",
+     "SignalOccurenceID": 989
+    }
+   ],
+   "stop_at": "2020-01-01T18:30:56Z",
+   "Source_ip": "139.199.192.143",
+   "Source_range": "139.199.0.0/16",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "139.199.192.143": {
+     "Ip": "139.199.192.143",
+     "Range": {
+      "IP": "139.199.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "04cd7cbe460be2f36d193041c486da7fdffc9056",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "holy-violet",
+   "alert_message": "139.199.192.143 performed 'aggresive_crawl' (181 events over 1m10s) at 2020-01-01 18:32:07 +0000 UTC",
+   "events_count": 181,
+   "start_at": "2020-01-01T18:30:57Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-01T22:32:07Z",
+     "StartIp": 2345123983,
+     "EndIp": 2345123983,
+     "IpText": "139.199.192.143",
+     "Reason": "ban on ip 139.199.192.143",
+     "Scenario": "",
+     "SignalOccurenceID": 990
+    }
+   ],
+   "stop_at": "2020-01-01T18:32:07Z",
+   "Source_ip": "139.199.192.143",
+   "Source_range": "139.199.0.0/16",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "139.199.192.143": {
+     "Ip": "139.199.192.143",
+     "Range": {
+      "IP": "139.199.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "6aedd2bf688e9a4315f3a0852e23d6257af56a6d",
+   "scenario": "http_404-scan",
+   "bucket_id": "delicate-wind",
+   "alert_message": "118.25.109.174 performed 'http_404-scan' (6 events over 3s) at 2020-01-02 06:20:42 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-02T06:20:39Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-02T10:20:42Z",
+     "StartIp": 1981377966,
+     "EndIp": 1981377966,
+     "IpText": "118.25.109.174",
+     "Reason": "ban on ip 118.25.109.174",
+     "Scenario": "",
+     "SignalOccurenceID": 991
+    }
+   ],
+   "stop_at": "2020-01-02T06:20:42Z",
+   "Source_ip": "118.25.109.174",
+   "Source_range": "118.24.0.0/15",
+   "Source_AutonomousSystemNumber": "45090",
+   "Source_AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "118.25.109.174": {
+     "Ip": "118.25.109.174",
+     "Range": {
+      "IP": "118.24.0.0",
+      "Mask": "//4AAA=="
+     },
+     "AutonomousSystemNumber": "45090",
+     "AutonomousSystemOrganization": "Shenzhen Tencent Computer Systems Company Limited",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "d55d24200351af8d4831cd7e88087b7bc5e02aca",
+   "scenario": "http_404-scan",
+   "bucket_id": "misty-waterfall",
+   "alert_message": "207.38.89.99 performed 'http_404-scan' (6 events over 1s) at 2019-12-31 07:48:07 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2019-12-31T07:48:06Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2019-12-31T11:48:07Z",
+     "StartIp": 3475396963,
+     "EndIp": 3475396963,
+     "IpText": "207.38.89.99",
+     "Reason": "ban on ip 207.38.89.99",
+     "Scenario": "",
+     "SignalOccurenceID": 992
+    }
+   ],
+   "stop_at": "2019-12-31T07:48:07Z",
+   "Source_ip": "207.38.89.99",
+   "Source_range": "207.38.80.0/20",
+   "Source_AutonomousSystemNumber": "30083",
+   "Source_AutonomousSystemOrganization": "HEG US Inc.",
+   "Source_Country": "US",
+   "Source_Latitude": 38.63119888305664,
+   "Source_Longitude": -90.19219970703125,
+   "sources": {
+    "207.38.89.99": {
+     "Ip": "207.38.89.99",
+     "Range": {
+      "IP": "207.38.80.0",
+      "Mask": "///wAA=="
+     },
+     "AutonomousSystemNumber": "30083",
+     "AutonomousSystemOrganization": "HEG US Inc.",
+     "Country": "US",
+     "Latitude": 38.63119888305664,
+     "Longitude": -90.19219970703125,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "38523b23fb81133eaf1c2b21083175c942e76883",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "restless-haze",
+   "alert_message": "207.38.89.99 performed 'aggresive_crawl' (53 events over 6s) at 2019-12-31 07:48:12 +0000 UTC",
+   "events_count": 53,
+   "start_at": "2019-12-31T07:48:06Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2019-12-31T11:48:12Z",
+     "StartIp": 3475396963,
+     "EndIp": 3475396963,
+     "IpText": "207.38.89.99",
+     "Reason": "ban on ip 207.38.89.99",
+     "Scenario": "",
+     "SignalOccurenceID": 993
+    }
+   ],
+   "stop_at": "2019-12-31T07:48:12Z",
+   "Source_ip": "207.38.89.99",
+   "Source_range": "207.38.80.0/20",
+   "Source_AutonomousSystemNumber": "30083",
+   "Source_AutonomousSystemOrganization": "HEG US Inc.",
+   "Source_Country": "US",
+   "Source_Latitude": 38.63119888305664,
+   "Source_Longitude": -90.19219970703125,
+   "sources": {
+    "207.38.89.99": {
+     "Ip": "207.38.89.99",
+     "Range": {
+      "IP": "207.38.80.0",
+      "Mask": "///wAA=="
+     },
+     "AutonomousSystemNumber": "30083",
+     "AutonomousSystemOrganization": "HEG US Inc.",
+     "Country": "US",
+     "Latitude": 38.63119888305664,
+     "Longitude": -90.19219970703125,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "38523b23fb81133eaf1c2b21083175c942e76883",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "ancient-forest",
+   "alert_message": "207.38.89.99 performed 'aggresive_crawl' (51 events over 5s) at 2019-12-31 07:49:16 +0000 UTC",
+   "events_count": 51,
+   "start_at": "2019-12-31T07:49:11Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2019-12-31T11:49:16Z",
+     "StartIp": 3475396963,
+     "EndIp": 3475396963,
+     "IpText": "207.38.89.99",
+     "Reason": "ban on ip 207.38.89.99",
+     "Scenario": "",
+     "SignalOccurenceID": 994
+    }
+   ],
+   "stop_at": "2019-12-31T07:49:16Z",
+   "Source_ip": "207.38.89.99",
+   "Source_range": "207.38.80.0/20",
+   "Source_AutonomousSystemNumber": "30083",
+   "Source_AutonomousSystemOrganization": "HEG US Inc.",
+   "Source_Country": "US",
+   "Source_Latitude": 38.63119888305664,
+   "Source_Longitude": -90.19219970703125,
+   "sources": {
+    "207.38.89.99": {
+     "Ip": "207.38.89.99",
+     "Range": {
+      "IP": "207.38.80.0",
+      "Mask": "///wAA=="
+     },
+     "AutonomousSystemNumber": "30083",
+     "AutonomousSystemOrganization": "HEG US Inc.",
+     "Country": "US",
+     "Latitude": 38.63119888305664,
+     "Longitude": -90.19219970703125,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "57097e2f13de9a441098679dd1ba632d75bc5726",
+   "scenario": "http_404-scan",
+   "bucket_id": "hidden-cherry",
+   "alert_message": "51.159.56.89 performed 'http_404-scan' (6 events over 0s) at 2020-01-12 20:12:33 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-12T20:12:33Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-13T00:12:33Z",
+     "StartIp": 866072665,
+     "EndIp": 866072665,
+     "IpText": "51.159.56.89",
+     "Reason": "ban on ip 51.159.56.89",
+     "Scenario": "",
+     "SignalOccurenceID": 995
+    }
+   ],
+   "stop_at": "2020-01-12T20:12:33Z",
+   "Source_ip": "51.159.56.89",
+   "Source_range": "51.158.0.0/15",
+   "Source_AutonomousSystemNumber": "12876",
+   "Source_AutonomousSystemOrganization": "Online S.a.s.",
+   "Source_Country": "FR",
+   "Source_Latitude": 48.86669921875,
+   "Source_Longitude": 2.3333001136779785,
+   "sources": {
+    "51.159.56.89": {
+     "Ip": "51.159.56.89",
+     "Range": {
+      "IP": "51.158.0.0",
+      "Mask": "//4AAA=="
+     },
+     "AutonomousSystemNumber": "12876",
+     "AutonomousSystemOrganization": "Online S.a.s.",
+     "Country": "FR",
+     "Latitude": 48.86669921875,
+     "Longitude": 2.3333001136779785,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "8329d169b66b77c1ffb1476ee6be6157df0fb01c",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "summer-voice",
+   "alert_message": "51.159.56.89 performed 'aggresive_crawl' (57 events over 8s) at 2020-01-12 20:12:41 +0000 UTC",
+   "events_count": 57,
+   "start_at": "2020-01-12T20:12:33Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-13T00:12:41Z",
+     "StartIp": 866072665,
+     "EndIp": 866072665,
+     "IpText": "51.159.56.89",
+     "Reason": "ban on ip 51.159.56.89",
+     "Scenario": "",
+     "SignalOccurenceID": 996
+    }
+   ],
+   "stop_at": "2020-01-12T20:12:41Z",
+   "Source_ip": "51.159.56.89",
+   "Source_range": "51.158.0.0/15",
+   "Source_AutonomousSystemNumber": "12876",
+   "Source_AutonomousSystemOrganization": "Online S.a.s.",
+   "Source_Country": "FR",
+   "Source_Latitude": 48.86669921875,
+   "Source_Longitude": 2.3333001136779785,
+   "sources": {
+    "51.159.56.89": {
+     "Ip": "51.159.56.89",
+     "Range": {
+      "IP": "51.158.0.0",
+      "Mask": "//4AAA=="
+     },
+     "AutonomousSystemNumber": "12876",
+     "AutonomousSystemOrganization": "Online S.a.s.",
+     "Country": "FR",
+     "Latitude": 48.86669921875,
+     "Longitude": 2.3333001136779785,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "e3670eedea41bad31bd62d4bcc3b11e0c0a26373",
+   "scenario": "http_404-scan",
+   "bucket_id": "quiet-sunset",
+   "alert_message": "167.172.50.134 performed 'http_404-scan' (6 events over 1s) at 2020-01-11 06:46:02 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-11T06:46:01Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-11T10:46:02Z",
+     "StartIp": 2813080198,
+     "EndIp": 2813080198,
+     "IpText": "167.172.50.134",
+     "Reason": "ban on ip 167.172.50.134",
+     "Scenario": "",
+     "SignalOccurenceID": 997
+    }
+   ],
+   "stop_at": "2020-01-11T06:46:02Z",
+   "Source_ip": "167.172.50.134",
+   "Source_range": "\u003cnil\u003e",
+   "Source_AutonomousSystemNumber": "0",
+   "Source_AutonomousSystemOrganization": "",
+   "Source_Country": "GB",
+   "Source_Latitude": 51.91669845581055,
+   "Source_Longitude": -0.2167000025510788,
+   "sources": {
+    "167.172.50.134": {
+     "Ip": "167.172.50.134",
+     "Range": {
+      "IP": "",
+      "Mask": null
+     },
+     "AutonomousSystemNumber": "0",
+     "AutonomousSystemOrganization": "",
+     "Country": "GB",
+     "Latitude": 51.91669845581055,
+     "Longitude": -0.2167000025510788,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "fe7c4addc743ea4a3fbbf8abc4768c38a815fb04",
+   "scenario": "http_404-scan",
+   "bucket_id": "divine-butterfly",
+   "alert_message": "103.212.97.45 performed 'http_404-scan' (6 events over 5s) at 2020-01-08 16:22:09 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-08T16:22:04Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-08T20:22:09Z",
+     "StartIp": 1741971757,
+     "EndIp": 1741971757,
+     "IpText": "103.212.97.45",
+     "Reason": "ban on ip 103.212.97.45",
+     "Scenario": "",
+     "SignalOccurenceID": 998
+    }
+   ],
+   "stop_at": "2020-01-08T16:22:09Z",
+   "Source_ip": "103.212.97.45",
+   "Source_range": "103.212.96.0/22",
+   "Source_AutonomousSystemNumber": "45753",
+   "Source_AutonomousSystemOrganization": "NETSEC",
+   "Source_Country": "HK",
+   "Source_Latitude": 22.283300399780273,
+   "Source_Longitude": 114.1500015258789,
+   "sources": {
+    "103.212.97.45": {
+     "Ip": "103.212.97.45",
+     "Range": {
+      "IP": "103.212.96.0",
+      "Mask": "///8AA=="
+     },
+     "AutonomousSystemNumber": "45753",
+     "AutonomousSystemOrganization": "NETSEC",
+     "Country": "HK",
+     "Latitude": 22.283300399780273,
+     "Longitude": 114.1500015258789,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "5a6ac7d4e195547d2b404da4a0d9b6f9cd50b4a9",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "old-dawn",
+   "alert_message": "103.212.97.45 performed 'aggresive_crawl' (232 events over 1m46s) at 2020-01-08 16:23:50 +0000 UTC",
+   "events_count": 232,
+   "start_at": "2020-01-08T16:22:04Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-08T20:23:50Z",
+     "StartIp": 1741971757,
+     "EndIp": 1741971757,
+     "IpText": "103.212.97.45",
+     "Reason": "ban on ip 103.212.97.45",
+     "Scenario": "",
+     "SignalOccurenceID": 999
+    }
+   ],
+   "stop_at": "2020-01-08T16:23:50Z",
+   "Source_ip": "103.212.97.45",
+   "Source_range": "103.212.96.0/22",
+   "Source_AutonomousSystemNumber": "45753",
+   "Source_AutonomousSystemOrganization": "NETSEC",
+   "Source_Country": "HK",
+   "Source_Latitude": 22.283300399780273,
+   "Source_Longitude": 114.1500015258789,
+   "sources": {
+    "103.212.97.45": {
+     "Ip": "103.212.97.45",
+     "Range": {
+      "IP": "103.212.96.0",
+      "Mask": "///8AA=="
+     },
+     "AutonomousSystemNumber": "45753",
+     "AutonomousSystemOrganization": "NETSEC",
+     "Country": "HK",
+     "Latitude": 22.283300399780273,
+     "Longitude": 114.1500015258789,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "5a6ac7d4e195547d2b404da4a0d9b6f9cd50b4a9",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "weathered-wood",
+   "alert_message": "103.212.97.45 performed 'aggresive_crawl' (76 events over 18s) at 2020-01-08 16:24:50 +0000 UTC",
+   "events_count": 76,
+   "start_at": "2020-01-08T16:24:32Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-08T20:24:50Z",
+     "StartIp": 1741971757,
+     "EndIp": 1741971757,
+     "IpText": "103.212.97.45",
+     "Reason": "ban on ip 103.212.97.45",
+     "Scenario": "",
+     "SignalOccurenceID": 1000
+    }
+   ],
+   "stop_at": "2020-01-08T16:24:50Z",
+   "Source_ip": "103.212.97.45",
+   "Source_range": "103.212.96.0/22",
+   "Source_AutonomousSystemNumber": "45753",
+   "Source_AutonomousSystemOrganization": "NETSEC",
+   "Source_Country": "HK",
+   "Source_Latitude": 22.283300399780273,
+   "Source_Longitude": 114.1500015258789,
+   "sources": {
+    "103.212.97.45": {
+     "Ip": "103.212.97.45",
+     "Range": {
+      "IP": "103.212.96.0",
+      "Mask": "///8AA=="
+     },
+     "AutonomousSystemNumber": "45753",
+     "AutonomousSystemOrganization": "NETSEC",
+     "Country": "HK",
+     "Latitude": 22.283300399780273,
+     "Longitude": 114.1500015258789,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "5a6ac7d4e195547d2b404da4a0d9b6f9cd50b4a9",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "wandering-dawn",
+   "alert_message": "103.212.97.45 performed 'aggresive_crawl' (175 events over 1m7s) at 2020-01-08 16:26:21 +0000 UTC",
+   "events_count": 175,
+   "start_at": "2020-01-08T16:25:14Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-08T20:26:21Z",
+     "StartIp": 1741971757,
+     "EndIp": 1741971757,
+     "IpText": "103.212.97.45",
+     "Reason": "ban on ip 103.212.97.45",
+     "Scenario": "",
+     "SignalOccurenceID": 1001
+    }
+   ],
+   "stop_at": "2020-01-08T16:26:21Z",
+   "Source_ip": "103.212.97.45",
+   "Source_range": "103.212.96.0/22",
+   "Source_AutonomousSystemNumber": "45753",
+   "Source_AutonomousSystemOrganization": "NETSEC",
+   "Source_Country": "HK",
+   "Source_Latitude": 22.283300399780273,
+   "Source_Longitude": 114.1500015258789,
+   "sources": {
+    "103.212.97.45": {
+     "Ip": "103.212.97.45",
+     "Range": {
+      "IP": "103.212.96.0",
+      "Mask": "///8AA=="
+     },
+     "AutonomousSystemNumber": "45753",
+     "AutonomousSystemOrganization": "NETSEC",
+     "Country": "HK",
+     "Latitude": 22.283300399780273,
+     "Longitude": 114.1500015258789,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "fe7c4addc743ea4a3fbbf8abc4768c38a815fb04",
+   "scenario": "http_404-scan",
+   "bucket_id": "wispy-frog",
+   "alert_message": "103.212.97.45 performed 'http_404-scan' (6 events over 3s) at 2020-01-08 16:27:12 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-08T16:27:09Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-08T20:27:12Z",
+     "StartIp": 1741971757,
+     "EndIp": 1741971757,
+     "IpText": "103.212.97.45",
+     "Reason": "ban on ip 103.212.97.45",
+     "Scenario": "",
+     "SignalOccurenceID": 1002
+    }
+   ],
+   "stop_at": "2020-01-08T16:27:12Z",
+   "Source_ip": "103.212.97.45",
+   "Source_range": "103.212.96.0/22",
+   "Source_AutonomousSystemNumber": "45753",
+   "Source_AutonomousSystemOrganization": "NETSEC",
+   "Source_Country": "HK",
+   "Source_Latitude": 22.283300399780273,
+   "Source_Longitude": 114.1500015258789,
+   "sources": {
+    "103.212.97.45": {
+     "Ip": "103.212.97.45",
+     "Range": {
+      "IP": "103.212.96.0",
+      "Mask": "///8AA=="
+     },
+     "AutonomousSystemNumber": "45753",
+     "AutonomousSystemOrganization": "NETSEC",
+     "Country": "HK",
+     "Latitude": 22.283300399780273,
+     "Longitude": 114.1500015258789,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "0a2b19cb243f6607e4d95c45eb979424efa1f838",
+   "scenario": "http_404-scan",
+   "bucket_id": "restless-dream",
+   "alert_message": "35.180.132.238 performed 'http_404-scan' (6 events over 0s) at 2020-01-06 15:36:09 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-06T15:36:09Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-06T19:36:09Z",
+     "StartIp": 599033070,
+     "EndIp": 599033070,
+     "IpText": "35.180.132.238",
+     "Reason": "ban on ip 35.180.132.238",
+     "Scenario": "",
+     "SignalOccurenceID": 1003
+    }
+   ],
+   "stop_at": "2020-01-06T15:36:09Z",
+   "Source_ip": "35.180.132.238",
+   "Source_range": "35.180.0.0/16",
+   "Source_AutonomousSystemNumber": "16509",
+   "Source_AutonomousSystemOrganization": "Amazon.com, Inc.",
+   "Source_Country": "FR",
+   "Source_Latitude": 48.86669921875,
+   "Source_Longitude": 2.3333001136779785,
+   "sources": {
+    "35.180.132.238": {
+     "Ip": "35.180.132.238",
+     "Range": {
+      "IP": "35.180.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "16509",
+     "AutonomousSystemOrganization": "Amazon.com, Inc.",
+     "Country": "FR",
+     "Latitude": 48.86669921875,
+     "Longitude": 2.3333001136779785,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "76779a7c22da5b031227d205fdc53a1d5c2e0940",
+   "scenario": "aggresive_crawl",
+   "bucket_id": "delicate-dust",
+   "alert_message": "35.180.132.238 performed 'aggresive_crawl' (47 events over 3s) at 2020-01-06 15:36:12 +0000 UTC",
+   "events_count": 47,
+   "start_at": "2020-01-06T15:36:09Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-06T19:36:12Z",
+     "StartIp": 599033070,
+     "EndIp": 599033070,
+     "IpText": "35.180.132.238",
+     "Reason": "ban on ip 35.180.132.238",
+     "Scenario": "",
+     "SignalOccurenceID": 1004
+    }
+   ],
+   "stop_at": "2020-01-06T15:36:12Z",
+   "Source_ip": "35.180.132.238",
+   "Source_range": "35.180.0.0/16",
+   "Source_AutonomousSystemNumber": "16509",
+   "Source_AutonomousSystemOrganization": "Amazon.com, Inc.",
+   "Source_Country": "FR",
+   "Source_Latitude": 48.86669921875,
+   "Source_Longitude": 2.3333001136779785,
+   "sources": {
+    "35.180.132.238": {
+     "Ip": "35.180.132.238",
+     "Range": {
+      "IP": "35.180.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "16509",
+     "AutonomousSystemOrganization": "Amazon.com, Inc.",
+     "Country": "FR",
+     "Latitude": 48.86669921875,
+     "Longitude": 2.3333001136779785,
+     "Flags": null
+    }
+   },
+   "capacity": 40,
+   "leak_speed": 500000000,
+   "Reprocess": false,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "crawl"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "a0c56f23985d1f8fcb844afd95b40c79b6a95d84",
+   "scenario": "http_404-scan",
+   "bucket_id": "small-sky",
+   "alert_message": "129.211.41.26 performed 'http_404-scan' (6 events over 2s) at 2020-01-06 18:34:21 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-06T18:34:19Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-06T22:34:21Z",
+     "StartIp": 2178099482,
+     "EndIp": 2178099482,
+     "IpText": "129.211.41.26",
+     "Reason": "ban on ip 129.211.41.26",
+     "Scenario": "",
+     "SignalOccurenceID": 1005
+    }
+   ],
+   "stop_at": "2020-01-06T18:34:21Z",
+   "Source_ip": "129.211.41.26",
+   "Source_range": "129.211.0.0/16",
+   "Source_AutonomousSystemNumber": "7091",
+   "Source_AutonomousSystemOrganization": "ViaNet Communications",
+   "Source_Country": "CN",
+   "Source_Latitude": 39.92890167236328,
+   "Source_Longitude": 116.38829803466797,
+   "sources": {
+    "129.211.41.26": {
+     "Ip": "129.211.41.26",
+     "Range": {
+      "IP": "129.211.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "7091",
+     "AutonomousSystemOrganization": "ViaNet Communications",
+     "Country": "CN",
+     "Latitude": 39.92890167236328,
+     "Longitude": 116.38829803466797,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "0a2b19cb243f6607e4d95c45eb979424efa1f838",
+   "scenario": "http_404-scan",
+   "bucket_id": "cool-rain",
+   "alert_message": "35.180.132.238 performed 'http_404-scan' (10 events over 2h58m14s) at 2020-01-06 18:34:25 +0000 UTC",
+   "events_count": 10,
+   "start_at": "2020-01-06T15:36:11Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-06T22:34:25Z",
+     "StartIp": 599033070,
+     "EndIp": 599033070,
+     "IpText": "35.180.132.238",
+     "Reason": "ban on ip 35.180.132.238",
+     "Scenario": "",
+     "SignalOccurenceID": 1006
+    }
+   ],
+   "stop_at": "2020-01-06T18:34:25Z",
+   "Source_ip": "35.180.132.238",
+   "Source_range": "35.180.0.0/16",
+   "Source_AutonomousSystemNumber": "16509",
+   "Source_AutonomousSystemOrganization": "Amazon.com, Inc.",
+   "Source_Country": "FR",
+   "Source_Latitude": 48.86669921875,
+   "Source_Longitude": 2.3333001136779785,
+   "sources": {
+    "35.180.132.238": {
+     "Ip": "35.180.132.238",
+     "Range": {
+      "IP": "35.180.0.0",
+      "Mask": "//8AAA=="
+     },
+     "AutonomousSystemNumber": "16509",
+     "AutonomousSystemOrganization": "Amazon.com, Inc.",
+     "Country": "FR",
+     "Latitude": 48.86669921875,
+     "Longitude": 2.3333001136779785,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "ca3945158c65616ddf95a814778f47da10c6cb6b",
+   "scenario": "http_404-scan",
+   "bucket_id": "long-wildflower",
+   "alert_message": "180.96.14.25 performed 'http_404-scan' (9 events over 72h37m58s) at 2020-01-07 04:11:11 +0000 UTC",
+   "events_count": 9,
+   "start_at": "2020-01-04T03:33:13Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-07T08:11:11Z",
+     "StartIp": 3026193945,
+     "EndIp": 3026193945,
+     "IpText": "180.96.14.25",
+     "Reason": "ban on ip 180.96.14.25",
+     "Scenario": "",
+     "SignalOccurenceID": 1007
+    }
+   ],
+   "stop_at": "2020-01-07T04:11:11Z",
+   "Source_ip": "180.96.14.25",
+   "Source_range": "180.96.8.0/21",
+   "Source_AutonomousSystemNumber": "23650",
+   "Source_AutonomousSystemOrganization": "AS Number for CHINANET jiangsu province backbone",
+   "Source_Country": "CN",
+   "Source_Latitude": 32.06169891357422,
+   "Source_Longitude": 118.77780151367188,
+   "sources": {
+    "180.96.14.25": {
+     "Ip": "180.96.14.25",
+     "Range": {
+      "IP": "180.96.8.0",
+      "Mask": "///4AA=="
+     },
+     "AutonomousSystemNumber": "23650",
+     "AutonomousSystemOrganization": "AS Number for CHINANET jiangsu province backbone",
+     "Country": "CN",
+     "Latitude": 32.06169891357422,
+     "Longitude": 118.77780151367188,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine1",
+   "trust_factor": "4",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "574814d8651d7500a6325c696067497d4d051274",
+   "scenario": "http_404-scan",
+   "bucket_id": "black-shadow",
+   "alert_message": "176.122.121.249 performed 'http_404-scan' (6 events over 3s) at 2020-01-05 19:15:57 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-05T19:15:54Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-05T23:15:57Z",
+     "StartIp": 2960816633,
+     "EndIp": 2960816633,
+     "IpText": "176.122.121.249",
+     "Reason": "ban on ip 176.122.121.249",
+     "Scenario": "",
+     "SignalOccurenceID": 1008
+    }
+   ],
+   "stop_at": "2020-01-05T19:15:57Z",
+   "Source_ip": "176.122.121.249",
+   "Source_range": "176.122.120.0/21",
+   "Source_AutonomousSystemNumber": "50581",
+   "Source_AutonomousSystemOrganization": "Ukraine telecommunication group Ltd.",
+   "Source_Country": "UA",
+   "Source_Latitude": 48.4630012512207,
+   "Source_Longitude": 35.03900146484375,
+   "sources": {
+    "176.122.121.249": {
+     "Ip": "176.122.121.249",
+     "Range": {
+      "IP": "176.122.120.0",
+      "Mask": "///4AA=="
+     },
+     "AutonomousSystemNumber": "50581",
+     "AutonomousSystemOrganization": "Ukraine telecommunication group Ltd.",
+     "Country": "UA",
+     "Latitude": 48.4630012512207,
+     "Longitude": 35.03900146484375,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": true
+ }
+ {
+  "Type": 0,
+  "ExpectMode": 0,
+  "Whitelisted": false,
+  "Stage": "",
+  "Enriched": {
+   "machine_uuid": "user1_machine2",
+   "trust_factor": "2",
+   "user_uuid": "1",
+   "watcher_ip": "1.2.3.4"
+  },
+  "Overflow": {
+   "MapKey": "94f52cd832ed322d3bd788565170d5bdabed0f71",
+   "scenario": "http_404-scan",
+   "bucket_id": "lively-breeze",
+   "alert_message": "31.222.187.197 performed 'http_404-scan' (6 events over 0s) at 2020-01-14 00:44:14 +0000 UTC",
+   "events_count": 6,
+   "start_at": "2020-01-14T00:44:14Z",
+   "ban_applications": [
+    {
+     "MeasureType": "ban",
+     "MeasureExtra": "",
+     "Until": "2020-01-14T04:44:14Z",
+     "StartIp": 534690757,
+     "EndIp": 534690757,
+     "IpText": "31.222.187.197",
+     "Reason": "ban on ip 31.222.187.197",
+     "Scenario": "",
+     "SignalOccurenceID": 1009
+    }
+   ],
+   "stop_at": "2020-01-14T00:44:14Z",
+   "Source_ip": "31.222.187.197",
+   "Source_range": "31.222.128.0/18",
+   "Source_AutonomousSystemNumber": "15395",
+   "Source_AutonomousSystemOrganization": "Rackspace Ltd.",
+   "Source_Country": "GB",
+   "Source_Latitude": 51.49639892578125,
+   "Source_Longitude": -0.12240000069141388,
+   "sources": {
+    "31.222.187.197": {
+     "Ip": "31.222.187.197",
+     "Range": {
+      "IP": "31.222.128.0",
+      "Mask": "///AAA=="
+     },
+     "AutonomousSystemNumber": "15395",
+     "AutonomousSystemOrganization": "Rackspace Ltd.",
+     "Country": "GB",
+     "Latitude": 51.49639892578125,
+     "Longitude": -0.12240000069141388,
+     "Flags": null
+    }
+   },
+   "capacity": 5,
+   "leak_speed": 10000000000,
+   "Reprocess": true,
+   "Labels": {
+    "remediation": "true",
+    "service": "http",
+    "type": "scan"
+   }
+  },
+  "Time": "0001-01-01T00:00:00Z",
+  "StrTime": "",
+  "MarshaledTime": "",
+  "Process": false
+ }

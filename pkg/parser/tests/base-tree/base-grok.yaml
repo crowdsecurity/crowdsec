@@ -1,0 +1,33 @@
+#Here we are testing the trees within the node
+filter: "evt.Line.Labels.type == 'type1'"
+debug: true
+name: tests/base-grok-root
+pattern_syntax:
+  MYCAP: ".*"
+grok:
+  pattern: ^xxheader %{MYCAP:extracted_value} trailing stuff$
+  apply_on: Line.Raw
+statics:
+  - meta: state
+    value: root-done
+  - meta: state_sub
+    expression: evt.Parsed.extracted_value
+---
+filter: "evt.Line.Labels.type == 'type1' && evt.Meta.state == 'root-done'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok-leafs
+#the sub-nodes will process the result of the master node
+nodes:
+  - filter: "evt.Parsed.extracted_value == 'VALUE1'"
+    debug: true
+    statics:
+      - meta: final_state
+        value: leaf1
+  - filter: "evt.Parsed.extracted_value == 'VALUE2'"
+    debug: true
+    statics:
+      - meta: final_state
+        value: leaf2
+
+

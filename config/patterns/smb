@@ -1,0 +1,1 @@
+SMB_AUTH_FAIL Auth:%{GREEDYDATA} user \[%{DATA:smb_domain}\]\\\[%{DATA:user}\]%{GREEDYDATA} status \[NT_STATUS_NO_SUCH_USER\]%{GREEDYDATA} remote host \[ipv4:%{IP:ip_source}

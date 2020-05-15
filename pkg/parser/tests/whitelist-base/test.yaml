@@ -1,0 +1,43 @@
+#these are the events we input into parser
+lines:
+  - Meta:
+      test: test1
+      source_ip: 8.8.8.8
+  - Meta:
+      test: test2
+      source_ip: 1.2.3.4
+  - Meta:
+      test: test3
+      source_ip: 2.2.3.4
+  - Meta:
+      test: test4
+      source_ip: 8.8.8.9
+  - Enriched:
+      test_token: supertoken1234
+    Meta:
+      test: test5
+#these are the results we expect from the parser
+results:
+  - Whitelisted: true
+    Process: true
+    Meta:
+      test: test1
+  - Whitelisted: true
+    Process: true 
+    Meta:
+      test: test2
+  - Whitelisted: false
+    Process: true
+    Meta:
+      test: test3
+  - Whitelisted: false
+    Process: true
+    Meta:
+      test: test4
+  - Whitelisted: true
+    Process: true
+    Meta:
+      test: test5
+               
+
+

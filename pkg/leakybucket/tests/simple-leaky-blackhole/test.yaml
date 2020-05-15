@@ -1,0 +1,66 @@
+lines:
+#the first two will trigger overflow
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE1 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:00Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 1
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE2 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:04Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 2
+#the next overflow will be blackholed
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE3 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:15Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 3
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE4 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:16Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 4
+#but this one won't
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE5 trailing stuff
+    MarshaledTime: 2020-01-01T10:01:15Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 5
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE6 trailing stuff
+    MarshaledTime: 2020-01-01T10:01:16Z
+    Meta:
+      source_ip: 1.2.3.4
+      entry: 6
+results:
+#the first overflow
+  - Overflow:
+      scenario: test/simple-leaky
+      Source_ip: 1.2.3.4
+      Events_count: 2
+#the blackholed one
+  - Overflow:
+      scenario:
+#the second one
+  - Overflow:
+      scenario: test/simple-leaky
+      Source_ip: 1.2.3.4
+      Events_count: 2

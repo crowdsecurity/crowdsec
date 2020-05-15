@@ -1,0 +1,8 @@
+#filter: "evt.Overflow.Labels.remediation == 'true'"
+name: tests/rdns
+description: "Lookup the DNS assiocated to the source IP only for overflows"
+statics:
+  - method: reverse_dns
+    expression: evt.Enriched.IpToResolve
+  - meta: did_dns_succeeded
+    expression: 'evt.Enriched.reverse_dns == "" ? "no" : "yes"'

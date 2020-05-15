@@ -1,0 +1,6 @@
+ - filename: ./hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml
+   stage: s00-raw
+ - filename: ./hub/parsers/s01-parse/crowdsecurity/sshd-logs.yaml
+   stage: s01-parse
+ - filename: ./hub/parsers/s02-enrich/crowdsecurity/dateparse-enrich.yaml
+   stage: s02-enrich

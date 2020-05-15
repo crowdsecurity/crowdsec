@@ -1,0 +1,14 @@
+
+#DIR ^.*/
+#FILE [^/].*$
+
+#URI_SPLIT ^%{GREEDYDATA:request}\?%{GREEDYDATA:http_args}$
+#FULLPATH_SPLITTER %{DIR:prefix_directory}%{FILE:file_name}
+
+
+NAXSI_FMT ^NAXSI_FMT: ip=%{IPORHOST:src_ip}&server=%{IPORHOST:target_ip}&uri=%{PATH:http_path}&learning=\d&vers=%{DATA:naxsi_version}&total_processed=\d+&total_blocked=\d+&block=\d+(&cscore\d=%{WORD:score_label}&score\d=%{INT:score})+&zone0=%{WORD:zone}
+#^NAXSI_FMT: ip=%{IPORHOST:src_ip}&server=%{IPORHOST:target_ip}&uri=%{PATH:http_path}&learning=\d&vers=%{DATA:naxsi_version}&total_processed=\d+&total_blocked=\d+&block=\d+(&cscore\d=%{WORD:score_label}&score\d=%{INT:score})+&cscore2
+#^NAXSI_FMT: ip=%{IPORHOST:src_ip}&server=%{IPORHOST:target_ip}&uri=%{PATH:http_path}(&cscore\d=%{WORD:score_label}&score\d=%{INT:score})+&cscore2
+#^NAXSI_FMT: ip=%{IPORHOST:src_ip}&server=%{IPORHOST:target_ip}&uri=%{PATH:http_path}&learning=\d&vers=%{DATA:naxsi_version}&total_processed=\d+&total_blocked=\d+&block=\d+(&cscore\d=%{WORD:score_label}&score\d=%{INT:score})+&cscore2
+
+NAXSI_EXLOG ^NAXSI_EXLOG: ip=%{IPORHOST:naxsi_src_ip}&server=%{IPORHOST:naxsi_dst_ip}&uri=%{PATH:http_path}&id=%{INT:naxsi_id}&zone=%{WORD:naxsi_zone}&var_name=%{DATA:naxsi_var_name}&content=

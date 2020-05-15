@@ -1,0 +1,16 @@
+filter: "evt.Line.Labels.type == 'testlog'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok
+nodes:
+  - grok:
+    #USERNAME is a pattern defined by the grokky library we are using
+      name: SYSLOGFACILITY
+      apply_on: Line.Raw
+      statics:
+        - enriched: subgrok_static_why_is_it_still_here
+          value: because
+statics:
+  - meta: log_type
+    value: parsed_testlog
+

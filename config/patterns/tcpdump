@@ -1,0 +1,1 @@
+TCPDUMP_OUTPUT %{GREEDYDATA:timestamp} IP %{IPORHOST:source_ip}\.%{INT:source_port} > %{IPORHOST:dest_ip}\.%{INT:dest_port}: Flags \[%{GREEDYDATA:tcpflags}\], seq

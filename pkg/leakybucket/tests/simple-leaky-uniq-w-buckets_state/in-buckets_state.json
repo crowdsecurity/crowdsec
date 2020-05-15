@@ -1,0 +1,113 @@
+{
+ "cdf58e6ae48e79ac3ae0f006e1a2e627eccd8b63": {
+  "Name": "test/simple-leaky",
+  "Mode": 1,
+  "SerializedState": {
+   "Limit": 0.1,
+   "Burst": 3,
+   "Tokens": 1.1,
+   "Last": "2020-01-01T10:00:05Z",
+   "LastEvent": "2020-01-01T10:00:05Z"
+  },
+  "Queue": {
+   "Queue": [
+    {
+     "Type": 0,
+     "ExpectMode": 1,
+     "Whitelisted": false,
+     "Stage": "",
+     "Overflow": {
+      "MapKey": "",
+      "start_at": "0001-01-01T00:00:00Z",
+      "stop_at": "0001-01-01T00:00:00Z",
+      "source": null,
+      "Source_ip": "",
+      "Source_range": "",
+      "Source_AutonomousSystemNumber": "",
+      "Source_AutonomousSystemOrganization": "",
+      "Source_Country": "",
+      "Source_Latitude": 0,
+      "Source_Longitude": 0,
+      "Reprocess": false,
+      "Labels": null
+     },
+     "Time": "0001-01-01T00:00:00Z",
+     "StrTime": "",
+     "MarshaledTime": "2020-01-01T10:00:04Z",
+     "Process": false,
+     "Meta": {
+      "source_ip": "1.2.3.4",
+      "uniq_key": "aaa"
+     }
+    },
+    {
+     "Type": 0,
+     "ExpectMode": 1,
+     "Whitelisted": false,
+     "Stage": "",
+     "Overflow": {
+      "MapKey": "",
+      "start_at": "0001-01-01T00:00:00Z",
+      "stop_at": "0001-01-01T00:00:00Z",
+      "source": null,
+      "Source_ip": "",
+      "Source_range": "",
+      "Source_AutonomousSystemNumber": "",
+      "Source_AutonomousSystemOrganization": "",
+      "Source_Country": "",
+      "Source_Latitude": 0,
+      "Source_Longitude": 0,
+      "Reprocess": false,
+      "Labels": null
+     },
+     "Time": "0001-01-01T00:00:00Z",
+     "StrTime": "",
+     "MarshaledTime": "2020-01-01T10:00:05Z",
+     "Process": false,
+     "Meta": {
+      "source_ip": "1.2.3.4",
+      "uniq_key": "aab"
+     }
+    }
+   ],
+   "L": 3
+  },
+  "Capacity": 3,
+  "CacheSize": 0,
+  "Mapkey": "cdf58e6ae48e79ac3ae0f006e1a2e627eccd8b63",
+  "Reprocess": false,
+  "Uuid": "dark-bush",
+  "First_ts": "2020-01-01T10:00:04Z",
+  "Last_ts": "2020-01-01T10:00:05Z",
+  "Ovflw_ts": "0001-01-01T00:00:00Z",
+  "Total_count": 2,
+  "Leakspeed": 10000000000,
+  "BucketConfig": {
+   "FormatVersion": "1.0",
+   "Author": "",
+   "Description": "Simple leaky",
+   "References": null,
+   "Type": "leaky",
+   "Name": "test/simple-leaky",
+   "Capacity": 3,
+   "LeakSpeed": "10s",
+   "Duration": "",
+   "Filter": "evt.Line.Labels.type =='testlog'",
+   "GroupBy": "evt.Meta.source_ip",
+   "Distinct": "evt.Meta.uniq_key",
+   "Debug": true,
+   "Labels": {
+    "type": "overflow_1"
+   },
+   "Blackhole": "",
+   "Reprocess": false,
+   "CacheSize": 0,
+   "Profiling": false,
+   "OverflowFilter": "",
+   "BucketName": "lingering-river",
+   "Filename": "/home/bui/github/crowdsec/crowdsec/pkg/leakybucket/tests/simple-leaky-uniq-w-buckets_state/bucket.yaml"
+  },
+  "Duration": 40000000000,
+  "Profiling": false
+ }
+}

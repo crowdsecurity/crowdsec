@@ -1,0 +1,22 @@
+filter: "'source_ip' in evt.Meta"
+name: tests/geoip-enrich
+description: "Populate event with geoloc info : as, country, coords, source range."
+statics:
+  - method: GeoIpCity
+    expression: evt.Meta.source_ip
+  - meta: IsoCode
+    expression: evt.Enriched.IsoCode
+  - meta: IsInEU
+    expression: evt.Enriched.IsInEU
+  - meta: GeoCoords
+    expression: evt.Enriched.GeoCoords
+  - method: GeoIpASN
+    expression: evt.Meta.source_ip
+  - meta: ASNNumber
+    expression: evt.Enriched.ASNNumber
+  - meta: ASNOrg
+    expression: evt.Enriched.ASNOrg
+  - method: IpToRange
+    expression: evt.Meta.source_ip
+  - meta: SourceRange
+    expression: evt.Enriched.SourceRange

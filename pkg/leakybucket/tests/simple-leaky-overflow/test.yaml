@@ -1,0 +1,23 @@
+#this one will trigger a simple overflow
+lines:
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE1 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:00Z
+    Meta:
+      source_ip: 1.2.3.4
+  - Line:
+      Labels:
+        type: testlog
+      Raw: xxheader VALUE2 trailing stuff
+    MarshaledTime: 2020-01-01T10:00:05Z
+    Meta:
+      source_ip: 1.2.3.4
+results:
+  - Overflow:
+      scenario: test/simple-leaky
+      Source_ip: 1.2.3.4
+      Events_count: 2
+
+

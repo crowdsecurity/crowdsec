@@ -1,0 +1,29 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Labels:
+        #this one will be checked by a filter
+        type: testlog
+      Raw: xxheader VALUE1 trailing stuff
+  - Line:
+  #see tricky case : first one is nginx via syslog, the second one is local nginx :)
+      Labels:
+        #this one will be checked by a filter
+        type: testlog
+      Raw: xxheader VALUE2 trailing stuff
+#these are the results we expect from the parser
+results:
+  - Meta:
+      log_type: parsed_testlog
+    Parsed:
+      extracted_value: VALUE1
+      test_bis: lolilol
+    Process: true
+    Stage: s01-raw
+  #because of how our second stage parser is done, this one won't pass stage
+  - Meta:
+      log_type: parsed_testlog
+    Parsed:
+      extracted_value: VALUE2
+    Process: false
+    Stage: s01-raw

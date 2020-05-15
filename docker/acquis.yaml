@@ -1,0 +1,4 @@
+filenames:
+  - /var/log/syslog
+labels:
+  type: syslog

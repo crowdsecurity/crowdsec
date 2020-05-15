@@ -1,0 +1,1 @@
+MYSQL_AUTH_FAIL %{TIMESTAMP_ISO8601:time} %{NUMBER} \[Note\] Access denied for user '%{DATA:user}'@'%{IP:source_ip}' \(using password: YES\)

@@ -1,0 +1,8 @@
+version: v1
+url: https://tmsov6x2n9.execute-api.eu-west-1.amazonaws.com
+signin_path: signin
+push_path: signals
+pull_path: pull
+enroll_path: enroll
+reset_pwd_path: resetpassword
+register_path: register

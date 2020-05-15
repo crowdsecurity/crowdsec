@@ -1,0 +1,18 @@
+APACHEERRORTIME %{DAY} %{MONTH} %{MONTHDAY} %{TIME} %{YEAR}
+APACHEERRORPREFIX \[%{APACHEERRORTIME:timestamp}\] \[%{NOTSPACE:apacheseverity}\] (\[pid %{INT}:tid %{INT}\] )?\[client %{IPORHOST:sourcehost}(:%{INT:source_port})?\] (\[client %{IPORHOST}\])?
+GENERICAPACHEERROR %{APACHEERRORPREFIX} %{GREEDYDATA:message}
+MODSECPREFIX %{APACHEERRORPREFIX} ModSecurity: %{NOTSPACE:modsecseverity}\. %{GREEDYDATA:modsecmessage}
+MODSECRULEFILE \[file %{QUOTEDSTRING:rulefile}\]
+MODSECRULELINE \[line %{QUOTEDSTRING:ruleline}\]
+MODSECMATCHOFFSET \[offset %{QUOTEDSTRING:matchoffset}\]
+MODSECRULEID \[id %{QUOTEDSTRING:ruleid}\]
+MODSECRULEREV \[rev %{QUOTEDSTRING:rulerev}\]
+MODSECRULEMSG \[msg %{QUOTEDSTRING:rulemessage}\]
+MODSECRULEDATA \[data %{QUOTEDSTRING:ruledata}\]
+MODSECRULESEVERITY \[severity ["']%{WORD:ruleseverity}["']\]
+MODSECRULEVERS \[ver "[^"]+"\]
+MODSECRULETAGS (?:\[tag %{QUOTEDSTRING:ruletag0}\] )?(?:\[tag %{QUOTEDSTRING:ruletag1}\] )?(?:\[tag %{QUOTEDSTRING:ruletag2}\] )?(?:\[tag %{QUOTEDSTRING:ruletag3}\] )?(?:\[tag %{QUOTEDSTRING:ruletag4}\] )?(?:\[tag %{QUOTEDSTRING:ruletag5}\] )?(?:\[tag %{QUOTEDSTRING:ruletag6}\] )?(?:\[tag %{QUOTEDSTRING:ruletag7}\] )?(?:\[tag %{QUOTEDSTRING:ruletag8}\] )?(?:\[tag %{QUOTEDSTRING:ruletag9}\] )?(?:\[tag %{QUOTEDSTRING}\] )*
+MODSECHOSTNAME \[hostname ['"]%{DATA:targethost}["']\]
+MODSECURI \[uri ["']%{DATA:targeturi}["']\]
+MODSECUID \[unique_id %{QUOTEDSTRING:uniqueid}\]
+MODSECAPACHEERROR %{MODSECPREFIX} %{MODSECRULEFILE} %{MODSECRULELINE} (?:%{MODSECMATCHOFFSET} )?(?:%{MODSECRULEID} )?(?:%{MODSECRULEREV} )?(?:%{MODSECRULEMSG} )?(?:%{MODSECRULEDATA} )?(?:%{MODSECRULESEVERITY} )?(?:%{MODSECRULEVERS} )?%{MODSECRULETAGS}%{MODSECHOSTNAME} %{MODSECURI} %{MODSECUID}

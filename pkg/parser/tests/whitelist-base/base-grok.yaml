@@ -1,0 +1,11 @@
+name: test/whitelists
+description: "Whitelist tests"
+debug: true
+whitelist:
+  reason: "Whitelist tests"
+  ip: 
+    - 8.8.8.8
+  cidr:
+    - "1.2.3.0/24"
+  expression:
+    - "'supertoken1234' == evt.Enriched.test_token"

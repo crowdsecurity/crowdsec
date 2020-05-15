@@ -1,0 +1,3 @@
+ - filename: {{.TestDirectory}}/bucket.yaml
+ - filename: {{.TestDirectory}}/reprocess.yaml
+

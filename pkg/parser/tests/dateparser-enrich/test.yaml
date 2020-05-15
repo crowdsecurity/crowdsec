@@ -1,0 +1,22 @@
+#these are the events we input into parser
+lines:
+  - StrTime: 2012/11/01
+    Parsed:
+      test: format1
+  - StrTime: 11/02/2012 13:37:05
+    Parsed:
+      test: format2
+#these are the results we expect from the parser
+results:
+  - Parsed:
+      test: format1
+    Enriched:
+      MarshaledTime: "2012-11-01T00:00:00Z"
+    Process: true
+    Stage: s00-raw
+  - Parsed:
+      test: format2
+    Enriched:
+      MarshaledTime: "2012-11-02T13:37:05Z"
+    Process: true
+    Stage: s00-raw

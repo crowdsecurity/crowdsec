@@ -1,0 +1,5 @@
+name: sqlite
+path: ./plugins/backend/sqlite.so
+config:
+  db_path: ./test.db
+  flush: true

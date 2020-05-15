@@ -1,0 +1,10 @@
+filter: "evt.StrTime != ''"
+name: test/dateparse
+debug: true
+#it's a hack lol
+statics:
+  - method: ParseDate
+    expression: evt.StrTime
+  - target: MarshaledTime
+    expression: evt.Enriched.MarshaledTime
+

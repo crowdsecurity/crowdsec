@@ -1,0 +1,15 @@
+working_dir: /tmp/
+data_dir: /var/run/crowdsec/
+config_dir: /etc/crowdsec
+pid_dir: /var/run/
+log_dir: /var/log/
+log_mode: stdout
+log_level: debug
+profiling: false
+sqlite_path: /var/run/crowdsec/crowdsec.db
+apimode: false
+daemon: false
+prometheus: true
+#for prometheus agent / golang debugging
+http_listen: 127.0.0.1:6060
+

@@ -1,0 +1,43 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Labels:
+        #this one will be checked by a filter
+        type: testlog
+      Raw: <123.120>
+  - Line:
+  #see tricky case : first one is nginx via syslog, the second one is local nginx :)
+      Labels:
+        #this one will be checked by a filter
+        type: testlog
+      Raw: <123.121>
+  - Line:
+  #see tricky case : first one is nginx via syslog, the second one is local nginx :)
+      Labels:
+        #this one will be checked by a filter
+        type: testlog
+      Raw: XXXX         
+#these are the results we expect from the parser
+results:
+  - Meta:
+      log_type: parsed_testlog
+    Parsed:
+      facility: 123
+      priority: 120
+    Enriched:
+      subgrok_static_why_is_it_still_here: because
+    Process: true
+    Stage: s00-raw
+  - Meta:
+      log_type: parsed_testlog
+    Parsed:
+      facility: 123
+      priority: 121
+    Enriched:
+      subgrok_static_why_is_it_still_here: because
+    Process: true
+    Stage: s00-raw
+  - Process: false
+    Stage: s00-raw
+    Line:
+      Raw: XXXX

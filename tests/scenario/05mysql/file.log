@@ -1,0 +1,5 @@
+Dec 12 22:43:09 ip-172-31-11-1.us-west-1.compute.internal mysql[2762]: 2019-12-12T22:43:09.600659Z 120 [Note] Access denied for user 'root'@'106.3.44.207' (using password: YES)
+Dec 12 22:43:10 ip-172-31-11-1.us-west-1.compute.internal mysql[2762]: 2019-12-12T22:43:10.408842Z 121 [Note] Access denied for user 'root'@'106.3.44.207' (using password: YES)
+Dec 12 22:43:11 ip-172-31-11-1.us-west-1.compute.internal mysql[2762]: 2019-12-12T22:43:11.218794Z 122 [Note] Access denied for user 'root'@'106.3.44.207' (using password: YES)
+Dec 12 22:43:12 ip-172-31-11-1.us-west-1.compute.internal mysql[2762]: 2019-12-12T22:43:12.027695Z 123 [Note] Access denied for user 'root'@'106.3.44.207' (using password: YES)
+Dec 12 22:43:12 ip-172-31-11-1.us-west-1.compute.internal mysql[2762]: 2019-12-12T22:43:12.841040Z 124 [Note] Access denied for user 'root'@'106.3.44.207' (using password: YES)

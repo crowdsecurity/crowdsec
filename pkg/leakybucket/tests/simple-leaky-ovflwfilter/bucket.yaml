@@ -1,0 +1,27 @@
+# ssh bruteforce
+type: leaky
+debug: true
+name: test/filter-discard
+description: "ko"
+filter: "evt.Line.Labels.type =='testlog'"
+leakspeed: "10s"
+capacity: 1
+overflow_filter: any(queue.Queue, { Atof(.Meta.specvalue) > 3})
+#overflow_filter: Atof()
+groupby: evt.Meta.source_ip
+labels:
+ type: overflow_1
+---
+# ssh bruteforce
+type: leaky
+debug: true
+name: test/filter-ok
+description: "ok"
+filter: "evt.Line.Labels.type =='testlog'"
+leakspeed: "10s"
+capacity: 1
+overflow_filter: any(queue.Queue, { Atof(.Meta.specvalue) > 1})
+#overflow_filter: Atof()
+groupby: evt.Meta.source_ip
+labels:
+ type: overflow_2

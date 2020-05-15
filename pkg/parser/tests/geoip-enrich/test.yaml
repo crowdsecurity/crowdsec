@@ -1,0 +1,27 @@
+#these are the events we input into parser
+lines:
+  - Meta:
+      test: test1
+      source_ip: 8.8.8.8
+  - Meta:
+      test: test2
+      source_ip: 192.168.0.1
+#these are the results we expect from the parser
+results:
+  - Process: true
+    Enriched:
+      IsoCode: US
+      IsInEU: false
+      ASNOrg: Google LLC
+    Meta:
+      source_ip: 8.8.8.8
+  - Process: true
+    Enriched:
+      IsInEU: false
+      IsoCode:
+      ASNOrg:
+    Meta:
+      source_ip: 192.168.0.1
+               
+
+

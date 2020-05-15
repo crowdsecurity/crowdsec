@@ -1,0 +1,11 @@
+#only one of the events is going to throu filter
+filter: "evt.Parsed.extracted_value == 'VALUE1'"
+debug: true
+onsuccess: next_stage
+name: tests/second-stage-grok
+statics:
+  - meta: did_second_stage
+    value: yes
+  - target: evt.Parsed.test_bis
+    value: lolilol
+

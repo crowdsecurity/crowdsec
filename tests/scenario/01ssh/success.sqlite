@@ -1,0 +1,3 @@
+select count(*) == 1 from signal_occurences where source_ip = "192.168.13.38" and scenario = "crowdsecurity/ssh-bf"
+select count(*) == 1 from signal_occurences where source_ip = "192.168.13.37" and scenario = "crowdsecurity/ssh-bf"
+

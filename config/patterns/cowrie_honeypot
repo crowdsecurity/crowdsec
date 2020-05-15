@@ -1,0 +1,1 @@
+COWRIE_NEW_CO New connection: %{IPV4:source_ip}:[0-9]+ \(%{IPV4:dest_ip}:%{INT:dest_port}\) \[session: %{DATA:telnet_session}\]$
