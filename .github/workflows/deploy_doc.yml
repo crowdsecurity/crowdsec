@@ -8,32 +8,15 @@ on:
       - '.github/workflows/deploy_doc.yml'
 name: Deploy documentation
 jobs:
-  deploy:
-    name: deploy
+  build:
+    name: Deploy documentation
     runs-on: ubuntu-latest
     steps:
-      # Checkout source form Github
-      - uses: actions/checkout@v2
-        with:
-          ref: gh_pages_deploy
-      # Install Python runtime and dependencies
-      - uses: actions/setup-python@v1
-        with:
-          python-version: 3.x
-      - run: pip install -r ./docs/requirements.txt
-            # Set configuration for repository and deploy documentation
-      - env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          #GH_NAME: ${{ secrets.GH_NAME }}
-          #GH_EMAIL: ${{ secrets.GH_EMAIL }}
-        run: |
-          REMOTE="https://${GH_TOKEN}@github.com/crowdsecurity/crowdsec"
-          #git config --global user.name "${GH_NAME}"
-          #git config --global user.email "${GH_EMAIL}"
-          git remote set-url origin ${REMOTE}
-      # Build documentation
-      - #env:
-          #GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
-        run: |
-          mkdocs gh-deploy --force
-          mkdocs --version
+      - name: Checkout master
+        uses: actions/checkout@v1
+
+      - name: Deploy docs
+        uses: mhausenblas/mkdocs-deploy-gh-pages@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CUSTOM_DOMAIN: optionaldomain.com
