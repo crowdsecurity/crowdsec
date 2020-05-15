@@ -31,10 +31,6 @@ jobs:
           #git config --global user.name "${GH_NAME}"
           #git config --global user.email "${GH_EMAIL}"
           git remote set-url origin ${REMOTE}
-      # Install theme and dependencies
-      - run: |
-          pip install .
-          pip install mkdocs-minify-plugin>=0.2
       # Build documentation
       - #env:
           #GOOGLE_ANALYTICS_KEY: ${{ secrets.GOOGLE_ANALYTICS_KEY }}
