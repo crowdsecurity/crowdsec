@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Checkout source form Github
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v2
         with:
           ref: gh_pages_deploy
       # Install Python runtime and dependencies
@@ -22,11 +22,11 @@ jobs:
       - run: pip install -r ./docs/requirements.txt
             # Set configuration for repository and deploy documentation
       - env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           #GH_NAME: ${{ secrets.GH_NAME }}
           #GH_EMAIL: ${{ secrets.GH_EMAIL }}
         run: |
-          REMOTE="https://${GH_TOKEN}@github.com/crowdsecurity/crowdsec"
+          REMOTE="https://${GITHUB_TOKEN}@github.com/crowdsecurity/crowdsec"
           #git config --global user.name "${GH_NAME}"
           #git config --global user.email "${GH_EMAIL}"
           git remote set-url origin ${REMOTE}
