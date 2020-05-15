@@ -1,5 +1,19 @@
-![Go](https://github.com/crowdsecurity/crowdsec/workflows/Go/badge.svg)
-![build-binary-package](https://github.com/crowdsecurity/crowdsec/workflows/build-binary-package/badge.svg)
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<p align="center">
+<img src="docs/assets/images/crowdsec_logo1.png" alt="CrowdSec" title="CrowdSec" />
+</p>
+
+
+<p align="center">
+<img src="https://github.com/crowdsecurity/crowdsec/workflows/Go/badge.svg">
+<img src="https://github.com/crowdsecurity/crowdsec/workflows/build-binary-package/badge.svg">
+</p>
+
+<p align="center">
+:closed_book: <a href="https://docs.crowdsec.net">CrowdSec Documentation</a>
+:diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">CrowdSec Hub</a>
+</p>
 
 ## About the crowdsec project
 
