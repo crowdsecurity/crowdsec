@@ -4,7 +4,7 @@ Configure installation directory
 
 ### Synopsis
 
-Configure the installation directory of crowdsec, such as /etc/crowdsec/crowdsec/
+Configure the installation directory of crowdsec, such as /etc/crowdsec/config/
 
 ```
 cscli config installdir [value] [flags]

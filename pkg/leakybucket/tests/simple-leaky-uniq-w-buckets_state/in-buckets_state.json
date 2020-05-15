@@ -105,7 +105,7 @@
    "Profiling": false,
    "OverflowFilter": "",
    "BucketName": "lingering-river",
-   "Filename": "/home/bui/github/crowdsec/crowdsec/pkg/leakybucket/tests/simple-leaky-uniq-w-buckets_state/bucket.yaml"
+   "Filename": "/home/bui/github/crowdsec/config/pkg/leakybucket/tests/simple-leaky-uniq-w-buckets_state/bucket.yaml"
   },
   "Duration": 40000000000,
   "Profiling": false

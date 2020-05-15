@@ -17,7 +17,7 @@ RUN make build
 RUN make install
 
 RUN cp ./docker/docker.yaml /etc/crowdsec/docker.yaml
-RUN cp ./docker/acquis.yaml /etc/crowdsec/crowdsec/
+RUN cp ./docker/acquis.yaml /etc/crowdsec/config/
 
 ############################
 # STEP 2
@@ -52,7 +52,7 @@ COPY ./docker/rsyslog.conf /etc/rsyslog.conf
 ###########################################
 
 RUN cscli config token "6ba94afde0fbf41310f7191934bc1d920245c9f1" 
-RUN cscli config installdir "/etc/crowdsec/crowdsec/"
+RUN cscli config installdir "/etc/crowdsec/config/"
 RUN cscli config dbpath "/var/run/crowdsec/crowdsec.db"
 
 RUN cscli update

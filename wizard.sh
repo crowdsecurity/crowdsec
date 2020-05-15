@@ -462,7 +462,7 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/crowdsec/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/crowdsec/api.yaml || log_err "unable to register, skipping crowdsec api registration"
+        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
         log_info "Crowdsec api registered"
 
 
