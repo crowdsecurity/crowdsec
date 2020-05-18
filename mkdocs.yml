@@ -141,8 +141,8 @@ extra:
         Parser: "[Parser](/references/parsers/)"
         scenario: "[scenarios](/references/scenarios/)"
         Scenario: "[Scenarios](/references/scenarios/)"
-        acquis: "[acquisition](/references/acquis/)"
-        Acquis: "[Acquisition](/references/acquis/)"
+        acquis: "[acquisition](/guide/crowdsec/acquisition/)"
+        Acquis: "[Acquisition](/guide/crowdsec/acquisition/)"
         output: "[output](/references/output/)"
         Output: "[Output](/references/output/)"
 # All the technical terms
