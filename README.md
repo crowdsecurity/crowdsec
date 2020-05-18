@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-:books: <a href="https://docs.crowdsec.net">Documentation</a>
+:books: <a href="https://doc.crowdsec.net">Documentation</a>
 :diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">Hub</a>
 :speech_balloon: <a href="https://discourse.crowdsec.net">Discourse </a>
 </p>
