@@ -1,5 +1,5 @@
 template: |
-  Crowdwatch $NEXT_PATCH_VERSION
+  Crowdsec $NEXT_PATCH_VERSION
   
   ## What’s Changed
 
