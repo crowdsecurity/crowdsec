@@ -30,7 +30,7 @@ The process should take less than a minute, [please report if there are any issu
 
 You are then ready to [take a tour](/getting_started/crowdsec-tour/) of your freshly deployed {{crowdsec.name}} !
 
-## Using unattended mode
+## Binary installation
 
 > you of little faith
 
@@ -40,6 +40,24 @@ sudo {{wizard.bin}} --bininstall
 
 This will deploy a valid/empty {{crowdsec.name}} configuration files and binaries.
 Beware, in this state, {{crowdsec.name}} won't monitor/detect anything unless configured.
+
+```
+cscli install collection crowdsecurity/linux
+```
+
+
+Installing at least the `crowdsecurity/linux` collection will provide you :
+
+ - syslog parser
+ - geoip enrichment
+ - date parsers
+
+
+You will need as well to configure your {{ref.acquis}} file to feed {{crowdsec.name}} some logs.
+
+
+
+
 
 ## From source
 
