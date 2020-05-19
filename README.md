@@ -16,8 +16,9 @@
 
 ## About the crowdsec project
 
+Crowdsec is an open-source and lightweight software that allows you to detect peers with malevolent behaviors and block them from accessing your systems at various level (infrastructural, system, applicative).
 
-Crowdsec is an open-source and lightweight software, that reads logs from different sources (files, streams ...) to parse, normalize and enrich them before comparing them to scenarios.
+To achieve this, crowdsec reads logs from different sources (files, streams ...) to parse, normalize and enrich them before comparing them to scenarios.
 
 Scenarios describe more or less specific attacks, ultimately allowing to report malevolent actors and take further action, such as blocking, reporting, throttling etc.
 
