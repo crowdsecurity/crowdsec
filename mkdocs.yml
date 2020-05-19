@@ -87,12 +87,12 @@ extra:
         community: "[community](http://discourse.crowdsec.net)"
     hub:
         name: Crowdsec Hub
-        htmlname: "[Crowdsec Hub](https://master.d3padiiorjhf1k.amplifyapp.com/)"
-        url: "https://master.d3padiiorjhf1k.amplifyapp.com/"
-        plugins_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#blockers"
-        scenarios_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#configurations"
-        parsers_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#configurations"
-        collections_url: "https://master.d3padiiorjhf1k.amplifyapp.com/browse/#collections"
+        htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
+        url: "hhttps://hub.crowdsec.net/"
+        plugins_url: "https://hub.crowdsec.net/browse/#blockers"
+        scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
+        parsers_url: "https://hub.crowdsec.net/browse/#configurations"
+        collections_url: "https://hub.crowdsec.net/browse/#collections"
     crowdsec:
         name: Crowdsec
         Name: Crowdsec
@@ -125,7 +125,7 @@ extra:
         acquis_path: "/etc/crowdsec/config/acquis.yaml"
     plugins:
         name: blockers
-        url: "https://master.d3padiiorjhf1k.amplifyapp.com/"
+        url: "https://hub.crowdsec.net/"
         binpath: "/var/lib/crowdsec/plugins/"
         configpath: "/etc/crowdsec/plugins/"
     metabase:
