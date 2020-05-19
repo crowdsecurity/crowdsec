@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -168,6 +169,9 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 		log.Fatal(err)
 	}
 	for _, f := range r.File {
+		if strings.Contains(f.Name, "..") {
+			return fmt.Errorf("invalid path '%s' in archive", f.Name)
+		}
 		tfname := fmt.Sprintf("%s/%s", metabaseDbPath, f.Name)
 		log.Debugf("%s -> %d", f.Name, f.UncompressedSize64)
 		if f.UncompressedSize64 == 0 {
@@ -175,17 +179,17 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 		}
 		tfd, err := os.OpenFile(tfname, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
 		if err != nil {
-			return fmt.Errorf("Failed opening target file '%s' : %s", tfname, err)
+			return fmt.Errorf("failed opening target file '%s' : %s", tfname, err)
 		}
 		rc, err := f.Open()
 		if err != nil {
-			return fmt.Errorf("While opening zip content %s : %s", f.Name, err)
+			return fmt.Errorf("while opening zip content %s : %s", f.Name, err)
 		}
 		written, err := io.Copy(tfd, rc)
 		if err == io.EOF {
 			log.Printf("files finished ok")
 		} else if err != nil {
-			return fmt.Errorf("While copying content to %s : %s", tfname, err)
+			return fmt.Errorf("while copying content to %s : %s", tfname, err)
 		}
 		log.Infof("written %d bytes to %s", written, tfname)
 		rc.Close()
@@ -240,15 +244,15 @@ func resetMetabasePassword(newpassword string) error {
 	httpClient := http.Client{Timeout: 20 * time.Second}
 	resp, err := httpClient.Do(sessionreq)
 	if err != nil {
-		return fmt.Errorf("While trying to do rescan api call to metabase : %s", err)
+		return fmt.Errorf("while trying to do rescan api call to metabase : %s", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("While reading rescan api call response : %s", err)
+		return fmt.Errorf("while reading rescan api call response : %s", err)
 	}
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("Got '%s' (http:%d) while trying to rescan metabase", string(body), resp.StatusCode)
+		return fmt.Errorf("got '%s' (http:%d) while trying to rescan metabase", string(body), resp.StatusCode)
 	}
 	/*update password*/
 	sessionreq, err = httpctx.New().Put(metabaseURIUpdatepwd).BodyJSON(map[string]string{
@@ -261,7 +265,7 @@ func resetMetabasePassword(newpassword string) error {
 	httpClient = http.Client{Timeout: 20 * time.Second}
 	resp, err = httpClient.Do(sessionreq)
 	if err != nil {
-		return fmt.Errorf("While trying to reset metabase password : %s", err)
+		return fmt.Errorf("while trying to reset metabase password : %s", err)
 	}
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
@@ -282,11 +286,11 @@ func startMetabase() error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return fmt.Errorf("Failed to create docker client : %s", err)
+		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 
 	if err := cli.ContainerStart(ctx, metabaseContainerID, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("Failed while starting %s : %s", metabaseContainerID, err)
+		return fmt.Errorf("failed while starting %s : %s", metabaseContainerID, err)
 	}
 
 	return nil
@@ -297,17 +301,17 @@ func stopMetabase(remove bool) error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return fmt.Errorf("Failed to create docker client : %s", err)
+		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	var to time.Duration = 20 * time.Second
 	if err := cli.ContainerStop(ctx, metabaseContainerID, &to); err != nil {
-		return fmt.Errorf("Failed while stopping %s : %s", metabaseContainerID, err)
+		return fmt.Errorf("failed while stopping %s : %s", metabaseContainerID, err)
 	}
 
 	if remove {
 		log.Printf("Removing docker metabase %s", metabaseContainerID)
 		if err := cli.ContainerRemove(ctx, metabaseContainerID, types.ContainerRemoveOptions{}); err != nil {
-			return fmt.Errorf("Failed remove container %s : %s", metabaseContainerID, err)
+			return fmt.Errorf("failed remove container %s : %s", metabaseContainerID, err)
 		}
 	}
 	return nil
@@ -317,13 +321,13 @@ func createMetabase() error {
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return fmt.Errorf("Failed to start docker client : %s", err)
+		return fmt.Errorf("failed to start docker client : %s", err)
 	}
 
 	log.Printf("Pulling docker image %s", metabaseImage)
 	reader, err := cli.ImagePull(ctx, metabaseImage, types.ImagePullOptions{})
 	if err != nil {
-		return fmt.Errorf("Failed to pull docker image : %s", err)
+		return fmt.Errorf("failed to pull docker image : %s", err)
 	}
 	defer reader.Close()
 	scanner := bufio.NewScanner(reader)
@@ -361,11 +365,11 @@ func createMetabase() error {
 	log.Printf("Creating container")
 	resp, err := cli.ContainerCreate(ctx, dockerConfig, hostConfig, nil, metabaseContainerID)
 	if err != nil {
-		return fmt.Errorf("Failed to create container : %s", err)
+		return fmt.Errorf("failed to create container : %s", err)
 	}
 	log.Printf("Starting container")
 	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("Failed to start docker container : %s", err)
+		return fmt.Errorf("failed to start docker container : %s", err)
 	}
 	return nil
 }

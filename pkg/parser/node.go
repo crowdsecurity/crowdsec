@@ -60,7 +60,7 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 
 	//stage is being set automagically
 	if n.Stage == "" {
-		return fmt.Errorf("Stage needs to be an existing stage")
+		return fmt.Errorf("stage needs to be an existing stage")
 	}
 
 	/* "" behaves like continue */

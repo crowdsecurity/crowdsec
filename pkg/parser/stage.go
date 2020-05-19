@@ -48,14 +48,14 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 		}
 		st, err := os.Stat(stageFile.Filename)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to stat %s : %v", stageFile, err)
+			return nil, fmt.Errorf("failed to stat %s : %v", stageFile, err)
 		}
 		if st.IsDir() {
 			continue
 		}
 		yamlFile, err := os.Open(stageFile.Filename)
 		if err != nil {
-			return nil, fmt.Errorf("Can't access parsing configuration file %s : %s", stageFile.Filename, err)
+			return nil, fmt.Errorf("can't access parsing configuration file %s : %s", stageFile.Filename, err)
 		}
 		//process the yaml
 		dec := yaml.NewDecoder(yamlFile)
@@ -128,7 +128,7 @@ func LoadStageDir(dir string, pctx *UnixParserCtx) ([]Node, error) {
 
 	m, err := filepath.Glob(dir + "/*/*")
 	if err != nil {
-		return nil, fmt.Errorf("Unable to find configs in '%s' : %v", dir, err)
+		return nil, fmt.Errorf("unable to find configs in '%s' : %v", dir, err)
 	}
 	for _, f := range m {
 		tmp := Stagefile{}
