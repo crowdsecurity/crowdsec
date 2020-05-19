@@ -56,7 +56,7 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	ordr.Scope = v
 	asn, err := strconv.Atoi(sig.Source.AutonomousSystemNumber)
 	if err != nil {
-		warn = fmt.Errorf("Invalid as number : %s : %s", sig.Source.AutonomousSystemNumber, err)
+		warn = fmt.Errorf("invalid as number : %s : %s", sig.Source.AutonomousSystemNumber, err)
 	}
 	ordr.TargetAS = asn
 	ordr.TargetASName = sig.Source.AutonomousSystemOrganization

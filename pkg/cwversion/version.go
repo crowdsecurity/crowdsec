@@ -49,11 +49,11 @@ func VersionStr() string {
 func Statisfies(strvers string, constraint string) (bool, error) {
 	vers, err := version.NewVersion(strvers)
 	if err != nil {
-		return false, fmt.Errorf("Failed to parse '%s' : %v", strvers, err)
+		return false, fmt.Errorf("failed to parse '%s' : %v", strvers, err)
 	}
 	constraints, err := version.NewConstraint(constraint)
 	if err != nil {
-		return false, fmt.Errorf("Failed to parse constraint '%s'", constraint)
+		return false, fmt.Errorf("failed to parse constraint '%s'", constraint)
 	}
 	if !constraints.Check(vers) {
 		return false, nil

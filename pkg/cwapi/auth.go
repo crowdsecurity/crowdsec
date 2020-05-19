@@ -59,10 +59,10 @@ type PullResp struct {
 func (ctx *ApiCtx) WriteConfig(cfg string) error {
 	ret, err := yaml.Marshal(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to marshal config : %s", err)
+		return fmt.Errorf("failed to marshal config : %s", err)
 	}
 	if err := ioutil.WriteFile(cfg, ret, 0600); err != nil {
-		return fmt.Errorf("Failed to write api file %s : %s", cfg, ret)
+		return fmt.Errorf("failed to write api file %s : %s", cfg, ret)
 	}
 	return nil
 }

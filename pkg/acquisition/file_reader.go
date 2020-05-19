@@ -201,7 +201,7 @@ func AcquisReadOneFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.To
 
 	if ctx.Type != FILETYPE {
 		log.Errorf("Can't tail %s type for %+v", ctx.Type, ctx.Filenames)
-		return fmt.Errorf("Can't tail %s type for %+v", ctx.Type, ctx.Filenames)
+		return fmt.Errorf("can't tail %s type for %+v", ctx.Type, ctx.Filenames)
 	}
 	log.Infof("Starting tail of %s", ctx.Filename)
 	timeout := time.Tick(20 * time.Second)

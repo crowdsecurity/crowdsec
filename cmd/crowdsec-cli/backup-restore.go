@@ -85,7 +85,7 @@ func copyFile(sourceSymLink, destinationFile string) (err error) {
 	if !sourceFileStat.Mode().IsRegular() {
 		// cannot copy non-regular files (e.g., directories,
 		// symlinks, devices, etc.)
-		return fmt.Errorf("CopyFile: non-regular source file %s (%q)", sourceFileStat.Name(), sourceFileStat.Mode().String())
+		return fmt.Errorf("copyFile: non-regular source file %s (%q)", sourceFileStat.Name(), sourceFileStat.Mode().String())
 	}
 	destinationFileStat, err := os.Stat(destinationFile)
 	if err != nil {
@@ -94,7 +94,7 @@ func copyFile(sourceSymLink, destinationFile string) (err error) {
 		}
 	} else {
 		if !(destinationFileStat.Mode().IsRegular()) {
-			return fmt.Errorf("CopyFile: non-regular destination file %s (%q)", destinationFileStat.Name(), destinationFileStat.Mode().String())
+			return fmt.Errorf("copyFile: non-regular destination file %s (%q)", destinationFileStat.Name(), destinationFileStat.Mode().String())
 		}
 		if os.SameFile(sourceFileStat, destinationFileStat) {
 			return
@@ -143,7 +143,7 @@ func restoreFromDirectory(source string) error {
 		/*restore the local and tainted items*/
 		files, err := ioutil.ReadDir(itemDirectory)
 		if err != nil {
-			return fmt.Errorf("Failed enumerating files of %s : %s", itemDirectory, err)
+			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
 		for _, file := range files {
 			//dir are stages, keep track
@@ -154,12 +154,12 @@ func restoreFromDirectory(source string) error {
 			stagedir := fmt.Sprintf("%s/%s/%s/", config.InstallFolder, itype, stage)
 			log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
 			if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
-				return fmt.Errorf("Error while creating stage directory %s : %s", stagedir, err)
+				return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
 			}
 			/*find items*/
 			ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
 			if err != nil {
-				return fmt.Errorf("Failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
+				return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 			}
 			//finaly copy item
 			for _, tfile := range ifiles {
@@ -183,7 +183,7 @@ func restoreFromDirectory(source string) error {
 	//		- if not, restore
 	// -> try login
 	if err := restoreAPICreds(source); err != nil {
-		return fmt.Errorf("Failed to restore api credentials : %s", err)
+		return fmt.Errorf("failed to restore api credentials : %s", err)
 	}
 	/*
 		Restore acquis
@@ -206,7 +206,7 @@ func restoreAPICreds(source string) error {
 
 	api := &cwapi.ApiCtx{}
 	if err = api.LoadConfig(apiyaml); err != nil {
-		return fmt.Errorf("Unable to load api config %s : %s", apiyaml, err)
+		return fmt.Errorf("unable to load api config %s : %s", apiyaml, err)
 	}
 	if api.Creds.User != "" {
 		log.Infof("Credentials present in existing configuration, try before override")
@@ -221,23 +221,23 @@ func restoreAPICreds(source string) error {
 	/*existing config isn't good, override it !*/
 	ret, err := ioutil.ReadFile(path.Join(source, "api_creds.json"))
 	if err != nil {
-		return fmt.Errorf("Failed to read api creds from save : %s", err)
+		return fmt.Errorf("failed to read api creds from save : %s", err)
 	}
 	if err := json.Unmarshal(ret, &api.Creds); err != nil {
-		return fmt.Errorf("Failed unmarshaling saved credentials : %s", err)
+		return fmt.Errorf("failed unmarshaling saved credentials : %s", err)
 	}
 	api.CfgUser = api.Creds.User
 	api.CfgPassword = api.Creds.Password
 	/*override the existing yaml file*/
 	if err := api.WriteConfig(apiyaml); err != nil {
-		return fmt.Errorf("Failed writing to %s : %s", apiyaml, err)
+		return fmt.Errorf("failed writing to %s : %s", apiyaml, err)
 	} else {
 		log.Infof("Overwritting %s with backup info", apiyaml)
 	}
 
 	/*reload to check everything is safe*/
 	if err = api.LoadConfig(apiyaml); err != nil {
-		return fmt.Errorf("Unable to load api config %s : %s", apiyaml, err)
+		return fmt.Errorf("unable to load api config %s : %s", apiyaml, err)
 	}
 
 	if err := api.Signin(); err != nil {
@@ -262,7 +262,7 @@ func backupToDirectory(target string) error {
 		return fmt.Errorf("%s already exists", target)
 	}
 	if err = os.MkdirAll(target, os.ModePerm); err != nil {
-		return fmt.Errorf("Error while creating %s : %s", target, err)
+		return fmt.Errorf("error while creating %s : %s", target, err)
 	}
 	/*
 		backup configurations :
@@ -276,7 +276,7 @@ func backupToDirectory(target string) error {
 		if _, ok := cwhub.HubIdx[itemType]; ok {
 			itemDirectory = fmt.Sprintf("%s/%s/", target, itemType)
 			if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
-				return fmt.Errorf("Error while creating %s : %s", itemDirectory, err)
+				return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
 			}
 			upstreamParsers = []string{}
 			stage := ""
@@ -297,7 +297,7 @@ func backupToDirectory(target string) error {
 						stage = "/" + tmp[len(tmp)-2] + "/"
 						fstagedir := fmt.Sprintf("%s%s", itemDirectory, stage)
 						if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
-							return fmt.Errorf("Error while creating stage dir %s : %s", fstagedir, err)
+							return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 						}
 					}
 					clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)

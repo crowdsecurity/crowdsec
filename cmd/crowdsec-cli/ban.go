@@ -51,11 +51,11 @@ func simpleBanToSignal(targetIP string, reason string, expirationStr string, act
 	var parsedIP net.IP
 	var parsedRange *net.IPNet
 	if strings.Contains(targetIP, "/") {
-		if parsedIP, parsedRange, err = net.ParseCIDR(targetIP); err != nil {
+		if _, parsedRange, err = net.ParseCIDR(targetIP); err != nil {
 			return signalOcc, fmt.Errorf("'%s' is not a valid CIDR", targetIP)
 		}
 		if parsedRange == nil {
-			return signalOcc, fmt.Errorf("Unable to parse network : %s", err)
+			return signalOcc, fmt.Errorf("unable to parse network : %s", err)
 		}
 		banApp.StartIp = types.IP2Int(parsedRange.IP)
 		banApp.EndIp = types.IP2Int(types.LastAddress(parsedRange))
@@ -87,7 +87,7 @@ func BanList() error {
 	if atTime != "" {
 		_, at = parser.GenDateParse(atTime)
 		if at.IsZero() {
-			return fmt.Errorf("Unable to parse date '%s'", atTime)
+			return fmt.Errorf("unable to parse date '%s'", atTime)
 		}
 	}
 	ret, err := outputCTX.ReadAT(at)
@@ -150,7 +150,7 @@ func BanAdd(target string, duration string, reason string, action string) error 
 
 	signalOcc, err = simpleBanToSignal(target, reason, duration, action, "", "", "", "cli")
 	if err != nil {
-		return fmt.Errorf("Unable to insert ban : %v", err)
+		return fmt.Errorf("unable to insert ban : %v", err)
 	}
 	err = outputCTX.Insert(signalOcc)
 	if err != nil {

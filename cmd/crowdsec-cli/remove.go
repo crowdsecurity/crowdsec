@@ -20,7 +20,6 @@ func RemoveMany(ttype string, name string) {
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			disabled += 1
 			cwhub.HubIdx[ttype][v.Name] = v
 			return
 		} else if name == "" && remove_all {
