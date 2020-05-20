@@ -65,5 +65,9 @@ func (p *pluginDB) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 	return ret, nil
 }
 
+func New() interface{} {
+	return &pluginDB{}
+}
+
 // empty main function is mandatory since we are in a main package
 func main() {}
