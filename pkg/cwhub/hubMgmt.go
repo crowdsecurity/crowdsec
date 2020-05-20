@@ -153,7 +153,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = COLLECTIONS
 		stage = ""
 	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
-		return fmt.Errorf("Unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
+		return fmt.Errorf("unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
 	}
 
 	log.Debugf("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
@@ -179,7 +179,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
 			//remove the symlink
 			if err = os.Remove(path); err != nil {
-				return fmt.Errorf("Failed to unlink %s: %+v", path, err)
+				return fmt.Errorf("failed to unlink %s: %+v", path, err)
 			}
 			return nil
 		}
@@ -453,7 +453,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var RawIndex map[string]map[string]Item
 
 	if err = json.Unmarshal(buff, &RawIndex); err != nil {
-		return nil, fmt.Errorf("Failed to unmarshal index : %v", err)
+		return nil, fmt.Errorf("failed to unmarshal index : %v", err)
 	}
 
 	/*Iterate over the different types to complete struct */
@@ -532,7 +532,7 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 
 		//remove the symlink
 		if err = os.Remove(syml); err != nil {
-			return target, fmt.Errorf("Failed to unlink %s: %+v", syml, err)
+			return target, fmt.Errorf("failed to unlink %s: %+v", syml, err)
 		}
 		log.Infof("Removed symlink [%s] : %s", target.Name, syml)
 	}
@@ -542,7 +542,7 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 		hubpath := hdir + "/" + target.RemotePath
 		//if purge, disable hub file
 		if err = os.Remove(hubpath); err != nil {
-			return target, fmt.Errorf("Failed to purge hub file %s: %+v", hubpath, err)
+			return target, fmt.Errorf("failed to purge hub file %s: %+v", hubpath, err)
 		}
 		target.Downloaded = false
 		log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
@@ -568,7 +568,7 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 	if _, err := os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Printf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, fmt.Errorf("Unable to create parent directories")
+			return target, fmt.Errorf("unable to create parent directories")
 		}
 	}
 	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
@@ -582,11 +582,11 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 						HubIdx[ptrtype][p], err = EnableItem(val, Installdir, Hubdir)
 						if err != nil {
 							log.Errorf("Encountered error while installing sub-item %s %s : %s.", ptrtype, p, err)
-							return target, fmt.Errorf("Encountered error while install %s for %s, abort.", val.Name, target.Name)
+							return target, fmt.Errorf("encountered error while install %s for %s, abort.", val.Name, target.Name)
 						}
 					} else {
 						//log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
-						return target, fmt.Errorf("Required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+						return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
 					}
 				}
 			}
@@ -603,7 +603,7 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 		err = os.Symlink(srcPath, dstPath)
 		if err != nil {
 			log.Fatalf("Failed to symlink %s to %s : %v", srcPath, dstPath, err)
-			return target, fmt.Errorf("Failed to symlink %s to %s", srcPath, dstPath)
+			return target, fmt.Errorf("failed to symlink %s to %s", srcPath, dstPath)
 		}
 		log.Printf("Enabled %s : %s", target.Type, target.Name)
 	} else {
@@ -630,21 +630,24 @@ func DownloadLatest(target Item, tdir string, overwrite bool) (Item, error) {
 						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
-							return target, fmt.Errorf("Encountered error while downloading %s for %s, abort.", val.Name, target.Name)
+							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
 					HubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite)
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
-						return target, fmt.Errorf("Encountered error while downloading %s for %s, abort.", val.Name, target.Name)
+						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 					}
 				} else {
 					//log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
-					return target, fmt.Errorf("Required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
 			}
 		}
 		target, err = DownloadItem(target, tdir, overwrite)
+		if err != nil {
+			return target, fmt.Errorf("failed to download item : %s", err)
+		}
 	} else {
 		return DownloadItem(target, tdir, overwrite)
 	}
@@ -702,7 +705,7 @@ func DownloadItem(target Item, tdir string, overwrite bool) (Item, error) {
 	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, fmt.Errorf("Unable to create parent directories")
+			return target, fmt.Errorf("unable to create parent directories")
 		}
 	}
 	/*check actual file*/
@@ -715,12 +718,12 @@ func DownloadItem(target Item, tdir string, overwrite bool) (Item, error) {
 
 	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return target, fmt.Errorf("Failed to open destination file %s : %v", tdir+"/"+target.RemotePath, err)
+		return target, fmt.Errorf("failed to open destination file %s : %v", tdir+"/"+target.RemotePath, err)
 	}
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, fmt.Errorf("Failed to write destination file %s : %v", tdir+"/"+target.RemotePath, err)
+		return target, fmt.Errorf("failed to write destination file %s : %v", tdir+"/"+target.RemotePath, err)
 	}
 	target.Downloaded = true
 	target.Tainted = false

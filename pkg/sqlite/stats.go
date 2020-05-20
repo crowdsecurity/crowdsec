@@ -89,7 +89,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 		*/
 		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?) AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
 		if ret.Error != nil {
-			return nil, fmt.Errorf("Failed to fetch records count for %s : %v", ba.IpText, ret.Error)
+			return nil, fmt.Errorf("failed to fetch records count for %s : %v", ba.IpText, ret.Error)
 		}
 		sOs := []types.SignalOccurence{}
 		nbSo := 0

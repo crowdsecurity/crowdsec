@@ -31,7 +31,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 		"queue": &Queue{}, "signal": &types.SignalOccurence{}, "leaky": &Leaky{}})))
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
-		return nil, fmt.Errorf("Unable to compile filter : %v", err)
+		return nil, fmt.Errorf("unable to compile filter : %v", err)
 	}
 	return &u, nil
 }

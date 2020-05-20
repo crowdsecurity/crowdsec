@@ -309,7 +309,9 @@ func main() {
 
 	//Init the acqusition : from cli or from acquis.yaml file
 	acquisitionCTX, err = loadAcquisition()
-
+	if err != nil {
+		log.Fatalf("Failed to start acquisition : %s", err)
+	}
 	//start reading in the background
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 

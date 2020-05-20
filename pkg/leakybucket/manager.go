@@ -64,37 +64,37 @@ type BucketFactory struct {
 
 func ValidateFactory(b *BucketFactory) error {
 	if b.Name == "" {
-		return fmt.Errorf("A bucket must have name")
+		return fmt.Errorf("bucket must have name")
 	}
 	if b.Description == "" {
-		return fmt.Errorf("Description is mandatory")
+		return fmt.Errorf("description is mandatory")
 	}
 	if b.Type == "leaky" {
 		if b.Capacity <= 0 { //capacity must be a positive int
-			return fmt.Errorf("Bad capacity for leaky '%d'", b.Capacity)
+			return fmt.Errorf("bad capacity for leaky '%d'", b.Capacity)
 		}
 		if b.LeakSpeed == "" {
 			return fmt.Errorf("leakspeed can't be empty for leaky")
 		}
 		if b.leakspeed == 0 {
-			return fmt.Errorf("Bad leakspeed for leaky '%s'", b.LeakSpeed)
+			return fmt.Errorf("bad leakspeed for leaky '%s'", b.LeakSpeed)
 		}
 	} else if b.Type == "counter" {
 		if b.Duration == "" {
-			return fmt.Errorf("Duration ca't be empty for counter")
+			return fmt.Errorf("duration ca't be empty for counter")
 		}
 		if b.duration == 0 {
-			return fmt.Errorf("Bad duration for counter bucket '%d'", b.duration)
+			return fmt.Errorf("bad duration for counter bucket '%d'", b.duration)
 		}
 		if b.Capacity != -1 {
-			return fmt.Errorf("Counter bucket must have -1 capacity")
+			return fmt.Errorf("counter bucket must have -1 capacity")
 		}
 	} else if b.Type == "trigger" {
 		if b.Capacity != 0 {
-			return fmt.Errorf("Trigger bucket must have 0 capacity")
+			return fmt.Errorf("trigger bucket must have 0 capacity")
 		}
 	} else {
-		return fmt.Errorf("Unknown bucket type '%s'", b.Type)
+		return fmt.Errorf("unknown bucket type '%s'", b.Type)
 	}
 	return nil
 }
@@ -136,13 +136,13 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 					break
 				} else {
 					log.Errorf("Bad yaml in %s : %v", f, err)
-					return nil, nil, fmt.Errorf("Bad yaml in %s : %v", f, err)
+					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
 			}
 			//check empty
 			if g.Name == "" {
 				log.Errorf("Won't load nameless bucket")
-				return nil, nil, fmt.Errorf("Nameless bucket")
+				return nil, nil, fmt.Errorf("nameless bucket")
 			}
 			//check compat
 			if g.FormatVersion == "" {
@@ -163,7 +163,7 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 			err = LoadBucket(&g)
 			if err != nil {
 				log.Errorf("Failed to load bucket : %v", err)
-				return nil, nil, fmt.Errorf("LoadBucket failed : %v", err)
+				return nil, nil, fmt.Errorf("loadBucket failed : %v", err)
 			}
 			ret = append(ret, g)
 		}
@@ -209,30 +209,30 @@ func LoadBucket(g *BucketFactory) error {
 
 	if g.LeakSpeed != "" {
 		if g.leakspeed, err = time.ParseDuration(g.LeakSpeed); err != nil {
-			return fmt.Errorf("Bad leakspeed '%s' in %s : %v", g.LeakSpeed, g.Filename, err)
+			return fmt.Errorf("bad leakspeed '%s' in %s : %v", g.LeakSpeed, g.Filename, err)
 		}
 	} else {
 		g.leakspeed = time.Duration(0)
 	}
 	if g.Duration != "" {
 		if g.duration, err = time.ParseDuration(g.Duration); err != nil {
-			return fmt.Errorf("Invalid Duration '%s' in %s : %v", g.Duration, g.Filename, err)
+			return fmt.Errorf("invalid Duration '%s' in %s : %v", g.Duration, g.Filename, err)
 		}
 	}
 
 	if g.Filter == "" {
 		g.logger.Warningf("Bucket without filter, abort.")
-		return fmt.Errorf("Bucket without filter directive.")
+		return fmt.Errorf("bucket without filter directive.")
 	}
 	g.RunTimeFilter, err = expr.Compile(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
-		return fmt.Errorf("Invalid filter '%s' in %s : %v", g.Filter, g.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s : %v", g.Filter, g.Filename, err)
 	}
 
 	if g.GroupBy != "" {
 		g.RunTimeGroupBy, err = expr.Compile(g.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			return fmt.Errorf("Invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
 		}
 	}
 
@@ -247,7 +247,7 @@ func LoadBucket(g *BucketFactory) error {
 	case "counter":
 		g.processors = append(g.processors, &DumbProcessor{})
 	default:
-		return fmt.Errorf("Invalid type '%s' in %s : %v", g.Type, g.Filename, err)
+		return fmt.Errorf("invalid type '%s' in %s : %v", g.Type, g.Filename, err)
 	}
 
 	if g.Distinct != "" {
@@ -260,7 +260,7 @@ func LoadBucket(g *BucketFactory) error {
 		filovflw, err := NewOverflowFilter(g)
 		if err != nil {
 			g.logger.Errorf("Error creating overflow_filter : %s", err)
-			return fmt.Errorf("Error creating overflow_filter : %s", err)
+			return fmt.Errorf("error creating overflow_filter : %s", err)
 		}
 		g.processors = append(g.processors, filovflw)
 	}
@@ -270,14 +270,14 @@ func LoadBucket(g *BucketFactory) error {
 		blackhole, err := NewBlackhole(g)
 		if err != nil {
 			g.logger.Errorf("Error creating blackhole : %s", err)
-			return fmt.Errorf("Error creating blackhole : %s", err)
+			return fmt.Errorf("error creating blackhole : %s", err)
 		}
 		g.processors = append(g.processors, blackhole)
 	}
 
 	g.output = false
 	if err := ValidateFactory(g); err != nil {
-		return fmt.Errorf("Invalid bucket from %s : %v", g.Filename, err)
+		return fmt.Errorf("invalid bucket from %s : %v", g.Filename, err)
 	}
 	return nil
 

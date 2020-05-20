@@ -18,7 +18,7 @@ func (c *Context) DeleteBan(target string) (int, error) {
 		}
 		return int(ret.RowsAffected), nil
 	}
-	return 0, fmt.Errorf("No target provided")
+	return 0, fmt.Errorf("no target provided")
 }
 
 func (c *Context) DeleteAll() error {

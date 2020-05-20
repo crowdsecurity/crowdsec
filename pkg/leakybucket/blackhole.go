@@ -23,7 +23,7 @@ func NewBlackhole(g *BucketFactory) (*Blackhole, error) {
 	var duration time.Duration
 	if d, err := time.ParseDuration(g.Blackhole); err != nil {
 		g.logger.Warning("Blackhole duration not valid, using 1h")
-		return nil, fmt.Errorf("Blackhole duration not valid '%s'", g.Blackhole)
+		return nil, fmt.Errorf("blackhole duration not valid '%s'", g.Blackhole)
 	} else {
 		duration = d
 	}

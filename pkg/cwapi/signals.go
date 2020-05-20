@@ -36,7 +36,9 @@ func (ctx *ApiCtx) pushSignals() error {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-
+	if err != nil {
+		return fmt.Errorf("failed to read body : %s", err)
+	}
 	log.Debugf("api push signal: HTTP Code: %+v | Body: %s \n", resp.StatusCode, string(body))
 	if resp.StatusCode != 200 {
 		if resp.StatusCode == 401 && !ctx.tokenExpired {

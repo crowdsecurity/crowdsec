@@ -120,6 +120,9 @@ func pullTOP() error {
 		}
 		var signalOcc types.SignalOccurence
 		signalOcc, err = simpleBanToSignal(item["range_ip"], item["scenario"], item["expiration"], item["action"], item["as_name"], item["as_num"], item["country"], "api")
+		if err != nil {
+			return fmt.Errorf("failed to convert ban to signal : %s", err)
+		}
 		if err := outputCTX.Insert(signalOcc); err != nil {
 			log.Fatalf("Unable to write pull to sqliteDB : %+s", err.Error())
 		}
