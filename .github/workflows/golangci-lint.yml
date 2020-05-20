@@ -20,5 +20,6 @@ jobs:
 
           # Optional: golangci-lint command line arguments.
           args: --new-from-rev=HEAD~
-          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
 
