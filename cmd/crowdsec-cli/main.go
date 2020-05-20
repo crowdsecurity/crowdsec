@@ -135,5 +135,7 @@ API interaction:
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewInspectCmd())
 
-	rootCmd.Execute()
+	if err := rootCmd.Execute(); err != nil {
+		log.Fatalf("While executing root command : %s", err)
+	}
 }

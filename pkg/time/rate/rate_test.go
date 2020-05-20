@@ -472,6 +472,8 @@ func BenchmarkWaitNNoDelay(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		lim.WaitN(ctx, 1)
+		if err := lim.WaitN(ctx, 1); err != nil {
+			b.Errorf("failed limiter : %s", err)
+		}
 	}
 }

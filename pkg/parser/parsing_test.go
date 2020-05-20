@@ -48,7 +48,7 @@ func testOneParser(t *testing.T, dir string) error {
 	var p UnixParser
 	var pctx *UnixParserCtx
 	var err error
-	var pnodes []Node = make([]Node, 0)
+	var pnodes []Node
 
 	log.SetLevel(log.DebugLevel)
 
@@ -64,7 +64,7 @@ func testOneParser(t *testing.T, dir string) error {
 	//Init the enricher
 	pplugins, err := Loadplugin(datadir)
 	if err != nil {
-		return fmt.Errorf("Failed to load plugin geoip : %v", err)
+		return fmt.Errorf("failed to load plugin geoip : %v", err)
 	}
 	ECTX = append(ECTX, pplugins)
 	log.Debugf("Geoip ctx : %v", ECTX)
@@ -92,7 +92,7 @@ func testOneParser(t *testing.T, dir string) error {
 
 	pnodes, err = LoadStages(parser_configs, pctx)
 	if err != nil {
-		return fmt.Errorf("Unable to load parser config : %s", err)
+		return fmt.Errorf("unable to load parser config : %s", err)
 	}
 
 	//TBD: Load post overflows
@@ -238,7 +238,7 @@ func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool 
 
 			CheckFailed:
 
-				if valid == true {
+				if valid {
 					//log.Infof("Found result [%s], skip", spew.Sdump(tf.Results[ridx]))
 					log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
 					//don't do this at home : delete current element from list and redo

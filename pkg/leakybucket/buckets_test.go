@@ -82,7 +82,10 @@ func testOneBucket(t *testing.T, dir string) error {
 		files = append(files, x.Filename)
 	}
 	holders, response, err := LoadBuckets(files)
-	if testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) == false {
+	if err != nil {
+		t.Fatalf("failed loading bucket : %s", err)
+	}
+	if !testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) {
 		t.Fatalf("the test failed")
 	}
 	return nil
@@ -241,7 +244,7 @@ POLL_AGAIN:
 
 				//CheckFailed:
 
-				if valid == true {
+				if valid {
 					log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
 					//don't do this at home : delete current element from list and redo
 					results[eidx] = results[len(results)-1]
@@ -252,7 +255,7 @@ POLL_AGAIN:
 				}
 			}
 		}
-		if valid == false {
+		if !valid {
 			t.Fatalf("mismatching entries left")
 		} else {
 			log.Warningf("entry valid at end of loop")

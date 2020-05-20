@@ -117,7 +117,7 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 
 func serve(outputRunner outputs.Output) error {
 	var err error
-	if cConfig.Daemonize == true {
+	if cConfig.Daemonize {
 		if err = serveDaemon(); err != nil {
 			return fmt.Errorf(err.Error())
 		}

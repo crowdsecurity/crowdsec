@@ -128,7 +128,7 @@ func downloadMetabaseDB(force bool) error {
 	metabaseDBSubpath := path.Join(metabaseDbPath, "metabase.db")
 
 	_, err := os.Stat(metabaseDBSubpath)
-	if err == nil && force == false {
+	if err == nil && !force {
 		log.Printf("%s exists, skip.", metabaseDBSubpath)
 		return nil
 	}

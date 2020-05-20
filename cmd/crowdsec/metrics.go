@@ -10,8 +10,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	log "github.com/sirupsen/logrus"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"runtime"
 )
@@ -67,7 +68,7 @@ var globalBucketPourOk = prometheus.NewCounter(
 
 func dumpMetrics() {
 
-	if cConfig.DumpBuckets == true {
+	if cConfig.DumpBuckets {
 		log.Infof("!! Dumping buckets state")
 		if err := leaky.DumpBucketsStateAt("buckets_state.json", time.Now(), buckets); err != nil {
 			log.Fatalf("Failed dumping bucket state : %s", err)
@@ -98,7 +99,9 @@ func dumpMetrics() {
 			log.Infof("Lines never poured : %d (%.2f%%)", linesPouredKO, float64(linesPouredKO)/float64(linesPouredOK)*100.0)
 		}
 		log.Infof("Writting metrics dump to %s", cConfig.WorkingFolder+"/crowdsec.profile")
-		prometheus.WriteToTextfile(cConfig.WorkingFolder+"/crowdsec.profile", prometheus.DefaultGatherer)
+		if err := prometheus.WriteToTextfile(cConfig.WorkingFolder+"/crowdsec.profile", prometheus.DefaultGatherer); err != nil {
+			log.Errorf("failed to write metrics to %s : %s", cConfig.WorkingFolder+"/crowdsec.profile", err)
+		}
 	}
 }
 
