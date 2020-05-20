@@ -405,9 +405,9 @@ func FormatOverflow(l *Leaky, queue *Queue) types.SignalOccurence {
 		am = fmt.Sprintf("%d IPs", len(sig.Sources))
 	} else if len(sig.Sources) == 1 {
 		if sig.Source != nil {
-			am = fmt.Sprintf("%s", sig.Source.Ip.String())
+			am = sig.Source.Ip.String()
 		} else {
-			am = fmt.Sprintf("??")
+			am = "??"
 		}
 	} else {
 		am = "UNKNOWN"

@@ -10,7 +10,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
-	"github.com/crowdsecurity/crowdsec/pkg/sqlite"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/denisbrodbeck/machineid"
@@ -28,12 +27,9 @@ var (
 
 var (
 	apiConfigFile = "api.yaml"
+	userID        string // for flag parsing
+	outputCTX     *outputs.Output
 )
-
-var userID string // for flag parsing
-var dbctx *sqlite.Context
-
-var outputCTX *outputs.Output
 
 func dumpCredentials() error {
 	if config.output == "json" {

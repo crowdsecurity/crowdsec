@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 )
 
@@ -25,7 +26,7 @@ func loadAcquisition() (*acquisition.FileAcquisCtx, error) {
 	if acquisitionCTX == nil {
 		return nil, fmt.Errorf("no inputs to process")
 	}
-	if cConfig.Profiling == true {
+	if cConfig.Profiling {
 		acquisitionCTX.Profiling = true
 	}
 

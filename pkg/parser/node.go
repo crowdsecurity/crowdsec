@@ -185,10 +185,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			clog.Debugf("Event leaving node : ko")
 			return false, nil
 		}
-		switch output.(type) {
+		switch out := output.(type) {
 		case bool:
 			/* filter returned false, don't process Node */
-			if output.(bool) {
+			if out {
 				clog.Infof("Event is whitelisted by Expr !")
 				p.Whitelisted = true
 				set = true
