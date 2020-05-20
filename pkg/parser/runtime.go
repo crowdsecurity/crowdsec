@@ -39,10 +39,9 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	if evt == nil {
 		return false
 	}
+
 	//it's a hack, we do it for the user
-	if strings.HasPrefix(target, "evt.") {
-		target = target[4:]
-	}
+	target = strings.TrimPrefix(target, "evt.")
 
 	log.Debugf("setting target %s to %s", target, value)
 	defer func() {
@@ -68,7 +67,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
 			if (tmp == reflect.Value{}) || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
-				//return false
 			}
 			iter.SetMapIndex(reflect.ValueOf(f), reflect.ValueOf(value))
 			return true

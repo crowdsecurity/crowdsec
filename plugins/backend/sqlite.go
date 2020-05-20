@@ -28,7 +28,7 @@ func (p *pluginDB) Delete(target string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	log.Debugf("deleted '%s' entry from database", nbDel)
+	log.Debugf("deleted '%d' entry from database", nbDel)
 	return nbDel, nil
 }
 
@@ -63,10 +63,6 @@ func (p *pluginDB) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 		return nil, err
 	}
 	return ret, nil
-}
-
-func New() interface{} {
-	return &pluginDB{}
 }
 
 // empty main function is mandatory since we are in a main package
