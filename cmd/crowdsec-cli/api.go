@@ -185,7 +185,6 @@ cscli api credentials   # Display your API credentials
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
 			fmt.Printf("password: %s\n", outputCTX.API.Creds.Password)
-			return
 		},
 	}
 
@@ -202,7 +201,6 @@ cscli api credentials   # Display your API credentials
 			if err := outputCTX.API.Enroll(userID); err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 
@@ -223,7 +221,6 @@ cscli api credentials   # Display your API credentials
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
 			fmt.Printf("password: %s\n", outputCTX.API.Creds.Password)
-			return
 		},
 	}
 
@@ -241,7 +238,6 @@ cscli api credentials   # Display your API credentials
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 
@@ -255,7 +251,6 @@ cscli api credentials   # Display your API credentials
 			if err := dumpCredentials(); err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 

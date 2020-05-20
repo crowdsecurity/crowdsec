@@ -190,7 +190,6 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 		}
 	}
 	log.Printf("Started %d routines for polling/read", len(ctx.Files))
-	return
 }
 
 /*A tail-mode file reader (tail) */
