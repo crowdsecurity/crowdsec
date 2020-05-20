@@ -66,7 +66,7 @@ func (p *pluginDB) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 	return ret, nil
 }
 
-//nolint:unused // New is used by the plugin system
+//nolint:deadcode,unused // New is used by the plugin system
 func New() interface{} {
 	return &pluginDB{}
 }
