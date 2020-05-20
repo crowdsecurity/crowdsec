@@ -1,3 +1,7 @@
+
+
+<p align="center"> :warning: <b>Crowdsec BETA </b> :warning: </p>
+
 <p align="center">
 <img src="docs/assets/images/crowdsec_logo1.png" alt="CrowdSec" title="CrowdSec" />
 </p>
@@ -33,4 +37,9 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 This repository contains the code for the two main components of crowdsec :
  - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristis to logs. This is the component in charge of "detecting" the attacks
  - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
+
+## :warning: Beta version
+
+Please note that crowdsec is currently in beta version, use with caution !
+
 
