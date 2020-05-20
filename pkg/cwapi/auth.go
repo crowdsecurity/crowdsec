@@ -113,7 +113,7 @@ func (ctx *ApiCtx) Init(cfg string, profile string) error {
 		return err
 	}
 	//start the background go-routine
-	go ctx.pushLoop()
+	go ctx.pushLoop() //nolint:errcheck
 	return nil
 }
 

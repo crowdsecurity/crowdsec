@@ -108,7 +108,7 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 }
 
 func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
-	var NodeState bool = true
+	var NodeState bool
 	clog := n.logger
 
 	clog.Debugf("Event entering node")
@@ -124,7 +124,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		case bool:
 			/* filter returned false, don't process Node */
 			if !out {
-				NodeState = false
 				clog.Debugf("eval(FALSE) '%s'", n.Filter)
 				clog.Debugf("Event leaving node : ko")
 				return false, nil
@@ -132,7 +131,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		default:
 			clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
 			clog.Debugf("Event leaving node : ko")
-			NodeState = false
 			return false, nil
 		}
 		NodeState = true
@@ -424,10 +422,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 			err = n.SuccessNodes[idx].compile(pctx)
 			if err != nil {
 				return err
-			} else {
-				//n.logger.Debugf("Leaf compilation suceeded: %v\n", n.SuccessNodes[idx])
 			}
-			//set child node to parent stage
 		}
 		valid = true
 	}

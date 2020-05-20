@@ -216,7 +216,6 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(scenario) %s == %s", out.Overflow.Scenario, expected.Overflow.Scenario)
-					valid = true
 				}
 				//Events_count
 				if out.Overflow.Events_count != expected.Overflow.Events_count {
@@ -225,7 +224,6 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(Events_count) %d == %d", out.Overflow.Events_count, expected.Overflow.Events_count)
-					valid = true
 				}
 				//Source_ip
 				if out.Overflow.Source_ip != expected.Overflow.Source_ip {
@@ -234,7 +232,6 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(Source_ip) %s == %s", out.Overflow.Source_ip, expected.Overflow.Source_ip)
-					valid = true
 				}
 
 				//CheckFailed:

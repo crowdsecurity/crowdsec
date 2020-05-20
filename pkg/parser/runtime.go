@@ -228,8 +228,8 @@ func stageidx(stage string, stages []string) int {
 }
 
 func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event types.Event
-	event = xp
+	var event types.Event = xp
+
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
 		event.Stage = ctx.Stages[0]

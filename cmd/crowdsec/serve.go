@@ -69,7 +69,7 @@ func serveDaemon() error {
 	if d != nil {
 		return nil
 	}
-	defer daemonCTX.Release()
+	defer daemonCTX.Release() //nolint:errcheck
 	err = daemon.ServeSignals()
 	if err != nil {
 		return fmt.Errorf("serveDaemon error : %s", err.Error())
