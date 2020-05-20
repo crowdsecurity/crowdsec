@@ -128,11 +128,11 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
 			}
-			switch output.(type) {
+			switch out := output.(type) {
 			case string:
-				value = output.(string)
+				value = out
 			case int:
-				value = strconv.Itoa(output.(int))
+				value = strconv.Itoa(out)
 			default:
 				clog.Fatalf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
