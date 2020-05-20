@@ -16,10 +16,8 @@ import (
 /*CliCfg is the cli configuration structure, might be unexported*/
 type cliConfig struct {
 	configured          bool
-	simulation          bool      /*are we in simulation mode*/
-	configFolder        string    `yaml:"cliconfig,omitempty"` /*overload ~/.cscli/*/
-	output              string    /*output is human, json*/
-	logLevel            log.Level /*debug,info,warning,error*/
+	configFolder        string `yaml:"cliconfig,omitempty"` /*overload ~/.cscli/*/
+	output              string /*output is human, json*/
 	hubFolder           string
 	InstallFolder       string `yaml:"installdir"` /*/etc/crowdsec/*/
 	BackendPluginFolder string `yaml:"backend"`

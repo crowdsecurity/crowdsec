@@ -51,9 +51,9 @@ func UpgradeConfig(ttype string, name string) {
 		}
 		cwhub.HubIdx[ttype][v.Name] = v
 	}
-	if found == false {
+	if !found {
 		log.Errorf("Didn't find %s", name)
-	} else if updated == 0 && found == true {
+	} else if updated == 0 && found {
 		log.Errorf("Nothing to update")
 	} else if updated != 0 {
 		log.Infof("Upgraded %d items", updated)
@@ -93,14 +93,14 @@ cscli upgrade --force # Overwrite tainted configuration
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			if upgrade_all == false && len(args) < 2 {
+			if !upgrade_all && len(args) < 2 {
 				_ = cmd.Help()
 				return
 			}
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if upgrade_all == true && len(args) == 0 {
+			if upgrade_all && len(args) == 0 {
 				log.Warningf("Upgrade all : parsers, scenarios, collections.")
 				UpgradeConfig(cwhub.PARSERS, "")
 				UpgradeConfig(cwhub.PARSERS_OVFLW, "")
@@ -127,7 +127,7 @@ cscli upgrade --force # Overwrite tainted configuration
 			if len(args) == 1 {
 				UpgradeConfig(cwhub.PARSERS, args[0])
 				//UpgradeConfig(cwhub.PARSERS_OVFLW, "")
-			} else if upgrade_all == true {
+			} else if upgrade_all {
 				UpgradeConfig(cwhub.PARSERS, "")
 			} else {
 				_ = cmd.Help()
@@ -148,7 +148,7 @@ cscli upgrade --force # Overwrite tainted configuration
 			}
 			if len(args) == 1 {
 				UpgradeConfig(cwhub.SCENARIOS, args[0])
-			} else if upgrade_all == true {
+			} else if upgrade_all {
 				UpgradeConfig(cwhub.SCENARIOS, "")
 			} else {
 				_ = cmd.Help()
@@ -170,7 +170,7 @@ cscli upgrade --force # Overwrite tainted configuration
 			}
 			if len(args) == 1 {
 				UpgradeConfig(cwhub.COLLECTIONS, args[0])
-			} else if upgrade_all == true {
+			} else if upgrade_all {
 				UpgradeConfig(cwhub.COLLECTIONS, "")
 			} else {
 				_ = cmd.Help()
@@ -193,7 +193,7 @@ cscli upgrade --force # Overwrite tainted configuration
 			}
 			if len(args) == 1 {
 				UpgradeConfig(cwhub.PARSERS_OVFLW, args[0])
-			} else if upgrade_all == true {
+			} else if upgrade_all {
 				UpgradeConfig(cwhub.PARSERS_OVFLW, "")
 			} else {
 				_ = cmd.Help()

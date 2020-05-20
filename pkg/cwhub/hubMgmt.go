@@ -187,7 +187,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	}
 
 	//if it's not a symlink and not in hub, it's a local file, don't bother
-	if local == true && inhub == false {
+	if local && !inhub {
 		log.Debugf("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
@@ -252,8 +252,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			} else {
 				/*we got an exact match, update struct*/
-				//		log.Printf("got exact match")
-				if inhub == false {
+				if !inhub {
 					log.Debugf("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 					v.LocalPath = path
 					v.LocalVersion = version
@@ -275,11 +274,11 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 			}
 		}
-		if match == false {
+		if !match {
 			log.Debugf("got tainted match for %s : %s", v.Name, path)
 			skippedTainted += 1
 			//the file and the stage is right, but the hash is wrong, it has been tainted by user
-			if inhub == false {
+			if !inhub {
 				v.LocalPath = path
 				v.Installed = true
 			}
@@ -321,13 +320,13 @@ func CollecDepsCheck(v *Item) error {
 					}
 
 					//propagate the state of sub-items to set
-					if val.Tainted == true {
+					if val.Tainted {
 						v.Tainted = true
 						return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
-					} else if val.Installed == false && v.Installed == true {
+					} else if !val.Installed && v.Installed {
 						v.Tainted = true
 						return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
-					} else if val.UpToDate == false {
+					} else if !val.UpToDate {
 						v.UpToDate = false
 						return fmt.Errorf("outdated %s %s", ptrtype, p)
 					}
@@ -553,14 +552,14 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	/*create directories if needed*/
-	if target.Installed == true {
-		if target.Tainted == true {
+	if target.Installed {
+		if target.Tainted {
 			return target, fmt.Errorf("%s is tainted, won't enable unless --force", target.Name)
 		}
-		if target.Local == true {
+		if target.Local {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
-		if target.UpToDate == true {
+		if target.UpToDate {
 			log.Debugf("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
 		}
@@ -690,7 +689,9 @@ func DownloadItem(target Item, tdir string, overwrite bool) (Item, error) {
 		return target, err
 	}
 	h := sha256.New()
-	h.Write([]byte(body))
+	if _, err := h.Write([]byte(body)); err != nil {
+		return target, fmt.Errorf("%s : failed to write : %s", target.Name, err)
+	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
@@ -737,7 +738,7 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 	var Ok, Warning, Managed bool
 	var strret string
 
-	if v.Installed == false {
+	if !v.Installed {
 		strret = "disabled"
 		Ok = false
 	} else {
@@ -745,7 +746,7 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		strret = "enabled"
 	}
 
-	if v.Local == true {
+	if v.Local {
 		Managed = false
 		strret += ",local"
 	} else {

@@ -35,11 +35,11 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	var warn error
 
 	//Identify remediation type
-	if prof.Remediation.Ban == true {
+	if prof.Remediation.Ban {
 		ordr.MeasureType = "ban"
-	} else if prof.Remediation.Slow == true {
+	} else if prof.Remediation.Slow {
 		ordr.MeasureType = "slow"
-	} else if prof.Remediation.Captcha == true {
+	} else if prof.Remediation.Captcha {
 		ordr.MeasureType = "captcha"
 	} else {
 		/*if the profil has no remediation, no order */
@@ -120,10 +120,10 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 				logger.Warningf("failed to run filter : %v", err)
 				continue
 			}
-			switch output.(type) {
+			switch out := output.(type) {
 			case bool:
 				/* filter returned false, don't process Node */
-				if output.(bool) == false {
+				if !out {
 					logger.Debugf("eval(FALSE) '%s'", profile.Filter)
 					continue
 				}
@@ -158,7 +158,9 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 		// if ApiPush is nil (not specified in profile configuration) we use global api config (from default.yaml)
 		if profile.ApiPush == nil {
 			if o.API != nil { // if API is not nil, we can push
-				o.API.AppendSignal((sig))
+				if err = o.API.AppendSignal((sig)); err != nil {
+					return fmt.Errorf("failed to append signal : %s", err)
+				}
 			}
 		}
 		for _, outputConfig := range profile.OutputConfigs {
@@ -173,7 +175,9 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 							continue
 						}
 					}
-					o.bManager.InsertOnePlugin(sig, pluginName)
+					if err = o.bManager.InsertOnePlugin(sig, pluginName); err != nil {
+						return fmt.Errorf("failed to insert plugin %s : %s", pluginName, err)
+					}
 				}
 			}
 		}

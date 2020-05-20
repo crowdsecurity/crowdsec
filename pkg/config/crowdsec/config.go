@@ -82,7 +82,7 @@ func (c *Crowdwatch) GetOPT() error {
 
 	flag.Parse()
 
-	if *printVersion == true {
+	if *printVersion {
 		cwversion.Show()
 		os.Exit(0)
 	}
@@ -112,7 +112,7 @@ func (c *Crowdwatch) GetOPT() error {
 	if *AcquisitionFile != "" {
 		c.AcquisitionFile = *AcquisitionFile
 	}
-	if *dumpMode == true {
+	if *dumpMode {
 		c.DumpBuckets = true
 	}
 	if *prometheus {

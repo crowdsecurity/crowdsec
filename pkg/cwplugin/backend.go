@@ -134,7 +134,9 @@ func (b *BackendManager) DeleteAll() error {
 // Insert the signal for the plugin specified in the config["plugin"] parameter
 func (b *BackendManager) InsertOnePlugin(sig types.SignalOccurence, pluginName string) error {
 	if val, ok := b.backendPlugins[pluginName]; ok {
-		val.funcs.Insert(sig)
+		if err := val.funcs.Insert(sig); err != nil {
+			return fmt.Errorf("failed to load %s : %s", pluginName, err)
+		}
 	} else {
 		return fmt.Errorf("plugin '%s' not loaded", pluginName)
 	}

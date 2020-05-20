@@ -265,7 +265,9 @@ cscli api credentials   # Display your API credentials
 
 	cmdAPI.AddCommand(cmdAPICreds)
 	cmdAPIEnroll.Flags().StringVarP(&userID, "user", "u", "", "User ID (required)")
-	cmdAPIEnroll.MarkFlagRequired("user")
+	if err := cmdAPIEnroll.MarkFlagRequired("user"); err != nil {
+		log.Errorf("'user' flag : %s", err)
+	}
 	cmdAPI.AddCommand(cmdAPIEnroll)
 	cmdAPI.AddCommand(cmdAPIResetPassword)
 	cmdAPI.AddCommand(cmdAPIRegister)

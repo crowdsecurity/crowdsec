@@ -37,7 +37,9 @@ LOOP:
 						log.Warningf("Failed to unmarshal time from event '%s' : %s", parsed.MarshaledTime, err)
 					} else {
 						log.Warningf("Starting buckets garbage collection ...")
-						leaky.GarbageCollectBuckets(*z, buckets)
+						if err = leaky.GarbageCollectBuckets(*z, buckets); err != nil {
+							return fmt.Errorf("failed to start bucket GC : %s", err)
+						}
 					}
 				}
 			}
@@ -57,7 +59,9 @@ LOOP:
 			if cConfig.Profiling {
 				bucketStat.AddTime(time.Since(start))
 			}
-			lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime))
+			if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
+				return fmt.Errorf("failed to unmarshal item : %s", err)
+			}
 		}
 	}
 	log.Infof("Sending signal Bucketify")

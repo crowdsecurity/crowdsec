@@ -26,7 +26,7 @@ LOOP:
 			if cConfig.Profiling {
 				start = time.Now()
 			}
-			if event.Process == false {
+			if !event.Process {
 				if cConfig.Profiling {
 					atomic.AddUint64(&linesReadKO, 1)
 				}
@@ -43,7 +43,7 @@ LOOP:
 				log.Errorf("failed parsing : %v\n", error)
 				return errors.New("parsing failed :/")
 			}
-			if parsed.Process == false {
+			if !parsed.Process {
 				if cConfig.Profiling {
 					globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 					atomic.AddUint64(&linesParsedKO, 1)
@@ -57,7 +57,7 @@ LOOP:
 				atomic.AddUint64(&linesParsedOK, 1)
 			}
 			processCPT++
-			if parsed.Whitelisted == true {
+			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
 				continue
 			}

@@ -170,7 +170,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 					clog.Warningf("method '%s' doesn't exist", static.Method)
 				}
 			}
-			if processed == false {
+			if !processed {
 				clog.Warningf("method '%s' doesn't exist", static.Method)
 			}
 		} else if static.Parsed != "" {
@@ -278,7 +278,7 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				continue
 			}
 			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), node.rn)
-			if ctx.Profiling == true {
+			if ctx.Profiling {
 				node.Profiling = true
 			}
 			ret, err := node.process(&event, ctx)
@@ -286,10 +286,10 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				clog.Fatalf("Error while processing node : %v", err)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
-			if ret == true {
+			if ret {
 				isStageOK = true
 			}
-			if ret == true && node.OnSuccess == "next_stage" {
+			if ret && node.OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
@@ -299,7 +299,7 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				break
 			}
 		}
-		if isStageOK == false {
+		if !isStageOK {
 			log.Debugf("Log didn't finish stage %s", event.Stage)
 			event.Process = false
 			return event, nil
