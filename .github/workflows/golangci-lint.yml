@@ -19,5 +19,6 @@ jobs:
           version: v1.26
 
           # Optional: golangci-lint command line arguments.
-          args: -n
+          args: --new-from-rev=HEAD~
+          
 
