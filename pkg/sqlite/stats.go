@@ -107,7 +107,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 				bancom["source"] = ba.MeasureSource
 				bancom["events_count"] = "0"
 				bancom["action"] = ba.MeasureType
-				bancom["until"] = fmt.Sprintf("%s", ba.Until.Sub(time.Now()).Round(time.Second))
+				bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
 				bancom["reason"] = ba.Reason
 				rets = append(rets, bancom)
 				continue
@@ -134,7 +134,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 				bancom["scenario"] = "?"
 				bancom["events_count"] = "0"
 				bancom["action"] = ba.MeasureType
-				bancom["until"] = fmt.Sprintf("%s", ba.Until.Sub(time.Now()).Round(time.Second))
+				bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
 				bancom["reason"] = ba.Reason
 				rets = append(rets, bancom)
 				continue
@@ -155,7 +155,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 		bancom["events_count"] = fmt.Sprintf("%d", evtCount)
 		bancom["action"] = ba.MeasureType
 		bancom["source"] = ba.MeasureSource
-		bancom["until"] = fmt.Sprintf("%s", ba.Until.Sub(time.Now()).Round(time.Second))
+		bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
 		bancom["reason"] = so.Scenario
 		rets = append(rets, bancom)
 	}

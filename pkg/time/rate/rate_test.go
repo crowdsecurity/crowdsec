@@ -400,7 +400,7 @@ type wait struct {
 func runWait(t *testing.T, lim *Limiter, w wait) {
 	start := time.Now()
 	err := lim.WaitN(w.ctx, w.n)
-	delay := time.Now().Sub(start)
+	delay := time.Since(start)
 	if (w.nilErr && err != nil) || (!w.nilErr && err == nil) || w.delay != dFromDuration(delay) {
 		errString := "<nil>"
 		if !w.nilErr {

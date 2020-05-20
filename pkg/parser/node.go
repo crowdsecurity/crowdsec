@@ -399,7 +399,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	/* load grok statics */
 	if len(n.Grok.Statics) > 0 {
 		//compile expr statics if present
-		for idx, _ := range n.Grok.Statics {
+		for idx := range n.Grok.Statics {
 			if n.Grok.Statics[idx].ExpValue != "" {
 				n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
 					expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
@@ -412,7 +412,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	}
 	/* compile leafs if present */
 	if len(n.SuccessNodes) > 0 {
-		for idx, _ := range n.SuccessNodes {
+		for idx := range n.SuccessNodes {
 			/*propagate debug/stats to child nodes*/
 			if !n.SuccessNodes[idx].Debug && n.Debug {
 				n.SuccessNodes[idx].Debug = true
@@ -432,7 +432,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		valid = true
 	}
 	/* load statics if present */
-	for idx, _ := range n.Statics {
+	for idx := range n.Statics {
 		if n.Statics[idx].ExpValue != "" {
 			n.Statics[idx].RunTimeValue, err = expr.Compile(n.Statics[idx].ExpValue, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {

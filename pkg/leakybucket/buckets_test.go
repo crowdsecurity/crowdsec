@@ -22,11 +22,6 @@ type TestFile struct {
 	Results []types.Event `yaml:"results,omitempty"`
 }
 
-func testBucketStates() {
-	//same as a scenario, but load a bucket state first ?
-
-}
-
 func TestBucket(t *testing.T) {
 
 	var envSetting = os.Getenv("TEST_ONLY")
@@ -261,7 +256,5 @@ POLL_AGAIN:
 			log.Warningf("entry valid at end of loop")
 		}
 	}
-
-	t.Errorf("failed test")
 	return false
 }
