@@ -19,4 +19,5 @@ jobs:
           version: v1.26
 
           # Optional: golangci-lint command line arguments.
-          # args: ./the-only-dir-to-analyze/...
+          args: -n
+
