@@ -93,7 +93,9 @@ API interaction:
 		Args:   cobra.ExactArgs(0),
 		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			doc.GenMarkdownTree(rootCmd, "./doc/")
+			if err := doc.GenMarkdownTree(rootCmd, "./doc/"); err != nil {
+				log.Fatalf("Failed to generate cobra doc")
+			}
 		},
 	}
 	rootCmd.AddCommand(cmdDocGen)
