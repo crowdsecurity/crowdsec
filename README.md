@@ -1,3 +1,7 @@
+
+
+<p align="center"> <b>Crowdsec BETA</b> </p>
+
 <p align="center">
 <img src="docs/assets/images/crowdsec_logo1.png" alt="CrowdSec" title="CrowdSec" />
 </p>
