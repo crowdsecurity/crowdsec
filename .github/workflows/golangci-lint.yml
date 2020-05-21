@@ -11,9 +11,9 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
       - name: check_git
         run: git diff --relative HEAD~
-      - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v1
         with:
