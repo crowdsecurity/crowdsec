@@ -15,6 +15,11 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+//This is some dead code
+func DeadCodeTest() {
+	return
+}
+
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
 var config cliConfig
