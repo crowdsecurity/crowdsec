@@ -80,6 +80,9 @@ repo_name: GitHub
 plugins:
     - search
     - macros
+google_analytics:
+    - UA-164365852-3
+    - auto
 extra:
     doc:
         new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
