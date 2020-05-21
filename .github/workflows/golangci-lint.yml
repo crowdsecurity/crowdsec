@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - name: git_fetch
+        run: git fetch origin master
       - name: check_git
         run: git diff --relative remotes/origin/master
       - name: golangci-lint
