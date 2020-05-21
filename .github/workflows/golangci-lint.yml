@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: check_git
-        run: git diff --relative HEAD~
+        run: git diff --relative remotes/origin/master
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v1
         with:
@@ -21,6 +21,6 @@ jobs:
           version: v1.26
 
           # Optional: golangci-lint command line arguments.
-          args: -v --new-from-rev=HEAD~
+          args: -v --new-from-rev=remotes/origin/master
 
 
