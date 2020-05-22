@@ -222,7 +222,7 @@ func LoadBucket(g *BucketFactory, dataDir string) error {
 
 	if g.Filter == "" {
 		g.logger.Warningf("Bucket without filter, abort.")
-		return fmt.Errorf("bucket doesn't have filter")
+		return fmt.Errorf("bucket without filter directive")
 	}
 	g.RunTimeFilter, err = expr.Compile(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
