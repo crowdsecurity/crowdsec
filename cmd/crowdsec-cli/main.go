@@ -49,6 +49,9 @@ func initConfig() {
 		}
 		config.configFolder = usr.HomeDir + "/" + config.configFolder[2:]
 	}
+
+	log.Infof("CONFIG : %+v\n", config)
+	log.Infof("CSCFONg : %+v \n", csConfig)
 	/*read config*/
 	config.InstallFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder), "./config/")
 	config.hubFolder = filepath.Clean(config.configFolder + "/hub/")
@@ -58,8 +61,7 @@ func initConfig() {
 	cwhub.Cfgdir = config.configFolder
 	cwhub.Hubdir = config.hubFolder
 	config.configured = true
-	log.Infof("CONFIG : %+v\n", config)
-	log.Infof("CSCFONg : %+v \n", csConfig)
+
 }
 
 func main() {
