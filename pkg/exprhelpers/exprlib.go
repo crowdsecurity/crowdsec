@@ -17,7 +17,7 @@ func Atof(x string) float64 {
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 
-	var ExprLib = map[string]interface{}{"Atof": Atof}
+	var ExprLib = map[string]interface{}{"Atof": Atof, "JsonExtract": JsonExtract, "JsonExtractLib": JsonExtractLib}
 	for k, v := range ctx {
 		ExprLib[k] = v
 	}
