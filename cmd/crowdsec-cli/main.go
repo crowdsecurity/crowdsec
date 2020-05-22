@@ -58,6 +58,8 @@ func initConfig() {
 	cwhub.Cfgdir = config.configFolder
 	cwhub.Hubdir = config.hubFolder
 	config.configured = true
+	log.Infof("CONFIG : %+v\n", config)
+	log.Infof("CSCFONg : %+v \n", csConfig)
 }
 
 func main() {
