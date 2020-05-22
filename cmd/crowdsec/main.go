@@ -105,7 +105,7 @@ func main() {
 
 	log.Infof("Loading grok library")
 	/* load base regexps for two grok parsers */
-	parserCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
+	parserCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/")})
 	if err != nil {
 		log.Errorf("failed to initialize parser : %v", err)
 		return
