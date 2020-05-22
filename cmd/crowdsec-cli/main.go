@@ -40,7 +40,7 @@ func initConfig() {
 	if err := csConfig.GetOPT(); err != nil {
 		log.Fatalf(err.Error())
 	}
-	config.configFolder = filepath.Join(filepath.Clean(csConfig.csCliFolder))
+	config.configFolder = filepath.Join(filepath.Clean(csConfig.CsCliFolder))
 
 	if strings.HasPrefix(config.configFolder, "~/") {
 		usr, err := user.Current()
