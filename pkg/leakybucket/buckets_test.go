@@ -22,6 +22,10 @@ type TestFile struct {
 	Results []types.Event `yaml:"results,omitempty"`
 }
 
+var (
+	configDir = "./data"
+)
+
 func TestBucket(t *testing.T) {
 
 	var envSetting = os.Getenv("TEST_ONLY")
@@ -76,7 +80,7 @@ func testOneBucket(t *testing.T, dir string) error {
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
-	holders, response, err := LoadBuckets(files)
+	holders, response, err := LoadBuckets(files, configDir)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
