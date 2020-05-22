@@ -59,9 +59,12 @@ LOOP:
 			if cConfig.Profiling {
 				bucketStat.AddTime(time.Since(start))
 			}
-			if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-				return fmt.Errorf("failed to unmarshal item : %s", err)
+			if len(parsed.MarshaledTime) != 0 {
+				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
+					log.Debugf("failed to unmarshal time from event : %s", err)
+				}
 			}
+
 		}
 	}
 	log.Infof("Sending signal Bucketify")
