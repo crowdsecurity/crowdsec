@@ -164,15 +164,6 @@ func BanAdd(target string, duration string, reason string, action string) error 
 	return nil
 }
 
-func banFlush() error {
-	allBa := types.BanApplication{}
-	records := dbctx.Db.Delete(&allBa)
-	if records.Error != nil {
-		return records.Error
-	}
-	return nil
-}
-
 func NewBanCmds() *cobra.Command {
 	/*TODO : add a remediation type*/
 	var cmdBan = &cobra.Command{

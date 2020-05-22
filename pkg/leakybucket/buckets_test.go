@@ -22,11 +22,6 @@ type TestFile struct {
 	Results []types.Event `yaml:"results,omitempty"`
 }
 
-func testBucketStates() {
-	//same as a scenario, but load a bucket state first ?
-
-}
-
 func TestBucket(t *testing.T) {
 
 	var envSetting = os.Getenv("TEST_ONLY")
@@ -82,7 +77,10 @@ func testOneBucket(t *testing.T, dir string) error {
 		files = append(files, x.Filename)
 	}
 	holders, response, err := LoadBuckets(files)
-	if testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) == false {
+	if err != nil {
+		t.Fatalf("failed loading bucket : %s", err)
+	}
+	if !testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) {
 		t.Fatalf("the test failed")
 	}
 	return nil
@@ -218,7 +216,6 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(scenario) %s == %s", out.Overflow.Scenario, expected.Overflow.Scenario)
-					valid = true
 				}
 				//Events_count
 				if out.Overflow.Events_count != expected.Overflow.Events_count {
@@ -227,7 +224,6 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(Events_count) %d == %d", out.Overflow.Events_count, expected.Overflow.Events_count)
-					valid = true
 				}
 				//Source_ip
 				if out.Overflow.Source_ip != expected.Overflow.Source_ip {
@@ -236,12 +232,11 @@ POLL_AGAIN:
 					continue
 				} else {
 					log.Infof("(Source_ip) %s == %s", out.Overflow.Source_ip, expected.Overflow.Source_ip)
-					valid = true
 				}
 
 				//CheckFailed:
 
-				if valid == true {
+				if valid {
 					log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
 					//don't do this at home : delete current element from list and redo
 					results[eidx] = results[len(results)-1]
@@ -252,13 +247,11 @@ POLL_AGAIN:
 				}
 			}
 		}
-		if valid == false {
+		if !valid {
 			t.Fatalf("mismatching entries left")
 		} else {
 			log.Warningf("entry valid at end of loop")
 		}
 	}
-
-	t.Errorf("failed test")
 	return false
 }

@@ -172,7 +172,7 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 	/* start one go routine reading for each file, and pushing to chan output */
 	for idx, fctx := range ctx.Files {
 		log.Printf("starting reader file %d/%d : %s", idx, len(ctx.Files), fctx.Filename)
-		if ctx.Profiling == true {
+		if ctx.Profiling {
 			fctx.Profiling = true
 		}
 		fctx := fctx
@@ -190,7 +190,6 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 		}
 	}
 	log.Printf("Started %d routines for polling/read", len(ctx.Files))
-	return
 }
 
 /*A tail-mode file reader (tail) */
@@ -227,7 +226,7 @@ LOOP:
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			if ctx.Profiling == true {
+			if ctx.Profiling {
 				ReaderHits.With(prometheus.Labels{"source": ctx.Filename}).Inc()
 			}
 			l.Raw = line.Text

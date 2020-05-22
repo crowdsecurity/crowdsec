@@ -50,7 +50,7 @@ func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, ty
 			return s, q
 		}
 		/*filter returned false, event is blackholded*/
-		if element == false {
+		if !element {
 			l.logger.Infof("Event is discard by overflow filter (%s)", u.Filter)
 			return types.SignalOccurence{
 				MapKey: l.Mapkey,

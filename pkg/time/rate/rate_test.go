@@ -400,7 +400,7 @@ type wait struct {
 func runWait(t *testing.T, lim *Limiter, w wait) {
 	start := time.Now()
 	err := lim.WaitN(w.ctx, w.n)
-	delay := time.Now().Sub(start)
+	delay := time.Since(start)
 	if (w.nilErr && err != nil) || (!w.nilErr && err == nil) || w.delay != dFromDuration(delay) {
 		errString := "<nil>"
 		if !w.nilErr {
@@ -472,6 +472,8 @@ func BenchmarkWaitNNoDelay(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		lim.WaitN(ctx, 1)
+		if err := lim.WaitN(ctx, 1); err != nil {
+			b.Errorf("failed limiter : %s", err)
+		}
 	}
 }

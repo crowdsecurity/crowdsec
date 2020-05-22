@@ -135,7 +135,7 @@ func FromFactory(g BucketFactory) *Leaky {
 	} else {
 		limiter = rate.NewLimiter(rate.Every(g.leakspeed), g.Capacity)
 	}
-	if g.Profiling == true {
+	if g.Profiling {
 		BucketsInstanciation.With(prometheus.Labels{"name": g.Name}).Inc()
 	}
 	//create the leaky bucket per se
@@ -208,7 +208,7 @@ func LeakRoutine(l *Leaky) {
 			l.logger.Tracef("Pour event: %s", spew.Sdump(msg))
 			l.logger.Debugf("Pouring event.")
 
-			if l.Profiling == true {
+			if l.Profiling {
 				BucketsPour.With(prometheus.Labels{"name": l.Name, "source": msg.Line.Src}).Inc()
 			}
 			l.Pour(l, msg) // glue for now
@@ -236,7 +236,7 @@ func LeakRoutine(l *Leaky) {
 			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: sig}))
 			mt, _ := l.Ovflw_ts.MarshalText()
 			l.logger.Tracef("overflow time : %s", mt)
-			if l.Profiling == true {
+			if l.Profiling {
 				BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 			}
 			l.AllOut <- types.Event{Overflow: sig, Type: types.OVFLW, MarshaledTime: string(mt)}
@@ -249,7 +249,7 @@ func LeakRoutine(l *Leaky) {
 			sig := types.SignalOccurence{MapKey: l.Mapkey}
 
 			if l.timedOverflow {
-				if l.Profiling == true {
+				if l.Profiling {
 					BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 				}
 				sig = FormatOverflow(l, ofw)
@@ -405,9 +405,9 @@ func FormatOverflow(l *Leaky, queue *Queue) types.SignalOccurence {
 		am = fmt.Sprintf("%d IPs", len(sig.Sources))
 	} else if len(sig.Sources) == 1 {
 		if sig.Source != nil {
-			am = fmt.Sprintf("%s", sig.Source.Ip.String())
+			am = sig.Source.Ip.String()
 		} else {
-			am = fmt.Sprintf("??")
+			am = "??"
 		}
 	} else {
 		am = "UNKNOWN"

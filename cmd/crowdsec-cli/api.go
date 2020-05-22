@@ -10,7 +10,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
-	"github.com/crowdsecurity/crowdsec/pkg/sqlite"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
 	"github.com/denisbrodbeck/machineid"
@@ -28,12 +27,9 @@ var (
 
 var (
 	apiConfigFile = "api.yaml"
+	userID        string // for flag parsing
+	outputCTX     *outputs.Output
 )
-
-var userID string // for flag parsing
-var dbctx *sqlite.Context
-
-var outputCTX *outputs.Output
 
 func dumpCredentials() error {
 	if config.output == "json" {
@@ -189,7 +185,6 @@ cscli api credentials   # Display your API credentials
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
 			fmt.Printf("password: %s\n", outputCTX.API.Creds.Password)
-			return
 		},
 	}
 
@@ -206,7 +201,6 @@ cscli api credentials   # Display your API credentials
 			if err := outputCTX.API.Enroll(userID); err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 
@@ -227,7 +221,6 @@ cscli api credentials   # Display your API credentials
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
 			fmt.Printf("password: %s\n", outputCTX.API.Creds.Password)
-			return
 		},
 	}
 
@@ -245,7 +238,6 @@ cscli api credentials   # Display your API credentials
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 
@@ -259,13 +251,14 @@ cscli api credentials   # Display your API credentials
 			if err := dumpCredentials(); err != nil {
 				log.Fatalf(err.Error())
 			}
-			return
 		},
 	}
 
 	cmdAPI.AddCommand(cmdAPICreds)
 	cmdAPIEnroll.Flags().StringVarP(&userID, "user", "u", "", "User ID (required)")
-	cmdAPIEnroll.MarkFlagRequired("user")
+	if err := cmdAPIEnroll.MarkFlagRequired("user"); err != nil {
+		log.Errorf("'user' flag : %s", err)
+	}
 	cmdAPI.AddCommand(cmdAPIEnroll)
 	cmdAPI.AddCommand(cmdAPIResetPassword)
 	cmdAPI.AddCommand(cmdAPIRegister)

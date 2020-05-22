@@ -39,10 +39,9 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	if evt == nil {
 		return false
 	}
+
 	//it's a hack, we do it for the user
-	if strings.HasPrefix(target, "evt.") {
-		target = target[4:]
-	}
+	target = strings.TrimPrefix(target, "evt.")
 
 	log.Debugf("setting target %s to %s", target, value)
 	defer func() {
@@ -68,7 +67,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 			/*if we're in a map and the field doesn't exist, the user wants to add it :) */
 			if (tmp == reflect.Value{}) || tmp.IsZero() {
 				log.Debugf("map entry is zero in '%s'", target)
-				//return false
 			}
 			iter.SetMapIndex(reflect.ValueOf(f), reflect.ValueOf(value))
 			return true
@@ -130,11 +128,11 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
 			}
-			switch output.(type) {
+			switch out := output.(type) {
 			case string:
-				value = output.(string)
+				value = out
 			case int:
-				value = strconv.Itoa(output.(int))
+				value = strconv.Itoa(out)
 			default:
 				clog.Fatalf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
@@ -170,7 +168,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 					clog.Warningf("method '%s' doesn't exist", static.Method)
 				}
 			}
-			if processed == false {
+			if !processed {
 				clog.Warningf("method '%s' doesn't exist", static.Method)
 			}
 		} else if static.Parsed != "" {
@@ -230,8 +228,8 @@ func stageidx(stage string, stages []string) int {
 }
 
 func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
-	var event types.Event
-	event = xp
+	var event types.Event = xp
+
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
 		event.Stage = ctx.Stages[0]
@@ -278,7 +276,7 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				continue
 			}
 			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), node.rn)
-			if ctx.Profiling == true {
+			if ctx.Profiling {
 				node.Profiling = true
 			}
 			ret, err := node.process(&event, ctx)
@@ -286,10 +284,10 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				clog.Fatalf("Error while processing node : %v", err)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
-			if ret == true {
+			if ret {
 				isStageOK = true
 			}
-			if ret == true && node.OnSuccess == "next_stage" {
+			if ret && node.OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)
 				break
 			}
@@ -299,7 +297,7 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				break
 			}
 		}
-		if isStageOK == false {
+		if !isStageOK {
 			log.Debugf("Log didn't finish stage %s", event.Stage)
 			event.Process = false
 			return event, nil

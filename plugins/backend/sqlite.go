@@ -8,6 +8,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+//nolint:unused // pluginDB is the interface for sqlite output plugin
 type pluginDB struct {
 	CTX *sqlite.Context
 }
@@ -28,7 +29,7 @@ func (p *pluginDB) Delete(target string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	log.Debugf("deleted '%s' entry from database", nbDel)
+	log.Debugf("deleted '%d' entry from database", nbDel)
 	return nbDel, nil
 }
 
@@ -65,6 +66,7 @@ func (p *pluginDB) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 	return ret, nil
 }
 
+//nolint:deadcode,unused // New is used by the plugin system
 func New() interface{} {
 	return &pluginDB{}
 }

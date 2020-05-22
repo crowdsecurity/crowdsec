@@ -92,7 +92,7 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 					break
 				}
 			}
-			if method_found == false {
+			if !method_found {
 				return fmt.Errorf("the method '%s' doesn't exist", static.Method)
 			}
 		} else {
@@ -108,7 +108,7 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 }
 
 func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
-	var NodeState bool = true
+	var NodeState bool
 	clog := n.logger
 
 	clog.Debugf("Event entering node")
@@ -120,11 +120,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			clog.Debugf("Event leaving node : ko")
 			return false, nil
 		}
-		switch output.(type) {
+		switch out := output.(type) {
 		case bool:
 			/* filter returned false, don't process Node */
-			if output.(bool) == false {
-				NodeState = false
+			if !out {
 				clog.Debugf("eval(FALSE) '%s'", n.Filter)
 				clog.Debugf("Event leaving node : ko")
 				return false, nil
@@ -132,7 +131,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		default:
 			clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
 			clog.Debugf("Event leaving node : ko")
-			NodeState = false
 			return false, nil
 		}
 		NodeState = true
@@ -142,7 +140,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		NodeState = true
 	}
 
-	if n.Profiling == true && n.Name != "" {
+	if n.Profiling && n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
 	set := false
@@ -185,17 +183,17 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			clog.Debugf("Event leaving node : ko")
 			return false, nil
 		}
-		switch output.(type) {
+		switch out := output.(type) {
 		case bool:
 			/* filter returned false, don't process Node */
-			if output.(bool) == true {
+			if out {
 				clog.Infof("Event is whitelisted by Expr !")
 				p.Whitelisted = true
 				set = true
 			}
 		}
 	}
-	if set == true {
+	if set {
 		p.WhiteListReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
@@ -217,7 +215,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				return false, err
 			}
 			clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
-			if ret == true {
+			if ret {
 				NodeState = true
 				/* if chil is successful, stop processing */
 				if n.OnSuccess == "next_stage" {
@@ -280,15 +278,15 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 
 	//grok or leafs failed, don't process statics
-	if NodeState == false {
-		if n.Profiling == true && n.Name != "" {
+	if !NodeState {
+		if n.Profiling && n.Name != "" {
 			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 		}
 		clog.Debugf("Event leaving node : ko")
 		return NodeState, nil
 	}
 
-	if n.Profiling == true && n.Name != "" {
+	if n.Profiling && n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
 	if len(n.Statics) > 0 {
@@ -302,7 +300,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		clog.Tracef("! No node statics")
 	}
 
-	if NodeState == true {
+	if NodeState {
 		clog.Debugf("Event leaving node : ok")
 		log.Tracef("node is successful, check strategy")
 		if n.OnSuccess == "next_stage" {
@@ -336,7 +334,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	log.Debugf("compile, node is %s", n.Stage)
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
-	if n.Debug == true {
+	if n.Debug {
 		var clog = logrus.New()
 		clog.SetLevel(log.DebugLevel)
 		n.logger = clog.WithFields(log.Fields{
@@ -399,7 +397,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	/* load grok statics */
 	if len(n.Grok.Statics) > 0 {
 		//compile expr statics if present
-		for idx, _ := range n.Grok.Statics {
+		for idx := range n.Grok.Statics {
 			if n.Grok.Statics[idx].ExpValue != "" {
 				n.Grok.Statics[idx].RunTimeValue, err = expr.Compile(n.Grok.Statics[idx].ExpValue,
 					expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
@@ -412,27 +410,24 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	}
 	/* compile leafs if present */
 	if len(n.SuccessNodes) > 0 {
-		for idx, _ := range n.SuccessNodes {
+		for idx := range n.SuccessNodes {
 			/*propagate debug/stats to child nodes*/
-			if n.SuccessNodes[idx].Debug == false && n.Debug == true {
+			if !n.SuccessNodes[idx].Debug && n.Debug {
 				n.SuccessNodes[idx].Debug = true
 			}
-			if n.SuccessNodes[idx].Profiling == false && n.Profiling == true {
+			if !n.SuccessNodes[idx].Profiling && n.Profiling {
 				n.SuccessNodes[idx].Profiling = true
 			}
 			n.SuccessNodes[idx].Stage = n.Stage
 			err = n.SuccessNodes[idx].compile(pctx)
 			if err != nil {
 				return err
-			} else {
-				//n.logger.Debugf("Leaf compilation suceeded: %v\n", n.SuccessNodes[idx])
 			}
-			//set child node to parent stage
 		}
 		valid = true
 	}
 	/* load statics if present */
-	for idx, _ := range n.Statics {
+	for idx := range n.Statics {
 		if n.Statics[idx].ExpValue != "" {
 			n.Statics[idx].RunTimeValue, err = expr.Compile(n.Statics[idx].ExpValue, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
@@ -468,7 +463,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		valid = true
 	}
 
-	if valid == false {
+	if !valid {
 		/* node is empty, error force return */
 		n.logger.Infof("Node is empty: %s", spew.Sdump(n))
 		n.Stage = ""

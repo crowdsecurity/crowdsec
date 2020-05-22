@@ -41,23 +41,6 @@ func InstallItem(name string, obtype string) {
 	/*iterate of pkg index data*/
 }
 
-func InstallScenario(name string) {
-	InstallItem(name, cwhub.SCENARIOS)
-}
-
-func InstallCollection(name string) {
-	InstallItem(name, cwhub.COLLECTIONS)
-
-}
-
-func InstallParser(name string) {
-	InstallItem(name, cwhub.PARSERS)
-}
-
-func InstallPostoverflow(name string) {
-	InstallItem(name, cwhub.PARSERS_OVFLW)
-}
-
 func NewInstallCmd() *cobra.Command {
 	/* ---- INSTALL COMMAND */
 

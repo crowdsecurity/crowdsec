@@ -98,7 +98,7 @@ func main() {
 
 	log.Infof("Crowdwatch %s", cwversion.VersionStr())
 
-	if cConfig.Prometheus == true {
+	if cConfig.Prometheus {
 		registerPrometheus()
 		cConfig.Profiling = true
 	}
@@ -117,7 +117,7 @@ func main() {
 	}
 
 	/*enable profiling*/
-	if cConfig.Profiling == true {
+	if cConfig.Profiling {
 		go runTachymeter(cConfig.HTTPListen)
 		parserCTX.Profiling = true
 		postOverflowCTX.Profiling = true
@@ -233,7 +233,7 @@ func main() {
 			log.Fatalf("unable to restore buckets : %s", err)
 		}
 	}
-	if cConfig.Profiling == true {
+	if cConfig.Profiling {
 		//force the profiling in all buckets
 		for holderIndex := range holders {
 			holders[holderIndex].Profiling = true

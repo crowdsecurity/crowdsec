@@ -189,7 +189,7 @@ func LoadBucketDir(dir string) ([]BucketFactory, chan types.Event, error) {
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
 func LoadBucket(g *BucketFactory) error {
 	var err error
-	if g.Debug == true {
+	if g.Debug {
 		var clog = logrus.New()
 		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 		clog.SetLevel(log.DebugLevel)
@@ -326,12 +326,12 @@ func LoadBucketsState(file string, buckets *Buckets, holders []BucketFactory) er
 				tbucket.Total_count = v.Total_count
 				buckets.Bucket_map.Store(k, tbucket)
 				go LeakRoutine(tbucket)
-				_ = <-tbucket.Signal
+				<-tbucket.Signal
 				found = true
 				break
 			}
 		}
-		if found == false {
+		if !found {
 			log.Fatalf("Unable to find holder for bucket %s : %s", k, spew.Sdump(v))
 		}
 	}
@@ -530,7 +530,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				go LeakRoutine(fresh_bucket)
 				log.Debugf("Created new bucket %s", buckey)
 				//wait for signal to be opened
-				_ = <-fresh_bucket.Signal
+				<-fresh_bucket.Signal
 				continue
 			}
 
