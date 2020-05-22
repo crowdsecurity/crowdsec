@@ -51,6 +51,7 @@ type BucketFactory struct {
 	CacheSize      int               `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
 	Profiling      bool              `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter string            `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
+	Data           []*dataSource     `yaml:"data,omitempty"`      //If data are needed for the filter to work (ie downloading file)
 	BucketName     string            `yaml:"-"`
 	Filename       string            `yaml:"-"`
 	RunTimeFilter  *vm.Program       `json:"-"`
@@ -101,15 +102,14 @@ func ValidateFactory(b *BucketFactory) error {
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
 func Init(cfg map[string]string) ([]BucketFactory, chan types.Event, error) {
-	return LoadBucketDir(cfg["patterns"])
+	return LoadBucketDir(cfg["patterns"], cfg["data"])
 }
 
-func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(files []string, dataDir string) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
 	)
-
 	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 	response = make(chan types.Event, 1)
 	for _, f := range files {
@@ -160,7 +160,7 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 			g.Filename = filepath.Clean(f)
 			g.BucketName = seed.Generate()
 			g.ret = response
-			err = LoadBucket(&g)
+			err = LoadBucket(&g, dataDir)
 			if err != nil {
 				log.Errorf("Failed to load bucket : %v", err)
 				return nil, nil, fmt.Errorf("loadBucket failed : %v", err)
@@ -172,7 +172,7 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 	return ret, response, nil
 }
 
-func LoadBucketDir(dir string) ([]BucketFactory, chan types.Event, error) {
+func LoadBucketDir(dir string, dataDir string) ([]BucketFactory, chan types.Event, error) {
 	var (
 		filenames []string
 	)
@@ -183,11 +183,11 @@ func LoadBucketDir(dir string) ([]BucketFactory, chan types.Event, error) {
 	for _, f := range files {
 		filenames = append(filenames, dir+f.Name())
 	}
-	return LoadBuckets(filenames)
+	return LoadBuckets(filenames, dataDir)
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(g *BucketFactory) error {
+func LoadBucket(g *BucketFactory, dataDir string) error {
 	var err error
 	if g.Debug {
 		var clog = logrus.New()
@@ -222,7 +222,7 @@ func LoadBucket(g *BucketFactory) error {
 
 	if g.Filter == "" {
 		g.logger.Warningf("Bucket without filter, abort.")
-		return fmt.Errorf("bucket without filter directive.")
+		return fmt.Errorf("bucket doesn't have filter")
 	}
 	g.RunTimeFilter, err = expr.Compile(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
@@ -233,6 +233,12 @@ func LoadBucket(g *BucketFactory) error {
 		g.RunTimeGroupBy, err = expr.Compile(g.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			return fmt.Errorf("invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
+		}
+	}
+
+	if len(g.Data) > 0 {
+		if err := getData(g.Data, dataDir); err != nil {
+			return fmt.Errorf("unable to download data: %s", err)
 		}
 	}
 
