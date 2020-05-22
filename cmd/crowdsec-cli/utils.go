@@ -1,4 +1,4 @@
-package cscli
+package main
 
 import (
 	"fmt"
