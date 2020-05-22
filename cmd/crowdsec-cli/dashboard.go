@@ -43,6 +43,10 @@ var (
 	defaultEmail         = "metabase@crowdsec.net"
 )
 
+func thisIsDeadCode() {
+	//yep dead code to check linter
+}
+
 func NewDashboardCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdDashboard = &cobra.Command{
