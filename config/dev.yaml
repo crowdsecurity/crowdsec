@@ -2,6 +2,7 @@ working_dir: "."
 data_dir: "./data"
 config_dir: "./config"
 pid_dir: "./"
+cscli_dir: "./config/crowdsec-cli"
 log_dir: "./logs"
 log_mode: "stdout"
 log_level: info
