@@ -1,0 +1,16 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Labels:
+        type: json-1
+        progrname: my_test_prog
+      Raw: '{"testfield": "some stuff", "log": "xxheader VALUE1 trailing stuff"}'
+results:
+  - Meta:
+      other_field: some stuff
+      program: my_test_prog
+    Parsed:
+      message: xxheader VALUE1 trailing stuff
+      extracted_value: VALUE1
+    Process: true
+

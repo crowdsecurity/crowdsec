@@ -1,0 +1,4 @@
+ - filename: {{.TestDirectory}}/base-grok.yaml
+   stage: s00-raw
+ - filename: {{.TestDirectory}}/base-grok2.yaml
+   stage: s01-parse

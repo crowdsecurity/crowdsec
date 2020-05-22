@@ -1,0 +1,14 @@
+filter: "evt.Line.Labels.type == 'json-1'"
+debug: true
+onsuccess: next_stage
+name: tests/base-json-extract
+statics:
+  - parsed: message
+    expression: JsonExtract(evt.Line.Raw, "log")
+  - meta: other_field
+    expression: JsonExtract(evt.Line.Raw, "testfield")
+  - meta: program
+    expression: evt.Line.Labels.progrname
+
+    
+
