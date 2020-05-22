@@ -31,6 +31,7 @@ type CrowdSec struct {
 	Profiling       bool      `yaml:"profiling,omitempty"`   //true -> enable runtime profiling
 	SQLiteFile      string    `yaml:"sqlite_path,omitempty"` //path to sqlite output
 	APIMode         bool      `yaml:"apimode,omitempty"`     //true -> enable api push
+	csCliFolder     string    `yaml:"cscli_dir"`             //cscli folder
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
