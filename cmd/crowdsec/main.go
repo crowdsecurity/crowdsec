@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	config "github.com/crowdsecurity/crowdsec/pkg/config/crowdsec"
+	config "github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
