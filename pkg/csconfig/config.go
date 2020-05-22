@@ -1,4 +1,4 @@
-package config
+package csconfig
 
 import (
 	"flag"
@@ -15,8 +15,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Crowdwatch is the structure of the crowdsec configuration
-type Crowdwatch struct {
+// CrowdSec is the structure of the crowdsec configuration
+type CrowdSec struct {
 	WorkingFolder   string    `yaml:"working_dir,omitempty"`
 	DataFolder      string    `yaml:"data_dir,omitempty"`
 	ConfigFolder    string    `yaml:"config_dir,omitempty"`
@@ -40,9 +40,9 @@ type Crowdwatch struct {
 	OutputConfig    *outputs.OutputFactory `yaml:"plugin"`
 }
 
-// NewCrowdwatchConfig create a new crowdsec configuration with default configuration
-func NewCrowdwatchConfig() *Crowdwatch {
-	return &Crowdwatch{
+// NewCrowdSecConfig create a new crowdsec configuration with default configuration
+func NewCrowdSecConfig() *CrowdSec {
+	return &CrowdSec{
 		LogLevel:      log.InfoLevel,
 		Daemonize:     false,
 		Profiling:     false,
@@ -60,7 +60,7 @@ func NewCrowdwatchConfig() *Crowdwatch {
 }
 
 // GetOPT return flags parsed from command line
-func (c *Crowdwatch) GetOPT() error {
+func (c *CrowdSec) GetOPT() error {
 
 	AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
 	configFile := flag.String("c", "", "configuration file")

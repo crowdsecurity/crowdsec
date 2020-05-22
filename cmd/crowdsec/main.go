@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	config "github.com/crowdsecurity/crowdsec/pkg/config/crowdsec"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
@@ -33,7 +33,7 @@ var (
 
 	holders []leaky.BucketFactory
 	buckets *leaky.Buckets
-	cConfig *config.Crowdwatch
+	cConfig *csconfig.CrowdSec
 
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
@@ -85,7 +85,7 @@ func main() {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
-	cConfig = config.NewCrowdwatchConfig()
+	cConfig = csconfig.NewCrowdSecConfig()
 
 	// Handle command line arguments
 	if err := cConfig.GetOPT(); err != nil {
