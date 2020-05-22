@@ -36,12 +36,11 @@ func initConfig() {
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	config.configFolder = filepath.Join(filepath.Clean(csConfig.csCliFolder))
-
 	csConfig := csconfig.NewCrowdSecConfig()
 	if err := csConfig.GetOPT(); err != nil {
 		log.Fatalf(err.Error())
 	}
+	config.configFolder = filepath.Join(filepath.Clean(csConfig.csCliFolder))
 
 	if strings.HasPrefix(config.configFolder, "~/") {
 		usr, err := user.Current()
