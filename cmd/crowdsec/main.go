@@ -289,19 +289,34 @@ func main() {
 	//start go-routines for parsing, buckets pour and ouputs.
 	for i := 0; i < nbParser; i++ {
 		parsersTomb.Go(func() error {
-			return runParse(inputLineChan, inputEventChan, *parserCTX, parserNodes)
+			err := runParse(inputLineChan, inputEventChan, *parserCTX, parserNodes)
+			if err != nil {
+				log.Errorf("runParse error : %s", err)
+				return err
+			}
+			return nil
 		})
 	}
 
 	for i := 0; i < nbParser; i++ {
 		bucketsTomb.Go(func() error {
-			return runPour(inputEventChan, holders, buckets)
+			err := runPour(inputEventChan, holders, buckets)
+			if err != nil {
+				log.Errorf("runPour error : %s", err)
+				return err
+			}
+			return nil
 		})
 	}
 
 	for i := 0; i < nbParser; i++ {
 		outputsTomb.Go(func() error {
-			return runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, outputRunner)
+			err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, outputRunner)
+			if err != nil {
+				log.Errorf("runPour error : %s", err)
+				return err
+			}
+			return nil
 		})
 	}
 
