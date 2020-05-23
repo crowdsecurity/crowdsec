@@ -9,6 +9,9 @@ statics:
     expression: JsonExtract(evt.Line.Raw, "testfield")
   - meta: program
     expression: evt.Line.Labels.progrname
-
+  - parsed: extracted_array
+    expression: JsonExtract(evt.Line.Raw, "nested_1.anarray")
+  - parsed: extracted_array_field
+    expression: JsonExtract(evt.Line.Raw, "nested_1.anarray[0]")
     
 
