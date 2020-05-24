@@ -158,7 +158,7 @@ cscli api credentials   # Display your API credentials
 				return err
 			}
 
-			err = outputCTX.LoadAPIConfig(path.Join(config.InstallFolder, apiConfigFile))
+			err = outputCTX.LoadAPIConfig(path.Join(config.installFolder, apiConfigFile))
 			if err != nil {
 				return err
 			}

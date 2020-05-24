@@ -37,7 +37,7 @@ func initConfig() {
 	}
 
 	csConfig := csconfig.NewCrowdSecConfig()
-	if err := csConfig.GetOPT(); err != nil {
+	if err := csConfig.GetCliConfig(&config.ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
 	config.configFolder = filepath.Join(filepath.Clean(csConfig.CsCliFolder))
@@ -50,18 +50,16 @@ func initConfig() {
 		config.configFolder = usr.HomeDir + "/" + config.configFolder[2:]
 	}
 
-	log.Infof("CONFIG : %+v\n", config)
-	log.Infof("CSCFONg : %+v \n", csConfig)
 	/*read config*/
-	config.InstallFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder), "./config/")
-	config.hubFolder = filepath.Clean(config.configFolder + "/hub/")
+	config.installFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder))
+	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
 	config.BackendPluginFolder = filepath.Clean(csConfig.OutputConfig.BackendFolder)
+	config.DataFolder = filepath.Clean(csConfig.DataFolder)
 	//
-	cwhub.Installdir = config.InstallFolder
+	cwhub.Installdir = config.installFolder
 	cwhub.Cfgdir = config.configFolder
-	cwhub.Hubdir = config.hubFolder
+	cwhub.Hubdir = config.HubFolder
 	config.configured = true
-
 }
 
 func main() {
@@ -112,6 +110,8 @@ API interaction:
 	rootCmd.AddCommand(cmdVersion)
 
 	//rootCmd.PersistentFlags().BoolVarP(&config.simulation, "simulate", "s", false, "No action; perform a simulation of events that would occur based on the current arguments.")
+	rootCmd.PersistentFlags().StringVarP(&config.ConfigFilePath, "config", "c", "/etc/crowdsec/default.yaml", "path to crowdsec config file (default: /etc/crowdsec/default.yaml)")
+
 	rootCmd.PersistentFlags().StringVarP(&config.output, "output", "o", "human", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
