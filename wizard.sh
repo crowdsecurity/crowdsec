@@ -22,6 +22,7 @@ CROWDSEC_CONFIG_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_CONFIG_PATH}/config"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
+CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -274,7 +275,8 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
 
     mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
-    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit    
+    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
+    mkdir -p "${CSCLI_FOLDER}" || exit
 
     (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
     cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
@@ -289,8 +291,6 @@ install_crowdsec() {
     CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     install_bins
 	systemctl daemon-reload
-    log_info "Default cscli config generation"
-    configure_cli
 }
 
 update_bins() {
@@ -353,12 +353,6 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
-# configure token and crowdsec configuration path for cscli
-configure_cli() {
-    ${CSCLI_BIN_INSTALLED} config installdir "$CROWDSEC_CONFIG_PATH" || log_err "unable to configure ${CSCLI_BIN_INSTALLED} crowdsec configuration path"
-    ${CSCLI_BIN_INSTALLED} config backend "$CROWDSEC_BACKEND_FOLDER" || log_err "unable to configure ${CSCLI_BIN_INSTALLED} backend folder"
-
-}
 
 setup_cron_pull() {
     cp ./config/crowdsec_pull /etc/cron.d/
@@ -437,7 +431,6 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
         log_info "configuring  ${CSCLI_BIN_INSTALLED}"
-        configure_cli
         ${CSCLI_BIN_INSTALLED} update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
 
         # detect running services

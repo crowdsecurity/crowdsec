@@ -31,6 +31,7 @@ type CrowdSec struct {
 	Profiling       bool      `yaml:"profiling,omitempty"`   //true -> enable runtime profiling
 	SQLiteFile      string    `yaml:"sqlite_path,omitempty"` //path to sqlite output
 	APIMode         bool      `yaml:"apimode,omitempty"`     //true -> enable api push
+	CsCliFolder     string    `yaml:"cscli_dir"`             //cscli folder
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
@@ -57,6 +58,24 @@ func NewCrowdSecConfig() *CrowdSec {
 		Prometheus:    false,
 		HTTPListen:    "127.0.0.1:6060",
 	}
+}
+
+func (c *CrowdSec) GetCliConfig(configFile *string) error {
+	/*overriden by cfg file*/
+	if *configFile != "" {
+		rcfg, err := ioutil.ReadFile(*configFile)
+		if err != nil {
+			return fmt.Errorf("read '%s' : %s", *configFile, err)
+		}
+		if err := yaml.UnmarshalStrict(rcfg, c); err != nil {
+			return fmt.Errorf("parse '%s' : %s", *configFile, err)
+		}
+		if c.AcquisitionFile == "" {
+			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
+		}
+	}
+	return nil
+
 }
 
 // GetOPT return flags parsed from command line
