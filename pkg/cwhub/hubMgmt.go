@@ -613,7 +613,7 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 	return target, nil
 }
 
-func DownloadLatest(target Item, tdir string, overwrite bool) (Item, error) {
+func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string) (Item, error) {
 	var err error
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	if target.Type == COLLECTIONS {
@@ -626,13 +626,13 @@ func DownloadLatest(target Item, tdir string, overwrite bool) (Item, error) {
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Debugf("collection, recurse")
-						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite)
+						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
-					HubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite)
+					HubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
@@ -643,17 +643,17 @@ func DownloadLatest(target Item, tdir string, overwrite bool) (Item, error) {
 				}
 			}
 		}
-		target, err = DownloadItem(target, tdir, overwrite)
+		target, err = DownloadItem(target, tdir, overwrite, dataFolder)
 		if err != nil {
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
-		return DownloadItem(target, tdir, overwrite)
+		return DownloadItem(target, tdir, overwrite, dataFolder)
 	}
 	return target, nil
 }
 
-func DownloadItem(target Item, tdir string, overwrite bool) (Item, error) {
+func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (Item, error) {
 
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
 	if !overwrite {

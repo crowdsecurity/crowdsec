@@ -35,7 +35,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%s : up-to-date", v.Name)
 			continue
 		}
-		v, err = cwhub.DownloadLatest(v, cwhub.Hubdir, force_upgrade)
+		v, err = cwhub.DownloadLatest(v, cwhub.Hubdir, force_upgrade, config.DataFolder)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
