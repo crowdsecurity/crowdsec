@@ -51,12 +51,12 @@ func initConfig() {
 	}
 
 	/*read config*/
-	config.installFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder))
+	config.InstallFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder))
 	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
 	config.BackendPluginFolder = filepath.Clean(csConfig.OutputConfig.BackendFolder)
 	config.DataFolder = filepath.Clean(csConfig.DataFolder)
 	//
-	cwhub.Installdir = config.installFolder
+	cwhub.Installdir = config.InstallFolder
 	cwhub.Cfgdir = config.configFolder
 	cwhub.Hubdir = config.HubFolder
 	config.configured = true

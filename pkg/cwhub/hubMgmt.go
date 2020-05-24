@@ -42,8 +42,8 @@ type ItemVersion struct {
 //Item can be : parsed, scenario, collection
 type Item struct {
 	/*descriptive info*/
-	Type                 string   `yaml:"type,omitempty"`                        //parser|postoverflows|scenario|collection(|enrich)
-	Stage                string   `json:"stage" yaml:"type,omitempty,omitempty"` //Stage for parser|postoverflow : s00-raw/s01-...
+	Type                 string   `yaml:"type,omitempty"`                         //parser|postoverflows|scenario|collection(|enrich)
+	Stage                string   `json:"stage" yaml:"stage,omitempty,omitempty"` //Stage for parser|postoverflow : s00-raw/s01-...
 	Name                 string   //as seen in .config.json, usually "author/name"
 	FileName             string   //the filename, ie. apache2-logs.yaml
 	Description          string   `yaml:"description,omitempty"`            //as seen in .config.json
