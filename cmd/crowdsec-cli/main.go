@@ -40,7 +40,7 @@ func initConfig() {
 	if err := csConfig.GetCliConfig(&config.ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
-	config.configFolder = filepath.Join(filepath.Clean(csConfig.CsCliFolder))
+	config.configFolder = filepath.Clean(csConfig.CsCliFolder)
 
 	if strings.HasPrefix(config.configFolder, "~/") {
 		usr, err := user.Current()
@@ -51,7 +51,7 @@ func initConfig() {
 	}
 
 	/*read config*/
-	config.InstallFolder = filepath.Join(filepath.Clean(csConfig.ConfigFolder))
+	config.InstallFolder = filepath.Clean(csConfig.ConfigFolder)
 	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
 	config.BackendPluginFolder = filepath.Clean(csConfig.OutputConfig.BackendFolder)
 	config.DataFolder = filepath.Clean(csConfig.DataFolder)
