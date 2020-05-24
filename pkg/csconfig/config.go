@@ -60,6 +60,24 @@ func NewCrowdSecConfig() *CrowdSec {
 	}
 }
 
+func (c *CrowdSec) GetCliConfig(configFile *string) error {
+	/*overriden by cfg file*/
+	if *configFile != "" {
+		rcfg, err := ioutil.ReadFile(*configFile)
+		if err != nil {
+			return fmt.Errorf("read '%s' : %s", *configFile, err)
+		}
+		if err := yaml.UnmarshalStrict(rcfg, c); err != nil {
+			return fmt.Errorf("parse '%s' : %s", *configFile, err)
+		}
+		if c.AcquisitionFile == "" {
+			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
+		}
+	}
+	return nil
+
+}
+
 // GetOPT return flags parsed from command line
 func (c *CrowdSec) GetOPT() error {
 

@@ -190,7 +190,6 @@ You can add/delete/list or flush current bans in your local ban DB.`,
 			return nil
 		},
 	}
-	cmdBan.PersistentFlags().StringVar(&config.dbPath, "db", "", "Set path to SQLite DB.")
 	cmdBan.PersistentFlags().StringVar(&remediationType, "remediation", "ban", "Set specific remediation type : ban|slow|captcha")
 	cmdBan.Flags().SortFlags = false
 	cmdBan.PersistentFlags().SortFlags = false

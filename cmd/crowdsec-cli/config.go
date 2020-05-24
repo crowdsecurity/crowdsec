@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -12,12 +11,13 @@ import (
 /*CliCfg is the cli configuration structure, might be unexported*/
 type cliConfig struct {
 	configured          bool
-	configFolder        string `yaml:"cliconfig,omitempty"` /*overload ~/.cscli/*/
-	output              string /*output is human, json*/
-	hubFolder           string
-	InstallFolder       string `yaml:"installdir"` /*/etc/crowdsec/*/
-	BackendPluginFolder string `yaml:"backend"`
-	dbPath              string
+	ConfigFilePath      string `yaml:"config_file"`
+	configFolder        string
+	output              string
+	HubFolder           string `yaml:"hub_folder"`
+	installFolder       string
+	BackendPluginFolder string `yaml:"backend_folder"`
+	DataFolder          string `yaml:"data_folder"`
 }
 
 func NewConfigCmd() *cobra.Command {
@@ -39,8 +39,9 @@ If no commands are specified, config is in interactive mode.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if config.output == "json" {
 				log.WithFields(log.Fields{
-					"installdir": config.InstallFolder,
-					"cliconfig":  path.Join(config.configFolder, "/config"),
+					"crowdsec_configuration_file": config.ConfigFilePath,
+					"backend_folder":              config.BackendPluginFolder,
+					"data_folder":                 config.DataFolder,
 				}).Warning("Current config")
 			} else {
 				x, err := yaml.Marshal(config)
@@ -48,7 +49,6 @@ If no commands are specified, config is in interactive mode.`,
 					log.Fatalf("failed to marshal current configuration : %v", err)
 				}
 				fmt.Printf("%s", x)
-				fmt.Printf("#cliconfig: %s", path.Join(config.configFolder, "/config"))
 			}
 		},
 	}
