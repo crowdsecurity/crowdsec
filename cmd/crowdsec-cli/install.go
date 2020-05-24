@@ -19,7 +19,7 @@ func InstallItem(name string, obtype string) {
 				log.Warningf("%s is already downloaded and up-to-date", it.Name)
 				return
 			}
-			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install)
+			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.DataFolder)
 			if err != nil {
 				log.Fatalf("error while downloading %s : %v", it.Name, err)
 			}
