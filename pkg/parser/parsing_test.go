@@ -54,6 +54,7 @@ func TestParser(t *testing.T) {
 
 func BenchmarkParser(t *testing.B) {
 	log.Printf("start bench !!!!")
+	debug = false
 	log.SetLevel(log.ErrorLevel)
 	pctx, err := prepTests()
 	if err != nil {
