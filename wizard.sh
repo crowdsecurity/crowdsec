@@ -22,6 +22,7 @@ CROWDSEC_CONFIG_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_CONFIG_PATH}/config"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
+CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -274,7 +275,8 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
 
     mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
-    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit    
+    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
+    mkdir -p "${CSCLI_FOLDER}" || exit
 
     (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
     cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
