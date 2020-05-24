@@ -3,9 +3,9 @@ debug: true
 onsuccess: next_stage
 name: tests/base-grok
 pattern_syntax:
-  MYCAP: ".*"
+  MYCAP2: ".*"
 grok:
-  pattern: ^xxheader %{MYCAP:extracted_value} trailing stuff$
+  pattern: ^xxheader %{MYCAP2:extracted_value} trailing stuff$
   apply_on: Line.Raw
 statics:
   - meta: log_type

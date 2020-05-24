@@ -3,10 +3,10 @@ debug: true
 onsuccess: next_stage
 name: tests/base-grok
 pattern_syntax:
-  MYCAP: ".*"
+  MYCAP3: ".*"
 nodes:
   - grok:
-      pattern: ^xxheader %{MYCAP:extracted_value} trailing stuff$
+      pattern: ^xxheader %{MYCAP3:extracted_value} trailing stuff$
       apply_on: message
 statics:
   - meta: log_type
