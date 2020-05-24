@@ -151,7 +151,7 @@ func restoreFromDirectory(source string) error {
 				continue
 			}
 			stage := file.Name()
-			stagedir := fmt.Sprintf("%s/%s/%s/", config.installFolder, itype, stage)
+			stagedir := fmt.Sprintf("%s/%s/%s/", config.InstallFolder, itype, stage)
 			log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
 			if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
 				return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
@@ -188,7 +188,7 @@ func restoreFromDirectory(source string) error {
 	/*
 		Restore acquis
 	*/
-	yamlAcquisFile := fmt.Sprintf("%s/acquis.yaml", config.installFolder)
+	yamlAcquisFile := fmt.Sprintf("%s/acquis.yaml", config.InstallFolder)
 	bac := fmt.Sprintf("%s/acquis.yaml", source)
 	if err = copyFile(bac, yamlAcquisFile); err != nil {
 		return fmt.Errorf("failed copy %s to %s : %s", bac, yamlAcquisFile, err)
@@ -202,7 +202,7 @@ func restoreAPICreds(source string) error {
 	var err error
 
 	/*check existing configuration*/
-	apiyaml := path.Join(config.installFolder, apiConfigFile)
+	apiyaml := path.Join(config.InstallFolder, apiConfigFile)
 
 	api := &cwapi.ApiCtx{}
 	if err = api.LoadConfig(apiyaml); err != nil {
@@ -332,7 +332,7 @@ func backupToDirectory(target string) error {
 	/*
 		Backup acquis
 	*/
-	yamlAcquisFile := fmt.Sprintf("%s/acquis.yaml", config.installFolder)
+	yamlAcquisFile := fmt.Sprintf("%s/acquis.yaml", config.InstallFolder)
 	bac := fmt.Sprintf("%s/acquis.yaml", target)
 	if err = copyFile(yamlAcquisFile, bac); err != nil {
 		return fmt.Errorf("failed copy %s to %s : %s", yamlAcquisFile, bac, err)
@@ -341,7 +341,7 @@ func backupToDirectory(target string) error {
 	/*
 		Backup default.yaml
 	*/
-	defyaml := fmt.Sprintf("%s/default.yaml", config.installFolder)
+	defyaml := fmt.Sprintf("%s/default.yaml", config.InstallFolder)
 	bac = fmt.Sprintf("%s/default.yaml", target)
 	if err = copyFile(defyaml, bac); err != nil {
 		return fmt.Errorf("failed copy %s to %s : %s", yamlAcquisFile, bac, err)
@@ -354,8 +354,8 @@ func backupToDirectory(target string) error {
 		log.Fatalf("no API output context, won't save api credentials")
 	}
 	outputCTX.API = &cwapi.ApiCtx{}
-	if err = outputCTX.API.LoadConfig(path.Join(config.installFolder, apiConfigFile)); err != nil {
-		return fmt.Errorf("unable to load api config %s : %s", path.Join(config.installFolder, apiConfigFile), err)
+	if err = outputCTX.API.LoadConfig(path.Join(config.InstallFolder, apiConfigFile)); err != nil {
+		return fmt.Errorf("unable to load api config %s : %s", path.Join(config.InstallFolder, apiConfigFile), err)
 	}
 	credsYaml, err := json.Marshal(&outputCTX.API.Creds)
 	if err != nil {

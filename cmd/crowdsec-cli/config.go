@@ -15,7 +15,7 @@ type cliConfig struct {
 	configFolder        string
 	output              string
 	HubFolder           string `yaml:"hub_folder"`
-	installFolder       string
+	InstallFolder       string
 	BackendPluginFolder string `yaml:"backend_folder"`
 	DataFolder          string `yaml:"data_folder"`
 }
