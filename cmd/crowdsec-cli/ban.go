@@ -64,6 +64,8 @@ func simpleBanToSignal(targetIP string, reason string, expirationStr string, act
 		if parsedIP == nil {
 			return signalOcc, fmt.Errorf("'%s' is not a valid IP", targetIP)
 		}
+		banApp.StartIp = types.IP2Int(parsedIP)
+		banApp.EndIp = types.IP2Int(parsedIP)
 	}
 
 	var banApps = make([]types.BanApplication, 1)
