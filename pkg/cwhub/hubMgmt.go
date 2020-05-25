@@ -761,7 +761,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 				return target, fmt.Errorf("unable to read file %s data: %s", tdir+"/"+target.RemotePath, err)
 			}
 		}
-		err = types.getData(data.Data, dataFolder)
+		err = types.GetData(data.Data, dataFolder)
 		if err != nil {
 			return target, fmt.Errorf("unable to get data: %s", err)
 		}

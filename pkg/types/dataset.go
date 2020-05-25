@@ -59,7 +59,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func getData(data []*dataSource, dataDir string) error {
+func GetData(data []*dataSource, dataDir string) error {
 	for _, dataS := range data {
 		destPath := path.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
