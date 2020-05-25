@@ -3,6 +3,7 @@ package cwhub
 import (
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -375,7 +376,9 @@ func GetHubIdx() error {
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		log.Fatalf("Unable to load existing index : %v.", err)
+		if !errors.Is(err, ReferenceMissingError) {
+			log.Fatalf("Unable to load existing index : %v.", err)
+		}
 	}
 	HubIdx = ret
 	if err := LocalSync(); err != nil {
@@ -391,7 +394,9 @@ func UpdateHubIdx() error {
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
-		log.Fatalf("Unable to load freshly downloaded index : %v.", err)
+		if !errors.Is(err, ReferenceMissingError) {
+			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
+		}
 	}
 	HubIdx = ret
 	if err := LocalSync(); err != nil {
@@ -450,6 +455,7 @@ func DisplaySummary() {
 func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	var err error
 	var RawIndex map[string]map[string]Item
+	var missingItems []string
 
 	if err = json.Unmarshal(buff, &RawIndex); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal index : %v", err)
@@ -473,11 +479,15 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 					for _, p := range ptr {
 						if _, ok := RawIndex[ptrtype][p]; !ok {
 							log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, item.Name)
+							missingItems = append(missingItems, p)
 						}
 					}
 				}
 			}
 		}
+	}
+	if len(missingItems) > 0 {
+		return RawIndex, fmt.Errorf("%q : %w", missingItems, ReferenceMissingError)
 	}
 
 	return RawIndex, nil
