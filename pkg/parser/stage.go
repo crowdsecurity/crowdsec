@@ -40,6 +40,7 @@ type Stagefile struct {
 func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 	var nodes []Node
 	tmpstages := make(map[string]bool)
+	pctx.Stages = []string{}
 
 	for _, stageFile := range stageFiles {
 		if !strings.HasSuffix(stageFile.Filename, ".yaml") {
@@ -118,7 +119,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 		pctx.Stages = append(pctx.Stages, k)
 	}
 	sort.Strings(pctx.Stages)
-	log.Debugf("Stages loaded: %+v", pctx.Stages)
+	log.Infof("Stages loaded: %+v", pctx.Stages)
 	return nodes, nil
 }
 

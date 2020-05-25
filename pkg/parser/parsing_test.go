@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -20,12 +21,19 @@ type TestFile struct {
 	Results []types.Event `yaml:"results,omitempty"`
 }
 
+var debug bool = false
+
 func TestParser(t *testing.T) {
-
+	debug = true
+	log.SetLevel(log.InfoLevel)
 	var envSetting = os.Getenv("TEST_ONLY")
-
+	pctx, err := prepTests()
+	if err != nil {
+		t.Fatalf("failed to load env : %s", err)
+	}
+	//Init the enricher
 	if envSetting != "" {
-		if err := testOneParser(t, envSetting); err != nil {
+		if err := testOneParser(pctx, envSetting, nil); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -36,7 +44,7 @@ func TestParser(t *testing.T) {
 		for _, fd := range fds {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
-			if err := testOneParser(t, fname); err != nil {
+			if err := testOneParser(pctx, fname, nil); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
 		}
@@ -44,42 +52,51 @@ func TestParser(t *testing.T) {
 
 }
 
-func testOneParser(t *testing.T, dir string) error {
-	var p UnixParser
-	var pctx *UnixParserCtx
+func BenchmarkParser(t *testing.B) {
+	log.Printf("start bench !!!!")
+	debug = false
+	log.SetLevel(log.ErrorLevel)
+	pctx, err := prepTests()
+	if err != nil {
+		t.Fatalf("failed to load env : %s", err)
+	}
+	var envSetting = os.Getenv("TEST_ONLY")
+
+	if envSetting != "" {
+		if err := testOneParser(pctx, envSetting, t); err != nil {
+			t.Fatalf("Test '%s' failed : %s", envSetting, err)
+		}
+	} else {
+		fds, err := ioutil.ReadDir("./tests/")
+		if err != nil {
+			t.Fatalf("Unable to read test directory : %s", err)
+		}
+		for _, fd := range fds {
+			fname := "./tests/" + fd.Name()
+			log.Infof("Running test on %s", fname)
+			if err := testOneParser(pctx, fname, t); err != nil {
+				t.Fatalf("Test '%s' failed : %s", fname, err)
+			}
+		}
+	}
+}
+
+func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
+
 	var err error
 	var pnodes []Node
 
-	log.SetLevel(log.DebugLevel)
-
-	datadir := "../../data/"
-	cfgdir := "../../config/"
-
-	/* this should be refactored to 2 lines :p */
-	// Init the parser
-	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/")})
-	if err != nil {
-		return fmt.Errorf("failed to initialize parser : %v", err)
-	}
-	//Init the enricher
-	pplugins, err := Loadplugin(datadir)
-	if err != nil {
-		return fmt.Errorf("failed to load plugin geoip : %v", err)
-	}
-	ECTX = append(ECTX, pplugins)
-	log.Debugf("Geoip ctx : %v", ECTX)
-	//Load the parser configuration
 	var parser_configs []Stagefile
-	//TBD var po_parser_configs []Stagefile
 
+	log.Warningf("testing %s", dir)
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
-	b, err := ioutil.ReadFile(parser_cfg_file)
+	cfg, err := ioutil.ReadFile(parser_cfg_file)
 	if err != nil {
 		return fmt.Errorf("failed opening %s : %s", parser_cfg_file, err)
 	}
-	tmpl, err := template.New("test").Parse(string(b))
+	tmpl, err := template.New("test").Parse(string(cfg))
 	if err != nil {
-		return fmt.Errorf("failed to parse template %s : %s", b, err)
+		return fmt.Errorf("failed to parse template %s : %s", cfg, err)
 	}
 	var out bytes.Buffer
 	err = tmpl.Execute(&out, map[string]string{"TestDirectory": dir})
@@ -98,162 +115,224 @@ func testOneParser(t *testing.T, dir string) error {
 	//TBD: Load post overflows
 	//func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
 	parser_test_file := fmt.Sprintf("%s/test.yaml", dir)
-	if testFile(t, parser_test_file, *pctx, pnodes) != true {
-		return fmt.Errorf("test failed !")
+	tests := loadTestFile(parser_test_file)
+	count := 1
+	if b != nil {
+		count = b.N
+		b.ResetTimer()
+	}
+	for n := 0; n < count; n++ {
+		if testFile(tests, *pctx, pnodes) != true {
+			return fmt.Errorf("test failed !")
+		}
 	}
 	return nil
 }
 
-func testFile(t *testing.T, file string, pctx UnixParserCtx, nodes []Node) bool {
+//prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
+func prepTests() (*UnixParserCtx, error) {
+	var pctx *UnixParserCtx
+	var p UnixParser
 
-	var expects []types.Event
+	//Load enrichment
+	datadir := "../../data/"
+	pplugins, err := Loadplugin(datadir)
+	if err != nil {
+		log.Fatalf("failed to load plugin geoip : %v", err)
+	}
+	ECTX = nil
+	ECTX = append(ECTX, pplugins)
+	log.Printf("Loaded -> %+v", ECTX)
 
-	/* now we can load the test files */
-	//process the yaml
+	//Load the parser patterns
+	cfgdir := "../../config/"
+
+	/* this should be refactored to 2 lines :p */
+	// Init the parser
+	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/")})
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize parser : %v", err)
+	}
+	return pctx, nil
+}
+
+func loadTestFile(file string) []TestFile {
 	yamlFile, err := os.Open(file)
 	if err != nil {
-		t.Errorf("yamlFile.Get err   #%v ", err)
+		log.Fatalf("yamlFile.Get err   #%v ", err)
 	}
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
+	var testSet []TestFile
 	for {
 		tf := TestFile{}
 		err := dec.Decode(&tf)
 		if err != nil {
 			if err == io.EOF {
-				log.Warningf("end of test file")
 				break
 			}
-			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
-			return false
+			log.Fatalf("Failed to load testfile '%s' yaml error : %v", file, err)
+			return nil
 		}
-		for _, in := range tf.Lines {
-			log.Debugf("Parser input : %s", spew.Sdump(in))
-			out, err := Parse(pctx, in, nodes)
-			if err != nil {
-				log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
-			}
-			log.Debugf("Parser output : %s", spew.Sdump(out))
-			expects = append(expects, out)
-		}
-		/*
-			check the results we got against the expected ones
-			only the keys of the expected part are checked against result
-		*/
-		if len(tf.Results) == 0 && len(expects) == 0 {
-			t.Errorf("No results, no tests, abort.")
-			return false
-
-			//return false
-		}
-	redo:
-		if len(tf.Results) == 0 && len(expects) == 0 {
-			log.Warningf("Test is successfull")
-			return true
-		} else {
-			log.Warningf("%d results to check against %d expected results", len(expects), len(tf.Results))
-		}
-		for eidx, out := range expects {
-			for ridx, expected := range tf.Results {
-
-				log.Debugf("Checking next expected result.")
-				valid := true
-
-				//allow to check as well for stage and processed flags
-				if expected.Stage != "" {
-					if expected.Stage != out.Stage {
-						log.Infof("out/expected mismatch 'Stage' value : (got) '%s' != (expected) '%s'", out.Stage, expected.Stage)
-						valid = false
-						goto CheckFailed
-					} else {
-						log.Infof("Stage == '%s'", expected.Stage)
-					}
-				}
-				if expected.Process != out.Process {
-					log.Infof("out/expected mismatch 'Process' value : (got) '%t' != (expected) '%t'", out.Process, expected.Process)
-					valid = false
-					goto CheckFailed
-				} else {
-					log.Infof("Process == '%t'", out.Process)
-				}
-
-				if expected.Whitelisted != out.Whitelisted {
-					log.Infof("out/expected mismatch 'Whitelisted' value : (got) '%t' != (expected) '%t'", out.Whitelisted, expected.Whitelisted)
-					valid = false
-					goto CheckFailed
-				} else {
-					log.Infof("Whitelisted == '%t'", out.Whitelisted)
-				}
-
-				for k, v := range expected.Parsed {
-					/*check 3 main dicts : event, enriched, meta */
-					if val, ok := out.Parsed[k]; ok {
-						if val != v {
-							log.Infof("out/expected mismatch 'event' entry [%s] : (got) '%s' != (expected) '%s'", k, val, v)
-							valid = false
-							goto CheckFailed
-						} else {
-							log.Infof(".Parsed[%s] == '%s'", k, val)
-						}
-					} else {
-						log.Infof("missing event entry [%s] in expected : %v", k, out.Parsed)
-						valid = false
-						goto CheckFailed
-					}
-				}
-
-				for k, v := range expected.Meta {
-					/*check 3 main dicts : event, enriched, meta */
-					if val, ok := out.Meta[k]; ok {
-						if val != v {
-							log.Infof("out/expected mismatch 'meta' entry [%s] : (got) '%s' != (expected) '%s'", k, val, v)
-							valid = false
-							goto CheckFailed
-						} else {
-							log.Infof("Meta[%s] == '%s'", k, val)
-						}
-					} else {
-						log.Warningf("missing meta entry [%s] in expected", k)
-						valid = false
-						goto CheckFailed
-					}
-				}
-
-				for k, v := range expected.Enriched {
-					/*check 3 main dicts : event, enriched, meta */
-					if val, ok := out.Enriched[k]; ok {
-						if val != v {
-							log.Infof("out/expected mismatch 'Enriched' entry [%s] : (got) '%s' != (expected) '%s'", k, val, v)
-							valid = false
-							goto CheckFailed
-						} else {
-							log.Infof("Enriched[%s] == '%s'", k, val)
-						}
-					} else {
-						log.Warningf("missing enriched entry [%s] in expected", k)
-						valid = false
-						goto CheckFailed
-					}
-				}
-
-			CheckFailed:
-
-				if valid {
-					//log.Infof("Found result [%s], skip", spew.Sdump(tf.Results[ridx]))
-					log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
-					//don't do this at home : delete current element from list and redo
-					expects[eidx] = expects[len(expects)-1]
-					expects = expects[:len(expects)-1]
-					tf.Results[ridx] = tf.Results[len(tf.Results)-1]
-					tf.Results = tf.Results[:len(tf.Results)-1]
-					goto redo
-				}
-
-			}
-
-		}
-
+		testSet = append(testSet, tf)
 	}
-	t.Errorf("failed test")
-	return false
+	return testSet
+}
+
+func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
+	var retInfo []string
+	var valid bool
+	expectMaps := []map[string]string{expected.Parsed, expected.Meta, expected.Enriched}
+	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
+	outLabels := []string{"Parsed", "Meta", "Enriched"}
+
+	//allow to check as well for stage and processed flags
+	if expected.Stage != "" {
+		if expected.Stage != out.Stage {
+			if debug {
+				retInfo = append(retInfo, fmt.Sprintf("mismatch stage %s != %s", expected.Stage, out.Stage))
+			}
+			valid = false
+			goto checkFinished
+		} else {
+			valid = true
+			if debug {
+				retInfo = append(retInfo, fmt.Sprintf("ok stage %s == %s", expected.Stage, out.Stage))
+			}
+		}
+	}
+
+	if expected.Process != out.Process {
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("mismatch process %t != %t", expected.Process, out.Process))
+		}
+		valid = false
+		goto checkFinished
+	} else {
+		valid = true
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("ok process %t == %t", expected.Process, out.Process))
+		}
+	}
+
+	if expected.Whitelisted != out.Whitelisted {
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("mismatch whitelist %t != %t", expected.Whitelisted, out.Whitelisted))
+		}
+		valid = false
+		goto checkFinished
+	} else {
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("ok whitelist %t == %t", expected.Whitelisted, out.Whitelisted))
+		}
+		valid = true
+	}
+
+	for mapIdx := 0; mapIdx < len(expectMaps); mapIdx++ {
+		for expKey, expVal := range expectMaps[mapIdx] {
+			if outVal, ok := outMaps[mapIdx][expKey]; ok {
+				if outVal == expVal { //ok entry
+					if debug {
+						retInfo = append(retInfo, fmt.Sprintf("ok %s[%s] %s == %s", outLabels[mapIdx], expKey, expVal, outVal))
+					}
+					valid = true
+				} else { //mismatch entry
+					if debug {
+						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
+					}
+					valid = false
+					goto checkFinished
+				}
+			} else { //missing entry
+				if debug {
+					retInfo = append(retInfo, fmt.Sprintf("missing entry %s[%s]", outLabels[mapIdx], expKey))
+				}
+				valid = false
+				goto checkFinished
+			}
+		}
+	}
+checkFinished:
+	if valid {
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("OK ! %s", strings.Join(retInfo, "/")))
+		}
+	} else {
+		if debug {
+			retInfo = append(retInfo, fmt.Sprintf("KO ! %s", strings.Join(retInfo, "/")))
+		}
+	}
+	return retInfo, valid
+}
+
+func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
+	var results []types.Event
+
+	for _, in := range testSet.Lines {
+		out, err := Parse(pctx, in, nodes)
+		if err != nil {
+			log.Errorf("Failed to process %s : %v", spew.Sdump(in), err)
+		}
+		//log.Infof("Parser output : %s", spew.Sdump(out))
+		results = append(results, out)
+	}
+	log.Infof("parsed %d lines", len(testSet.Lines))
+	log.Infof("got %d results", len(results))
+
+	/*
+		check the results we got against the expected ones
+		only the keys of the expected part are checked against result
+	*/
+	if len(testSet.Results) == 0 && len(results) == 0 {
+		log.Fatalf("No results, no tests, abort.")
+		return false, fmt.Errorf("no tests, no results")
+	}
+
+reCheck:
+	failinfo := []string{}
+	for ridx, result := range results {
+		for eidx, expected := range testSet.Results {
+			explain, match := matchEvent(expected, result, debug)
+			if match == true {
+				log.Infof("expected %d/%d matches result %d/%d", eidx, len(testSet.Results), ridx, len(results))
+				if len(explain) > 0 {
+					log.Printf("-> %s", explain[len(explain)-1])
+				}
+				//don't do this at home : delete current element from list and redo
+				results[len(results)-1], results[ridx] = results[ridx], results[len(results)-1]
+				results = results[:len(results)-1]
+
+				testSet.Results[len(testSet.Results)-1], testSet.Results[eidx] = testSet.Results[eidx], testSet.Results[len(testSet.Results)-1]
+				testSet.Results = testSet.Results[:len(testSet.Results)-1]
+
+				goto reCheck
+			} else {
+				failinfo = append(failinfo, explain...)
+			}
+		}
+	}
+	if len(results) > 0 {
+		log.Printf("Errors : %s", strings.Join(failinfo, " / "))
+		return false, fmt.Errorf("leftover results : %+v", results)
+	}
+	if len(testSet.Results) > 0 {
+		log.Printf("Errors : %s", strings.Join(failinfo, " / "))
+		return false, fmt.Errorf("leftover expected results : %+v", testSet.Results)
+	}
+	return true, nil
+}
+
+func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
+	log.Warningf("Going to process one test set")
+	for _, tf := range testSet {
+		//func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
+		testOk, err := testSubSet(tf, pctx, nodes)
+		if err != nil {
+			log.Fatalf("test failed : %s", err)
+		}
+		if !testOk {
+			log.Fatalf("failed test : %+v", tf)
+		}
+	}
+	return true
 }

@@ -1,0 +1,19 @@
+#these are the events we input into parser
+lines:
+  - Line:
+      Labels:
+        type: json-1
+        progrname: my_test_prog
+      Raw: '{"testfield": "some stuff", "log": "xxheader VALUE1 trailing stuff", "nested_1" : {"anarray" : ["foo","bar","xx1"], "xxx" : "zzzz"}}'
+results:
+  - Meta:
+      other_field: some stuff
+      program: my_test_prog
+    Parsed:
+      message: xxheader VALUE1 trailing stuff
+      extracted_value: VALUE1
+      extracted_array_field: foo
+      extracted_array: '["foo","bar","xx1"]'
+      extracted_arrayfield_from_object: bar
+    Process: true
+

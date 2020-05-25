@@ -3,9 +3,9 @@ filter: "evt.Line.Labels.type == 'type1'"
 debug: true
 name: tests/base-grok-root
 pattern_syntax:
-  MYCAP: ".*"
+  MYCAP4: ".*"
 grok:
-  pattern: ^xxheader %{MYCAP:extracted_value} trailing stuff$
+  pattern: ^xxheader %{MYCAP4:extracted_value} trailing stuff$
   apply_on: Line.Raw
 statics:
   - meta: state

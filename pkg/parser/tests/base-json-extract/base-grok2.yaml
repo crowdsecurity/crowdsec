@@ -1,0 +1,16 @@
+filter: "evt.Meta.program == 'my_test_prog'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok
+pattern_syntax:
+  MYCAP3: ".*"
+nodes:
+  - grok:
+      pattern: ^xxheader %{MYCAP3:extracted_value} trailing stuff$
+      apply_on: message
+statics:
+  - meta: log_type
+    value: parsed_testlog
+  - parsed: extracted_arrayfield_from_object
+    expression: JsonExtract(evt.Parsed.extracted_array, '[1]')
+
