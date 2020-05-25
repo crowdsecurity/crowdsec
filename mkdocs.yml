@@ -91,7 +91,7 @@ extra:
     hub:
         name: Crowdsec Hub
         htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
-        url: "hhttps://hub.crowdsec.net/"
+        url: "https://hub.crowdsec.net/"
         plugins_url: "https://hub.crowdsec.net/browse/#blockers"
         scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
         parsers_url: "https://hub.crowdsec.net/browse/#configurations"
