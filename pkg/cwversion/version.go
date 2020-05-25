@@ -26,7 +26,7 @@ var (
 	Tag                 string // = "dev"
 	GoVersion           string // = "1.13"
 	Constraint_parser   = ">= 1.0, < 2.0"
-	Constraint_scenario = ">= 1.0, < 2.0"
+	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
 	Constraint_acquis   = ">= 1.0, < 2.0"
 )

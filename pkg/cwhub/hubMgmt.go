@@ -497,12 +497,14 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 
 //DisableItem to disable an item managed by the hub, removes the symlink
 func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error) {
-	syml := tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName
+	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
+	if err != nil {
+		return Item{}, err
+	}
 	if target.Local {
 		return target, fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
 
-	var err error
 	/*for a COLLECTIONS, disable sub-items*/
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
@@ -536,8 +538,12 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 		if err != nil {
 			return target, fmt.Errorf("unable to read symlink of %s (%s)", target.Name, syml)
 		}
-		if hubpath != filepath.Clean(hdir+"/"+target.RemotePath) {
-			log.Warningf("%s (%s) isn't a symlink to %s", target.Name, syml, filepath.Clean(hdir+"/"+target.RemotePath))
+		absPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
+		if err != nil {
+			return target, err
+		}
+		if hubpath != absPath {
+			log.Warningf("%s (%s) isn't a symlink to %s", target.Name, syml, absPath)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
 		}
 
@@ -742,6 +748,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	target.Tainted = false
 	target.UpToDate = true
 
+	log.Infof("Installing : %+v \n", string(body))
 	dec := yaml.NewDecoder(bytes.NewReader(body))
 	for {
 		data := &dataSet{}
@@ -753,7 +760,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 				return target, fmt.Errorf("unable to read file %s data: %s", tdir+"/"+target.RemotePath, err)
 			}
 		}
-		err = getData(data.data, dataFolder)
+		err = getData(data.Data, dataFolder)
 		if err != nil {
 			return target, fmt.Errorf("unable to get data: %s", err)
 		}

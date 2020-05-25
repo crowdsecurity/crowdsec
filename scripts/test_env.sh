@@ -30,6 +30,7 @@ DATA_DIR="$BASE/data"
 LOG_DIR="$BASE/logs/"
 
 CONFIG_DIR="$BASE/config"
+CONFIG_FILE="$BASE/dev.yaml"
 CSCLI_DIR="$CONFIG_DIR/crowdsec-cli"
 PARSER_DIR="$CONFIG_DIR/parsers"
 PARSER_S00="$PARSER_DIR/s00-raw"
@@ -81,10 +82,8 @@ copy_files() {
 
 
 setup() {
-	$BASE/cscli -c "$CSCLI_DIR" config installdir "$CONFIG_DIR"
-	$BASE/cscli -c "$CSCLI_DIR" config backend "$PLUGIN_BACKEND_DIR"
-	$BASE/cscli -c "$CSCLI_DIR" update
-	$BASE/cscli -c "$CSCLI_DIR" install collection crowdsecurity/linux
+	$BASE/cscli -c "$CONFIG_FILE" update
+	$BASE/cscli -c "$CONFIG_FILE" install collection crowdsecurity/linux
 }
 
 
@@ -96,7 +95,10 @@ main() {
 	copy_files
 	log_info "Files copied"
 	log_info "Setting up configurations"
+	CURRENT_PWD=$(pwd)
+	cd $BASE
 	setup
+	cd $CURRENT_PWD
 	gen_sqlite_config
 	log_info "Environment is ready in $BASE"
 }

@@ -16,7 +16,7 @@ type dataSource struct {
 }
 
 type dataSet struct {
-	data []*dataSource `yaml:"data",omitempty`
+	Data []*dataSource `yaml:"data",omitempty`
 }
 
 func downloadFile(url string, destPath string) error {
