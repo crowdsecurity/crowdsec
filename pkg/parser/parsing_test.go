@@ -129,6 +129,7 @@ func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
 	return nil
 }
 
+//prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
 func prepTests() (*UnixParserCtx, error) {
 	var pctx *UnixParserCtx
 	var p UnixParser
