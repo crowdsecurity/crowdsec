@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 var PARSERS = "parsers"
@@ -739,6 +741,23 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	target.Downloaded = true
 	target.Tainted = false
 	target.UpToDate = true
+
+	dec := yaml.NewDecoder(bytes.NewReader(body))
+	for {
+		data := &dataSet{}
+		err = dec.Decode(data)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return target, fmt.Errorf("unable to read file %s data: %s", tdir+"/"+target.RemotePath, err)
+			}
+		}
+		err = getData(data.data, dataFolder)
+		if err != nil {
+			return target, fmt.Errorf("unable to get data: %s", err)
+		}
+	}
 
 	return target, nil
 }
