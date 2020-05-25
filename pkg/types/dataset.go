@@ -1,4 +1,4 @@
-package cwhub
+package types
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ type dataSource struct {
 	DestPath  string `yaml:"dest_file"`
 }
 
-type dataSet struct {
+type DataSet struct {
 	Data []*dataSource `yaml:"data",omitempty`
 }
 

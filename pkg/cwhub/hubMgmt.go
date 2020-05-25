@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -751,7 +752,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	log.Infof("Installing : %+v \n", string(body))
 	dec := yaml.NewDecoder(bytes.NewReader(body))
 	for {
-		data := &dataSet{}
+		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
 			if err == io.EOF {
@@ -760,7 +761,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 				return target, fmt.Errorf("unable to read file %s data: %s", tdir+"/"+target.RemotePath, err)
 			}
 		}
-		err = getData(data.Data, dataFolder)
+		err = types.getData(data.Data, dataFolder)
 		if err != nil {
 			return target, fmt.Errorf("unable to get data: %s", err)
 		}
