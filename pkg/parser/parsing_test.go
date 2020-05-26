@@ -149,7 +149,7 @@ func prepTests() (*UnixParserCtx, error) {
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/")})
+	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": datadir})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize parser : %v", err)
 	}
