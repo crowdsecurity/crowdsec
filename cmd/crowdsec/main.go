@@ -105,12 +105,12 @@ func main() {
 
 	log.Infof("Loading grok library")
 	/* load base regexps for two grok parsers */
-	parserCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/")})
+	parserCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
 	if err != nil {
 		log.Errorf("failed to initialize parser : %v", err)
 		return
 	}
-	postOverflowCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/")})
+	postOverflowCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
 	if err != nil {
 		log.Errorf("failed to initialize postoverflow : %v", err)
 		return

@@ -53,7 +53,8 @@ type Node struct {
 	//Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
 	//Whitelists
-	Whitelist types.Whitelist `yaml:"whitelist,omitempty"`
+	Whitelist types.Whitelist     `yaml:"whitelist,omitempty"`
+	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
 func (n *Node) validate(pctx *UnixParserCtx) error {
