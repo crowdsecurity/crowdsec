@@ -61,7 +61,7 @@ func FileInit(fileFolder string, filename string) error {
 	fileType := "string"
 	scanner := bufio.NewScanner(file)
 	scanner.Scan()
-	if scanner.Text() == "#type: regex" { // if file contains, it should have this header
+	if scanner.Text() == "#type: regex" { // if file contains regexps, it should have this header
 		fileType = "regex"
 	}
 	for scanner.Scan() {
