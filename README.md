@@ -52,11 +52,11 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 > It's trivial to add blockers to enforce decisions of crowdsec
 
-### Dashboard at handreach
+### Easy dashboard access
 
 <img src="docs/assets/images/cscli-metabase.gif" alt="Metabase install" title="CrowdSec" width="470" height="900"/>
 
-> It's easy to deploy a metabase interface to view your data
+> It's easy to deploy a metabase interface to view your data simply with cscli
 
 ## About this repository
 
