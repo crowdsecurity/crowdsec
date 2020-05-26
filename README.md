@@ -38,7 +38,7 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 <img src="docs/assets/images/crowdsec_install.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
 
-### Out of the box protection
+### Out of the box detection
 
 <img src="docs/assets/images/out-of-the-box-protection.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
 
