@@ -43,7 +43,10 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 	tmpstages := make(map[string]bool)
 	pctx.Stages = []string{}
 
-	exprhelpers.Init()
+	err := exprhelpers.Init()
+	if err != nil {
+		return nil, err
+	}
 	for _, stageFile := range stageFiles {
 		if !strings.HasSuffix(stageFile.Filename, ".yaml") {
 			log.Warningf("skip non yaml : %s", stageFile.Filename)
@@ -115,6 +118,9 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 			if len(node.Data) > 0 {
 				for _, data := range node.Data {
 					err = exprhelpers.FileInit(pctx.DataFolder, data.DestPath)
+					if err != nil {
+						log.Errorf(err.Error())
+					}
 				}
 			}
 			nodes = append(nodes, node)
