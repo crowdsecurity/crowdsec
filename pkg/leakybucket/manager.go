@@ -192,7 +192,6 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
 func LoadBucket(g *BucketFactory, dataFolder string) error {
 	var err error
-	log.Printf("LOAD BUCKET %s ", g.Name)
 	if g.Debug {
 		var clog = logrus.New()
 		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
@@ -239,7 +238,6 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 			return fmt.Errorf("invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
 		}
 	}
-	log.Printf("LOAAAAAAAAAAAAAAAAAD BUUUUUUUUUUUUUUUUUCKET : %s", g.Name)
 
 	g.logger.Infof("Adding %s bucket", g.Type)
 	//return the Holder correponding to the type of bucket
