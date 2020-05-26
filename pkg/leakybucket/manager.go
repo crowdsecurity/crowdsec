@@ -147,7 +147,6 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 				log.Errorf("Won't load nameless bucket")
 				return nil, nil, fmt.Errorf("nameless bucket")
 			}
-			log.Infof("Name : '%s' ok", g.Name)
 			//check compat
 			if g.FormatVersion == "" {
 				log.Warningf("no version in %s : %s, assuming '1.0'", g.Name, f)
@@ -165,12 +164,10 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			g.BucketName = seed.Generate()
 			g.ret = response
 			err = LoadBucket(&g, dataFolder)
-			log.Printf("Bucket loaded : '%s'", g.Name)
 			if err != nil {
 				log.Errorf("Failed to load bucket : %v", err)
 				return nil, nil, fmt.Errorf("loadBucket failed : %v", err)
 			}
-			log.Infof("Appending scenario : %s", g.Name)
 			ret = append(ret, g)
 		}
 	}
@@ -195,6 +192,7 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
 func LoadBucket(g *BucketFactory, dataFolder string) error {
 	var err error
+	log.Printf("LOAD BUCKET %s ", g.Name)
 	if g.Debug {
 		var clog = logrus.New()
 		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
@@ -241,6 +239,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 			return fmt.Errorf("invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
 		}
 	}
+	log.Printf("LOAAAAAAAAAAAAAAAAAD BUUUUUUUUUUUUUUUUUCKET : %s", g.Name)
 
 	g.logger.Infof("Adding %s bucket", g.Type)
 	//return the Holder correponding to the type of bucket
