@@ -749,7 +749,6 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	target.Tainted = false
 	target.UpToDate = true
 
-	log.Infof("Installing : %+v \n", string(body))
 	dec := yaml.NewDecoder(bytes.NewReader(body))
 	for {
 		data := &types.DataSet{}

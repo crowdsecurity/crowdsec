@@ -10,13 +10,13 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type dataSource struct {
+type DataSource struct {
 	SourceURL string `yaml:"source_url"`
 	DestPath  string `yaml:"dest_file"`
 }
 
 type DataSet struct {
-	Data []*dataSource `yaml:"data",omitempty`
+	Data []*DataSource `yaml:"data",omitempty`
 }
 
 func downloadFile(url string, destPath string) error {
@@ -59,7 +59,7 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []*dataSource, dataDir string) error {
+func GetData(data []*DataSource, dataDir string) error {
 	for _, dataS := range data {
 		destPath := path.Join(dataDir, dataS.DestPath)
 		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)

@@ -204,11 +204,11 @@ func main() {
 		for _, scenarios := range CustomScenarios {
 			bucketFiles = append(bucketFiles, scenarios.Filename)
 		}
-		holders, outputEventChan, err = leaky.LoadBuckets(bucketFiles)
+		holders, outputEventChan, err = leaky.LoadBuckets(bucketFiles, cConfig.DataFolder)
 
 	} else {
 		log.Infof("Loading scenarios")
-		holders, outputEventChan, err = leaky.Init(map[string]string{"patterns": cConfig.ConfigFolder + "/scenarios/"})
+		holders, outputEventChan, err = leaky.Init(map[string]string{"patterns": cConfig.ConfigFolder + "/scenarios/", "data": cConfig.DataFolder})
 	}
 	if err != nil {
 		log.Fatalf("Scenario loading failed : %v", err)
