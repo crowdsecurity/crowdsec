@@ -38,7 +38,7 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 <details>
   <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
-  ![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/crowdsec_install.gif)
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/crowdsec_install.gif">
 </details>
 
 
