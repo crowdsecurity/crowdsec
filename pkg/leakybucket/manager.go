@@ -192,13 +192,14 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 func LoadBucket(g *BucketFactory, dataFolder string) error {
 	var err error
 	if g.Debug {
-		g.logger = log.WithFields(log.Fields{
+		var clog = log.New()
+		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+		clog.SetLevel(log.DebugLevel)
+		g.logger = clog.WithFields(log.Fields{
 			"cfg":  g.BucketName,
 			"name": g.Name,
 			"file": g.Filename,
 		})
-		g.logger.Logger.SetFormatter(&log.TextFormatter{FullTimestamp: true})
-		g.logger.Logger.SetLevel(log.DebugLevel)
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
 		g.logger = log.WithFields(log.Fields{
