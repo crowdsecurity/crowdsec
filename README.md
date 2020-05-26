@@ -41,24 +41,26 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
   <img src="https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/crowdsec_install.gif">
 </details>
 
-
 ### Out of the box detection
 
-![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/out-of-the-box-protection.gif)
-
-> Baseline detection is effective out-of-the-box, no fine-tuning required
+<details>
+  <summary>Baseline detection is effective out-of-the-box, no fine-tuning required</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/out-of-the-box-protection.gif">
+</details>
 
 ### Easy blocker deployment
 
-![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/blocker-installation.gif)
-
-> It's trivial to add blockers to enforce decisions of crowdsec
+<details>
+  <summary>It's trivial to add blockers to enforce decisions of crowdsec</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/blocker-installation.gif">
+</details>
 
 ### Easy dashboard access
 
-![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/cscli-metabase.gif)
-
-> It's easy to deploy a metabase interface to view your data simply with cscli
+<details>
+  <summary>It's easy to deploy a metabase interface to view your data simply with cscli</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/cscli-metabase.gif">
+</details>
 
 ## About this repository
 
