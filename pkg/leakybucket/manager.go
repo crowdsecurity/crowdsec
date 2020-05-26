@@ -147,6 +147,7 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 				log.Errorf("Won't load nameless bucket")
 				return nil, nil, fmt.Errorf("nameless bucket")
 			}
+			log.Infof("Name : '%s' ok", g.Name)
 			//check compat
 			if g.FormatVersion == "" {
 				log.Warningf("no version in %s : %s, assuming '1.0'", g.Name, f)
@@ -164,10 +165,12 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			g.BucketName = seed.Generate()
 			g.ret = response
 			err = LoadBucket(&g, dataFolder)
+			log.Printf("Bucket loaded : '%s'", g.Name)
 			if err != nil {
 				log.Errorf("Failed to load bucket : %v", err)
 				return nil, nil, fmt.Errorf("loadBucket failed : %v", err)
 			}
+			log.Infof("Appending scenario : %s", g.Name)
 			ret = append(ret, g)
 		}
 	}
