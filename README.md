@@ -36,10 +36,11 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ### Fast assisted installation, no technical barrier
 
-![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/crowdsec_install.gif)
+<details>
+  <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
+  ![](https://github.com/crowdsecurity/crowdsec/blob/improved_readme/docs/assets/images/crowdsec_install.gif)
+</details>
 
-
-> User is assisted during setup, providing functional out-of-the-box setup
 
 ### Out of the box detection
 
