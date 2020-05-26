@@ -42,19 +42,21 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ### Out of the box detection
 
-<img src="docs/assets/images/out-of-the-box-protection.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
+<img src="docs/assets/images/out-of-the-box-protection.gif" alt="CrowdSec detection" title="CrowdSec" width="470" height="900"/>
 
 > Baseline detection is effective out-of-the-box, no fine-tuning required
 
 ### Easy blocker deployment
 
-<img src="docs/assets/images/blocker-installation.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
+<img src="docs/assets/images/blocker-installation.gif" alt="Blocker deploy" title="CrowdSec" width="470" height="900"/>
 
 > It's trivial to add blockers to enforce decisions of crowdsec
 
 ### Dashboard at handreach
 
+<img src="docs/assets/images/cscli-metabase.gif" alt="Metabase install" title="CrowdSec" width="470" height="900"/>
 
+> It's easy to deploy a metabase interface to view your data
 
 ## About this repository
 
