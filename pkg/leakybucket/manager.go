@@ -17,7 +17,6 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
@@ -193,7 +192,7 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 func LoadBucket(g *BucketFactory, dataFolder string) error {
 	var err error
 	if g.Debug {
-		var clog = logrus.New()
+		var clog = log.New()
 		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 		clog.SetLevel(log.DebugLevel)
 		g.logger = clog.WithFields(log.Fields{
