@@ -32,7 +32,16 @@ One of the advantages of Crowdsec when compared to other solutions is its crowde
 
 Besides detecting and stopping attacks in real time based on your logs, it allows you to preemptively block known bad actors from accessing your information system.
 
+## Key points
+
+### Easy installation, no technical barrier
+
 ![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/crowdsec_install.gif)
+
+### Out of the box protection
+
+![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif)
+
 
 
 ## About this repository
