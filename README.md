@@ -34,15 +34,33 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ## Key points
 
-### Easy installation, no technical barrier
+### Fast assisted installation, no technical barrier
 
-![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/crowdsec_install.gif)
+<details open>
+  <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/crowdsec_install.gif">
+</details>
 
-### Out of the box protection
+### Out of the box detection
 
-![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif)
+<details>
+  <summary>Baseline detection is effective out-of-the-box, no fine-tuning required</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif">
+</details>
 
+### Easy blocker deployment
 
+<details>
+  <summary>It's trivial to add blockers to enforce decisions of crowdsec</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/blocker-installation.gif">
+</details>
+
+### Easy dashboard access
+
+<details>
+  <summary>It's easy to deploy a metabase interface to view your data simply with cscli</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/cscli-metabase.gif">
+</details>
 
 ## About this repository
 
