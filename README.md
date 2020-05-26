@@ -36,13 +36,11 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ### Easy installation, no technical barrier
 
-![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/crowdsec_install.gif)
+<img src="docs/assets/images/crowdsec_install.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
 
 ### Out of the box protection
 
-![](https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif)
-
-
+<img src="docs/assets/images/out-of-the-box-protection.gif" alt="CrowdSec install" title="CrowdSec" width="470" height="900"/>
 
 ## About this repository
 
