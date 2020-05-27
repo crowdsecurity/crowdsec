@@ -2,7 +2,11 @@ package types
 
 import (
 	"encoding/binary"
+	"fmt"
 	"net"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func IP2Int(ip net.IP) uint32 {
@@ -39,4 +43,62 @@ func LastAddress(n *net.IPNet) net.IP {
 		ip[1]|^n.Mask[1],
 		ip[2]|^n.Mask[2],
 		ip[3]|^n.Mask[3])
+}
+
+var logMode string
+var logFolder string
+var logLevel log.Level
+
+func SetDefaultLoggerConfig(inlogMode string, inlogFolder string, inlogLevel log.Level) error {
+	logMode = inlogMode
+	logFolder = inlogFolder
+	logLevel = inlogLevel
+
+	/*Configure logs*/
+	if logMode == "file" {
+		log.SetOutput(&lumberjack.Logger{
+			Filename:   logFolder + "/crowdsec.log",
+			MaxSize:    500, //megabytes
+			MaxBackups: 3,
+			MaxAge:     28,   //days
+			Compress:   true, //disabled by default
+		})
+		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
+	} else if logMode != "stdout" {
+		return fmt.Errorf("log mode '%s' unknown", logMode)
+	}
+	log.SetLevel(logLevel)
+	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+	if logLevel >= log.InfoLevel {
+		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
+	}
+	if logLevel >= log.DebugLevel {
+		log.SetReportCaller(true)
+	}
+	return nil
+}
+
+func ConfigureLogger(clog *log.Logger) error {
+	/*Configure logs*/
+	if logMode == "file" {
+		clog.SetOutput(&lumberjack.Logger{
+			Filename:   logFolder + "/crowdsec.log",
+			MaxSize:    500, //megabytes
+			MaxBackups: 3,
+			MaxAge:     28,   //days
+			Compress:   true, //disabled by default
+		})
+		clog.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
+	} else if logMode != "stdout" {
+		return fmt.Errorf("log mode '%s' unknown", logMode)
+	}
+	clog.SetLevel(logLevel)
+	clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+	if logLevel >= log.InfoLevel {
+		clog.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
+	}
+	if logLevel >= log.DebugLevel {
+		clog.SetReportCaller(true)
+	}
+	return nil
 }
