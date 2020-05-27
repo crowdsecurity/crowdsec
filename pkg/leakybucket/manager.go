@@ -227,7 +227,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 
 	if g.Filter == "" {
 		g.logger.Warningf("Bucket without filter, abort.")
-		return fmt.Errorf("bucket without filter directive.")
+		return fmt.Errorf("bucket without filter directive")
 	}
 	g.RunTimeFilter, err = expr.Compile(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
@@ -284,7 +284,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 		for _, data := range g.Data {
 			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
-				log.Errorf(err.Error())
+				g.logger.Errorf("unable to init data for file '%s': %s", data.Filename, err.Error())
 			}
 		}
 	}
