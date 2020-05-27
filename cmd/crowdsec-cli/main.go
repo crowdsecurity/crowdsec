@@ -118,7 +118,9 @@ API interaction:
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "master", "Override hub branch on github")
-	rootCmd.PersistentFlags().MarkHidden("branch")
+	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
+		log.Fatalf("failed to make branch hidden : %s", err)
+	}
 	cobra.OnInitialize(initConfig)
 	/*don't sort flags so we can enforce order*/
 	rootCmd.Flags().SortFlags = false
