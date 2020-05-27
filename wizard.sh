@@ -295,16 +295,10 @@ install_crowdsec() {
 }
 
 update_bins() {
-    log_info "Saving api credentials"
-    ${CSCLI_BIN_INSTALLED} api credentials > ${BACKUP_DIR}/api-credentials.back || log_err "Unable to save credentials"
-    cat ${CROWDSEC_CONFIG_PATH}/api.yaml 
     log_info "Only upgrading binaries"
     delete_bins
     install_bins
     log_info "Upgrade finished"
-    echo "#restored credentials" >> ${CROWDSEC_CONFIG_PATH}/api.yaml || log_err "unable to write to api file"
-    cat ${BACKUP_DIR}/api-credentials.back >> ${CROWDSEC_CONFIG_PATH}/api.yaml || log_err "unable to write to api file"
-    
     systemctl restart crowdsec
 }
 
