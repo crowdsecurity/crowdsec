@@ -42,6 +42,9 @@ func TestParser(t *testing.T) {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
 		for _, fd := range fds {
+			if !fd.IsDir() {
+				continue
+			}
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 			if err := testOneParser(pctx, fname, nil); err != nil {
@@ -72,6 +75,9 @@ func BenchmarkParser(t *testing.B) {
 			t.Fatalf("Unable to read test directory : %s", err)
 		}
 		for _, fd := range fds {
+			if !fd.IsDir() {
+				continue
+			}
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 			if err := testOneParser(pctx, fname, t); err != nil {
