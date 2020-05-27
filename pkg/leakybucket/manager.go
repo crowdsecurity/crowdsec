@@ -146,7 +146,7 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 			}
 			//check compat
 			if g.FormatVersion == "" {
-				log.Warningf("no version in %s : %s, assuming '1.0'", g.Name, f)
+				log.Debugf("no version in %s : %s, assuming '1.0'", g.Name, f)
 				g.FormatVersion = "1.0"
 			}
 			ok, err := cwversion.Statisfies(g.FormatVersion, cwversion.Constraint_scenario)
@@ -191,7 +191,9 @@ func LoadBucket(g *BucketFactory) error {
 	var err error
 	if g.Debug {
 		var clog = logrus.New()
-		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+		if err := types.ConfigureLogger(clog); err != nil {
+			log.Fatalf("While creating bucket-specific logger : %s", err)
+		}
 		clog.SetLevel(log.DebugLevel)
 		g.logger = clog.WithFields(log.Fields{
 			"cfg":  g.BucketName,

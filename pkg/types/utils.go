@@ -2,7 +2,12 @@ package types
 
 import (
 	"encoding/binary"
+	"fmt"
+	"io"
 	"net"
+
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 func IP2Int(ip net.IP) uint32 {
@@ -39,4 +44,52 @@ func LastAddress(n *net.IPNet) net.IP {
 		ip[1]|^n.Mask[1],
 		ip[2]|^n.Mask[2],
 		ip[3]|^n.Mask[3])
+}
+
+var logFormatter log.Formatter
+var logOutput io.Writer
+var logLevel log.Level
+var logReportCaller bool
+
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
+
+	/*Configure logs*/
+	if cfgMode == "file" {
+		logOutput = &lumberjack.Logger{
+			Filename:   cfgFolder + "/crowdsec.log",
+			MaxSize:    500, //megabytes
+			MaxBackups: 3,
+			MaxAge:     28,   //days
+			Compress:   true, //disabled by default
+		}
+		log.SetOutput(logOutput)
+	} else if cfgMode != "stdout" {
+		return fmt.Errorf("log mode '%s' unknown", cfgMode)
+	}
+	logLevel = cfgLevel
+	log.SetLevel(logLevel)
+	if logLevel >= log.InfoLevel {
+		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+		log.SetFormatter(logFormatter)
+	}
+	if logLevel >= log.DebugLevel {
+		logReportCaller = true
+		log.SetReportCaller(true)
+	}
+	return nil
+}
+
+func ConfigureLogger(clog *log.Logger) error {
+	/*Configure logs*/
+	if logOutput != nil {
+		clog.SetOutput(logOutput)
+	}
+	if logReportCaller {
+		clog.SetReportCaller(true)
+	}
+	if logFormatter != nil {
+		clog.SetFormatter(logFormatter)
+	}
+	clog.SetLevel(logLevel)
+	return nil
 }

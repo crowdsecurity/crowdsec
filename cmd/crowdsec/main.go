@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 
 	"io/ioutil"
@@ -19,7 +18,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 
-	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -38,33 +36,6 @@ var (
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 )
-
-func configureLogger(logMode string, logFolder string, logLevel log.Level) error {
-	/*Configure logs*/
-	if logMode == "file" {
-		log.SetOutput(&lumberjack.Logger{
-			Filename:   logFolder + "/crowdsec.log",
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
-		})
-		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
-	} else if logMode != "stdout" {
-		return fmt.Errorf("log mode '%s' unknown", logMode)
-	}
-
-	log.Printf("setting loglevel to %s", logLevel)
-	log.SetLevel(logLevel)
-	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
-	if logLevel >= log.InfoLevel {
-		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
-	}
-	if logLevel >= log.DebugLevel {
-		log.SetReportCaller(true)
-	}
-	return nil
-}
 
 func main() {
 	var (
@@ -92,7 +63,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if err = configureLogger(cConfig.LogMode, cConfig.LogFolder, cConfig.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.LogMode, cConfig.LogFolder, cConfig.LogLevel); err != nil {
 		log.Fatal(err.Error())
 	}
 
