@@ -146,7 +146,7 @@ func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 			}
 			//check compat
 			if g.FormatVersion == "" {
-				log.Warningf("no version in %s : %s, assuming '1.0'", g.Name, f)
+				log.Debugf("no version in %s : %s, assuming '1.0'", g.Name, f)
 				g.FormatVersion = "1.0"
 			}
 			ok, err := cwversion.Statisfies(g.FormatVersion, cwversion.Constraint_scenario)
