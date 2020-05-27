@@ -14,7 +14,7 @@ SILENT="false"
 
 CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
-CROWDSEC_USR_DIR="/usr/local/crowdsec"
+CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
