@@ -65,6 +65,7 @@ You will need as well to configure your {{ref.acquis}} file to feed {{crowdsec.n
     
     * [Go](https://golang.org/doc/install) v1.13+
     * `git clone {{crowdsec.url}}`
+    * [jq](https://stedolan.github.io/jq/download/)
 
 
 Go in {{crowdsec.name}} folder and build the binaries :
