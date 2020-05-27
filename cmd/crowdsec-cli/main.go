@@ -117,7 +117,7 @@ API interaction:
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
-	rootCmd.PersistentFlags().StringVar(&cwhub.HUB_BRANCH, "branch", "master", "Override hub branch on github")
+	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "master", "Override hub branch on github")
 	rootCmd.PersistentFlags().MarkHidden("branch")
 	cobra.OnInitialize(initConfig)
 	/*don't sort flags so we can enforce order*/
