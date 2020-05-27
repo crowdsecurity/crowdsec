@@ -195,8 +195,11 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 func LoadBucket(g *BucketFactory, dataFolder string) error {
 	var err error
 	if g.Debug {
-		var clog = log.New()
-		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+		var clog = logrus.New()
+		if types.ConfigureLogger(clog) != err {
+			log.Fatalf("While creating bucket-specific logger : %s", err)
+		}
+		me
 		clog.SetLevel(log.DebugLevel)
 		g.logger = clog.WithFields(log.Fields{
 			"cfg":  g.BucketName,
