@@ -1,0 +1,12 @@
+type: trigger
+debug: true
+name: test/simple-trigger
+data:
+  - source_url: https://invalid.com/test.list
+    dest_file: ./simple_patterns.txt
+description: "Simple trigger with external data"
+filter: "evt.Line.Labels.type =='testlog' && evt.Parsed.tainted_data in File('./simple_patterns.txt')"
+groupby: evt.Meta.source_ip
+labels:
+ type: overflow_1
+

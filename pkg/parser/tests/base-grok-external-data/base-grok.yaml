@@ -4,7 +4,7 @@ onsuccess: next_stage
 name: tests/base-grok
 data:
   - source_url: https://invalid.com/test.list
-    dest_file: ../pkg/parser/tests/sample_strings.txt
+    dest_file: ./sample_strings.txt
 
 pattern_syntax:
   MYCAP1: ".*"
@@ -17,6 +17,6 @@ statics:
     value: parsed_testlog
   - meta: is_it_in_file
     expression: |-
-      evt.Parsed.extracted_value in File("../pkg/parser/tests/sample_strings.txt") ? "true" : "false"
+      evt.Parsed.extracted_value in File("./sample_strings.txt") ? "true" : "false"
 
 

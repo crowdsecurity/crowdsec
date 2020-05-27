@@ -76,7 +76,7 @@ func testOneBucket(t *testing.T, dir string) error {
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
-	holders, response, err := LoadBuckets(files, dir+"/data")
+	holders, response, err := LoadBuckets(files, dir)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
