@@ -7,10 +7,10 @@ data:
     dest_file: ./sample_strings.txt
 
 pattern_syntax:
-  MYCAP1: ".*"
+  MYCAP_EXT: ".*"
 nodes:
   - grok:
-      pattern: ^xxheader %{MYCAP1:extracted_value} trailing stuff$
+      pattern: ^xxheader %{MYCAP_EXT:extracted_value} trailing stuff$
       apply_on: Line.Raw
 statics:
   - meta: log_type
