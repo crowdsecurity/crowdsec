@@ -1,0 +1,22 @@
+filter: "evt.Line.Labels.type == 'testlog'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok
+data:
+  - source_url: https://invalid.com/test.list
+    dest_file: ../pkg/parser/tests/sample_strings.txt
+
+pattern_syntax:
+  MYCAP1: ".*"
+nodes:
+  - grok:
+      pattern: ^xxheader %{MYCAP1:extracted_value} trailing stuff$
+      apply_on: Line.Raw
+statics:
+  - meta: log_type
+    value: parsed_testlog
+  - meta: is_it_in_file
+    expression: |-
+      evt.Parsed.extracted_value in File("../pkg/parser/tests/sample_strings.txt") ? "true" : "false"
+
+
