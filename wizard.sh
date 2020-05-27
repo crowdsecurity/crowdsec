@@ -14,12 +14,13 @@ SILENT="false"
 
 CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
+CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
-CROWDSEC_PLUGIN_DIR="${CROWDSEC_LIB_DIR}/plugins"
+CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
 CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
-CROWDSEC_CONFIG_PATH="/etc/crowdsec"
-CROWDSEC_CONFIG_PATH="${CROWDSEC_CONFIG_PATH}/config"
+CROWDSEC_PATH="/etc/crowdsec"
+CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}/config"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
@@ -39,7 +40,7 @@ setup_cron_pull() {
 }
 
 
-PID_DIR="/var/run"
+PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
 PATTERNS_FOLDER="config/patterns"
@@ -340,10 +341,11 @@ uninstall_crowdsec() {
     systemctl stop crowdsec.service
     ${CSCLI_BIN} dashboard stop --remove
     delete_bins
-    rm -rf ${CROWDSEC_CONFIG_PATH} || echo ""
+    rm -rf ${CROWDSEC_PATH} || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
     rm -rf ${CROWDSEC_LIB_DIR} || echo ""
+    rm -rf ${CROWDSEC_USR_DIR} || echo ""
     rm -f ${SYSTEMD_PATH_FILE} || echo ""
     log_info "crowdsec successfully uninstalled"
 }
