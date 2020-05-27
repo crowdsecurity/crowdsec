@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 
 	log "github.com/sirupsen/logrus"
@@ -45,34 +46,34 @@ func LastAddress(n *net.IPNet) net.IP {
 		ip[3]|^n.Mask[3])
 }
 
-var logMode string
-var logFolder string
+var logFormatter log.Formatter
+var logOutput io.Writer
 var logLevel log.Level
+var logReportCaller bool
 
-func SetDefaultLoggerConfig(inlogMode string, inlogFolder string, inlogLevel log.Level) error {
-	logMode = inlogMode
-	logFolder = inlogFolder
-	logLevel = inlogLevel
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
 
 	/*Configure logs*/
-	if logMode == "file" {
-		log.SetOutput(&lumberjack.Logger{
-			Filename:   logFolder + "/crowdsec.log",
+	if cfgMode == "file" {
+		logOutput = &lumberjack.Logger{
+			Filename:   cfgFolder + "/crowdsec.log",
 			MaxSize:    500, //megabytes
 			MaxBackups: 3,
 			MaxAge:     28,   //days
 			Compress:   true, //disabled by default
-		})
-		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
-	} else if logMode != "stdout" {
-		return fmt.Errorf("log mode '%s' unknown", logMode)
+		}
+		log.SetOutput(logOutput)
+	} else if cfgMode != "stdout" {
+		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
+	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	log.SetFormatter(&log.TextFormatter{FullTimestamp: true})
 	if logLevel >= log.InfoLevel {
-		log.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
+		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+		log.SetFormatter(logFormatter)
 	}
 	if logLevel >= log.DebugLevel {
+		logReportCaller = true
 		log.SetReportCaller(true)
 	}
 	return nil
@@ -80,25 +81,13 @@ func SetDefaultLoggerConfig(inlogMode string, inlogFolder string, inlogLevel log
 
 func ConfigureLogger(clog *log.Logger) error {
 	/*Configure logs*/
-	if logMode == "file" {
-		clog.SetOutput(&lumberjack.Logger{
-			Filename:   logFolder + "/crowdsec.log",
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
-		})
-		clog.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
-	} else if logMode != "stdout" {
-		return fmt.Errorf("log mode '%s' unknown", logMode)
+	if logOutput != nil {
+		clog.SetOutput(logOutput)
 	}
-	clog.SetLevel(logLevel)
-	clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
-	if logLevel >= log.InfoLevel {
-		clog.SetFormatter(&log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true})
-	}
-	if logLevel >= log.DebugLevel {
+	if logReportCaller {
 		clog.SetReportCaller(true)
 	}
+	clog.SetFormatter(logFormatter)
+	clog.SetLevel(logLevel)
 	return nil
 }
