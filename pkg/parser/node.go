@@ -252,10 +252,15 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				//return false, nil
 			}
 		}
-
+		var groklabel string
+		if n.Grok.RegexpName == "" {
+			groklabel = fmt.Sprintf("%5.5s...", n.Grok.RegexpValue)
+		} else {
+			groklabel = n.Grok.RegexpName
+		}
 		grok := n.Grok.RunTimeRegexp.Parse(gstr)
 		if len(grok) > 0 {
-			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", n.Grok.RegexpName, len(grok))
+			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
 			//We managed to grok stuff, merged into parse
 			for k, v := range grok {
 				clog.Debugf("\t.Parsed['%s'] = '%s'", k, v)
@@ -268,7 +273,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			}
 		} else {
 			//grok failed, node failed
-			clog.Debugf("+ Grok '%s' didn't return data on '%s'", n.Grok.RegexpName, gstr)
+			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
 			//clog.Tracef("on '%s'", gstr)
 			NodeState = false
 		}
@@ -336,6 +341,9 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	that will be used only for processing this node ;) */
 	if n.Debug {
 		var clog = logrus.New()
+		if types.ConfigureLogger(clog) != err {
+			log.Fatalf("While creating bucket-specific logger : %s", err)
+		}
 		clog.SetLevel(log.DebugLevel)
 		n.logger = clog.WithFields(log.Fields{
 			"id": n.rn,
@@ -411,6 +419,9 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 	/* compile leafs if present */
 	if len(n.SuccessNodes) > 0 {
 		for idx := range n.SuccessNodes {
+			if n.SuccessNodes[idx].Name == "" {
+				n.SuccessNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
+			}
 			/*propagate debug/stats to child nodes*/
 			if !n.SuccessNodes[idx].Debug && n.Debug {
 				n.SuccessNodes[idx].Debug = true

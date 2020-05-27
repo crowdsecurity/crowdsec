@@ -191,7 +191,9 @@ func LoadBucket(g *BucketFactory) error {
 	var err error
 	if g.Debug {
 		var clog = logrus.New()
-		clog.SetFormatter(&log.TextFormatter{FullTimestamp: true})
+		if types.ConfigureLogger(clog) != err {
+			log.Fatalf("While creating bucket-specific logger : %s", err)
+		}
 		clog.SetLevel(log.DebugLevel)
 		g.logger = clog.WithFields(log.Fields{
 			"cfg":  g.BucketName,
