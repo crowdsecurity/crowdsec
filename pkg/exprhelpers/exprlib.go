@@ -32,7 +32,6 @@ func EndsWith(s string, suff string) bool {
 }
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
-
 	var ExprLib = map[string]interface{}{"Atof": Atof, "JsonExtract": JsonExtract, "JsonExtractLib": JsonExtractLib, "File": File, "RegexpInFile": RegexpInFile}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -51,7 +50,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	filepath := path.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	defer file.Close()
 
@@ -64,9 +63,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		switch fileType {
-		case "regex":
-			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
-		case "regexp":
+		case "regex", "regexp":
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
@@ -76,7 +73,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		return err
 	}
 	return nil
 }
