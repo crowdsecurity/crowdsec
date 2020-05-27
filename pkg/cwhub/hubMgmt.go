@@ -32,8 +32,9 @@ var Installdir = "/etc/crowdsec/"
 var Hubdir = "/etc/crowdsec/cscli/hub/"
 var Cfgdir = "/etc/crowdsec/cscli/"
 
-var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/master/%s"
+var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
 var HUB_INDEX_FILE = ".index.json"
+var HUB_BRANCH = "master"
 
 type ItemVersion struct {
 	Digest     string
@@ -406,7 +407,7 @@ func UpdateHubIdx() error {
 }
 
 func DownloadHubIdx() ([]byte, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HUB_INDEX_FILE), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HUB_BRANCH, HUB_INDEX_FILE), nil)
 	if err != nil {
 		log.Errorf("failed request : %s", err)
 		return nil, err
@@ -418,7 +419,7 @@ func DownloadHubIdx() ([]byte, error) {
 	}
 	if resp.StatusCode != 200 {
 		log.Errorf("got code %d while requesting %s, abort", resp.StatusCode,
-			fmt.Sprintf(RawFileURLTemplate, HUB_INDEX_FILE))
+			fmt.Sprintf(RawFileURLTemplate, HUB_BRANCH, HUB_INDEX_FILE))
 		return nil, fmt.Errorf("bad http code")
 	}
 	defer resp.Body.Close()
@@ -678,7 +679,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	}
 
 	//log.Infof("Downloading %s to %s", target.Name, tdir)
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, target.RemotePath), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HUB_BRANCH, target.RemotePath), nil)
 	if err != nil {
 		log.Errorf("%s : request creation failed : %s", target.Name, err)
 		return target, err
