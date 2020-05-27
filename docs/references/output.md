@@ -62,7 +62,7 @@ config: <plugin_config> # in a form of key(string)/value(string)
 For the plugin sqlite, here is its configuration file:
 ```yaml
 name: sqlite
-path: /var/lib/crowdsec/plugins/backend/sqlite.so
+path: /usr/local/lib/crowdsec/plugins/backend/sqlite.so
 config:
   db_path: /var/lib/crowdsec/data/crowdsec.db
   flush: true
