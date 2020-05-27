@@ -8,9 +8,9 @@ log_mode: stdout
 log_level: info
 profiling: false
 sqlite_path: ${DATA}/crowdsec.db
-apimode: true
+apimode: false
 daemon: false
-prometheus: true
+prometheus: false
 #for prometheus agent / golang debugging
 http_listen: 127.0.0.1:6060
 plugin:
