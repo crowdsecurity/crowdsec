@@ -3,8 +3,7 @@ filenames:
   - ./tests/nginx/nginx.log
 #this is not a syslog log, indicate which kind of logs it is
 labels:
-  prog_name: nginx
-  type: nginx_raw_log
+  type: nginx
 ---
 filenames:
  - /var/log/auth.log
@@ -15,38 +14,5 @@ labels:
 ---
 filename: /var/log/apache2/*.log
 labels:
-  prog_name: apache2
-  type: nginx_raw_log
+  type: apache2
 ---
-filenames:
-  - ./tests/tcpdump.out
-  - /root/granola/tcpdump.out
-labels:
-  prog_name: tcpdump
-  type: tcpdump_raw_log
----
-filename: ./tests/apache.log
-labels:
-  prog_name: apache2
----
-filename: ./tests/nginx.log
-labels:
-  prog_name: nginx
-  
-
-
-  
-  # #list of files to be tailed
-  # #it's ok to add files that don't exist, they will juste be skipped :)
-  # - /var/log/nginx/*.log
-  # - /root/granola/tcpdump.out
-  # - /var/log/auth.log
-  # - tests/*.log
-  # - tests/tcpdump.out
-  # - tests/nginx/nginx.log
-  
-  # # for honeypots
-  # - /data/logs/*.log
-  # - /var/log/tcpdump.out
-  # - /var/log/auth.log
-  # - /var/log/syslog

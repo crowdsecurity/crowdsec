@@ -12,9 +12,10 @@ type UnixParser struct {
 }
 
 type UnixParserCtx struct {
-	Grok      grokky.Host
-	Stages    []string
-	Profiling bool
+	Grok       grokky.Host
+	Stages     []string
+	Profiling  bool
+	DataFolder string
 }
 
 func (u UnixParser) IsParsable(ctx interface{}, l types.Line) (bool, error) {
@@ -28,6 +29,7 @@ func (u UnixParser) Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	if err != nil {
 		return nil, err
 	}
+	r.DataFolder = c["data"].(string)
 	for _, f := range files {
 		log.Debugf("Loading %s", f.Name())
 		if err := r.Grok.AddFromFile(c["patterns"].(string) + f.Name()); err != nil {
