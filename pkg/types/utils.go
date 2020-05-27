@@ -87,7 +87,9 @@ func ConfigureLogger(clog *log.Logger) error {
 	if logReportCaller {
 		clog.SetReportCaller(true)
 	}
-	clog.SetFormatter(logFormatter)
+	if logFormatter != nil {
+		clog.SetFormatter(logFormatter)
+	}
 	clog.SetLevel(logLevel)
 	return nil
 }
