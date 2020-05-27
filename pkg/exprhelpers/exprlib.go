@@ -47,7 +47,7 @@ func Init() error {
 	return nil
 }
 
-func FileInit(fileFolder string, filename string) error {
+func FileInit(fileFolder string, filename string, fileType string) error {
 	filepath := path.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -58,17 +58,18 @@ func FileInit(fileFolder string, filename string) error {
 	if _, ok := dataFile[filename]; !ok {
 		dataFile[filename] = []string{}
 	}
-	fileType := "string"
-	scanner := bufio.NewScanner(file)
-	scanner.Scan()
-	if scanner.Text() == "#type: regex" { // if file contains regexps, it should have this header
-		fileType = "regex"
+	if fileType == "" {
+		fileType = "string"
 	}
+	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		if fileType == "regex" {
+		switch fileType {
+		case "regex":
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
-		} else {
+		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
+		default:
+			log.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
 

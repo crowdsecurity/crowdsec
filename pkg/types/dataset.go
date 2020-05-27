@@ -13,6 +13,7 @@ import (
 type DataSource struct {
 	SourceURL string `yaml:"source_url"`
 	DestPath  string `yaml:"dest_file"`
+	Type      string `yaml:"type"`
 }
 
 type DataSet struct {

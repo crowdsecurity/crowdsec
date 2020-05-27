@@ -282,7 +282,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 
 	if len(g.Data) > 0 {
 		for _, data := range g.Data {
-			err = exprhelpers.FileInit(dataFolder, data.DestPath)
+			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
 				log.Errorf(err.Error())
 			}
