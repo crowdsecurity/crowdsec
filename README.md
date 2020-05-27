@@ -44,21 +44,21 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 ### Out of the box detection
 
 <details>
-  <summary>Baseline detection is effective out-of-the-box, no fine-tuning required</summary>
+  <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click me!)</summary>
   <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif">
 </details>
 
 ### Easy blocker deployment
 
 <details>
-  <summary>It's trivial to add blockers to enforce decisions of crowdsec</summary>
+  <summary>It's trivial to add blockers to enforce decisions of crowdsec (click me!)</summary>
   <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/blocker-installation.gif">
 </details>
 
 ### Easy dashboard access
 
 <details>
-  <summary>It's easy to deploy a metabase interface to view your data simply with cscli</summary>
+  <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click me!)</summary>
   <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/cscli-metabase.gif">
 </details>
 
