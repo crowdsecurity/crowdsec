@@ -66,6 +66,8 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		switch fileType {
 		case "regex":
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
+		case "regexp":
+			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
