@@ -129,7 +129,7 @@ extra:
     plugins:
         name: blockers
         url: "https://hub.crowdsec.net/"
-        binpath: "/usr/local/crowdsec/plugins/"
+        binpath: "/usr/local/lib/crowdsec/plugins/"
         configpath: "/etc/crowdsec/plugins/"
     metabase:
         name: metabase
