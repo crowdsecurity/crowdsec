@@ -2,6 +2,7 @@ package exprhelpers
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path"
 	"regexp"
@@ -68,7 +69,7 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 		case "string":
 			dataFile[filename] = append(dataFile[filename], scanner.Text())
 		default:
-			log.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
+			return fmt.Errorf("unknown data type '%s' for : '%s'", fileType, filename)
 		}
 	}
 
