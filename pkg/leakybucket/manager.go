@@ -287,7 +287,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 		for _, data := range g.Data {
 			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
-				g.logger.Errorf("unable to init data for file '%s': %s", data.Filename, err.Error())
+				g.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
 			}
 		}
 	}
