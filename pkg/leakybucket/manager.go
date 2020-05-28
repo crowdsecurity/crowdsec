@@ -200,7 +200,6 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 		if err := types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
-		me
 		clog.SetLevel(log.DebugLevel)
 		g.logger = clog.WithFields(log.Fields{
 			"cfg":  g.BucketName,
