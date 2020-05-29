@@ -33,7 +33,15 @@ func EndsWith(s string, suff string) bool {
 }
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
-	var ExprLib = map[string]interface{}{"Atof": Atof, "JsonExtract": JsonExtract, "JsonExtractLib": JsonExtractLib, "File": File, "RegexpInFile": RegexpInFile}
+	var ExprLib = map[string]interface{}{
+		"Atof": Atof,
+		"StartsWith": StartsWith,
+		"EndsWith" : EndsWith,
+		"JsonExtract": JsonExtract,
+		"JsonExtractLib": JsonExtractLib,
+		"File": File,
+		"RegexpInFile": RegexpInFile,
+	}
 	for k, v := range ctx {
 		ExprLib[k] = v
 	}
