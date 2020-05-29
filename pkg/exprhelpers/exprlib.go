@@ -40,7 +40,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"JsonExtract": JsonExtract,
 		"JsonExtractLib": JsonExtractLib,
 		"File": File,
-		"RegexpInFile": RegexpInFile
+		"RegexpInFile": RegexpInFile,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
