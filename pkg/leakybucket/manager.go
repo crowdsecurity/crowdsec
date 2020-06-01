@@ -168,8 +168,8 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			g.ret = response
 			err = LoadBucket(&g, dataFolder)
 			if err != nil {
-				log.Errorf("Failed to load bucket : %v", err)
-				return nil, nil, fmt.Errorf("loadBucket failed : %v", err)
+				log.Errorf("Failed to load bucket %s : %v", g.Name, err)
+				return nil, nil, fmt.Errorf("loading of %s failed : %v", g.Name, err)
 			}
 			ret = append(ret, g)
 		}
