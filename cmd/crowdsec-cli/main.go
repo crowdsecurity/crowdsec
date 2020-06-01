@@ -53,6 +53,9 @@ func initConfig() {
 	/*read config*/
 	config.InstallFolder = filepath.Clean(csConfig.ConfigFolder)
 	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
+	if csConfig.OutputConfig == nil {
+		log.Fatalf("Missing backend plugin configuration in %s", config.ConfigFilePath)
+	}
 	config.BackendPluginFolder = filepath.Clean(csConfig.OutputConfig.BackendFolder)
 	config.DataFolder = filepath.Clean(csConfig.DataFolder)
 	//
