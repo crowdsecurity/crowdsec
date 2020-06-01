@@ -285,6 +285,10 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 
 	if len(g.Data) > 0 {
 		for _, data := range g.Data {
+			if data.DestPath == "" {
+				g.logger.Errorf("no dest_file provided for '%s'", g.Name)
+				continue
+			}
 			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
 				g.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
