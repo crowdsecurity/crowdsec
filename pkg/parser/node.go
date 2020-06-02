@@ -158,7 +158,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if src != nil {
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
-				clog.Infof("Event from [%s] is whitelisted by Ips !", src)
+				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
 				p.Whitelisted = true
 				set = true
 			}
@@ -188,7 +188,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		case bool:
 			/* filter returned false, don't process Node */
 			if out {
-				clog.Infof("Event is whitelisted by Expr !")
+				clog.Debugf("Event is whitelisted by Expr !")
 				p.Whitelisted = true
 				set = true
 			}
