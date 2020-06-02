@@ -457,9 +457,8 @@ main() {
 
         if [[ ${SILENT} == "false" ]]; then
             (systemctl start crowdsec && log_info "crowdsec started") || log_err "unable to start crowdsec. exiting"
+            ${CSCLI_BIN_INSTALLED} api pull
         fi;
-
-        ${CSCLI_BIN_INSTALLED} api pull
         # Set the cscli api pull cronjob 
         setup_cron_pull
 
