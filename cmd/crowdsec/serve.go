@@ -26,8 +26,6 @@ func termHandler(sig os.Signal) error {
 		log.Warningf("Acquisition returned error : %s", err)
 	}
 	log.Infof("acquisition is finished, wait for parser/bucket/ouputs.")
-	//let's wait more than enough for in-flight events to be parsed.
-	time.Sleep(5 * time.Second)
 	parsersTomb.Kill(nil)
 	if err := parsersTomb.Wait(); err != nil {
 		log.Warningf("Parsers returned error : %s", err)
