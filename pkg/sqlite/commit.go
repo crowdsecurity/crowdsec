@@ -14,7 +14,9 @@ func (c *Context) Flush() error {
 	defer c.lock.Unlock()
 
 	ret := c.tx.Commit()
+
 	if ret.Error != nil {
+		c.tx = c.Db.Begin()
 		return fmt.Errorf("failed to commit records : %v", ret.Error)
 	}
 	c.tx = c.Db.Begin()
@@ -37,7 +39,7 @@ func (c *Context) AutoCommit() {
 			if atomic.LoadInt32(&c.count) != 0 &&
 				(atomic.LoadInt32(&c.count)%100 == 0 || time.Since(c.lastCommit) >= 500*time.Millisecond) {
 				if err := c.Flush(); err != nil {
-					log.Fatalf("failed to flush : %s", err)
+					log.Errorf("failed to flush : %s", err)
 				}
 			}
 		}

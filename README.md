@@ -10,6 +10,8 @@
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/Go/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build-binary-package/badge.svg">
+<img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
+<img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 </p>
 
 <p align="center">
