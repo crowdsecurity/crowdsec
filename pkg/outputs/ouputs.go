@@ -156,7 +156,7 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 		}
 
 		// if ApiPush is nil (not specified in profile configuration) we use global api config (from default.yaml)
-		if profile.ApiPush == nil {
+		if profile.ApiPush == nil || *profile.ApiPush {
 			if o.API != nil { // if API is not nil, we can push
 				if err = o.API.AppendSignal((sig)); err != nil {
 					return fmt.Errorf("failed to append signal : %s", err)
