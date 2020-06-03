@@ -17,11 +17,6 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Check tag == json version
-      run: |
-        jsonver=$(cat RELEASE.json | jq -r .Version)
-        lasttag=$(git for-each-ref --sort=-v:refname --count=1 --format '%(refname)'  | cut -d '/' -f3)
-        if [ ${jsonver} != ${lasttag} ] ; then echo "version mismatch : ${jsonver} in json, ${lasttag} in git" ; exit 2 ; else echo "${jsonver} == ${lasttag}" ; fi
     - name: Build the binaries
       run: make release
     - name: Upload to release
