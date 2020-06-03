@@ -155,12 +155,9 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 			logger.Infof("Processing Overflow with no decisions %s", sig.Alert_message)
 		}
 
-		log.Printf("Checking if can push to API totototo")
 		// if ApiPush is nil (not specified in profile configuration) we use global api config (from default.yaml)
 		if profile.ApiPush == nil || *profile.ApiPush == true {
-			log.Printf("profile configured to push in API totototo")
 			if o.API != nil { // if API is not nil, we can push
-				log.Printf("Can append signal to API totototo")
 				if err = o.API.AppendSignal((sig)); err != nil {
 					return fmt.Errorf("failed to append signal : %s", err)
 				}
@@ -286,7 +283,8 @@ func (o *Output) Delete(target string) (int, error) {
 func (o *Output) DeleteAll() error {
 	err := o.bManager.DeleteAll()
 	return err
-}
+}FR
+
 
 func (o *Output) Insert(sig types.SignalOccurence) error {
 	err := o.bManager.Insert(sig)
