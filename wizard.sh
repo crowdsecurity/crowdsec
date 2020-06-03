@@ -59,6 +59,7 @@ smb
 '
 
 BACKUP_DIR=$(mktemp -d)
+rm -rf $BACKUP_DIR
 
 
 log_info() {
@@ -319,6 +320,7 @@ update_full() {
     log_info "Installing crowdsec"
     install_crowdsec
     log_info "Restoring configuration"
+    ${CSCLI_BIN} update
     ${CSCLI_BIN} backup restore ${BACKUP_DIR}
     log_info "Finished, restarting"
     systemctl restart crowdsec || log_err "Failed to restart crowdsec"
