@@ -5,8 +5,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	sqlite3 "github.com/mattn/go-sqlite3"
-
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
@@ -16,13 +14,8 @@ func (c *Context) Flush() error {
 	defer c.lock.Unlock()
 
 	ret := c.tx.Commit()
+
 	if ret.Error != nil {
-		/*if the database is locked, don't overwrite the current transaction*/
-		if ret.Error == sqlite3.ErrLocked {
-			log.Errorf("sqlite commit : db is locked : %s", ret.Error)
-			return ret.Error
-		}
-		/*if it's another error, create a new transaction to avoid locking ourselves in a bad state ?*/
 		c.tx = c.Db.Begin()
 		return fmt.Errorf("failed to commit records : %v", ret.Error)
 	}
