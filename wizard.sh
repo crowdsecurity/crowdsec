@@ -455,10 +455,10 @@ main() {
         ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
         log_info "Crowdsec api registered"
 
-
-        (systemctl start crowdsec && log_info "crowdsec started") || log_err "unable to start crowdsec. exiting"
-
-        ${CSCLI_BIN_INSTALLED} api pull
+        if [[ ${SILENT} == "false" ]]; then
+            (systemctl start crowdsec && log_info "crowdsec started") || log_err "unable to start crowdsec. exiting"
+            ${CSCLI_BIN_INSTALLED} api pull
+        fi;
         # Set the cscli api pull cronjob 
         setup_cron_pull
 
