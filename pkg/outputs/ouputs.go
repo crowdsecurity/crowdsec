@@ -283,8 +283,7 @@ func (o *Output) Delete(target string) (int, error) {
 func (o *Output) DeleteAll() error {
 	err := o.bManager.DeleteAll()
 	return err
-}FR
-
+}
 
 func (o *Output) Insert(sig types.SignalOccurence) error {
 	err := o.bManager.Insert(sig)
