@@ -157,7 +157,7 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 
 		log.Printf("Checking if can push to API totototo")
 		// if ApiPush is nil (not specified in profile configuration) we use global api config (from default.yaml)
-		if profile.ApiPush == nil {
+		if profile.ApiPush == nil || *profile.ApiPush == true {
 			log.Printf("profile configured to push in API totototo")
 			if o.API != nil { // if API is not nil, we can push
 				log.Printf("Can append signal to API totototo")
