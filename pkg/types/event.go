@@ -1,8 +1,6 @@
 package types
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 )
 
@@ -34,38 +32,4 @@ type Event struct {
 	Process       bool             `yaml:"Process,omitempty"` //can be set to false to avoid processing line
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `json:"Meta,omitempty" yaml:"Meta,omitempty"`
-}
-
-func MarshalForHumans(evt Event) (string, error) {
-	repr := make(map[string]interface{})
-
-	repr["Whitelisted"] = evt.Whitelisted
-	repr["WhiteListReason"] = evt.WhiteListReason
-	repr["Stage"] = evt.Stage
-	if evt.Line.Raw != "" {
-		repr["Line"] = evt.Line
-	}
-	if len(evt.Parsed) > 0 {
-		repr["Parsed"] = evt.Parsed
-	}
-	if len(evt.Enriched) > 0 {
-		repr["Enriched"] = evt.Enriched
-	}
-	if len(evt.Meta) > 0 {
-		repr["Meta"] = evt.Meta
-	}
-	if evt.Overflow.Events_count != 0 {
-		repr["Overflow"] = evt.Overflow
-	}
-	repr["StrTime"] = evt.StrTime
-	repr["Process"] = evt.Process
-	output, err := json.MarshalIndent(repr, "", " ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal : %s", err)
-	}
-	return string(output), nil
-}
-
-func MarshalForAPI() ([]byte, error) {
-	return nil, nil
 }
