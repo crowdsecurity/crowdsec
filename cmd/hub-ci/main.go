@@ -43,6 +43,11 @@ func cleanForMatch(in map[string]map[string]types.Event) map[string]map[string]t
 func parseMatchLine(event types.Event, parserCTX *parser.UnixParserCtx, parserNodes []parser.Node) bool {
 	oneResult := LineParseResult{}
 	h := sha256.New()
+
+	if event.Line.Raw == "" {
+		log.Warningf("discarding empty line")
+		return true
+	}
 	h.Write([]byte(event.Line.Raw))
 	log.Printf("processing '%s'", event.Line.Raw)
 
@@ -143,9 +148,9 @@ func main() {
 		log.Fatalf("Failed to start acquisition : %s", err)
 	}
 
-	if len(acquisitionCTX.Files) != 1 {
-		log.Fatalf("only one file per dir")
-	}
+	// if len(acquisitionCTX.Files) != 1 {
+	// 	log.Fatalf("only one file per dir")
+	// }
 
 	//load the expected results
 	ExpectedPresent := false
