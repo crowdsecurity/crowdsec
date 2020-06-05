@@ -227,6 +227,9 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
+var ParseDump bool
+var StageParseCache map[string]map[string]types.Event
+
 func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
 
@@ -250,7 +253,13 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
+	if ParseDump {
+		StageParseCache = make(map[string]map[string]types.Event)
+	}
 	for _, stage := range ctx.Stages {
+		if ParseDump {
+			StageParseCache[stage] = make(map[string]types.Event)
+		}
 		/* if the node is forward in stages, seek to its stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
 		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
@@ -267,14 +276,14 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 
 		isStageOK := false
 		for idx, node := range nodes {
-			clog := log.WithFields(log.Fields{
-				"node-name": node.rn,
-				"stage":     event.Stage,
-			})
 			//Only process current stage's nodes
 			if event.Stage != node.Stage {
 				continue
 			}
+			clog := log.WithFields(log.Fields{
+				"node-name": node.rn,
+				"stage":     event.Stage,
+			})
 			clog.Tracef("Processing node %d/%d -> %s", idx, len(nodes), node.rn)
 			if ctx.Profiling {
 				node.Profiling = true
@@ -282,6 +291,11 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 			ret, err := node.process(&event, ctx)
 			if err != nil {
 				clog.Fatalf("Error while processing node : %v", err)
+			}
+			if ret && ParseDump {
+				evtcopy := types.Event{}
+				types.Clone(&event, &evtcopy)
+				StageParseCache[stage][node.Name] = evtcopy
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ret {

@@ -67,7 +67,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	log.Infof("Crowdwatch %s", cwversion.VersionStr())
+	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	if cConfig.Prometheus {
 		registerPrometheus()
@@ -294,7 +294,7 @@ func main() {
 	log.Warningf("Starting processing data")
 
 	//Init the acqusition : from cli or from acquis.yaml file
-	acquisitionCTX, err = loadAcquisition()
+	acquisitionCTX, err = acquisition.LoadAcquisitionConfig(cConfig)
 	if err != nil {
 		log.Fatalf("Failed to start acquisition : %s", err)
 	}

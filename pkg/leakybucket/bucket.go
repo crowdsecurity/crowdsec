@@ -233,13 +233,13 @@ func LeakRoutine(l *Leaky) {
 					break
 				}
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: sig}))
+			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: &sig}))
 			mt, _ := l.Ovflw_ts.MarshalText()
 			l.logger.Tracef("overflow time : %s", mt)
 			if l.Profiling {
 				BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 			}
-			l.AllOut <- types.Event{Overflow: sig, Type: types.OVFLW, MarshaledTime: string(mt)}
+			l.AllOut <- types.Event{Overflow: &sig, Type: types.OVFLW, MarshaledTime: string(mt)}
 			return
 			/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
@@ -266,9 +266,9 @@ func LeakRoutine(l *Leaky) {
 				BucketsUnderflow.With(prometheus.Labels{"name": l.Name}).Inc()
 
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: sig}))
+			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: &sig}))
 
-			l.AllOut <- types.Event{Overflow: sig, Type: types.OVFLW}
+			l.AllOut <- types.Event{Overflow: &sig, Type: types.OVFLW}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		}

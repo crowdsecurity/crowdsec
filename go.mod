@@ -15,6 +15,7 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/enescakir/emoji v1.0.0
+	github.com/google/go-cmp v0.4.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jamiealquiza/tachymeter v2.0.0+incompatible

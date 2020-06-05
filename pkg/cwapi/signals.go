@@ -13,7 +13,7 @@ import (
 )
 
 func (ctx *ApiCtx) AppendSignal(sig types.SignalOccurence) error {
-	ctx.toPush = append(ctx.toPush, types.Event{Overflow: sig})
+	ctx.toPush = append(ctx.toPush, types.Event{Overflow: &sig})
 	log.Debugf("api append signal: adding new signal (cache size : %d): %+v", len(ctx.toPush), sig)
 	return nil
 }

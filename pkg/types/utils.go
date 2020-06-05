@@ -1,7 +1,9 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"net"
@@ -92,4 +94,14 @@ func ConfigureLogger(clog *log.Logger) error {
 	}
 	clog.SetLevel(logLevel)
 	return nil
+}
+
+// straight from stackoverflow : Clone deep-copies a to b
+func Clone(a, b interface{}) {
+
+	buff := new(bytes.Buffer)
+	enc := gob.NewEncoder(buff)
+	dec := gob.NewDecoder(buff)
+	enc.Encode(a)
+	dec.Decode(b)
 }

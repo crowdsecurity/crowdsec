@@ -40,7 +40,7 @@ LOOP:
 				buckets.Bucket_map.Delete(event.Overflow.MapKey)
 			} else {
 				/*let's handle output profiles */
-				if err := output.ProcessOutput(event.Overflow, outputProfiles); err != nil {
+				if err := output.ProcessOutput(*(event.Overflow), outputProfiles); err != nil {
 					log.Warningf("Error while processing overflow/output : %s", err)
 				}
 			}
