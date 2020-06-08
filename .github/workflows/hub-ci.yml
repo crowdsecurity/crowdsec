@@ -1,0 +1,30 @@
+name: Hub-CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Hub Parser/Scenario tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Build
+      run: make release &
+    - name: Create test env
+      run: cd crowdsec-`git for-each-ref --sort=-v:refname --count=1 --format '%(refname)'  | cut -d '/' -f3` && ./test_env.sh && cd ./tests
+    - name: Download hub tests
+      run: git clone git@github.com:crowdsecurity/hub-tests.git
+    - name: Build/prep hub tests
+      run: cd hub-tests && bash ./prep_tests.sh && cd ..
+    - name: Run the tests
+      run: ./main ./tests/apache2-1/
