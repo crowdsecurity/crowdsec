@@ -23,7 +23,7 @@ jobs:
     - name: Create test env
       run: cd crowdsec-pull && ./test_env.sh && cd ./tests
     - name: Download hub tests
-      run: pwd && git clone git@github.com:crowdsecurity/hub-tests.git
+      run: pwd && git clone https://github.com/crowdsecurity/hub-tests.git
     - name: Build/prep hub tests
       run: cd hub-tests && bash ./prep_tests.sh && cd ..
     - name: Run the tests
