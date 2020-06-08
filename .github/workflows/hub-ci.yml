@@ -21,7 +21,7 @@ jobs:
     - name: Build
       run: make release
     - name: Create test env
-      run: cd crowdsec-v* && ./test_env.sh && cd ./tests
+      run: ls -l && cd crowdsec-v* && ./test_env.sh && cd ./tests
     - name: Download hub tests
       run: git clone git@github.com:crowdsecurity/hub-tests.git
     - name: Build/prep hub tests
