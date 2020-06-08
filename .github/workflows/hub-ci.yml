@@ -21,10 +21,10 @@ jobs:
     - name: Build
       run: make release
     - name: Create test env
-      run: cd crowdsec-pull && ./test_env.sh && cd ./tests
+      run: cd crowdsec-pull && ls -l && ./test_env.sh && cd ./tests
     - name: Download hub tests
       run: pwd && git clone https://github.com/crowdsecurity/hub-tests.git
     - name: Build/prep hub tests
-      run: cd hub-tests && bash ./prep_tests.sh && cd ..
+      run: cd hub-tests && bash -x ./prep_tests.sh && cd ..
     - name: Run the tests
       run: ./main ./tests/apache2-1/
