@@ -34,5 +34,5 @@ jobs:
       for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
         echo "::group::Test-${i}" ; 
         ./main $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.yaml" ${i}"/results.yaml.fail") ;
-        echo "::endgroup::
+        echo "::endgroup::" ;
       done 
