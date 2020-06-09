@@ -30,4 +30,9 @@ jobs:
       run: pwd && cd hub-tests && bash -x ./prep_tests.sh && cd ..
     - name: Run the tests
       working-directory: crowdsec-pull/tests/
-      run: for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do echo "Testing $i" ; ./main $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.yaml" ${i}"/results.yaml.fail") ; done 
+      run: |
+      for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
+        echo "::group::Test-${i}" ; 
+        ./main $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.yaml" ${i}"/results.yaml.fail") ;
+        echo "::endgroup::
+      done 
