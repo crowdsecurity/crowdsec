@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
@@ -65,6 +66,33 @@ var ReaderHits = prometheus.NewCounterVec(
 	},
 	[]string{"source"},
 )
+
+func LoadAcquisitionConfig(cConfig *csconfig.CrowdSec) (*FileAcquisCtx, error) {
+	var acquisitionCTX *FileAcquisCtx
+	var err error
+	/*Init the acqusition : from cli or from acquis.yaml file*/
+	if cConfig.SingleFile != "" {
+		var input FileCtx
+		input.Filename = cConfig.SingleFile
+		input.Mode = CATMODE
+		input.Labels = make(map[string]string)
+		input.Labels["type"] = cConfig.SingleFileLabel
+		acquisitionCTX, err = InitReaderFromFileCtx([]FileCtx{input})
+	} else { /* Init file reader if we tail */
+		acquisitionCTX, err = InitReader(cConfig.AcquisitionFile)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unable to start file acquisition, bailout %v", err)
+	}
+	if acquisitionCTX == nil {
+		return nil, fmt.Errorf("no inputs to process")
+	}
+	if cConfig.Profiling {
+		acquisitionCTX.Profiling = true
+	}
+
+	return acquisitionCTX, nil
+}
 
 func InitReader(cfg string) (*FileAcquisCtx, error) {
 	var files []FileCtx
