@@ -17,11 +17,11 @@ REQUIRE_GOVERSION="1.13"
 
 
 #Current versioning information from env
-export BUILD_VERSION="$(shell git for-each-ref --sort=-v:refname --count=1 --format '%(refname)'  | cut -d '/' -f3)"
-export BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
-export BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
-export BUILD_TIMESTAMP=$(shell date +%F"_"%T)
-export BUILD_TAG="$(shell git rev-parse HEAD)"
+BUILD_VERSION?="$(shell git for-each-ref --sort=-v:refname --count=1 --format '%(refname)'  | cut -d '/' -f3)"
+BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
+BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
+BUILD_TIMESTAMP=$(shell date +%F"_"%T)
+BUILD_TAG="$(shell git rev-parse HEAD)"
 export LD_OPTS=-ldflags "-X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
