@@ -12,6 +12,7 @@
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build-binary-package/badge.svg">
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
+<img src="https://github.com/crowdsecurity/crowdsec/workflows/Hub-CI/badge.svg">
 </p>
 
 <p align="center">

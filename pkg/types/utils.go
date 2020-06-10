@@ -1,7 +1,9 @@
 package types
 
 import (
+	"bytes"
 	"encoding/binary"
+	"encoding/gob"
 	"fmt"
 	"io"
 	"net"
@@ -91,5 +93,19 @@ func ConfigureLogger(clog *log.Logger) error {
 		clog.SetFormatter(logFormatter)
 	}
 	clog.SetLevel(logLevel)
+	return nil
+}
+
+func Clone(a, b interface{}) error {
+
+	buff := new(bytes.Buffer)
+	enc := gob.NewEncoder(buff)
+	dec := gob.NewDecoder(buff)
+	if err := enc.Encode(a); err != nil {
+		return fmt.Errorf("failed cloning %T", a)
+	}
+	if err := dec.Decode(b); err != nil {
+		return fmt.Errorf("failed cloning %T", b)
+	}
 	return nil
 }

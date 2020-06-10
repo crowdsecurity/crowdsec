@@ -294,7 +294,7 @@ func main() {
 	log.Warningf("Starting processing data")
 
 	//Init the acqusition : from cli or from acquis.yaml file
-	acquisitionCTX, err = loadAcquisition()
+	acquisitionCTX, err = acquisition.LoadAcquisitionConfig(cConfig)
 	if err != nil {
 		log.Fatalf("Failed to start acquisition : %s", err)
 	}
