@@ -298,7 +298,9 @@ func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []N
 				isStageOK = true
 				if ParseDump {
 					evtcopy := types.Event{}
-					types.Clone(&event, &evtcopy)
+					if err := types.Clone(&event, &evtcopy); err != nil {
+						log.Fatalf("while cloning Event in parser : %s", err)
+					}
 					StageParseCache[stage][node.Name] = evtcopy
 				}
 			}

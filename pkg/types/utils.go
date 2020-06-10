@@ -96,15 +96,16 @@ func ConfigureLogger(clog *log.Logger) error {
 	return nil
 }
 
-func Clone(a, b interface{}) {
+func Clone(a, b interface{}) error {
 
 	buff := new(bytes.Buffer)
 	enc := gob.NewEncoder(buff)
 	dec := gob.NewDecoder(buff)
 	if err := enc.Encode(a); err != nil {
-		log.Fatalf("failed cloning %T", a)
+		return fmt.Errorf("failed cloning %T", a)
 	}
 	if err := dec.Decode(b); err != nil {
-		log.Fatalf("failed cloning %T", b)
+		return fmt.Errorf("failed cloning %T", b)
 	}
+	return nil
 }
