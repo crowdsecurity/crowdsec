@@ -39,6 +39,18 @@ goversion:
 	CURRENT_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
 	RESPECT_VERSION="$(shell echo "$(CURRENT_GOVERSION),$(REQUIRE_GOVERSION)" | tr ',' '\n' | sort -V)"
 
+
+hubci:
+	@rm -rf crowdsec-xxx hub-tests
+	BUILD_VERSION=xxx make release
+	@git clone https://github.com/crowdsecurity/hub-tests.git
+	@cd hub-tests && make
+	@cd crowdsec-xxx && ./test_env.sh
+	@cd crowdsec-xxx/tests && bash ../../scripts/install_all.sh
+	@cp hub-tests/main ./crowdsec-xxx/tests/
+	@cp -R hub-tests/tests ./crowdsec-xxx/tests/
+	@cd ./crowdsec-xxx/tests/ && bash ../../hub-tests/run_tests.sh
+
 clean:
 	@make -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@make -C $(CSCLI_FOLDER) clean --no-print-directory
