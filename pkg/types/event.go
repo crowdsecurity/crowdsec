@@ -19,9 +19,9 @@ type Event struct {
 	/* the current stage of the line being parsed */
 	Stage string `yaml:"Stage,omitempty"`
 	/* original line (produced by acquisition) */
-	Line Line `json:"-" yaml:"Line,omitempty"`
+	Line Line `json:"Line" yaml:"Line,omitempty"`
 	/* output of groks */
-	Parsed map[string]string `json:"-" yaml:"Parsed,omitempty"`
+	Parsed map[string]string `json:"Parsed,omitempty" yaml:"Parsed,omitempty"`
 	/* output of enrichment */
 	Enriched map[string]string `json:"Enriched,omitempty" yaml:"Enriched,omitempty"`
 	/* Overflow */
