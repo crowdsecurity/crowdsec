@@ -21,7 +21,7 @@ type Event struct {
 	/* original line (produced by acquisition) */
 	Line Line `json:"-" yaml:"Line,omitempty"`
 	/* output of groks */
-	Parsed map[string]string `json:"-" yaml:"Parsed,omitempty"`
+	Parsed map[string]string `json:"Parsed,omitempty" yaml:"Parsed,omitempty"`
 	/* output of enrichment */
 	Enriched map[string]string `json:"Enriched,omitempty" yaml:"Enriched,omitempty"`
 	/* Overflow */
