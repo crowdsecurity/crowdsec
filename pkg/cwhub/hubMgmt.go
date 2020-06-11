@@ -113,7 +113,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var fauthor string
 	var stage string
 	//we only care about files
-	if f == nil || f.IsDir() {
+	if f == nil || f.IsDir() || strings.HasSuffix(f.Name(), "~") {
 		return nil
 	}
 
