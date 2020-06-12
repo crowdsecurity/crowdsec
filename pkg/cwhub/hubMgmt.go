@@ -116,6 +116,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	if f == nil || f.IsDir() {
 		return nil
 	}
+	//we only care about yaml files
+	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
+		return nil
+	}
 
 	subs := strings.Split(path, "/")
 
