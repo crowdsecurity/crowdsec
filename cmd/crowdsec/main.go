@@ -33,6 +33,8 @@ var (
 	buckets *leaky.Buckets
 	cConfig *csconfig.CrowdSec
 
+	OutputRunner *outputs.Output
+
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 )
@@ -224,7 +226,7 @@ func main() {
 		return
 	}
 
-	outputRunner, err := outputs.NewOutput(cConfig.OutputConfig, cConfig.Daemonize)
+	OutputRunner, err := outputs.NewOutput(cConfig.OutputConfig, cConfig.Daemonize)
 	if err != nil {
 		log.Fatalf("output plugins initialization error : %s", err.Error())
 	}
@@ -236,7 +238,7 @@ func main() {
 			"path":    cConfig.ConfigFolder + "/api.yaml",
 			"profile": scenariosEnabled,
 		}
-		if err := outputRunner.InitAPI(apiConfig); err != nil {
+		if err := OutputRunner.InitAPI(apiConfig); err != nil {
 			log.Fatalf(err.Error())
 		}
 	}
@@ -282,7 +284,7 @@ func main() {
 
 	for i := 0; i < nbParser; i++ {
 		outputsTomb.Go(func() error {
-			err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, outputRunner)
+			err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, OutputRunner)
 			if err != nil {
 				log.Errorf("runPour error : %s", err)
 				return err
@@ -301,7 +303,7 @@ func main() {
 	//start reading in the background
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 
-	if err = serve(*outputRunner); err != nil {
+	if err = serve(*OutputRunner); err != nil {
 		log.Fatalf(err.Error())
 	}
 
