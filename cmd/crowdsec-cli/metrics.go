@@ -62,10 +62,11 @@ func ShowPrometheus(url string) {
 				log.Debugf("no source in Metric")
 			}
 			value := m.(prom2json.Metric).Value
-			ival, err := strconv.Atoi(value)
+			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
 			}
+			ival := int(fval)
 			switch fam.Name {
 			/*buckets*/
 			case "cs_bucket_create":
