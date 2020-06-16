@@ -105,6 +105,9 @@ func (ctx *ApiCtx) pushLoop() error {
 			if err != nil {
 				log.Errorf("api push loop: %s", err.Error())
 			}
+		case <-ctx.PusherTomb.Dying(): //we are being killed by main
+			log.Infof("Killing api routine")
+			return nil
 		}
 	}
 

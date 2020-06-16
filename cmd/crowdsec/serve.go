@@ -19,10 +19,11 @@ func reloadHandler(sig os.Signal) error {
 	if err := ShutdownRoutines(); err != nil {
 		log.Errorf("Failed to shut down routines: %s", err)
 	}
-	//dump buckets state
+	//todo : properly stop acquis with the tail readers
 	if err := leaky.DumpBucketsStateAt("buckets_state.json", time.Now(), buckets); err != nil {
 		log.Fatalf("Failed dumping bucket state : %s", err)
 	}
+
 	//reload configurations
 
 	//restore bucket state
@@ -62,6 +63,7 @@ func ShutdownRoutines() error {
 		reterr = err
 
 	}
+	log.Infof("outputs are done")
 	return reterr
 }
 

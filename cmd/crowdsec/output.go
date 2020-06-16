@@ -22,8 +22,11 @@ LOOP:
 	for {
 		select {
 		case <-bucketsTomb.Dying():
-			log.Infof("Exiting output processing")
+			log.Infof("Flushing outputs")
 			output.FlushAll()
+			log.Infof("Shuting down output routines")
+			output.Shutdown()
+			log.Infof("Done shutdown down output")
 			break LOOP
 		case event := <-overflow:
 			if cConfig.Profiling {

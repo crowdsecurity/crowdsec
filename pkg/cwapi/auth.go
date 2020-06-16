@@ -15,6 +15,7 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/dghubble/sling"
+	"gopkg.in/tomb.v2"
 )
 
 type ApiCtx struct {
@@ -37,6 +38,7 @@ type ApiCtx struct {
 	tokenExpired bool          `yaml:"-"`
 	toPush       []types.Event `yaml:"-"`
 	Http         *sling.Sling  `yaml:"-"`
+	PusherTomb   tomb.Tomb
 }
 
 type ApiCreds struct {
@@ -113,7 +115,23 @@ func (ctx *ApiCtx) Init(cfg string, profile string) error {
 		return err
 	}
 	//start the background go-routine
-	go ctx.pushLoop() //nolint:errcheck // runs into the background, we can't check error with chan or such
+	ctx.PusherTomb.Go(func() error {
+		err := ctx.pushLoop()
+		if err != nil {
+			log.Errorf("api push error : %s", err)
+			return err
+		}
+		return nil
+	})
+	return nil
+}
+
+func (ctx *ApiCtx) Shutdown() error {
+	ctx.PusherTomb.Kill(nil)
+	log.Infof("Waiting for API routine to finish")
+	if err := ctx.PusherTomb.Wait(); err != nil {
+		return fmt.Errorf("API routine returned error : %s", err)
+	}
 	return nil
 }
 
