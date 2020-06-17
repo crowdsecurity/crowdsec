@@ -257,9 +257,8 @@ LOOP:
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			if ctx.Profiling {
-				ReaderHits.With(prometheus.Labels{"source": ctx.Filename}).Inc()
-			}
+			ReaderHits.With(prometheus.Labels{"source": ctx.Filename}).Inc()
+
 			l.Raw = line.Text
 			l.Labels = ctx.Labels
 			l.Time = line.Time
