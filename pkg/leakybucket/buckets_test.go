@@ -178,23 +178,27 @@ POLL_AGAIN:
 		check the results we got against the expected ones
 		only the keys of the expected part are checked against result
 	*/
+	var tmpFile string
 
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
 			log.Warningf("Test is successfull")
 			if dump {
-				if err := DumpBucketsStateAt(bs+".new", latest_ts, buckets); err != nil {
+				if tmpFile, err = DumpBucketsStateAt(latest_ts, buckets); err != nil {
 					t.Fatalf("Failed dumping bucket state : %s", err)
 				}
+				log.Infof("dumped bucket to %s", tmpFile)
 			}
 			return true
 		} else {
 			log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
 			if len(tf.Results) != len(results) {
 				if dump {
-					if err := DumpBucketsStateAt(bs+".new", latest_ts, buckets); err != nil {
+					if tmpFile, err = DumpBucketsStateAt(latest_ts, buckets); err != nil {
 						t.Fatalf("Failed dumping bucket state : %s", err)
 					}
+					log.Infof("dumped bucket to %s", tmpFile)
+
 				}
 				log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
 				return false
