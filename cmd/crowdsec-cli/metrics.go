@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -74,6 +75,11 @@ func ShowPrometheus(url string) {
 					buckets_stats[name] = make(map[string]int)
 				}
 				buckets_stats[name]["instanciation"] += ival
+			case "cs_bucket_count":
+				if _, ok := buckets_stats[name]; !ok {
+					buckets_stats[name] = make(map[string]int)
+				}
+				buckets_stats[name]["curr_count"] += ival
 			case "cs_bucket_overflow":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
@@ -128,11 +134,22 @@ func ShowPrometheus(url string) {
 	if config.output == "human" {
 		atable := tablewriter.NewWriter(os.Stdout)
 		atable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
-		for alabel, astats := range acquis_stats {
+
+		var sortedKeys []string
+
+		//sort to keep consistent order when printing
+		sortedKeys = []string{}
+		for akey := range acquis_stats {
+			sortedKeys = append(sortedKeys, akey)
+		}
+		sort.Strings(sortedKeys)
+		for _, alabel := range sortedKeys {
 
 			if alabel == "" {
 				continue
 			}
+			astats := acquis_stats[alabel]
+
 			row := []string{}
 			row = append(row, alabel) //name
 			for _, sl := range []string{"reads", "parsed", "unparsed", "pour"} {
@@ -145,14 +162,21 @@ func ShowPrometheus(url string) {
 			atable.Append(row)
 		}
 		btable := tablewriter.NewWriter(os.Stdout)
-		btable.SetHeader([]string{"Bucket", "Overflows", "Instanciated", "Poured", "Expired"})
-		for blabel, bstats := range buckets_stats {
+		btable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
+		//sort to keep consistent order when printing
+		sortedKeys = []string{}
+		for akey := range buckets_stats {
+			sortedKeys = append(sortedKeys, akey)
+		}
+		sort.Strings(sortedKeys)
+		for _, blabel := range sortedKeys {
 			if blabel == "" {
 				continue
 			}
+			bstats := buckets_stats[blabel]
 			row := []string{}
 			row = append(row, blabel) //name
-			for _, sl := range []string{"overflow", "instanciation", "pour", "underflow"} {
+			for _, sl := range []string{"overflow", "curr_count", "instanciation", "pour", "underflow"} {
 				if v, ok := bstats[sl]; ok {
 					row = append(row, fmt.Sprintf("%d", v))
 				} else {
@@ -163,10 +187,17 @@ func ShowPrometheus(url string) {
 		}
 		ptable := tablewriter.NewWriter(os.Stdout)
 		ptable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-		for plabel, pstats := range parsers_stats {
+		//sort to keep consistent order when printing
+		sortedKeys = []string{}
+		for akey := range parsers_stats {
+			sortedKeys = append(sortedKeys, akey)
+		}
+		sort.Strings(sortedKeys)
+		for _, plabel := range sortedKeys {
 			if plabel == "" {
 				continue
 			}
+			pstats := parsers_stats[plabel]
 			row := []string{}
 			row = append(row, plabel) //name
 			hits := 0
