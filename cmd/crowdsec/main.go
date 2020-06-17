@@ -240,7 +240,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	log.Infof("Crowdwatch %s", cwversion.VersionStr())
+	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	// Enable profiling early
 	if cConfig.Prometheus {
