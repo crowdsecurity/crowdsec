@@ -34,9 +34,9 @@ LOOP:
 			}
 			if cConfig.Profiling {
 				atomic.AddUint64(&linesReadOK, 1)
-				globalParserHits.With(prometheus.Labels{"source": event.Line.Src}).Inc()
-
 			}
+			globalParserHits.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+
 			/* parse the log using magic */
 			parsed, error := parser.Parse(parserCTX, event, nodes)
 			if error != nil {
@@ -45,17 +45,17 @@ LOOP:
 			}
 			if !parsed.Process {
 				if cConfig.Profiling {
-					globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 					atomic.AddUint64(&linesParsedKO, 1)
 				}
+				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
 				discardCPT++
 				continue
 			}
 			if cConfig.Profiling {
-				globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 				atomic.AddUint64(&linesParsedOK, 1)
 			}
+			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 			processCPT++
 			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
