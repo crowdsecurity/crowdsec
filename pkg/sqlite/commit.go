@@ -41,6 +41,12 @@ func (c *Context) AutoCommit() {
 			if err := c.Flush(); err != nil {
 				log.Warningf("error while flushing records: %s", err)
 			}
+			if ret := c.tx.Commit(); ret.Error != nil {
+				log.Warningf("failed to commit records : %v", ret.Error)
+			}
+			if err := c.tx.Close(); err != nil {
+				log.Warningf("error while closing tx : %s", err)
+			}
 			if err := c.Db.Close(); err != nil {
 				log.Warningf("error while closing db : %s", err)
 			}

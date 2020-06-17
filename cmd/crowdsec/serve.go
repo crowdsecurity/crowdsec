@@ -8,6 +8,7 @@ import (
 
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/sevlyar/go-daemon"
@@ -23,6 +24,10 @@ func reloadHandler(sig os.Signal) error {
 	if err := leaky.DumpBucketsStateAt("buckets_state.json", time.Now(), buckets); err != nil {
 		log.Fatalf("Failed dumping bucket state : %s", err)
 	}
+	//close logs
+	types.LogOutput.Close()
+	//todo : lumber jack
+	//todo : close sql tx
 
 	//reload configurations
 

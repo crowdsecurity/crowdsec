@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"io"
 	"net"
 
 	log "github.com/sirupsen/logrus"
@@ -49,7 +48,7 @@ func LastAddress(n *net.IPNet) net.IP {
 }
 
 var logFormatter log.Formatter
-var logOutput io.Writer
+var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 var logReportCaller bool
 
@@ -57,14 +56,14 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 
 	/*Configure logs*/
 	if cfgMode == "file" {
-		logOutput = &lumberjack.Logger{
+		LogOutput = &lumberjack.Logger{
 			Filename:   cfgFolder + "/crowdsec.log",
 			MaxSize:    500, //megabytes
 			MaxBackups: 3,
 			MaxAge:     28,   //days
 			Compress:   true, //disabled by default
 		}
-		log.SetOutput(logOutput)
+		log.SetOutput(LogOutput)
 	} else if cfgMode != "stdout" {
 		return fmt.Errorf("log mode '%s' unknown", cfgMode)
 	}
@@ -83,8 +82,8 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 
 func ConfigureLogger(clog *log.Logger) error {
 	/*Configure logs*/
-	if logOutput != nil {
-		clog.SetOutput(logOutput)
+	if LogOutput != nil {
+		clog.SetOutput(LogOutput)
 	}
 	if logReportCaller {
 		clog.SetReportCaller(true)
