@@ -26,12 +26,8 @@ const (
 	TIMEMACHINE
 )
 
-//the bucket itself
+//Leaky represents one instance of a bucket
 type Leaky struct {
-	//action_overflow
-	//OverflowAction string
-	//bucket actions
-	//Actions []string
 	Name string
 	Mode int //LIVE or TIMEMACHINE
 	//the limiter is what holds the proper "leaky aspect", it determines when/if we can pour objects
@@ -68,10 +64,6 @@ type Leaky struct {
 	Profiling     bool
 	timedOverflow bool
 	logger        *log.Entry
-	//as the rate-limiter is intended for http or such, we need to have a separate mechanism to track 'empty' bucket.
-	//we use a go-routine that use waitN to know when the bucket is empty (N would be equal to bucket capacity)
-	//as it try to reserves the capacity, we need to cancel it before we can pour in the bucket
-	//reservation *rate.Reservation
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -106,15 +98,23 @@ var BucketsInstanciation = prometheus.NewCounterVec(
 	[]string{"name"},
 )
 
-func NewLeaky(g BucketFactory) *Leaky {
-	g.logger.Tracef("Instantiating live bucket %s", g.Name)
-	return FromFactory(g)
-}
+var BucketsCurrentCount = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_bucket_count",
+		Help: "How many instances of this bucket exist.",
+	},
+	[]string{"name"},
+)
 
 // Newleaky creates a new leaky bucket from a BucketFactory
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
+func NewLeaky(g BucketFactory) *Leaky {
+	g.logger.Tracef("Instantiating live bucket %s", g.Name)
+	return FromFactory(g)
+}
+
 func FromFactory(g BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
 	//golang rate limiter. It's mainly intended for http rate limiter
@@ -169,11 +169,15 @@ func FromFactory(g BucketFactory) *Leaky {
 var LeakyRoutineCount int64
 
 /* for now mimic a leak routine */
+//LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
 func LeakRoutine(l *Leaky) {
 
 	var (
 		durationTicker <-chan time.Time = make(<-chan time.Time)
 	)
+
+	BucketsCurrentCount.With(prometheus.Labels{"name": l.Name}).Inc()
+	defer BucketsCurrentCount.With(prometheus.Labels{"name": l.Name}).Dec()
 
 	/*todo : we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea*/
 	l.logger = l.BucketConfig.logger.WithFields(log.Fields{"capacity": l.Capacity, "partition": l.Mapkey, "bucket_id": l.Uuid})
