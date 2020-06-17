@@ -9,24 +9,47 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/sevlyar/go-daemon"
 )
 
-func reloadHandler(sig os.Signal) error {
-	var bucketsState string = "buckets_state.json"
+//to be removed
+func debugHandler(sig os.Signal) error {
+	var tmpFile string
+	var err error
 	//stop go routines
 	if err := ShutdownRoutines(); err != nil {
 		log.Errorf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
-	if err := leaky.DumpBucketsStateAt(bucketsState, time.Now(), buckets); err != nil {
+	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
 		log.Fatalf("Failed dumping bucket state : %s", err)
 	}
+	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
+		log.Errorf("while shutting down routines : %s", err)
+	}
+	log.Printf("shutdown is finished buckets are in %s", tmpFile)
+	return nil
+}
+
+func reloadHandler(sig os.Signal) error {
+	var tmpFile string
+	var err error
+	//stop go routines
+	if err := ShutdownRoutines(); err != nil {
+		log.Errorf("Failed to shut down routines: %s", err)
+	}
+	//todo : properly stop acquis with the tail readers
+	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
+		log.Fatalf("Failed dumping bucket state : %s", err)
+	}
+
+	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
+		log.Errorf("while shutting down routines : %s", err)
+	}
 	//close logs
-	types.LogOutput.Close()
+	//types.LogOutput.Close()
 
 	//reload all and start processing again :)
 	if err := LoadParsers(cConfig); err != nil {
@@ -38,8 +61,8 @@ func reloadHandler(sig os.Signal) error {
 
 	}
 	//restore bucket state
-	log.Warningf("Restoring buckets state from %s", bucketsState)
-	if err := leaky.LoadBucketsState(bucketsState, buckets, holders); err != nil {
+	log.Warningf("Restoring buckets state from %s", tmpFile)
+	if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
 		return fmt.Errorf("unable to restore buckets : %s", err)
 	}
 
@@ -63,6 +86,10 @@ func reloadHandler(sig os.Signal) error {
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 
 	log.Printf("Reload is finished")
+	//delete the tmp file, it's safe now :)
+	if err := os.Remove(tmpFile); err != nil {
+		log.Warningf("Failed to delete temp file (%s) : %s", tmpFile, err)
+	}
 	return nil
 }
 
@@ -114,6 +141,7 @@ func serveDaemon() error {
 
 	daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 	daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
+	daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
 
 	daemonCTX = &daemon.Context{
 		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
