@@ -19,6 +19,41 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, keys []string) error {
+
+	var sortedKeys []string
+
+	if table == nil {
+		return fmt.Errorf("nil table")
+	}
+	//sort keys to keep consistent order when printing
+	sortedKeys = []string{}
+	for akey := range stats {
+		sortedKeys = append(sortedKeys, akey)
+	}
+	sort.Strings(sortedKeys)
+	//
+	for _, alabel := range sortedKeys {
+
+		if alabel == "" {
+			continue
+		}
+		astats := stats[alabel]
+
+		row := []string{}
+		row = append(row, alabel) //name
+		for _, sl := range keys {
+			if v, ok := astats[sl]; ok {
+				row = append(row, fmt.Sprintf("%d", v))
+			} else {
+				row = append(row, "-")
+			}
+		}
+		table.Append(row)
+	}
+	return nil
+}
+
 /*This is a complete rip from prom2json*/
 func ShowPrometheus(url string) {
 	mfChan := make(chan *dto.MetricFamily, 1024)
@@ -56,11 +91,11 @@ func ShowPrometheus(url string) {
 			metric := m.(prom2json.Metric)
 			name, ok := metric.Labels["name"]
 			if !ok {
-				log.Debugf("no name in Metric")
+				log.Debugf("no name in Metric %v", metric.Labels)
 			}
 			source, ok := metric.Labels["source"]
 			if !ok {
-				log.Debugf("no source in Metric")
+				log.Debugf("no source in Metric %v", metric.Labels)
 			}
 			value := m.(prom2json.Metric).Value
 			fval, err := strconv.ParseFloat(value, 32)
@@ -132,97 +167,33 @@ func ShowPrometheus(url string) {
 		}
 	}
 	if config.output == "human" {
-		atable := tablewriter.NewWriter(os.Stdout)
-		atable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
 
-		var sortedKeys []string
+		acquisTable := tablewriter.NewWriter(os.Stdout)
+		acquisTable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
+		keys := []string{"reads", "parsed", "unparsed", "pour"}
+		if err := metricsToTable(acquisTable, acquis_stats, keys); err != nil {
+			log.Warningf("while collecting acquis stats : %s", err)
+		}
+		bucketsTable := tablewriter.NewWriter(os.Stdout)
+		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
+		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
+		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
+			log.Warningf("while collecting acquis stats : %s", err)
+		}
 
-		//sort to keep consistent order when printing
-		sortedKeys = []string{}
-		for akey := range acquis_stats {
-			sortedKeys = append(sortedKeys, akey)
+		parsersTable := tablewriter.NewWriter(os.Stdout)
+		parsersTable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
+		keys = []string{"hits", "parsed"}
+		if err := metricsToTable(parsersTable, parsers_stats, keys); err != nil {
+			log.Warningf("while collecting acquis stats : %s", err)
 		}
-		sort.Strings(sortedKeys)
-		for _, alabel := range sortedKeys {
 
-			if alabel == "" {
-				continue
-			}
-			astats := acquis_stats[alabel]
-
-			row := []string{}
-			row = append(row, alabel) //name
-			for _, sl := range []string{"reads", "parsed", "unparsed", "pour"} {
-				if v, ok := astats[sl]; ok {
-					row = append(row, fmt.Sprintf("%d", v))
-				} else {
-					row = append(row, "-")
-				}
-			}
-			atable.Append(row)
-		}
-		btable := tablewriter.NewWriter(os.Stdout)
-		btable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
-		//sort to keep consistent order when printing
-		sortedKeys = []string{}
-		for akey := range buckets_stats {
-			sortedKeys = append(sortedKeys, akey)
-		}
-		sort.Strings(sortedKeys)
-		for _, blabel := range sortedKeys {
-			if blabel == "" {
-				continue
-			}
-			bstats := buckets_stats[blabel]
-			row := []string{}
-			row = append(row, blabel) //name
-			for _, sl := range []string{"overflow", "curr_count", "instanciation", "pour", "underflow"} {
-				if v, ok := bstats[sl]; ok {
-					row = append(row, fmt.Sprintf("%d", v))
-				} else {
-					row = append(row, "-")
-				}
-			}
-			btable.Append(row)
-		}
-		ptable := tablewriter.NewWriter(os.Stdout)
-		ptable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-		//sort to keep consistent order when printing
-		sortedKeys = []string{}
-		for akey := range parsers_stats {
-			sortedKeys = append(sortedKeys, akey)
-		}
-		sort.Strings(sortedKeys)
-		for _, plabel := range sortedKeys {
-			if plabel == "" {
-				continue
-			}
-			pstats := parsers_stats[plabel]
-			row := []string{}
-			row = append(row, plabel) //name
-			hits := 0
-			parsed := 0
-			for _, sl := range []string{"hits", "parsed"} {
-				if v, ok := pstats[sl]; ok {
-					row = append(row, fmt.Sprintf("%d", v))
-					if sl == "hits" {
-						hits = v
-					} else if sl == "parsed" {
-						parsed = v
-					}
-				} else {
-					row = append(row, "-")
-				}
-			}
-			row = append(row, fmt.Sprintf("%d", hits-parsed))
-			ptable.Append(row)
-		}
 		log.Printf("Buckets Metrics:")
-		btable.Render() // Send output
+		bucketsTable.Render()
 		log.Printf("Acquisition Metrics:")
-		atable.Render() // Send output
+		acquisTable.Render()
 		log.Printf("Parser Metrics:")
-		ptable.Render() // Send output
+		parsersTable.Render()
 	} else if config.output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
