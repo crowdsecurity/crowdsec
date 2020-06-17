@@ -123,6 +123,6 @@ func registerPrometheus() {
 	prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 		parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 		acquisition.ReaderHits,
-		leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow)
+		leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 	http.Handle("/metrics", promhttp.Handler())
 }
