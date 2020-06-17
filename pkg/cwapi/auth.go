@@ -96,7 +96,7 @@ func (ctx *ApiCtx) LoadConfig(cfg string) error {
 		log.Warningf("!API paths must not be prefixed by /")
 	}
 
-	ctx.Http = sling.New().Base(ctx.BaseURL+"/"+ctx.ApiVersion+"/").Set("User-Agent", fmt.Sprintf("CrowdWatch/%s", cwversion.VersionStr()))
+	ctx.Http = sling.New().Base(ctx.BaseURL+"/"+ctx.ApiVersion+"/").Set("User-Agent", fmt.Sprintf("Crowdsec/%s", cwversion.VersionStr()))
 	log.Printf("api load configuration: configuration loaded successfully (base:%s)", ctx.BaseURL+"/"+ctx.ApiVersion+"/")
 	return nil
 }
