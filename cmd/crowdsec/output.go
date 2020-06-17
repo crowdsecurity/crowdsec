@@ -21,7 +21,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, holders []leak
 LOOP:
 	for {
 		select {
-		case <-bucketsTomb.Dying():
+		case <-outputsTomb.Dying():
 			log.Infof("Flushing outputs")
 			output.FlushAll()
 			log.Infof("Shuting down output routines")
