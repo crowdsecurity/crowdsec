@@ -67,12 +67,15 @@ var globalBucketPourOk = prometheus.NewCounter(
 )
 
 func dumpMetrics() {
+	var tmpFile string
+	var err error
 
 	if cConfig.DumpBuckets {
 		log.Infof("!! Dumping buckets state")
-		if err := leaky.DumpBucketsStateAt("buckets_state.json", time.Now(), buckets); err != nil {
+		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
 			log.Fatalf("Failed dumping bucket state : %s", err)
 		}
+		log.Infof("Buckets state dumped to %s", tmpFile)
 	}
 
 	if cConfig.Profiling {
@@ -117,8 +120,9 @@ func runTachymeter(HTTPListen string) {
 func registerPrometheus() {
 	/*Registering prometheus*/
 	log.Warningf("Loading prometheus collectors")
-	prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo, parser.NodesHits, parser.NodesHitsOk,
-		parser.NodesHitsKo, acquisition.ReaderHits, leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation,
-		leaky.BucketsOverflow)
+	prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
+		parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
+		acquisition.ReaderHits,
+		leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow)
 	http.Handle("/metrics", promhttp.Handler())
 }
