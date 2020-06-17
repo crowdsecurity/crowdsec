@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -15,28 +16,53 @@ import (
 )
 
 func reloadHandler(sig os.Signal) error {
-
+	var bucketsState string = "buckets_state.json"
 	//stop go routines
 	if err := ShutdownRoutines(); err != nil {
 		log.Errorf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
-	if err := leaky.DumpBucketsStateAt("buckets_state.json", time.Now(), buckets); err != nil {
+	if err := leaky.DumpBucketsStateAt(bucketsState, time.Now(), buckets); err != nil {
 		log.Fatalf("Failed dumping bucket state : %s", err)
 	}
 	//close logs
 	types.LogOutput.Close()
-	//todo : lumber jack
-	//todo : close sql tx
 
-	//reload configurations
+	//reload all and start processing again :)
+	if err := LoadParsers(cConfig); err != nil {
+		log.Fatalf("Failed to load parsers: %s", err)
+	}
 
+	if err := LoadBuckets(cConfig); err != nil {
+		log.Fatalf("Failed to load scenarios: %s", err)
+
+	}
 	//restore bucket state
-	//start processing routines
-	//start acquis routine
+	log.Warningf("Restoring buckets state from %s", bucketsState)
+	if err := leaky.LoadBucketsState(bucketsState, buckets, holders); err != nil {
+		return fmt.Errorf("unable to restore buckets : %s", err)
+	}
 
-	log.Printf("reloading")
-	dumpMetrics()
+	if err := LoadOutputs(cConfig); err != nil {
+		log.Fatalf("failed to initialize outputs : %s", err)
+	}
+
+	if err := LoadAcquisition(cConfig); err != nil {
+		log.Fatalf("Error while loading acquisition config : %s", err)
+	}
+	//Start the background routines that comunicate via chan
+	log.Infof("Starting processing routines")
+	inputLineChan, err := StartProcessingRoutines(cConfig)
+	if err != nil {
+		log.Fatalf("failed to start processing routines : %s", err)
+	}
+
+	//Fire!
+	log.Warningf("Starting processing data")
+
+	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
+
+	log.Printf("Reload is finished")
 	return nil
 }
 

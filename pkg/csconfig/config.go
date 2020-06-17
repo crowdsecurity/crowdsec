@@ -32,6 +32,7 @@ type CrowdSec struct {
 	SQLiteFile      string    `yaml:"sqlite_path,omitempty"` //path to sqlite output
 	APIMode         bool      `yaml:"apimode,omitempty"`     //true -> enable api push
 	CsCliFolder     string    `yaml:"cscli_dir"`             //cscli folder
+	NbParsers       int       `yaml:"parser_routines"`       //the number of go routines to start for parsing
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
@@ -55,6 +56,7 @@ func NewCrowdSecConfig() *CrowdSec {
 		LogMode:       "stdout",
 		SQLiteFile:    "./test.db",
 		APIMode:       false,
+		NbParsers:     1,
 		Prometheus:    false,
 		HTTPListen:    "127.0.0.1:6060",
 	}
