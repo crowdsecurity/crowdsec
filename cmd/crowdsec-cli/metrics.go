@@ -34,16 +34,14 @@ func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, k
 	sort.Strings(sortedKeys)
 	//
 	for _, alabel := range sortedKeys {
-
-		if alabel == "" {
+		astats, ok := stats[alabel]
+		if !ok {
 			continue
 		}
-		astats := stats[alabel]
-
 		row := []string{}
 		row = append(row, alabel) //name
 		for _, sl := range keys {
-			if v, ok := astats[sl]; ok {
+			if v, ok := astats[sl]; ok && v != 0 {
 				row = append(row, fmt.Sprintf("%d", v))
 			} else {
 				row = append(row, "-")
@@ -183,7 +181,7 @@ func ShowPrometheus(url string) {
 
 		parsersTable := tablewriter.NewWriter(os.Stdout)
 		parsersTable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
-		keys = []string{"hits", "parsed"}
+		keys = []string{"hits", "parsed", "unparsed"}
 		if err := metricsToTable(parsersTable, parsers_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
