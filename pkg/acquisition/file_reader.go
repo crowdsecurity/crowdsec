@@ -239,7 +239,7 @@ LOOP:
 		case <-AcquisTomb.Dying(): //we are being killed by main
 			clog.Infof("Killing acquistion routine")
 			if err := ctx.tail.Stop(); err != nil {
-				clog.Warningf("error in stop : %s", err)
+				clog.Errorf("error in stop : %s", err)
 			}
 			break LOOP
 		case <-ctx.tail.Tomb.Dying(): //our tailer is dying
