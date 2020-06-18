@@ -242,26 +242,26 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	daemon.SetSigHandler(termHandler, syscall.SIGTERM)
+	daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
+	daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
+
+	daemonCTX := &daemon.Context{
+		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
+		PidFilePerm: 0644,
+		WorkDir:     "./",
+		Umask:       027,
+	}
+
 	if cConfig.Daemonize {
-		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
-		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
-		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-
-		daemonCTX := &daemon.Context{
-			PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
-			PidFilePerm: 0644,
-			WorkDir:     "./",
-			Umask:       027,
-		}
-
 		d, err := daemonCTX.Reborn()
+		log.Printf("D : %+v \n", d)
 		if err != nil {
 			log.Fatalf("unable to run daemon: %s ", err.Error())
 		}
 		if d != nil {
 			return
 		}
-		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
 
 	}
 
@@ -334,6 +334,7 @@ func main() {
 			return
 		}
 	} else {
+		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
 		err = daemon.ServeSignals()
 		if err != nil {
 			log.Fatalf("serveDaemon error : %s", err.Error())
