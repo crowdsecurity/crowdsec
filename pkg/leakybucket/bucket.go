@@ -195,7 +195,6 @@ func LeakRoutine(l *Leaky) {
 	}
 
 	l.logger.Debugf("Leaky routine starting, lifetime : %s", l.Duration)
-	defer l.logger.Infof("Leaky routine exiting") //to remove
 	for {
 		select {
 		/*receiving an event*/

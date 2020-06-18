@@ -8,7 +8,7 @@ PIDFile=${PID}/crowdsec.pid
 #ExecStartPre=${BIN} -c ${CFG}/default.yaml -t
 ExecStart=${BIN} -c ${CFG}/default.yaml
 ExecStartPost=/bin/sleep 0.1
-ExecReload=/bin/kill -HUP \$MAINPID
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target
