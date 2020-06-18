@@ -36,7 +36,6 @@ type CrowdSec struct {
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
-	ValidatorMode   string /*if present points to a specific config (for tests)*/
 	RestoreMode     string
 	DumpBuckets     bool
 	OutputConfig    *outputs.OutputFactory `yaml:"plugin"`
@@ -97,7 +96,6 @@ func (c *CrowdSec) GetOPT() error {
 	daemonMode := flag.Bool("daemon", false, "Daemonize, go background, drop PID file, log to file")
 	testMode := flag.Bool("t", false, "only test configs")
 	prometheus := flag.Bool("prometheus-metrics", false, "expose http prometheus collector (see http_listen)")
-	validatorMode := flag.String("custom-config", "", "[dev] run a specific subset of configs parser:file.yaml,scenarios:file.yaml")
 	restoreMode := flag.String("restore-state", "", "[dev] restore buckets state from json file")
 	dumpMode := flag.Bool("dump-state", false, "[dev] Dump bucket state at the end of run.")
 
@@ -141,9 +139,6 @@ func (c *CrowdSec) GetOPT() error {
 	}
 	if *testMode {
 		c.Linter = true
-	}
-	if *validatorMode != "" {
-		c.ValidatorMode = *validatorMode
 	}
 	/*overriden by cmdline*/
 	if *daemonMode {
