@@ -255,14 +255,12 @@ func main() {
 		}
 
 		d, err := daemonCTX.Reborn()
-		log.Printf("D : %+v \n", d)
 		if err != nil {
 			log.Fatalf("unable to run daemon: %s ", err.Error())
 		}
 		if d != nil {
 			return
 		}
-		defer daemonCTX.Release()
 	}
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
