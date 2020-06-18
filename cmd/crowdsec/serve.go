@@ -120,12 +120,10 @@ func ShutdownRoutines() error {
 }
 
 func termHandler(sig os.Signal) error {
-	log.Warningf("Shutting down routines")
+	log.Infof("Shutting down routines")
 	if err := ShutdownRoutines(); err != nil {
-		log.Warningf("Error encountered while shutting down routines : %s", err)
+		log.Errorf("Error encountered while shutting down routines : %s", err)
 	}
-	log.Infof("ouputs is done")
-	dumpMetrics()
 	log.Warningf("all routines are done, bye.")
 	return daemon.ErrStop
 }
@@ -142,26 +140,9 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 	time.Sleep(5 * time.Second)
 
 	// wait for the parser to parse all events
-	parsersTomb.Kill(nil)
-	if err := parsersTomb.Wait(); err != nil {
-		log.Warningf("parsers returned error : %s", err)
+	if err := ShutdownRoutines(); err != nil {
+		log.Errorf("failed shutting down routines : %s", err)
 	}
-	log.Infof("parsers is done")
-
-	// wait for the bucket to pour all events
-	bucketsTomb.Kill(nil)
-	if err := bucketsTomb.Wait(); err != nil {
-		log.Warningf("buckets returned error : %s", err)
-	}
-	log.Infof("buckets is done")
-
-	// wait for output to output all event
-	outputsTomb.Kill(nil)
-	if err := outputsTomb.Wait(); err != nil {
-		log.Warningf("ouputs returned error : %s", err)
-
-	}
-	log.Infof("ouputs is done")
 	dumpMetrics()
 	outputRunner.Flush()
 	log.Warningf("all routines are done, bye.")
