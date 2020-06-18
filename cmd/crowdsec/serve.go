@@ -38,7 +38,6 @@ func reloadHandler(sig os.Signal) error {
 	if err := ShutdownRoutines(); err != nil {
 		log.Fatalf("Failed to shut down routines: %s", err)
 	}
-	//todo : properly stop acquis with the tail readers
 	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
 		log.Fatalf("Failed dumping bucket state : %s", err)
 	}
@@ -46,9 +45,6 @@ func reloadHandler(sig os.Signal) error {
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
 		log.Fatalf("while shutting down routines : %s", err)
 	}
-	//close logs
-	//types.LogOutput.Close()
-
 	//reload all and start processing again :)
 	if err := LoadParsers(cConfig); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
