@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -37,7 +36,7 @@ func reloadHandler(sig os.Signal) error {
 	var err error
 	//stop go routines
 	if err := ShutdownRoutines(); err != nil {
-		log.Errorf("Failed to shut down routines: %s", err)
+		log.Fatalf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
 	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
@@ -45,7 +44,7 @@ func reloadHandler(sig os.Signal) error {
 	}
 
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Errorf("while shutting down routines : %s", err)
+		log.Fatalf("while shutting down routines : %s", err)
 	}
 	//close logs
 	//types.LogOutput.Close()
@@ -62,7 +61,7 @@ func reloadHandler(sig os.Signal) error {
 	//restore bucket state
 	log.Warningf("Restoring buckets state from %s", tmpFile)
 	if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
-		return fmt.Errorf("unable to restore buckets : %s", err)
+		log.Fatalf("unable to restore buckets : %s", err)
 	}
 
 	if err := LoadOutputs(cConfig); err != nil {
