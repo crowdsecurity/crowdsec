@@ -13,20 +13,20 @@ import (
 	"github.com/sevlyar/go-daemon"
 )
 
-//to be removed
+//debugHandler is kept as a dev convenience : it shuts down and serialize internal state
 func debugHandler(sig os.Signal) error {
 	var tmpFile string
 	var err error
 	//stop go routines
 	if err := ShutdownRoutines(); err != nil {
-		log.Errorf("Failed to shut down routines: %s", err)
+		log.Warningf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
 	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
-		log.Fatalf("Failed dumping bucket state : %s", err)
+		log.Warningf("Failed dumping bucket state : %s", err)
 	}
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Errorf("while shutting down routines : %s", err)
+		log.Warningf("while shutting down routines : %s", err)
 	}
 	log.Printf("shutdown is finished buckets are in %s", tmpFile)
 	return nil
