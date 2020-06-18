@@ -85,13 +85,13 @@ func (o *Output) Shutdown() error {
 	var reterr error
 	if o.API != nil {
 		if err := o.API.Shutdown(); err != nil {
-			log.Warningf("error while shutting down API : %s", err)
+			log.Errorf("error while shutting down API : %s", err)
 			reterr = err
 		}
 	}
 	if o.bManager != nil {
 		if err := o.bManager.Shutdown(); err != nil {
-			log.Warningf("error while shutting down backend : %s", err)
+			log.Errorf("error while shutting down backend : %s", err)
 			reterr = err
 		}
 	}
