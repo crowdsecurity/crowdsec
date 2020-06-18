@@ -242,17 +242,16 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	daemonCTX := &daemon.Context{
+		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
+		PidFilePerm: 0644,
+		WorkDir:     "./",
+		Umask:       027,
+	}
 	if cConfig.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-
-		daemonCTX := &daemon.Context{
-			PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
-			PidFilePerm: 0644,
-			WorkDir:     "./",
-			Umask:       027,
-		}
 
 		d, err := daemonCTX.Reborn()
 		if err != nil {
