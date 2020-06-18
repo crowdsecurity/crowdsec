@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
@@ -136,35 +135,6 @@ func termHandler(sig os.Signal) error {
 	return daemon.ErrStop
 }
 
-func serveDaemon() error {
-	var daemonCTX *daemon.Context
-
-	daemon.SetSigHandler(termHandler, syscall.SIGTERM)
-	daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
-	daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-
-	daemonCTX = &daemon.Context{
-		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
-		PidFilePerm: 0644,
-		WorkDir:     "./",
-		Umask:       027,
-	}
-
-	d, err := daemonCTX.Reborn()
-	if err != nil {
-		return fmt.Errorf("unable to run daemon: %s ", err.Error())
-	}
-	if d != nil {
-		return nil
-	}
-	defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-	err = daemon.ServeSignals()
-	if err != nil {
-		return fmt.Errorf("serveDaemon error : %s", err.Error())
-	}
-	return nil
-}
-
 func serveOneTimeRun(outputRunner outputs.Output) error {
 	log.Infof("waiting for acquisition to finish")
 
@@ -200,19 +170,5 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 	dumpMetrics()
 	outputRunner.Flush()
 	log.Warningf("all routines are done, bye.")
-	return nil
-}
-
-func serve(outputRunner outputs.Output) error {
-	var err error
-	if cConfig.Daemonize {
-		if err = serveDaemon(); err != nil {
-			return fmt.Errorf(err.Error())
-		}
-	} else {
-		if err = serveOneTimeRun(outputRunner); err != nil {
-			return fmt.Errorf(err.Error())
-		}
-	}
 	return nil
 }

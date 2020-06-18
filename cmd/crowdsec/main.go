@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"syscall"
 
 	_ "net/http/pprof"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/sevlyar/go-daemon"
 
 	log "github.com/sirupsen/logrus"
 
@@ -240,6 +242,29 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	if cConfig.Daemonize {
+		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
+		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
+		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
+
+		daemonCTX := &daemon.Context{
+			PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
+			PidFilePerm: 0644,
+			WorkDir:     "./",
+			Umask:       027,
+		}
+
+		d, err := daemonCTX.Reborn()
+		if err != nil {
+			log.Fatalf("unable to run daemon: %s ", err.Error())
+		}
+		if d != nil {
+			return
+		}
+		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
+
+	}
+
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	// Enable profiling early
@@ -302,7 +327,16 @@ func main() {
 
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 
-	if err = serve(*OutputRunner); err != nil {
-		log.Fatalf(err.Error())
+	if !cConfig.Daemonize {
+		if err = serveOneTimeRun(*OutputRunner); err != nil {
+			log.Errorf(err.Error())
+		} else {
+			return
+		}
+	} else {
+		err = daemon.ServeSignals()
+		if err != nil {
+			log.Fatalf("serveDaemon error : %s", err.Error())
+		}
 	}
 }
