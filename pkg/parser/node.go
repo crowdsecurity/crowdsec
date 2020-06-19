@@ -141,7 +141,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		NodeState = true
 	}
 
-	if n.Profiling && n.Name != "" {
+	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
 	set := false
@@ -285,14 +285,14 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 
 	//grok or leafs failed, don't process statics
 	if !NodeState {
-		if n.Profiling && n.Name != "" {
+		if n.Name != "" {
 			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 		}
 		clog.Debugf("Event leaving node : ko")
 		return NodeState, nil
 	}
 
-	if n.Profiling && n.Name != "" {
+	if n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
 	if len(n.Statics) > 0 {

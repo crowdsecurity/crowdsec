@@ -1,9 +1,0 @@
- - filename: ./hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml
-   stage: s00-raw
- - filename: ./hub/parsers/s01-parse/crowdsecurity/nginx-logs.yaml
-   stage: s01-parse
-#it's a bit nasty : naxsi is in enrich phase because it parses nginx error log parser output
- - filename: ./hub/parsers/s02-enrich/crowdsecurity/naxsi-logs.yaml
-   stage: s02-enrich
- - filename: ./hub/parsers/s02-enrich/crowdsecurity/dateparse-enrich.yaml
-   stage: s02-enrich

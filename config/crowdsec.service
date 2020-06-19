@@ -4,10 +4,11 @@ After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
-#PIDFile=${PID}/crowdsec.pid
-ExecStartPre=${BIN} -c ${CFG}/default.yaml -t
+PIDFile=${PID}/crowdsec.pid
+#ExecStartPre=${BIN} -c ${CFG}/default.yaml -t
 ExecStart=${BIN} -c ${CFG}/default.yaml
 ExecStartPost=/bin/sleep 0.1
+ExecReload=/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target

@@ -20,6 +20,7 @@ type Backend interface {
 	Delete(string) (int, error)
 	Init(map[string]string) error
 	Flush() error
+	Shutdown() error
 	DeleteAll() error
 }
 
@@ -82,7 +83,7 @@ func NewBackendPlugin(path string, isDaemon bool) (*BackendManager, error) {
 		plugNew := symNew()
 		bInterface, ok := plugNew.(Backend)
 		if !ok {
-			return nil, fmt.Errorf("unexpected '%s' type, skipping", newPlugin.Name)
+			return nil, fmt.Errorf("unexpected '%s' type (%T), skipping", newPlugin.Name, plugNew)
 		}
 
 		// Add the interface and Init()
@@ -118,6 +119,17 @@ func (b *BackendManager) Delete(target string) (int, error) {
 		}
 	}
 	return nbDel, nil
+}
+
+func (b *BackendManager) Shutdown() error {
+	var err error
+	for _, plugin := range b.backendPlugins {
+		err = plugin.funcs.Shutdown()
+		if err != nil {
+			return fmt.Errorf("failed to shutdown : %s", err)
+		}
+	}
+	return nil
 }
 
 func (b *BackendManager) DeleteAll() error {

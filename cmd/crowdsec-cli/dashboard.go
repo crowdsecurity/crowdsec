@@ -199,7 +199,7 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 
 func resetMetabasePassword(newpassword string) error {
 
-	httpctx := sling.New().Base(metabaseURI).Set("User-Agent", fmt.Sprintf("CrowdWatch/%s", cwversion.VersionStr()))
+	httpctx := sling.New().Base(metabaseURI).Set("User-Agent", fmt.Sprintf("Crowdsec/%s", cwversion.VersionStr()))
 
 	log.Printf("Waiting for metabase API to be up (can take up to a minute)")
 	for {

@@ -21,9 +21,14 @@ func runOutput(input chan types.Event, overflow chan types.Event, holders []leak
 LOOP:
 	for {
 		select {
-		case <-bucketsTomb.Dying():
-			log.Infof("Exiting output processing")
+		case <-outputsTomb.Dying():
+			log.Infof("Flushing outputs")
 			output.FlushAll()
+			log.Debugf("Shuting down output routines")
+			if err := output.Shutdown(); err != nil {
+				log.Errorf("error while in output shutdown: %s", err)
+			}
+			log.Infof("Done shutdown down output")
 			break LOOP
 		case event := <-overflow:
 			if cConfig.Profiling {

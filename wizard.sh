@@ -289,9 +289,9 @@ install_crowdsec() {
     install -v -m 755 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 600 -D ./config/api.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
-    CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
+    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
+    CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     install_bins
 	systemctl daemon-reload
 }

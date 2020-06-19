@@ -32,10 +32,10 @@ type CrowdSec struct {
 	SQLiteFile      string    `yaml:"sqlite_path,omitempty"` //path to sqlite output
 	APIMode         bool      `yaml:"apimode,omitempty"`     //true -> enable api push
 	CsCliFolder     string    `yaml:"cscli_dir"`             //cscli folder
+	NbParsers       int       `yaml:"parser_routines"`       //the number of go routines to start for parsing
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
-	ValidatorMode   string /*if present points to a specific config (for tests)*/
 	RestoreMode     string
 	DumpBuckets     bool
 	OutputConfig    *outputs.OutputFactory `yaml:"plugin"`
@@ -47,14 +47,15 @@ func NewCrowdSecConfig() *CrowdSec {
 		LogLevel:      log.InfoLevel,
 		Daemonize:     false,
 		Profiling:     false,
-		WorkingFolder: "./",
-		DataFolder:    "./data/",
-		ConfigFolder:  "./config/",
-		PIDFolder:     "./",
-		LogFolder:     "./",
+		WorkingFolder: "/tmp/",
+		DataFolder:    "/var/lib/crowdsec/data/",
+		ConfigFolder:  "/etc/crowdsec/config/",
+		PIDFolder:     "/var/run/",
+		LogFolder:     "/var/log/",
 		LogMode:       "stdout",
-		SQLiteFile:    "./test.db",
+		SQLiteFile:    "/var/lib/crowdsec/data/crowdsec.db",
 		APIMode:       false,
+		NbParsers:     1,
 		Prometheus:    false,
 		HTTPListen:    "127.0.0.1:6060",
 	}
@@ -95,7 +96,6 @@ func (c *CrowdSec) GetOPT() error {
 	daemonMode := flag.Bool("daemon", false, "Daemonize, go background, drop PID file, log to file")
 	testMode := flag.Bool("t", false, "only test configs")
 	prometheus := flag.Bool("prometheus-metrics", false, "expose http prometheus collector (see http_listen)")
-	validatorMode := flag.String("custom-config", "", "[dev] run a specific subset of configs parser:file.yaml,scenarios:file.yaml")
 	restoreMode := flag.String("restore-state", "", "[dev] restore buckets state from json file")
 	dumpMode := flag.Bool("dump-state", false, "[dev] Dump bucket state at the end of run.")
 
@@ -139,9 +139,6 @@ func (c *CrowdSec) GetOPT() error {
 	}
 	if *testMode {
 		c.Linter = true
-	}
-	if *validatorMode != "" {
-		c.ValidatorMode = *validatorMode
 	}
 	/*overriden by cmdline*/
 	if *daemonMode {
