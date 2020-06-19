@@ -238,6 +238,9 @@ LOOP:
 		select {
 		case <-AcquisTomb.Dying(): //we are being killed by main
 			clog.Infof("Killing acquistion routine")
+			if err := ctx.tail.Stop(); err != nil {
+				clog.Errorf("error in stop : %s", err)
+			}
 			break LOOP
 		case <-ctx.tail.Tomb.Dying(): //our tailer is dying
 			clog.Warningf("Reader is dying/dead")
@@ -254,9 +257,8 @@ LOOP:
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			if ctx.Profiling {
-				ReaderHits.With(prometheus.Labels{"source": ctx.Filename}).Inc()
-			}
+			ReaderHits.With(prometheus.Labels{"source": ctx.Filename}).Inc()
+
 			l.Raw = line.Text
 			l.Labels = ctx.Labels
 			l.Time = line.Time

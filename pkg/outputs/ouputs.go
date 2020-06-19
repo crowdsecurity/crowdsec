@@ -81,6 +81,25 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	return &ordr, nil, warn
 }
 
+func (o *Output) Shutdown() error {
+	var reterr error
+	if o.API != nil {
+		if err := o.API.Shutdown(); err != nil {
+			log.Errorf("error while shutting down API : %s", err)
+			reterr = err
+		}
+	}
+	if o.bManager != nil {
+		if err := o.bManager.Shutdown(); err != nil {
+			log.Errorf("error while shutting down backend : %s", err)
+			reterr = err
+		}
+	}
+	//bManager
+	//TBD : the backend(s) should be stopped in the same way
+	return reterr
+}
+
 func (o *Output) FlushAll() {
 	if o.API != nil {
 		if err := o.API.Flush(); err != nil {

@@ -20,7 +20,8 @@ LOOP:
 		//bucket is now ready
 		select {
 		case <-bucketsTomb.Dying():
-			log.Infof("Exiting Bucketify")
+			log.Infof("Exiting pour routine")
+
 			break LOOP
 		case parsed := <-input:
 			count++

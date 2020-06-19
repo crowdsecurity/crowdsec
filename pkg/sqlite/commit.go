@@ -35,6 +35,22 @@ func (c *Context) AutoCommit() {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	for {
 		select {
+		case <-c.PusherTomb.Dying():
+			//we need to shutdown
+			log.Infof("sqlite routine shutdown")
+			if err := c.Flush(); err != nil {
+				log.Errorf("error while flushing records: %s", err)
+			}
+			if ret := c.tx.Commit(); ret.Error != nil {
+				log.Errorf("failed to commit records : %v", ret.Error)
+			}
+			if err := c.tx.Close(); err != nil {
+				log.Errorf("error while closing tx : %s", err)
+			}
+			if err := c.Db.Close(); err != nil {
+				log.Errorf("error while closing db : %s", err)
+			}
+			return
 		case <-ticker.C:
 			if atomic.LoadInt32(&c.count) != 0 &&
 				(atomic.LoadInt32(&c.count)%100 == 0 || time.Since(c.lastCommit) >= 500*time.Millisecond) {

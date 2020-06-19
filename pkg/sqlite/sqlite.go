@@ -12,6 +12,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/mattn/go-sqlite3"
+	"gopkg.in/tomb.v2"
 )
 
 type Context struct {
@@ -21,6 +22,7 @@ type Context struct {
 	flush      bool
 	count      int32
 	lock       sync.Mutex //booboo
+	PusherTomb tomb.Tomb
 }
 
 func NewSQLite(cfg map[string]string) (*Context, error) {
@@ -62,6 +64,9 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
-	go c.AutoCommit()
+	c.PusherTomb.Go(func() error {
+		c.AutoCommit()
+		return nil
+	})
 	return c, nil
 }

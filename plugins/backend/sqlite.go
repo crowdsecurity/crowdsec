@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/sqlite"
@@ -11,6 +12,15 @@ import (
 //nolint:unused // pluginDB is the interface for sqlite output plugin
 type pluginDB struct {
 	CTX *sqlite.Context
+}
+
+func (p *pluginDB) Shutdown() error {
+	p.CTX.PusherTomb.Kill(nil)
+	if err := p.CTX.PusherTomb.Wait(); err != nil {
+		return fmt.Errorf("DB shutdown error : %s", err)
+	}
+
+	return nil
 }
 
 func (p *pluginDB) Init(config map[string]string) error {

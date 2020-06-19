@@ -1,1 +1,0 @@
-select count(*) == 1 from signal_occurences where source_ip = "61.6.206.22"  and scenario = "crowdsecurity/smb-bf"
