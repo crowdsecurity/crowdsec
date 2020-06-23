@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-Please, start your issue with the impacted component name (cscli, crowdsec ..)
+Please, start your issue name (after `Bug`) with the component name impacted by this feature request and a small description of the Bug. Example: `Bug/cscli: issue with ....` and remove this line :)
 
 **Describe the bug**
 A clear and concise description of what the bug is.
