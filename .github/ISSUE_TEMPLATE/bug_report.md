@@ -23,7 +23,7 @@ A clear and concise description of what you expected to happen.
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
 
-**Desktop (please complete the following information):**
+**Technical Information (please complete the following information):**
  - OS: [e.g. Ubuntu, Redhat ..]
  - Version [e.g. v0.2.0, v0.1.5 ..]
 
