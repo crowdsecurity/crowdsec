@@ -22,7 +22,7 @@ jobs:
       run: BUILD_VERSION=xxx make release
     - name: clone and build hub CI tool
       run: |
-        git clone https://github.com/crowdsecurity/hub-tests.git
+        git clone -b hub_update https://github.com/crowdsecurity/hub-tests.git
         cd hub-tests
         make
     - name: Create crowdsec test env with all parsers from the release
@@ -43,6 +43,6 @@ jobs:
       run: |
         for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
           echo "::group::Test-${i}" ; 
-          ./main $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.yaml" ${i}"/results.yaml.fail") ;
+          ./main -c dev.yaml $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.json" ${i}"/results.json.fail") ;
           echo "::endgroup::" ;
         done ;
