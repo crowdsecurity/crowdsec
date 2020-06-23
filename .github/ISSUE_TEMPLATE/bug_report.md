@@ -1,11 +1,13 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: 'BUG: '
+title: Bug/
 labels: bug
 assignees: ''
 
 ---
+
+Please, start your issue with the impacted component name (cscli, crowdsec ..)
 
 **Describe the bug**
 A clear and concise description of what the bug is.
