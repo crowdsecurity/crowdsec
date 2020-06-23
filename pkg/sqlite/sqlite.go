@@ -23,12 +23,16 @@ type Context struct {
 	count      int32
 	lock       sync.Mutex //booboo
 	PusherTomb tomb.Tomb
+	//to manage auto cleanup : max number of records *or* oldest
+	maxEventRetention    int
+	maxDurationRetention time.Duration
 }
 
 func NewSQLite(cfg map[string]string) (*Context, error) {
 	var err error
 	c := &Context{}
 
+	log.Warningf("NEW SQLITE : %+v", cfg)
 	if _, ok := cfg["db_path"]; !ok {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
@@ -47,6 +51,8 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 		c.Db.LogMode(true)
 	}
 
+	c.Db.LogMode(true)
+
 	c.flush, _ = strconv.ParseBool(cfg["flush"])
 	// Migrate the schema
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
@@ -64,6 +70,8 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
+	//random attempt
+	c.maxEventRetention = 100
 	c.PusherTomb.Go(func() error {
 		c.AutoCommit()
 		return nil
