@@ -1,12 +1,11 @@
 [Unit]
-Description=Crowdwatch agent
+Description=CrowdSec agent
 After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
-PIDFile=${PID}/crowdsec.pid
-#ExecStartPre=${BIN} -c ${CFG}/default.yaml -t
-ExecStart=${BIN} -c ${CFG}/default.yaml
+PIDFile=/var/run/crowdsec.pid
+ExecStart=/usr/local/bin/crowdsec -c /etc/crowdsec/config/config.yaml
 ExecStartPost=/bin/sleep 0.1
 ExecReload=/bin/kill -HUP $MAINPID
 
