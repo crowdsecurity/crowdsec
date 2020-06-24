@@ -151,7 +151,12 @@ func LoadOutputs(cConfig *csconfig.CrowdSec) error {
 		return fmt.Errorf("Failed to load output profiles : %v", err)
 	}
 
-	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig, cConfig.Daemonize)
+	//If the user is providing a single file (ie forensic mode), don't flush expired records
+	if cConfig.SingleFile != "" {
+		log.Infof("forensic mode, disable flush")
+		cConfig.OutputConfig.Flush = false
+	}
+	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
 	if err != nil {
 		return fmt.Errorf("output plugins initialization error : %s", err.Error())
 	}
@@ -280,7 +285,6 @@ func main() {
 
 	if err := LoadBuckets(cConfig); err != nil {
 		log.Fatalf("Failed to load scenarios: %s", err)
-
 	}
 
 	if err := LoadOutputs(cConfig); err != nil {
