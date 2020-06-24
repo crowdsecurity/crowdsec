@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for this project
 title: Improvment/
-labels: ''
+labels: enhancement
 assignees: ''
 
 ---
@@ -18,7 +18,7 @@ A clear and concise description of what you want to happen.
 **Describe alternatives you've considered** (Optional) 
 A clear and concise description of any alternative solutions or features you've considered.
 
-** Example of what you imagine **
+**Example of what you imagine**
 If applicable, add an example of what you would expect from this feature request.
 
 **Additional context**
