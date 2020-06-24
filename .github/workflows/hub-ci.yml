@@ -22,7 +22,7 @@ jobs:
       run: BUILD_VERSION=xxx make release
     - name: clone and build hub CI tool
       run: |
-        git clone -b hub_update https://github.com/crowdsecurity/hub-tests.git
+        git clone https://github.com/crowdsecurity/hub-tests.git
         cd hub-tests
         make
     - name: Create crowdsec test env with all parsers from the release
