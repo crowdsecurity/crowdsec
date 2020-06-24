@@ -2,7 +2,7 @@ name: Hub-CI
 
 on:
   push:
-    branches: [ master, test_ci ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
