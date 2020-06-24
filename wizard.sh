@@ -314,14 +314,14 @@ update_full() {
     fi
 
     log_info "Backing up existing configuration"
-    ${CSCLI_BIN} backup save ${BACKUP_DIR}
+    ${CSCLI_BIN_INSTALLED} backup save ${BACKUP_DIR}
     log_info "Cleanup existing crowdsec configuration"
     uninstall_crowdsec
     log_info "Installing crowdsec"
     install_crowdsec
     log_info "Restoring configuration"
-    ${CSCLI_BIN} update
-    ${CSCLI_BIN} backup restore ${BACKUP_DIR}
+    ${CSCLI_BIN_INSTALLED} update
+    ${CSCLI_BIN_INSTALLED} backup restore ${BACKUP_DIR}
     log_info "Finished, restarting"
     systemctl restart crowdsec || log_err "Failed to restart crowdsec"
 }

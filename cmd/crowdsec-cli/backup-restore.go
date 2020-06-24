@@ -415,7 +415,7 @@ cscli backup restore ./my-backup`,
 			}
 			outputCTX, err = outputs.NewOutput(&outputConfig, false)
 			if err != nil {
-				log.Fatalf("Failed to load output plugins")
+				log.Fatalf("Failed to load output plugins : %v", err)
 			}
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
