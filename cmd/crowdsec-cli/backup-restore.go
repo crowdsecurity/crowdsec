@@ -412,8 +412,9 @@ cscli backup restore ./my-backup`,
 
 			outputConfig := outputs.OutputFactory{
 				BackendFolder: config.BackendPluginFolder,
+				Flush:         false,
 			}
-			outputCTX, err = outputs.NewOutput(&outputConfig, false)
+			outputCTX, err = outputs.NewOutput(&outputConfig)
 			if err != nil {
 				log.Fatalf("Failed to load output plugins")
 			}
@@ -453,8 +454,9 @@ cscli backup restore ./my-backup`,
 
 			outputConfig := outputs.OutputFactory{
 				BackendFolder: config.BackendPluginFolder,
+				Flush:         false,
 			}
-			outputCTX, err = outputs.NewOutput(&outputConfig, false)
+			outputCTX, err = outputs.NewOutput(&outputConfig)
 			if err != nil {
 				log.Fatalf("Failed to load output plugins")
 			}

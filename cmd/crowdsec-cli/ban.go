@@ -183,9 +183,10 @@ You can add/delete/list or flush current bans in your local ban DB.`,
 
 			outputConfig := outputs.OutputFactory{
 				BackendFolder: config.BackendPluginFolder,
+				Flush:         false,
 			}
 
-			outputCTX, err = outputs.NewOutput(&outputConfig, false)
+			outputCTX, err = outputs.NewOutput(&outputConfig)
 			if err != nil {
 				return fmt.Errorf(err.Error())
 			}
