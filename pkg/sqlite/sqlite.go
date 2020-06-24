@@ -32,6 +32,18 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	var err error
 	c := &Context{}
 
+	if v, ok := cfg["max_records"]; ok {
+		c.maxEventRetention, err = strconv.Atoi(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid max_records '%s' : %s", v, err)
+		}
+	}
+	if v, ok := cfg["max_records_duration"]; ok {
+		c.maxDurationRetention, err = time.ParseDuration(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid duration '%s' : %s", v, err)
+		}
+	}
 	log.Warningf("NEW SQLITE : %+v", cfg)
 	if _, ok := cfg["db_path"]; !ok {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
@@ -71,7 +83,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
 	//random attempt
-	c.maxEventRetention = 100
+	//c.maxEventRetention = 100
 	c.PusherTomb.Go(func() error {
 		c.AutoCommit()
 		return nil

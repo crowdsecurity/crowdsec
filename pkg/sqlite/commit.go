@@ -92,8 +92,9 @@ func (c *Context) CleanUpRecordsByCount() error {
 }
 
 func (c *Context) AutoCommit() {
-	log.Infof("starting autocommit")
+	log.Warningf("starting autocommit")
 	ticker := time.NewTicker(200 * time.Millisecond)
+	cleanUpTicker := time.NewTicker(1 * time.Minute)
 	for {
 		select {
 		case <-c.PusherTomb.Dying():
@@ -115,14 +116,14 @@ func (c *Context) AutoCommit() {
 		case <-ticker.C:
 			if atomic.LoadInt32(&c.count) != 0 &&
 				(atomic.LoadInt32(&c.count)%100 == 0 || time.Since(c.lastCommit) >= 500*time.Millisecond) {
-				//log.Warningf("flush time")
 				if err := c.Flush(); err != nil {
 					log.Errorf("failed to flush : %s", err)
 				}
-				//log.Printf("starting auto-cleanup")
-				if err := c.CleanUpRecordsByCount(); err != nil {
-					log.Errorf("error in auto-cleanup : %s", err)
-				}
+
+			}
+		case <-cleanUpTicker.C:
+			if err := c.CleanUpRecordsByCount(); err != nil {
+				log.Errorf("error in auto-cleanup : %s", err)
 			}
 
 		}

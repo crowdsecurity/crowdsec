@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwapi"
 
@@ -18,10 +19,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+//OutputFactory is part of the main yaml configuration file, and holds generic backend config
 type OutputFactory struct {
 	BackendFolder string `yaml:"backend"`
+	//For the db GC : how many records can we keep at most
+	MaxRecords string `yaml:"max_records"`
+	//For the db GC what is the oldest records we tolerate
+	MaxRecordsAge string `yaml:"max_records_age"`
+	//Should we automatically flush expired bans
+	Flush bool `yaml:"flush"`
 }
 
+//Output holds the runtime objects of backend
 type Output struct {
 	API      *cwapi.ApiCtx
 	bManager *cwplugin.BackendManager
@@ -95,8 +104,6 @@ func (o *Output) Shutdown() error {
 			reterr = err
 		}
 	}
-	//bManager
-	//TBD : the backend(s) should be stopped in the same way
 	return reterr
 }
 
@@ -281,19 +288,6 @@ func (o *Output) LoadAPIConfig(configFile string) error {
 	return nil
 }
 
-func (o *Output) load(config *OutputFactory, isDaemon bool) error {
-	var err error
-	if config == nil {
-		return fmt.Errorf("missing output plugin configuration")
-	}
-	log.Debugf("loading backend plugins ...")
-	o.bManager, err = cwplugin.NewBackendPlugin(config.BackendFolder, isDaemon)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (o *Output) Delete(target string) (int, error) {
 	nbDel, err := o.bManager.Delete(target)
 	return nbDel, err
@@ -322,11 +316,23 @@ func (o *Output) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 	return ret, nil
 }
 
-func NewOutput(config *OutputFactory, isDaemon bool) (*Output, error) {
+func NewOutput(config *OutputFactory) (*Output, error) {
 	var output Output
-	err := output.load(config, isDaemon)
+	var err error
+
+	if config == nil {
+		return nil, fmt.Errorf("missing output plugin configuration")
+	}
+	log.Debugf("loading backend plugins ...")
+	//turn the *OutputFactory into a map[string]string for less constraint
+	backendConfig := map[string]string{
+		"backend":         config.BackendFolder,
+		"max_records":     config.MaxRecords,
+		"max_records_age": config.MaxRecordsAge,
+		"flush":           strconv.FormatBool(config.Flush)}
+	output.bManager, err = cwplugin.NewBackendPlugin(backendConfig)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "failed to load backend plugin")
 	}
 	return &output, nil
 }
