@@ -92,18 +92,18 @@ func GeoIpInit(cfg map[string]string) (interface{}, error) {
 	var err error
 	ctx.dbc, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
 	if err != nil {
-		log.Errorf("couldn't open geoip : %v", err)
+		log.Debugf("couldn't open geoip : %v", err)
 		return nil, err
 	}
 	ctx.dba, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
 	if err != nil {
-		log.Errorf("couldn't open geoip : %v", err)
+		log.Debugf("couldn't open geoip : %v", err)
 		return nil, err
 	}
 
 	ctx.dbraw, err = maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
 	if err != nil {
-		log.Errorf("couldn't open geoip : %v", err)
+		log.Debugf("couldn't open geoip : %v", err)
 		return nil, err
 	}
 

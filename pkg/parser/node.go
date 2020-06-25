@@ -88,13 +88,13 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 			}
 			method_found := false
 			for _, enricherCtx := range ECTX {
-				if _, ok := enricherCtx.Funcs[static.Method]; ok {
+				if _, ok := enricherCtx.Funcs[static.Method]; ok && enricherCtx.initiated {
 					method_found = true
 					break
 				}
 			}
 			if !method_found {
-				return fmt.Errorf("the method '%s' doesn't exist", static.Method)
+				return fmt.Errorf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
 			}
 		} else {
 			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
