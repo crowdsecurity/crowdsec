@@ -155,6 +155,8 @@ func LoadOutputs(cConfig *csconfig.CrowdSec) error {
 	if cConfig.SingleFile != "" {
 		log.Infof("forensic mode, disable flush")
 		cConfig.OutputConfig.Flush = false
+	} else {
+		cConfig.OutputConfig.Flush = true
 	}
 	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
 	if err != nil {
