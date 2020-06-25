@@ -148,7 +148,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
 			for _, x := range ECTX {
-				if fptr, ok := x.Funcs[static.Method]; ok {
+				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
 					clog.Tracef("Found method '%s'", static.Method)
 					ret, err := fptr(value, p, x.RuntimeCtx)
 					if err != nil {
@@ -165,7 +165,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 					}
 					break
 				} else {
-					clog.Warningf("method '%s' doesn't exist", static.Method)
+					clog.Warningf("method '%s' doesn't exist or plugin not initialized", static.Method)
 				}
 			}
 			if !processed {
