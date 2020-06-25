@@ -2,7 +2,7 @@ working_dir: /tmp/
 data_dir: /var/lib/crowdsec/data
 config_dir: /etc/crowdsec/config/
 pid_dir: /var/run/
-log_dir: /var/log/crowdsec/
+log_dir: /var/log/
 cscli_dir: /etc/crowdsec/config/cscli
 log_mode: file
 log_level: info

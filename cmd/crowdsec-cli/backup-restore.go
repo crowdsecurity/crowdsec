@@ -339,10 +339,10 @@ func backupToDirectory(target string) error {
 	}
 	log.Infof("Saved acquis to %s", bac)
 	/*
-		Backup default.yaml
+		Backup config.yaml
 	*/
-	defyaml := fmt.Sprintf("%s/default.yaml", config.InstallFolder)
-	bac = fmt.Sprintf("%s/default.yaml", target)
+	defyaml := fmt.Sprintf("%s/config.yaml", config.InstallFolder)
+	bac = fmt.Sprintf("%s/config.yaml", target)
 	if err = copyFile(defyaml, bac); err != nil {
 		return fmt.Errorf("failed copy %s to %s : %s", yamlAcquisFile, bac, err)
 	}
