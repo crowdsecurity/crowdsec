@@ -7,7 +7,9 @@ log_dir: "./logs"
 log_mode: "stdout"
 log_level: info
 profiling: false
-sqlite_path: "./test.db"
 apimode: false
 plugin:
   backend: "./config/plugins/backend"
+  max_records: 10000
+  max_records_age: 60d
+  

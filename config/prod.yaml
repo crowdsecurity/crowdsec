@@ -7,7 +7,6 @@ cscli_dir: ${CFG}/cscli
 log_mode: file
 log_level: info
 profiling: false
-sqlite_path: ${DATA}/crowdsec.db
 apimode: true
 daemon: true
 prometheus: true
