@@ -63,8 +63,6 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 		c.Db.LogMode(true)
 	}
 
-	c.Db.LogMode(true)
-
 	c.flush, _ = strconv.ParseBool(cfg["flush"])
 	// Migrate the schema
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
