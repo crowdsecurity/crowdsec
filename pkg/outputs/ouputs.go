@@ -27,7 +27,8 @@ type OutputFactory struct {
 	//For the db GC what is the oldest records we tolerate
 	MaxRecordsAge string `yaml:"max_records_age"`
 	//Should we automatically flush expired bans
-	Flush bool `yaml:"flush"`
+	Flush bool
+	Debug bool `yaml:"debug"`
 }
 
 //Output holds the runtime objects of backend
@@ -329,7 +330,8 @@ func NewOutput(config *OutputFactory) (*Output, error) {
 		"backend":         config.BackendFolder,
 		"max_records":     config.MaxRecords,
 		"max_records_age": config.MaxRecordsAge,
-		"flush":           strconv.FormatBool(config.Flush)}
+		"flush":           strconv.FormatBool(config.Flush),
+		"debug":           strconv.FormatBool(config.Debug)}
 	output.bManager, err = cwplugin.NewBackendPlugin(backendConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load backend plugin")
