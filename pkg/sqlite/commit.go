@@ -57,6 +57,7 @@ func (c *Context) CleanUpRecordsByAge() error {
 
 	//no events elligible
 	if len(sos) == 0 || ret.RowsAffected == 0 {
+		log.Infof("no event older than %s", c.maxDurationRetention.String())
 		return nil
 	}
 	//let's do it in a single transaction
