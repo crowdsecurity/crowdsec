@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jinzhu/gorm"
@@ -63,7 +64,10 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 		c.Db.LogMode(true)
 	}
 
-	c.flush, _ = strconv.ParseBool(cfg["flush"])
+	c.flush, err = strconv.ParseBool(cfg["flush"])
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to parse 'flush' flag")
+	}
 	// Migrate the schema
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
 	c.Db.Model(&types.SignalOccurence{}).Related(&types.EventSequence{})

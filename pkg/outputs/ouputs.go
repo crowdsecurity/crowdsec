@@ -21,11 +21,11 @@ import (
 
 //OutputFactory is part of the main yaml configuration file, and holds generic backend config
 type OutputFactory struct {
-	BackendFolder string `yaml:"backend"`
+	BackendFolder string `yaml:"backend,omitempty"`
 	//For the db GC : how many records can we keep at most
-	MaxRecords string `yaml:"max_records"`
+	MaxRecords string `yaml:"max_records,omitempty"`
 	//For the db GC what is the oldest records we tolerate
-	MaxRecordsAge string `yaml:"max_records_age"`
+	MaxRecordsAge string `yaml:"max_records_age,omitempty"`
 	//Should we automatically flush expired bans
 	Flush bool
 	Debug bool `yaml:"debug"`
