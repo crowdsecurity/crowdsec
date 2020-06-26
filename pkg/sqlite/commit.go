@@ -46,7 +46,7 @@ func (c *Context) CleanUpRecordsByAge() error {
 
 	//look for soft-deleted events that are OLDER than maxDurationRetention
 	ret := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").
-		Where(fmt.Sprintf("deleted_at > data('now','-%d minutes')", int(c.maxDurationRetention.Minutes()))).
+		Where(fmt.Sprintf("deleted_at > date('now','-%d minutes')", int(c.maxDurationRetention.Minutes()))).
 		Order("updated_at desc").Find(&sos)
 
 	if ret.Error != nil {
