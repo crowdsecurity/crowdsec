@@ -99,6 +99,13 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 		// Add the interface and Init()
 		newPlugin.funcs = bInterface
 		// Merge backend config from main config file
+		// Merge backend config from main config file
+		if v, ok := outputConfig["debug"]; ok {
+			newPlugin.Config["debug"] = v
+		} else {
+			newPlugin.Config["debug"] = "false"
+		}
+
 		if v, ok := outputConfig["max_records"]; ok {
 			newPlugin.Config["max_records"] = v
 		} else {
