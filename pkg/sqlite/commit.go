@@ -17,8 +17,6 @@ func (c *Context) DeleteExpired() error {
 		if retx.RowsAffected > 0 {
 			log.Infof("Flushed %d expired entries from Ban Application", retx.RowsAffected)
 		}
-	} else {
-		log.Infof("flush is disabled")
 	}
 	return nil
 }
@@ -136,6 +134,9 @@ func (c *Context) AutoCommit() {
 	ticker := time.NewTicker(200 * time.Millisecond)
 	cleanUpTicker := time.NewTicker(1 * time.Minute)
 	expireTicker := time.NewTicker(1 * time.Second)
+	if !c.flush {
+		log.Infof("flush is disabled")
+	}
 	for {
 		select {
 		case <-c.PusherTomb.Dying():
