@@ -39,6 +39,10 @@ type BackendManager struct {
 	backendPlugins map[string]BackendPlugin
 }
 
+var defaultMaxRecords = "1000"
+var defaultMaxRecordsAge = "30d"
+var defaultDbDebug = "false"
+
 func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 	var files []string
 	var backendManager = &BackendManager{}
@@ -98,25 +102,21 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 
 		// Add the interface and Init()
 		newPlugin.funcs = bInterface
+		newPlugin.Config["debug"] = defaultDbDebug
+		newPlugin.Config["max_records"] = defaultMaxRecords
+		newPlugin.Config["max_records_age"] = defaultMaxRecordsAge
+
 		// Merge backend config from main config file
 		if v, ok := outputConfig["debug"]; ok {
 			newPlugin.Config["debug"] = v
-		} else {
-			newPlugin.Config["debug"] = "false"
 		}
 
 		if v, ok := outputConfig["max_records"]; ok {
 			newPlugin.Config["max_records"] = v
-		} else {
-			log.Warningf("missing 'max_records' parameters, setting to default (1000)")
-			newPlugin.Config["max_records"] = "1000"
 		}
 
 		if v, ok := outputConfig["max_records_age"]; ok {
 			newPlugin.Config["max_records_age"] = v
-		} else {
-			log.Warningf("missing 'max_records_age' parameters, setting to default (30d)")
-			newPlugin.Config["max_records_age"] = "30d"
 		}
 
 		err = newPlugin.funcs.Init(newPlugin.Config)
