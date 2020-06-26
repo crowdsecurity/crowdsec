@@ -11,5 +11,6 @@ apimode: false
 plugin:
   backend: "./config/plugins/backend"
   max_records: 10000
-  max_records_age: 60d
+  #30 days = 720 hours
+  max_records_age: 720h
   
