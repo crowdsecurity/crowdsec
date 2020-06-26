@@ -327,17 +327,17 @@ func NewOutput(config *OutputFactory) (*Output, error) {
 	log.Debugf("loading backend plugins ...")
 	//turn the *OutputFactory into a map[string]string for less constraint
 	backendConfig := map[string]string{
-		"backend":         config.BackendFolder,
-		"flush":           strconv.FormatBool(config.Flush),
-		"debug":           strconv.FormatBool(config.Debug)}
+		"backend": config.BackendFolder,
+		"flush":   strconv.FormatBool(config.Flush),
+		"debug":   strconv.FormatBool(config.Debug)}
 
 	if config.MaxRecords != "" {
-		backendConfig["max_records"] = config.MaxRecords,
+		backendConfig["max_records"] = config.MaxRecords
 	}
 	if config.MaxRecordsAge != "" {
-		backendConfig["max_records_age"] = config.MaxRecordsAge,
+		backendConfig["max_records_age"] = config.MaxRecordsAge
 	}
-	
+
 	output.bManager, err = cwplugin.NewBackendPlugin(backendConfig)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load backend plugin")
