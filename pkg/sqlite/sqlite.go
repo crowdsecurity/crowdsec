@@ -38,13 +38,12 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 			log.Errorf("Ignoring invalid max_records '%s' : %s", v, err)
 		}
 	}
-	if v, ok := cfg["max_records_duration"]; ok {
+	if v, ok := cfg["max_records_age"]; ok {
 		c.maxDurationRetention, err = time.ParseDuration(v)
 		if err != nil {
 			log.Errorf("Ignoring invalid duration '%s' : %s", v, err)
 		}
 	}
-	log.Warningf("NEW SQLITE : %+v", cfg)
 	if _, ok := cfg["db_path"]; !ok {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
@@ -52,6 +51,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if cfg["db_path"] == "" {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
+	log.Warningf("Starting SQLite backend, path:%s", cfg["db_path"])
 
 	c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=1000")
 	if err != nil {
