@@ -119,7 +119,7 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 		if err != nil {
 			return nil, fmt.Errorf("plugin '%s' init error : %s", newPlugin.Name, err)
 		}
-		log.Infof("backend plugin '%s' loaded", newPlugin.Name)
+		log.Debugf("backend plugin '%s' loaded", newPlugin.Name)
 		backendManager.backendPlugins[newPlugin.Name] = newPlugin
 
 	}

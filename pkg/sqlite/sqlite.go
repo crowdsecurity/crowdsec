@@ -52,7 +52,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if cfg["db_path"] == "" {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
-	log.Warningf("Starting SQLite backend, path:%s", cfg["db_path"])
+	log.Infof("Starting SQLite backend, path:%s", cfg["db_path"])
 
 	c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=1000")
 	if err != nil {
@@ -84,8 +84,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
-	//random attempt
-	//c.maxEventRetention = 100
+	//TBD : we shouldn't start auto-commit if we are in cli mode ?
 	c.PusherTomb.Go(func() error {
 		c.AutoCommit()
 		return nil

@@ -55,7 +55,7 @@ func (c *Context) CleanUpRecordsByAge() error {
 
 	//no events elligible
 	if len(sos) == 0 || ret.RowsAffected == 0 {
-		log.Infof("no event older than %s", c.maxDurationRetention.String())
+		log.Debugf("no event older than %s", c.maxDurationRetention.String())
 		return nil
 	}
 	//let's do it in a single transaction
@@ -91,7 +91,7 @@ func (c *Context) CleanUpRecordsByCount() error {
 		return errors.Wrap(ret.Error, "failed to get bans count")
 	}
 	if count < c.maxEventRetention {
-		log.Infof("%d < %d, don't cleanup", count, c.maxEventRetention)
+		log.Debugf("%d < %d, don't cleanup", count, c.maxEventRetention)
 		return nil
 	}
 
@@ -130,12 +130,12 @@ func (c *Context) CleanUpRecordsByCount() error {
 }
 
 func (c *Context) AutoCommit() {
-	log.Warningf("starting autocommit")
+	log.Infof("starting autocommit")
 	ticker := time.NewTicker(200 * time.Millisecond)
 	cleanUpTicker := time.NewTicker(1 * time.Minute)
 	expireTicker := time.NewTicker(1 * time.Second)
 	if !c.flush {
-		log.Infof("flush is disabled")
+		log.Debugf("flush is disabled")
 	}
 	for {
 		select {
