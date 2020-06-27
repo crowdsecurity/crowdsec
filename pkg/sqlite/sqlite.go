@@ -52,7 +52,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if cfg["db_path"] == "" {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
-	log.Infof("Starting SQLite backend, path:%s", cfg["db_path"])
+	log.Debugf("Starting SQLite backend, path:%s", cfg["db_path"])
 
 	c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=1000")
 	if err != nil {
