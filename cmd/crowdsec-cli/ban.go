@@ -216,9 +216,10 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Short:   "Adds the specific ip to the ban db",
 		Long:    `Duration must be [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration), expressed in s/m/h.`,
 		Example: `cscli ban add ip 1.2.3.4 12h "the scan"`,
-		Args:    cobra.ExactArgs(3),
+		Args:    cobra.MinimumNArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := BanAdd(args[0], args[1], args[2], remediationType); err != nil {
+			reason := strings.Join(args[2:], " ")
+			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
 				log.Fatalf("failed to add ban to sqlite : %v", err)
 			}
 		},
@@ -229,9 +230,10 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Short:   "Adds the specific ip to the ban db",
 		Long:    `Duration must be [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration) compatible, expressed in s/m/h.`,
 		Example: `cscli ban add range 1.2.3.0/24 12h "the whole range"`,
-		Args:    cobra.ExactArgs(3),
+		Args:    cobra.MinimumNArgs(3),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := BanAdd(args[0], args[1], args[2], remediationType); err != nil {
+			reason := strings.Join(args[2:], " ")
+			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
 				log.Fatalf("failed to add ban to sqlite : %v", err)
 			}
 		},
