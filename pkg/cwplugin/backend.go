@@ -22,6 +22,7 @@ type Backend interface {
 	Flush() error
 	Shutdown() error
 	DeleteAll() error
+	StartAutoCommit() error
 }
 
 type BackendPlugin struct {
@@ -194,6 +195,17 @@ func (b *BackendManager) IsBackendPlugin(plugin string) bool {
 		return true
 	}
 	return false
+}
+
+func (b *BackendManager) StartAutoCommit() error {
+	var err error
+	for _, plugin := range b.backendPlugins {
+		err = plugin.funcs.StartAutoCommit()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *BackendManager) ReadAT(timeAT time.Time) ([]map[string]string, error) {
