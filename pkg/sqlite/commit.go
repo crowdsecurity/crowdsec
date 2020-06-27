@@ -74,7 +74,7 @@ func (c *Context) CleanUpRecordsByAge() error {
 	if ret.Error != nil {
 		return errors.Wrap(ret.Error, "failed to delete records")
 	}
-	log.Printf("Deleted %d expired records older than %s", delRecords, c.maxDurationRetention)
+	log.Printf("max_records_age: deleting %d events (max age:%s)", delRecords, c.maxDurationRetention)
 	return nil
 }
 
@@ -118,7 +118,8 @@ func (c *Context) CleanUpRecordsByCount() error {
 		}
 	}
 	if len(sos) > 0 {
-		log.Printf("Deleting %d soft-deleted results out of %d total events (%d soft-deleted)", delRecords, count, len(sos))
+		//log.Printf("Deleting %d soft-deleted results out of %d total events (%d soft-deleted)", delRecords, count, len(sos))
+		log.Printf("max_records: deleting %d events. (%d soft-deleted)", delRecords, len(sos))
 		ret = delTx.Unscoped().Commit()
 		if ret.Error != nil {
 			return errors.Wrap(ret.Error, "failed to delete records")
@@ -129,8 +130,17 @@ func (c *Context) CleanUpRecordsByCount() error {
 	return nil
 }
 
-func (c *Context) AutoCommit() {
-	log.Infof("starting autocommit")
+func (c *Context) StartAutoCommit() error {
+	//TBD : we shouldn't start auto-commit if we are in cli mode ?
+	c.PusherTomb.Go(func() error {
+		c.autoCommit()
+		return nil
+	})
+	return nil
+}
+
+func (c *Context) autoCommit() {
+	log.Debugf("starting autocommit")
 	ticker := time.NewTicker(200 * time.Millisecond)
 	cleanUpTicker := time.NewTicker(1 * time.Minute)
 	expireTicker := time.NewTicker(1 * time.Second)

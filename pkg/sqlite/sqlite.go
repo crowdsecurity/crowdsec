@@ -84,10 +84,5 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
-	//TBD : we shouldn't start auto-commit if we are in cli mode ?
-	c.PusherTomb.Go(func() error {
-		c.AutoCommit()
-		return nil
-	})
 	return c, nil
 }
