@@ -123,7 +123,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Debugf("path:%s, hubdir:%s, installdir:%s", path, Hubdir, Installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, Hubdir, Installdir)
 	/*we're in hub (~/.cscli/hub/)*/
 	if strings.HasPrefix(path, Hubdir) {
 		inhub = true
@@ -137,7 +137,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-		log.Debugf("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
+		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
 	} else if strings.HasPrefix(path, Installdir) { /*we're in install /etc/crowdsec/<type>/... */
 		if len(subs) < 3 {
@@ -151,7 +151,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
 		fauthor = ""
-		log.Debugf("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
+		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -165,7 +165,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return fmt.Errorf("unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
 	}
 
-	log.Debugf("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
+	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
@@ -176,7 +176,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	if f.Mode()&os.ModeSymlink == 0 {
 		local = true
 		skippedLocal++
-		log.Debugf("%s isn't a symlink", path)
+		log.Tracef("%s isn't a symlink", path)
 	} else {
 		hubpath, err = os.Readlink(path)
 		if err != nil {
@@ -192,7 +192,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			}
 			return nil
 		}
-		log.Debugf("%s points to %s", path, hubpath)
+		log.Tracef("%s points to %s", path, hubpath)
 	}
 
 	//if it's not a symlink and not in hub, it's a local file, don't bother
@@ -214,13 +214,13 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 	//try to find which configuration item it is
-	log.Debugf("check [%s] of %s", fname, ftype)
+	log.Tracef("check [%s] of %s", fname, ftype)
 
 	match := false
 	for k, v := range HubIdx[ftype] {
-		log.Debugf("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
+		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
 		if fname != v.FileName {
-			log.Debugf("%s != %s (filename)", fname, v.FileName)
+			log.Tracef("%s != %s (filename)", fname, v.FileName)
 			continue
 		}
 		//wrong stage
@@ -238,7 +238,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 			if path == Hubdir+"/"+v.RemotePath {
-				log.Debugf("marking %s as downloaded", v.Name)
+				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
 		} else {
@@ -274,10 +274,8 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 					target.FileName = x[len(x)-1]
 				}
 				if version == v.Version {
-					log.Debugf("%s is up-to-date", v.Name)
+					log.Tracef("%s is up-to-date", v.Name)
 					v.UpToDate = true
-				} else {
-					log.Debugf("%s is outdated", v.Name)
 				}
 				match = true
 
@@ -310,18 +308,18 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 func CollecDepsCheck(v *Item) error {
 	/*if it's a collection, ensure all the items are installed, or tag it as tainted*/
 	if v.Type == COLLECTIONS {
-		log.Debugf("checking submembers of %s installed:%t", v.Name, v.Installed)
+		log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
 		var tmp = [][]string{v.Parsers, v.PostOverflows, v.Scenarios, v.Collections}
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := HubIdx[ptrtype][p]; ok {
-					log.Debugf("check %s installed:%t", val.Name, val.Installed)
+					log.Tracef("check %s installed:%t", val.Name, val.Installed)
 					if !v.Installed {
 						continue
 					}
 					if val.Type == COLLECTIONS {
-						log.Debugf("collec, recurse.")
+						log.Tracef("collec, recurse.")
 						if err := CollecDepsCheck(&val); err != nil {
 							return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
 						}
@@ -341,7 +339,7 @@ func CollecDepsCheck(v *Item) error {
 					}
 					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
 					HubIdx[ptrtype][p] = val
-					log.Debugf("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
+					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 				} else {
 					log.Fatalf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, v.Name)
 				}
@@ -584,7 +582,7 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
 		if target.UpToDate {
-			log.Debugf("%s is installed and up-to-date, skip.", target.Name)
+			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
 		}
 	}
@@ -649,7 +647,7 @@ func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string)
 					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
-						log.Debugf("collection, recurse")
+						log.Tracef("collection, recurse")
 						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
