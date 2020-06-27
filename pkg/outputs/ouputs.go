@@ -91,6 +91,10 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	return &ordr, nil, warn
 }
 
+func (o *Output) StartAutoCommit() error {
+	return o.bManager.StartAutoCommit()
+}
+
 func (o *Output) Shutdown() error {
 	var reterr error
 	if o.API != nil {
