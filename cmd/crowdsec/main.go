@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 
 	log "github.com/sirupsen/logrus"
@@ -161,6 +162,10 @@ func LoadOutputs(cConfig *csconfig.CrowdSec) error {
 	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
 	if err != nil {
 		return fmt.Errorf("output plugins initialization error : %s", err.Error())
+	}
+
+	if err := OutputRunner.StartAutoCommit(); err != nil {
+		return errors.Wrap(err, "failed to start autocommit")
 	}
 
 	/* Init the API connector */
