@@ -162,7 +162,7 @@ func BanAdd(target string, duration string, reason string, action string) error 
 	if err != nil {
 		return err
 	}
-	log.Infof("Wrote ban to database.")
+	log.Infof("%s %s for %s (%s)", action, target, duration, reason)
 	return nil
 }
 
