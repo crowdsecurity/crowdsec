@@ -6,6 +6,7 @@ cscli_dir: "./config/crowdsec-cli"
 log_dir: "./logs"
 log_mode: "stdout"
 log_level: info
+prometheus: true
 profiling: false
 apimode: false
 plugin:
