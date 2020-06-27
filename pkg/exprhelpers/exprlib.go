@@ -44,7 +44,6 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 }
 
 func Init() error {
-	log.Infof("Expr helper initiated")
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
 	return nil
