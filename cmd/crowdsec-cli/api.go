@@ -181,14 +181,15 @@ cscli api credentials   # Display your API credentials
 		Run: func(cmd *cobra.Command, args []string) {
 			id, err := machineid.ID()
 			if err != nil {
-				log.Fatalf("failed to get machine id: %s", err)
+				log.Debugf("failed to get machine-id with usual files : %s", err)
 			}
-			if id == "" {
+			if id == "" || err != nil {
 				bID, err := ioutil.ReadFile(uuid)
 				if err != nil {
 					log.Fatalf("can'get a valid machine_id")
 				}
 				id = string(bID)
+				id = strings.ReplaceAll(id, "-", "")[:32]
 			}
 			password := generatePassword()
 
@@ -225,14 +226,15 @@ cscli api credentials   # Display your API credentials
 		Run: func(cmd *cobra.Command, args []string) {
 			id, err := machineid.ID()
 			if err != nil {
-				log.Fatalf("failed to get machine id: %s", err)
+				log.Debugf("failed to get machine-id with usual files : %s", err)
 			}
-			if id == "" {
+			if id == "" || err != nil {
 				bID, err := ioutil.ReadFile(uuid)
 				if err != nil {
 					log.Fatalf("can'get a valid machine_id")
 				}
 				id = string(bID)
+				id = strings.ReplaceAll(id, "-", "")[:32]
 			}
 
 			password := generatePassword()
