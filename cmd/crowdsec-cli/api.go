@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"path"
 	"strings"
@@ -26,9 +27,13 @@ var (
 )
 
 var (
+	userID    string // for flag parsing
+	outputCTX *outputs.Output
+)
+
+const (
+	uuid          = "/proc/sys/kernel/random/uuid"
 	apiConfigFile = "api.yaml"
-	userID        string // for flag parsing
-	outputCTX     *outputs.Output
 )
 
 func dumpCredentials() error {
@@ -178,6 +183,13 @@ cscli api credentials   # Display your API credentials
 			if err != nil {
 				log.Fatalf("failed to get machine id: %s", err)
 			}
+			if id == "" {
+				bID, err := ioutil.ReadFile(uuid)
+				if err != nil {
+					log.Fatalf("can'get a valid machine_id")
+				}
+				id = string(bID)
+			}
 			password := generatePassword()
 
 			if err := outputCTX.API.RegisterMachine(id, password); err != nil {
@@ -215,6 +227,14 @@ cscli api credentials   # Display your API credentials
 			if err != nil {
 				log.Fatalf("failed to get machine id: %s", err)
 			}
+			if id == "" {
+				bID, err := ioutil.ReadFile(uuid)
+				if err != nil {
+					log.Fatalf("can'get a valid machine_id")
+				}
+				id = string(bID)
+			}
+
 			password := generatePassword()
 			if err := outputCTX.API.ResetPassword(id, password); err != nil {
 				log.Fatalf(err.Error())
