@@ -357,6 +357,25 @@ setup_cron_pull() {
     cp ./config/crowdsec_pull /etc/cron.d/
 }
 
+configure() {
+        ${CSCLI_BIN_INSTALLED} update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+
+        # detect running services
+        detect_services
+        if ! [ ${#DETECTED_SERVICES[@]} -gt 0 ] ; then 
+            log_err "No detected or selected services, stopping."
+            exit 1
+        fi;
+
+        # Generate acquisition file and move it to the right folder
+        genacquisition
+        mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+
+        # Install collections according to detected services
+        log_info "Installing needed collections ..."
+        install_collection
+
+}
 
 
 main() {
@@ -375,6 +394,12 @@ main() {
         restore_from_dir
         return
     fi
+
+    if [[ "$1" == "configure" ]];
+    then
+        configure
+        return
+    fi    
 
     if [[ "$1" == "binupgrade" ]];
     then
@@ -493,6 +518,7 @@ usage() {
       echo "    ./wizard.sh -d|--detect                      Detect running services and associated logs file"
       echo "    ./wizard.sh -i|--install                     Assisted installation of crowdsec/cscli and collections"
       echo "    ./wizard.sh --bininstall                     Install binaries and empty config, no wizard."
+      echo "    ./wizard.sh --configure                      Configure an already installed crowdsec"
       echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
@@ -517,6 +543,10 @@ do
         ;;
     --binupgrade)
         ACTION="binupgrade"
+        shift #past argument
+        ;;
+    --configure)
+        ACTION="configure"
         shift #past argument
         ;;
     --upgrade)

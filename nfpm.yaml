@@ -53,3 +53,5 @@ overrides:
   deb:
     scripts:
       postinstall: ./scripts/post_install_deb.sh
+      preremove: ./scripts/pre_remove_deb.sh
+
