@@ -202,27 +202,24 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec) (chan types.Event, erro
 		})
 	}
 
-	for i := 0; i < cConfig.NbParsers; i++ {
-		bucketsTomb.Go(func() error {
-			err := runPour(inputEventChan, holders, buckets)
-			if err != nil {
-				log.Errorf("runPour error : %s", err)
-				return err
-			}
-			return nil
-		})
-	}
+	bucketsTomb.Go(func() error {
+		err := runPour(inputEventChan, holders, buckets)
+		if err != nil {
+			log.Errorf("runPour error : %s", err)
+			return err
+		}
+		return nil
+	})
 
-	for i := 0; i < cConfig.NbParsers; i++ {
-		outputsTomb.Go(func() error {
-			err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, OutputRunner)
-			if err != nil {
-				log.Errorf("runPour error : %s", err)
-				return err
-			}
-			return nil
-		})
-	}
+	outputsTomb.Go(func() error {
+		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, OutputRunner)
+		if err != nil {
+			log.Errorf("runPour error : %s", err)
+			return err
+		}
+		return nil
+	})
+
 	return inputLineChan, nil
 }
 
