@@ -17,7 +17,7 @@ jobs:
     - name: Build the binaries
       run: make build
     - name: Generate the package
-      run: nfpm pkg --target crowdsec-release.deb
+      run: ./bin/nfpm pkg --target crowdsec-release.deb
     - name: Upload to release
       uses: JasonEtco/upload-to-release@master
       with:
