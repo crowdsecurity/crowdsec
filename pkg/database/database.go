@@ -29,23 +29,23 @@ type Context struct {
 func checkConfig(cfg map[string]string) error {
 	switch dbType, _ := cfg["type"]; dbType {
 	case "sqlite":
-		if val, ok := cfg["db_path"]; !ok && val == "" {
+		if val, ok := cfg["db_path"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 		}
 	case "mysql":
-		if val, ok := cfg["db_host"]; !ok && val == "" {
+		if val, ok := cfg["db_host"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_host' to SQLite db in the configuration")
 		}
 
-		if val, ok := cfg["db_username"]; !ok && val == "" {
+		if val, ok := cfg["db_username"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_username' to SQLite db in the configuration")
 		}
 
-		if val, ok := cfg["db_password"]; !ok && val == "" {
+		if val, ok := cfg["db_password"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_password' to SQLite db in the configuration")
 		}
 
-		if val, ok := cfg["db_name"]; !ok && val == "" {
+		if val, ok := cfg["db_name"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_name' to SQLite db in the configuration")
 		}
 	default:
@@ -83,7 +83,10 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 		c.Db.LogMode(true)
 	}
 
-	c.flush, _ = strconv.ParseBool(cfg["flush"])
+	c.flush, err = strconv.ParseBool(cfg["flush"])
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse 'flush' value %s : %s", cfg["flush"], err)
+	}
 	// Migrate the schema
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
 	c.Db.Model(&types.SignalOccurence{}).Related(&types.EventSequence{})
