@@ -49,7 +49,7 @@ install-conf:
 	install -v -m 755 -D ../../config/profiles.yaml "$(CFG_PREFIX)" || exit
 	install -v -m 755 -D ../../config/api.yaml "$(CFG_PREFIX)" || exit
 	mkdir -p $(PID_DIR) || exit
-	PID=$(PID_DIR) DATA=$(DATA_PREFIX)"/data/" CFG=$(CFG_PREFIX) envsubst < ../../config/prod.yaml > $(CFG_PREFIX)"/default.yaml"	
+	PID=$(PID_DIR) DATA=$(DATA_PREFIX)"/data/" CFG=$(CFG_PREFIX) envsubst < ../../config/prod.yaml > $(CFG_PREFIX)"/config.yaml"	
 
 .PHONY: install-bin
 install-bin:

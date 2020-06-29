@@ -39,8 +39,8 @@ files:
   ./config/profiles.yaml: "/etc/crowdsec/config/profiles.yaml"
   ./config/user.yaml: "/etc/crowdsec/config/user.yaml"
   ./config/patterns/* : "/etc/crowdsec/config/patterns/"
-  ./plugins/backend/*.so: "/usr/local/lib/crowdsec/plugins/backend"
-  ./config/plugins/backend/*.yaml: "/etc/crowdsec/plugins/backend"
+  ./plugins/backend/*.so: "/usr/lib/crowdsec/plugins/backend/"
+  ./config/plugins/backend/*.yaml: "/etc/crowdsec/plugins/backend/"
 
 empty_folders:
   - /etc/crowdsec/config/cscli

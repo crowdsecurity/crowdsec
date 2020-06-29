@@ -14,7 +14,7 @@ SILENT="false"
 
 CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
-CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
+CROWDSEC_USR_DIR="/usr/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
@@ -289,7 +289,7 @@ install_crowdsec() {
     install -v -m 755 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 600 -D ./config/api.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
+    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/config.yaml"   
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
     CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     install_bins
@@ -374,7 +374,6 @@ configure() {
         # Install collections according to detected services
         log_info "Installing needed collections ..."
         install_collection
-
 }
 
 
@@ -522,7 +521,7 @@ usage() {
       echo "    ./wizard.sh --uninstall                      Uninstall crowdsec/cscli"
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
-      echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
+      echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and configs will be followed"
       echo "    ./wizard.sh -r|--restore                     Restore saved configurations from ${BACKUP_DIR} to ${CROWDSEC_CONFIG_PATH}"
       echo "    ./wizard.sh -b|--backup                      Backup existing configurations to ${BACKUP_DIR}"
 
