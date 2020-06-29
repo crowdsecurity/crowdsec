@@ -574,6 +574,7 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 }
 
 func EnableItem(target Item, tdir string, hdir string) (Item, error) {
+	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	/*create directories if needed*/
 	if target.Installed {
@@ -583,7 +584,8 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 		if target.Local {
 			return target, fmt.Errorf("%s is local, won't enable", target.Name)
 		}
-		if target.UpToDate {
+		/* if it's a collection, check sub-items even if the collection file itself is up-to-date */
+		if target.UpToDate && target.Type != COLLECTIONS {
 			log.Debugf("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
 		}
@@ -594,26 +596,28 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 			return target, fmt.Errorf("unable to create parent directories")
 		}
 	}
-	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
-		/*install sub-items if it's a collection*/
-		if target.Type == COLLECTIONS {
-			var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-			for idx, ptr := range tmp {
-				ptrtype := ItemTypes[idx]
-				for _, p := range ptr {
-					if val, ok := HubIdx[ptrtype][p]; ok {
-						HubIdx[ptrtype][p], err = EnableItem(val, Installdir, Hubdir)
-						if err != nil {
-							log.Errorf("Encountered error while installing sub-item %s %s : %s.", ptrtype, p, err)
-							return target, fmt.Errorf("encountered error while install %s for %s, abort.", val.Name, target.Name)
-						}
-					} else {
-						//log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
-						return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+
+	/*install sub-items if it's a collection*/
+	if target.Type == COLLECTIONS {
+		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
+		for idx, ptr := range tmp {
+			ptrtype := ItemTypes[idx]
+			for _, p := range ptr {
+				if val, ok := HubIdx[ptrtype][p]; ok {
+					HubIdx[ptrtype][p], err = EnableItem(val, Installdir, Hubdir)
+					if err != nil {
+						log.Errorf("Encountered error while installing sub-item %s %s : %s.", ptrtype, p, err)
+						return target, fmt.Errorf("encountered error while install %s for %s, abort.", val.Name, target.Name)
 					}
+				} else {
+					//log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
+					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
 				}
 			}
 		}
+	}
+
+	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
 		//tdir+target.RemotePath
 		srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
 		if err != nil {
