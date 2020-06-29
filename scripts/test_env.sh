@@ -39,14 +39,15 @@ PARSER_S02="$PARSER_DIR/s02-enrich"
 SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
 PLUGIN_BACKEND_DIR="$CONFIG_DIR/plugins/backend/"
-SQLITE_PLUGIN_FILE="$PLUGIN_BACKEND_DIR/sqlite.yaml"
+DB_PLUGIN_FILE="$PLUGIN_BACKEND_DIR/database.yaml"
 
 gen_sqlite_config() {
-	echo "name: sqlite" >> "$SQLITE_PLUGIN_FILE"
-	echo "path: ./plugins/backend/sqlite.so" >> "$SQLITE_PLUGIN_FILE"
-	echo "config:" >> "$SQLITE_PLUGIN_FILE"
-	echo "  db_path: ./test.db" >> "$SQLITE_PLUGIN_FILE"
-	echo "  flush: true" >> "$SQLITE_PLUGIN_FILE"
+	echo "name: database" >> "$DB_PLUGIN_FILE"
+	echo "path: ./plugins/backend/database.so" >> "$DB_PLUGIN_FILE"
+	echo "config:" >> "$DB_PLUGIN_FILE"
+	echo "  type: sqlite" >> "$DB_PLUGIN_FILE"
+	echo "  db_path: ./test.db" >> "$DB_PLUGIN_FILE"
+	echo "  flush: true" >> "$DB_PLUGIN_FILE"
 }
 
 log_info() {

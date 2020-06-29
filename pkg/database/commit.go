@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"fmt"
@@ -23,7 +23,8 @@ func (c *Context) Flush() error {
 	c.lastCommit = time.Now()
 	//Delete the expired records
 	if c.flush {
-		retx := c.Db.Where(`strftime("%s", until) < strftime("%s", "now")`).Delete(types.BanApplication{})
+		//retx := c.Db.Where(`strftime("%s", until) < strftime("%s", "now")`).Delete(types.BanApplication{})
+		retx := c.Db.Delete(types.BanApplication{}, "until < ?", c.lastCommit)
 		if retx.RowsAffected > 0 {
 			log.Infof("Flushed %d expired entries from Ban Application", retx.RowsAffected)
 		}
@@ -37,7 +38,7 @@ func (c *Context) AutoCommit() {
 		select {
 		case <-c.PusherTomb.Dying():
 			//we need to shutdown
-			log.Infof("sqlite routine shutdown")
+			log.Infof("database routine shutdown")
 			if err := c.Flush(); err != nil {
 				log.Errorf("error while flushing records: %s", err)
 			}

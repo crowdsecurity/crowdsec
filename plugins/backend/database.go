@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/sqlite"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
-//nolint:unused // pluginDB is the interface for sqlite output plugin
+//nolint:unused // pluginDB is the interface for database output plugin
 type pluginDB struct {
-	CTX *sqlite.Context
+	CTX *database.Context
 }
 
 func (p *pluginDB) Shutdown() error {
@@ -25,8 +25,8 @@ func (p *pluginDB) Shutdown() error {
 
 func (p *pluginDB) Init(config map[string]string) error {
 	var err error
-	log.Debugf("sqlite config : %+v \n", config)
-	p.CTX, err = sqlite.NewSQLite(config)
+	log.Debugf("database config : %+v \n", config)
+	p.CTX, err = database.NewDatabase(config)
 
 	if err != nil {
 		return err
