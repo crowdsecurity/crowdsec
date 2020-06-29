@@ -31,14 +31,14 @@ type ApiCtx struct {
 	CfgUser      string   `yaml:"machine_id"`
 	CfgPassword  string   `yaml:"password"`
 	Creds        ApiCreds `yaml:"-"`
-	Muted        bool     `yaml:"muted"`
-	DebugDump    bool     `yaml:"debug_dump"`
-
+	/*mostly for mocking/faking api*/
+	Muted     bool `yaml:"-"`
+	DebugDump bool `yaml:"-"`
 	/*runtime*/
 	tokenExpired bool          `yaml:"-"`
 	toPush       []types.Event `yaml:"-"`
 	Http         *sling.Sling  `yaml:"-"`
-	PusherTomb   tomb.Tomb
+	PusherTomb   tomb.Tomb     `yaml:"-"`
 }
 
 type ApiCreds struct {
