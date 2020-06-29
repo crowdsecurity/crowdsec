@@ -2,8 +2,8 @@
 name: build-debian-package
 
 on: 
-  push:
-    branches: [ packaging ]
+  release:
+    types: prereleased
 
 jobs:
   build-binary-package:
