@@ -125,7 +125,7 @@ func pullTOP() error {
 			return fmt.Errorf("failed to convert ban to signal : %s", err)
 		}
 		if err := outputCTX.Insert(signalOcc); err != nil {
-			log.Fatalf("Unable to write pull to sqliteDB : %+s", err.Error())
+			log.Fatalf("Unable to write pull to Database : %+s", err.Error())
 		}
 	}
 	outputCTX.Flush()

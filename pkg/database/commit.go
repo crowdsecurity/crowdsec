@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"fmt"
@@ -151,7 +151,7 @@ func (c *Context) autoCommit() {
 		select {
 		case <-c.PusherTomb.Dying():
 			//we need to shutdown
-			log.Infof("sqlite routine shutdown")
+			log.Infof("database routine shutdown")
 			if err := c.Flush(); err != nil {
 				log.Errorf("error while flushing records: %s", err)
 			}

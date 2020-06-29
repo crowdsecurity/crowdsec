@@ -1,0 +1,18 @@
+name: database
+path: /usr/local/lib/crowdsec/plugins/backend/database.so
+config:
+  ## DB type supported (mysql, sqlite)
+  type: sqlite
+  
+  ## mysql options
+  # db_host: 172.17.0.2
+  # db_username: root
+  # db_password: totolol42
+  # db_name: crowdsec
+
+  ## sqlite options
+  db_path: /var/lib/crowdsec/data/crowdsec.db
+
+  ## Other options
+  flush: true
+  # debug: true

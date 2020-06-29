@@ -125,7 +125,7 @@ func (o *Output) FlushAll() {
 	}
 	if o.bManager != nil {
 		if err := o.bManager.Flush(); err != nil {
-			log.Errorf("Failing Sqlite flush : %s", err)
+			log.Errorf("Failing database flush : %s", err)
 		}
 	}
 }

@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 	//sig.Scenario = sig.Scenario
 	if ret.Error != nil {
 		log.Errorf("FAILED : %+v \n", ret.Error)
-		return fmt.Errorf("failed to write signal occurence : %v", ret.Error)
+		return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
 	}
 	return nil
 }
