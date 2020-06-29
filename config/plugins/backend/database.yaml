@@ -6,9 +6,9 @@ config:
   type: sqlite
 
   ## mysql options
-  # db_host: 172.17.0.2
-  # db_username: root
-  # db_password: totolol42
+  # db_host: localhost
+  # db_username: crowdsec
+  # db_password: crowdsec
   # db_name: crowdsec
 
   ## sqlite options
