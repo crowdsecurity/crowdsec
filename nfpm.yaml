@@ -5,22 +5,6 @@ platform: "linux"
 version: "v0.2.0"
 section: "default"
 priority: "extra"
-#replaces:
-#- foobar
-#provides:
-#- bar
-#depends:
-#- foo
-#- bar
-# recommends on rpm packages requires rpmbuild >= 4.13
-#recommends:
-#- whatever
-# suggests on rpm packages requires rpmbuild >= 4.13
-#suggests:
-#- something-else
-#conflicts:
-#- not-foo
-#- not-bar
 maintainer: "Crowdsec <crowdsec@crowdsec.net>"
 description: |
   Crowdsec - An open source, lightweight agent 
