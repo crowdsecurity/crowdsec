@@ -10,10 +10,10 @@ jobs:
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
-    - name: Install nfpm
-      run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sh
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+    - name: Install nfpm
+      run: curl -sfL https://install.goreleaser.com/github.com/goreleaser/nfpm.sh | sh
     - name: Build the binaries
       run: make build
     - name: Generate the package
