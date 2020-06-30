@@ -41,7 +41,7 @@ filenames: #a list of file or regexp to read from (supports regular expressions)
   - /var/log/nginx/https_access.log
   - /var/log/nginx/error.log
 labels:
-  prog_name: nginx
+  type: nginx
 ---
 filenames:
   - /var/log/auth.log
@@ -49,7 +49,7 @@ labels:
   type: syslog
 ```
 
-The `labels` part is here to tag the incoming logs with a type. `labels.prog_name` and `labels.type` are used by the parsers to know which logs to process.
+The `labels` part is here to tag the incoming logs with a type. `labels.type` are used by the parsers to know which logs to process.
 
 ### **Parser**
 
