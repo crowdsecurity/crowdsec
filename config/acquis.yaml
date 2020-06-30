@@ -8,7 +8,6 @@ labels:
 filenames:
  - /var/log/auth.log
  - /var/log/syslog
-#no need to set the prog_name, syslog format contains this info
 labels:
   type: syslog
 ---
