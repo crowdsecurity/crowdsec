@@ -133,7 +133,8 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 		pctx.Stages = append(pctx.Stages, k)
 	}
 	sort.Strings(pctx.Stages)
-	log.Infof("Stages loaded: %+v", pctx.Stages)
+	log.Infof("Loaded %d nodes, %d stages", len(nodes), len(pctx.Stages))
+
 	return nodes, nil
 }
 

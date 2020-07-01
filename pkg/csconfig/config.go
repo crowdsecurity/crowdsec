@@ -25,14 +25,13 @@ type CrowdSec struct {
 	SingleFileLabel string    //for forensic mode
 	PIDFolder       string    `yaml:"pid_dir,omitempty"`
 	LogFolder       string    `yaml:"log_dir,omitempty"`
-	LogMode         string    `yaml:"log_mode,omitempty"`    //like file, syslog or stdout ?
-	LogLevel        log.Level `yaml:"log_level,omitempty"`   //trace,debug,info,warning,error
-	Daemonize       bool      `yaml:"daemon,omitempty"`      //true -> go background
-	Profiling       bool      `yaml:"profiling,omitempty"`   //true -> enable runtime profiling
-	SQLiteFile      string    `yaml:"sqlite_path,omitempty"` //path to sqlite output
-	APIMode         bool      `yaml:"apimode,omitempty"`     //true -> enable api push
-	CsCliFolder     string    `yaml:"cscli_dir"`             //cscli folder
-	NbParsers       int       `yaml:"parser_routines"`       //the number of go routines to start for parsing
+	LogMode         string    `yaml:"log_mode,omitempty"`  //like file, syslog or stdout ?
+	LogLevel        log.Level `yaml:"log_level,omitempty"` //trace,debug,info,warning,error
+	Daemonize       bool      `yaml:"daemon,omitempty"`    //true -> go background
+	Profiling       bool      `yaml:"profiling,omitempty"` //true -> enable runtime profiling
+	APIMode         bool      `yaml:"apimode,omitempty"`   //true -> enable api push
+	CsCliFolder     string    `yaml:"cscli_dir"`           //cscli folder
+	NbParsers       int       `yaml:"parser_routines"`     //the number of go routines to start for parsing
 	Linter          bool
 	Prometheus      bool
 	HTTPListen      string `yaml:"http_listen,omitempty"`
@@ -53,7 +52,6 @@ func NewCrowdSecConfig() *CrowdSec {
 		PIDFolder:     "/var/run/",
 		LogFolder:     "/var/log/",
 		LogMode:       "stdout",
-		SQLiteFile:    "/var/lib/crowdsec/data/crowdsec.db",
 		APIMode:       false,
 		NbParsers:     1,
 		Prometheus:    false,
@@ -89,7 +87,6 @@ func (c *CrowdSec) GetOPT() error {
 	printInfo := flag.Bool("info", false, "print info-level on stdout")
 	printVersion := flag.Bool("version", false, "display version")
 	APIMode := flag.Bool("api", false, "perform pushes to api")
-	SQLiteMode := flag.Bool("sqlite", true, "write overflows to sqlite")
 	profileMode := flag.Bool("profile", false, "Enable performance profiling")
 	catFile := flag.String("file", "", "Process a single file in time-machine")
 	catFileType := flag.String("type", "", "Labels.type for file in time-machine")
@@ -155,9 +152,6 @@ func (c *CrowdSec) GetOPT() error {
 	}
 	if *printTrace {
 		c.LogLevel = log.TraceLevel
-	}
-	if !*SQLiteMode {
-		c.SQLiteFile = ""
 	}
 	if *APIMode {
 		c.APIMode = true
