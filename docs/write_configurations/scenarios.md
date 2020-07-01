@@ -260,6 +260,7 @@ INFO[12-05-2020 11:50:43] Processing Overflow with no decisions yy.yy.yy.yy perf
 WARN[12-05-2020 11:51:05] read 78215 lines                              file=./kern.log
 ...
 ```
+</details>
 
 It seems to work correctly !
 

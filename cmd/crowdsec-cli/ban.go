@@ -96,7 +96,12 @@ func BanList() error {
 	if err != nil {
 		return fmt.Errorf("unable to get records from sqlite : %v", err)
 	}
-	if config.output == "json" {
+	if config.output == "raw" {
+		fmt.Printf("source,ip,reason,bans,action,country,as,events_count,expiration\n")
+		for _, rm := range ret {
+			fmt.Printf("%s,%s,%s,%s,%s,%s,%s,%s,%s\n", rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"])
+		}
+	} else if config.output == "json" {
 		x, _ := json.MarshalIndent(ret, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if config.output == "human" {

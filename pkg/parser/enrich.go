@@ -19,6 +19,7 @@ type EnricherCtx struct {
 	Name       string
 	Path       string      //path to .so ?
 	RuntimeCtx interface{} //the internal context of plugin, given back over every call
+	initiated  bool
 }
 
 /* mimic plugin loading */
@@ -40,8 +41,10 @@ func Loadplugin(path string) (EnricherCtx, error) {
 
 	c.RuntimeCtx, err = c.Init(map[string]string{"datadir": path})
 	if err != nil {
-		log.Fatalf("load (fake) plugin load : %v", err)
+		log.Warningf("load (fake) plugin load : %v", err)
+		c.initiated = false
 	}
+	c.initiated = true
 	return c, nil
 }
 

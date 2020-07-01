@@ -55,6 +55,11 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 		/*if the profil has no remediation, no order */
 		return nil, nil, fmt.Errorf("no remediation")
 	}
+
+	if sig.Source == nil {
+		return nil, nil, fmt.Errorf("no 'source' in event (Meta.source_ip empty?)")
+	}
+
 	ordr.MeasureSource = "local"
 	ordr.Reason = sig.Scenario
 	//Identify scope
