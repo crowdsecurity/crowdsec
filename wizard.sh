@@ -315,6 +315,8 @@ update_full() {
 
     log_info "Backing up existing configuration"
     ${CSCLI_BIN_INSTALLED} backup save ${BACKUP_DIR}
+    log_info "Saving default database content"
+    cp /var/lib/crowdsec/data/crowdsec.db ${BACKUP_DIR}/crowdsec.db
     log_info "Cleanup existing crowdsec configuration"
     uninstall_crowdsec
     log_info "Installing crowdsec"
@@ -322,6 +324,8 @@ update_full() {
     log_info "Restoring configuration"
     ${CSCLI_BIN_INSTALLED} update
     ${CSCLI_BIN_INSTALLED} backup restore ${BACKUP_DIR}
+    log_info "Restoring saved database"
+    cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
     log_info "Finished, restarting"
     systemctl restart crowdsec || log_err "Failed to restart crowdsec"
 }
