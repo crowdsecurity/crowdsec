@@ -24,6 +24,9 @@ type Context struct {
 	count      int32
 	lock       sync.Mutex //booboo
 	PusherTomb tomb.Tomb
+	//to manage auto cleanup : max number of records *or* oldest
+	maxEventRetention    int
+	maxDurationRetention time.Duration
 }
 
 func checkConfig(cfg map[string]string) error {
@@ -78,6 +81,19 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 		}
 	}
 
+	if v, ok := cfg["max_records"]; ok {
+		c.maxEventRetention, err = strconv.Atoi(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid max_records '%s' : %s", v, err)
+		}
+	}
+	if v, ok := cfg["max_records_age"]; ok {
+		c.maxDurationRetention, err = time.ParseDuration(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid duration '%s' : %s", v, err)
+		}
+	}
+
 	if val, ok := cfg["debug"]; ok && val == "true" {
 		log.Infof("Enabling debug for %s", cfg["type"])
 		c.Db.LogMode(true)
@@ -103,9 +119,5 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin %s transac : %s", cfg["type"], err)
 	}
-	c.PusherTomb.Go(func() error {
-		c.AutoCommit()
-		return nil
-	})
 	return c, nil
 }
