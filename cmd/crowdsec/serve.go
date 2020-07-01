@@ -129,8 +129,6 @@ func termHandler(sig os.Signal) error {
 }
 
 func serveOneTimeRun(outputRunner outputs.Output) error {
-	log.Infof("waiting for acquisition to finish")
-
 	if err := acquisTomb.Wait(); err != nil {
 		log.Warningf("acquisition returned error : %s", err)
 	}

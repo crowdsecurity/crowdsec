@@ -23,6 +23,10 @@ func (p *pluginDB) Shutdown() error {
 	return nil
 }
 
+func (p *pluginDB) StartAutoCommit() error {
+	return p.CTX.StartAutoCommit()
+}
+
 func (p *pluginDB) Init(config map[string]string) error {
 	var err error
 	log.Debugf("sqlite config : %+v \n", config)

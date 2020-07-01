@@ -22,24 +22,35 @@ type Backend interface {
 	Flush() error
 	Shutdown() error
 	DeleteAll() error
+	StartAutoCommit() error
 }
 
 type BackendPlugin struct {
 	Name           string `yaml:"name"`
 	Path           string `yaml:"path"`
 	ConfigFilePath string
-	Config         map[string]string `yaml:"config"`
-	ID             string
-	funcs          Backend
+	//Config is passed to the backend plugin.
+	//It contains specific plugin config + plugin config from main yaml file
+	Config map[string]string `yaml:"config"`
+	ID     string
+	funcs  Backend
 }
 
 type BackendManager struct {
 	backendPlugins map[string]BackendPlugin
 }
 
-func NewBackendPlugin(path string, isDaemon bool) (*BackendManager, error) {
+func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 	var files []string
 	var backendManager = &BackendManager{}
+	var path string
+
+	if v, ok := outputConfig["backend"]; ok {
+		path = v
+	} else {
+		return nil, fmt.Errorf("missing 'backend' (path to backend plugins)")
+	}
+	//var path = output.BackendFolder
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".yaml" {
 			files = append(files, path)
@@ -88,17 +99,28 @@ func NewBackendPlugin(path string, isDaemon bool) (*BackendManager, error) {
 
 		// Add the interface and Init()
 		newPlugin.funcs = bInterface
-		if isDaemon {
-			newPlugin.Config["flush"] = "true"
-		} else {
-			newPlugin.Config["flush"] = "false"
+		// Merge backend config from main config file
+		if v, ok := outputConfig["debug"]; ok {
+			newPlugin.Config["debug"] = v
+		}
+
+		if v, ok := outputConfig["max_records"]; ok {
+			newPlugin.Config["max_records"] = v
+		}
+
+		if v, ok := outputConfig["max_records_age"]; ok {
+			newPlugin.Config["max_records_age"] = v
+		}
+
+		if v, ok := outputConfig["flush"]; ok {
+			newPlugin.Config["flush"] = v
 		}
 
 		err = newPlugin.funcs.Init(newPlugin.Config)
 		if err != nil {
 			return nil, fmt.Errorf("plugin '%s' init error : %s", newPlugin.Name, err)
 		}
-		log.Infof("backend plugin '%s' loaded", newPlugin.Name)
+		log.Debugf("backend plugin '%s' loaded", newPlugin.Name)
 		backendManager.backendPlugins[newPlugin.Name] = newPlugin
 
 	}
@@ -173,6 +195,17 @@ func (b *BackendManager) IsBackendPlugin(plugin string) bool {
 		return true
 	}
 	return false
+}
+
+func (b *BackendManager) StartAutoCommit() error {
+	var err error
+	for _, plugin := range b.backendPlugins {
+		err = plugin.funcs.StartAutoCommit()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (b *BackendManager) ReadAT(timeAT time.Time) ([]map[string]string, error) {

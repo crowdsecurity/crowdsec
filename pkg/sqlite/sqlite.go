@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/jinzhu/gorm"
@@ -23,12 +24,27 @@ type Context struct {
 	count      int32
 	lock       sync.Mutex //booboo
 	PusherTomb tomb.Tomb
+	//to manage auto cleanup : max number of records *or* oldest
+	maxEventRetention    int
+	maxDurationRetention time.Duration
 }
 
 func NewSQLite(cfg map[string]string) (*Context, error) {
 	var err error
 	c := &Context{}
 
+	if v, ok := cfg["max_records"]; ok {
+		c.maxEventRetention, err = strconv.Atoi(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid max_records '%s' : %s", v, err)
+		}
+	}
+	if v, ok := cfg["max_records_age"]; ok {
+		c.maxDurationRetention, err = time.ParseDuration(v)
+		if err != nil {
+			log.Errorf("Ignoring invalid duration '%s' : %s", v, err)
+		}
+	}
 	if _, ok := cfg["db_path"]; !ok {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
@@ -36,6 +52,7 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if cfg["db_path"] == "" {
 		return nil, fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")
 	}
+	log.Debugf("Starting SQLite backend, path:%s", cfg["db_path"])
 
 	c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=1000")
 	if err != nil {
@@ -47,7 +64,10 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 		c.Db.LogMode(true)
 	}
 
-	c.flush, _ = strconv.ParseBool(cfg["flush"])
+	c.flush, err = strconv.ParseBool(cfg["flush"])
+	if err != nil {
+		return nil, errors.Wrap(err, "Unable to parse 'flush' flag")
+	}
 	// Migrate the schema
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
 	c.Db.Model(&types.SignalOccurence{}).Related(&types.EventSequence{})
@@ -64,9 +84,5 @@ func NewSQLite(cfg map[string]string) (*Context, error) {
 	if c.tx == nil {
 		return nil, fmt.Errorf("failed to begin sqlite transac : %s", err)
 	}
-	c.PusherTomb.Go(func() error {
-		c.AutoCommit()
-		return nil
-	})
 	return c, nil
 }

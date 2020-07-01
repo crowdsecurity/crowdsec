@@ -157,8 +157,9 @@ cscli api credentials   # Display your API credentials
 
 			outputConfig := outputs.OutputFactory{
 				BackendFolder: config.BackendPluginFolder,
+				Flush:         false,
 			}
-			outputCTX, err = outputs.NewOutput(&outputConfig, false)
+			outputCTX, err = outputs.NewOutput(&outputConfig)
 			if err != nil {
 				return err
 			}
