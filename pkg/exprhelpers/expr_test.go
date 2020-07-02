@@ -115,13 +115,13 @@ func TestFile(t *testing.T) {
 	}
 }
 
-func TestIpRangeContains(t *testing.T) {
+func TestIpInRange(t *testing.T) {
 	env := map[string]interface{}{
-		"ip":              "192.168.0.1",
-		"ipRange":         "192.168.0.0/24",
-		"IpRangeContains": IpRangeContains,
+		"ip":        "192.168.0.1",
+		"ipRange":   "192.168.0.0/24",
+		"IpInRange": IpInRange,
 	}
-	code := "IpRangeContains(ipRange, ip)"
+	code := "IpInRange(ip, ipRange)"
 	log.Printf("Running filter : %s", code)
 
 	program, err := expr.Compile(code, expr.Env(env))

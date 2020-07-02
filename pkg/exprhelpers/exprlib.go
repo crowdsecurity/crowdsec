@@ -31,13 +31,13 @@ func Upper(s string) string {
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":            Atof,
-		"JsonExtract":     JsonExtract,
-		"JsonExtractLib":  JsonExtractLib,
-		"File":            File,
-		"RegexpInFile":    RegexpInFile,
-		"Upper":           Upper,
-		"IpRangeContains": IpRangeContains,
+		"Atof":           Atof,
+		"JsonExtract":    JsonExtract,
+		"JsonExtractLib": JsonExtractLib,
+		"File":           File,
+		"RegexpInFile":   RegexpInFile,
+		"Upper":          Upper,
+		"IpInRange":      IpInRange,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -104,7 +104,7 @@ func RegexpInFile(data string, filename string) bool {
 	return false
 }
 
-func IpRangeContains(ipRange string, ip string) bool {
+func IpInRange(ip string, ipRange string) bool {
 	var err error
 	var ipParsed net.IP
 	var ipRangeParsed *net.IPNet
