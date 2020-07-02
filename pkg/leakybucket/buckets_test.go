@@ -26,7 +26,10 @@ type TestFile struct {
 func TestBucket(t *testing.T) {
 
 	var envSetting = os.Getenv("TEST_ONLY")
-	exprhelpers.Init()
+	err := exprhelpers.Init()
+	if err != nil {
+		log.Fatalf("exprhelpers init failed: %s", err)
+	}
 
 	if envSetting != "" {
 		if err := testOneBucket(t, envSetting); err != nil {
