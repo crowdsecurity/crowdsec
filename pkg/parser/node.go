@@ -137,7 +137,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		NodeState = true
 		clog.Debugf("eval(TRUE) '%s'", n.Filter)
 	} else {
-		clog.Tracef("Node has not filter, enter")
+		clog.Debugf("Node has not filter, enter")
 		NodeState = true
 	}
 
