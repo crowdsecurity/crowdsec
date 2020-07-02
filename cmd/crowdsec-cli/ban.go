@@ -102,7 +102,7 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 				log.Debugf("%s is a range", ban["iptext"])
 				banIP, banRange, err = net.ParseCIDR(ban["iptext"])
 				if err != nil {
-					log.Warningf("failed to parse '%s' as a range : %s", ban["iptext"], err)
+					log.Warningf("failed to parse range '%s' from database : %s", ban["iptext"], err)
 				}
 			} else {
 				log.Debugf("%s is IP", ban["iptext"])
