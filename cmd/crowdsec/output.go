@@ -45,7 +45,6 @@ LOOP:
 			/* process post overflow parser nodes */
 			event, err := parser.Parse(poctx, event, ponodes)
 			if err != nil {
-				log.Errorf("failed post-overflow parsing : %v", err)
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 
