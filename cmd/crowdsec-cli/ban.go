@@ -111,8 +111,8 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 		}
 
 		if ipFilter != "" {
-			var filterBinIP net.IP
-			filterBinIP = net.ParseIP(ipFilter)
+			var filterBinIP net.IP = net.ParseIP(ipFilter)
+
 			if banRange != nil {
 				if banRange.Contains(filterBinIP) {
 					log.Debugf("[keep] ip filter is set, and range contains ip")
