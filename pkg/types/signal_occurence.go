@@ -35,9 +35,9 @@ type SignalOccurence struct {
 	Dest_ip string `json:"dst_ip,omitempty"` //for now just the destination IP
 	//Policy  string `json:"policy,omitempty"` //for now we forward it as well :)
 	//bucket info
-	Capacity   int           `json:"capacity,omitempty"`
-	Leak_speed time.Duration `json:"leak_speed,omitempty"`
-
-	Reprocess bool              //Reprocess, when true, will make the overflow being processed again as a fresh log would
-	Labels    map[string]string `gorm:"-"`
+	Capacity    int               `json:"capacity,omitempty"`
+	Leak_speed  time.Duration     `json:"leak_speed,omitempty"`
+	Whitelisted bool              `gorm:"-"`
+	Reprocess   bool              //Reprocess, when true, will make the overflow being processed again as a fresh log would
+	Labels      map[string]string `gorm:"-"`
 }

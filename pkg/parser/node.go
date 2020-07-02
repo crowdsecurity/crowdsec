@@ -202,6 +202,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			//Break this for now. Souldn't have been done this way, but that's not taht serious
 			/*only display logs when we discard ban to avoid spam*/
 			clog.Infof("Ban for %s whitelisted, reason [%s]", p.Overflow.Source.Ip.String(), n.Whitelist.Reason)
+			p.Overflow.Whitelisted = true
 		}
 	}
 
