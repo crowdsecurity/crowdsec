@@ -88,10 +88,7 @@ func simpleBanToSignal(targetIP string, reason string, expirationStr string, act
 }
 
 func filterBans(bans []map[string]string) ([]map[string]string, error) {
-	// fmt.Printf("source,ip,reason,bans,action,country,as,events_count,expiration\n")
-	// 	for _, rm := range ret {
-	// 		fmt.Printf("%s,%s,%s,%s,%s,%s,%s,%s,%s\n", rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"])
-	// 	}
+
 	var retBans []map[string]string
 
 	for _, ban := range bans {
@@ -100,7 +97,6 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 		var keep bool = true
 		var err error
 
-		//try to parse ip or range from ban
 		if ban["iptext"] != "" {
 			if strings.Contains(ban["iptext"], "/") {
 				log.Debugf("%s is a range", ban["iptext"])
@@ -188,8 +184,6 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 }
 
 func BanList() error {
-	//var ipFilter, rangeFilter, reasonFilter, countryFilter, asFilter string
-
 	at := time.Now()
 	if atTime != "" {
 		_, at = parser.GenDateParse(atTime)
@@ -421,6 +415,10 @@ Time can be specified with --at and support a variety of date formats:
  - 2006-01-02  
  - 2006-01-02 15:04
 `,
+		Example: `ban list --range 0.0.0.0/0 : will list all
+		ban list --country CN
+		ban list --reason crowdsecurity/http-probing
+		ban list --as OVH`,
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := BanList(); err != nil {
