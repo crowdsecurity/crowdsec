@@ -3,6 +3,7 @@ package exprhelpers
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"path"
 	"regexp"
@@ -36,6 +37,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"File":           File,
 		"RegexpInFile":   RegexpInFile,
 		"Upper":          Upper,
+		"IpInRange":      IpInRange,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -98,6 +100,26 @@ func RegexpInFile(data string, filename string) bool {
 		}
 	} else {
 		log.Errorf("file '%s' not found for expr library", filename)
+	}
+	return false
+}
+
+func IpInRange(ip string, ipRange string) bool {
+	var err error
+	var ipParsed net.IP
+	var ipRangeParsed *net.IPNet
+
+	ipParsed = net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Errorf("'%s' is not a valid IP", ip)
+		return false
+	}
+	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
+		log.Errorf("'%s' is not a valid IP Range", ipRange)
+		return false
+	}
+	if ipRangeParsed.Contains(ipParsed) {
+		return true
 	}
 	return false
 }
