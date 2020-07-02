@@ -81,7 +81,6 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	if err := scanner.Err(); err != nil {
 		return err
 	}
-	log.Printf("datafile : %+v", dataFile)
 	return nil
 }
 
@@ -89,7 +88,7 @@ func File(filename string) []string {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename]
 	}
-	log.Errorf("file '%s' not found for expr library (%+v)", filename, dataFile)
+	log.Errorf("file '%s' (type:string) not found in expr library", filename)
 	return []string{}
 }
 
@@ -101,7 +100,7 @@ func RegexpInFile(data string, filename string) bool {
 			}
 		}
 	} else {
-		log.Errorf("file '%s' not found for expr library", filename)
+		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
 	}
 	return false
 }
