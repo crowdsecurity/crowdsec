@@ -87,12 +87,16 @@ The name must be unique (and will define the scenario's name in the hub), and th
 ### filter
 
 ```yaml
-filter: evt.Meta.log_type == 'telnet_new_session'
+filter: expression
 ```
 
+`filter` must be a valid {{expr.htmlname}} expression that will be evaluated against the {{event.htmlname}}.
 
-an {{expr.htmlname}} that must return true if the event is eligible for the bucket.
+If `filter` evaluation returns true or is absent, event will be pour in the bucket.
 
+If `filter` returns `false` or a non-boolean, the event will be skip for this bucket.
+
+Here is the [expr documentation](https://github.com/antonmedv/expr/tree/master/docs).
 
 Examples :
 
