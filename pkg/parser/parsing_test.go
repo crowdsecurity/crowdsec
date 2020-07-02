@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -139,6 +140,7 @@ func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
 func prepTests() (*UnixParserCtx, error) {
 	var pctx *UnixParserCtx
 	var p UnixParser
+	exprhelpers.Init()
 
 	//Load enrichment
 	datadir := "../../data/"
