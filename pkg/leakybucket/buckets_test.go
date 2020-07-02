@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
@@ -25,6 +26,7 @@ type TestFile struct {
 func TestBucket(t *testing.T) {
 
 	var envSetting = os.Getenv("TEST_ONLY")
+	exprhelpers.Init()
 
 	if envSetting != "" {
 		if err := testOneBucket(t, envSetting); err != nil {
