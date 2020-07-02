@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	log "github.com/sirupsen/logrus"
 
 	"time"
@@ -38,6 +40,12 @@ LOOP:
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
 				input <- event
+			}
+
+			/* process post overflow parser nodes */
+			event, err := parser.Parse(poctx, event, ponodes)
+			if err != nil {
+				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 
 			if event.Overflow.Scenario == "" && event.Overflow.MapKey != "" {

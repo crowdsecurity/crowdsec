@@ -137,7 +137,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		NodeState = true
 		clog.Debugf("eval(TRUE) '%s'", n.Filter)
 	} else {
-		clog.Tracef("Node has not filter, enter")
+		clog.Debugf("Node has not filter, enter")
 		NodeState = true
 	}
 
@@ -177,7 +177,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		clog.Debugf("no ip in event, cidr/ip whitelists not checked")
 	}
 	/* run whitelist expression tests anyway */
-	for _, e := range n.Whitelist.B_Exprs {
+	for eidx, e := range n.Whitelist.B_Exprs {
 		output, err := expr.Run(e, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
@@ -192,6 +192,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				p.Whitelisted = true
 				set = true
 			}
+		default:
+			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
 	if set {
