@@ -151,9 +151,13 @@ It is meant to help understanding parser node behaviour by providing contextual 
 filter: expression
 ```
 
-`filter` must be a valid {{expr.htmlname}} expression that will be evaluated against the {{event.name}}.
+`filter` must be a valid {{expr.htmlname}} expression that will be evaluated against the {{event.htmlname}}.
+
 If `filter` evaluation returns true or is absent, node will be processed.
+
 If `filter` returns `false` or a non-boolean, node won't be processed.
+
+Here is the [expr documentation](https://github.com/antonmedv/expr/tree/master/docs).
 
 Examples :
 
