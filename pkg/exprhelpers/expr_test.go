@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/antonmedv/expr"
+	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
@@ -112,4 +113,23 @@ func TestFile(t *testing.T) {
 		}
 		assert.Equal(t, test.result, result)
 	}
+}
+
+func TestIpRangeContains(t *testing.T) {
+	env := map[string]interface{}{
+		"ip":              "192.168.0.1",
+		"ipRange":         "192.168.0.0/24",
+		"IpRangeContains": IpRangeContains,
+	}
+	code := "IpRangeContains(ipRange, ip)"
+	log.Printf("Running filter : %s", code)
+
+	program, err := expr.Compile(code, expr.Env(env))
+	require.NoError(t, err)
+
+	output, err := expr.Run(program, env)
+	require.NoError(t, err)
+
+	require.Equal(t, true, output)
+
 }
