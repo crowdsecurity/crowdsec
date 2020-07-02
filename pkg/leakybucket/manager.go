@@ -112,10 +112,6 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 	)
 
 	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
-	err := exprhelpers.Init()
-	if err != nil {
-		return nil, nil, err
-	}
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {

@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -280,6 +281,11 @@ func main() {
 	}
 	if cConfig.Profiling {
 		go runTachymeter(cConfig.HTTPListen)
+	}
+
+	err = exprhelpers.Init()
+	if err != nil {
+		log.Fatalf("Failed to init expr helpers : %s", err)
 	}
 
 	// Start loading configs
