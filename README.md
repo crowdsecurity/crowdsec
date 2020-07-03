@@ -40,6 +40,23 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/latest)
 
+Ensure you have dependencies :
+<details open>
+ <summary>for Debian based distributions</summary>
+```bash
+apt install bash gettext whiptail
+```
+</details>
+
+<details>
+ <summary>for RedHat based distributions</summary>
+```bash
+yum install bash gettext whiptail
+```
+</details>
+
+
+
 ```bash
 curl -s https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest | grep browser_download_url| cut -d '"' -f 4  | wget -i -
 tar xvzf crowdsec-release.tgz
