@@ -35,6 +35,20 @@ One of the advantages of Crowdsec when compared to other solutions is its crowde
 
 Besides detecting and stopping attacks in real time based on your logs, it allows you to preemptively block known bad actors from accessing your information system.
 
+
+## Install it !
+
+Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/latest)
+
+```bash
+curl -s https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest | grep browser_download_url| cut -d '"' -f 4  | wget -i -
+tar xvzf crowdsec-release.tgz
+cd crowdsec-v*
+sudo ./wizard.sh -i
+```
+
+
+
 ## Key points
 
 ### Fast assisted installation, no technical barrier
