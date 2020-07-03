@@ -52,7 +52,7 @@ func Init() error {
 }
 
 func FileInit(fileFolder string, filename string, fileType string) error {
-	log.Printf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
+	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
 	filepath := path.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
