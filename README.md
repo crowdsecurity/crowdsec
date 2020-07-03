@@ -42,16 +42,18 @@ Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/lat
 
 Ensure you have dependencies :
 <details open>
- <summary>for Debian based distributions</summary>
- ```bash
- apt install bash gettext whiptail curl wget
- ```
+  <summary>for Debian based distributions</summary>
+
+```bash
+apt install bash gettext whiptail curl wget
+```
 </details>
 
 <details>
- <summary>for RedHat based distributions</summary>
- ```bash
- yum install bash gettext newt curl wget
+  <summary>for RedHat based distributions</summary>
+
+```bash
+yum install bash gettext newt curl wget
  ```
 </details>
 
