@@ -45,7 +45,7 @@ Ensure you have dependencies :
   <summary>for Debian based distributions</summary>
 
 ```bash
-apt install bash gettext whiptail curl wget
+apt-get install bash gettext whiptail curl wget
 ```
 </details>
 
