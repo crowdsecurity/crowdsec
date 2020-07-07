@@ -32,6 +32,7 @@ nav:
     - Parsers: write_configurations/parsers.md
     - Scenarios: write_configurations/scenarios.md
     - Whitelist: write_configurations/whitelist.md
+    - Expressions: write_configurations/expressions.md
   - Blockers:
     - Overview : blockers/index.md
     - Nginx:
@@ -204,6 +205,11 @@ extra:
         Name: Overflow
         htmlname: "[overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
         Htmlname: "[Overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
+    whitelists:
+        name: whitelists
+        Name: Whitelists
+        htmlname: "[whitelists](/write_configurations/whitelist/)"
+        Htmlname: "[Whitelists](/write_configurations/whitelist/)"
     signal:
         name: signal
         Name: Signal
