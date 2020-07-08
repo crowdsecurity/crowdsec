@@ -259,6 +259,10 @@ func BanList() error {
 		if dispcount > 0 {
 			if !displayAPI {
 				fmt.Printf("%d local decisions:\n", dispcount)
+			} else if displayAPI && !displayALL {
+				fmt.Printf("%d decision from API", dispcount)
+			} else if displayALL && displayAPI {
+				fmt.Printf("%d decision from crowdsec and API", dispcount)
 			}
 			table.Render() // Send output
 			if dispcount > displayLimit && !displayALL {
