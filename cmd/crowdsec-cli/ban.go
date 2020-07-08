@@ -220,6 +220,7 @@ func BanList() error {
 		totcount := 0
 		apicount := 0
 		for _, rm := range ret {
+			log.Printf("source : %v", rm["source"])
 			if !displayAPI && rm["source"] == "api" {
 				apicount++
 				if _, ok := uniqAS[rm["as"]]; !ok {
