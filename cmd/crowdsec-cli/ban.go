@@ -241,8 +241,11 @@ func BanList() error {
 			} else if dispcount < displayLimit {
 				if displayAPI {
 					if rm["source"] == "api" {
-						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 
+					}
+				} else {
+					if rm["source"] != "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 					}
 				}
 			}
