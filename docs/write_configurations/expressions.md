@@ -5,16 +5,13 @@
 
 Several places of {{crowdsec.name}}'s configuration use {{expr.htmlname}} :
 
- - {{filter.Htmlname}} that are used to determine events eligibility in {{parsers.htmlname}} and {{scenarios.htmlname}}
- - {{statics.Htmlname}} can as well use expr in the `expression` directive, to compute complex values
- - {{whitelists.Htmlname}} as well suppport the `expression` directive that can return a bool result to determine if the event is whitelisted
- - `profiles.yaml` filters
+ - {{filter.Htmlname}} that are used to determine events eligibility in {{parsers.htmlname}} and {{scenarios.htmlname}} or `profiles`
+ - {{statics.Htmlname}} use expr in the `expression` directive, to compute complex values
+ - {{whitelists.Htmlname}} rely on `expression` directive to allow more complex whitelists filters
 
+To learn more about {{expr.htmlname}}, [check the github page of the project](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md).
 
-To learn more about {{expr.htmlname}}, [check the github page of the project](https://github.com/antonmedv/expr).
-
-In order to makes it use in {{crowdsec.name}} more efficient, we added a few helpers that are documented bellow.
-
+In order to makes its use in {{crowdsec.name}} more efficient, we added a few helpers that are documented bellow.
 
 ## Atof(string) float64
 
@@ -40,11 +37,16 @@ Returns the content of `FileName` as an array of string, while providing cache m
 
 Returns `true` if the `StringToMatch` is matched by one of the expressions contained in `FileName` (uses RE2 regexp engine).
 
+> RegexpInFile( evt.Enriched.reverse_dns, 'my_legit_seo_whitelists.txt')
 
 ## Upper(string) string
 
 Returns the uppercase version of the string
 
+> Upper("yop")
+
 ## IpInRange(IPStr, RangeStr) bool
 
 Returns true if the IP `IPStr` is contained in the IP range `RangeStr` (uses `net.ParseCIDR`)
+
+> IpInRange("1.2.3.4", "1.2.3.0/24")

@@ -282,6 +282,26 @@ statics:
     expression: evt.Meta.target_field + ' this_is' + ' a dynamic expression'
 ```
 
+### data
+
+```
+data:
+  - source_url: https://URL/TO/FILE
+    dest_file: LOCAL_FILENAME
+```
+
+`data` allows user to specify an external source of data.
+This section is only relevant when `cscli` is used to install parser from hub, as ill download the `source_url` and store it to `dest_file`. When the parser is not from the hub, this part has no impact.
+
+
+```yaml
+name: crowdsecurity/cdn-whitelist
+...
+data:
+  - source_url: https://www.cloudflare.com/ips-v4
+    dest_file: cloudflare_ips.txt
+```
+
 
 ## Parser concepts
 

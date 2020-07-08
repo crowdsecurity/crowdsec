@@ -1,25 +1,28 @@
 # What are whitelists
 
-Whitelists are, as for most configuration, YAML files, and allow you to "discard" events or overflows.
-
-Whitelists can exist at two different steps :
+Whitelists are special parsers that allow you to "discard" events, and can exist at two different steps :
 
  - *Parser whitelists* : Allows you to discard an event at parse time, so that it never hits the buckets.
  - *PostOverflow whitelists* : Those are whitelists that are checked *after* the overflow happens. It is usually best for whitelisting process that can be expensive (such as performing reverse DNS on an IP, or performing a `whois` of an IP).
 
+!!! info
+    While the whitelists are the same for parser or postoverflows, beware that field names might change.
+    Source ip is usually in `evt.Meta.source_ip` when it's a log, but `evt.Overflow.Source_ip` when it's an overflow
 
 
-The whitelist itself can be based on several criteria :
+The whitelist can be based on several criteria :
 
- - specific ip address
- - ip ranges
- - a {{expr.htmlname}} expression
+ - specific ip address : if the event/overflow IP is the same, event is whitelisted
+ - ip ranges : if the event/overflow IP belongs to this range, event is whitelisted
+ - a list of {{expr.htmlname}} expressions : if any expression returns true, event is whitelisted
 
 Here is an example showcasing configuration :
 
 ```yaml
 name: crowdsecurity/my-whitelists
 description: "Whitelist events from my ipv4 addresses"
+#it's a normal parser, so we can restrict its scope with filter
+filter: "1 == 1"
 whitelist:
   reason: "my ipv4 ranges"
   ip: 
@@ -29,19 +32,18 @@ whitelist:
     - "10.0.0.0/8"
     - "172.16.0.0/12"
   expression:
-  #beware, this one will work *only* if you enabled the reverse dns enrichment postoverflow parser
+  #beware, this one will work *only* if you enabled the reverse dns (crowdsecurity/rdns) enrichment postoverflow parser
     - evt.Enriched.reverse_dns endsWith ".mycoolorg.com."
-  #this one will work *only* if you enabled the geoip enrichment parser
+  #this one will work *only* if you enabled the geoip (crowdsecurity/geoip-enrich) enrichment parser
     - evt.Enriched.IsoCode == 'FR'
 ```
 
 
 # Whitelists in parsing
 
-When a whitelist is present in parsing `/etc/crowdsec/config/parsers/...`, it means that the event will be discarded before being poured to any bucket. These whitelists intentionally generate no logs and are useful to discard noisy false positive sources.
+When a whitelist is present in parsing `/etc/crowdsec/config/parsers/...`, it will be checked/discarded before being poured to any bucket. These whitelists intentionally generate no logs and are useful to discard noisy false positive sources.
 
 ## Whitelist by ip
-
 
 Let's assume we have a setup with a `crowdsecurity/nginx` collection enabled and no whitelists.
 
@@ -84,7 +86,7 @@ whitelist:
         - "80.x.x.x"
 ```
 
-and reload {{crowdsec.name}} : `sudo systemctl restart {{crowdsec.name}}`
+and reload {{crowdsec.name}} : `sudo systemctl restart crowdsec`
 
 ### Test the whitelist
 
@@ -178,4 +180,5 @@ time="07-07-2020 17:11:09" level=info msg="Processing Overflow with no decisions
 
 ```
 
+This time, we can see that logs are being produced when the event is discarded.
 

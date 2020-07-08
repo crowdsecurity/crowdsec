@@ -347,3 +347,24 @@ overflow_filter: any(queue.Queue, { .Enriched.IsInEU  == "true" })
 If this expression is present and returns false, the overflow will be discarded.
 
 
+### data
+
+```
+data:
+  - source_url: https://URL/TO/FILE
+    dest_file: LOCAL_FILENAME
+```
+
+`data` allows user to specify an external source of data.
+This section is only relevant when `cscli` is used to install scenario from hub, as ill download the `source_url` and store it to `dest_file`. When the scenario is not from the hub, this part has no impact.
+
+
+```yaml
+name: crowdsecurity/cdn-whitelist
+...
+data:
+  - source_url: https://www.cloudflare.com/ips-v4
+    dest_file: cloudflare_ips.txt
+```
+
+
