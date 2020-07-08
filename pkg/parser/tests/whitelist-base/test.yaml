@@ -22,10 +22,12 @@ results:
     Process: true
     Meta:
       test: test1
+      statics: success
   - Whitelisted: true
     Process: true 
     Meta:
       test: test2
+      statics: success
   - Whitelisted: false
     Process: true
     Meta:
@@ -38,6 +40,7 @@ results:
     Process: true
     Meta:
       test: test5
+      statics: success
                
 
 
