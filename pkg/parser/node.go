@@ -304,16 +304,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
-	if hasWhitelist && isWhitelisted && len(n.Statics) > 0 {
+	if hasWhitelist && isWhitelisted && len(n.Statics) > 0 || len(n.Statics) > 0 && !hasWhitelist {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
-		err := ProcessStatics(n.Statics, p, clog)
-		if err != nil {
-			clog.Fatalf("Failed to process statics : %v", err)
-		}
-	} else if len(n.Statics) > 0 && !hasWhitelist {
-		clog.Debugf("+ Processing %d statics", len(n.Statics))
-		// if all else is good, process node's statics
 		err := ProcessStatics(n.Statics, p, clog)
 		if err != nil {
 			clog.Fatalf("Failed to process statics : %v", err)
