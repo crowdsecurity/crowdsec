@@ -17,6 +17,7 @@ nav:
   - Cheat Sheets:
     - Ban Management: cheat_sheets/ban-mgmt.md
     - Configuration Management: cheat_sheets/config-mgmt.md
+    - Hub's taxonomy: https://hub.crowdsec.net/fields
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
@@ -31,7 +32,8 @@ nav:
     - Acquisition: write_configurations/acquisition.md
     - Parsers: write_configurations/parsers.md
     - Scenarios: write_configurations/scenarios.md
-    - Whitelist: write_configurations/whitelist.md
+    - Whitelists: write_configurations/whitelist.md
+    - Expressions: write_configurations/expressions.md
   - Blockers:
     - Overview : blockers/index.md
     - Nginx:
@@ -204,6 +206,11 @@ extra:
         Name: Overflow
         htmlname: "[overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
         Htmlname: "[Overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
+    whitelists:
+        name: whitelists
+        Name: Whitelists
+        htmlname: "[whitelists](/write_configurations/whitelist/)"
+        Htmlname: "[Whitelists](/write_configurations/whitelist/)"
     signal:
         name: signal
         Name: Signal

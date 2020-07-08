@@ -176,7 +176,7 @@ func (o *Output) ProcessOutput(sig types.SignalOccurence, profiles []types.Profi
 			return err
 		}
 		if warn != nil {
-			logger.Infof("node warning : %s", warn)
+			logger.Debugf("node warning : %s", warn)
 		}
 		if ordr != nil {
 			bans, err := types.OrderToApplications(ordr)
