@@ -219,6 +219,7 @@ func BanList() error {
 		dispcount := 0
 		totcount := 0
 		apicount := 0
+		localCount := 0
 		for _, rm := range ret {
 			if !displayAPI && rm["source"] == "api" {
 				apicount++
@@ -234,30 +235,32 @@ func BanList() error {
 					if displayAPI {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 						dispcount++
+						continue
 					}
 				} else {
 					table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 					dispcount++
+					continue
 				}
 			} else if dispcount < displayLimit {
 				if displayAPI {
 					if rm["source"] == "api" {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 						dispcount++
+						continue
 					}
 				} else {
 					if rm["source"] != "api" {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 						dispcount++
+						continue
 					}
 				}
 			}
-			totcount++
-
 		}
 		if dispcount > 0 {
 			if !displayAPI {
-				fmt.Printf("%d local decisions:\n", totcount)
+				fmt.Printf("%d local decisions:\n", dispcount)
 			}
 			table.Render() // Send output
 			if dispcount > displayLimit && !displayALL {
