@@ -20,11 +20,11 @@ import (
 
 var remediationType string
 var atTime string
-var all bool
 
 //user supplied filters
 var ipFilter, rangeFilter, reasonFilter, countryFilter, asFilter string
 var displayLimit int
+var displayAPI, displayALL bool
 
 func simpleBanToSignal(targetIP string, reason string, expirationStr string, action string, asName string, asNum string, country string, banSource string) (types.SignalOccurence, error) {
 	var signalOcc types.SignalOccurence
@@ -220,7 +220,7 @@ func BanList() error {
 		totcount := 0
 		apicount := 0
 		for _, rm := range ret {
-			if !all && rm["source"] == "api" {
+			if !displayALL && rm["source"] == "api" {
 				apicount++
 				if _, ok := uniqAS[rm["as"]]; !ok {
 					uniqAS[rm["as"]] = true
@@ -230,15 +230,28 @@ func BanList() error {
 				}
 				continue
 			}
-			if dispcount < displayLimit {
-				table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+			if displayALL {
+				if rm["source"] == "api" {
+					if displayAPI {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+					}
+				} else {
+					table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+				}
+			} else if dispcount < displayLimit {
+				if displayAPI {
+					if rm["source"] == "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+
+					}
+				}
 			}
 			totcount++
 			dispcount++
 
 		}
 		if dispcount > 0 {
-			if !all {
+			if !displayALL {
 				fmt.Printf("%d local decisions:\n", totcount)
 			}
 			table.Render() // Send output
@@ -248,7 +261,7 @@ func BanList() error {
 		} else {
 			fmt.Printf("No local decisions.\n")
 		}
-		if !all {
+		if !displayALL {
 			fmt.Printf("And %d records from API, %d distinct AS, %d distinct countries\n", apicount, len(uniqAS), len(uniqCN))
 		}
 	}
@@ -428,7 +441,8 @@ Time can be specified with --at and support a variety of date formats:
 		},
 	}
 	cmdBanList.PersistentFlags().StringVar(&atTime, "at", "", "List bans at given time")
-	cmdBanList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().BoolVarP(&displayALL, "all", "a", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().BoolVarP(&displayAPI, "api", "", false, "List as well bans received from API")
 	cmdBanList.PersistentFlags().StringVar(&ipFilter, "ip", "", "List bans for given IP")
 	cmdBanList.PersistentFlags().StringVar(&rangeFilter, "range", "", "List bans belonging to given range")
 	cmdBanList.PersistentFlags().StringVar(&reasonFilter, "reason", "", "List bans containing given reason")
