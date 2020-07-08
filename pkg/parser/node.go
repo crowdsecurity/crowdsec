@@ -161,6 +161,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
 				p.Whitelisted = true
 				set = true
+				NodeState = true
+			} else {
+				NodeState = false
 			}
 		}
 
@@ -169,8 +172,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
 				p.Whitelisted = true
 				set = true
+				NodeState = true
 			} else {
 				clog.Debugf("whitelist: %s not in [%s]", src, v)
+				NodeState = false
 			}
 		}
 	} else {
@@ -191,6 +196,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				clog.Debugf("Event is whitelisted by Expr !")
 				p.Whitelisted = true
 				set = true
+				NodeState = true
+			} else {
+				NodeState = false
 			}
 		default:
 			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
