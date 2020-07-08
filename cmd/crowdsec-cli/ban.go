@@ -217,9 +217,7 @@ func BanList() error {
 		table.SetHeader([]string{"Source", "Ip", "Reason", "Bans", "Action", "Country", "AS", "Events", "Expiration"})
 
 		dispcount := 0
-		totcount := 0
 		apicount := 0
-		localCount := 0
 		for _, rm := range ret {
 			if !displayAPI && rm["source"] == "api" {
 				apicount++
