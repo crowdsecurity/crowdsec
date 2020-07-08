@@ -144,6 +144,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if n.Name != "" {
 		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
+	isWhitelisted := false
+	hasWhitelist := false
 	var src net.IP
 	/*overflow and log don't hold the source ip in the same field, should be changed */
 	/* perform whitelist checks for ips, cidr accordingly */
@@ -159,16 +161,22 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			if v.Equal(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
 				p.Whitelisted = true
+				isWhitelisted = true
+			} else {
+				clog.Debugf("whitelist: %s is not eq [%s]", src, v)
 			}
+			hasWhitelist = true
 		}
 
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
 				p.Whitelisted = true
+				isWhitelisted = true
 			} else {
 				clog.Debugf("whitelist: %s not in [%s]", src, v)
 			}
+			hasWhitelist = true
 		}
 	} else {
 		clog.Debugf("no ip in event, cidr/ip whitelists not checked")
@@ -187,12 +195,14 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			if out {
 				clog.Debugf("Event is whitelisted by Expr !")
 				p.Whitelisted = true
+				isWhitelisted = true
 			}
+			hasWhitelist = true
 		default:
 			log.Errorf("unexpected type %t (%v) while running '%s'", output, output, n.Whitelist.Exprs[eidx])
 		}
 	}
-	if p.Whitelisted {
+	if isWhitelisted {
 		p.WhiteListReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
@@ -294,14 +304,14 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
-	if len(n.Statics) > 0 && !p.Whitelisted {
+	if hasWhitelist && isWhitelisted && len(n.Statics) > 0 {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
-		// if all else is good, process node's statics
+		// if all else is good in whitelist, process node's statics
 		err := ProcessStatics(n.Statics, p, clog)
 		if err != nil {
 			clog.Fatalf("Failed to process statics : %v", err)
 		}
-	} else if p.Whitelisted {
+	} else if len(n.Statics) > 0 && !hasWhitelist {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good, process node's statics
 		err := ProcessStatics(n.Statics, p, clog)

@@ -3,19 +3,24 @@ lines:
   - Meta:
       test: test1
       source_ip: 8.8.8.8
+      statics: toto
   - Meta:
       test: test2
       source_ip: 1.2.3.4
+      statics: toto
   - Meta:
       test: test3
       source_ip: 2.2.3.4
+      statics: toto
   - Meta:
       test: test4
       source_ip: 8.8.8.9
+      statics: toto
   - Enriched:
       test_token: supertoken1234
     Meta:
       test: test5
+      statics: toto
 #these are the results we expect from the parser
 results:
   - Whitelisted: true
@@ -32,10 +37,12 @@ results:
     Process: true
     Meta:
       test: test3
+      statics: toto
   - Whitelisted: false
     Process: true
     Meta:
       test: test4
+      statics: toto
   - Whitelisted: true
     Process: true
     Meta:
