@@ -24,6 +24,7 @@ var all bool
 
 //user supplied filters
 var ipFilter, rangeFilter, reasonFilter, countryFilter, asFilter string
+var displayLimit int
 
 func simpleBanToSignal(targetIP string, reason string, expirationStr string, action string, asName string, asNum string, country string, banSource string) (types.SignalOccurence, error) {
 	var signalOcc types.SignalOccurence
@@ -229,7 +230,7 @@ func BanList() error {
 				}
 				continue
 			}
-			if dispcount < 20 {
+			if dispcount < displayLimit {
 				table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 			}
 			totcount++
@@ -241,7 +242,7 @@ func BanList() error {
 				fmt.Printf("%d local decisions:\n", totcount)
 			}
 			table.Render() // Send output
-			if dispcount > 20 {
+			if dispcount > displayLimit {
 				fmt.Printf("Additional records stripped.\n")
 			}
 		} else {
@@ -433,6 +434,7 @@ Time can be specified with --at and support a variety of date formats:
 	cmdBanList.PersistentFlags().StringVar(&reasonFilter, "reason", "", "List bans containing given reason")
 	cmdBanList.PersistentFlags().StringVar(&countryFilter, "country", "", "List bans belonging to given country code")
 	cmdBanList.PersistentFlags().StringVar(&asFilter, "as", "", "List bans belonging to given AS name")
+	cmdBanList.PersistentFlags().IntVar(&displayLimit, "limit", 50, "Limit of bans to display (default 50)")
 
 	cmdBan.AddCommand(cmdBanList)
 	return cmdBan
