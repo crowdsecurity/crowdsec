@@ -14,6 +14,9 @@ Here is a sample of a profile configuration:
 profile: <profile_name>
 filter: "<filter_expression>"
 api: true # default true : send signal to crowdsec API
+remediation: # remediation to apply
+  ban: true
+  duration: 4h
 outputs:  # here choose your output plugins for this profile
     - plugin: plugin1
       custom_config: <config>
@@ -28,11 +31,10 @@ filter: "sig.Labels.remediation == 'true'"
 api: true # If no api: specified, will use the default config in default.yaml
 remediation:
   ban: true
-  slow: true
-  captcha: true
   duration: 4h
 outputs:
   - plugin: sqlite
+    store: true # we want to store decision in SQLite for ban
 ---
 profile: default_notification
 filter: "sig.Labels.remediation != 'true'"
@@ -45,7 +47,34 @@ outputs:
 
 Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{signal.htmlname}} object to choose which signal will be process by which plugin.
 
-## Plugins
+### Learning mode like
+
+Here is an example of a `profile.yaml` file that we can use for a learning mode (by don't storing all the decision in the backend database except the one we are sure):
+```yaml
+profile: default_remediation
+filter: "sig.Labels.remediation == 'true'"
+api: true # If no api: specified, will use the default config in default.yaml
+remediation:
+  ban: true
+  duration: 4h
+outputs:
+  - plugin: sqlite
+    store: false # We don't store decisions in SQLite because we want a learning mode
+---
+profile: only ban ssh bruteforce scenario
+filter: "sig.Labels.Scenario == 'crowdsecurity/ssh-bf'"
+api: true
+remediation:
+  ban: true
+  duration: 4h
+outputs:
+  - plugin: sqlite  # If we do not want to push, we can remove this line and the next one
+    store: true
+```
+
+### Plugins
+
+Plugins are part of the output mecanism that store decisions in a database backend to be use by a blocker for bans.
 
 Plugins configuration file are stored in `{{plugins.configpath}}`. {{crowdsec.name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{plugins.binpath}}`.
 
