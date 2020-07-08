@@ -259,7 +259,7 @@ func BanList() error {
 			}
 			table.Render() // Send output
 			if dispcount > displayLimit {
-				fmt.Printf("Additional records stripped.\n")
+				fmt.Printf("Additional records stripped : %d | %d.\n", dispcount, displayLimit)
 			}
 		} else {
 			fmt.Printf("No local decisions.\n")
