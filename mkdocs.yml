@@ -17,6 +17,7 @@ nav:
   - Cheat Sheets:
     - Ban Management: cheat_sheets/ban-mgmt.md
     - Configuration Management: cheat_sheets/config-mgmt.md
+    - Hub's taxonomy: https://hub.crowdsec.net/fields
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
