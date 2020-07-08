@@ -68,6 +68,9 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
+			continue
+		}
 		switch fileType {
 		case "regex", "regexp":
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
