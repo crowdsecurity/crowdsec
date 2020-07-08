@@ -288,10 +288,11 @@ statics:
 data:
   - source_url: https://URL/TO/FILE
     dest_file: LOCAL_FILENAME
+    [type: regexp]
 ```
 
 `data` allows user to specify an external source of data.
-This section is only relevant when `cscli` is used to install parser from hub, as it will download the `source_url` and store it to `dest_file`. When the parsser is not from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the parsser to be loaded correctly.
+This section is only relevant when `cscli` is used to install parser from hub, as it will download the `source_url` and store it to `dest_file`. When the parser is not from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the parser to be loaded correctly.
 
 If `type` is set to `regexp`, the content of the file must be one valid (re2) regular expression per line.
 Those regexps will be compiled and kept in cache.
