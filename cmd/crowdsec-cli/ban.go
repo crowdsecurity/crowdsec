@@ -256,7 +256,7 @@ func BanList() error {
 
 		}
 		if dispcount > 0 {
-			if !displayALL && !displayAPI {
+			if !displayAPI {
 				fmt.Printf("%d local decisions:\n", totcount)
 			}
 			table.Render() // Send output
