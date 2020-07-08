@@ -156,7 +156,7 @@ Let's put the following file in `/etc/crowdsec/config/postoverflows/s01-whitelis
 
 ```yaml
 name: me/my_cool_whitelist
-description: lets whitelist our	own reverse dns
+description: lets whitelist our own reverse dns
 whitelist:
   reason: dont ban my ISP
   expression:
