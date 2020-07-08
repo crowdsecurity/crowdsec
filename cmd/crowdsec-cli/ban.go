@@ -239,6 +239,7 @@ func BanList() error {
 					table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
 				}
 			} else if dispcount < displayLimit {
+				log.Printf("Displaying API ?? : %v  | source event : %s", displayAPI, rm["source"])
 				if displayAPI {
 					if rm["source"] == "api" {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
@@ -254,7 +255,7 @@ func BanList() error {
 
 		}
 		if dispcount > 0 {
-			if !displayALL {
+			if !displayALL && !displayAPI {
 				fmt.Printf("%d local decisions:\n", totcount)
 			}
 			table.Render() // Send output
