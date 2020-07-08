@@ -220,7 +220,6 @@ func BanList() error {
 		totcount := 0
 		apicount := 0
 		for _, rm := range ret {
-			log.Printf("source : %v", rm["source"])
 			if !displayAPI && rm["source"] == "api" {
 				apicount++
 				if _, ok := uniqAS[rm["as"]]; !ok {
@@ -242,15 +241,16 @@ func BanList() error {
 				if displayAPI {
 					if rm["source"] == "api" {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
 					}
 				} else {
 					if rm["source"] != "api" {
 						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
 					}
 				}
 			}
 			totcount++
-			dispcount++
 
 		}
 		if dispcount > 0 {
