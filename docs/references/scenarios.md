@@ -357,7 +357,7 @@ data:
 ```
 
 `data` allows user to specify an external source of data.
-This section is only relevant when `cscli` is used to install scenario from hub, as ill download the `source_url` and store it to `dest_file`. When the scenario is not from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the scenario to be loaded correctly.
+This section is only relevant when `cscli` is used to install scenario from hub, as ill download the `source_url` and store it to `dest_file`. When the scenario is not installed from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the scenario to be loaded correctly.
 
 If `type` is set to `regexp`, the content of the file must be one valid (re2) regular expression per line.
 Those regexps will be compiled and kept in cache.
