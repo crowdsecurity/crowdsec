@@ -25,7 +25,7 @@ nav:
   - References:
     - Parsers format: references/parsers.md
     - Scenarios format: references/scenarios.md
-    - Outputs format: references/output.md
+    - Profile format: references/profile.md
   - Write Configurations:
     - Requirements: write_configurations/requirements.md
     - Acquisition: write_configurations/acquisition.md
