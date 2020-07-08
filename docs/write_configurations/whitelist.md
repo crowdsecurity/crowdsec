@@ -161,7 +161,7 @@ whitelist:
   reason: dont ban my ISP
   expression:
   #this is the reverse of my ip, you can get it by performing a "host" command on your public IP for example
-    - evt.Enriched.reverse_dns endsWith	'.asnieres.rev.numericable.fr.'
+    - evt.Enriched.reverse_dns endsWith '.asnieres.rev.numericable.fr.'
 ```
 
 After reloading {{crowdsec.name}}, and launching (again!) nikto :
