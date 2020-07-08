@@ -260,9 +260,9 @@ func BanList() error {
 			if !displayAPI {
 				fmt.Printf("%d local decisions:\n", dispcount)
 			} else if displayAPI && !displayALL {
-				fmt.Printf("%d decision from API", dispcount)
+				fmt.Printf("%d decision from API\n", dispcount)
 			} else if displayALL && displayAPI {
-				fmt.Printf("%d decision from crowdsec and API", dispcount)
+				fmt.Printf("%d decision from crowdsec and API\n", dispcount)
 			}
 			table.Render() // Send output
 			if dispcount > displayLimit && !displayALL {
@@ -271,7 +271,7 @@ func BanList() error {
 		} else {
 			fmt.Printf("No local decisions.\n")
 		}
-		if !displayALL || displayAPI {
+		if !displayALL || !displayAPI {
 			fmt.Printf("And %d records from API, %d distinct AS, %d distinct countries\n", apicount, len(uniqAS), len(uniqCN))
 		}
 	}
