@@ -49,7 +49,7 @@ Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{sig
 
 ### Learning mode like
 
-Here is an example of a `profile.yaml` file that we can use for a learning mode (by don't storing all the decision in the backend database except the one we are sure):
+Here is an example of a `profile.yaml` file that we can use for a learning mode (by don't storing all the decision in the backend database except the ones we are confident):
 ```yaml
 profile: default_remediation
 filter: "sig.Labels.remediation == 'true'"
@@ -74,7 +74,7 @@ outputs:
 
 ### Plugins
 
-Plugins are part of the output mecanism that store decisions in a database backend to be use by a blocker for bans.
+Plugins are part of the output mecanism that store decisions in a database backend to be used by a blocker for bans.
 
 Plugins configuration file are stored in `{{plugins.configpath}}`. {{crowdsec.name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{plugins.binpath}}`.
 
