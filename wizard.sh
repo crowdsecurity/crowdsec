@@ -266,6 +266,15 @@ genacquisition() {
     done 
 }
 
+
+install_plugins() {
+    mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
+    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
+    (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
+    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
+}
+
+
 #install crowdsec and cscli
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
@@ -276,13 +285,10 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
 
-    mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
-    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
     mkdir -p "${CSCLI_FOLDER}" || exit
 
-    (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
-    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
-
+    install_plugins
+    
     install -v -m 755 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 755 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 755 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
@@ -300,6 +306,7 @@ update_bins() {
     log_info "Only upgrading binaries"
     delete_bins
     install_bins
+    install_plugins
     log_info "Upgrade finished"
     systemctl restart crowdsec
 }
