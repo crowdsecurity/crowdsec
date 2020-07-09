@@ -270,9 +270,9 @@ func BanList() error {
 			}
 		} else {
 			if displayAPI {
-				fmt.Printf("No API decisions")
+				fmt.Println("No API decisions")
 			} else {
-				fmt.Printf("No local decisions.\n")
+				fmt.Println("No local decisions")
 			}
 		}
 		if !displayAPI {
