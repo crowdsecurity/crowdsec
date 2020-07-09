@@ -27,6 +27,14 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ![Architecture](assets/images/crowdsec_architecture.png)
 
+
+## Core concepts
+
+{{crowdsec.name}} relies on {{parsers.htmlname}} to normalize and enrich logs, and {{scenarios.htmlname}} to detect attacks, often bundled together in {{collections.htmlname}} to form a coherent configuration set. For example the collection [`crowdsecurity/nginx`](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx) contains all the necessary parsers and scenarios to deal with nginx logs and the common attacks that can be seen on http servers.
+
+All of those are represented as YAML files, that can be found, shared and kept up-to-date thanks to the {{hub.htmlname}}, or [easily hand-crafted](/write_configurations/scenarios/) to address specific needs.
+
+
 ## Moving forward
 
 To learn more about {{crowdsec.name}} and give it a try, please see :
