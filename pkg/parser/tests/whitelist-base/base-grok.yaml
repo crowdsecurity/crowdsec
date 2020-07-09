@@ -9,3 +9,6 @@ whitelist:
     - "1.2.3.0/24"
   expression:
     - "'supertoken1234' == evt.Enriched.test_token"
+statics:
+  - meta: statics
+    value: success
