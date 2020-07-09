@@ -102,7 +102,6 @@ func pullTOP() error {
 		if _, ok := item["scenario"]; !ok {
 			continue
 		}
-		item["scenario"] = fmt.Sprintf("api: %s", item["scenario"])
 
 		if _, ok := item["action"]; !ok {
 			continue
