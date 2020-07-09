@@ -428,7 +428,8 @@ cscli ban del range 1.2.3.0/24`,
 		Short: "List local or api bans/remediations",
 		Long: `List the bans, by default only local decisions.
 
-If --all/-a is specified, api-provided bans will be displayed too.
+If --all/-a is specified, bans will be displayed without limit (--limit).
+Default limit is 50.
 
 Time can be specified with --at and support a variety of date formats:  
  - Jan  2 15:04:05  
@@ -451,7 +452,7 @@ Time can be specified with --at and support a variety of date formats:
 		},
 	}
 	cmdBanList.PersistentFlags().StringVar(&atTime, "at", "", "List bans at given time")
-	cmdBanList.PersistentFlags().BoolVarP(&displayALL, "all", "a", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().BoolVarP(&displayALL, "all", "a", false, "List bans without limit")
 	cmdBanList.PersistentFlags().BoolVarP(&displayAPI, "api", "", false, "List as well bans received from API")
 	cmdBanList.PersistentFlags().StringVar(&ipFilter, "ip", "", "List bans for given IP")
 	cmdBanList.PersistentFlags().StringVar(&rangeFilter, "range", "", "List bans belonging to given range")
