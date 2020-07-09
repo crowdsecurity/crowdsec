@@ -269,7 +269,11 @@ func BanList() error {
 				fmt.Printf("Additional records stripped.\n")
 			}
 		} else {
-			fmt.Printf("No local decisions.\n")
+			if displayAPI {
+				fmt.Printf("No API decisions")
+			} else {
+				fmt.Printf("No local decisions.\n")
+			}
 		}
 		if !displayAPI {
 			fmt.Printf("And %d records from API, %d distinct AS, %d distinct countries\n", apicount, len(uniqAS), len(uniqCN))
