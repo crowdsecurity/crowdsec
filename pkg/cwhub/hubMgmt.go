@@ -813,9 +813,6 @@ func HubStatus(itype string, name string, list_all bool) []map[string]string {
 		log.Errorf("type %s doesn't exist", itype)
 		return nil
 	}
-	if list_all {
-		log.Printf("only enabled ones")
-	}
 
 	var mli []map[string]string
 	/*remember, you do it for the user :)*/
