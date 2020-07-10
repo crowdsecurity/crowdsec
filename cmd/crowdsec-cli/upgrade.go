@@ -124,14 +124,14 @@ cscli upgrade --force # Overwrite tainted configuration
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if len(args) == 1 {
-				UpgradeConfig(cwhub.PARSERS, args[0])
-				//UpgradeConfig(cwhub.PARSERS_OVFLW, "")
-			} else if upgrade_all {
+			if upgrade_all {
 				UpgradeConfig(cwhub.PARSERS, "")
 			} else {
-				_ = cmd.Help()
+				for _, name := range args {
+					UpgradeConfig(cwhub.PARSERS, name)
+				}
 			}
+
 		},
 	}
 	cmdUpgrade.AddCommand(cmdUpgradeParser)
@@ -146,12 +146,12 @@ cscli upgrade --force # Overwrite tainted configuration
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if len(args) == 1 {
-				UpgradeConfig(cwhub.SCENARIOS, args[0])
-			} else if upgrade_all {
+			if upgrade_all {
 				UpgradeConfig(cwhub.SCENARIOS, "")
 			} else {
-				_ = cmd.Help()
+				for _, name := range args {
+					UpgradeConfig(cwhub.SCENARIOS, name)
+				}
 			}
 		},
 	}
@@ -168,12 +168,12 @@ cscli upgrade --force # Overwrite tainted configuration
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if len(args) == 1 {
-				UpgradeConfig(cwhub.COLLECTIONS, args[0])
-			} else if upgrade_all {
+			if upgrade_all {
 				UpgradeConfig(cwhub.COLLECTIONS, "")
 			} else {
-				_ = cmd.Help()
+				for _, name := range args {
+					UpgradeConfig(cwhub.COLLECTIONS, name)
+				}
 			}
 		},
 	}
@@ -191,12 +191,12 @@ cscli upgrade --force # Overwrite tainted configuration
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if len(args) == 1 {
-				UpgradeConfig(cwhub.PARSERS_OVFLW, args[0])
-			} else if upgrade_all {
+			if upgrade_all {
 				UpgradeConfig(cwhub.PARSERS_OVFLW, "")
 			} else {
-				_ = cmd.Help()
+				for _, name := range args {
+					UpgradeConfig(cwhub.PARSERS_OVFLW, name)
+				}
 			}
 		},
 	}
