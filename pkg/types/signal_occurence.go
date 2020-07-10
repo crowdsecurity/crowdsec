@@ -38,6 +38,7 @@ type SignalOccurence struct {
 	Capacity    int               `json:"capacity,omitempty"`
 	Leak_speed  time.Duration     `json:"leak_speed,omitempty"`
 	Whitelisted bool              `gorm:"-"`
+	Simulation  bool              `gorm:"-"`
 	Reprocess   bool              //Reprocess, when true, will make the overflow being processed again as a fresh log would
 	Labels      map[string]string `gorm:"-"`
 }
