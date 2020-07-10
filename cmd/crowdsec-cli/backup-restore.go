@@ -195,7 +195,7 @@ func restoreFromDirectory(source string) error {
 
 	/* Restore plugins configuration */
 	var pluginsConfigFile []string
-	err = filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
+	walkErr := filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
 		fi, err := os.Stat(path)
 		if err != nil {
 			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
@@ -206,8 +206,8 @@ func restoreFromDirectory(source string) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), err)
+	if walkErr != nil {
+		return fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), walkErr)
 	}
 
 	if err := os.MkdirAll(outputCTX.Config.BackendFolder, os.ModePerm); err != nil {
@@ -398,7 +398,7 @@ func backupToDirectory(target string) error {
 
 	/* Backup plugins configuration */
 	var pluginsConfigFile []string
-	err = filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
+	walkErr := filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
 		fi, err := os.Stat(path)
 		if err != nil {
 			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
@@ -409,8 +409,8 @@ func backupToDirectory(target string) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return fmt.Errorf("error while listing folder '%s' : %s", outputCTX.Config.BackendFolder, err)
+	if walkErr != nil {
+		return fmt.Errorf("error while listing folder '%s' : %s", outputCTX.Config.BackendFolder, walkErr)
 	}
 
 	targetDir := fmt.Sprintf("%s/plugins/backend/", target)
