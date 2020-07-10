@@ -35,6 +35,7 @@ type OutputFactory struct {
 type Output struct {
 	API      *cwapi.ApiCtx
 	bManager *cwplugin.BackendManager
+	Config   *OutputFactory
 }
 
 /*
@@ -351,5 +352,6 @@ func NewOutput(config *OutputFactory) (*Output, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load backend plugin")
 	}
+	output.Config = config
 	return &output, nil
 }
