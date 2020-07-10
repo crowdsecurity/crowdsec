@@ -207,7 +207,7 @@ func restoreFromDirectory(source string) error {
 		return nil
 	})
 	if err != nil {
-		fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), err)
+		return fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), err)
 	}
 
 	if err := os.MkdirAll(outputCTX.Config.BackendFolder, os.ModePerm); err != nil {
