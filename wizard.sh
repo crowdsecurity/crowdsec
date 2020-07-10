@@ -266,12 +266,20 @@ genacquisition() {
     done 
 }
 
+delete_plugins(){
+    rm -rf "${CROWDSEC_PLUGIN_DIR}"
+    rm -rf "${CROWDSEC_BACKEND_FOLDER}"
+}
 
 install_plugins() {
+    install_plugins_bin
     mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
+    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
+}
+
+install_plugins_bin() {
     mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
     (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
-    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
 }
 
 
@@ -284,11 +292,8 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
-
     mkdir -p "${CSCLI_FOLDER}" || exit
 
-    install_plugins
-    
     install -v -m 755 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 755 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 755 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
@@ -299,6 +304,7 @@ install_crowdsec() {
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
     CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     install_bins
+    install_plugins
 	systemctl daemon-reload
 }
 
@@ -306,10 +312,11 @@ update_bins() {
     log_info "Only upgrading binaries"
     delete_bins
     install_bins
-    install_plugins
+    install_plugins_bin
     log_info "Upgrade finished"
     systemctl restart crowdsec
 }
+
 
 update_full() {
 
@@ -341,6 +348,7 @@ install_bins() {
     log_info "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" || exit
+    install_plugins_bin || exit
 }
 
 delete_bins() {
@@ -354,6 +362,7 @@ uninstall_crowdsec() {
     systemctl stop crowdsec.service
     ${CSCLI_BIN} dashboard stop --remove
     delete_bins
+    delete_plugins
     rm -rf ${CROWDSEC_PATH} || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
