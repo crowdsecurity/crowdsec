@@ -195,7 +195,7 @@ func restoreFromDirectory(source string) error {
 	}
 	log.Infof("Restore acquis to %s", yamlAcquisFile)
 
-	/* Backup plugins configuration */
+	/* Restore plugins configuration */
 	var pluginsConfigFile []string
 	err = filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
 		fi, err := os.Stat(path)
