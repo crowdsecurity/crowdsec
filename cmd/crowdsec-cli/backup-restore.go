@@ -195,6 +195,36 @@ func restoreFromDirectory(source string) error {
 	}
 	log.Infof("Restore acquis to %s", yamlAcquisFile)
 
+	/* Backup plugins configuration */
+	var pluginsConfigFile []string
+	err = filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
+		fi, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+		mode := fi.Mode()
+		if mode.IsRegular() {
+			pluginsConfigFile = append(pluginsConfigFile, path)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if err := os.MkdirAll(outputCTX.Config.BackendFolder, os.ModePerm); err != nil {
+		return fmt.Errorf("error while creating backup folder dir %s : %s", outputCTX.Config.BackendFolder, err)
+	}
+
+	for _, file := range pluginsConfigFile {
+		_, filename := path.Split(file)
+		backupFile := fmt.Sprintf("%s/%s", outputCTX.Config.BackendFolder, filename)
+		log.Printf("Restoring  '%s' to '%s'", file, backupFile)
+		if err := copyFile(file, backupFile); err != nil {
+			panic(err)
+		}
+	}
+
 	return nil
 }
 
@@ -367,6 +397,37 @@ func backupToDirectory(target string) error {
 		return fmt.Errorf("unable to write credentials to %s : %s", apiCredsDumped, err)
 	}
 	log.Infof("Saved configuration to %s", target)
+
+	/* Backup plugins configuration */
+	var pluginsConfigFile []string
+	err = filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
+		fi, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+		mode := fi.Mode()
+		if mode.IsRegular() {
+			pluginsConfigFile = append(pluginsConfigFile, path)
+		}
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	targetDir := fmt.Sprintf("%s/plugins/backend/", target)
+	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+		return fmt.Errorf("error while creating backup folder dir %s : %s", targetDir, err)
+	}
+
+	for _, file := range pluginsConfigFile {
+		_, filename := path.Split(file)
+		backupFile := fmt.Sprintf("%s/plugins/backend/%s", target, filename)
+		if err := copyFile(file, backupFile); err != nil {
+			panic(err)
+		}
+	}
+
 	return nil
 }
 
