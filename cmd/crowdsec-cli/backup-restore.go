@@ -168,10 +168,8 @@ func restoreFromDirectory(source string) error {
 				destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
 				if err = copyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
-				} else {
-					log.Infof("restored %s to %s", sourceFile, destinationFile)
 				}
-
+				log.Infof("restored %s to %s", sourceFile, destinationFile)
 			}
 		}
 	}
@@ -200,7 +198,7 @@ func restoreFromDirectory(source string) error {
 	err = filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
 		fi, err := os.Stat(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
 		}
 		mode := fi.Mode()
 		if mode.IsRegular() {
@@ -209,7 +207,7 @@ func restoreFromDirectory(source string) error {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), err)
 	}
 
 	if err := os.MkdirAll(outputCTX.Config.BackendFolder, os.ModePerm); err != nil {
@@ -221,7 +219,7 @@ func restoreFromDirectory(source string) error {
 		backupFile := fmt.Sprintf("%s/%s", outputCTX.Config.BackendFolder, filename)
 		log.Printf("Restoring  '%s' to '%s'", file, backupFile)
 		if err := copyFile(file, backupFile); err != nil {
-			panic(err)
+			return fmt.Errorf("error while copying '%s' to '%s' : %s", file, backupFile, err)
 		}
 	}
 
@@ -403,7 +401,7 @@ func backupToDirectory(target string) error {
 	err = filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
 		fi, err := os.Stat(path)
 		if err != nil {
-			return err
+			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
 		}
 		mode := fi.Mode()
 		if mode.IsRegular() {
@@ -412,7 +410,7 @@ func backupToDirectory(target string) error {
 		return nil
 	})
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("error while listing folder '%s' : %s", outputCTX.Config.BackendFolder, err)
 	}
 
 	targetDir := fmt.Sprintf("%s/plugins/backend/", target)
@@ -424,7 +422,7 @@ func backupToDirectory(target string) error {
 		_, filename := path.Split(file)
 		backupFile := fmt.Sprintf("%s/plugins/backend/%s", target, filename)
 		if err := copyFile(file, backupFile); err != nil {
-			panic(err)
+			return fmt.Errorf("unable to copy file '%s' to '%s' : %s", file, backupFile, err)
 		}
 	}
 
