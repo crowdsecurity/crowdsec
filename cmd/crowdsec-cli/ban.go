@@ -20,10 +20,11 @@ import (
 
 var remediationType string
 var atTime string
-var all bool
 
 //user supplied filters
 var ipFilter, rangeFilter, reasonFilter, countryFilter, asFilter string
+var displayLimit int
+var displayAPI, displayALL bool
 
 func simpleBanToSignal(targetIP string, reason string, expirationStr string, action string, asName string, asNum string, country string, banSource string) (types.SignalOccurence, error) {
 	var signalOcc types.SignalOccurence
@@ -216,10 +217,9 @@ func BanList() error {
 		table.SetHeader([]string{"Source", "Ip", "Reason", "Bans", "Action", "Country", "AS", "Events", "Expiration"})
 
 		dispcount := 0
-		totcount := 0
 		apicount := 0
 		for _, rm := range ret {
-			if !all && rm["source"] == "api" {
+			if !displayAPI && rm["source"] == "api" {
 				apicount++
 				if _, ok := uniqAS[rm["as"]]; !ok {
 					uniqAS[rm["as"]] = true
@@ -227,27 +227,55 @@ func BanList() error {
 				if _, ok := uniqCN[rm["cn"]]; !ok {
 					uniqCN[rm["cn"]] = true
 				}
-				continue
 			}
-			if dispcount < 20 {
-				table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+			if displayALL {
+				if rm["source"] == "api" {
+					if displayAPI {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				} else {
+					table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+					dispcount++
+					continue
+				}
+			} else if dispcount < displayLimit {
+				if displayAPI {
+					if rm["source"] == "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				} else {
+					if rm["source"] != "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				}
 			}
-			totcount++
-			dispcount++
-
 		}
 		if dispcount > 0 {
-			if !all {
-				fmt.Printf("%d local decisions:\n", totcount)
+			if !displayAPI {
+				fmt.Printf("%d local decisions:\n", dispcount)
+			} else if displayAPI && !displayALL {
+				fmt.Printf("%d decision from API\n", dispcount)
+			} else if displayALL && displayAPI {
+				fmt.Printf("%d decision from crowdsec and API\n", dispcount)
 			}
 			table.Render() // Send output
-			if dispcount > 20 {
+			if dispcount > displayLimit && !displayALL {
 				fmt.Printf("Additional records stripped.\n")
 			}
 		} else {
-			fmt.Printf("No local decisions.\n")
+			if displayAPI {
+				fmt.Println("No API decisions")
+			} else {
+				fmt.Println("No local decisions")
+			}
 		}
-		if !all {
+		if !displayAPI {
 			fmt.Printf("And %d records from API, %d distinct AS, %d distinct countries\n", apicount, len(uniqAS), len(uniqCN))
 		}
 	}
@@ -404,7 +432,8 @@ cscli ban del range 1.2.3.0/24`,
 		Short: "List local or api bans/remediations",
 		Long: `List the bans, by default only local decisions.
 
-If --all/-a is specified, api-provided bans will be displayed too.
+If --all/-a is specified, bans will be displayed without limit (--limit).
+Default limit is 50.
 
 Time can be specified with --at and support a variety of date formats:  
  - Jan  2 15:04:05  
@@ -427,12 +456,14 @@ Time can be specified with --at and support a variety of date formats:
 		},
 	}
 	cmdBanList.PersistentFlags().StringVar(&atTime, "at", "", "List bans at given time")
-	cmdBanList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().BoolVarP(&displayALL, "all", "a", false, "List bans without limit")
+	cmdBanList.PersistentFlags().BoolVarP(&displayAPI, "api", "", false, "List as well bans received from API")
 	cmdBanList.PersistentFlags().StringVar(&ipFilter, "ip", "", "List bans for given IP")
 	cmdBanList.PersistentFlags().StringVar(&rangeFilter, "range", "", "List bans belonging to given range")
 	cmdBanList.PersistentFlags().StringVar(&reasonFilter, "reason", "", "List bans containing given reason")
 	cmdBanList.PersistentFlags().StringVar(&countryFilter, "country", "", "List bans belonging to given country code")
 	cmdBanList.PersistentFlags().StringVar(&asFilter, "as", "", "List bans belonging to given AS name")
+	cmdBanList.PersistentFlags().IntVar(&displayLimit, "limit", 50, "Limit of bans to display (default 50)")
 
 	cmdBan.AddCommand(cmdBanList)
 	return cmdBan
