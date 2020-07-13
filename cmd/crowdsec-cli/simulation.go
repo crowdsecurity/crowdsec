@@ -16,9 +16,12 @@ func addToExclusion(name string) error {
 
 func removeFromExclusion(name string) error {
 	index := indexOf(name, config.SimulationCfg.Exclusions)
+
+	// Remove element from the slice
 	config.SimulationCfg.Exclusions[index] = config.SimulationCfg.Exclusions[len(config.SimulationCfg.Exclusions)-1]
 	config.SimulationCfg.Exclusions[len(config.SimulationCfg.Exclusions)-1] = ""
 	config.SimulationCfg.Exclusions = config.SimulationCfg.Exclusions[:len(config.SimulationCfg.Exclusions)-1]
+
 	return nil
 }
 
@@ -38,7 +41,7 @@ func enableGlobalSimulation() error {
 func dumpSimulationFile() error {
 	newConfigSim, err := yaml.Marshal(config.SimulationCfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
 	err = ioutil.WriteFile(config.SimulationCfgPath, newConfigSim, 0644)
 	if err != nil {
@@ -53,7 +56,7 @@ func disableGlobalSimulation() error {
 	config.SimulationCfg.Exclusions = []string{}
 	newConfigSim, err := yaml.Marshal(config.SimulationCfg)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
 	err = ioutil.WriteFile(config.SimulationCfgPath, newConfigSim, 0644)
 	if err != nil {
@@ -108,23 +111,23 @@ func NewSimulationCmds() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				for _, scenario := range args {
-					excluded := inSlice(scenario, config.SimulationCfg.Exclusions)
-					if config.SimulationCfg.Simulation && !excluded {
+					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
+					if config.SimulationCfg.Simulation && !isExcluded {
 						log.Printf("'%s' is already in simulation mode", scenario)
 						continue
 					}
-					if !config.SimulationCfg.Simulation && excluded {
+					if !config.SimulationCfg.Simulation && isExcluded {
 						log.Printf("'%s' is already in simulation mode", scenario)
 						continue
 					}
-					if config.SimulationCfg.Simulation && excluded {
+					if config.SimulationCfg.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
 						log.Printf("simulation mode for '%s' enabled", scenario)
 						continue
 					}
-					if excluded {
+					if isExcluded {
 						log.Printf("'%s' is already in simulation mode", scenario)
 						continue
 					}
@@ -138,7 +141,7 @@ func NewSimulationCmds() *cobra.Command {
 				}
 			} else {
 				if err := enableGlobalSimulation(); err != nil {
-					log.Fatalf(err.Error())
+					log.Fatalf("unable to enable global simulation mode : %s", err.Error())
 				}
 			}
 		},
@@ -153,19 +156,19 @@ func NewSimulationCmds() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				for _, scenario := range args {
-					excluded := inSlice(scenario, config.SimulationCfg.Exclusions)
-					if !config.SimulationCfg.Simulation && !excluded {
+					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
+					if !config.SimulationCfg.Simulation && !isExcluded {
 						log.Printf("simulation mode for '%s' is already disabled", scenario)
 						continue
 					}
-					if !config.SimulationCfg.Simulation && excluded {
+					if !config.SimulationCfg.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
 						log.Printf("simulation mode for '%s' disabled", scenario)
 						continue
 					}
-					if excluded {
+					if isExcluded {
 						log.Printf("simulation mode for '%s' already disabled", scenario)
 						continue
 					}
@@ -179,7 +182,7 @@ func NewSimulationCmds() *cobra.Command {
 				}
 			} else {
 				if err := disableGlobalSimulation(); err != nil {
-					log.Fatalf(err.Error())
+					log.Fatalf("unable to disable global simulation mode : %s", err.Error())
 				}
 			}
 		},
