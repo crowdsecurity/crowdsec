@@ -63,6 +63,8 @@ func initConfig() {
 	cwhub.Cfgdir = config.configFolder
 	cwhub.Hubdir = config.HubFolder
 	config.configured = true
+	config.SimulationCfg = csConfig.SimulationCfg
+	config.SimulationCfgPath = csConfig.SimulationCfgPath
 }
 
 func main() {
@@ -141,7 +143,7 @@ API interaction:
 	rootCmd.AddCommand(NewBackupCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewInspectCmd())
-
+	rootCmd.AddCommand(NewSimulationCmds())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
