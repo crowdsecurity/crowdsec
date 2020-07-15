@@ -110,7 +110,7 @@ func (c *Context) GetNewBan() ([]types.BanApplication, error) {
 	banRecords := c.Db.
 		Order("updated_at desc").
 		/*Get non expired (until) bans*/
-		Where(`strftime("%s", until) >= strftime("%s", "now")`).
+		Where(`until >= ?`, time.Now()).
 		/*Only get one ban per unique ip_text*/
 		Group("ip_text").
 		Find(&bas)
@@ -130,9 +130,9 @@ func (c *Context) GetNewBanSince(since time.Time) ([]types.BanApplication, error
 	banRecords := c.Db.
 		Order("updated_at desc").
 		/*Get non expired (until) bans*/
-		Where(`strftime("%s", until) >= strftime("%s", "now")`).
+		Where(`until >= ?`, time.Now()).
 		/*That were added since last tick*/
-		Where(`strftime("%s", updated_at) >= strftime("%s", ?)`, since).
+		Where(`updated_at >= ?`, since).
 		/*Only get one ban per unique ip_text*/
 		Group("ip_text").
 		Find(&bas) /*.Count(&count)*/
@@ -152,9 +152,9 @@ func (c *Context) GetDeletedBanSince(since time.Time) ([]types.BanApplication, e
 		Unscoped().
 		Order("updated_at desc").
 		/*ban that were deleted since since or bans that expired since since*/
-		Where(`strftime("%s", deleted_at) >= strftime("%s", ?) OR 
-		   (strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", until) <= strftime("%s", "now"))`,
-			since.Add(1*time.Second), since.Add(1*time.Second)).
+		Where(`deleted_at >= ? OR 
+		   (until >= ? AND until <= ?)`,
+			since.Add(1*time.Second), since.Add(1*time.Second), time.Now()).
 		/*Only get one ban per unique ip_text*/
 		Group("ip_text").
 		Find(&bas) /*.Count(&count)*/
