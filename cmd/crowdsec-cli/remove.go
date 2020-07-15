@@ -71,15 +71,13 @@ func NewRemoveCmd() *cobra.Command {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 
-			if remove_all && len(args) == 0 {
+			if remove_all {
 				RemoveMany(cwhub.PARSERS, "")
-			} else if len(args) == 1 {
-				RemoveMany(cwhub.PARSERS, args[0])
 			} else {
-				_ = cmd.Help()
-				return
+				for _, name := range args {
+					RemoveMany(cwhub.PARSERS, name)
+				}
 			}
-			//fmt.Println("remove/disable parser: " + strings.Join(args, " "))
 		},
 	}
 	cmdRemove.AddCommand(cmdRemoveParser)
@@ -92,13 +90,12 @@ func NewRemoveCmd() *cobra.Command {
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if remove_all && len(args) == 0 {
+			if remove_all {
 				RemoveMany(cwhub.SCENARIOS, "")
-			} else if len(args) == 1 {
-				RemoveMany(cwhub.SCENARIOS, args[0])
 			} else {
-				_ = cmd.Help()
-				return
+				for _, name := range args {
+					RemoveMany(cwhub.SCENARIOS, name)
+				}
 			}
 		},
 	}
@@ -112,13 +109,12 @@ func NewRemoveCmd() *cobra.Command {
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if remove_all && len(args) == 0 {
+			if remove_all {
 				RemoveMany(cwhub.COLLECTIONS, "")
-			} else if len(args) == 1 {
-				RemoveMany(cwhub.COLLECTIONS, args[0])
 			} else {
-				_ = cmd.Help()
-				return
+				for _, name := range args {
+					RemoveMany(cwhub.COLLECTIONS, name)
+				}
 			}
 		},
 	}
@@ -133,13 +129,12 @@ func NewRemoveCmd() *cobra.Command {
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			if remove_all && len(args) == 0 {
+			if remove_all {
 				RemoveMany(cwhub.PARSERS_OVFLW, "")
-			} else if len(args) == 1 {
-				RemoveMany(cwhub.PARSERS_OVFLW, args[0])
 			} else {
-				_ = cmd.Help()
-				return
+				for _, name := range args {
+					RemoveMany(cwhub.PARSERS_OVFLW, name)
+				}
 			}
 		},
 	}

@@ -20,7 +20,11 @@ import (
 
 var remediationType string
 var atTime string
-var all bool
+
+//user supplied filters
+var ipFilter, rangeFilter, reasonFilter, countryFilter, asFilter string
+var displayLimit int
+var displayAPI, displayALL bool
 
 func simpleBanToSignal(targetIP string, reason string, expirationStr string, action string, asName string, asNum string, country string, banSource string) (types.SignalOccurence, error) {
 	var signalOcc types.SignalOccurence
@@ -84,6 +88,102 @@ func simpleBanToSignal(targetIP string, reason string, expirationStr string, act
 	return signalOcc, nil
 }
 
+func filterBans(bans []map[string]string) ([]map[string]string, error) {
+
+	var retBans []map[string]string
+
+	for _, ban := range bans {
+		var banIP net.IP
+		var banRange *net.IPNet
+		var keep bool = true
+		var err error
+
+		if ban["iptext"] != "" {
+			if strings.Contains(ban["iptext"], "/") {
+				log.Debugf("%s is a range", ban["iptext"])
+				banIP, banRange, err = net.ParseCIDR(ban["iptext"])
+				if err != nil {
+					log.Warningf("failed to parse range '%s' from database : %s", ban["iptext"], err)
+				}
+			} else {
+				log.Debugf("%s is IP", ban["iptext"])
+				banIP = net.ParseIP(ban["iptext"])
+			}
+		}
+
+		if ipFilter != "" {
+			var filterBinIP net.IP = net.ParseIP(ipFilter)
+
+			if banRange != nil {
+				if banRange.Contains(filterBinIP) {
+					log.Debugf("[keep] ip filter is set, and range contains ip")
+					keep = true
+				} else {
+					log.Debugf("[discard] ip filter is set, and range doesn't contain ip")
+					keep = false
+				}
+			} else {
+				if ipFilter == ban["iptext"] {
+					log.Debugf("[keep] (ip) %s == %s", ipFilter, ban["iptext"])
+					keep = true
+				} else {
+					log.Debugf("[discard] (ip) %s == %s", ipFilter, ban["iptext"])
+					keep = false
+				}
+			}
+		}
+		if rangeFilter != "" {
+			_, filterBinRange, err := net.ParseCIDR(rangeFilter)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse range '%s' : %s", rangeFilter, err)
+			}
+			if filterBinRange.Contains(banIP) {
+				log.Debugf("[keep] range filter %s contains %s", rangeFilter, banIP.String())
+				keep = true
+			} else {
+				log.Debugf("[discard] range filter %s doesn't contain %s", rangeFilter, banIP.String())
+				keep = false
+			}
+		}
+		if reasonFilter != "" {
+			if strings.Contains(ban["reason"], reasonFilter) {
+				log.Debugf("[keep] reason filter %s matches %s", reasonFilter, ban["reason"])
+				keep = true
+			} else {
+				log.Debugf("[discard] reason filter %s doesn't match %s", reasonFilter, ban["reason"])
+				keep = false
+			}
+		}
+
+		if countryFilter != "" {
+			if ban["cn"] == countryFilter {
+				log.Debugf("[keep] country filter %s matches %s", countryFilter, ban["cn"])
+				keep = true
+			} else {
+				log.Debugf("[discard] country filter %s matches %s", countryFilter, ban["cn"])
+				keep = false
+			}
+		}
+
+		if asFilter != "" {
+			if strings.Contains(ban["as"], asFilter) {
+				log.Debugf("[keep] AS filter %s matches %s", asFilter, ban["as"])
+				keep = true
+			} else {
+				log.Debugf("[discard] AS filter %s doesn't match %s", asFilter, ban["as"])
+				keep = false
+			}
+		}
+
+		if keep {
+			retBans = append(retBans, ban)
+		} else {
+			log.Debugf("[discard] discard %v", ban)
+		}
+	}
+	return retBans, nil
+}
+
 func BanList() error {
 	at := time.Now()
 	if atTime != "" {
@@ -95,6 +195,10 @@ func BanList() error {
 	ret, err := outputCTX.ReadAT(at)
 	if err != nil {
 		return fmt.Errorf("unable to get records from Database : %v", err)
+	}
+	ret, err = filterBans(ret)
+	if err != nil {
+		log.Errorf("Error while filtering : %s", err)
 	}
 	if config.output == "raw" {
 		fmt.Printf("source,ip,reason,bans,action,country,as,events_count,expiration\n")
@@ -113,10 +217,9 @@ func BanList() error {
 		table.SetHeader([]string{"Source", "Ip", "Reason", "Bans", "Action", "Country", "AS", "Events", "Expiration"})
 
 		dispcount := 0
-		totcount := 0
 		apicount := 0
 		for _, rm := range ret {
-			if !all && rm["source"] == "api" {
+			if !displayAPI && rm["source"] == "api" {
 				apicount++
 				if _, ok := uniqAS[rm["as"]]; !ok {
 					uniqAS[rm["as"]] = true
@@ -124,27 +227,55 @@ func BanList() error {
 				if _, ok := uniqCN[rm["cn"]]; !ok {
 					uniqCN[rm["cn"]] = true
 				}
-				continue
 			}
-			if dispcount < 20 {
-				table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+			if displayALL {
+				if rm["source"] == "api" {
+					if displayAPI {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				} else {
+					table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+					dispcount++
+					continue
+				}
+			} else if dispcount < displayLimit {
+				if displayAPI {
+					if rm["source"] == "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				} else {
+					if rm["source"] != "api" {
+						table.Append([]string{rm["source"], rm["iptext"], rm["reason"], rm["bancount"], rm["action"], rm["cn"], rm["as"], rm["events_count"], rm["until"]})
+						dispcount++
+						continue
+					}
+				}
 			}
-			totcount++
-			dispcount++
-
 		}
 		if dispcount > 0 {
-			if !all {
-				fmt.Printf("%d local decisions:\n", totcount)
+			if !displayAPI {
+				fmt.Printf("%d local decisions:\n", dispcount)
+			} else if displayAPI && !displayALL {
+				fmt.Printf("%d decision from API\n", dispcount)
+			} else if displayALL && displayAPI {
+				fmt.Printf("%d decision from crowdsec and API\n", dispcount)
 			}
 			table.Render() // Send output
-			if dispcount > 20 {
+			if dispcount > displayLimit && !displayALL {
 				fmt.Printf("Additional records stripped.\n")
 			}
 		} else {
-			fmt.Printf("No local decisions.\n")
+			if displayAPI {
+				fmt.Println("No API decisions")
+			} else {
+				fmt.Println("No local decisions")
+			}
 		}
-		if !all {
+		if !displayAPI {
 			fmt.Printf("And %d records from API, %d distinct AS, %d distinct countries\n", apicount, len(uniqAS), len(uniqCN))
 		}
 	}
@@ -167,7 +298,7 @@ func BanAdd(target string, duration string, reason string, action string) error 
 	if err != nil {
 		return err
 	}
-	log.Infof("Wrote ban to database.")
+	log.Infof("%s %s for %s (%s)", action, target, duration, reason)
 	return nil
 }
 
@@ -225,7 +356,11 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
+<<<<<<< HEAD
 				log.Fatalf("failed to add ban to database : %v", err)
+=======
+				log.Fatalf("failed to add ban to sqlite : %v", err)
+>>>>>>> master
 			}
 		},
 	}
@@ -239,7 +374,11 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
+<<<<<<< HEAD
 				log.Fatalf("failed to add ban to database : %v", err)
+=======
+				log.Fatalf("failed to add ban to sqlite : %v", err)
+>>>>>>> master
 			}
 		},
 	}
@@ -301,7 +440,8 @@ cscli ban del range 1.2.3.0/24`,
 		Short: "List local or api bans/remediations",
 		Long: `List the bans, by default only local decisions.
 
-If --all/-a is specified, api-provided bans will be displayed too.
+If --all/-a is specified, bans will be displayed without limit (--limit).
+Default limit is 50.
 
 Time can be specified with --at and support a variety of date formats:  
  - Jan  2 15:04:05  
@@ -312,6 +452,10 @@ Time can be specified with --at and support a variety of date formats:
  - 2006-01-02  
  - 2006-01-02 15:04
 `,
+		Example: `ban list --range 0.0.0.0/0 : will list all
+		ban list --country CN
+		ban list --reason crowdsecurity/http-probing
+		ban list --as OVH`,
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := BanList(); err != nil {
@@ -320,7 +464,15 @@ Time can be specified with --at and support a variety of date formats:
 		},
 	}
 	cmdBanList.PersistentFlags().StringVar(&atTime, "at", "", "List bans at given time")
-	cmdBanList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().BoolVarP(&displayALL, "all", "a", false, "List bans without limit")
+	cmdBanList.PersistentFlags().BoolVarP(&displayAPI, "api", "", false, "List as well bans received from API")
+	cmdBanList.PersistentFlags().StringVar(&ipFilter, "ip", "", "List bans for given IP")
+	cmdBanList.PersistentFlags().StringVar(&rangeFilter, "range", "", "List bans belonging to given range")
+	cmdBanList.PersistentFlags().StringVar(&reasonFilter, "reason", "", "List bans containing given reason")
+	cmdBanList.PersistentFlags().StringVar(&countryFilter, "country", "", "List bans belonging to given country code")
+	cmdBanList.PersistentFlags().StringVar(&asFilter, "as", "", "List bans belonging to given AS name")
+	cmdBanList.PersistentFlags().IntVar(&displayLimit, "limit", 50, "Limit of bans to display (default 50)")
+
 	cmdBan.AddCommand(cmdBanList)
 	return cmdBan
 }

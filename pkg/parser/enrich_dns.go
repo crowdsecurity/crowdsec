@@ -18,7 +18,7 @@ func reverse_dns(field string, p *types.Event, ctx interface{}) (map[string]stri
 	}
 	rets, err := net.LookupAddr(field)
 	if err != nil {
-		log.Infof("failed to resolve '%s'", field)
+		log.Debugf("failed to resolve '%s'", field)
 		return nil, nil
 	}
 	//When using the host C library resolver, at most one result will be returned. To bypass the host resolver, use a custom Resolver.

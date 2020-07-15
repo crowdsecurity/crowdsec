@@ -71,7 +71,7 @@ you should [update cscli](./cscli_update.md).
 
 	var cmdInstallParser = &cobra.Command{
 		Use:     "parser [config]",
-		Short:   "Install given log parser",
+		Short:   "Install given parser",
 		Long:    `Fetch and install given parser from hub`,
 		Example: `cscli install parser crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
@@ -79,7 +79,9 @@ you should [update cscli](./cscli_update.md).
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
-			InstallItem(args[0], cwhub.PARSERS)
+			for _, name := range args {
+				InstallItem(name, cwhub.PARSERS)
+			}
 		},
 	}
 	cmdInstall.AddCommand(cmdInstallParser)
@@ -93,7 +95,9 @@ you should [update cscli](./cscli_update.md).
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
-			InstallItem(args[0], cwhub.SCENARIOS)
+			for _, name := range args {
+				InstallItem(name, cwhub.SCENARIOS)
+			}
 		},
 	}
 	cmdInstall.AddCommand(cmdInstallScenario)
@@ -108,7 +112,9 @@ you should [update cscli](./cscli_update.md).
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
-			InstallItem(args[0], cwhub.COLLECTIONS)
+			for _, name := range args {
+				InstallItem(name, cwhub.COLLECTIONS)
+			}
 		},
 	}
 	cmdInstall.AddCommand(cmdInstallCollection)
@@ -124,7 +130,9 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			if err := cwhub.GetHubIdx(); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
-			InstallItem(args[0], cwhub.PARSERS_OVFLW)
+			for _, name := range args {
+				InstallItem(name, cwhub.PARSERS_OVFLW)
+			}
 		},
 	}
 	cmdInstall.AddCommand(cmdInstallPostoverflow)

@@ -1,5 +1,5 @@
 profile: default_remediation
-filter: "sig.Labels.remediation == 'true'"
+filter: "sig.Labels.remediation == 'true' && not sig.Whitelisted"
 api: true # If no api: specified, will use the default config in default.yaml
 remediation:
   ban: true
@@ -15,4 +15,12 @@ filter: "sig.Labels.remediation != 'true'"
 api: false
 outputs:
   - plugin: database  # If we do not want to push, we can remove this line and the next one
+    store: false
+---
+profile: send_false_positif_to_API
+filter: "sig.Whitelisted == true && sig.Labels.remediation == 'true'"
+#remediation is empty, it means non taken
+api: true
+outputs:
+  - plugin: sqlite  # If we do not want to push, we can remove this line and the next one
     store: false

@@ -3,6 +3,7 @@ package exprhelpers
 import (
 	"bufio"
 	"fmt"
+	"net"
 	"os"
 	"path"
 	"regexp"
@@ -36,6 +37,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"File":           File,
 		"RegexpInFile":   RegexpInFile,
 		"Upper":          Upper,
+		"IpInRange":      IpInRange,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -50,6 +52,7 @@ func Init() error {
 }
 
 func FileInit(fileFolder string, filename string, fileType string) error {
+	log.Debugf("init (folder:%s) (file:%s) (type:%s)", fileFolder, filename, fileType)
 	filepath := path.Join(fileFolder, filename)
 	file, err := os.Open(filepath)
 	if err != nil {
@@ -65,6 +68,9 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "#") { // allow comments
+			continue
+		}
 		switch fileType {
 		case "regex", "regexp":
 			dataFileRegex[filename] = append(dataFileRegex[filename], regexp.MustCompile(scanner.Text()))
@@ -85,7 +91,7 @@ func File(filename string) []string {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename]
 	}
-	log.Errorf("file '%s' not found for expr library", filename)
+	log.Errorf("file '%s' (type:string) not found in expr library", filename)
 	return []string{}
 }
 
@@ -97,7 +103,27 @@ func RegexpInFile(data string, filename string) bool {
 			}
 		}
 	} else {
-		log.Errorf("file '%s' not found for expr library", filename)
+		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+	}
+	return false
+}
+
+func IpInRange(ip string, ipRange string) bool {
+	var err error
+	var ipParsed net.IP
+	var ipRangeParsed *net.IPNet
+
+	ipParsed = net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Errorf("'%s' is not a valid IP", ip)
+		return false
+	}
+	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
+		log.Errorf("'%s' is not a valid IP Range", ipRange)
+		return false
+	}
+	if ipRangeParsed.Contains(ipParsed) {
+		return true
 	}
 	return false
 }

@@ -87,12 +87,16 @@ The name must be unique (and will define the scenario's name in the hub), and th
 ### filter
 
 ```yaml
-filter: evt.Meta.log_type == 'telnet_new_session'
+filter: expression
 ```
 
+`filter` must be a valid {{expr.htmlname}} expression that will be evaluated against the {{event.htmlname}}.
 
-an {{expr.htmlname}} that must return true if the event is eligible for the bucket.
+If `filter` evaluation returns true or is absent, event will be pour in the bucket.
 
+If `filter` returns `false` or a non-boolean, the event will be skip for this bucket.
+
+Here is the [expr documentation](https://github.com/antonmedv/expr/tree/master/docs).
 
 Examples :
 
@@ -341,5 +345,30 @@ overflow_filter: any(queue.Queue, { .Enriched.IsInEU  == "true" })
 
 `overflow_filter` is an {{expr.htmlname}} that is run when the bucket overflows.
 If this expression is present and returns false, the overflow will be discarded.
+
+
+### data
+
+```
+data:
+  - source_url: https://URL/TO/FILE
+    dest_file: LOCAL_FILENAME
+    [type: regexp]
+```
+
+`data` allows user to specify an external source of data.
+This section is only relevant when `cscli` is used to install scenario from hub, as ill download the `source_url` and store it to `dest_file`. When the scenario is not installed from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the scenario to be loaded correctly.
+
+If `type` is set to `regexp`, the content of the file must be one valid (re2) regular expression per line.
+Those regexps will be compiled and kept in cache.
+
+
+```yaml
+name: crowdsecurity/cdn-whitelist
+...
+data:
+  - source_url: https://www.cloudflare.com/ips-v4
+    dest_file: cloudflare_ips.txt
+```
 
 
