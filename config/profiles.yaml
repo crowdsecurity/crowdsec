@@ -22,5 +22,5 @@ filter: "sig.Whitelisted == true && sig.Labels.remediation == 'true'"
 #remediation is empty, it means non taken
 api: true
 outputs:
-  - plugin: sqlite  # If we do not want to push, we can remove this line and the next one
+  - plugin: database  # If we do not want to push, we can remove this line and the next one
     store: false

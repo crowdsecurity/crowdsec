@@ -328,7 +328,7 @@ time="12-05-2020 12:31:43" level=warning msg="xx.xx.16.6 triggered a 4h0m0s ip b
 ...
 ^C
 $ {{cli.bin}}  ban list
-INFO[0000] backend plugin 'sqlite' loaded               
+INFO[0000] backend plugin 'database' loaded               
 8 local decisions:
 +--------+-----------------+----------------------+------+--------+---------+--------------------------+--------+------------+
 | SOURCE |       IP        |        REASON        | BANS | ACTION | COUNTRY |            AS            | EVENTS | EXPIRATION |

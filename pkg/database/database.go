@@ -37,19 +37,19 @@ func checkConfig(cfg map[string]string) error {
 		}
 	case "mysql":
 		if val, ok := cfg["db_host"]; !ok || val == "" {
-			return fmt.Errorf("please specify a 'db_host' to SQLite db in the configuration")
+			return fmt.Errorf("please specify a 'db_host' to MySQL db in the configuration")
 		}
 
 		if val, ok := cfg["db_username"]; !ok || val == "" {
-			return fmt.Errorf("please specify a 'db_username' to SQLite db in the configuration")
+			return fmt.Errorf("please specify a 'db_username' to MySQL db in the configuration")
 		}
 
 		if val, ok := cfg["db_password"]; !ok || val == "" {
-			return fmt.Errorf("please specify a 'db_password' to SQLite db in the configuration")
+			return fmt.Errorf("please specify a 'db_password' to MySQL db in the configuration")
 		}
 
 		if val, ok := cfg["db_name"]; !ok || val == "" {
-			return fmt.Errorf("please specify a 'db_name' to SQLite db in the configuration")
+			return fmt.Errorf("please specify a 'db_name' to MySQL db in the configuration")
 		}
 	default:
 		return fmt.Errorf("please specify a proper 'type' to the database configuration ")

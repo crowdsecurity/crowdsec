@@ -19,7 +19,7 @@ sudo ./install.sh
 ```
 
 
-When an IP is referenced in the SQLite database, it will be put in an ipset blacklist to ban that IP.
+When an IP is referenced in the database, it will be put in an ipset blacklist to ban that IP.
 
 
 &#9432; IPv4 and IPv6 are supported.
