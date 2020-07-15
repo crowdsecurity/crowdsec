@@ -10,68 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Context) GetStats(since time.Duration) ([]map[string]string, error) {
-	sos := []types.SignalOccurence{}
-	stats := make([]map[string]string, 0)
-	as_stats := make(map[string]string)
-	scenar_stats := make(map[string]string)
-	country_stats := make(map[string]string)
-
-	/*get records that are younger than 'since' */
-	//records := c.Db.Order("updated_at desc").Where(`strftime("%s", created_at) >= strftime("%s", ?)`, time.Now().Add(-since)).Find(&sos)
-	records := c.Db.Order("updated_at desc").Where("created_at >= ?", time.Now().Add(-since)).Find(&sos)
-	if records.Error != nil {
-		return nil, records.Error
-	}
-
-	for _, ld := range sos {
-		/*by scenario*/
-		if ld.Scenario == "" {
-			ld.Scenario = "unknown"
-		}
-		if _, ok := scenar_stats[ld.Scenario]; !ok {
-			scenar_stats[ld.Scenario] = "1"
-		} else {
-			nv, err := strconv.Atoi(scenar_stats[ld.Scenario])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			scenar_stats[ld.Scenario] = fmt.Sprintf("%d", nv+1)
-		}
-		/*by country*/
-		if ld.Source_Country == "" {
-			ld.Source_Country = "unknown"
-		}
-		if _, ok := country_stats[ld.Source_Country]; !ok {
-			country_stats[ld.Source_Country] = "1"
-		} else {
-			nv, err := strconv.Atoi(country_stats[ld.Source_Country])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			country_stats[ld.Source_Country] = fmt.Sprintf("%d", nv+1)
-		}
-		/*by AS*/
-		if ld.Source_AutonomousSystemNumber == "" {
-			ld.Source_AutonomousSystemNumber = "unknown"
-		}
-		if _, ok := as_stats[ld.Source_AutonomousSystemNumber]; !ok {
-			as_stats[ld.Source_AutonomousSystemNumber] = "1"
-		} else {
-			nv, err := strconv.Atoi(as_stats[ld.Source_AutonomousSystemNumber])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			as_stats[ld.Source_AutonomousSystemNumber] = fmt.Sprintf("%d", nv+1)
-		}
-	}
-	stats = append(stats, as_stats)
-	stats = append(stats, scenar_stats)
-	stats = append(stats, country_stats)
-
-	return stats, nil
-}
-
 //GetBansAt returns the IPs that were banned at a given time
 func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 
