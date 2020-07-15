@@ -101,3 +101,67 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 	}
 	return rets, nil
 }
+
+func (c *Context) GetNewBan() ([]types.BanApplication, error) {
+
+	var bas []types.BanApplication
+
+	//select the news bans
+	banRecords := c.Db.
+		Order("updated_at desc").
+		/*Get non expired (until) bans*/
+		Where(`strftime("%s", until) >= strftime("%s", "now")`).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas)
+	if banRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection bans : %v", banRecords.Error)
+	}
+
+	return bas, nil
+
+}
+
+func (c *Context) GetNewBanSince(since time.Time) ([]types.BanApplication, error) {
+
+	var bas []types.BanApplication
+
+	//select the news bans
+	banRecords := c.Db.
+		Order("updated_at desc").
+		/*Get non expired (until) bans*/
+		Where(`strftime("%s", until) >= strftime("%s", "now")`).
+		/*That were added since last tick*/
+		Where(`strftime("%s", updated_at) >= strftime("%s", ?)`, since).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas) /*.Count(&count)*/
+	if banRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection bans : %v", banRecords.Error)
+	}
+
+	return bas, nil
+
+}
+
+func (c *Context) GetDeletedBanSince(since time.Time) ([]types.BanApplication, error) {
+	var bas []types.BanApplication
+
+	deletedRecords := c.Db.
+		/*ignore the soft delete*/
+		Unscoped().
+		Order("updated_at desc").
+		/*ban that were deleted since since or bans that expired since since*/
+		Where(`strftime("%s", deleted_at) >= strftime("%s", ?) OR 
+		   (strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", until) <= strftime("%s", "now"))`,
+			since.Add(1*time.Second), since.Add(1*time.Second)).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas) /*.Count(&count)*/
+
+	if deletedRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection deleted bans : %v", deletedRecords.Error)
+	}
+
+	return bas, nil
+}
