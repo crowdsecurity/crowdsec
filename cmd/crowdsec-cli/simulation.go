@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -33,7 +34,7 @@ func enableGlobalSimulation() error {
 		log.Fatalf("unable to dump simulation file: %s", err.Error())
 	}
 
-	log.Printf("Simulation mode enabled")
+	log.Printf("global simulation: enabled")
 
 	return nil
 }
@@ -63,23 +64,27 @@ func disableGlobalSimulation() error {
 		return fmt.Errorf("unable to write new simulation config in '%s' : %s", config.SimulationCfgPath, err)
 	}
 
-	log.Printf("Simulation mode disabled")
+	log.Printf("global simulation: disabled")
 	return nil
 }
 
 func simulationStatus() error {
+	if config.SimulationCfg == nil {
+		log.Printf("global simulation: disabled (configuration file is missing)")
+		return nil
+	}
 	if config.SimulationCfg.Simulation {
-		log.Println("Simulation mode is enabled")
+		log.Println("global simulation: enabled")
 		if len(config.SimulationCfg.Exclusions) > 0 {
-			log.Println("Current scenarios are not in simulation mode :")
+			log.Println("Scenarios not in simulation mode :")
 			for _, scenario := range config.SimulationCfg.Exclusions {
 				log.Printf("  - %s", scenario)
 			}
 		}
 	} else {
-		log.Println("Simulation mode is disabled")
+		log.Println("global simulation: disabled")
 		if len(config.SimulationCfg.Exclusions) > 0 {
-			log.Println("Current scenarios in simulation mode :")
+			log.Println("Scenarios in simulation mode :")
 			for _, scenario := range config.SimulationCfg.Exclusions {
 				log.Printf("  - %s", scenario)
 			}
@@ -95,7 +100,7 @@ func NewSimulationCmds() *cobra.Command {
 		Long:  ``,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if !config.configured {
-				return fmt.Errorf("you must configure cli before using bans")
+				return fmt.Errorf("you must configure cli before using simulation")
 			}
 			return nil
 		},
@@ -105,30 +110,41 @@ func NewSimulationCmds() *cobra.Command {
 
 	var cmdSimulationEnable = &cobra.Command{
 		Use:     "enable [scenario_name]",
-		Short:   "Enable the simulation mode. Enable only specified scenarios",
+		Short:   "Enable the simulation, globally or on specified scenarios",
 		Long:    ``,
 		Example: `cscli simulation enable`,
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := cwhub.GetHubIdx(); err != nil {
+				log.Fatalf("failed to get Hub index : %v", err)
+			}
+
 			if len(args) > 0 {
 				for _, scenario := range args {
+					var v cwhub.Item
+					var ok bool
+					if _, ok = cwhub.HubIdx[cwhub.SCENARIOS]; ok {
+						if v, ok = cwhub.HubIdx[cwhub.SCENARIOS][scenario]; !ok {
+							log.Errorf("'%s' isn't present in hub index", scenario)
+							continue
+						}
+						if !v.Installed {
+							log.Warningf("'%s' isn't enabled", scenario)
+						}
+					}
 					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
 					if config.SimulationCfg.Simulation && !isExcluded {
-						log.Printf("simulation mode is already enabled globally", scenario)
+						log.Warningf("global simulation is already enabled")
 						continue
 					}
 					if !config.SimulationCfg.Simulation && isExcluded {
-						log.Printf("simulation mode is disabled globally but already enabled for '%s'", scenario)
+						log.Warningf("simulation for '%s' already enabled", scenario)
 						continue
 					}
 					if config.SimulationCfg.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
-						log.Printf("simulation mode for '%s' enabled", scenario)
-						continue
-					}
-					if isExcluded {
-						log.Printf("simulation mode is disabled globally but already enabled for '%s'", scenario)
+						log.Printf("simulation enabled for '%s'", scenario)
 						continue
 					}
 					if err := addToExclusion(scenario); err != nil {
@@ -158,7 +174,7 @@ func NewSimulationCmds() *cobra.Command {
 				for _, scenario := range args {
 					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
 					if !config.SimulationCfg.Simulation && !isExcluded {
-						log.Printf("simulation mode is already disabled globally", scenario)
+						log.Warningf("%s isn't in simulation mode", scenario)
 						continue
 					}
 					if !config.SimulationCfg.Simulation && isExcluded {
@@ -169,7 +185,7 @@ func NewSimulationCmds() *cobra.Command {
 						continue
 					}
 					if isExcluded {
-						log.Printf("Simulation mode is enable but is already disable for '%s'", scenario)
+						log.Warningf("simulation mode is enabled but is already disable for '%s'", scenario)
 						continue
 					}
 					if err := addToExclusion(scenario); err != nil {
