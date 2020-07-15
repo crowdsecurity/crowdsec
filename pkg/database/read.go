@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
