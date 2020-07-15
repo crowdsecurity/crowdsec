@@ -113,11 +113,11 @@ func NewSimulationCmds() *cobra.Command {
 				for _, scenario := range args {
 					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
 					if config.SimulationCfg.Simulation && !isExcluded {
-						log.Printf("'%s' is already in simulation mode", scenario)
+						log.Printf("simulation mode is already enabled globally", scenario)
 						continue
 					}
 					if !config.SimulationCfg.Simulation && isExcluded {
-						log.Printf("'%s' is already in simulation mode", scenario)
+						log.Printf("simulation mode is disabled globally but already enabled for '%s'", scenario)
 						continue
 					}
 					if config.SimulationCfg.Simulation && isExcluded {
@@ -128,7 +128,7 @@ func NewSimulationCmds() *cobra.Command {
 						continue
 					}
 					if isExcluded {
-						log.Printf("'%s' is already in simulation mode", scenario)
+						log.Printf("simulation mode is disabled globally but already enabled for '%s'", scenario)
 						continue
 					}
 					if err := addToExclusion(scenario); err != nil {
@@ -158,7 +158,7 @@ func NewSimulationCmds() *cobra.Command {
 				for _, scenario := range args {
 					isExcluded := inSlice(scenario, config.SimulationCfg.Exclusions)
 					if !config.SimulationCfg.Simulation && !isExcluded {
-						log.Printf("simulation mode for '%s' is already disabled", scenario)
+						log.Printf("simulation mode is already disabled globally", scenario)
 						continue
 					}
 					if !config.SimulationCfg.Simulation && isExcluded {
@@ -169,7 +169,7 @@ func NewSimulationCmds() *cobra.Command {
 						continue
 					}
 					if isExcluded {
-						log.Printf("simulation mode for '%s' already disabled", scenario)
+						log.Printf("Simulation mode is enable but is already disable for '%s'", scenario)
 						continue
 					}
 					if err := addToExclusion(scenario); err != nil {
