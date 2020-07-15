@@ -356,11 +356,7 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
-<<<<<<< HEAD
 				log.Fatalf("failed to add ban to database : %v", err)
-=======
-				log.Fatalf("failed to add ban to sqlite : %v", err)
->>>>>>> master
 			}
 		},
 	}
@@ -374,11 +370,7 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
-<<<<<<< HEAD
 				log.Fatalf("failed to add ban to database : %v", err)
-=======
-				log.Fatalf("failed to add ban to sqlite : %v", err)
->>>>>>> master
 			}
 		},
 	}
