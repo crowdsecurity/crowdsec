@@ -196,6 +196,9 @@ func restoreFromDirectory(source string) error {
 	/* Restore plugins configuration */
 	var pluginsConfigFile []string
 	walkErr := filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk error : %s", err)
+		}
 		fi, err := os.Stat(path)
 		if err != nil {
 			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
@@ -399,6 +402,9 @@ func backupToDirectory(target string) error {
 	/* Backup plugins configuration */
 	var pluginsConfigFile []string
 	walkErr := filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk error : %s", err)
+		}
 		fi, err := os.Stat(path)
 		if err != nil {
 			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
@@ -455,7 +461,7 @@ cscli backup restore ./my-backup`,
 
 - Backup of API credentials
 
-- Backup of acqusition configuration
+- Backup of acquisition configuration
 		
 		`,
 		Example: `cscli backup save ./my-backup`,
