@@ -1,75 +1,13 @@
-package sqlite
+package database
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
-
-func (c *Context) GetStats(since time.Duration) ([]map[string]string, error) {
-	sos := []types.SignalOccurence{}
-	stats := make([]map[string]string, 0)
-	as_stats := make(map[string]string)
-	scenar_stats := make(map[string]string)
-	country_stats := make(map[string]string)
-
-	/*get records that are younger than 'since' */
-	records := c.Db.Order("updated_at desc").Where(`strftime("%s", created_at) >= strftime("%s", ?)`, time.Now().Add(-since)).Find(&sos)
-	if records.Error != nil {
-		return nil, records.Error
-	}
-
-	for _, ld := range sos {
-		/*by scenario*/
-		if ld.Scenario == "" {
-			ld.Scenario = "unknown"
-		}
-		if _, ok := scenar_stats[ld.Scenario]; !ok {
-			scenar_stats[ld.Scenario] = "1"
-		} else {
-			nv, err := strconv.Atoi(scenar_stats[ld.Scenario])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			scenar_stats[ld.Scenario] = fmt.Sprintf("%d", nv+1)
-		}
-		/*by country*/
-		if ld.Source_Country == "" {
-			ld.Source_Country = "unknown"
-		}
-		if _, ok := country_stats[ld.Source_Country]; !ok {
-			country_stats[ld.Source_Country] = "1"
-		} else {
-			nv, err := strconv.Atoi(country_stats[ld.Source_Country])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			country_stats[ld.Source_Country] = fmt.Sprintf("%d", nv+1)
-		}
-		/*by AS*/
-		if ld.Source_AutonomousSystemNumber == "" {
-			ld.Source_AutonomousSystemNumber = "unknown"
-		}
-		if _, ok := as_stats[ld.Source_AutonomousSystemNumber]; !ok {
-			as_stats[ld.Source_AutonomousSystemNumber] = "1"
-		} else {
-			nv, err := strconv.Atoi(as_stats[ld.Source_AutonomousSystemNumber])
-			if err != nil {
-				log.Fatalf("Unable to update internal stats : %v", err)
-			}
-			as_stats[ld.Source_AutonomousSystemNumber] = fmt.Sprintf("%d", nv+1)
-		}
-	}
-	stats = append(stats, as_stats)
-	stats = append(stats, scenar_stats)
-	stats = append(stats, country_stats)
-
-	return stats, nil
-}
 
 //GetBansAt returns the IPs that were banned at a given time
 func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
@@ -78,7 +16,8 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 	rets := make([]map[string]string, 0)
 	/*get non-expired records*/
 	//c.Db.LogMode(true)
-	records := c.Db.Order("updated_at desc").Where(`strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?)`, at, at).Group("ip_text").Find(&bas) /*.Count(&count)*/
+	//records := c.Db.Order("updated_at desc").Where(`strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?)`, at, at).Group("ip_text").Find(&bas) /*.Count(&count)*/
+	records := c.Db.Order("updated_at desc").Where("until >= ? AND created_at < ?", at, at).Group("ip_text").Find(&bas) /*.Count(&count)*/
 	if records.Error != nil {
 		return nil, records.Error
 	}
@@ -87,7 +26,8 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 		/*
 		 fetch count of bans for this specific ip_text
 		*/
-		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?) AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
+		//ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?) AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
+		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND until >= ? AND created_at < ? AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
 		if ret.Error != nil {
 			return nil, fmt.Errorf("failed to fetch records count for %s : %v", ba.IpText, ret.Error)
 		}
@@ -160,4 +100,68 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 		rets = append(rets, bancom)
 	}
 	return rets, nil
+}
+
+func (c *Context) GetNewBan() ([]types.BanApplication, error) {
+
+	var bas []types.BanApplication
+
+	//select the news bans
+	banRecords := c.Db.
+		Order("updated_at desc").
+		/*Get non expired (until) bans*/
+		Where(`until >= ?`, time.Now()).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas)
+	if banRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection bans : %v", banRecords.Error)
+	}
+
+	return bas, nil
+
+}
+
+func (c *Context) GetNewBanSince(since time.Time) ([]types.BanApplication, error) {
+
+	var bas []types.BanApplication
+
+	//select the news bans
+	banRecords := c.Db.
+		Order("updated_at desc").
+		/*Get non expired (until) bans*/
+		Where(`until >= ?`, time.Now()).
+		/*That were added since last tick*/
+		Where(`updated_at >= ?`, since).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas) /*.Count(&count)*/
+	if banRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection bans : %v", banRecords.Error)
+	}
+
+	return bas, nil
+
+}
+
+func (c *Context) GetDeletedBanSince(since time.Time) ([]types.BanApplication, error) {
+	var bas []types.BanApplication
+
+	deletedRecords := c.Db.
+		/*ignore the soft delete*/
+		Unscoped().
+		Order("updated_at desc").
+		/*ban that were deleted since since or bans that expired since since*/
+		Where(`deleted_at >= ? OR 
+		   (until >= ? AND until <= ?)`,
+			since.Add(1*time.Second), since.Add(1*time.Second), time.Now()).
+		/*Only get one ban per unique ip_text*/
+		Group("ip_text").
+		Find(&bas) /*.Count(&count)*/
+
+	if deletedRecords.Error != nil {
+		return nil, fmt.Errorf("failed when selection deleted bans : %v", deletedRecords.Error)
+	}
+
+	return bas, nil
 }

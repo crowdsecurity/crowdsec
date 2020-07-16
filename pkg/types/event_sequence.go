@@ -19,5 +19,5 @@ type EventSequence struct {
 	Source_Country                      string
 	/*stop db only */
 	SignalOccurenceID uint   //unique ID for the hasMany relation
-	Serialized        string //the serialized dict
+	Serialized        string `gorm:"size:65535"` //the serialized dict
 }

@@ -72,7 +72,7 @@ func simpleBanToSignal(targetIP string, reason string, expirationStr string, act
 		banApp.EndIp = types.IP2Int(parsedIP)
 	}
 
-	var banApps = make([]types.BanApplication, 1)
+	var banApps = make([]types.BanApplication, 0)
 	banApps = append(banApps, banApp)
 	signalOcc = types.SignalOccurence{
 		Scenario:                            reason,
@@ -194,7 +194,7 @@ func BanList() error {
 	}
 	ret, err := outputCTX.ReadAT(at)
 	if err != nil {
-		return fmt.Errorf("unable to get records from sqlite : %v", err)
+		return fmt.Errorf("unable to get records from Database : %v", err)
 	}
 	ret, err = filterBans(ret)
 	if err != nil {
@@ -356,7 +356,7 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
-				log.Fatalf("failed to add ban to sqlite : %v", err)
+				log.Fatalf("failed to add ban to database : %v", err)
 			}
 		},
 	}
@@ -370,7 +370,7 @@ cscli ban add range 1.2.3.0/24 24h "the whole range"`,
 		Run: func(cmd *cobra.Command, args []string) {
 			reason := strings.Join(args[2:], " ")
 			if err := BanAdd(args[0], args[1], reason, remediationType); err != nil {
-				log.Fatalf("failed to add ban to sqlite : %v", err)
+				log.Fatalf("failed to add ban to database : %v", err)
 			}
 		},
 	}

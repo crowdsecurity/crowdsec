@@ -1,4 +1,4 @@
-package sqlite
+package database
 
 import (
 	"fmt"
@@ -12,8 +12,10 @@ import (
 
 func (c *Context) DeleteExpired() error {
 	//Delete the expired records
+	now := time.Now()
 	if c.flush {
-		retx := c.Db.Where(`strftime("%s", until) < strftime("%s", "now")`).Delete(types.BanApplication{})
+		//retx := c.Db.Where(`strftime("%s", until) < strftime("%s", "now")`).Delete(types.BanApplication{})
+		retx := c.Db.Delete(types.BanApplication{}, "until < ?", now)
 		if retx.RowsAffected > 0 {
 			log.Infof("Flushed %d expired entries from Ban Application", retx.RowsAffected)
 		}
@@ -96,8 +98,10 @@ func (c *Context) CleanUpRecordsByCount() error {
 	}
 
 	sos := []types.BanApplication{}
+	now := time.Now()
 	/*get soft deleted records oldest to youngest*/
-	records := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").Where(`strftime("%s", deleted_at) < strftime("%s", "now")`).Find(&sos)
+	//records := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").Where(`strftime("%s", deleted_at) < strftime("%s", "now")`).Find(&sos)
+	records := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").Where("deleted_at < ?", now).Find(&sos)
 	if records.Error != nil {
 		return errors.Wrap(records.Error, "failed to list expired bans for flush")
 	}
@@ -151,7 +155,7 @@ func (c *Context) autoCommit() {
 		select {
 		case <-c.PusherTomb.Dying():
 			//we need to shutdown
-			log.Infof("sqlite routine shutdown")
+			log.Infof("database routine shutdown")
 			if err := c.Flush(); err != nil {
 				log.Errorf("error while flushing records: %s", err)
 			}

@@ -32,14 +32,14 @@ remediation:
   captcha: true
   duration: 4h
 outputs:
-  - plugin: sqlite
+  - plugin: database
 ---
 profile: default_notification
 filter: "sig.Labels.remediation != 'true'"
 #remediation is empty, it means non taken
 api: false
 outputs:
-  - plugin: sqlite  # If we do not want to push, we can remove this line and the next one
+  - plugin: database  # If we do not want to push, we can remove this line and the next one
     store: false
 ```
 
@@ -59,10 +59,10 @@ path: <path_to_plugin_binary> #
 config: <plugin_config> # in a form of key(string)/value(string)
 ```
 
-For the plugin sqlite, here is its configuration file:
+For the plugin database, here is its configuration file:
 ```yaml
-name: sqlite
-path: /usr/local/lib/crowdsec/plugins/backend/sqlite.so
+name: database
+path: /usr/local/lib/crowdsec/plugins/backend/database.so
 config:
   db_path: /var/lib/crowdsec/data/crowdsec.db
   flush: true

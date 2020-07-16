@@ -18,5 +18,5 @@ sudo ./install.sh
 sudo systemctl restart nginx
 ```
 
-When an IP is referenced in the SQLite database, any request from this IP will lead to a `403` reply.
+When an IP is referenced in the database, any request from this IP will lead to a `403` reply.
 
