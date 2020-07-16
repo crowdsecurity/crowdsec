@@ -45,6 +45,7 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	var warn error
 
 	if sig.Simulation {
+		log.Debugf("signal for '%s' is whitelisted", sig.Source_ip)
 		ordr.MeasureType = "simulation:"
 	}
 	//Identify remediation type
