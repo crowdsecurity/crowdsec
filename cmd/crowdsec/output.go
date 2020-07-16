@@ -33,6 +33,10 @@ LOOP:
 			log.Infof("Done shutdown down output")
 			break LOOP
 		case event := <-overflow:
+			//if global simulation -> everything is simulation unless told otherwise
+			if cConfig.SimulationCfg != nil && cConfig.SimulationCfg.Simulation {
+				event.Overflow.Simulation = true
+			}
 			if cConfig.Profiling {
 				start = time.Now()
 			}
@@ -46,6 +50,14 @@ LOOP:
 			event, err := parser.Parse(poctx, event, ponodes)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed : %s", err)
+			}
+			//check scenarios in simulation
+			if cConfig.SimulationCfg != nil {
+				for _, scenario_name := range cConfig.SimulationCfg.Exclusions {
+					if event.Overflow.Scenario == scenario_name {
+						event.Overflow.Simulation = !event.Overflow.Simulation
+					}
+				}
 			}
 
 			if event.Overflow.Scenario == "" && event.Overflow.MapKey != "" {

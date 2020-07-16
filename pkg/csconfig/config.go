@@ -15,29 +15,36 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type SimulationConfig struct {
+	Simulation bool     `yaml:"simulation"`
+	Exclusions []string `yaml:"exclusions,omitempty"`
+}
+
 // CrowdSec is the structure of the crowdsec configuration
 type CrowdSec struct {
-	WorkingFolder   string    `yaml:"working_dir,omitempty"`
-	DataFolder      string    `yaml:"data_dir,omitempty"`
-	ConfigFolder    string    `yaml:"config_dir,omitempty"`
-	AcquisitionFile string    `yaml:"acquis_path,omitempty"`
-	SingleFile      string    //for forensic mode
-	SingleFileLabel string    //for forensic mode
-	PIDFolder       string    `yaml:"pid_dir,omitempty"`
-	LogFolder       string    `yaml:"log_dir,omitempty"`
-	LogMode         string    `yaml:"log_mode,omitempty"`  //like file, syslog or stdout ?
-	LogLevel        log.Level `yaml:"log_level,omitempty"` //trace,debug,info,warning,error
-	Daemonize       bool      `yaml:"daemon,omitempty"`    //true -> go background
-	Profiling       bool      `yaml:"profiling,omitempty"` //true -> enable runtime profiling
-	APIMode         bool      `yaml:"apimode,omitempty"`   //true -> enable api push
-	CsCliFolder     string    `yaml:"cscli_dir"`           //cscli folder
-	NbParsers       int       `yaml:"parser_routines"`     //the number of go routines to start for parsing
-	Linter          bool
-	Prometheus      bool
-	HTTPListen      string `yaml:"http_listen,omitempty"`
-	RestoreMode     string
-	DumpBuckets     bool
-	OutputConfig    *outputs.OutputFactory `yaml:"plugin"`
+	WorkingFolder     string    `yaml:"working_dir,omitempty"`
+	DataFolder        string    `yaml:"data_dir,omitempty"`
+	ConfigFolder      string    `yaml:"config_dir,omitempty"`
+	AcquisitionFile   string    `yaml:"acquis_path,omitempty"`
+	SingleFile        string    //for forensic mode
+	SingleFileLabel   string    //for forensic mode
+	PIDFolder         string    `yaml:"pid_dir,omitempty"`
+	LogFolder         string    `yaml:"log_dir,omitempty"`
+	LogMode           string    `yaml:"log_mode,omitempty"`  //like file, syslog or stdout ?
+	LogLevel          log.Level `yaml:"log_level,omitempty"` //trace,debug,info,warning,error
+	Daemonize         bool      `yaml:"daemon,omitempty"`    //true -> go background
+	Profiling         bool      `yaml:"profiling,omitempty"` //true -> enable runtime profiling
+	APIMode           bool      `yaml:"apimode,omitempty"`   //true -> enable api push
+	CsCliFolder       string    `yaml:"cscli_dir"`           //cscli folder
+	NbParsers         int       `yaml:"parser_routines"`     //the number of go routines to start for parsing
+	SimulationCfgPath string    `yaml:"simulation_path,omitempty"`
+	SimulationCfg     *SimulationConfig
+	Linter            bool
+	Prometheus        bool
+	HTTPListen        string `yaml:"http_listen,omitempty"`
+	RestoreMode       string
+	DumpBuckets       bool
+	OutputConfig      *outputs.OutputFactory `yaml:"plugin"`
 }
 
 // NewCrowdSecConfig create a new crowdsec configuration with default configuration
@@ -59,6 +66,21 @@ func NewCrowdSecConfig() *CrowdSec {
 	}
 }
 
+func (c *CrowdSec) LoadSimulation() error {
+	if c.SimulationCfgPath != "" {
+		rcfg, err := ioutil.ReadFile(c.SimulationCfgPath)
+		if err != nil {
+			return fmt.Errorf("while reading '%s' : %s", c.SimulationCfgPath, err)
+		}
+		simCfg := SimulationConfig{}
+		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+			return fmt.Errorf("while parsing '%s' : %s", c.SimulationCfgPath, err)
+		}
+		c.SimulationCfg = &simCfg
+	}
+	return nil
+}
+
 func (c *CrowdSec) GetCliConfig(configFile *string) error {
 	/*overriden by cfg file*/
 	if *configFile != "" {
@@ -73,8 +95,10 @@ func (c *CrowdSec) GetCliConfig(configFile *string) error {
 			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
 		}
 	}
+	if err := c.LoadSimulation(); err != nil {
+		return fmt.Errorf("loading simulation config : %s", err)
+	}
 	return nil
-
 }
 
 // GetOPT return flags parsed from command line
@@ -111,18 +135,8 @@ func (c *CrowdSec) GetOPT() error {
 		c.SingleFileLabel = *catFileType
 	}
 
-	/*overriden by cfg file*/
-	if *configFile != "" {
-		rcfg, err := ioutil.ReadFile(*configFile)
-		if err != nil {
-			return fmt.Errorf("read '%s' : %s", *configFile, err)
-		}
-		if err := yaml.UnmarshalStrict(rcfg, c); err != nil {
-			return fmt.Errorf("parse '%s' : %s", *configFile, err)
-		}
-		if c.AcquisitionFile == "" {
-			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
-		}
+	if err := c.GetCliConfig(configFile); err != nil {
+		log.Fatalf("Error while loading configuration : %s", err)
 	}
 
 	if *AcquisitionFile != "" {

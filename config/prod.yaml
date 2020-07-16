@@ -4,6 +4,7 @@ config_dir: ${CFG}
 pid_dir: ${PID}
 log_dir: /var/log/
 cscli_dir: ${CFG}/cscli
+simulation_path: ${CFG}/simulation.yaml
 log_mode: file
 log_level: info
 profiling: false
