@@ -66,6 +66,21 @@ func NewCrowdSecConfig() *CrowdSec {
 	}
 }
 
+func (c *CrowdSec) LoadSimulation() error {
+	if c.SimulationCfgPath != "" {
+		rcfg, err := ioutil.ReadFile(c.SimulationCfgPath)
+		if err != nil {
+			return fmt.Errorf("while reading '%s' : %s", c.SimulationCfgPath, err)
+		}
+		simCfg := SimulationConfig{}
+		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+			return fmt.Errorf("while parsing '%s' : %s", c.SimulationCfgPath, err)
+		}
+		c.SimulationCfg = &simCfg
+	}
+	return nil
+}
+
 func (c *CrowdSec) GetCliConfig(configFile *string) error {
 	/*overriden by cfg file*/
 	if *configFile != "" {
@@ -80,16 +95,8 @@ func (c *CrowdSec) GetCliConfig(configFile *string) error {
 			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
 		}
 	}
-	if c.SimulationCfgPath != "" {
-		rcfg, err := ioutil.ReadFile(c.SimulationCfgPath)
-		if err != nil {
-			return fmt.Errorf("while reading '%s' : %s", c.SimulationCfgPath, err)
-		}
-		simCfg := SimulationConfig{}
-		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
-			return fmt.Errorf("while parsing '%s' : %s", c.SimulationCfgPath, err)
-		}
-		c.SimulationCfg = &simCfg
+	if err := c.LoadSimulation(); err != nil {
+		return fmt.Errorf("loading simulation config : %s", err)
 	}
 	return nil
 }
