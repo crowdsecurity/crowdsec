@@ -168,10 +168,8 @@ func restoreFromDirectory(source string) error {
 				destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
 				if err = copyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
-				} else {
-					log.Infof("restored %s to %s", sourceFile, destinationFile)
 				}
-
+				log.Infof("restored %s to %s", sourceFile, destinationFile)
 			}
 		}
 	}
@@ -194,6 +192,39 @@ func restoreFromDirectory(source string) error {
 		return fmt.Errorf("failed copy %s to %s : %s", bac, yamlAcquisFile, err)
 	}
 	log.Infof("Restore acquis to %s", yamlAcquisFile)
+
+	/* Restore plugins configuration */
+	var pluginsConfigFile []string
+	walkErr := filepath.Walk(fmt.Sprintf("%s/plugins/backend/", source), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk error : %s", err)
+		}
+		fi, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
+		}
+		mode := fi.Mode()
+		if mode.IsRegular() {
+			pluginsConfigFile = append(pluginsConfigFile, path)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		return fmt.Errorf("error while listing folder '%s' : %s", fmt.Sprintf("%s/plugins/backend/", source), walkErr)
+	}
+
+	if err := os.MkdirAll(outputCTX.Config.BackendFolder, os.ModePerm); err != nil {
+		return fmt.Errorf("error while creating backup folder dir %s : %s", outputCTX.Config.BackendFolder, err)
+	}
+
+	for _, file := range pluginsConfigFile {
+		_, filename := path.Split(file)
+		backupFile := fmt.Sprintf("%s/%s", outputCTX.Config.BackendFolder, filename)
+		log.Printf("Restoring  '%s' to '%s'", file, backupFile)
+		if err := copyFile(file, backupFile); err != nil {
+			return fmt.Errorf("error while copying '%s' to '%s' : %s", file, backupFile, err)
+		}
+	}
 
 	return nil
 }
@@ -367,6 +398,40 @@ func backupToDirectory(target string) error {
 		return fmt.Errorf("unable to write credentials to %s : %s", apiCredsDumped, err)
 	}
 	log.Infof("Saved configuration to %s", target)
+
+	/* Backup plugins configuration */
+	var pluginsConfigFile []string
+	walkErr := filepath.Walk(outputCTX.Config.BackendFolder, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk error : %s", err)
+		}
+		fi, err := os.Stat(path)
+		if err != nil {
+			return fmt.Errorf("unable to stats file '%s' : %s", path, err)
+		}
+		mode := fi.Mode()
+		if mode.IsRegular() {
+			pluginsConfigFile = append(pluginsConfigFile, path)
+		}
+		return nil
+	})
+	if walkErr != nil {
+		return fmt.Errorf("error while listing folder '%s' : %s", outputCTX.Config.BackendFolder, walkErr)
+	}
+
+	targetDir := fmt.Sprintf("%s/plugins/backend/", target)
+	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+		return fmt.Errorf("error while creating backup folder dir %s : %s", targetDir, err)
+	}
+
+	for _, file := range pluginsConfigFile {
+		_, filename := path.Split(file)
+		backupFile := fmt.Sprintf("%s/plugins/backend/%s", target, filename)
+		if err := copyFile(file, backupFile); err != nil {
+			return fmt.Errorf("unable to copy file '%s' to '%s' : %s", file, backupFile, err)
+		}
+	}
+
 	return nil
 }
 
@@ -396,7 +461,7 @@ cscli backup restore ./my-backup`,
 
 - Backup of API credentials
 
-- Backup of acqusition configuration
+- Backup of acquisition configuration
 		
 		`,
 		Example: `cscli backup save ./my-backup`,
