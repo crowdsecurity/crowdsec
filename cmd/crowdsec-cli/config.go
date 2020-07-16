@@ -29,7 +29,7 @@ func NewConfigCmd() *cobra.Command {
 	var cmdConfig = &cobra.Command{
 		Use:   "config [command] <value>",
 		Short: "Allows to view/edit cscli config",
-		Long: `Allow to configure sqlite path and installation directory.
+		Long: `Allow to configure database plugin path and installation directory.
 If no commands are specified, config is in interactive mode.`,
 		Example: ` - cscli config show
 - cscli config prompt`,

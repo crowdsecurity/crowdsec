@@ -1,4 +1,0 @@
-name: sqlite
-path: /usr/local/lib/crowdsec/plugins/backend/sqlite.so
-config:
-  db_path: /var/lib/crowdsec/data/crowdsec.db
