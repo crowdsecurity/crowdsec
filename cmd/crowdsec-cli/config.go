@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -18,6 +20,8 @@ type cliConfig struct {
 	InstallFolder       string
 	BackendPluginFolder string `yaml:"backend_folder"`
 	DataFolder          string `yaml:"data_folder"`
+	SimulationCfgPath   string `yaml:"simulation_path,omitempty"`
+	SimulationCfg       *csconfig.SimulationConfig
 }
 
 func NewConfigCmd() *cobra.Command {

@@ -45,6 +45,11 @@ func reloadHandler(sig os.Signal) error {
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
 		log.Fatalf("while shutting down routines : %s", err)
 	}
+	//reload the simulation state
+	if err := cConfig.LoadSimulation(); err != nil {
+		log.Errorf("reload error (simulation) : %s", err)
+	}
+
 	//reload all and start processing again :)
 	if err := LoadParsers(cConfig); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)

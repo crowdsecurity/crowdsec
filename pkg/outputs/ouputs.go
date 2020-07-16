@@ -45,13 +45,17 @@ func OvflwToOrder(sig types.SignalOccurence, prof types.Profile) (*types.BanOrde
 	var ordr types.BanOrder
 	var warn error
 
+	if sig.Simulation {
+		log.Debugf("signal for '%s' is whitelisted", sig.Source_ip)
+		ordr.MeasureType = "simulation:"
+	}
 	//Identify remediation type
 	if prof.Remediation.Ban {
-		ordr.MeasureType = "ban"
+		ordr.MeasureType += "ban"
 	} else if prof.Remediation.Slow {
-		ordr.MeasureType = "slow"
+		ordr.MeasureType += "slow"
 	} else if prof.Remediation.Captcha {
-		ordr.MeasureType = "captcha"
+		ordr.MeasureType += "captcha"
 	} else {
 		/*if the profil has no remediation, no order */
 		return nil, nil, fmt.Errorf("no remediation")
