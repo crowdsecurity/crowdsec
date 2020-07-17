@@ -136,7 +136,7 @@ log_locations[nginx]='/var/log/nginx/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
-log_locations[mysql]='/var/log/mysqld*.log'
+log_locations[mysql]='/var/log/mysql/error.log'
 log_locations[smb]='/var/log/samba*.log'
 log_locations[linux]='/var/log/syslog,/var/log/kern.log,/var/log/messages'
 
