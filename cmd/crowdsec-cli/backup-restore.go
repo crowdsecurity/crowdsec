@@ -112,7 +112,16 @@ as well attempts to restore api credentials after verifying the existing ones ar
 finally restores the acquis.yaml file*/
 func restoreFromDirectory(source string) error {
 	var err error
-	/*backup scenarios etc.*/
+
+	/*restore simulation configuration*/
+	backSimul := fmt.Sprintf("%s/simulation.yaml", source)
+	if _, err = os.Stat(backSimul); err == nil {
+		if err = copyFile(backSimul, config.SimulationCfgPath); err != nil {
+			return fmt.Errorf("failed copy %s to %s : %s", backSimul, config.SimulationCfgPath, err)
+		}
+	}
+
+	/*restore scenarios etc.*/
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", source, itype)
 		if _, err = os.Stat(itemDirectory); err != nil {
@@ -298,7 +307,14 @@ func backupToDirectory(target string) error {
 	/*
 		backup configurations :
 			- parers, scenarios, collections, postoverflows
+			- simulation configuration
 	*/
+	if config.SimulationCfgPath != "" {
+		backSimul := fmt.Sprintf("%s/simulation.yaml", target)
+		if err = copyFile(config.SimulationCfgPath, backSimul); err != nil {
+			return fmt.Errorf("failed copy %s to %s : %s", config.SimulationCfgPath, backSimul, err)
+		}
+	}
 
 	for _, itemType := range cwhub.ItemTypes {
 		clog := log.WithFields(log.Fields{
