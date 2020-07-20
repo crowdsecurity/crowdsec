@@ -37,14 +37,20 @@ nav:
   - Blockers:
     - Overview : blockers/index.md
     - Nginx:
-      - Installation : blockers/nginx/installation.md
-      - Configuration : blockers/nginx/configuration.md
+      - Installation : "https://github.com/crowdsecurity/cs-nginx-blocker#installation"
+      - Configuration : "https://github.com/crowdsecurity/cs-nginx-blocker#configuration"
     - Wordpress:
-      - Installation : blockers/wordpress/installation.md
-      - Configuration : blockers/wordpress/configuration.md
+      - Installation : "https://github.com/crowdsecurity/cs-wordpress-plugin/#installation"
+      - Configuration : "https://github.com/crowdsecurity/cs-wordpress-plugin/#configuration"
     - Netfilter:
-      - Installation : blockers/netfilter/installation.md
-      - Configuration : blockers/netfilter/configuration.md
+      - Installation : "https://github.com/crowdsecurity/cs-netfilter-blocker#installation"
+      - Configuration : "https://github.com/crowdsecurity/cs-netfilter-blocker#configuration"
+    - Cloudflare:
+      - Installation: "https://github.com/crowdsecurity/cs-cloudflare-blocker#installation"
+      - Configuration: "https://github.com/crowdsecurity/cs-cloudflare-blocker#configuration"
+    - Custom:
+      - Installation: "https://github.com/crowdsecurity/cs-custom-blocker#installation"
+      - Configuration: "https://github.com/crowdsecurity/cs-custom-blocker#configuration"
   - Contributing: contributing/
   - Cscli commands:
     - API: cscli/cscli_api.md
@@ -128,11 +134,14 @@ extra:
         cli_dir: /etc/crowdsec/cscli/
         crowdsec_dir: "/etc/crowdsec/config/"
         acquis_path: "/etc/crowdsec/config/acquis.yaml"
-    plugins:
+    blockers:
         name: blockers
         url: "https://hub.crowdsec.net/"
         binpath: "/usr/local/lib/crowdsec/plugins/"
-        configpath: "/etc/crowdsec/plugins/"
+        configpath: "/etc/crowdsec/"
+    backend:
+        name: backend plugins
+        configpath: "/etc/crowdsec/plugins/backend/"
     metabase:
         name: metabase
         url: https://github.com/crowdsecurity/crowdsec

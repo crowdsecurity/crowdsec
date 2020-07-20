@@ -2,7 +2,8 @@
 
 The output mechanism is composed of plugins. In order to store the bans for {{blockers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
 
-Please see [here](https://github.com/crowdsecurity/crowdsec/tree/master/plugins/backend) for the available backend plugin.
+
+Currently the supported {{backend.name}} are SQLite (default) and MySQL.
 
 In order to filter which signals will be sent to which plugin, {{crowdsec.name}} use a system of `profile` that can allow to granularly process your bans and signals.
 
@@ -45,14 +46,87 @@ outputs:
 
 Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{signal.htmlname}} object to choose which signal will be process by which plugin.
 
-## Plugins
 
-Plugins configuration file are stored in `{{plugins.configpath}}`. {{crowdsec.name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{plugins.binpath}}`.
+
+# Switching backend database
+
+The `/etc/crowdsec/plugins/backend/database.yaml` file allows you to configure to which backend database you'd like to write :
+
+```yaml
+name: database
+path: /usr/local/lib/crowdsec/plugins/backend/database.so
+config:
+  ## DB type supported (mysql, sqlite)
+  ## By default it using sqlite
+  type: sqlite
+
+  ## mysql options
+  # db_host: localhost
+  # db_username: crowdsec
+  # db_password: password
+  # db_name: crowdsec
+
+  ## sqlite options
+  db_path: /var/lib/crowdsec/data/crowdsec.db
+
+  ## Other options
+  flush: true
+  # debug: true
+
+```
+
+## SQLite 
+
+SQLite is the default backend database, so you don't have to touch anything.
+
+## MySQL
+
+If you want to use MySQL as a backend database (which is suitable to distributed architectures), you need to have root privileges (ie. `mysql -u root -p`) on you MySQL database to type the following commands :
+
+```bash
+#create the database for crowdsec
+CREATE database crowdsec
+#create the dedicated user
+CREATE USER 'crowdsec'@'localhost' IDENTIFIED BY 'verybadpassword';
+#grant the privileges
+GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'localhost';
+#allow backward compatibility for mysql >= 5.7
+SET GLOBAL sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));
+```
+
+Then, configure accordingly your `/etc/crowdsec/plugins/backend/database.yaml` :
+
+```yaml
+name: database
+path: /usr/local/lib/crowdsec/plugins/backend/database.so
+config:
+  ## DB type supported (mysql, sqlite)
+  ## By default it using sqlite
+  type: mysql
+
+  ## mysql options
+  db_host: localhost
+  db_username: crowdsec
+  db_password: verybadpassword
+  db_name: crowdsec
+
+  ## sqlite options
+  #db_path: /var/lib/crowdsec/data/crowdsec.db
+
+  ## Other options
+  flush: true
+  # debug: true
+```
+
+
+# Plugins
+
+Plugins configuration file are stored in `{{blockers.configpath}}`. {{crowdsec.name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{blockers.binpath}}`.
 
 !!! info
-        If you want crowdsec to not load a plugin, `mv` or `rm` its configuration file in `{{plugins.configpath}}`
+        If you want crowdsec to not load a plugin, `mv` or `rm` its configuration file in `{{blockers.configpath}}`
 
-Here is a sample of a plugin configuration file stored in `{{plugins.configpath}}`:
+Here is a sample of a plugin configuration file stored in `{{blockers.configpath}}`:
 ```yaml
 name: <plugin_name>
 path: <path_to_plugin_binary> # 

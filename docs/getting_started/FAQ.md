@@ -23,7 +23,7 @@ If you need help for large scale deployment, please get in touch with us on the 
 ## Is there any performance impact ?
 
 As {{crowdsec.name}} only works on logs, it shouldn't impact your production.
-When it comes to {{plugins.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
+When it comes to {{blockers.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
 
 ## Which information is shared from my logs ?
 
@@ -37,6 +37,14 @@ The signal sent by your {{crowdsec.name}} to the central API only contains meta-
  - Time of start/end of attack
 
 You can find the specific list [here]({{crowdsec.url}}/blob/master/pkg/types/signal_occurence.go)
+
+## What backend database does {{crowdsec.Name}} supports and how to switch ?
+
+Currently (0.3.0), {{crowdsec.name}} supports SQLite (default) and MySQL databases.
+See [backend configuration](/references/output/#switching-backend-database) for relevant configuration.
+
+SQLite is the default backend as it's suitable for standalone/single-machine setups.
+On the other hand, MySQL is more suitable for distributed architectures where blockers across the applicative stack need to access a centralized ban database.
 
 ## How to add whitelists ?
 
