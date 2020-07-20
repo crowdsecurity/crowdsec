@@ -48,9 +48,9 @@ Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{sig
 
 
 
-# Switching backend database
+# Backend database configuration
 
-The `/etc/crowdsec/plugins/backend/database.yaml` file allows you to configure to which backend database you'd like to write :
+The `/etc/crowdsec/plugins/backend/database.yaml` file allows you to configure to which backend database you'd like to write. {{crowdsec.Name}} support SQLite and MySQL via [gorm](https://gorm.io/docs/).
 
 ```yaml
 name: database
