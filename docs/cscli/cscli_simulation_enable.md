@@ -1,26 +1,25 @@
-## cscli api register
+## cscli simulation enable
 
-Register on Crowdsec API
+Enable the simulation, globally or on specified scenarios
 
 ### Synopsis
 
-This command will register your machine to crowdsec API to allow you to receive list of malveolent IPs. 
-		The printed machine_id and password should be added to your api.yaml file.
+Enable the simulation, globally or on specified scenarios
 
 ```
-cscli api register [flags]
+cscli simulation enable [scenario_name] [flags]
 ```
 
 ### Examples
 
 ```
-cscli api register
+cscli simulation enable
 ```
 
 ### Options
 
 ```
-  -h, --help   help for register
+  -h, --help   help for enable
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +35,6 @@ cscli api register
 
 ### SEE ALSO
 
-* [cscli api](cscli_api.md)	 - Crowdsec API interaction
+* [cscli simulation](cscli_simulation.md)	 - 
 
 

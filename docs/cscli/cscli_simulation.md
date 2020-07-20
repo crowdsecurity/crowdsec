@@ -1,24 +1,15 @@
-## cscli dashboard
+## cscli simulation
 
-Start a dashboard (metabase) container.
+
 
 ### Synopsis
 
-Start a metabase container exposing dashboards and metrics.
 
-### Examples
-
-```
-cscli dashboard setup
-cscli dashboard start
-cscli dashboard stop
-cscli dashboard setup --force
-```
 
 ### Options
 
 ```
-  -h, --help   help for dashboard
+  -h, --help   help for simulation
 ```
 
 ### Options inherited from parent commands
@@ -35,8 +26,8 @@ cscli dashboard setup --force
 ### SEE ALSO
 
 * [cscli](cscli.md)	 - cscli allows you to manage crowdsec
-* [cscli dashboard setup](cscli_dashboard_setup.md)	 - Setup a metabase container.
-* [cscli dashboard start](cscli_dashboard_start.md)	 - Start the metabase container.
-* [cscli dashboard stop](cscli_dashboard_stop.md)	 - Stops the metabase container.
+* [cscli simulation disable](cscli_simulation_disable.md)	 - Disable the simulation mode. Disable only specified scenarios
+* [cscli simulation enable](cscli_simulation_enable.md)	 - Enable the simulation, globally or on specified scenarios
+* [cscli simulation status](cscli_simulation_status.md)	 - Show simulation mode status
 
 
