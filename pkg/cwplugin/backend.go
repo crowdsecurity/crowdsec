@@ -75,6 +75,7 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 			log.Errorf("parsing '%s' yaml error : %s, skipping", file, err)
 			continue
 		}
+
 		plug, err := plugin.Open(newPlugin.Path)
 		if err != nil {
 			return nil, err
@@ -100,8 +101,8 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 		// Add the interface and Init()
 		newPlugin.funcs = bInterface
 		// Merge backend config from main config file
-		if v, ok := outputConfig["debug"]; ok {
-			newPlugin.Config["debug"] = v
+		if v, ok := outputConfig["debug"]; ok && v == "true" {
+			newPlugin.Config["debug"] = "true"
 		}
 
 		if v, ok := outputConfig["max_records"]; ok {
@@ -112,10 +113,9 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 			newPlugin.Config["max_records_age"] = v
 		}
 
-		if v, ok := outputConfig["flush"]; ok {
+		if v, ok := outputConfig["flush"]; ok && v == "true" {
 			newPlugin.Config["flush"] = v
 		}
-
 		err = newPlugin.funcs.Init(newPlugin.Config)
 		if err != nil {
 			return nil, fmt.Errorf("plugin '%s' init error : %s", newPlugin.Name, err)
