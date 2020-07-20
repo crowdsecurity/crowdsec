@@ -17,9 +17,9 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ## Components
 
-{{crowdsec.name}} ecosystem is based on the following tools :
+{{crowdsec.name}} ecosystem is based on the following components :
 
- - {{crowdsec.name}} is the "service" that runs in the background, processes logs and keeps track of attacks
+ - {{crowdsec.name}} is the lightweight service that processes logs and keeps track of attacks.
  - [{{cli.name}}]({{cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find ,or update scenarios and parsers
  - [{{blockers.name}}]({{hub.plugins_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
 

@@ -39,18 +39,18 @@ nav:
     - Nginx:
       - Installation : "https://github.com/crowdsecurity/cs-nginx-blocker#installation"
       - Configuration : "https://github.com/crowdsecurity/cs-nginx-blocker#configuration"
-    - Wordpress:
-      - Installation : "https://github.com/crowdsecurity/cs-wordpress-plugin/#installation"
-      - Configuration : "https://github.com/crowdsecurity/cs-wordpress-plugin/#configuration"
     - Netfilter:
       - Installation : "https://github.com/crowdsecurity/cs-netfilter-blocker#installation"
       - Configuration : "https://github.com/crowdsecurity/cs-netfilter-blocker#configuration"
-    - Cloudflare:
-      - Installation: "https://github.com/crowdsecurity/cs-cloudflare-blocker#installation"
-      - Configuration: "https://github.com/crowdsecurity/cs-cloudflare-blocker#configuration"
     - Custom:
       - Installation: "https://github.com/crowdsecurity/cs-custom-blocker#installation"
       - Configuration: "https://github.com/crowdsecurity/cs-custom-blocker#configuration"
+    - Cloudflare:
+      - Installation: "https://github.com/crowdsecurity/cs-cloudflare-blocker#installation"
+      - Configuration: "https://github.com/crowdsecurity/cs-cloudflare-blocker#configuration"
+    - Wordpress:
+      - Installation : "https://github.com/crowdsecurity/cs-wordpress-plugin/#installation"
+      - Configuration : "https://github.com/crowdsecurity/cs-wordpress-plugin/#configuration"
   - Contributing: contributing/
   - Cscli commands:
     - API: cscli/cscli_api.md
