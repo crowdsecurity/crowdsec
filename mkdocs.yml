@@ -63,6 +63,7 @@ nav:
     - Upgrade configurations: cscli/cscli_upgrade.md
     - List configurations: cscli/cscli_list.md
     - Inspect configurations: cscli/cscli_inspect.md
+    - Manage simulation: cscli/cscli_simulation.md
     - Dashboard: cscli/cscli_dashboard.md
   - About: about.md
 markdown_extensions:
