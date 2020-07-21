@@ -26,12 +26,20 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 	atomic.AddInt32(&c.count, 1)
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	//log.Debugf("Ban signal being called : %s %s", sig.Scenario, sig.Source.Ip.String())
-	ret := c.tx.Create(&sig)
-	//sig.Scenario = sig.Scenario
-	if ret.Error != nil {
-		log.Errorf("FAILED : %+v \n", ret.Error)
-		return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
+	/*let's ensure we only have one ban active for a given scope*/
+	for _, ba := range sig.BanApplications {
+		ret := c.tx.Where("ip_text = ?", ba.IpText).Delete(types.BanApplication{})
+		if ret.Error != nil {
+			log.Errorf("While delete overlaping bans : %s", ret.Error)
+			return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
+		}
 	}
+	/*and add the new one(s)*/
+	ret := c.tx.Create(&sig)
+	if ret.Error != nil {
+		log.Errorf("While creating new bans : %s", ret.Error)
+		return fmt.Errorf("failed to write signal occurrence : %s", ret.Error)
+	}
+
 	return nil
 }
