@@ -14,6 +14,7 @@ nav:
     - Enrichers: guide/crowdsec/enrichers.md
     - Scenarios: guide/crowdsec/scenarios.md
     - Cscli: guide/cscli.md
+    - Simulation Mode: guide/crowdsec/simulation.md
   - Cheat Sheets:
     - Ban Management: cheat_sheets/ban-mgmt.md
     - Configuration Management: cheat_sheets/config-mgmt.md
@@ -204,8 +205,8 @@ extra:
     collections:
         name: collections
         Name: Collections
-        htmlname: "[collections](/getting_started/glossary/#collection)"
-        Htmlname: "[Collections](/getting_started/glossary/#collection)"
+        htmlname: "[collections](/getting_started/concepts/#collections)"
+        Htmlname: "[Collections](/getting_started/concepts/#collections)"
     timeMachine:
         name: timeMachine
         Name: TimeMachine
