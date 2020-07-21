@@ -25,7 +25,7 @@ cscli install parser crowdsec/xxx
 ### Options inherited from parent commands
 
 ```
-  -c, --config string   path to crowdsec config file (default: /etc/crowdsec/config/default.yaml) (default "/etc/crowdsec/config/default.yaml")
+  -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config/default.yaml")
       --debug           Set logging to debug.
   -d, --download-only   Only download packages, don't enable
       --error           Set logging to error.

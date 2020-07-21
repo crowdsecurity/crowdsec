@@ -28,7 +28,7 @@ cscli upgrade postoverflow [config] [flags]
 
 ```
       --all             Upgrade all configuration in scope
-  -c, --config string   path to crowdsec config file (default: /etc/crowdsec/config/default.yaml) (default "/etc/crowdsec/config/default.yaml")
+  -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config/default.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
       --force           Overwrite existing files, even if tainted

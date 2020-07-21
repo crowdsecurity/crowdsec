@@ -30,7 +30,7 @@ API interaction:
 ### Options
 
 ```
-  -c, --config string   path to crowdsec config file (default: /etc/crowdsec/config/default.yaml) (default "/etc/crowdsec/config/default.yaml")
+  -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config/default.yaml")
   -o, --output string   Output format : human, json, raw. (default "human")
       --debug           Set logging to debug.
       --info            Set logging to info.
