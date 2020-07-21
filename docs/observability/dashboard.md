@@ -4,7 +4,7 @@
 
 
 
-The {{cli.name}} command `{{cli.bin}} dashboard setup` will use docker to install [metabase docker image](https://hub.docker.com/r/metabase/metabase/) and fetch our metabase template to have a configured and ready dashboard. 
+The {{cli.name}} command `{{cli.bin}} dashboard setup` will use [docker](https://docs.docker.com/get-docker/) to install [metabase docker image](https://hub.docker.com/r/metabase/metabase/) and fetch our metabase template to have a configured and ready dashboard. 
 
 
 ## Deployment
