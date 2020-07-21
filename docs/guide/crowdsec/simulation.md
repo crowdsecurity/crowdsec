@@ -1,4 +1,13 @@
-You can tag some (or all) scenarios as being in **simulation mode**.
+You can tag some (or all) scenarios as being in **simulation mode**, which is especially useful if :
+
+ - You have one/multiple scenario that might trigger false positives : You can keep track of decisions while not applying automated counter-measures
+ - You want *only* specific scenarios to trigger counter-measures
+
+
+
+!!! warning "Simulation vs [Whitelists](/write_configurations/whitelist/)"
+    Simulation and [Whitelists](/write_configurations/whitelist/) are not to be mixed. [Whitelists](/write_configurations/whitelist/) allows you to purely discard an overflow or a log, while simulation will only "cancel" the action against a peer, while keeping track of events and overflows.
+
 
 When this happens, the scenarios are still triggered, but the action is prefixed with `simulation:`, which means that blockers won't take action against the peer(s) that triggered the scenario.
 
