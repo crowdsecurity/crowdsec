@@ -1,0 +1,6 @@
+filenames:
+  - ./tests/test.log
+labels:
+  type: my_test_log
+---
+
