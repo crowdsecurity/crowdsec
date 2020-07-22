@@ -1,19 +1,25 @@
-## cscli config show
+## cscli simulation enable
 
-Displays current config
+Enable the simulation, globally or on specified scenarios
 
 ### Synopsis
 
-Displays the current cli configuration.
+Enable the simulation, globally or on specified scenarios
 
 ```
-cscli config show [flags]
+cscli simulation enable [scenario_name] [flags]
+```
+
+### Examples
+
+```
+cscli simulation enable
 ```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for enable
 ```
 
 ### Options inherited from parent commands
@@ -29,6 +35,6 @@ cscli config show [flags]
 
 ### SEE ALSO
 
-* [cscli config](cscli_config.md)	 - Allows to view/edit cscli config
+* [cscli simulation](cscli_simulation.md)	 - 
 
 

@@ -1,19 +1,25 @@
-## cscli config show
+## cscli simulation disable
 
-Displays current config
+Disable the simulation mode. Disable only specified scenarios
 
 ### Synopsis
 
-Displays the current cli configuration.
+Disable the simulation mode. Disable only specified scenarios
 
 ```
-cscli config show [flags]
+cscli simulation disable [scenario_name] [flags]
+```
+
+### Examples
+
+```
+cscli simulation disable
 ```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for disable
 ```
 
 ### Options inherited from parent commands
@@ -29,6 +35,6 @@ cscli config show [flags]
 
 ### SEE ALSO
 
-* [cscli config](cscli_config.md)	 - Allows to view/edit cscli config
+* [cscli simulation](cscli_simulation.md)	 - 
 
 

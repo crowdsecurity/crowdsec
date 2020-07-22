@@ -1,19 +1,26 @@
-As the default database is sqlite, we use [metabase](https://www.metabase.com/) to visualize the data stored in it.
 
-The {{cli.name}} command `{{cli.bin}} dashboard setup` will use docker to install [metabase docker image](https://hub.docker.com/r/metabase/metabase/) and fetch our metabase template to have a configured and ready dashboard. 
-
-!!! warning "Dependencies"
-    * [Docker](https://docs.docker.com/) 
-
-Once the dashboard is setup, an URL and credentials are provided to connect to the dashboard.
+!!! warning "SQLite & MySQL"
+    The default database of {{crowdsec.Name}} is SQLite. While MySQL is supported as well (>= 0.3.0), it is not in the scope of this documentation.
 
 
-!!! note
-    Depending on your machine ressource, `{{cli.bin}} dashboard setup` might take a few minutes to finish.
 
+The {{cli.name}} command `{{cli.bin}} dashboard setup` will use [docker](https://docs.docker.com/get-docker/) to install [metabase docker image](https://hub.docker.com/r/metabase/metabase/) and fetch our metabase template to have a configured and ready dashboard. 
+
+
+## Deployment
+
+
+The metabase dashboard can be setup with :
 ```bash
 {{cli.bin}} dashboard setup
 ```
+
+
+`--listen` and `--port` options allow you to control on which address / port will the docker be binded.
+
+
+<details>
+  <summary>{{cli.name}} dashboard setup output</summary>
 
 ```bash
 INFO[0000] /var/lib/crowdsec/data/metabase.db exists, skip.  
@@ -33,9 +40,11 @@ INFO[0034] url : http://127.0.0.1:3000
 INFO[0034] username: metabase@crowdsec.net              
 INFO[0034] password: W1XJb8iw1A02U5nW7xxxxXXXxxXXXxXXxxXXXxxxXxXxXxXPdbvQdLlshqqPg8pf 
 ```
+</details>
 
 !!! tip "Protip"
-    Don't forget to save your credentials !!
+    the `dashboard setup` command will output generated credentials for metabase.
+    Don't forget to save those !
 
 Now you can connect to your dashboard, sign-in with your saved credentials then click on {{crowdsec.Name}} Dashboard to get this:
 
