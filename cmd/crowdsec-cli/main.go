@@ -115,7 +115,7 @@ API interaction:
 	rootCmd.AddCommand(cmdVersion)
 
 	//rootCmd.PersistentFlags().BoolVarP(&config.simulation, "simulate", "s", false, "No action; perform a simulation of events that would occur based on the current arguments.")
-	rootCmd.PersistentFlags().StringVarP(&config.ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file (default: /etc/crowdsec/config/default.yaml)")
+	rootCmd.PersistentFlags().StringVarP(&config.ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
 
 	rootCmd.PersistentFlags().StringVarP(&config.output, "output", "o", "human", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")

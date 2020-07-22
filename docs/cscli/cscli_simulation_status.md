@@ -1,19 +1,25 @@
-## cscli config show
+## cscli simulation status
 
-Displays current config
+Show simulation mode status
 
 ### Synopsis
 
-Displays the current cli configuration.
+Show simulation mode status
 
 ```
-cscli config show [flags]
+cscli simulation status [flags]
+```
+
+### Examples
+
+```
+cscli simulation status
 ```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for status
 ```
 
 ### Options inherited from parent commands
@@ -29,6 +35,6 @@ cscli config show [flags]
 
 ### SEE ALSO
 
-* [cscli config](cscli_config.md)	 - Allows to view/edit cscli config
+* [cscli simulation](cscli_simulation.md)	 - 
 
 

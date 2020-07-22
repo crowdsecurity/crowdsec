@@ -1,19 +1,15 @@
-## cscli config show
+## cscli simulation
 
-Displays current config
+
 
 ### Synopsis
 
-Displays the current cli configuration.
 
-```
-cscli config show [flags]
-```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for simulation
 ```
 
 ### Options inherited from parent commands
@@ -29,6 +25,9 @@ cscli config show [flags]
 
 ### SEE ALSO
 
-* [cscli config](cscli_config.md)	 - Allows to view/edit cscli config
+* [cscli](cscli.md)	 - cscli allows you to manage crowdsec
+* [cscli simulation disable](cscli_simulation_disable.md)	 - Disable the simulation mode. Disable only specified scenarios
+* [cscli simulation enable](cscli_simulation_enable.md)	 - Enable the simulation, globally or on specified scenarios
+* [cscli simulation status](cscli_simulation_status.md)	 - Show simulation mode status
 
 

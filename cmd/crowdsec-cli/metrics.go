@@ -158,6 +158,11 @@ func ShowPrometheus(url string) {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["parsed"] += ival
+			case "cs_node_hits_ko":
+				if _, ok := parsers_stats[name]; !ok {
+					parsers_stats[name] = make(map[string]int)
+				}
+				parsers_stats[name]["unparsed"] += ival
 			default:
 				continue
 			}
