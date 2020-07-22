@@ -45,17 +45,26 @@ func test_prepenv() {
 	//Datadir := "./data"
 
 	if _, err := os.Stat("./cscli/.index.json"); os.IsNotExist(err) {
-		os.MkdirAll(Cfgdir, 0700)
-		err := UpdateHubIdx()
-		if err != nil {
-			log.Fatalf("failed to download index")
+		if err := os.MkdirAll(Cfgdir, 0700); err != nil {
+			log.Fatalf("mkdir : %s", err)
+		}
+		if err := UpdateHubIdx(); err != nil {
+			log.Fatalf("failed to download index : %s", err)
 		}
 	}
 
-	os.RemoveAll(Installdir)
-	os.MkdirAll(Installdir, 0700)
-	os.RemoveAll(Hubdir)
-	os.MkdirAll(Hubdir, 0700)
+	if err := os.RemoveAll(Installdir); err != nil {
+		log.Fatalf("failed to remove %s : %s", Installdir, err)
+	}
+	if err := os.MkdirAll(Installdir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", Installdir, err)
+	}
+	if err := os.RemoveAll(Hubdir); err != nil {
+		log.Fatalf("failed to remove %s : %s", Hubdir, err)
+	}
+	if err := os.MkdirAll(Hubdir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", Hubdir, err)
+	}
 }
 
 func testInstallItem(t *testing.T, item Item) {
