@@ -156,7 +156,9 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 				log.Errorf("error while globing '%s' : %v", fglob, err)
 				return nil, err
 			}
-
+			if len(files) == 0 {
+				return nil, fmt.Errorf("unable to glob path '%s'", fglob)
+			}
 			for _, file := range files {
 				/*check that we can read said file*/
 				if err := unix.Access(file, unix.R_OK); err != nil {

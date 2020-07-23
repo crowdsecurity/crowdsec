@@ -1,5 +1,6 @@
 filenames:
   - ./tests/test.log
+mode: tail
 labels:
   type: my_test_log
 ---
