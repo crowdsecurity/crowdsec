@@ -17,6 +17,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+func LoadHubIdx() error {
+	bidx, err := ioutil.ReadFile(path.Join(Cfgdir, "/.index.json"))
+	if err != nil {
+		return err
+	}
+	ret, err := LoadPkgIndex(bidx)
+	if err != nil {
+		if !errors.Is(err, ReferenceMissingError) {
+			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
+		}
+	}
+	HubIdx = ret
+	if err := LocalSync(); err != nil {
+		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
+	}
+	return nil
+}
+
 func UpdateHubIdx() error {
 
 	bidx, err := DownloadHubIdx()
@@ -157,6 +175,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	meow := fmt.Sprintf("%x", h.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
+		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
 		return target, fmt.Errorf("invalid download hash")
 	}
 	//all good, install
