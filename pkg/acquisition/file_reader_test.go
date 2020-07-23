@@ -14,10 +14,9 @@ func TestLoadAcquisitionConfig(t *testing.T) {
 	testFilePath := "./tests/test.log"
 
 	tests := []struct {
-		csConfig   *csconfig.CrowdSec
-		result     *FileAcquisCtx
-		err        string
-		assertFunc interface{}
+		csConfig *csconfig.CrowdSec
+		result   *FileAcquisCtx
+		err      string
 	}{
 		{
 			csConfig: &csconfig.CrowdSec{
