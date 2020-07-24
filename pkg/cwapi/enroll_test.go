@@ -30,7 +30,7 @@ func TestEnroll(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -48,7 +48,7 @@ func TestEnroll(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -66,7 +66,7 @@ func TestEnroll(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -84,7 +84,7 @@ func TestEnroll(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 	}

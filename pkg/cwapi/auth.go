@@ -212,7 +212,7 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 		return fmt.Errorf("api reset password: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
 	}
 
-	if jsonResp.Message == "" || jsonResp.Message != "password updated successfully" || jsonResp.StatusCode != 200 {
+	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
 		return fmt.Errorf("api signin failed. http response: %s", body)
 	}
 	return nil

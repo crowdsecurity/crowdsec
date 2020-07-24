@@ -14,14 +14,45 @@ const apiURL = "https://my_test_endpoint"
 
 var apiBaseURL = fmt.Sprintf("%s/%s/", apiURL, apiVersion)
 
+var pullResponse = `{
+	"statusCode" : 200,
+	"message":
+	[
+		{
+			"range_ip" : "1.2.3.4",
+			"country" : "FR",
+			"as_org" : "Test", 
+			"as_num" : "1234",
+			"action" : "ban",
+			"reason": "crowdsec/test"
+		},
+		{
+			"range_ip" : "1.2.3.5",
+			"country" : "FR",
+			"as_org" : "Test", 
+			"as_num" : "1235",
+			"action" : "ban",
+			"reason": "crowdsec/test"
+		},
+		{
+			"range_ip" : "1.2.3.6",
+			"country" : "FR",
+			"as_org" : "Test", 
+			"as_num" : "1236",
+			"action" : "ban",
+			"reason": "crowdsec/test"
+		}
+	]
+}`
+
 var httpClientMock = &http.Client{
 	Transport: newMockTransport(),
 	Timeout:   time.Second * 20,
 }
 
 type mockTransport struct {
-	nbTryTokenOK  int // to test token expiration
-	nbTryTokenNOK int
+	nbTryPushTokenOK  int // to test token expiration
+	nbTryPushTokenNOK int
 }
 
 func newMockTransport() http.RoundTripper {
@@ -55,20 +86,23 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	case "/v1/signals":
 		responseBody = `{"statusCode": 200, "message": "OK"}`
 		statusCode = 200
+	case "/v1/pull":
+		responseBody = pullResponse
+		statusCode = 200
 	case "/v1/signals_token_expired":
-		if t.nbTryTokenOK == 0 {
+		if t.nbTryPushTokenOK == 0 {
 			responseBody = `{"statusCode": 200, "message": "crowdsec_api_token"}`
 			statusCode = 401
-			t.nbTryTokenOK++
+			t.nbTryPushTokenOK++
 		} else {
 			responseBody = `{"statusCode": 200, "message": "OK"}`
 			statusCode = 200
 		}
 	case "/v1/signals_token_renew_fail":
-		if t.nbTryTokenNOK == 0 {
+		if t.nbTryPushTokenNOK == 0 {
 			responseBody = `{"statusCode": 200, "message": "crowdsec_api_token"}`
 			statusCode = 401
-			t.nbTryTokenNOK++
+			t.nbTryPushTokenNOK++
 		} else {
 			responseBody = `{"statusCode": 500, "message": "token expired"}`
 			statusCode = 500

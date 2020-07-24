@@ -2,6 +2,7 @@ package cwapi
 
 import (
 	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/dghubble/sling"
@@ -62,7 +63,7 @@ func TestWriteConfig(t *testing.T) {
 				},
 				Muted:     false,
 				DebugDump: false,
-				Http:      sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http:      sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 	}
@@ -80,6 +81,7 @@ func TestWriteConfig(t *testing.T) {
 		}
 
 		assertConfigFileEqual(t, test.configPath, test.compareToFile)
+		os.Remove(test.configPath)
 	}
 
 }
@@ -112,7 +114,7 @@ func TestLoadConfig(t *testing.T) {
 				},
 				Muted:     false,
 				DebugDump: false,
-				Http:      sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http:      sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -165,7 +167,7 @@ func TestSignin(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -180,7 +182,7 @@ func TestSignin(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -197,7 +199,7 @@ func TestSignin(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -214,7 +216,7 @@ func TestSignin(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -231,7 +233,7 @@ func TestSignin(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 	}
@@ -270,7 +272,7 @@ func TestRegisterMachine(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 			expectedAPICreds: &ApiCreds{
 				User:     "machine_id",
@@ -292,7 +294,7 @@ func TestRegisterMachine(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -305,7 +307,7 @@ func TestRegisterMachine(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http:       sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http:       sling.New().Client(newMockClient()).Base(apiBaseURL),
 				PusherTomb: tomb.Tomb{},
 			},
 		},
@@ -321,7 +323,7 @@ func TestRegisterMachine(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 	}
@@ -363,7 +365,7 @@ func TestResetPassword(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 			expectedAPICreds: &ApiCreds{
 				User:     "machine_id",
@@ -385,7 +387,7 @@ func TestResetPassword(t *testing.T) {
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -398,7 +400,7 @@ func TestResetPassword(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http:       sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http:       sling.New().Client(newMockClient()).Base(apiBaseURL),
 				PusherTomb: tomb.Tomb{},
 			},
 		},
@@ -414,7 +416,7 @@ func TestResetPassword(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 		{
@@ -429,7 +431,7 @@ func TestResetPassword(t *testing.T) {
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
 				},
-				Http: sling.New().Client(httpClientMock).Base(apiBaseURL),
+				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 		},
 	}
