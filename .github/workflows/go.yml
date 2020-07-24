@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master , unitest]
   pull_request:
     branches: [ master ]
 
@@ -20,16 +20,11 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
     - name: Build
-      run: make build
-    - name: Test-Parser
-      run: go test -coverprofile=tests.out github.com/crowdsecurity/crowdsec/pkg/parser && go tool cover -html=tests.out -o coverage_parser.html
-    - name: Test-Buckets
-      run: go test -coverprofile=tests.out github.com/crowdsecurity/crowdsec/pkg/leakybucket && go tool cover -html=tests.out -o coverage_buckets.html
-    - uses: actions/upload-artifact@v1
+      run: make build && go get -u github.com/jandelgado/gcov2lcov
+    - name: All tests
+      run: go test -coverprofile=coverage.out -covermode=atomic ./... && gcov2lcov -inputfile=coverage.out -outfile=coverage.lcov
+     - name: Coveralls
+      uses: coverallsapp/github-action@master
       with:
-        name: coverage_parser.html
-        path: ./coverage_parser.html
-    - uses: actions/upload-artifact@v1
-      with:       
-        name: coverage_buckets.html
-        path: ./coverage_buckets.html
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path-to-lcov: coverage.lcov
