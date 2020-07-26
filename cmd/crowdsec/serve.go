@@ -139,7 +139,36 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 	}
 	log.Infof("acquisition is finished, wait for parser/bucket/ouputs.")
 
+	/*
+		While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
+		we might have some pending buckets : buckets that overflowed, but which LeakRoutine are still alive because they
+		are waiting to be able to "commit" (push to db). This can happens specifically in a context where a lot of logs
+		are going to trigger overflow (ie. trigger buckets with ~100% of the logs triggering an overflow).
+
+		To avoid this (which would mean that we would "lose" some overflows), let's monitor the number of live buckets.
+		However, because of the blackhole mechanism, you can't really wait for the number of LeakRoutine to go to zero (we might have to wait $blackhole_duration).
+
+		So : we are waiting for the number of buckets to stop decreasing before returning :)
+	*/
 	//let's wait more than enough for in-flight events to be parsed.
+
+	bucket_count := leaky.LeakyRoutineCount
+	rounds := 0
+	for {
+		rounds++
+		time.Sleep(5 * time.Second)
+		curr_bucket_count := leaky.LeakyRoutineCount
+		if curr_bucket_count != bucket_count {
+			if rounds == 0 || rounds%2 == 0 {
+				log.Printf("Still %d live LeakRoutines, waiting (was %d)", curr_bucket_count, bucket_count)
+			}
+			bucket_count = curr_bucket_count
+		} else {
+			log.Printf("LeakRoutines commit over.")
+			break
+		}
+	}
+
 	time.Sleep(5 * time.Second)
 
 	// wait for the parser to parse all events
