@@ -10,6 +10,7 @@
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/Go/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build-binary-package/badge.svg">
+<a href='https://coveralls.io/github/crowdsecurity/crowdsec?branch=unitest'><img src='https://coveralls.io/repos/github/crowdsecurity/crowdsec/badge.svg?branch=unitest' alt='Coverage Status' /></a>
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/Hub-CI/badge.svg">
