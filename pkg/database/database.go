@@ -107,17 +107,7 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 	c.Db.AutoMigrate(&types.EventSequence{}, &types.SignalOccurence{}, &types.BanApplication{})
 	c.Db.Model(&types.SignalOccurence{}).Related(&types.EventSequence{})
 	c.Db.Model(&types.SignalOccurence{}).Related(&types.BanApplication{})
-	c.tx = c.Db.Begin()
+
 	c.lastCommit = time.Now()
-	ret := c.tx.Commit()
-
-	if ret.Error != nil {
-		return nil, fmt.Errorf("failed to commit records : %v", ret.Error)
-
-	}
-	c.tx = c.Db.Begin()
-	if c.tx == nil {
-		return nil, fmt.Errorf("failed to begin %s transac : %s", cfg["type"], err)
-	}
 	return c, nil
 }
