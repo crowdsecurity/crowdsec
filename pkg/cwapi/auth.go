@@ -147,17 +147,11 @@ func (ctx *ApiCtx) Signin() error {
 		return fmt.Errorf("api signin: HTTP request creation failed: %s", err)
 	}
 
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("api signin: unable to read API response body: '%s'", err)
-	}
-
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api signin: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("api signin: return bad HTTP code (%d)", resp.StatusCode)
 	}
 	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
-		return fmt.Errorf("api signin failed. http response: %s", body)
+		return fmt.Errorf("api signin failed. http response")
 	}
 
 	ctx.Http = ctx.Http.Set("Authorization", jsonResp.Message)
@@ -174,18 +168,13 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 	if err != nil {
 		return fmt.Errorf("api register machine: HTTP request creation failed: %s", err)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("api register machine: unable to read API response body: %s", err.Error())
-	}
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api register machine: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("api register machine: return bad HTTP code (%d)", resp.StatusCode)
 	}
 
 	if jsonResp.Message == "" || jsonResp.Message != "OK" || jsonResp.StatusCode != 200 {
-		return fmt.Errorf("api signin failed. http response: %s", body)
+		return fmt.Errorf("api register machine failed")
 	}
 	return nil
 }
@@ -201,19 +190,12 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 		return fmt.Errorf("api reset password: HTTP request creation failed: %s", err)
 	}
 
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("api reset password: unable to read API response body: %s", err.Error())
-	}
-
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api reset password: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
+		return fmt.Errorf("api reset password: return bad HTTP code (%d)", resp.StatusCode)
 	}
 
 	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
-		return fmt.Errorf("api signin failed. http response: %s", body)
+		return fmt.Errorf("api reset password failed")
 	}
 	return nil
 }

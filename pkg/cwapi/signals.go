@@ -26,12 +26,7 @@ func (ctx *ApiCtx) pushSignals() error {
 	if err != nil {
 		return fmt.Errorf("api push signal: HTTP request creation failed: %s", err)
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read body : %s", err)
-	}
-	log.Debugf("api push signal: HTTP Code: %+v | Body: %s \n", resp.StatusCode, string(body))
+	log.Debugf("api push signal: HTTP Code: %+v | Body: %s \n", resp.StatusCode)
 	if resp.StatusCode != 200 {
 		if resp.StatusCode == 401 && !ctx.tokenExpired {
 			log.Printf("api push signal: expired token, resigning to API")
@@ -46,12 +41,12 @@ func (ctx *ApiCtx) pushSignals() error {
 				return fmt.Errorf("api push signal: unable to renew api session token: %s", err.Error())
 			}
 		} else {
-			return fmt.Errorf("api push signal: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
+			return fmt.Errorf("api push signal: return bad HTTP code (%d): %s", resp.StatusCode)
 		}
 	}
 
 	if resp.StatusCode != 401 && (jsonResp.Message == "" || jsonResp.Message != "OK" || jsonResp.StatusCode != 200) {
-		return fmt.Errorf("api push failed. http response: %s", body)
+		return fmt.Errorf("api push failed")
 	}
 
 	if len(ctx.toPush) > 0 {
