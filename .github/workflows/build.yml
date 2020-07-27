@@ -1,12 +1,12 @@
 # .github/workflows/build-docker-image.yml
-name: build-binary-package
+name: build
 
 on: 
   release:
     types: prereleased
 
 jobs:
-  build-binary-package:
+  build:
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:

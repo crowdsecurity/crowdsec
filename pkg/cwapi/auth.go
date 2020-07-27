@@ -1,7 +1,6 @@
 package cwapi
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -96,7 +95,9 @@ func (ctx *ApiCtx) LoadConfig(cfg string) error {
 		log.Warningf("!API paths must not be prefixed by /")
 	}
 
-	ctx.Http = sling.New().Base(ctx.BaseURL+"/"+ctx.ApiVersion+"/").Set("User-Agent", fmt.Sprintf("Crowdsec/%s", cwversion.VersionStr()))
+	httpClient := &http.Client{Timeout: 20 * time.Second}
+
+	ctx.Http = sling.New().Client(httpClient).Base(ctx.BaseURL+"/"+ctx.ApiVersion+"/").Set("User-Agent", fmt.Sprintf("Crowdsec/%s", cwversion.VersionStr()))
 	log.Printf("api load configuration: configuration loaded successfully (base:%s)", ctx.BaseURL+"/"+ctx.ApiVersion+"/")
 	return nil
 }
@@ -139,17 +140,13 @@ func (ctx *ApiCtx) Signin() error {
 	if ctx.Creds.User == "" || ctx.Creds.Password == "" {
 		return fmt.Errorf("api signin: missing credentials in api.yaml")
 	}
+	jsonResp := &ApiResp{}
 
-	req, err := ctx.Http.New().Post(ctx.SigninPath).BodyJSON(ctx.Creds).Request()
+	resp, err := ctx.Http.Post(ctx.SigninPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api signin: HTTP request creation failed: %s", err)
 	}
-	log.Debugf("api signin: URL: '%s'", req.URL)
-	httpClient := http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("api signin: API call failed : %s", err)
-	}
+
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -159,12 +156,10 @@ func (ctx *ApiCtx) Signin() error {
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("api signin: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
 	}
-
-	jsonResp := ApiResp{}
-	err = json.Unmarshal(body, &jsonResp)
-	if err != nil {
-		return fmt.Errorf("api signin: unable to unmarshall api response '%s': %s", string(body), err.Error())
+	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
+		return fmt.Errorf("api signin failed. http response: %s", body)
 	}
+
 	ctx.Http = ctx.Http.Set("Authorization", jsonResp.Message)
 	log.Printf("api signin: signed in successfuly")
 	return nil
@@ -173,20 +168,13 @@ func (ctx *ApiCtx) Signin() error {
 func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
+	jsonResp := &ApiResp{}
 
-	req, err := ctx.Http.New().Post(ctx.RegisterPath).BodyJSON(ctx.Creds).Request()
+	resp, err := ctx.Http.Post(ctx.RegisterPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api register machine: HTTP request creation failed: %s", err)
 	}
-	log.Debugf("api register: URL: '%s'", req.URL)
-
-	httpClient := http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("api register machine: API call failed : %s", err)
-	}
 	defer resp.Body.Close()
-
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("api register machine: unable to read API response body: %s", err.Error())
@@ -196,10 +184,8 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 		return fmt.Errorf("api register machine: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
 	}
 
-	jsonResp := ApiResp{}
-	err = json.Unmarshal(body, &jsonResp)
-	if err != nil {
-		return fmt.Errorf("api register machine: unable to unmarshall api response '%s': %s", string(body), err.Error())
+	if jsonResp.Message == "" || jsonResp.Message != "OK" || jsonResp.StatusCode != 200 {
+		return fmt.Errorf("api signin failed. http response: %s", body)
 	}
 	return nil
 }
@@ -207,19 +193,14 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
+	jsonResp := &ApiResp{}
 
 	data := map[string]string{"machine_id": ctx.Creds.User, "password": ctx.Creds.Password}
-	req, err := ctx.Http.New().Post(ctx.ResetPwdPath).BodyJSON(data).Request()
+	resp, err := ctx.Http.Post(ctx.ResetPwdPath).BodyJSON(data).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api reset password: HTTP request creation failed: %s", err)
 	}
-	log.Debugf("api reset: URL: '%s'", req.URL)
 
-	httpClient := http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("api reset password: API call failed : %s", err)
-	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -231,13 +212,8 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 		return fmt.Errorf("api reset password: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
 	}
 
-	jsonResp := ApiResp{}
-	err = json.Unmarshal(body, &jsonResp)
-	if err != nil {
-		return fmt.Errorf("api reset password: unable to unmarshall api response '%s': %s", string(body), err.Error())
-	}
-	if jsonResp.StatusCode != 200 {
-		return fmt.Errorf("api reset password: return bad HTTP code (%d): %s", jsonResp.StatusCode, string(body))
+	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
+		return fmt.Errorf("api signin failed. http response: %s", body)
 	}
 	return nil
 }
