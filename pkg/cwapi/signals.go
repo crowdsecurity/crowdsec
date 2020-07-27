@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -22,17 +21,10 @@ func (ctx *ApiCtx) pushSignals() error {
 	if len(ctx.toPush) == 0 {
 		return nil
 	}
-
-	req, err := ctx.Http.New().Put(ctx.PushPath).BodyJSON(&ctx.toPush).Request()
+	jsonResp := &ApiResp{}
+	resp, err := ctx.Http.New().Put(ctx.PushPath).BodyJSON(&ctx.toPush).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api push signal: HTTP request creation failed: %s", err)
-	}
-	log.Debugf("api push: URL: '%s'", req.URL)
-
-	httpClient := http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("api push signal: API call failed : %s", err)
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -57,6 +49,11 @@ func (ctx *ApiCtx) pushSignals() error {
 			return fmt.Errorf("api push signal: return bad HTTP code (%d): %s", resp.StatusCode, string(body))
 		}
 	}
+
+	if resp.StatusCode != 401 && (jsonResp.Message == "" || jsonResp.Message != "OK" || jsonResp.StatusCode != 200) {
+		return fmt.Errorf("api push failed. http response: %s", body)
+	}
+
 	if len(ctx.toPush) > 0 {
 		log.Infof("api push signal: pushed %d signals successfully", len(ctx.toPush))
 	}
