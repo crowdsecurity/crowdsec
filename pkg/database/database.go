@@ -18,7 +18,6 @@ import (
 
 type Context struct {
 	Db         *gorm.DB //Pointer to database
-	tx         *gorm.DB //Pointer to current transaction (flushed on a regular basis)
 	lastCommit time.Time
 	flush      bool
 	count      int32
