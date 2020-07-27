@@ -1,8 +1,6 @@
 package database
 
 import (
-	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -11,10 +9,11 @@ import (
 )
 
 func (c *Context) DeleteExpired() error {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	//Delete the expired records
 	now := time.Now()
 	if c.flush {
-		//retx := c.Db.Where(`strftime("%s", until) < strftime("%s", "now")`).Delete(types.BanApplication{})
 		retx := c.Db.Delete(types.BanApplication{}, "until < ?", now)
 		if retx.RowsAffected > 0 {
 			log.Infof("Flushed %d expired entries from Ban Application", retx.RowsAffected)
@@ -23,18 +22,8 @@ func (c *Context) DeleteExpired() error {
 	return nil
 }
 
+/*Flush doesn't do anything here : we are not using transactions or such, nothing to "flush" per se*/
 func (c *Context) Flush() error {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	ret := c.tx.Commit()
-
-	if ret.Error != nil {
-		c.tx = c.Db.Begin()
-		return fmt.Errorf("failed to commit records : %v", ret.Error)
-	}
-	c.tx = c.Db.Begin()
-	c.lastCommit = time.Now()
 	return nil
 }
 
@@ -60,21 +49,20 @@ func (c *Context) CleanUpRecordsByAge() error {
 		log.Debugf("no event older than %s", c.maxDurationRetention.String())
 		return nil
 	}
-	//let's do it in a single transaction
-	delTx := c.Db.Unscoped().Begin()
-	delRecords := 0
 
+	delRecords := 0
 	for _, record := range sos {
 		copy := record
-		delTx.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{})
-		delTx.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{})
-		delTx.Unscoped().Table("ban_applications").Delete(&copy)
-		//we need to delete associations : event_sequences, signal_occurences
+		if ret := c.Db.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{}); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean signal_occurences")
+		}
+		if ret := c.Db.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{}); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean event_sequences")
+		}
+		if ret := c.Db.Unscoped().Table("ban_applications").Delete(&copy); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean ban_applications")
+		}
 		delRecords++
-	}
-	ret = delTx.Unscoped().Commit()
-	if ret.Error != nil {
-		return errors.Wrap(ret.Error, "failed to delete records")
 	}
 	log.Printf("max_records_age: deleting %d events (max age:%s)", delRecords, c.maxDurationRetention)
 	return nil
@@ -107,13 +95,18 @@ func (c *Context) CleanUpRecordsByCount() error {
 	}
 
 	//let's do it in a single transaction
-	delTx := c.Db.Unscoped().Begin()
 	delRecords := 0
 	for _, ld := range sos {
 		copy := ld
-		delTx.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{})
-		delTx.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{})
-		delTx.Unscoped().Table("ban_applications").Delete(&copy)
+		if ret := c.Db.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{}); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean signal_occurences")
+		}
+		if ret := c.Db.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{}); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean event_sequences")
+		}
+		if ret := c.Db.Unscoped().Table("ban_applications").Delete(&copy); ret.Error != nil {
+			return errors.Wrap(ret.Error, "failed to clean ban_applications")
+		}
 		//we need to delete associations : event_sequences, signal_occurences
 		delRecords++
 		//let's delete as well the associated event_sequence
@@ -122,12 +115,7 @@ func (c *Context) CleanUpRecordsByCount() error {
 		}
 	}
 	if len(sos) > 0 {
-		//log.Printf("Deleting %d soft-deleted results out of %d total events (%d soft-deleted)", delRecords, count, len(sos))
 		log.Printf("max_records: deleting %d events. (%d soft-deleted)", delRecords, len(sos))
-		ret = delTx.Unscoped().Commit()
-		if ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to delete records")
-		}
 	} else {
 		log.Debugf("didn't find any record to clean")
 	}
@@ -145,7 +133,6 @@ func (c *Context) StartAutoCommit() error {
 
 func (c *Context) autoCommit() {
 	log.Debugf("starting autocommit")
-	ticker := time.NewTicker(200 * time.Millisecond)
 	cleanUpTicker := time.NewTicker(1 * time.Minute)
 	expireTicker := time.NewTicker(1 * time.Second)
 	if !c.flush {
@@ -159,12 +146,6 @@ func (c *Context) autoCommit() {
 			if err := c.Flush(); err != nil {
 				log.Errorf("error while flushing records: %s", err)
 			}
-			if ret := c.tx.Commit(); ret.Error != nil {
-				log.Errorf("failed to commit records : %v", ret.Error)
-			}
-			if err := c.tx.Close(); err != nil {
-				log.Errorf("error while closing tx : %s", err)
-			}
 			if err := c.Db.Close(); err != nil {
 				log.Errorf("error while closing db : %s", err)
 			}
@@ -172,14 +153,6 @@ func (c *Context) autoCommit() {
 		case <-expireTicker.C:
 			if err := c.DeleteExpired(); err != nil {
 				log.Errorf("Error while deleting expired records: %s", err)
-			}
-		case <-ticker.C:
-			if atomic.LoadInt32(&c.count) != 0 &&
-				(atomic.LoadInt32(&c.count)%100 == 0 || time.Since(c.lastCommit) >= 500*time.Millisecond) {
-				if err := c.Flush(); err != nil {
-					log.Errorf("failed to flush : %s", err)
-				}
-
 			}
 		case <-cleanUpTicker.C:
 			if err := c.CleanUpRecordsByCount(); err != nil {
