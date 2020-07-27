@@ -148,12 +148,13 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 		To avoid this (which would mean that we would "lose" some overflows), let's monitor the number of live buckets.
 		However, because of the blackhole mechanism, you can't really wait for the number of LeakRoutine to go to zero (we might have to wait $blackhole_duration).
 
-		So : we are waiting for the number of buckets to stop decreasing before returning :)
+		So : we are waiting for the number of buckets to stop decreasing before returning. "how long" we should wait is a bit of the trick question,
+		as some operations (ie. reverse dns or such in post-overflow) can take some time :)
 	*/
-	//let's wait more than enough for in-flight events to be parsed.
 
 	bucket_count := leaky.LeakyRoutineCount
 	rounds := 0
+	successive_still_rounds := 0
 	for {
 		rounds++
 		time.Sleep(5 * time.Second)
@@ -163,9 +164,13 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 				log.Printf("Still %d live LeakRoutines, waiting (was %d)", curr_bucket_count, bucket_count)
 			}
 			bucket_count = curr_bucket_count
+			successive_still_rounds = 0
 		} else {
-			log.Printf("LeakRoutines commit over.")
-			break
+			if successive_still_rounds > 1 {
+				log.Printf("LeakRoutines commit over.")
+				break
+			}
+			successive_still_rounds++
 		}
 	}
 
