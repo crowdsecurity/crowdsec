@@ -152,25 +152,25 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 		as some operations (ie. reverse dns or such in post-overflow) can take some time :)
 	*/
 
-	bucket_count := leaky.LeakyRoutineCount
+	bucketCount := leaky.LeakyRoutineCount
 	rounds := 0
-	successive_still_rounds := 0
+	successiveStillRounds := 0
 	for {
 		rounds++
 		time.Sleep(5 * time.Second)
-		curr_bucket_count := leaky.LeakyRoutineCount
-		if curr_bucket_count != bucket_count {
+		currBucketCount := leaky.LeakyRoutineCount
+		if currBucketCount != bucketCount {
 			if rounds == 0 || rounds%2 == 0 {
-				log.Printf("Still %d live LeakRoutines, waiting (was %d)", curr_bucket_count, bucket_count)
+				log.Printf("Still %d live LeakRoutines, waiting (was %d)", currBucketCount, bucketCount)
 			}
-			bucket_count = curr_bucket_count
-			successive_still_rounds = 0
+			bucketCount = currBucketCount
+			successiveStillRounds = 0
 		} else {
-			if successive_still_rounds > 1 {
+			if successiveStillRounds > 1 {
 				log.Printf("LeakRoutines commit over.")
 				break
 			}
-			successive_still_rounds++
+			successiveStillRounds++
 		}
 	}
 
