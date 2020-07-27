@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-const configFile = "./tests/api_config.yaml"
 const apiVersion = "v1"
 const apiURL = "https://my_test_endpoint"
 
@@ -44,11 +43,6 @@ var pullResponse = `{
 		}
 	]
 }`
-
-var httpClientMock = &http.Client{
-	Transport: newMockTransport(),
-	Timeout:   time.Second * 20,
-}
 
 type mockTransport struct {
 	nbTryPushTokenOK  int // to test token expiration

@@ -60,6 +60,9 @@ func TestPullTop(t *testing.T) {
 	for _, test := range tests {
 		apiResponse := &PullResp{}
 		err := json.Unmarshal([]byte(test.expectedResult), apiResponse)
+		if err != nil {
+			t.Fatalf("unable to unmarshall expected result : %s", err)
+		}
 		result, err := test.givenAPICtx.PullTop()
 		if !test.expectedErr && err != nil {
 			t.Fatalf("test '%s' failed : %s", test.name, err)
