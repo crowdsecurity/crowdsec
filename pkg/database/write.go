@@ -15,7 +15,7 @@ func (c *Context) WriteBanApplication(ban types.BanApplication) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	log.Debugf("Ban application being called : %s %s", ban.Scenario, ban.IpText)
-	ret := c.tx.Where(types.BanApplication{IpText: ban.IpText}).Assign(types.BanApplication{Until: ban.Until}).Assign(types.BanApplication{Reason: ban.Reason}).Assign(types.BanApplication{MeasureType: ban.MeasureType}).FirstOrCreate(&ban)
+	ret := c.Db.Where(types.BanApplication{IpText: ban.IpText}).Assign(types.BanApplication{Until: ban.Until}).Assign(types.BanApplication{Reason: ban.Reason}).Assign(types.BanApplication{MeasureType: ban.MeasureType}).FirstOrCreate(&ban)
 	if ret.Error != nil {
 		return fmt.Errorf("failed to write ban record : %v", ret.Error)
 	}
@@ -28,14 +28,14 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 	defer c.lock.Unlock()
 	/*let's ensure we only have one ban active for a given scope*/
 	for _, ba := range sig.BanApplications {
-		ret := c.tx.Where("ip_text = ?", ba.IpText).Delete(types.BanApplication{})
+		ret := c.Db.Where("ip_text = ?", ba.IpText).Delete(types.BanApplication{})
 		if ret.Error != nil {
 			log.Errorf("While delete overlaping bans : %s", ret.Error)
 			return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
 		}
 	}
 	/*and add the new one(s)*/
-	ret := c.tx.Create(&sig)
+	ret := c.Db.Create(&sig)
 	if ret.Error != nil {
 		log.Errorf("While creating new bans : %s", ret.Error)
 		return fmt.Errorf("failed to write signal occurrence : %s", ret.Error)
