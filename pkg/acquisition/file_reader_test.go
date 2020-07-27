@@ -1,7 +1,6 @@
 package acquisition
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -64,19 +63,9 @@ func TestLoadAcquisitionConfig(t *testing.T) {
 			},
 			err: "",
 		},
-		{
-			csConfig: &csconfig.CrowdSec{
-				SingleFile:      "./tests/non_exist.log",
-				SingleFileLabel: "my_non_exist_test_log",
-				Profiling:       true,
-			},
-			result: nil,
-			err:    "unable to start file acquisition, bailout unable to glob path './tests/non_exist.log'",
-		},
 	}
 
 	for _, test := range tests {
-		fmt.Printf("testing : %+v\n", test.csConfig)
 		result, err := LoadAcquisitionConfig(test.csConfig)
 		assert.Equal(t, test.result, result)
 		if test.err == "" && err == nil {
