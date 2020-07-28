@@ -44,84 +44,46 @@ var _ = ginkgo.Describe("TestWrites", func() {
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 	})
 
-	// ginkgo.Context("insert ban_applications", func() {
-	// 	ginkgo.It("insert 1.2.3.4", func() {
+	ginkgo.Context("insert ban_applications", func() {
+		ginkgo.It("insert 1.2.3.4", func() {
 
-	// 		const sqlSelectAll = `SELECT * FROM "ban_applications" WHERE "ban_applications"."deleted_at" IS NULL AND (("ban_applications"."ip_text" = ?)) ORDER BY "ban_applications"."id" ASC LIMIT 1`
+			const sqlSelectAll = `SELECT * FROM "ban_applications" WHERE "ban_applications"."deleted_at" IS NULL AND (("ban_applications"."ip_text" = ?)) ORDER BY "ban_applications"."id" ASC LIMIT 1`
 
-	// 		insertBan := types.BanApplication{IpText: "1.2.3.4"}
+			insertBan := types.BanApplication{IpText: "1.2.3.4"}
 
-	// 		mock.ExpectQuery(regexp.QuoteMeta(sqlSelectAll)).WithArgs("1.2.3.4").WillReturnRows(sqlmock.NewRows(nil))
+			mock.ExpectQuery(regexp.QuoteMeta(sqlSelectAll)).WithArgs("1.2.3.4").WillReturnRows(sqlmock.NewRows(nil))
 
-	// 		mock.ExpectBegin()
+			mock.ExpectBegin()
 
-	// 		const sqlInsertBanApplication = `INSERT INTO "ban_applications" ("created_at","updated_at","deleted_at","measure_source","measure_type","measure_extra","until","start_ip","end_ip","target_cn","target_as","target_as_name","ip_text","reason","scenario","signal_occurence_id") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-	// 		InsertExpectedResult := sqlmock.NewResult(1, 1)
-	// 		mock.ExpectExec(regexp.QuoteMeta(sqlInsertBanApplication)).WithArgs(
-	// 			AnyTime{},
-	// 			AnyTime{},
-	// 			nil,
-	// 			insertBan.MeasureSource,
-	// 			insertBan.MeasureType,
-	// 			insertBan.MeasureExtra,
-	// 			AnyTime{},
-	// 			insertBan.StartIp,
-	// 			insertBan.EndIp,
-	// 			insertBan.TargetCN,
-	// 			insertBan.TargetAS,
-	// 			insertBan.TargetASName,
-	// 			insertBan.IpText,
-	// 			insertBan.Reason,
-	// 			insertBan.Scenario,
-	// 			insertBan.SignalOccurenceID).WillReturnResult(InsertExpectedResult)
+			const sqlInsertBanApplication = `INSERT INTO "ban_applications" ("created_at","updated_at","deleted_at","measure_source","measure_type","measure_extra","until","start_ip","end_ip","target_cn","target_as","target_as_name","ip_text","reason","scenario","signal_occurence_id") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+			InsertExpectedResult := sqlmock.NewResult(1, 1)
+			mock.ExpectExec(regexp.QuoteMeta(sqlInsertBanApplication)).WithArgs(
+				AnyTime{},
+				AnyTime{},
+				nil,
+				insertBan.MeasureSource,
+				insertBan.MeasureType,
+				insertBan.MeasureExtra,
+				AnyTime{},
+				insertBan.StartIp,
+				insertBan.EndIp,
+				insertBan.TargetCN,
+				insertBan.TargetAS,
+				insertBan.TargetASName,
+				insertBan.IpText,
+				insertBan.Reason,
+				insertBan.Scenario,
+				insertBan.SignalOccurenceID).WillReturnResult(InsertExpectedResult)
 
-	// 		mock.ExpectCommit()
+			mock.ExpectCommit()
 
-	// 		err := ctx.WriteBanApplication(insertBan)
-	// 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
-	// 	})
-	// })
+			err := ctx.WriteBanApplication(insertBan)
+			gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
+		})
+	})
 
 	ginkgo.Context("insert signal_occurence", func() {
 		ginkgo.It("insert signal+ban for 1.2.3.4", func() {
-
-			// type SignalOccurence struct {
-			// 	gorm.Model `json:"-"`
-			// 	//	ID              uint            //  `json:"-" gorm:"primary_key,AUTO_INCREMENT"`
-			// 	MapKey          string           //for Delete
-			// 	Scenario        string           `json:"scenario,omitempty"`                                              //The unique name of the scenario, ie. ssh_bruteforce_multi-user
-			// 	Bucket_id       string           `json:"bucket_id,omitempty"`                                             //The 'runtime' bucket-name (mostly for debug), ie. `sunny-flower`
-			// 	Alert_message   string           `json:"alert_message,omitempty"`                                         //Human-friendly label (to be displayed)
-			// 	Events_count    int              `json:"events_count,omitempty" yaml:"Events_count,omitempty"`            //Number of events between first occurence and ban
-			// 	Events_sequence []EventSequence  `json:"-" gorm:"foreignkey:SignalOccurenceID;association_foreignkey:ID"` //When adapted, a unique list of string representing the individual events that lead to the overflow
-			// 	Start_at        time.Time        `json:"start_at,omitempty"`                                              //first event (usually bucket creation time)
-			// 	BanApplications []BanApplication `json:"ban_applications,omitempty" gorm:"foreignkey:SignalOccurenceID;association_foreignkey:ID"`
-			// 	Stop_at         time.Time        `json:"stop_at,omitempty"` //last event (usually bucket overflow time)
-			// 	Source          *Source          `json:"source"`            //`json:"source,omitempty"`
-			// 	/*for db*/
-			// 	Source_ip                           string `yaml:"Source_ip,omitempty"`
-			// 	Source_range                        string
-			// 	Source_AutonomousSystemNumber       string
-			// 	Source_AutonomousSystemOrganization string
-			// 	Source_Country                      string
-			// 	Source_Latitude                     float64
-			// 	Source_Longitude                    float64
-			// 	/*/for db*/
-			// 	Sources map[string]Source `json:"sources,omitempty" gorm:"-"`
-			// 	// Source_ip       string          `json:"src_ip,omitempty"`                                                                        //for now just the IP
-			// 	// Source_as       string          `json:"src_as,omitempty"`                                                                        //for now just the as (AS number)
-			// 	// Source_country  string          `json:"src_country,omitempty"`                                                                   //for now just the county (two-letter iso-code)
-			// 	Dest_ip string `json:"dst_ip,omitempty"` //for now just the destination IP
-			// 	//Policy  string `json:"policy,omitempty"` //for now we forward it as well :)
-			// 	//bucket info
-			// 	Capacity    int               `json:"capacity,omitempty"`
-			// 	Leak_speed  time.Duration     `json:"leak_speed,omitempty"`
-			// 	Whitelisted bool              `gorm:"-"`
-			// 	Simulation  bool              `gorm:"-"`
-			// 	Reprocess   bool              //Reprocess, when true, will make the overflow being processed again as a fresh log would
-			// 	Labels      map[string]string `gorm:"-"`
-			// }
-
 			insertBan := types.BanApplication{IpText: "1.2.3.4", SignalOccurenceID: 1}
 			insertSig := types.SignalOccurence{
 				MapKey:                        "ratata",
