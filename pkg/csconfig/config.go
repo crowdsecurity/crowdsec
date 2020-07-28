@@ -81,7 +81,7 @@ func (c *CrowdSec) LoadSimulation() error {
 	return nil
 }
 
-func (c *CrowdSec) GetCliConfig(configFile *string) error {
+func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 	/*overriden by cfg file*/
 	if *configFile != "" {
 		rcfg, err := ioutil.ReadFile(*configFile)
@@ -102,7 +102,7 @@ func (c *CrowdSec) GetCliConfig(configFile *string) error {
 }
 
 // GetOPT return flags parsed from command line
-func (c *CrowdSec) GetOPT() error {
+func (c *CrowdSec) LoadConfig() error {
 
 	AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
 	configFile := flag.String("c", "", "configuration file")
@@ -135,7 +135,7 @@ func (c *CrowdSec) GetOPT() error {
 		c.SingleFileLabel = *catFileType
 	}
 
-	if err := c.GetCliConfig(configFile); err != nil {
+	if err := c.LoadConfigurationFile(configFile); err != nil {
 		log.Fatalf("Error while loading configuration : %s", err)
 	}
 
