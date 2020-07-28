@@ -101,7 +101,7 @@ func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 	return nil
 }
 
-// GetOPT return flags parsed from command line
+// LoadConfig return configuration parsed from command line and configuration file
 func (c *CrowdSec) LoadConfig() error {
 	AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
 	configFile := flag.String("c", "", "configuration file")
