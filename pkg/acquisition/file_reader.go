@@ -61,8 +61,8 @@ const (
 
 var ReaderHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_reader_hits",
-		Help: "How many lines where read.",
+		Name: "cs_reader_hits_total",
+		Help: "Total lines where read.",
 	},
 	[]string{"source"},
 )

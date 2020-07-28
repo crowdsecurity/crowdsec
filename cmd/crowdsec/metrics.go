@@ -32,37 +32,37 @@ var (
 /*prometheus*/
 var globalParserHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_parser_hits",
-		Help: "How many time an event entered the parser.",
+		Name: "cs_parser_hits_total",
+		Help: "Total events entered the parser.",
 	},
 	[]string{"source"},
 )
 var globalParserHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_parser_hits_ok",
-		Help: "How many time an event was successfully parsed.",
+		Name: "cs_parser_hits_ok_total",
+		Help: "Total events were successfully parsed.",
 	},
 	[]string{"source"},
 )
 var globalParserHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_parser_hits_ko",
-		Help: "How many time an event was unsuccessfully parsed.",
+		Name: "cs_parser_hits_ko_total",
+		Help: "Total events were unsuccessfully parsed.",
 	},
 	[]string{"source"},
 )
 
 var globalBucketPourKo = prometheus.NewCounter(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_pour_ko",
-		Help: "How many time an event was poured in no bucket.",
+		Name: "cs_bucket_pour_ko_total",
+		Help: "Total events were not poured in a bucket.",
 	},
 )
 
 var globalBucketPourOk = prometheus.NewCounter(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_pour_ok",
-		Help: "How many time an event was poured in at least one bucket.",
+		Name: "cs_bucket_pour_ok_total",
+		Help: "Total events were poured in at least one bucket.",
 	},
 )
 
