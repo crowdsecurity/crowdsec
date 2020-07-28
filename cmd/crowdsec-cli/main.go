@@ -37,7 +37,7 @@ func initConfig() {
 	}
 
 	csConfig := csconfig.NewCrowdSecConfig()
-	if err := csConfig.GetCliConfig(&config.ConfigFilePath); err != nil {
+	if err := csConfig.LoadConfigurationFile(&config.ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
 	config.configFolder = filepath.Clean(csConfig.CsCliFolder)
