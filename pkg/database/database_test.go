@@ -3,6 +3,8 @@ package database
 import (
 	"database/sql"
 	"database/sql/driver"
+	"net"
+	"reflect"
 	"regexp"
 	"testing"
 	"time"
@@ -37,7 +39,7 @@ var _ = ginkgo.Describe("TestWrites", func() {
 		gomega.Expect(err).ShouldNot(gomega.HaveOccurred())
 
 		ctx = &Context{Db: gdb}
-		ctx.Db.LogMode(true)
+		//ctx.Db.LogMode(true)
 	})
 	ginkgo.AfterEach(func() {
 		err := mock.ExpectationsWereMet() // make sure all expectations were met
@@ -128,10 +130,8 @@ var _ = ginkgo.Describe("TestWrites", func() {
 				0,
 				false,
 			).WillReturnResult(sqlInsertNewEventResult)
-			//mock.ExpectCommit()
 
 			//insert the ban application
-			//mock.ExpectBegin()
 			const sqlInsertBanApplication = `INSERT INTO "ban_applications" ("created_at","updated_at","deleted_at","measure_source","measure_type","measure_extra","until","start_ip","end_ip","target_cn","target_as","target_as_name","ip_text","reason","scenario","signal_occurence_id") VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
 			sqlInsertBanApplicationResults := sqlmock.NewResult(1, 1)
 			mock.ExpectExec(regexp.QuoteMeta(sqlInsertBanApplication)).WithArgs(
@@ -161,7 +161,125 @@ var _ = ginkgo.Describe("TestWrites", func() {
 
 })
 
-func TestSql(t *testing.T) {
+func TestInsertSqlMock(t *testing.T) {
 	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "TestWrites")
+}
+
+func TestInsertOldBans(t *testing.T) {
+	validCfg := map[string]string{
+		"type":            "sqlite",
+		"db_path":         "./test.db",
+		"max_records":     "1000",
+		"max_records_age": "72h",
+		"debug":           "true",
+		"flush":           "true",
+	}
+	ctx, err := NewDatabase(validCfg)
+	if err != nil || ctx == nil {
+		t.Fatalf("failed to create simple sqlite")
+	}
+
+	target_ip := net.ParseIP("1.2.3.4")
+
+	OldBan := types.BanApplication{
+		MeasureType:   "ban",
+		MeasureSource: "local",
+		//expired one month ago
+		Until:        time.Now().Add(-24 * 30 * time.Hour),
+		StartIp:      types.IP2Int(target_ip),
+		EndIp:        types.IP2Int(target_ip),
+		TargetCN:     "FR",
+		TargetAS:     1234,
+		TargetASName: "Random AS",
+		IpText:       target_ip.String(),
+		Reason:       "A reason",
+		Scenario:     "A scenario",
+	}
+	OldSignal := types.SignalOccurence{
+		MapKey:   "lala",
+		Scenario: "old_overflow",
+		//two month ago : 24*60
+		Start_at:        time.Now().Add(-24 * 60 * time.Hour),
+		Stop_at:         time.Now().Add(-24 * 60 * time.Hour),
+		BanApplications: []types.BanApplication{OldBan},
+	}
+	//write the old signal
+	err = ctx.WriteSignal(OldSignal)
+	if err != nil {
+		t.Fatalf("Failed to insert old signal : %s", err)
+	}
+
+	//fetch bans at current time
+	bans, err := ctx.GetBansAt(time.Now())
+	if err != nil {
+		t.Fatalf("failed to get bans : %s", err)
+	}
+
+	if len(bans) != 0 {
+		t.Fatalf("should not have bans, got %d bans", len(bans))
+	}
+	//get bans in the past
+	bans, err = ctx.GetBansAt(time.Now().Add(-24 * 31 * time.Hour))
+	if err != nil {
+		t.Fatalf("failed to get bans : %s", err)
+	}
+
+	if len(bans) != 1 {
+		t.Fatalf("should had 1 ban, got %d bans", len(bans))
+	}
+	if !reflect.DeepEqual(bans, []map[string]string{map[string]string{
+		"source":       "local",
+		"until":        "-720h0m0s",
+		"reason":       "old_overflow",
+		"iptext":       "1.2.3.4",
+		"cn":           "",
+		"events_count": "0",
+		"action":       "ban",
+		"as":           " ",
+		"bancount":     "0",
+		"scenario":     "old_overflow",
+	}}) {
+		t.Fatalf("unexpected results")
+	}
+
+}
+
+func TestCreateDB(t *testing.T) {
+	validCfg := map[string]string{
+		"type":            "sqlite",
+		"db_path":         "./test.db",
+		"max_records":     "1000",
+		"max_records_age": "72h",
+		"debug":           "false",
+		"flush":           "true",
+	}
+	ctx, err := NewDatabase(validCfg)
+	if err != nil || ctx == nil {
+		t.Fatalf("failed to create simple sqlite")
+	}
+
+	invalidCfg := map[string]string{
+		"type":        "inexistant_DB",
+		"db_path":     "./test.db",
+		"max_records": "1000",
+		"debug":       "false",
+		"flush":       "true",
+	}
+	ctx, err = NewDatabase(invalidCfg)
+	if err == nil || ctx != nil {
+		t.Fatalf("invalid parameters supplied")
+	}
+	//missing db path
+	invalidCfg = map[string]string{
+		"type":        "sqlite",
+		"max_records": "1000",
+		"debug":       "false",
+		"flush":       "true",
+	}
+	ctx, err = NewDatabase(invalidCfg)
+	if err == nil || ctx != nil {
+		t.Fatalf("invalid parameters supplied")
+	}
+
 }
