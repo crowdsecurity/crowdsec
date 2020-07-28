@@ -176,6 +176,7 @@ func TestIpInRange(t *testing.T) {
 		program, err := expr.Compile(test.code, expr.Env(test.env))
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)
 	}
