@@ -15,7 +15,6 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 	bas := []types.BanApplication{}
 	rets := make([]map[string]string, 0)
 	/*get non-expired records*/
-	log.Printf("at is '%s'", at)
 	records := c.Db.Order("updated_at desc").Where("until >= ?", at).Group("ip_text").Find(&bas) /*.Count(&count)*/
 	if records.Error != nil {
 		return nil, records.Error
