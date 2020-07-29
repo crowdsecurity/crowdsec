@@ -97,9 +97,6 @@ func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 		}
 	}
 
-	if c.OutputConfig == nil {
-		log.Errorf("wtf %+v", c)
-	}
 	if err := c.LoadSimulation(); err != nil {
 		return fmt.Errorf("loading simulation config : %s", err)
 	}
