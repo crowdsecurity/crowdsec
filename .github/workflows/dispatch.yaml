@@ -21,6 +21,6 @@ jobs:
           repo: crowdsecurity/hub-tests
           token: ${{ secrets.DISPATCH_TOKEN }}
           inputs: '{ "tag": "blah blah"}'
-          ref: test
+          ref: add_new_workflow
       - name: test
         run: echo "test "
