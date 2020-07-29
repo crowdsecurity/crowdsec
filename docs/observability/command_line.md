@@ -1,11 +1,8 @@
-
-## metrics via {{cli.name}}
-
 ```bash
 {{cli.name}} metrics
 ```
 
-This command provides an overview of {{crowdsec.name}} statistics. By default it assumes that the {{crowdsec.name}} is installed on the same machine.
+This command provides an overview of {{crowdsec.name}} statistics provided by [prometheus client](/observability/prometheus/). By default it assumes that the {{crowdsec.name}} is installed on the same machine.
 
 The metrics are split in 3 main sections :
 
@@ -62,57 +59,3 @@ INFO[0000] Parser Metrics:
 
 ```
 </details>
-
-
-## metrics via {{crowdsec.name}} prometheus
-
-{{crowdsec.name}} can expose a prometheus endpoint for collection (on `http://127.0.0.1:6060/metrics` by default).
-
-The goal of this endpoint, besides the usual resources consumption monitoring, aims at offering a view of {{crowdsec.name}} "applicative" behavior :
-
- - is it processing a lot of logs ? is it parsing them successfully ?
- - are a lot of scenarios being triggered ?
- - are a lot of IPs banned ?
- - etc.
-
-All the counters are "since {{crowdsec.name}} start".
-
-### Scenarios
-
- - `cs_bucket_created_total` : number of instantiation of each scenario 
- - `cs_bucket_overflowed_total` : number of overflow of each scenario
- - `cs_bucket_underflowed_total` : number of underflow of each scenario (bucket was created but expired because of lack of events)
- - `cs_bucket_poured_total` : number of event poured to each scenario with source as complementary key :
-
-```
-#2030 lines from `/var/log/nginx/access.log` were poured to `crowdsecurity/http-scan-uniques_404` scenario
-cs_bucket_poured_total{name="crowdsecurity/http-scan-uniques_404",source="/var/log/nginx/access.log"} 2030
-```
-
-
-### Parsers
- - `cs_node_hits_total` : how many time an event from a specific source was processed by a parser node :
-
-```
-# 235 lines from `auth.log` were processed by the `crowdsecurity/dateparse-enrich` parser
-cs_node_hits_total{name="crowdsecurity/dateparse-enrich",source="/var/log/auth.log"} 235
-```
-
- - `cs_node_hits_ko_total` : how many times an event from a specific was unsuccessfully parsed by a specific parser
-
-```
-# 2112 lines from `error.log` failed to be parsed by `crowdsecurity/http-logs`
-cs_node_hits_ko_total{name="crowdsecurity/http-logs",source="/var/log/nginx/error.log"} 2112
-```
-
- - `cs_node_hits_ok_total` : how many times an event from a specific source was successfully parsed by a specific parser
-
- - `cs_parser_hits_total` : how many times an event from a source has hit the parser
- - `cs_parser_hits_ok_total` : how many times an event from a source was successfully parsed
- - `cs_parser_hits_ko_total` : how many times an event from a source was unsuccessfully parsed
-
-
-### Acquisition
-
- - `cs_reader_hits_total` : how many events were read from a specific source
-

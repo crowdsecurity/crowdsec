@@ -22,7 +22,9 @@ nav:
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
-    - Metrics: observability/metrics.md
+    - Metrics: 
+        - Prometheus: observability/prometheus.md
+        - Command line: observability/command_line.md
     - Dashboard: observability/dashboard.md
   - References:
     - Parsers format: references/parsers.md
@@ -248,6 +250,9 @@ extra:
         Name: Duration
         htmlname: "[duration](/references/scenarios/#duration)"
         Htmlname: "[Duration](/references/scenarios/#duration)"
+    prometheus:
+        name: prometheus
+        htmlname: "[prometheus](https://github.com/prometheus/client_golang)"
     api:
         name: API
         htmlname: "[API](TBD)"
