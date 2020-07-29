@@ -19,7 +19,7 @@ jobs:
         with:
           workflow: Create a new tag
           repo: crowdsecurity/hub-tests
-          token: ${{ secrets.PERSONAL_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           inputs: '{ "tag": "blah blah"}'
       - name: test
         run: echo "${{ github.ref }} / ${{ github.head_ref }} "
