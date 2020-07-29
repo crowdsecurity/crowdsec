@@ -1,0 +1,19 @@
+name: Dispatch when pre-release
+
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  dispatch:
+    name: dispatch to hub-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          event-type: create_tag
+          repository: crowdsecurity/hub-tests
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
