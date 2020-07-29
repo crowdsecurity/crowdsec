@@ -103,22 +103,22 @@ func ShowPrometheus(url string) {
 			ival := int(fval)
 			switch fam.Name {
 			/*buckets*/
-			case "cs_bucket_create":
+			case "cs_bucket_created_total":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
 				buckets_stats[name]["instanciation"] += ival
-			case "cs_bucket_count":
+			case "cs_buckets":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
 				buckets_stats[name]["curr_count"] += ival
-			case "cs_bucket_overflow":
+			case "cs_bucket_overflowed_total":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
 				buckets_stats[name]["overflow"] += ival
-			case "cs_bucket_pour":
+			case "cs_bucket_poured_total":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
@@ -127,38 +127,38 @@ func ShowPrometheus(url string) {
 				}
 				buckets_stats[name]["pour"] += ival
 				acquis_stats[source]["pour"] += ival
-			case "cs_bucket_underflow":
+			case "cs_bucket_underflowed_total":
 				if _, ok := buckets_stats[name]; !ok {
 					buckets_stats[name] = make(map[string]int)
 				}
 				buckets_stats[name]["underflow"] += ival
 				/*acquis*/
-			case "cs_reader_hits":
+			case "cs_reader_hits_total":
 				if _, ok := acquis_stats[source]; !ok {
 					acquis_stats[source] = make(map[string]int)
 				}
 				acquis_stats[source]["reads"] += ival
-			case "cs_parser_hits_ok":
+			case "cs_parser_hits_ok_total":
 				if _, ok := acquis_stats[source]; !ok {
 					acquis_stats[source] = make(map[string]int)
 				}
 				acquis_stats[source]["parsed"] += ival
-			case "cs_parser_hits_ko":
+			case "cs_parser_hits_ko_total":
 				if _, ok := acquis_stats[source]; !ok {
 					acquis_stats[source] = make(map[string]int)
 				}
 				acquis_stats[source]["unparsed"] += ival
-			case "cs_node_hits":
+			case "cs_node_hits_total":
 				if _, ok := parsers_stats[name]; !ok {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["hits"] += ival
-			case "cs_node_hits_ok":
+			case "cs_node_hits_ok_total":
 				if _, ok := parsers_stats[name]; !ok {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["parsed"] += ival
-			case "cs_node_hits_ko":
+			case "cs_node_hits_ko_total":
 				if _, ok := parsers_stats[name]; !ok {
 					parsers_stats[name] = make(map[string]int)
 				}

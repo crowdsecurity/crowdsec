@@ -68,40 +68,40 @@ type Leaky struct {
 
 var BucketsPour = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_pour",
-		Help: "How many time an event was poured in this bucket.",
+		Name: "cs_bucket_poured_total",
+		Help: "Total events were poured in bucket.",
 	},
 	[]string{"source", "name"},
 )
 
 var BucketsOverflow = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_overflow",
-		Help: "How many time this bucket overflowed.",
+		Name: "cs_bucket_overflowed_total",
+		Help: "Total buckets overflowed.",
 	},
 	[]string{"name"},
 )
 
 var BucketsUnderflow = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_underflow",
-		Help: "How many time this bucket has underflowed.",
+		Name: "cs_bucket_underflowed_total",
+		Help: "Total buckets underflowed.",
 	},
 	[]string{"name"},
 )
 
 var BucketsInstanciation = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_bucket_create",
-		Help: "How many time this bucket was instanciated.",
+		Name: "cs_bucket_created_total",
+		Help: "Total buckets were instanciated.",
 	},
 	[]string{"name"},
 )
 
 var BucketsCurrentCount = prometheus.NewGaugeVec(
 	prometheus.GaugeOpts{
-		Name: "cs_bucket_count",
-		Help: "How many instances of this bucket exist.",
+		Name: "cs_buckets",
+		Help: "Number of buckets that currently exist.",
 	},
 	[]string{"name"},
 )
