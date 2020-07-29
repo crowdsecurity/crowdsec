@@ -3,7 +3,6 @@ name: Dispatch when pre-release
 on:
   create:
     tags:
-      - v*
 
 jobs:
   dispatch:
