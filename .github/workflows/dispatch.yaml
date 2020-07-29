@@ -1,8 +1,8 @@
 name: Dispatch when pre-release
 
-on:
-  create:
-    tags:
+on: 
+  release:
+    types: prereleased
 
 jobs:
   dispatch:
