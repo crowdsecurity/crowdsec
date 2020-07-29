@@ -9,7 +9,9 @@ The goal of this endpoint, besides the usual resources consumption monitoring, a
 
 All the counters are "since {{crowdsec.name}} start".
 
-### Scenarios
+### Metrics details
+
+#### Scenarios
 
  - `cs_buckets` : number of scenario that currently exist
  - `cs_bucket_created_total` : total number of instantiation of each scenario 
@@ -29,7 +31,7 @@ cs_bucket_poured_total{name="crowdsecurity/http-scan-uniques_404",source="/var/l
 </details>
 
 
-### Parsers
+#### Parsers
  - `cs_node_hits_total` : how many time an event from a specific source was processed by a parser node :
 
 
@@ -64,10 +66,20 @@ cs_node_hits_ko_total{name="crowdsecurity/http-logs",source="/var/log/nginx/erro
  - `cs_parser_hits_ko_total` : how many times an event from a source was unsuccessfully parsed
 
 
-### Acquisition
+#### Acquisition
 
  - `cs_reader_hits_total` : how many events were read from a specific source
 
-### Info
+#### Info
 
  - `cs_info` : Information about {{crowdsec.name}} (software version)
+
+### Exploitation with prometheus server & grafana
+
+Those metrics can be scaped by [prometheus server](https://prometheus.io/docs/introduction/overview/#architecture) and visualized with [grafana](https://grafana.com/). Here is some dashboards screenshots :
+
+![Overview](../assets/images/grafana_overview.png)
+
+![Insight](../assets/images/grafana_insight.png)
+
+![Details](../assets/images/grafana_details.png)
