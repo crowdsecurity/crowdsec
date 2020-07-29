@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"sort"
 
 	//"log"
 
@@ -165,12 +166,19 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 		}
-		//wrong hash
 		sha, err := getSHA256(path)
 		if err != nil {
 			log.Fatalf("Failed to get sha of %s : %v", path, err)
 		}
-		for version, val := range v.Versions {
+		//let's reverse sort the versions to deal with hash collisions (#154)
+		versions := make([]string, 0, len(v.Versions))
+		for k := range v.Versions {
+			versions = append(versions, k)
+		}
+		sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+
+		for _, version := range versions {
+			val := v.Versions[version]
 			if sha != val.Digest {
 				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
