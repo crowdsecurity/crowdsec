@@ -8,6 +8,7 @@ import (
 
 func (ctx *ApiCtx) PullTop() ([]map[string]string, error) {
 	top := &PullResp{}
+	log.Printf("CTX INFO API PULL: %+v \n", ctx.Http)
 	resp, err := ctx.Http.Get(ctx.PullPath).ReceiveSuccess(top)
 	if err != nil {
 		return nil, fmt.Errorf("api pull: HTTP request creation failed: %s", err)
