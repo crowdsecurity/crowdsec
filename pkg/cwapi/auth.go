@@ -155,7 +155,6 @@ func (ctx *ApiCtx) Signin() error {
 	}
 
 	ctx.Http = ctx.Http.Set("Authorization", jsonResp.Message)
-	log.Printf("CTX INFO API SIGNIN: %+v \n", ctx.Http)
 
 	log.Printf("api signin: signed in successfuly")
 	return nil
