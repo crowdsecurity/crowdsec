@@ -14,13 +14,11 @@ jobs:
     name: dispatch to hub-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Invoke workflow in another repo with inputs
-        uses: benc-uk/workflow-dispatch@v1
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
         with:
-          workflow: Create a new tag
-          repo: crowdsecurity/hub-tests
           token: ${{ secrets.DISPATCH_TOKEN }}
-          inputs: '{ "tag": "blah blah"}'
-          ref: master
+          event-type: create_tag
+          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
       - name: test
         run: echo "test "
