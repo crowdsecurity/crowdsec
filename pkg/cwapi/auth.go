@@ -142,7 +142,7 @@ func (ctx *ApiCtx) Signin() error {
 	}
 	jsonResp := &ApiResp{}
 
-	resp, err := ctx.Http.Post(ctx.SigninPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.SigninPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api signin: HTTP request creation failed: %s", err)
 	}
@@ -165,7 +165,7 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 	ctx.Creds.Password = password
 	jsonResp := &ApiResp{}
 
-	resp, err := ctx.Http.Post(ctx.RegisterPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.RegisterPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api register machine: HTTP request creation failed: %s", err)
 	}
@@ -186,7 +186,7 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 	jsonResp := &ApiResp{}
 
 	data := map[string]string{"machine_id": ctx.Creds.User, "password": ctx.Creds.Password}
-	resp, err := ctx.Http.Post(ctx.ResetPwdPath).BodyJSON(data).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.ResetPwdPath).BodyJSON(data).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api reset password: HTTP request creation failed: %s", err)
 	}
