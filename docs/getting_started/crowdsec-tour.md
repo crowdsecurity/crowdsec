@@ -12,7 +12,7 @@ A collection can be installed by typing `cscli install collection crowdsecurity/
 
 In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
 
-While {{crowdsec.name}} is running, a quick look at [`cscli metrics`](/observability/metrics/) should help you ensure that your log sources are correctly parsed.
+While {{crowdsec.name}} is running, a quick look at [`cscli metrics`](/observability/command_line/) should help you ensure that your log sources are correctly parsed.
 
 ## List installed configurations
 
