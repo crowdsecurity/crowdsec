@@ -122,7 +122,6 @@ release: check_release build
 	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
 	@cp -R ./config/ $(RELDIR)
-	@cp -R ./data/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
 	@bash ./scripts/build_plugins.sh
