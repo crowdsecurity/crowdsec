@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Invoke workflow in another repo with inputs
-      uses: benc-uk/workflow-dispatch@v1
-      with:
-        workflow: Some Workflow
-        repo: crowdsecurity/hub-tests
-        token: ${{ secrets.PERSONAL_TOKEN }}
-        inputs: '{ "tag": "blah blah"}'
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Some Workflow
+          repo: crowdsecurity/hub-tests
+          token: ${{ secrets.PERSONAL_TOKEN }}
+          inputs: '{ "tag": "blah blah"}'
       - name: test
         run: echo "${{ github.ref }} / ${{ github.head_ref }} "
