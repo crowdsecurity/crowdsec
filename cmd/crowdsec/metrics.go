@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/jamiealquiza/tachymeter"
@@ -66,6 +67,14 @@ var globalBucketPourOk = prometheus.NewCounter(
 	},
 )
 
+var globalCsInfo = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name:        "cs_info",
+		Help:        "Information about Crowdsec.",
+		ConstLabels: prometheus.Labels{"version": cwversion.VersionStr()},
+	},
+)
+
 func dumpMetrics() {
 	var tmpFile string
 	var err error
@@ -122,7 +131,7 @@ func registerPrometheus() {
 	log.Warningf("Loading prometheus collectors")
 	prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 		parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
-		acquisition.ReaderHits,
+		acquisition.ReaderHits, globalCsInfo,
 		leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 	http.Handle("/metrics", promhttp.Handler())
 }
