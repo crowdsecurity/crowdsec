@@ -8,18 +8,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Context) DeleteExpired() error {
+func (c *Context) DeleteExpired() (int, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	//Delete the expired records
 	now := time.Now()
+	count := 0
 	if c.flush {
 		retx := c.Db.Delete(types.BanApplication{}, "until < ?", now)
+		if retx.Error != nil {
+			return 0, retx.Error
+		}
 		if retx.RowsAffected > 0 {
 			log.Infof("Flushed %d expired entries from Ban Application", retx.RowsAffected)
+			count = int(retx.RowsAffected)
 		}
 	}
-	return nil
+	return count, nil
 }
 
 /*Flush doesn't do anything here : we are not using transactions or such, nothing to "flush" per se*/
@@ -27,62 +32,63 @@ func (c *Context) Flush() error {
 	return nil
 }
 
-func (c *Context) CleanUpRecordsByAge() error {
+func (c *Context) CleanUpRecordsByAge() (int, error) {
 	//let's fetch all expired records that are more than XX days olds
 	sos := []types.BanApplication{}
 
 	if c.maxDurationRetention == 0 {
-		return nil
+		return 0, nil
 	}
 
 	//look for soft-deleted events that are OLDER than maxDurationRetention
 	ret := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").
-		Where("deleted_at < ?", time.Now().Add(-c.maxDurationRetention)).
+		Where("until < ?", time.Now().Add(-c.maxDurationRetention)).
 		Order("updated_at desc").Find(&sos)
 
 	if ret.Error != nil {
-		return errors.Wrap(ret.Error, "failed to get count of old records")
+		return 0, errors.Wrap(ret.Error, "failed to get count of old records")
 	}
 
 	//no events elligible
 	if len(sos) == 0 || ret.RowsAffected == 0 {
 		log.Debugf("no event older than %s", c.maxDurationRetention.String())
-		return nil
+		return 0, nil
 	}
 
+	/*This is clearly suboptimal, and 'left join' and stuff gives way better results, but doesn't seem to behave equally on sqlite and mysql*/
 	delRecords := 0
 	for _, record := range sos {
 		copy := record
 		if ret := c.Db.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{}); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean signal_occurences")
+			return 0, errors.Wrap(ret.Error, "failed to clean signal_occurences")
 		}
 		if ret := c.Db.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{}); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean event_sequences")
+			return 0, errors.Wrap(ret.Error, "failed to clean event_sequences")
 		}
 		if ret := c.Db.Unscoped().Table("ban_applications").Delete(&copy); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean ban_applications")
+			return 0, errors.Wrap(ret.Error, "failed to clean ban_applications")
 		}
 		delRecords++
 	}
 	log.Printf("max_records_age: deleting %d events (max age:%s)", delRecords, c.maxDurationRetention)
-	return nil
+	return delRecords, nil
 }
 
-func (c *Context) CleanUpRecordsByCount() error {
+func (c *Context) CleanUpRecordsByCount() (int, error) {
 	var count int
 
 	if c.maxEventRetention <= 0 {
-		return nil
+		return 0, nil
 	}
 
-	ret := c.Db.Unscoped().Table("ban_applications").Order("updated_at desc").Count(&count)
+	ret := c.Db.Unscoped().Table("ban_applications").Count(&count)
 
 	if ret.Error != nil {
-		return errors.Wrap(ret.Error, "failed to get bans count")
+		return 0, errors.Wrap(ret.Error, "failed to get bans count")
 	}
 	if count < c.maxEventRetention {
 		log.Debugf("%d < %d, don't cleanup", count, c.maxEventRetention)
-		return nil
+		return 0, nil
 	}
 
 	sos := []types.BanApplication{}
@@ -91,7 +97,7 @@ func (c *Context) CleanUpRecordsByCount() error {
 	//records := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").Where(`strftime("%s", deleted_at) < strftime("%s", "now")`).Find(&sos)
 	records := c.Db.Unscoped().Table("ban_applications").Where("deleted_at is not NULL").Where("deleted_at < ?", now).Find(&sos)
 	if records.Error != nil {
-		return errors.Wrap(records.Error, "failed to list expired bans for flush")
+		return 0, errors.Wrap(records.Error, "failed to list expired bans for flush")
 	}
 
 	//let's do it in a single transaction
@@ -99,13 +105,13 @@ func (c *Context) CleanUpRecordsByCount() error {
 	for _, ld := range sos {
 		copy := ld
 		if ret := c.Db.Unscoped().Table("signal_occurences").Where("ID = ?", copy.SignalOccurenceID).Delete(&types.SignalOccurence{}); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean signal_occurences")
+			return 0, errors.Wrap(ret.Error, "failed to clean signal_occurences")
 		}
 		if ret := c.Db.Unscoped().Table("event_sequences").Where("signal_occurence_id = ?", copy.SignalOccurenceID).Delete(&types.EventSequence{}); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean event_sequences")
+			return 0, errors.Wrap(ret.Error, "failed to clean event_sequences")
 		}
 		if ret := c.Db.Unscoped().Table("ban_applications").Delete(&copy); ret.Error != nil {
-			return errors.Wrap(ret.Error, "failed to clean ban_applications")
+			return 0, errors.Wrap(ret.Error, "failed to clean ban_applications")
 		}
 		//we need to delete associations : event_sequences, signal_occurences
 		delRecords++
@@ -119,7 +125,7 @@ func (c *Context) CleanUpRecordsByCount() error {
 	} else {
 		log.Debugf("didn't find any record to clean")
 	}
-	return nil
+	return delRecords, nil
 }
 
 func (c *Context) StartAutoCommit() error {
@@ -151,14 +157,14 @@ func (c *Context) autoCommit() {
 			}
 			return
 		case <-expireTicker.C:
-			if err := c.DeleteExpired(); err != nil {
+			if _, err := c.DeleteExpired(); err != nil {
 				log.Errorf("Error while deleting expired records: %s", err)
 			}
 		case <-cleanUpTicker.C:
-			if err := c.CleanUpRecordsByCount(); err != nil {
+			if _, err := c.CleanUpRecordsByCount(); err != nil {
 				log.Errorf("error in max records cleanup : %s", err)
 			}
-			if err := c.CleanUpRecordsByAge(); err != nil {
+			if _, err := c.CleanUpRecordsByAge(); err != nil {
 				log.Errorf("error in old records cleanup : %s", err)
 
 			}
