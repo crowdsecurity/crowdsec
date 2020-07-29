@@ -83,6 +83,7 @@ func (c *CrowdSec) LoadSimulation() error {
 
 func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 	/*overriden by cfg file*/
+
 	if *configFile != "" {
 		rcfg, err := ioutil.ReadFile(*configFile)
 		if err != nil {
@@ -95,6 +96,7 @@ func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 			c.AcquisitionFile = filepath.Clean(c.ConfigFolder + "/acquis.yaml")
 		}
 	}
+
 	if err := c.LoadSimulation(); err != nil {
 		return fmt.Errorf("loading simulation config : %s", err)
 	}
@@ -104,7 +106,7 @@ func (c *CrowdSec) LoadConfigurationFile(configFile *string) error {
 // LoadConfig return configuration parsed from command line and configuration file
 func (c *CrowdSec) LoadConfig() error {
 	AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
-	configFile := flag.String("c", "", "configuration file")
+	configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
 	printTrace := flag.Bool("trace", false, "VERY verbose")
 	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
 	printInfo := flag.Bool("info", false, "print info-level on stdout")
