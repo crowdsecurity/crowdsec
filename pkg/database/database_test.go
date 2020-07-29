@@ -255,6 +255,122 @@ var _ = ginkgo.Describe("TestWrites", func() {
 
 })
 
+func TestNoCleanUpParams(t *testing.T) {
+	validCfg := map[string]string{
+		"type":            "sqlite",
+		"db_path":         "./test.db",
+		"debug":           "false",
+		"max_records":     "0",
+		"max_records_age": "0s",
+		"flush":           "true",
+	}
+	ctx, err := NewDatabase(validCfg)
+	if err != nil || ctx == nil {
+		t.Fatalf("failed to create simple sqlite")
+	}
+
+	if err := ctx.DeleteAll(); err != nil {
+		t.Fatalf("failed to flush existing bans")
+	}
+
+	freshRecordsCount := 12
+
+	for i := 0; i < freshRecordsCount; i++ {
+		//this one expires in the future
+		OldSignal := genSignalOccurence(fmt.Sprintf("2.2.2.%d", i))
+
+		OldSignal.BanApplications[0].Until = time.Now().Add(1 * time.Hour)
+		if err = ctx.WriteBanApplication(OldSignal.BanApplications[0]); err != nil {
+			t.Fatalf("Failed to insert old signal : %s", err)
+		}
+	}
+
+	bans, err := ctx.GetBansAt(time.Now())
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	if len(bans) != freshRecordsCount {
+		t.Fatalf("expected %d, got %d", freshRecordsCount, len(bans))
+	}
+
+	//Cleanup by age should hard delete old records
+	deleted, err := ctx.CleanUpRecordsByCount()
+	if err != nil {
+		t.Fatalf("error %s", err)
+	}
+	if deleted != 0 {
+		t.Fatalf("unexpected %d deleted events", deleted)
+	}
+
+	//Cleanup by age should hard delete old records
+	deleted, err = ctx.CleanUpRecordsByAge()
+	if err != nil {
+		t.Fatalf("error %s", err)
+	}
+	if deleted != 0 {
+		t.Fatalf("unexpected %d deleted events ", deleted)
+	}
+
+}
+
+func TestNoCleanUp(t *testing.T) {
+	validCfg := map[string]string{
+		"type":            "sqlite",
+		"db_path":         "./test.db",
+		"debug":           "false",
+		"max_records":     "1000",
+		"max_records_age": "24h",
+		"flush":           "true",
+	}
+	ctx, err := NewDatabase(validCfg)
+	if err != nil || ctx == nil {
+		t.Fatalf("failed to create simple sqlite")
+	}
+
+	if err := ctx.DeleteAll(); err != nil {
+		t.Fatalf("failed to flush existing bans")
+	}
+
+	freshRecordsCount := 12
+
+	for i := 0; i < freshRecordsCount; i++ {
+		//this one expires in the future
+		OldSignal := genSignalOccurence(fmt.Sprintf("2.2.2.%d", i))
+
+		OldSignal.BanApplications[0].Until = time.Now().Add(1 * time.Hour)
+		if err = ctx.WriteBanApplication(OldSignal.BanApplications[0]); err != nil {
+			t.Fatalf("Failed to insert old signal : %s", err)
+		}
+	}
+
+	bans, err := ctx.GetBansAt(time.Now())
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	if len(bans) != freshRecordsCount {
+		t.Fatalf("expected %d, got %d", freshRecordsCount, len(bans))
+	}
+
+	//Cleanup by age should hard delete old records
+	deleted, err := ctx.CleanUpRecordsByCount()
+	if err != nil {
+		t.Fatalf("error %s", err)
+	}
+	if deleted != 0 {
+		t.Fatalf("unexpected %d deleted events", deleted)
+	}
+
+	//Cleanup by age should hard delete old records
+	deleted, err = ctx.CleanUpRecordsByAge()
+	if err != nil {
+		t.Fatalf("error %s", err)
+	}
+	if deleted != 0 {
+		t.Fatalf("unexpected %d deleted events ", deleted)
+	}
+
+}
+
 func TestBanOnly(t *testing.T) {
 	validCfg := map[string]string{
 		"type":    "sqlite",
