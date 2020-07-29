@@ -7,7 +7,6 @@ GOGET=$(GOCMD) get
 BINARY_NAME=cscli
 PREFIX?="/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
-LD_OPTS=-ldflags="-s -w"
 
 all: clean build
 
