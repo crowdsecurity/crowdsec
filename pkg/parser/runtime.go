@@ -196,24 +196,24 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 
 var NodesHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_node_hits",
-		Help: "How many time an event entered this node.",
+		Name: "cs_node_hits_total",
+		Help: "Total events entered node.",
 	},
 	[]string{"source", "name"},
 )
 
 var NodesHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_node_hits_ok",
-		Help: "How many time an event successfuly exited this node.",
+		Name: "cs_node_hits_ok_total",
+		Help: "Total events successfuly exited node.",
 	},
 	[]string{"source", "name"},
 )
 
 var NodesHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_node_hits_ko",
-		Help: "How many time an event unsuccessfuly exited this node.",
+		Name: "cs_node_hits_ko_total",
+		Help: "Total events unsuccessfuly exited node.",
 	},
 	[]string{"source", "name"},
 )
