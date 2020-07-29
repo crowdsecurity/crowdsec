@@ -4,10 +4,6 @@ on:
   push:
     tags:
       - v*
-    branches:
-      - add_new_workflow
-  release:
-    types: prereleased
 
 jobs:
   dispatch:
@@ -21,5 +17,3 @@ jobs:
           event-type: create_tag
           repository: crowdsecurity/hub-tests
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
-      - name: test
-        run: echo "test "
