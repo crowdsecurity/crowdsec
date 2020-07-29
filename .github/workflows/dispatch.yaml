@@ -19,6 +19,7 @@ jobs:
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: create_tag
+          repository: crowdsecurity/hub-tests
           client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
       - name: test
         run: echo "test "
