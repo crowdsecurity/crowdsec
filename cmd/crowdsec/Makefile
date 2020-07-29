@@ -13,7 +13,7 @@ DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
-
+LD_OPTS=-ldflags="-s -w"
 
 all: clean test build
 

@@ -286,7 +286,6 @@ install_plugins_bin() {
 #install crowdsec and cscli
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
-    find data -type f -exec install -Dm 755 {} "${CROWDSEC_LIB_DIR}/{}" \; || exit
     (cd config && find patterns -type f -exec install -Dm 755 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
