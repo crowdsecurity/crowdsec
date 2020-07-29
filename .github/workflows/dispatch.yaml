@@ -17,7 +17,7 @@ jobs:
       - name: Invoke workflow in another repo with inputs
         uses: benc-uk/workflow-dispatch@v1
         with:
-          workflow: create_tag
+          workflow: Create new tag
           repo: crowdsecurity/hub-tests
           token: ${{ secrets.PERSONAL_TOKEN }}
           inputs: '{ "tag": "blah blah"}'
