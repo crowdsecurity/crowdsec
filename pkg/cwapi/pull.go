@@ -8,7 +8,7 @@ import (
 
 func (ctx *ApiCtx) PullTop() ([]map[string]string, error) {
 	top := &PullResp{}
-	resp, err := ctx.Http.Get(ctx.PullPath).ReceiveSuccess(top)
+	resp, err := ctx.Http.New().Get(ctx.PullPath).ReceiveSuccess(top)
 	if err != nil {
 		return nil, fmt.Errorf("api pull: HTTP request creation failed: %s", err)
 	}

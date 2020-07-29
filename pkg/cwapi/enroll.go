@@ -10,7 +10,7 @@ func (ctx *ApiCtx) Enroll(userID string) error {
 	toPush := map[string]string{"user_id": userID}
 	jsonResp := &ApiResp{}
 
-	resp, err := ctx.Http.Post(ctx.EnrollPath).BodyJSON(&toPush).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.EnrollPath).BodyJSON(&toPush).ReceiveSuccess(jsonResp)
 	if err != nil {
 		return fmt.Errorf("api enroll: HTTP request creation failed: %s", err)
 	}
