@@ -22,4 +22,4 @@ jobs:
           token: ${{ secrets.DISPATCH_TOKEN }}
           inputs: '{ "tag": "blah blah"}'
       - name: test
-        run: echo "${{ github.ref }} / ${{ github.head_ref }} "
+        run: echo "${{ github }} "
