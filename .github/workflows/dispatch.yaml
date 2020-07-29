@@ -1,7 +1,7 @@
 name: Dispatch when pre-release
 
 on:
-  push:
+  create:
     tags:
       - v*
 
