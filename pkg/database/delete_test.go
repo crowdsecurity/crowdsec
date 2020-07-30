@@ -122,43 +122,6 @@ func TestNoCleanUp(t *testing.T) {
 
 }
 
-func TestBanOnly(t *testing.T) {
-	validCfg := map[string]string{
-		"type":    "sqlite",
-		"db_path": "./test.db",
-		"debug":   "false",
-		"flush":   "true",
-	}
-	ctx, err := NewDatabase(validCfg)
-	if err != nil || ctx == nil {
-		t.Fatalf("failed to create simple sqlite")
-	}
-
-	if err := ctx.DeleteAll(); err != nil {
-		t.Fatalf("failed to flush existing bans")
-	}
-
-	freshRecordsCount := 12
-
-	for i := 0; i < freshRecordsCount; i++ {
-		//this one expires in the future
-		OldSignal := genSignalOccurence(fmt.Sprintf("2.2.2.%d", i))
-
-		OldSignal.BanApplications[0].Until = time.Now().Add(1 * time.Hour)
-		if err = ctx.WriteBanApplication(OldSignal.BanApplications[0]); err != nil {
-			t.Fatalf("Failed to insert old signal : %s", err)
-		}
-	}
-
-	bans, err := ctx.GetBansAt(time.Now())
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-	if len(bans) != freshRecordsCount {
-		t.Fatalf("expected %d, got %d", freshRecordsCount, len(bans))
-	}
-}
-
 func TestCleanUpByCount(t *testing.T) {
 	//plan :
 	// - insert one current event
@@ -364,6 +327,9 @@ func TestCleanUpByAge(t *testing.T) {
 
 	//Cleanup by age should hard delete old records
 	deleted, err := ctx.CleanUpRecordsByAge()
+	if err != nil {
+		t.Fatal()
+	}
 	if deleted != oldRecordsCount {
 		t.Fatalf("unexpected %d deleted events", deleted)
 	}

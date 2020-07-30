@@ -40,6 +40,9 @@ func TestFetchBans(t *testing.T) {
 	//we startup, we should get one ban
 	firstFetch := time.Now()
 	bans, err := ctx.GetNewBan()
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 	if len(bans) != 1 {
 		t.Fatalf("expected one ban")
 	}
@@ -53,6 +56,9 @@ func TestFetchBans(t *testing.T) {
 
 	//we startup, we should get one ban
 	bans, err = ctx.GetNewBanSince(firstFetch)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 	firstFetch = time.Now()
 	if len(bans) != 1 {
 		t.Fatal()
@@ -82,6 +88,9 @@ func TestFetchBans(t *testing.T) {
 	}
 	//we shouldn't have any new bans
 	bans, err = ctx.GetNewBanSince(firstFetch)
+	if err != nil {
+		t.Fatal()
+	}
 	if len(bans) != 0 {
 		t.Fatal()
 	}
@@ -89,6 +98,9 @@ func TestFetchBans(t *testing.T) {
 	// time.Sleep(1 * time.Second)
 	//but we should get a deleted ban
 	bans, err = ctx.GetDeletedBanSince(firstFetch.Add(-2 * time.Second))
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
 	if len(bans) != 1 {
 		t.Fatalf("got %d", len(bans))
 	}
