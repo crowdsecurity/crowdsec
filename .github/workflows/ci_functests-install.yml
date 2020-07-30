@@ -62,10 +62,11 @@ jobs:
         echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         sudo systemctl start crowdsec
     - name: Service status check
-      run: 
+      run: |
+        sleep 3
         sudo systemctl status crowdsec
         sudo cscli metrics
     - name: Inject logs
-      run:
+      run: |
         cat ssh-bf.log >> /tmp/test.log
         sudo cscli ban list
