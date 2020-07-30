@@ -33,17 +33,20 @@ jobs:
     - name: Crowdsec Startup check
       run: |
         sudo crowdsec -c /etc/crowdsec/config/user.yaml -t 
-    - name: Generate fake ssh bf
+    - name: Generate fake ssh bf logs
       run: |
         for i in `seq 1 10` ; do 
           echo 'Jul 30 15:43:55 sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
         done;
-    - name: Test ssh bf
+    - name: Process ssh-bf logs in time-machine
       run: |
         sudo crowdsec -c /etc/crowdsec/config/user.yaml -file ./ssh-bf.log -type syslog
+    - name: Cscli ban list check
+      run: |
         sudo cscli ban list
-
-    # - name: Cscli ban tests
-    #   run: |
-    #     sudo cscli ban list -o json
-    #     sudo cscli ban list 
+        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
+        sudo cscli ban list --range 1.1.1.0/24 -o json | jq -e '.[].iptext == "1.1.1.172"'
+    - name: Cscli ban del check
+      run: |
+        sudo cscli ban del ip 1.1.1.172
+        sudo cscli -c /etc/crowdsec/config/user.yaml ban list -o json | jq -e '. == null'
