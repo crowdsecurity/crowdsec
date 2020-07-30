@@ -1,7 +1,23 @@
+categories:
+  - title: 'New Features'
+    labels:
+      - 'new feature'
+  - title: 'Improvments'
+    labels:
+      - 'enhancement'
+      - 'improvment'
+  - title: 'Bug Fixes'
+    labels:
+      - 'fix'
+      - 'bugfix'
+      - 'bug'
+  - title: 'Documentation'
+    labels:
+      - 'documention'
+      - 'doc'
+tag-template: - $TITLE @$AUTHOR (#$NUMBER)
 template: |
-  Crowdsec $NEXT_PATCH_VERSION
-  
-  ## What’s Changed
+  ## Changes
 
   $CHANGES
 
