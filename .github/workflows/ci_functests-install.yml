@@ -58,6 +58,7 @@ jobs:
     - name: Service start
       run: |
         sudo rm -f /etc/crowdsec/config/acquis.yaml 
+        touch /tmp/test.log
         echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "labels:" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
