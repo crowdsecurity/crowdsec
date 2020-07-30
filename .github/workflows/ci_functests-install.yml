@@ -72,4 +72,9 @@ jobs:
     - name: Inject logs
       run: |
         cat ssh-bf.log >> /tmp/test.log
+        sudo cscli metrics
+    - name: Check logs
+      run: |
+        cat /var/log/crowdsec.log
         sudo cscli ban list
+        
