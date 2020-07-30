@@ -39,6 +39,7 @@ jobs:
           echo 'Jul 30 15:43:55 sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
         done;
     - name: Test ssh bf
+      run: |
         sudo crowdsec -c /etc/crowdsec/config/user.yaml -file ./ssh-bf.log -type syslog
         sudo cscli ban list
 
