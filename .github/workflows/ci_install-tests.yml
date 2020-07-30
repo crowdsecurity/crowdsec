@@ -1,0 +1,17 @@
+name: Hub-CI
+
+on:
+  push:
+    branches: [ functional_basic_tests ]
+  pull_request:
+    branches: [ functional_basic_tests ]
+
+jobs:
+  build:
+    name: Install generated release and perform basic tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Install release
+      run: |
+        cd crowdsec-xxx
+        ./wizard.sh --bininstall
