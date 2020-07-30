@@ -26,7 +26,7 @@ jobs:
         sudo ./wizard.sh --bininstall
     - name: Install collection
       run: |
-        cscli list -a
+        sudo cscli list -a
         sudo cscli install parser crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
         sudo cscli install scenario crowdsecurity/ssh-bf
     - name: Crowdsec Startup check
