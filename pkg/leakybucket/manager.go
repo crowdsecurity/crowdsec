@@ -525,7 +525,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				}
 				if !condition {
 					holder.logger.Debugf("Event leaving node : ko")
-					return false, nil
+					continue
 				}
 			}
 		}
