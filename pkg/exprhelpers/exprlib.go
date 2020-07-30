@@ -115,11 +115,11 @@ func IpInRange(ip string, ipRange string) bool {
 
 	ipParsed = net.ParseIP(ip)
 	if ipParsed == nil {
-		log.Errorf("'%s' is not a valid IP", ip)
+		log.Debugf("'%s' is not a valid IP", ip)
 		return false
 	}
 	if _, ipRangeParsed, err = net.ParseCIDR(ipRange); err != nil {
-		log.Errorf("'%s' is not a valid IP Range", ipRange)
+		log.Debugf("'%s' is not a valid IP Range", ipRange)
 		return false
 	}
 	if ipRangeParsed.Contains(ipParsed) {
