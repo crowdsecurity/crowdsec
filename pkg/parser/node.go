@@ -126,24 +126,24 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			/* filter returned false, don't process Node */
-			if !out {
-				if n.Debug {
-					if out {
-						clog.Debugf("result: TRUE | expression: '%s'", n.Filter)
-					} else {
-						clog.Debugf("result: FALSE | expression: '%s'", n.Filter)
-					}
-					log.Printf("variables list: ")
-					for _, d := range n.DebugExprs {
-						debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
-						if err != nil {
-							log.Errorf("unable to print debug expression for '%s': %s", d.DebugStr, err)
-						}
-						log.Printf("   %s = '%s'", d.DebugStr, debug)
-					}
+			if n.Debug {
+				if out {
+					clog.Debugf("eval(%s) = TRUE ", n.Filter)
+				} else {
+					clog.Debugf("eval(%s) = FALSE ", n.Filter)
 				}
-				clog.Debugf("Event leaving node : ko")
-				return false, nil
+				clog.Debugf("variables:")
+				for _, d := range n.DebugExprs {
+					debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+					if err != nil {
+						clog.Errorf("unable to print debug expression for '%s': %s", d.DebugStr, err)
+					}
+					clog.Debugf("       %s = '%s'", d.DebugStr, debug)
+				}
+				if !out {
+					clog.Debugf("Event leaving node : ko")
+					return false, nil
+				}
 			}
 		default:
 			clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
@@ -151,7 +151,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			return false, nil
 		}
 		NodeState = true
-		clog.Debugf("eval(TRUE) '%s'", n.Filter)
 	} else {
 		clog.Debugf("Node has not filter, enter")
 		NodeState = true
@@ -389,13 +388,13 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 
 	//compile filter if present
 	if n.Filter != "" {
-		visitor := &exprhelpers.Visitor{}
 		n.RunTimeFilter, err = expr.Compile(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
 
 		if n.Debug {
+			visitor := &exprhelpers.Visitor{}
 			n.DebugExprs, err = visitor.Build(n.Filter)
 			if err != nil {
 				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
