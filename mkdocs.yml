@@ -140,12 +140,14 @@ extra:
         acquis_path: "/etc/crowdsec/config/acquis.yaml"
     blockers:
         name: blockers
-        url: "https://hub.crowdsec.net/"
-        binpath: "/usr/local/lib/crowdsec/plugins/"
-        configpath: "/etc/crowdsec/"
-    backend:
+        Name: Blockers
+        url: "https://hub.crowdsec.net/browse/#blockers"
+        htmlname: "[blockers](/blockers/)"
+        Htmlname: "[blockers](/blockers/)"
+    plugins:
         name: backend plugins
         configpath: "/etc/crowdsec/plugins/backend/"
+        binpath: "/usr/local/lib/crowdsec/plugins/"
     metabase:
         name: metabase
         url: https://github.com/crowdsecurity/crowdsec
@@ -229,11 +231,6 @@ extra:
         Name: Signal
         htmlname: "[signal](/getting_started/glossary/#overflow-or-signaloccurence)"
         Htmlname: "[Signal](/getting_started/glossary/#overflow-or-signaloccurence)"
-    blockers:
-        name: blockers
-        Name: Blockers
-        htmlname: "[blockers](/blockers/)"
-        Htmlname: "[blockers](/blockers/)"
 #scenario stuff
     leakspeed:
         name: leakspeed
