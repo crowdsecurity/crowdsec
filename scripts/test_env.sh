@@ -78,7 +78,6 @@ copy_files() {
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"
-	cp -r "./data/" "$BASE"
 	cp -r "./plugins/" "$BASE"
 }
 

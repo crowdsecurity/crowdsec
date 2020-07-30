@@ -65,6 +65,9 @@ you should [update cscli](./cscli_update.md).
 			}
 			return nil
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+		},
 	}
 	cmdInstall.PersistentFlags().BoolVarP(&download_only, "download-only", "d", false, "Only download packages, don't enable")
 	cmdInstall.PersistentFlags().BoolVar(&force_install, "force", false, "Force install : Overwrite tainted and outdated files")
