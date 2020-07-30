@@ -23,7 +23,7 @@ jobs:
     - name: Install release
       run: |
         cd crowdsec-xxx
-        ./wizard.sh --bininstall
+        sudo ./wizard.sh --bininstall
     # - name: Cache release
     #   uses: actions/cache@v2
     #   id: cache
