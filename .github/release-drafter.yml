@@ -15,7 +15,7 @@ categories:
     labels:
       - 'documention'
       - 'doc'
-tag-template: - $TITLE @$AUTHOR (#$NUMBER)
+tag-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 template: |
   ## Changes
 
