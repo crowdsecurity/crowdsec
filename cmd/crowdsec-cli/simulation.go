@@ -95,7 +95,7 @@ func simulationStatus() error {
 
 func NewSimulationCmds() *cobra.Command {
 	var cmdSimulation = &cobra.Command{
-		Use:   "simulation  enable|disable [scenario_name]",
+		Use:   "simulation enable|disable [scenario_name]",
 		Short: "",
 		Long:  ``,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -103,6 +103,9 @@ func NewSimulationCmds() *cobra.Command {
 				return fmt.Errorf("you must configure cli before using simulation")
 			}
 			return nil
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
 	cmdSimulation.Flags().SortFlags = false
@@ -214,6 +217,8 @@ func NewSimulationCmds() *cobra.Command {
 			if err := simulationStatus(); err != nil {
 				log.Fatalf(err.Error())
 			}
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		},
 	}
 	cmdSimulation.AddCommand(cmdSimulationStatus)

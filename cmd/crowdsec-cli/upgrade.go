@@ -109,6 +109,9 @@ cscli upgrade --force # Overwrite tainted configuration
 			}
 			//fmt.Println("upgrade all ?!: " + strings.Join(args, " "))
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+		},
 	}
 	cmdUpgrade.PersistentFlags().BoolVar(&upgrade_all, "all", false, "Upgrade all configuration in scope")
 	cmdUpgrade.PersistentFlags().BoolVar(&force_upgrade, "force", false, "Overwrite existing files, even if tainted")
