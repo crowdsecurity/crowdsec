@@ -66,7 +66,7 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 	}
 
 	if cfg["type"] == "sqlite" {
-		c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=1000")
+		c.Db, err = gorm.Open("sqlite3", cfg["db_path"]+"?_busy_timeout=10000")
 		if err != nil {
 			return nil, fmt.Errorf("failed to open %s : %s", cfg["db_path"], err)
 		}
