@@ -66,6 +66,7 @@ jobs:
         sleep 3
         sudo systemctl status crowdsec
         sudo cscli metrics
+        sudo cat /var/log/crowdsec.log
     - name: Inject logs
       run: |
         cat ssh-bf.log >> /tmp/test.log
