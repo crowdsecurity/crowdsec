@@ -121,12 +121,12 @@ config:
 
 # Plugins
 
-Plugins configuration file are stored in `{{blockers.configpath}}`. {{crowdsec.name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{blockers.binpath}}`.
+Plugins configuration file are stored in `{{plugins.configpath}}`. {{crowdsec.Name}} will scan this folder to load all the plugins. Each configuration file should provide the path to the plugin binary. By default they are stored in `{{plugins.binpath}}`.
 
 !!! info
-        If you want crowdsec to not load a plugin, `mv` or `rm` its configuration file in `{{blockers.configpath}}`
+        If you want crowdsec to not load a plugin, `mv` or `rm` its configuration file in `{{plugins.configpath}}`
 
-Here is a sample of a plugin configuration file stored in `{{blockers.configpath}}`:
+Here is a sample of a plugin configuration file stored in `{{plugins.configpath}}`:
 ```yaml
 name: <plugin_name>
 path: <path_to_plugin_binary> # 
