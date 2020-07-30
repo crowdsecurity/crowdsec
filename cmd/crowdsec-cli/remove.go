@@ -58,6 +58,9 @@ func NewRemoveCmd() *cobra.Command {
 			}
 			return nil
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+		},
 	}
 	cmdRemove.PersistentFlags().BoolVar(&purge_remove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
 	cmdRemove.PersistentFlags().BoolVar(&remove_all, "all", false, "Delete all the files in selected scope")

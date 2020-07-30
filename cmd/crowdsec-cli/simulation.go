@@ -104,6 +104,9 @@ func NewSimulationCmds() *cobra.Command {
 			}
 			return nil
 		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+		},
 	}
 	cmdSimulation.Flags().SortFlags = false
 	cmdSimulation.PersistentFlags().SortFlags = false
