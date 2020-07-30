@@ -3,11 +3,8 @@ package parser
 import (
 	"fmt"
 	"net"
-	"strings"
 
 	"github.com/antonmedv/expr"
-	"github.com/antonmedv/expr/ast"
-	"github.com/antonmedv/expr/parser"
 
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -17,37 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 )
-
-type visitor struct {
-	newVar     bool
-	currentID  string
-	properties []string
-	vars       []string
-}
-
-func (v *visitor) Enter(node *ast.Node) {}
-func (v *visitor) Exit(node *ast.Node) {
-	if n, ok := (*node).(*ast.IdentifierNode); ok {
-		if !v.newVar {
-			v.newVar = true
-			v.currentID = n.Value
-		} else {
-			v.newVar = false
-			fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
-			v.vars = append(v.vars, fullVar)
-			v.properties = []string{}
-			v.currentID = n.Value
-		}
-	}
-	if n, ok := (*node).(*ast.PropertyNode); ok {
-		v.properties = append(v.properties, n.Property)
-	}
-}
-
-type DebugExpr struct {
-	debugStr  string
-	debugExpr *vm.Program
-}
 
 type Node struct {
 	FormatVersion string `yaml:"format"`
@@ -71,9 +37,9 @@ type Node struct {
 	rn        string //this is only for us in debug, a random generated name for each node
 	//Filter is executed at runtime (with current log line as context)
 	//and must succeed or node is exited
-	Filter        string       `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program  `yaml:"-" json:"-"` //the actual compiled filter
-	DebugExprs    []*DebugExpr `yaml:"-" json:"-"`
+	Filter        string                   `yaml:"filter,omitempty"`
+	RunTimeFilter *vm.Program              `yaml:"-" json:"-"` //the actual compiled filter
+	DebugExprs    []*exprhelpers.DebugExpr `yaml:"-" json:"-"`
 	//If node has leafs, execute all of them until one asks for a 'break'
 	SuccessNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
@@ -169,11 +135,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 					}
 					log.Printf("variables list: ")
 					for _, d := range n.DebugExprs {
-						debug, err := expr.Run(d.debugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+						debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 						if err != nil {
-							log.Errorf("unable to print debug expression for '%s': %s", d.debugStr, err)
+							log.Errorf("unable to print debug expression for '%s': %s", d.DebugStr, err)
 						}
-						log.Printf("   %s = '%s'", d.debugStr, debug)
+						log.Printf("   %s = '%s'", d.DebugStr, debug)
 					}
 				}
 				clog.Debugf("Event leaving node : ko")
@@ -423,30 +389,16 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 
 	//compile filter if present
 	if n.Filter != "" {
+		visitor := &exprhelpers.Visitor{}
 		n.RunTimeFilter, err = expr.Compile(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
 
 		if n.Debug {
-			tree, err := parser.Parse(n.Filter)
+			n.DebugExprs, err = visitor.Build(n.Filter)
 			if err != nil {
-				log.Errorf("unable to parse tree filter for '%s' : %s", n.Filter, err)
-			}
-			visitor := &visitor{newVar: false}
-			ast.Walk(&tree.Node, visitor)
-			fullVar := fmt.Sprintf("%s.%s", visitor.currentID, strings.Join(visitor.properties, "."))
-			visitor.vars = append(visitor.vars, fullVar)
-			for _, variable := range visitor.vars {
-				debugFilter, err := expr.Compile(variable, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
-				debugExpr := &DebugExpr{
-					variable,
-					debugFilter,
-				}
-				n.DebugExprs = append(n.DebugExprs, debugExpr)
-				if err != nil {
-					return fmt.Errorf("compilation of variable '%s' failed: %v", variable, err)
-				}
+				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
 			}
 		}
 
