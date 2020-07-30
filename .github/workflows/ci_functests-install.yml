@@ -63,7 +63,7 @@ jobs:
         echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "labels:" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
-        sudo systemctl start crowdsec
+        sudo systemctl restart crowdsec
     - name: Service status check
       run: |
         sleep 3
@@ -78,4 +78,6 @@ jobs:
       run: |
         sudo cat /var/log/crowdsec.log
         sudo cscli ban list
+        sudo cscli list
+
 
