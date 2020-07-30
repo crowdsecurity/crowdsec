@@ -30,4 +30,9 @@ jobs:
         sudo cscli install parser crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
         sudo cscli install scenario crowdsecurity/ssh-bf
     - name: Crowdsec Startup check
+      run: |
         sudo crowdsec -c /etc/crowdsec/config/user.yaml -t 
+    # - name: Cscli ban tests
+    #   run: |
+    #     sudo cscli ban list -o json
+    #     sudo cscli ban list 
