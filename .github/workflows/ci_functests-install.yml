@@ -57,6 +57,7 @@ jobs:
         sudo cscli -c /etc/crowdsec/config/user.yaml ban list -o json | jq -e '. == null'
     - name: Service start
       run: |
+        sudo rm -f /etc/crowdsec/config/acquis.yaml 
         echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "labels:" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
