@@ -64,9 +64,9 @@ jobs:
     - name: Service status check
       run: |
         sleep 3
+        sudo cat /var/log/crowdsec.log
         sudo systemctl status crowdsec
         sudo cscli metrics
-        sudo cat /var/log/crowdsec.log
     - name: Inject logs
       run: |
         cat ssh-bf.log >> /tmp/test.log
