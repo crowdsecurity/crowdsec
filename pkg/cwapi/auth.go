@@ -141,17 +141,18 @@ func (ctx *ApiCtx) Signin() error {
 		return fmt.Errorf("api signin: missing credentials in api.yaml")
 	}
 	jsonResp := &ApiResp{}
+	errResp := &ApiResp{}
 
-	resp, err := ctx.Http.New().Post(ctx.SigninPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.SigninPath).BodyJSON(ctx.Creds).Receive(jsonResp, errResp)
 	if err != nil {
 		return fmt.Errorf("api signin: HTTP request creation failed: %s", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api signin: return bad HTTP code (%d)", resp.StatusCode)
+		return fmt.Errorf("api signin: return bad HTTP code (%d): %s", resp.StatusCode, errResp.Message)
 	}
 	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {
-		return fmt.Errorf("api signin failed. http response")
+		return fmt.Errorf("api signin failed")
 	}
 
 	ctx.Http = ctx.Http.Set("Authorization", jsonResp.Message)
@@ -164,14 +165,15 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
 	jsonResp := &ApiResp{}
+	errResp := &ApiResp{}
 
-	resp, err := ctx.Http.New().Post(ctx.RegisterPath).BodyJSON(ctx.Creds).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.RegisterPath).BodyJSON(ctx.Creds).Receive(jsonResp, errResp)
 	if err != nil {
 		return fmt.Errorf("api register machine: HTTP request creation failed: %s", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api register machine: return bad HTTP code (%d)", resp.StatusCode)
+		return fmt.Errorf("api register machine: return bad HTTP code (%d) : %s", resp.StatusCode, errResp.Message)
 	}
 
 	if jsonResp.Message == "" || jsonResp.Message != "OK" || jsonResp.StatusCode != 200 {
@@ -184,15 +186,16 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
 	jsonResp := &ApiResp{}
+	errResp := &ApiResp{}
 
 	data := map[string]string{"machine_id": ctx.Creds.User, "password": ctx.Creds.Password}
-	resp, err := ctx.Http.New().Post(ctx.ResetPwdPath).BodyJSON(data).ReceiveSuccess(jsonResp)
+	resp, err := ctx.Http.New().Post(ctx.ResetPwdPath).BodyJSON(data).Receive(jsonResp, errResp)
 	if err != nil {
 		return fmt.Errorf("api reset password: HTTP request creation failed: %s", err)
 	}
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("api reset password: return bad HTTP code (%d)", resp.StatusCode)
+		return fmt.Errorf("api reset password: return bad HTTP code (%d): %s", resp.StatusCode, errResp.Message)
 	}
 
 	if jsonResp.Message == "" || jsonResp.StatusCode != 200 {

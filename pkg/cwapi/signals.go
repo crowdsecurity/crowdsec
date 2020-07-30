@@ -22,7 +22,8 @@ func (ctx *ApiCtx) pushSignals() error {
 		return nil
 	}
 	jsonResp := &ApiResp{}
-	resp, err := ctx.Http.New().Put(ctx.PushPath).BodyJSON(&ctx.toPush).ReceiveSuccess(jsonResp)
+	errResp := &ApiResp{}
+	resp, err := ctx.Http.New().Put(ctx.PushPath).BodyJSON(&ctx.toPush).Receive(jsonResp, errResp)
 	if err != nil {
 		return fmt.Errorf("api push signal: HTTP request creation failed: %s", err)
 	}
@@ -41,7 +42,7 @@ func (ctx *ApiCtx) pushSignals() error {
 				return fmt.Errorf("api push signal: unable to renew api session token: %s", err.Error())
 			}
 		} else {
-			return fmt.Errorf("api push signal: return bad HTTP code (%d)", resp.StatusCode)
+			return fmt.Errorf("api push signal: return bad HTTP code (%d): %s", resp.StatusCode, errResp.Message)
 		}
 	}
 
