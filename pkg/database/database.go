@@ -29,7 +29,7 @@ type Context struct {
 }
 
 func checkConfig(cfg map[string]string) error {
-	switch dbType, _ := cfg["type"]; dbType {
+	switch dbType := cfg["type"]; dbType {
 	case "sqlite":
 		if val, ok := cfg["db_path"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_path' to SQLite db in the configuration")

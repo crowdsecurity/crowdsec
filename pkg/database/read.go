@@ -15,9 +15,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 	bas := []types.BanApplication{}
 	rets := make([]map[string]string, 0)
 	/*get non-expired records*/
-	//c.Db.LogMode(true)
-	//records := c.Db.Order("updated_at desc").Where(`strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?)`, at, at).Group("ip_text").Find(&bas) /*.Count(&count)*/
-	records := c.Db.Order("updated_at desc").Where("until >= ? AND created_at < ?", at, at).Group("ip_text").Find(&bas) /*.Count(&count)*/
+	records := c.Db.Order("updated_at desc").Where("until >= ?", at).Group("ip_text").Find(&bas) /*.Count(&count)*/
 	if records.Error != nil {
 		return nil, records.Error
 	}
@@ -26,8 +24,7 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 		/*
 		 fetch count of bans for this specific ip_text
 		*/
-		//ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND strftime("%s", until) >= strftime("%s", ?) AND strftime("%s", created_at) < strftime("%s", ?) AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
-		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND until >= ? AND created_at < ? AND deleted_at is NULL`, ba.IpText, at, at).Count(&count)
+		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND until >= ? AND deleted_at is NULL`, ba.IpText, at).Count(&count)
 		if ret.Error != nil {
 			return nil, fmt.Errorf("failed to fetch records count for %s : %v", ba.IpText, ret.Error)
 		}
