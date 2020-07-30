@@ -63,7 +63,6 @@ jobs:
         sudo systemctl start crowdsec
     - name: Service status check
       run: 
-        sleep 3
         sudo systemctl status crowdsec
         sudo cscli metrics
     - name: Inject logs
