@@ -30,6 +30,7 @@ jobs:
         cd crowdsec-xxx
         sudo ./wizard.sh --bininstall
         sudo cscli update
+        sudo sed -i 's/api: true/api: false/g' /etc/crowdsec/config/default.yaml
     - name: Install collection
       run: |
         sudo cscli list -a
