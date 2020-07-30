@@ -75,6 +75,6 @@ jobs:
         sudo cscli metrics
     - name: Check logs
       run: |
-        cat /var/log/crowdsec.log
+        sudo cat /var/log/crowdsec.log
         sudo cscli ban list
-        
+
