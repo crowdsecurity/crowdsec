@@ -24,6 +24,7 @@ jobs:
       run: |
         cd crowdsec-xxx
         sudo ./wizard.sh --bininstall
+        sudo cscli update
     - name: Install collection
       run: |
         sudo cscli list -a
