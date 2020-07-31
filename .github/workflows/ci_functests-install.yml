@@ -1,0 +1,86 @@
+name: Hub-CI
+
+on:
+  push:
+    branches: [ functional_basic_tests ]
+  pull_request:
+    branches: [ functional_basic_tests ]
+
+jobs:
+  build:
+    name: Install generated release and perform basic tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - name: Build release
+      run: BUILD_VERSION=xxx make release
+    # - name: Cache release directory
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ./crowdsec-xxx
+    #     key: ${{ runner.os }}-crowdsec-xxx
+    - name: Install release
+      run: |
+        cd crowdsec-xxx
+        sudo ./wizard.sh --bininstall
+        sudo cscli update
+        sudo sed -i 's/api: true/api: false/g' /etc/crowdsec/config/default.yaml
+    - name: Install collection
+      run: |
+        sudo cscli list -a
+        sudo cscli install parser crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
+        sudo cscli install scenario crowdsecurity/ssh-bf
+    - name: Crowdsec Startup check
+      run: |
+        sudo crowdsec -c /etc/crowdsec/config/user.yaml -t 
+    - name: Generate fake ssh bf logs
+      run: |
+        for i in `seq 1 10` ; do 
+          echo `date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
+        done;
+    - name: Process ssh-bf logs in time-machine
+      run: |
+        sudo crowdsec -c /etc/crowdsec/config/user.yaml -file ./ssh-bf.log -type syslog
+    - name: Cscli ban list check
+      run: |
+        sudo cscli ban list
+        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
+        sudo cscli ban list --range 1.1.1.0/24 -o json | jq -e '.[].iptext == "1.1.1.172"'
+    - name: Cscli ban del check
+      run: |
+        sudo cscli ban del ip 1.1.1.172
+        sudo cscli -c /etc/crowdsec/config/user.yaml ban list -o json | jq -e '. == null'
+    - name: Service start
+      run: |
+        sudo rm -f /etc/crowdsec/config/acquis.yaml 
+        touch /tmp/test.log
+        echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
+        echo "labels:" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
+        echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
+        sudo systemctl restart crowdsec
+    - name: Service status check
+      run: |
+        sleep 3
+        sudo cat /var/log/crowdsec.log
+        sudo systemctl status crowdsec
+        sudo cscli metrics
+    - name: Inject logs
+      run: |
+        cat ssh-bf.log >> /tmp/test.log
+        sleep 1
+    - name: Check results
+      run: |
+        sudo cscli ban list
+        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
+        sudo cat /var/log/crowdsec.log
+    - name: Check metrics
+      run: |
+        sudo cscli metrics
+          
+

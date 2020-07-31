@@ -50,7 +50,6 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 	} else {
 		return nil, fmt.Errorf("missing 'backend' (path to backend plugins)")
 	}
-	//var path = output.BackendFolder
 	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if filepath.Ext(path) == ".yaml" {
 			files = append(files, path)
@@ -113,7 +112,7 @@ func NewBackendPlugin(outputConfig map[string]string) (*BackendManager, error) {
 			newPlugin.Config["max_records_age"] = v
 		}
 
-		if v, ok := outputConfig["flush"]; ok && v == "true" {
+		if v, ok := outputConfig["flush"]; ok && v != "" {
 			newPlugin.Config["flush"] = v
 		}
 		err = newPlugin.funcs.Init(newPlugin.Config)
