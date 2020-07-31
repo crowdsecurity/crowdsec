@@ -42,7 +42,7 @@ jobs:
     - name: Generate fake ssh bf logs
       run: |
         for i in `seq 1 10` ; do 
-          echo 'Jul 30 15:43:55 sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
+          echo `date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
         done;
     - name: Process ssh-bf logs in time-machine
       run: |
