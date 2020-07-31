@@ -509,12 +509,12 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				log.Fatalf("Filter issue")
 			}
 
+			if condition {
+				holder.logger.Debugf("eval(%s) = TRUE ", holder.Filter)
+			} else {
+				holder.logger.Debugf("eval(%s) = FALSE ", holder.Filter)
+			}
 			if holder.Debug {
-				if condition {
-					holder.logger.Debugf("eval(%s) = TRUE ", holder.Filter)
-				} else {
-					holder.logger.Debugf("eval(%s) = FALSE ", holder.Filter)
-				}
 				holder.logger.Debugf("variables:")
 				for _, d := range holder.DebugExprs {
 					debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
@@ -523,10 +523,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					}
 					holder.logger.Debugf("       %s = '%s'", d.DebugStr, debug)
 				}
-				if !condition {
-					holder.logger.Debugf("Event leaving node : ko")
-					continue
-				}
+			}
+			if !condition {
+				holder.logger.Debugf("Event leaving node : ko")
+				continue
 			}
 		}
 

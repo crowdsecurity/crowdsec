@@ -125,13 +125,12 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 
 		switch out := output.(type) {
 		case bool:
-			/* filter returned false, don't process Node */
+			if out {
+				clog.Debugf("eval(%s) = TRUE ", n.Filter)
+			} else {
+				clog.Debugf("eval(%s) = FALSE ", n.Filter)
+			}
 			if n.Debug {
-				if out {
-					clog.Debugf("eval(%s) = TRUE ", n.Filter)
-				} else {
-					clog.Debugf("eval(%s) = FALSE ", n.Filter)
-				}
 				clog.Debugf("variables:")
 				for _, d := range n.DebugExprs {
 					debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
@@ -140,10 +139,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 					}
 					clog.Debugf("       %s = '%s'", d.DebugStr, debug)
 				}
-				if !out {
-					clog.Debugf("Event leaving node : ko")
-					return false, nil
-				}
+			}
+			if !out {
+				clog.Debugf("Event leaving node : ko")
+				return false, nil
 			}
 		default:
 			clog.Warningf("Expr '%s' returned non-bool, abort : %T", n.Filter, output)
