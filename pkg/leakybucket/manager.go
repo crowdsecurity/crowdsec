@@ -54,7 +54,7 @@ type BucketFactory struct {
 	BucketName     string                    `yaml:"-"`
 	Filename       string                    `yaml:"-"`
 	RunTimeFilter  *vm.Program               `json:"-"`
-	ExprDebugger   *exprhelpers.ExprDebugger `yaml:"-" json:"-"`
+	ExprDebugger   *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
 	RunTimeGroupBy *vm.Program               `json:"-"`
 	Data           []*types.DataSource       `yaml:"data,omitempty"`
 	leakspeed      time.Duration             //internal representation of `Leakspeed`
@@ -235,7 +235,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 	}
 	if g.Debug {
 		visitor := &exprhelpers.Visitor{}
-		g.ExprDebugger, err = visitor.Build(g.Filter)
+		g.ExprDebugger, err = visitor.Build(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", g.Filter, err)
 		}

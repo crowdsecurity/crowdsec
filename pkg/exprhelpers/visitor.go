@@ -11,7 +11,6 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/ast"
 	"github.com/antonmedv/expr/vm"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
 /*
@@ -55,7 +54,7 @@ func (v *Visitor) Exit(node *ast.Node) {
 /*
 Build reconstruct all the variables used in a filter (to display their content later).
 */
-func (v *Visitor) Build(filter string) (*ExprDebugger, error) {
+func (v *Visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
 	var expressions []*expression
 	ret := &ExprDebugger{
 		filter: filter,
@@ -71,7 +70,7 @@ func (v *Visitor) Build(filter string) (*ExprDebugger, error) {
 	v.properties = []string{}
 	v.currentID = ""
 	for _, variable := range v.vars {
-		debugFilter, err := expr.Compile(variable, expr.Env(GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		debugFilter, err := expr.Compile(variable, exprEnv)
 		tmpExpression := &expression{
 			variable,
 			debugFilter,
