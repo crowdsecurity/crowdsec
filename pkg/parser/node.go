@@ -37,9 +37,9 @@ type Node struct {
 	rn        string //this is only for us in debug, a random generated name for each node
 	//Filter is executed at runtime (with current log line as context)
 	//and must succeed or node is exited
-	Filter        string                   `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program              `yaml:"-" json:"-"` //the actual compiled filter
-	DebugExprs    []*exprhelpers.DebugExpr `yaml:"-" json:"-"`
+	Filter        string                    `yaml:"filter,omitempty"`
+	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
+	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"`
 	//If node has leafs, execute all of them until one asks for a 'break'
 	SuccessNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
@@ -125,20 +125,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 
 		switch out := output.(type) {
 		case bool:
-			if out {
-				clog.Debugf("eval(%s) = TRUE ", n.Filter)
-			} else {
-				clog.Debugf("eval(%s) = FALSE ", n.Filter)
-			}
 			if n.Debug {
-				clog.Debugf("variables:")
-				for _, d := range n.DebugExprs {
-					debug, err := expr.Run(d.DebugExpr, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
-					if err != nil {
-						clog.Errorf("unable to print debug expression for '%s': %s", d.DebugStr, err)
-					}
-					clog.Debugf("       %s = '%s'", d.DebugStr, debug)
-				}
+				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 			}
 			if !out {
 				clog.Debugf("Event leaving node : ko")
@@ -394,7 +382,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 
 		if n.Debug {
 			visitor := &exprhelpers.Visitor{}
-			n.DebugExprs, err = visitor.Build(n.Filter)
+			n.ExprDebugger, err = visitor.Build(n.Filter)
 			if err != nil {
 				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
 			}
