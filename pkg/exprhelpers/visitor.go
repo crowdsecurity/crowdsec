@@ -90,7 +90,7 @@ type ExprDebugger struct {
 	expression []*expression
 }
 
-// expression is the structure that represents the varialbe in string and compiled for debug
+// expression is the structure that represents the variable in string and compiled format
 type expression struct {
 	Str      string
 	Compiled *vm.Program
