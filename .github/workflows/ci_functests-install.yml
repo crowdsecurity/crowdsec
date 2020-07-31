@@ -73,11 +73,14 @@ jobs:
     - name: Inject logs
       run: |
         cat ssh-bf.log >> /tmp/test.log
-        sudo cscli metrics
-    - name: Check logs
+        sleep 1
+    - name: Check results
       run: |
-        sudo cat /var/log/crowdsec.log
         sudo cscli ban list
-        sudo cscli list
-
+        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
+        sudo cat /var/log/crowdsec.log
+    - name: Check metrics
+      run: |
+        sudo cscli metrics
+          
 
