@@ -17,7 +17,7 @@ import (
 Visitor is used to reconstruct variables with its property called in an expr filter
 Thus, we can debug expr filter by displaying all variables contents present in the filter
 */
-type Visitor struct {
+type visitor struct {
 	newVar     bool
 	currentID  string
 	properties []string
@@ -27,14 +27,14 @@ type Visitor struct {
 /*
 Enter should be present for the interface but is never used
 */
-func (v *Visitor) Enter(node *ast.Node) {}
+func (v *visitor) Enter(node *ast.Node) {}
 
 /*
 Exit is called when running ast.Walk(node, visitor), each time a node exit.
 So we have the node information and we can get the identifier (first level of the struct)
 and its properties to reconstruct the complete variable.
 */
-func (v *Visitor) Exit(node *ast.Node) {
+func (v *visitor) Exit(node *ast.Node) {
 	if n, ok := (*node).(*ast.IdentifierNode); ok {
 		if !v.newVar {
 			v.newVar = true
@@ -54,7 +54,7 @@ func (v *Visitor) Exit(node *ast.Node) {
 /*
 Build reconstruct all the variables used in a filter (to display their content later).
 */
-func (v *Visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
+func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
 	var expressions []*expression
 	ret := &ExprDebugger{
 		filter: filter,
@@ -110,4 +110,11 @@ func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[
 		}
 		logger.Debugf("       %s = '%s'", expression.Str, debug)
 	}
+}
+
+// NewDebugger is the exported function that build the debuggers expressions
+func NewDebugger(filter string, exprEnv expr.Option) (*ExprDebugger, error) {
+	visitor := &visitor{}
+	exprDebugger, err := visitor.Build(filter, exprEnv)
+	return exprDebugger, err
 }

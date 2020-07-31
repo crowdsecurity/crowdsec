@@ -234,8 +234,7 @@ func LoadBucket(g *BucketFactory, dataFolder string) error {
 		return fmt.Errorf("invalid filter '%s' in %s : %v", g.Filter, g.Filename, err)
 	}
 	if g.Debug {
-		visitor := &exprhelpers.Visitor{}
-		g.ExprDebugger, err = visitor.Build(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		g.ExprDebugger, err = exprhelpers.NewDebugger(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", g.Filter, err)
 		}

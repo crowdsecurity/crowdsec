@@ -383,8 +383,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		}
 
 		if n.Debug {
-			visitor := &exprhelpers.Visitor{}
-			n.ExprDebugger, err = visitor.Build(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			n.ExprDebugger, err = exprhelpers.NewDebugger(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
 				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
 			}
@@ -493,8 +492,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		if err != nil {
 			n.logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
 		}
-		visitor := exprhelpers.Visitor{}
-		expression.ExprDebugger, err = visitor.Build(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
 		}
