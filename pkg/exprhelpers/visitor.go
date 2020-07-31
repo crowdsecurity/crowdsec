@@ -102,7 +102,7 @@ again the expr environment given in parameter
 */
 func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[string]interface{}) {
 	logger.Debugf("eval(%s) = %s", e.filter, strings.ToUpper(strconv.FormatBool(filterResult)))
-	logger.Debugf("variables:")
+	logger.Debugf("eval variables:")
 	for _, expression := range e.expression {
 		debug, err := expr.Run(expression.Compiled, exprEnv)
 		if err != nil {
