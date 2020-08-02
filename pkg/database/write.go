@@ -43,7 +43,7 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 	}
 	log.Printf("ret affected signal : %+v", ret.RowsAffected)
 	/*and add the new one(s)*/
-	ret := c.Db.Create(&sig)
+	ret = c.Db.Create(&sig)
 	if ret.Error != nil {
 		log.Errorf("While creating new bans : %s", ret.Error)
 		return fmt.Errorf("failed to write signal occurrence : %s", ret.Error)
