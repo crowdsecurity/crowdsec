@@ -35,13 +35,13 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 			return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
 		}
 		log.Printf("ret affected ban : %+v", ret.RowsAffected)
-		ret = c.Db.Delete(types.SignalOccurence{Source_ip: sig.Source_ip})
-		if ret.Error != nil {
-			log.Errorf("While delete overlaping signal : %s", ret.Error)
-			return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
-		}
-		log.Printf("ret affected signal : %+v", ret.RowsAffected)
 	}
+	ret := c.Db.Delete(types.SignalOccurence{Source_ip: sig.Source_ip})
+	if ret.Error != nil {
+		log.Errorf("While delete overlaping signal : %s", ret.Error)
+		return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
+	}
+	log.Printf("ret affected signal : %+v", ret.RowsAffected)
 	/*and add the new one(s)*/
 	ret := c.Db.Create(&sig)
 	if ret.Error != nil {
