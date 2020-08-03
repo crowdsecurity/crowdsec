@@ -392,10 +392,10 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		n.logger.Debugf("+ Regexp Compilation '%s'", n.Grok.RegexpName)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
 		if err != nil {
-			n.logger.Fatalf("Unable to find grok '%s' : %v\n", n.Grok.RegexpName, err)
+			return fmt.Errorf("Unable to find grok '%s' : %v", n.Grok.RegexpName, err)
 		}
 		if n.Grok.RunTimeRegexp == nil {
-			n.logger.Fatalf("Didn't find regexp : %s", n.Grok.RegexpName)
+			return fmt.Errorf("Empty grok '%s'", n.Grok.RegexpName)
 		}
 		n.logger.Debugf("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
@@ -403,11 +403,11 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		//n.logger.Debugf("+ Regexp Compilation '%s'", n.Grok.RegexpValue)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
 		if err != nil {
-			n.logger.Fatalf("Failed to compile grok '%s': %v\n", n.Grok.RegexpValue, err)
+			return fmt.Errorf("Failed to compile grok '%s': %v\n", n.Grok.RegexpValue, err)
 		}
 		if n.Grok.RunTimeRegexp == nil {
 			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
-			n.logger.Fatalf("Grok compilation failure: %s", n.Grok.RegexpValue)
+			return fmt.Errorf("Grok compilation failure: %s", n.Grok.RegexpValue)
 		}
 		n.logger.Debugf("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
