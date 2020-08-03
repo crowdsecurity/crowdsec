@@ -29,21 +29,15 @@ func (c *Context) WriteSignal(sig types.SignalOccurence) error {
 	/*let's ensure we only have one ban active for a given scope*/
 	for _, ba := range sig.BanApplications {
 		log.Printf("Deleting ban for '%s'", sig.Source_ip)
-		ret := c.Db.Delete(types.BanApplication{IpText: ba.IpText})
+		ret := c.Db.Unscoped().Table("ban_applications").Where("ip_text = ?", ba.IpText).Delete(types.BanApplication{})
 		if ret.Error != nil {
 			log.Errorf("While delete overlaping bans : %s", ret.Error)
 			return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
 		}
 		log.Printf("ret affected ban : %+v", ret.RowsAffected)
 	}
-	ret := c.Db.Delete(types.SignalOccurence{Source_ip: sig.Source_ip})
-	if ret.Error != nil {
-		log.Errorf("While delete overlaping signal : %s", ret.Error)
-		return fmt.Errorf("failed to write signal occurrence : %v", ret.Error)
-	}
-	log.Printf("ret affected signal : %+v", ret.RowsAffected)
 	/*and add the new one(s)*/
-	ret = c.Db.Create(&sig)
+	ret := c.Db.Create(&sig)
 	if ret.Error != nil {
 		log.Errorf("While creating new bans : %s", ret.Error)
 		return fmt.Errorf("failed to write signal occurrence : %s", ret.Error)
