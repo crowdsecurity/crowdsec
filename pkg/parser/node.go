@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/antonmedv/expr"
+
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -36,9 +37,9 @@ type Node struct {
 	rn        string //this is only for us in debug, a random generated name for each node
 	//Filter is executed at runtime (with current log line as context)
 	//and must succeed or node is exited
-	Filter        string      `yaml:"filter,omitempty"`
-	RunTimeFilter *vm.Program `yaml:"-" json:"-"` //the actual compiled filter
-
+	Filter        string                    `yaml:"filter,omitempty"`
+	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
+	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` //used to debug expression by printing the content of each variable of the expression
 	//If node has leafs, execute all of them until one asks for a 'break'
 	SuccessNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
@@ -121,11 +122,13 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			clog.Debugf("Event leaving node : ko")
 			return false, nil
 		}
+
 		switch out := output.(type) {
 		case bool:
-			/* filter returned false, don't process Node */
+			if n.Debug {
+				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			}
 			if !out {
-				clog.Debugf("eval(FALSE) '%s'", n.Filter)
 				clog.Debugf("Event leaving node : ko")
 				return false, nil
 			}
@@ -135,7 +138,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			return false, nil
 		}
 		NodeState = true
-		clog.Debugf("eval(TRUE) '%s'", n.Filter)
 	} else {
 		clog.Debugf("Node has not filter, enter")
 		NodeState = true
@@ -183,7 +185,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -191,7 +193,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		switch out := output.(type) {
 		case bool:
-			/* filter returned false, don't process Node */
+			if n.Debug {
+				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			}
 			if out {
 				clog.Debugf("Event is whitelisted by Expr !")
 				p.Whitelisted = true
@@ -377,6 +381,14 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		if err != nil {
 			return fmt.Errorf("compilation of '%s' failed: %v", n.Filter, err)
 		}
+
+		if n.Debug {
+			n.ExprDebugger, err = exprhelpers.NewDebugger(n.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			if err != nil {
+				log.Errorf("unable to build debug filter for '%s' : %s", n.Filter, err)
+			}
+		}
+
 	}
 
 	/* handle pattern_syntax and groks */
@@ -474,13 +486,18 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		n.logger.Debugf("adding cidr %s to whitelists", tnet)
 		valid = true
 	}
-	for _, v := range n.Whitelist.Exprs {
-		expr, err := expr.Compile(v, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	for _, filter := range n.Whitelist.Exprs {
+		expression := &types.ExprWhitelist{}
+		expression.Filter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			n.logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", v, err)
+			n.logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
 		}
-		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expr)
-		n.logger.Debugf("adding expression %s to whitelists", v)
+		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
+		}
+		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
+		n.logger.Debugf("adding expression %s to whitelists", filter)
 		valid = true
 	}
 

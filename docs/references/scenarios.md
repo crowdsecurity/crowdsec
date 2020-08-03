@@ -311,7 +311,16 @@ _default: false_
 
 
 If set to to `true`, enabled scenario level debugging.
-It is meant to help understanding scenario  behavior by providing contextual logging.
+It is meant to help understanding scenario  behavior by providing contextual logging :
+
+<summary>debug of filters and expression results</summary>
+```
+DEBU[31-07-2020 16:34:58] eval(evt.Meta.log_type in ["http_access-log", "http_error-log"] && any(File("bad_user_agents.txt"), {evt.Parsed.http_user_agent contains #})) = TRUE  cfg=still-feather file=config/scenarios/http-bad-user-agent.yaml name=crowdsecurity/http-bad-user-agent
+DEBU[31-07-2020 16:34:58] eval variables:                               cfg=still-feather file=config/scenarios/http-bad-user-agent.yaml name=crowdsecurity/http-bad-user-agent
+DEBU[31-07-2020 16:34:58]        evt.Meta.log_type = 'http_access-log'  cfg=still-feather file=config/scenarios/http-bad-user-agent.yaml name=crowdsecurity/http-bad-user-agent
+DEBU[31-07-2020 16:34:58]        evt.Parsed.http_user_agent = 'Mozilla/5.00 (Nikto/2.1.5) (Evasions:None) (Test:002810)'  cfg=still-feather file=config/scenarios/http-bad-user-agent.yaml name=crowdsecurity/http-bad-user-agent
+```
+</details>
 
 ### reprocess
 

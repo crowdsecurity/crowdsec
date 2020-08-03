@@ -142,7 +142,37 @@ debug: true|false
 _default: false_
 
 If set to to `true`, enabled node level debugging.
-It is meant to help understanding parser node behaviour by providing contextual logging.
+It is meant to help understanding parser node behavior by providing contextual logging :
+  
+<details>
+  <summary>assignments made by statics</summary>
+```
+DEBU[31-07-2020 16:36:28] + Processing 4 statics                        id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] .Meta[service] = 'http'                       id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] .Meta[source_ip] = '127.0.0.1'                id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] .Meta[http_status] = '200'                    id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] .Meta[http_path] = '/'                        id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+```
+</details>
+<details>
+  <summary>assignments made by grok pattern</summary>
+```
+DEBU[31-07-2020 16:36:28] + Grok 'NGINXACCESS' returned 10 entries to merge in Parsed  id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] 	.Parsed['time_local'] = '21/Jul/2020:16:13:05 +0200'  id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] 	.Parsed['method'] = 'GET'                    id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] 	.Parsed['request'] = '/'                     id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] 	.Parsed['http_user_agent'] = 'curl/7.58.0'   id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] 	.Parsed['remote_addr'] = '127.0.0.1'         id=dark-glitter name=child-crowdsecurity/nginx-logs stage=s01-parse
+```
+</details>
+<details>
+  <summary>debug of filters and expression results</summary>
+```
+DEBU[31-07-2020 16:36:28] eval(evt.Parsed.program == 'nginx') = TRUE    id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28] eval variables:                               id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+DEBU[31-07-2020 16:36:28]        evt.Parsed.program = 'nginx'           id=withered-rain name=crowdsecurity/nginx-logs stage=s01-parse
+```
+</details>
 
 
 ### filter

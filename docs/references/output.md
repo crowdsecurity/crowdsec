@@ -3,7 +3,7 @@
 The output mechanism is composed of plugins. In order to store the bans for {{blockers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
 
 
-Currently the supported {{backend.name}} are SQLite (default) and MySQL.
+Currently the supported backends are SQLite (default) and MySQL.
 
 In order to filter which signals will be sent to which plugin, {{crowdsec.name}} use a system of `profile` that can allow to granularly process your bans and signals.
 
