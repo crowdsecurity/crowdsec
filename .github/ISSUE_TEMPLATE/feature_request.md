@@ -1,13 +1,13 @@
 ---
 name: Feature request
 about: Suggest an idea for this project
-title: Improvment/
+title: Improvement/
 labels: enhancement
 assignees: ''
 
 ---
 
-Please, start your issue name (after `improvment`) with the component name impacted by this feature request and a small description of the FR. Example: `Improvment/cscli: add this feature ....` and remove this line :)
+Please, start your issue name (after `improvement`) with the component name impacted by this feature request and a small description of the FR. Example: `Improvement/cscli: add this feature ....` and remove this line :)
 
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
