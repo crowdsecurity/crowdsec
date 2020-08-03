@@ -50,7 +50,7 @@ INFO[0000] Loaded 9 collecs, 14 parsers, 12 scenarios, 1 post-overflow parsers
 INFO[0000] crowdsec/nginx-logs : OK                     
 INFO[0000] Enabled parsers : crowdsec/nginx-logs        
 INFO[0000] Enabled crowdsec/nginx-logs                  
-# systemctl restart crowdsec
+# systemctl reload crowdsec
 ```
 
 ### Your own parsers

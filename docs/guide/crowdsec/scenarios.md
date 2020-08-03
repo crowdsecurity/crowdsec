@@ -50,7 +50,7 @@ INFO[0000] Loaded 9 collecs, 14 parsers, 12 scenarios, 1 post-overflow parsers
 INFO[0000] crowdsec/ssh-bf : OK                     
 INFO[0000] Enabled scenarios : crowdsec/ssh-bf        
 INFO[0000] Enabled crowdsec/ssh-bf               
-# systemctl restart crowdsec
+# systemctl reload crowdsec
 ```
 
 ### Your own scenarios

@@ -1,14 +1,17 @@
 `{{cli.bin}}` is the utility that will help you to manage {{crowdsec.name}}. This tools has the following functionalities:
 
- - [manage bans]({{ cli.ban_doc }}) : list, add, remove ...
- - [backup and restore]({{ cli.backup_doc }}) configuration
+ - [manage bans]({{ cli.ban_doc }})
+ - [backup and restore configuration]({{ cli.backup_doc }})
  - [display metrics]({{ cli.metrics_doc }})
- - [install]({{ cli.install_doc }}) parsers/scenarios/collections
- - [remove]({{ cli.remove_doc }}) parsers/scenarios/collections
- - [update]({{ cli.update_doc }}) the hub cache
- - [upgrade]({{ cli.upgrade_doc }}) parsers/scenarios/collections
- - [list]({{ cli.list_doc }}) parsers/scenarios/collections
+ - [install configurations]({{ cli.install_doc }})
+ - [remove configurations]({{ cli.remove_doc }})
+ - [update configurations]({{ cli.update_doc }})
+ - [upgrade configurations]({{ cli.upgrade_doc }})
+ - [list configurations]({{ cli.list_doc }})
  - [interact with CrowdSec API]({{ cli.api_doc }})
+ - [manage simulation]({{cli.simulation_doc}})
+
+ Take a look at the [dedicated documentation]({{cli.main_doc}})
 
 ## Overview
 

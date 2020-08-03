@@ -134,6 +134,7 @@ extra:
         update_doc: /cscli/cscli_update/
         upgrade_doc: /cscli/cscli_upgrade/
         backup_doc: /cscli/cscli_backup/
+        simulation_doc: /cscli/cscli_simulation/
     config:
         cli_dir: /etc/crowdsec/cscli/
         crowdsec_dir: "/etc/crowdsec/config/"
