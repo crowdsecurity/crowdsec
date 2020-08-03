@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/antonmedv/expr/vm"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 type Whitelist struct {
@@ -13,5 +14,10 @@ type Whitelist struct {
 	Cidrs   []string `yaml:"cidr,omitempty"`
 	B_Cidrs []*net.IPNet
 	Exprs   []string `yaml:"expression,omitempty"`
-	B_Exprs []*vm.Program
+	B_Exprs []*ExprWhitelist
+}
+
+type ExprWhitelist struct {
+	Filter       *vm.Program
+	ExprDebugger *exprhelpers.ExprDebugger // used to debug expression by printing the content of each variable of the expression
 }

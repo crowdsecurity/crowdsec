@@ -48,6 +48,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 			log.Warningf("skip non yaml : %s", stageFile.Filename)
 			continue
 		}
+		log.Debugf("loading parser file '%s'", stageFile)
 		st, err := os.Stat(stageFile.Filename)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stat %s : %v", stageFile, err)
