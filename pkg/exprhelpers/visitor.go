@@ -7,6 +7,7 @@ import (
 
 	"github.com/antonmedv/expr/parser"
 	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/ast"
@@ -59,26 +60,38 @@ func (v *visitor) Build(filter string, exprEnv expr.Option) (*ExprDebugger, erro
 	ret := &ExprDebugger{
 		filter: filter,
 	}
+	if filter == "" {
+		log.Debugf("unable to create expr debugger with empty filter")
+		return &ExprDebugger{}, nil
+	}
 	v.newVar = false
 	tree, err := parser.Parse(filter)
 	if err != nil {
 		return nil, err
 	}
 	ast.Walk(&tree.Node, v)
-	fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
-	v.vars = append(v.vars, fullVar)
+	if v.currentID != "" && len(v.properties) > 0 { // if its a variable with property (eg. evt.Line.Labels)
+		fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
+		v.vars = append(v.vars, fullVar)
+	} else if v.currentID != "" && len(v.properties) == 0 { // if it's a variable without property
+		fullVar := v.currentID
+		v.vars = append(v.vars, fullVar)
+	} else {
+		log.Debugf("no variable in filter : '%s'", filter)
+	}
 	v.properties = []string{}
 	v.currentID = ""
 	for _, variable := range v.vars {
 		debugFilter, err := expr.Compile(variable, exprEnv)
+		if err != nil {
+			return ret, fmt.Errorf("compilation of variable '%s' failed: %v", variable, err)
+		}
 		tmpExpression := &expression{
 			variable,
 			debugFilter,
 		}
 		expressions = append(expressions, tmpExpression)
-		if err != nil {
-			return nil, fmt.Errorf("compilation of variable '%s' failed: %v", variable, err)
-		}
+
 	}
 	ret.expression = expressions
 	return ret, nil
@@ -101,6 +114,10 @@ Run display the content of each variable of a filter by evaluating them with exp
 again the expr environment given in parameter
 */
 func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[string]interface{}) {
+	if len(e.expression) == 0 {
+		logger.Debugf("no variable to eval for filter '%s'", e.filter)
+		return
+	}
 	logger.Debugf("eval(%s) = %s", e.filter, strings.ToUpper(strconv.FormatBool(filterResult)))
 	logger.Debugf("eval variables:")
 	for _, expression := range e.expression {
