@@ -3,7 +3,7 @@
 !!! info
     Please ensure that you have working env or setup test environment before writing your scenario.
 
-    Ensure that your logs are properly parsed.
+    Ensure that [your logs are properly parsed](/write_configurations/parsers/).
 
     Have some sample logs at hand reach to test your scenario as you progress.
 
@@ -12,18 +12,20 @@
 
 > This document aims at detailing the process of writing and testing new scenarios.
 
+> If you're writing scenario for existing logs, [take a look at the taxonomy](https://hub.crowdsec.net/fields) to find your way !
+
 
 ## Base scenario file
 
 
-The simple scenario can be defined as :
+A rudimentary scenario can be defined as :
 
 ```yaml
 type: leaky
 debug: true
 name: me/my-cool-scenario
 description: "detect cool stuff"
-filter: "1 == 1"
+filter: evt.Meta.log_type == 'iptables_drop'
 capacity: 1
 leakspeed: 1m
 blackhole: 1m
@@ -63,22 +65,26 @@ May 12 09:40:16 sd-126005 kernel: [47678084.929208] IN=enp1s0 OUT= MAC=00:08:a2:
 <details>
   <summary>Expected output</summary>
 ```bash
+DEBU[04-08-2020 10:44:26] eval(evt.Meta.log_type == 'iptables_drop') = TRUE  cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26] eval variables:                               cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26]        evt.Meta.log_type = 'iptables_drop'    cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
 ...
-DEBU[2020-05-12T11:22:17+02:00] eval(TRUE) 1 == 1                             cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario
-DEBU[2020-05-12T11:22:17+02:00] Instanciating TimeMachine bucket              cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario
-DEBU[2020-05-12T11:22:17+02:00] Leaky routine starting, lifetime : 2m0s       bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] Pouring event                                 bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] First pour, creation timestamp : 2020-05-12 09:40:15 +0000 UTC  bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] eval(TRUE) 1 == 1                             cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario
-DEBU[2020-05-12T11:22:17+02:00] Pouring event                                 bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] Bucket overflow at 2020-05-12 09:40:15 +0000 UTC  bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] Overflow, bucket start: 2020-05-12 09:40:15 +0000 UTC, bucket end : 2020-05-12 09:40:15 +0000 UTC  bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] Adding blackhole (until: 2020-05-12 09:41:15 +0000 UTC)  bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] Leaky routine exit                            bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-DEBU[2020-05-12T11:22:17+02:00] eval(TRUE) 1 == 1                             cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario
-INFO[12-05-2020 11:22:17] node warning : no remediation                 bucket_id=withered-brook event_time="2020-05-12 09:40:15 +0000 UTC" scenario=me/my-cool-scenario source_ip=66.66.66.66
-DEBU[2020-05-12T11:22:17+02:00] Bucket f16d5033bebe7090fb626f5feb4e4073cee206d4 dead/expired, cleanup  bucket_id=withered-brook capacity=1 cfg=snowy-dawn file=config/scenarios/mytest.yaml name=me/my-cool-scenario partition=f16d5033bebe7090fb626f5feb4e4073cee206d4
-INFO[12-05-2020 11:22:17] Processing Overflow with no decisions 2 IPs performed 'me/my-cool-scenario' (2 events over 0s) at 2020-05-12 09:40:15 +0000 UTC  bucket_id=withered-brook event_time="2020-05-12 09:40:15 +0000 UTC" scenario=me/my-cool-scenario source_ip=66.66.66.66
+DEBU[04-08-2020 10:44:26] eval(evt.Meta.log_type == 'iptables_drop') = TRUE  cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26] eval variables:                               cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26]        evt.Meta.log_type = 'iptables_drop'    cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+...
+DEBU[04-08-2020 10:44:26] Overflow (start: 2020-05-12 09:40:15 +0000 UTC, end: 2020-05-12 09:40:15 +0000 UTC)  bucket_id=sparkling-thunder capacity=1 cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario partition=ea2fed6bf8bb70d462ef8acacc4c96f5f8754413
+DEBU[04-08-2020 10:44:26] Adding overflow to blackhole (2020-05-12 09:40:15 +0000 UTC)  bucket_id=sparkling-thunder capacity=1 cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario partition=ea2fed6bf8bb70d462ef8acacc4c96f5f8754413
+DEBU[04-08-2020 10:44:26] eval(evt.Meta.log_type == 'iptables_drop') = TRUE  cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26] eval variables:                               cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26]        evt.Meta.log_type = 'iptables_drop'    cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario
+DEBU[04-08-2020 10:44:26] Bucket ea2fed6bf8bb70d462ef8acacc4c96f5f8754413 found dead, cleanup the body  bucket_id=sparkling-thunder capacity=1 cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario partition=ea2fed6bf8bb70d462ef8acacc4c96f5f8754413
+WARN[04-08-2020 10:44:26] read 4 lines                                  file=./x.log
+...
+INFO[04-08-2020 10:44:26] Processing Overflow with no decisions 2 IPs performed 'me/my-cool-scenario' (2 events over 0s) at 2020-05-12 09:40:15 +0000 UTC  bucket_id=sparkling-thunder event_time="2020-05-12 09:40:15 +0000 UTC" scenario=me/my-cool-scenario source_ip=66.66.66.66
+...
+DEBU[04-08-2020 10:44:26] Overflow discarded, still blackholed for 59s  bucket_id=long-pine capacity=1 cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario partition=ea2fed6bf8bb70d462ef8acacc4c96f5f8754413
+DEBU[04-08-2020 10:44:26] Overflow has been discard (*leakybucket.Blackhole)  bucket_id=long-pine capacity=1 cfg=shy-dust file=config/scenarios/iptables-scan.yaml name=me/my-cool-scenario partition=ea2fed6bf8bb70d462ef8acacc4c96f5f8754413
 ...  
 ```
 </details>
@@ -88,7 +94,7 @@ We can see our "mock" scenario is working, let's see what happened :
 
 - The first event (parsed line) is processed :
 
-    - The `filter` returned true (`1 == 1`) so the {{event.htmlname}} will be processed by our bucket
+    - The `filter` returned true (`evt.Meta.log_type == 'iptables_drop'`) so the {{event.htmlname}} will be processed by our bucket
     - The bucket is instantiated in {{timeMachine.htmlname}} mode, and its creation date is set to the timestamp from the first log
     - The {{event.htmlname}} is poured in the actual bucket
 
@@ -268,7 +274,7 @@ It seems to work correctly !
 ## Hold my beer and watch this
 
 
-One I have acquire confidence in my scenario and I want it to trigger some bans, we can simply add :
+Once I have acquire confidence in my scenario and I want it to trigger some bans, we can simply add :
 
 
 ```yaml
@@ -295,7 +301,7 @@ Adding `remediation: true` into the labels tells {{crowdsec.name}} that we shoul
 Let's try :
 
  - I copied the yaml file to a production system (`/etc/crowdsec/crowdsec/scenarios/mytest.yaml`)
- - I restart {{crowdsec.name}} (`systemctl restart crowdsec`)
+ - I restart {{crowdsec.name}} (`systemctl reload crowdsec`)
 
 Let's check if it seems correctly enabled :
 
@@ -338,108 +344,3 @@ INFO[0000] backend plugin 'database' loaded
 ```
 
 It worked !!!
-
-
-
-
-<!-- 
-
-
-
-
-
-
-# Writing Crowdsec scenario
-
-> Please refer to []() if the parser doesn't exist
-
-## Acquiring the logs
-
-First step to test a scenario is to get the logs that trigger your wanted scenario.
-
-## Write the yaml configuration file
- 
-The first configuration for a scenario is the [type]().
-It can uniq, trigger or leaky. Please [see here]() for more description about scenarios type.
-
-```yaml
-type: leaky
-```
-
-Then the `name`. Please write it in the form of `<github_account_name>/<scenario_name>` .
-
-```yaml
-name: crowdsecurity/http-scan-uniques_404
-```
-
-Describe in one sentence what this scenario trigger :
-
-```yaml
-description: Detect multiple unique 404 from a single ip
-```
-
-Now come the filter, the one that will decide if the incoming log will be store in our bucket.
-For the HTTP 404 scans, we want only logs from web request that return a `404`, `403` or `400` HTTP code:
-
-```yaml
-filter: "evt.Meta.service == 'http' && evt.Meta.http_status in ['404', '403', '400']"
-```
-
-Then we want to groupby this scenario for `source_ip` (ip of the attacker) :
-```yaml
-groupby: evt.Meta.source_ip
-```
-
-And we want only one log to be store for each HTTP URI query by the attacker (no duplicate):
-```yaml
-distinct: evt.Meta.http_path
-```
-
-We can say that if someone query 5 or more unknown or forbidden HTTP URI with a leakspeed of 10s, then it is probably a web scan:
-```yaml
-capacity: 5
-leakspeed: "10s"
-```
-
-Then we want to blackhole it for 5minutes (because if the attacker crawl a lot, we don't want to be notofied for every 5 times HTTP 404/403/400):
-```yaml
-blackhole: 5m
-```
-
-We also want to reprocess this scenarios if it happen for more heuristic:
-```yaml
-reprocess: true
-```
-
-And then we give some labels to this scenario for remediation:
-```yaml
-service: http
-type: scan
-remediation: true
-```
-
-Full example scenario:
-
-<details>
-<summary>Nginx </summary>
-
-```yaml
-# 404 scan
-type: leaky
-#debug: true
-name: crowdsecurity/http-scan-uniques_404
-description: "Detect multiple unique 404 from a single ip"
-filter: "evt.Meta.service == 'http' && evt.Meta.http_status in ['404', '403', '400']"
-groupby: "evt.Meta.source_ip"
-distinct: "evt.Meta.http_path"
-capacity: 5
-#debug: true
-reprocess: true
-leakspeed: "10s"
-blackhole: 5m
-labels:
- service: http
- type: scan
- remediation: true
-```
-</details> -->
