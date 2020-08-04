@@ -214,7 +214,7 @@ func BanList() error {
 		uniqCN := map[string]bool{}
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"Source", "Ip", "Reason", "Bans", "Action", "Country", "AS", "Events", "Expiration"})
+		table.SetHeader([]string{"Source", "Ip", "Reason", "Nb Signals", "Action", "Country", "AS", "Events", "Expiration"})
 
 		dispcount := 0
 		apicount := 0

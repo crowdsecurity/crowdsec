@@ -2,100 +2,70 @@ package database
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
 
+type CountResult struct {
+	NbTicket int64
+	NbEvent  int64
+}
+
 //GetBansAt returns the IPs that were banned at a given time
 func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
-
-	bas := []types.BanApplication{}
 	rets := make([]map[string]string, 0)
 	/*get non-expired records*/
-	records := c.Db.Order("updated_at desc").Where("until >= ?", at).Group("ip_text").Find(&bas) /*.Count(&count)*/
+	//records := c.Db.Order("updated_at desc").Where("until >= ?", at).Group("ip_text").Find(&bas) /*.Count(&count)*/
+	//if records.Error != nil {
+	//	return nil, records.Error
+	//}
+
+	Sos := []types.SignalOccurence{}
+	records := c.Db.Preload("BanApplications", "until >= ?", at).Order("created_at").Where("deleted_at is NULL").Find(&Sos)
 	if records.Error != nil {
 		return nil, records.Error
 	}
-	for _, ba := range bas {
-		var count int
-		/*
-		 fetch count of bans for this specific ip_text
-		*/
-		ret := c.Db.Table("ban_applications").Order("updated_at desc").Where(`ip_text = ? AND until >= ? AND deleted_at is NULL`, ba.IpText, at).Count(&count)
-		if ret.Error != nil {
-			return nil, fmt.Errorf("failed to fetch records count for %s : %v", ba.IpText, ret.Error)
+	ret := make(map[string]map[string]string, 0)
+	for _, so := range Sos {
+		if len(so.BanApplications) == 0 {
+			continue
 		}
-		sOs := []types.SignalOccurence{}
-		nbSo := 0
-		records := c.Db.Where(`source_ip = ?`, ba.IpText).Group("id").Find(&sOs).Count(&nbSo)
-		if records.Error != nil {
-			//record not found can be ok
-			if gorm.IsRecordNotFoundError(records.Error) {
-				bancom := make(map[string]string)
-				bancom["iptext"] = ba.IpText
-				bancom["bancount"] = fmt.Sprintf("%d", count)
-				bancom["as"] = ba.TargetASName
-				bancom["asnum"] = fmt.Sprintf("%d", ba.TargetAS)
-				bancom["cn"] = ba.TargetCN
-				bancom["scenario"] = "?"
-				bancom["source"] = ba.MeasureSource
-				bancom["events_count"] = "0"
-				bancom["action"] = ba.MeasureType
-				bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
-				bancom["reason"] = ba.Reason
-				rets = append(rets, bancom)
-				continue
+		for _, ba := range so.BanApplications {
+			if _, ok := ret[ba.IpText]; !ok {
+				ret[ba.IpText] = make(map[string]string, 0)
+				ret[ba.IpText]["bancount"] = "0"
+				ret[ba.IpText]["events_count"] = "0"
 			}
-		}
-
-		evtCount := 0
-		for _, s := range sOs {
-			evtCount += s.Events_count
-		}
-
-		so := types.SignalOccurence{}
-		records = c.Db.Where(`id = ?`, ba.SignalOccurenceID).Find(&so)
-		if records.Error != nil {
-			//record not found can be ok
-			if gorm.IsRecordNotFoundError(records.Error) {
-				bancom := make(map[string]string)
-				bancom["iptext"] = ba.IpText
-				bancom["bancount"] = fmt.Sprintf("%d", count)
-				bancom["as"] = ba.TargetASName
-				bancom["asnum"] = fmt.Sprintf("%d", ba.TargetAS)
-				bancom["cn"] = ba.TargetCN
-				bancom["source"] = ba.MeasureSource
-				bancom["scenario"] = "?"
-				bancom["events_count"] = "0"
-				bancom["action"] = ba.MeasureType
-				bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
-				bancom["reason"] = ba.Reason
-				rets = append(rets, bancom)
-				continue
+			ret[ba.IpText]["iptext"] = ba.IpText
+			ret[ba.IpText]["as"] = so.Source_AutonomousSystemNumber + " " + so.Source_AutonomousSystemOrganization
+			ret[ba.IpText]["cn"] = so.Source_Country
+			currentBanCount, err := strconv.Atoi(ret[ba.IpText]["bancount"])
+			if err != nil {
+				log.Errorf("unable to convert bancount '%v' to int :%s", ret[ba.IpText]["bancount"], err)
 			}
-			fmt.Printf("err : %v", records.Error)
-			return nil, records.Error
+			ret[ba.IpText]["bancount"] = fmt.Sprintf("%d", currentBanCount+1)
+			ret[ba.IpText]["scenario"] = so.Scenario
+
+			ret[ba.IpText]["action"] = ba.MeasureType
+			ret[ba.IpText]["source"] = ba.MeasureSource
+			ret[ba.IpText]["until"] = time.Until(ba.Until).Round(time.Second).String()
+			ret[ba.IpText]["reason"] = so.Scenario
+			log.Printf("BA : %+v \n", ba)
 		}
-		if records.RowsAffected != 1 {
-			log.Errorf("more than one signal_occurence for local_decision, discard")
-			break
+		currentEvtCount, err := strconv.Atoi(ret[so.Source_ip]["events_count"])
+		if err != nil {
+			log.Errorf("unable to convert event_count '%v' to int :%s", ret[so.Source_ip]["events_count"], err)
 		}
-		bancom := make(map[string]string)
-		bancom["iptext"] = ba.IpText
-		bancom["as"] = so.Source_AutonomousSystemNumber + " " + so.Source_AutonomousSystemOrganization
-		bancom["cn"] = so.Source_Country
-		bancom["bancount"] = fmt.Sprintf("%d", nbSo)
-		bancom["scenario"] = so.Scenario
-		bancom["events_count"] = fmt.Sprintf("%d", evtCount)
-		bancom["action"] = ba.MeasureType
-		bancom["source"] = ba.MeasureSource
-		bancom["until"] = time.Until(ba.Until).Round(time.Second).String()
-		bancom["reason"] = so.Scenario
-		rets = append(rets, bancom)
+		ret[so.Source_ip]["events_count"] = fmt.Sprintf("%d", currentEvtCount+so.Events_count)
 	}
+
+	for _, ban := range ret {
+		rets = append(rets, ban)
+	}
+
 	return rets, nil
 }
 
