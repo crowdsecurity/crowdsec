@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/jinzhu/gorm"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,7 +25,9 @@ func (c *Context) GetBansAt(at time.Time) ([]map[string]string, error) {
 	//}
 
 	Sos := []types.SignalOccurence{}
-	records := c.Db.Preload("BanApplications", "until >= ?", at).Order("created_at").Where("deleted_at is NULL").Find(&Sos)
+	records := c.Db.Preload("BanApplications", "until >= ?", at).Order("created_at").Preload("BanApplications", func(db *gorm.DB) *gorm.DB {
+		return db.Order("until DESC")
+	}).Where("deleted_at is NULL").Find(&Sos)
 	if records.Error != nil {
 		return nil, records.Error
 	}
