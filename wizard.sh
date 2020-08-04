@@ -286,19 +286,19 @@ install_plugins_bin() {
 #install crowdsec and cscli
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
-    (cd config && find patterns -type f -exec install -Dm 755 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
+    (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
     mkdir -p "${CSCLI_FOLDER}" || exit
 
-    install -v -m 755 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 755 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 755 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 755 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 600 -D ./config/api.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 600 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     mkdir -p ${PID_DIR} || exit
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
