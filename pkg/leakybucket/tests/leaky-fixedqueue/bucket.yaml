@@ -1,11 +1,11 @@
-# ssh bruteforce
 type: leaky
 debug: true
 name: test/simple-leaky
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
-leakspeed: "0.5s"
-capacity: 2
+leakspeed: "10s"
+capacity: 5
+cache_size: 3
 groupby: evt.Meta.source_ip
 labels:
  type: overflow_1
