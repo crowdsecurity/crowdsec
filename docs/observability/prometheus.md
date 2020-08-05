@@ -76,7 +76,7 @@ cs_node_hits_ko_total{name="crowdsecurity/http-logs",source="/var/log/nginx/erro
 
 ### Exploitation with prometheus server & grafana
 
-Those metrics can be scaped by [prometheus server](https://prometheus.io/docs/introduction/overview/#architecture) and visualized with [grafana](https://grafana.com/). Here is some dashboards screenshots :
+Those metrics can be scaped by [prometheus server](https://prometheus.io/docs/introduction/overview/#architecture) and visualized with [grafana](https://grafana.com/). They [can be downloaded here](https://github.com/crowdsecurity/grafana-dashboards) :
 
 ![Overview](../assets/images/grafana_overview.png)
 
