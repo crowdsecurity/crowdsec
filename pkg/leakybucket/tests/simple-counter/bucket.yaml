@@ -1,11 +1,9 @@
-# ssh bruteforce
-type: leaky
-debug: true
-name: test/simple-leaky
+type: counter
+name: test/simple-trigger
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
-leakspeed: "0.5s"
-capacity: 2
+duration: 1s
+capacity: -1
 groupby: evt.Meta.source_ip
 labels:
  type: overflow_1
