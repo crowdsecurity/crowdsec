@@ -159,13 +159,13 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				holder.logger.Errorf("unexpected non-bool return : %T", output)
 				log.Fatalf("Filter issue")
 			}
+
+			if holder.Debug {
+				holder.ExprDebugger.Run(holder.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
+			}
 			if !condition {
-				holder.logger.Debugf("eval(FALSE) %s", holder.Filter)
-				//log.Debugf("%s -> FALSE", holder.Filter)
-				//holder.logger.Debugf("Filter eval failed")
+				holder.logger.Debugf("Event leaving node : ko")
 				continue
-			} else {
-				holder.logger.Debugf("eval(TRUE) %s", holder.Filter)
 			}
 		}
 
