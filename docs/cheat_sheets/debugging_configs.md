@@ -59,7 +59,7 @@ DEBU[05-08-2020 15:25:36] child is success, OnSuccess=next_stage, skip  id=livel
 
 
 <details>
-  <summary>Debug parsing output (expand)</summary>
+  <summary>Debug scenario output (expand)</summary>
 ```bash
 DEBU[05-08-2020 16:02:26] eval(evt.Meta.service == 'http' && evt.Meta.http_status in ['404', '403', '400'] && evt.Parsed.static_ressource == 'false') = TRUE  cfg=black-wave file=config/scenarios/http-probing.yaml name=crowdsecurity/http-probing
 DEBU[05-08-2020 16:02:26] eval variables:                               cfg=black-wave file=config/scenarios/http-probing.yaml name=crowdsecurity/http-probing
@@ -72,7 +72,7 @@ DEBU[05-08-2020 16:02:26]        evt.Parsed.static_ressource = 'false'  cfg=blac
 
 # Test environments
 
-From a {{crowdsec.name}} release archive, you can deploy a test (non-root) environment that is very suitable to write/debug/test parsers and scenarios. Environment is deployed using `./test_env.sh` script from tgz directory, and creates a test environment in `./tests` :
+From a [{{crowdsec.name}} release archive]({{crowdsec.download_url}}), you can deploy a test (non-root) environment that is very suitable to write/debug/test parsers and scenarios. Environment is deployed using `./test_env.sh` script from tgz directory, and creates a test environment in `./tests` :
 
 ```bash
 $ cd crowdsec-v0.3.0/
