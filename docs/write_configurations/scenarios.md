@@ -33,7 +33,7 @@ labels:
   type: my_test
 ```
 
- - a {{filter.htmlname}} : if the expression is `true`, the event will enter the parser, otherwise, it won't
+ - a {{filter.htmlname}} : if the expression is `true`, the event will enter the scenario, otherwise, it won't
  - a name & a description
  - a capacity for our [Leaky Bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
  - a leak speed for our  [Leaky Bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
