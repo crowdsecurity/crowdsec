@@ -4,10 +4,9 @@
     Please ensure that you have working env or setup test environment before writing your parser.
 
 !!! warning "Parser dependency"
-
-The crowdsecurity/syslog-logs parsers is needed by the core parsing
-engine. Deletion or modification of this could result of {{crowdsec.name}}
-being unable to parse logs, so this should be done very carefully.
+    The crowdsecurity/syslog-logs parsers is needed by the core parsing
+    engine. Deletion or modification of this could result of {{crowdsec.name}}
+    being unable to parse logs, so this should be done very carefully.
 
 > In the current example, we'll write a parser for the logs produced by `iptables` (netfilter) with the `-j LOG` target.
 > This document aims at detailing the process of writing and testing new parsers.
