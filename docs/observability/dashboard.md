@@ -50,6 +50,10 @@ Now you can connect to your dashboard, sign-in with your saved credentials then 
 
 ![Dashboard_view](../assets/images/dashboard_view.png)
 
+![Dashboard_view2](../assets/images/dashboard_view2.png)
+
+
+
 Dashboard docker image can be managed by {{cli.name}} and docker cli also. Look at the {{cli.name}} help command using
 
 ```bash

@@ -62,30 +62,33 @@ INFO[0001] Enabled crowdsecurity/linux
 
 ## &#9432; Reminder
 
-Logs parsing is divided into stage. Each stage are called in the format "sXX-<stage_name>". If a log success in a stage and is configured to go in `next_stage`, then the next stage will process it. Stage process is sorted alphabetically.
+Logs parsing is divided into stage, and each stage can contain one or more parser. Stages are named using a "sXX-<stage_name>" convention, and are processed in the alphabetical order. When a log is successfully parsed by a node that is configured to go in `next_stage`, the event is forwarded to the next stage (and the remaining parsers of the current stage aren't parsed).
 
 Stages and parsers are being processed alphabetically, thus the expected order would be :
 
 ```
 s00-raw/syslog.yaml
 
-s01-parse/nginx.yaml
 s01-parse/apache.yaml
+s01-parse/nginx.yaml
 
 s02-enrich/geoip.yaml
 s02-enrich/rdns.yaml
 ```
 
-### Basics stage
+### Default stages
 
-- The first stage (`s00-parse`) is mostly the one that will parsed the begining of your log to say : "This log come from this `source`" where the source can be whatever software that produce logs.
-If all your logs are sent to a syslog server, there is a [parser](https://master.d3padiiorjhf1k.amplifyapp.com/author/crowdsecurity/configurations/syslog-logs) that will parse the syslog header to detect the program source.
-When the log is processed, the results (ie. capture groups) will be merged in the current {{event.htmlname}} before being sent to the next stage.
+- The preliminary stage (`s00-raw`) is mostly the one that will parse the structure of the log. This is where [syslog-logs](https://hub.crowdsec.net/author/crowdsecurity/configurations/syslog-logs) are parsed for example. Such a parser will parse the syslog header to detect the program source.
  
-- The second (`s01-parse`) is the one that will parse the logs and output parsed data and static assigned values. There is currently one parser for one type of software. To parse the logs, regexp or GROK pattern are used. If the parser is configured to go to the [`next_stage`](/references/parsers/#onsuccess), then it will be process by the `enrichment` stage.
+- The main stage (`s01-parse`) is the one that will parse actual applications logs and output parsed data and static assigned values. There is one parser for each type of software. To parse the logs, regexp or GROK pattern are used. If the parser is configured to go to the [`next_stage`](/references/parsers/#onsuccess), then it will be process by the `enrichment` stage.
 
-- The enrichment `s02-enrich` stage is the one that will enrich the normalized log (we call it an event now that it is normalized) in order to get more information for the heuristic process. This stage can be composed of grok patterns and so on, but as well of plugins that can be writen by the community (geiop enrichment, rdns ...)
+- The enrichment (`s02-enrich`) stage is the one that will enrich the normalized log (we call it an event now that it is normalized) in order to get more information for the heuristic process. This stage can be composed of grok patterns and so on, but as well of plugins that can be writen by the community (geiop enrichment, rdns ...) for example [geoip-enrich](https://hub.crowdsec.net/author/crowdsecurity/configurations/geoip-enrich).
+
+
+You can now jump to the next step : [writing our own parser !](/write_configurations/parsers/)
+
 
 ### Custom stage
 
-Of course, it is possible to write custom stages. If you want some specific parsing or enrichment to be done after the `s02-enrich` stage, it is possible by creating a new folder `s03-<custom_stage>`. The configuration that will be created in this folder will process the logs configurated to go to `next_stage` in the `s02-enrich` stage. Be careful to write filter that will match incoming event in your custom stage.
+It is possible to write custom stages. If you want some specific parsing or enrichment to be done after the `s02-enrich` stage, it is possible by creating a new folder `s03-<custom_stage>` (and so on). The configuration that will be created in this folder will process the logs configured to go to `next_stage` in the `s02-enrich` stage. 
+

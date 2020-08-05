@@ -35,18 +35,31 @@ Thanks to this, besides detecting and stopping attacks in real time based on you
 All of those are represented as YAML files, that can be found, shared and kept up-to-date thanks to the {{hub.htmlname}}, or [easily hand-crafted](/write_configurations/scenarios/) to address specific needs.
 
 
+## Main features
+
+{{crowdsec.Name}}, besides the core "detect and react" mechanism,  is committed to a few other key points :
+
+ - **Easy Installation** : The provided wizard allows a [trivial deployment](/getting_started/installation/#using-the-interactive-wizard) on most standard setups
+ - **Easy daily operations** : Using [cscli](/cscli/cscli_upgrade/) and the {{hub.htmlname}}, keeping your detection mechanisms up-to-date is trivial
+ - **Observability** : Providing strongs insights on what is going on and what {{crowdsec.name}} is doing :
+    - Humans have [access to a trivially deployable web interface](/observability/dashboard/)
+    - OPs have [access to detailed prometheus metrics](/observability/prometheus/)
+    - Admins have [a friendly command-line interface tool](/observability/command_line/) 
+
 ## Moving forward
 
 To learn more about {{crowdsec.name}} and give it a try, please see :
 
  - [How to install {{crowdsec.name}}](/getting_started/installation/)
  - [Take a quick tour of {{crowdsec.name}} and {{cli.name}} features](/getting_started/crowdsec-tour/)
- - [Deploy {{blockers.name}} to stop malevolent peers](/blockers/)
  - [Observability of {{crowdsec.name}}](/observability/overview/)
  - [Understand {{crowdsec.name}} configuration](/getting_started/concepts/)
+ - [Deploy {{blockers.name}} to stop malevolent peers](/blockers/)
  - [FAQ](getting_started/FAQ/)
 
-If you have a functional {{crowdsec.name}} setup, you might want to find the right [{{blockers.name}}](/blockers/).
+Don't hesitate to reach out if you're facing issues :
 
-Don't hesitate to look at the [glossary](/getting_started/glossary/) for clarification !
+ - [report a bug](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=bug&template=bug_report.md&title=Bug%2F)
+ - [suggest an improvement](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=Improvment%2F)
+ - [ask for help on the forums](https://discourse.crowdsec.net)
 

@@ -38,8 +38,10 @@ And 64 records from API, 32 distinct AS, 19 distinct countries
  - `EXPIRATION` is the time left on remediation
 
 
-## Remove a ban
+Check [command usage](/cscli/cscli_ban_list/) for additional filtering and output control flags.
 
+
+## Delete a ban
 
 > delete the ban on IP `1.2.3.4`
 
@@ -69,4 +71,17 @@ And 64 records from API, 32 distinct AS, 19 distinct countries
 ```
 
 
- 
+
+## Flush all existing bans
+
+> Flush all the existing bans
+
+```bash
+{{cli.bin}} ban flush
+```
+
+!!! warning
+     This will as well remove any existing ban
+
+
+

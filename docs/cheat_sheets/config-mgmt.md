@@ -1,4 +1,4 @@
-{{cli.bin}} allows you install, list, update/upgrade and remove configurations : parsers, enrichment, scenarios.
+{{cli.bin}} allows you install, list, upgrade and remove configurations : parsers, enrichment, scenarios.
 
 The various parsers, enrichers and scenarios installed on your machine makes a coherent ensemble to provide detection capabilities.
 

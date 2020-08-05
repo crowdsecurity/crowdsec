@@ -1,15 +1,25 @@
 # Expressions
 
-> {{expr.htmlname}} : Expression evaluation engine for Go: fast, non-Turing complete, dynamic typing, static typing
+> [antonmedv/expr](https://github.com/antonmedv/expr) - Expression evaluation engine for Go: fast, non-Turing complete, dynamic typing, static typing
 
-
-Several places of {{crowdsec.name}}'s configuration use {{expr.htmlname}} :
+Several places of {{crowdsec.name}}'s configuration use [expr](https://github.com/antonmedv/expr), notably :
 
  - {{filter.Htmlname}} that are used to determine events eligibility in {{parsers.htmlname}} and {{scenarios.htmlname}} or `profiles`
  - {{statics.Htmlname}} use expr in the `expression` directive, to compute complex values
  - {{whitelists.Htmlname}} rely on `expression` directive to allow more complex whitelists filters
 
-To learn more about {{expr.htmlname}}, [check the github page of the project](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md).
+To learn more about [expr](https://github.com/antonmedv/expr), [check the github page of the project](https://github.com/antonmedv/expr/blob/master/docs/Language-Definition.md).
+
+
+When {{crowdsec.name}} relies on `expr`, a context is provided to let the expression access relevant objects :
+
+ - `evt.` is the representation of the current {{event.htmlname}} and is the most relevant object
+ - in [profiles](/references/output/#profile), {{signal.htmlname}} is accessible via the `sig.` object
+
+If the `debug` is enabled (in the scenario or parser where expr is used), additional debug will be displayed regarding evaluated expressions.
+
+
+# Helpers
 
 In order to makes its use in {{crowdsec.name}} more efficient, we added a few helpers that are documented bellow.
 
