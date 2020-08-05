@@ -41,7 +41,6 @@ func (v *visitor) Exit(node *ast.Node) {
 			v.newVar = true
 			v.currentID = n.Value
 		} else {
-			v.newVar = false
 			fullVar := fmt.Sprintf("%s.%s", v.currentID, strings.Join(v.properties, "."))
 			v.vars = append(v.vars, fullVar)
 			v.properties = []string{}
