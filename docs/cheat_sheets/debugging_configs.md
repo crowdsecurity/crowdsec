@@ -43,7 +43,7 @@ DEBU[05-08-2020 15:25:36] + Grok 'NGINXACCESS' returned 10 entries to merge in P
 DEBU[05-08-2020 15:25:36] 	.Parsed['request'] = '/data.php'             id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
 DEBU[05-08-2020 15:25:36] 	.Parsed['http_user_agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:52.0) Gecko/20100101 Firefox/52.0'  id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
 DEBU[05-08-2020 15:25:36] 	.Parsed['http_referer'] = '-'                id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
-DEBU[05-08-2020 15:25:36] 	.Parsed['remote_addr'] = '123.206.50.249'    id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
+DEBU[05-08-2020 15:25:36] 	.Parsed['remote_addr'] = '123.x.x.x'    id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
 DEBU[05-08-2020 15:25:36] 	.Parsed['remote_user'] = '-'                 id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
 DEBU[05-08-2020 15:25:36] 	.Parsed['time_local'] = '01/Jan/2019:01:39:06 +0100'  id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
 DEBU[05-08-2020 15:25:36] 	.Parsed['method'] = 'POST'                   id=icy-dew name=child-crowdsecurity/nginx-logs stage=s01-parse
