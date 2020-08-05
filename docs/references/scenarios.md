@@ -3,20 +3,20 @@
 
 Scenarios are YAML files that allow to detect and qualify a specific behavior, usually an attack.
 
-Scenarios receive one or more {{event.htmlname}} and might produce one or more {{overflow.htmlname}}.
-As an {{event.htmlname}} can be the representation of a log line, or an overflow, it  allows scenarios to process both logs or overflows.
+Scenarios receive {{event.htmlname}}(s) and can produce {{overflow.htmlname}}(s) using the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) algorithm.
 
+As an {{event.htmlname}} can be the representation of a log line, or an overflow, it  allows scenarios to process both logs or overflows to allow inference.
 
-The scenario is usually based on a number of factors, at least :
+Scenarios can be of different types (leaky, trigger, counter), and are based on various factors, such as :
 
-  - the speed/frequency at which events happen (see [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket))
-  - the characteristic(s) of an  {{event.htmlname}} : "log type XX with field YY set to ZZ"
+  - the speed/frequency of the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
+  - the capacity of the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
+  - the characteristic(s) of eligible {{event.htmlname}}(s) : "log type XX with field YY set to ZZ"
+  - various filters/directives that can alter the bucket's behavior, such as [groupby](/references/scenarios/#groupby), [distinct](references/scenarios/#distinct) or [blackhole](/references/scenarios/#blackhole)
 
+Behind the scenes, {{crowdsec.name}} is going to create one or more buckets when events with matching characteristics arrive to the scenario. When any of these buckets overflows, the scenario has been triggered.
 
-
-Behind the scenes, {{crowdsec.name}} is going to create one or several buckets when event with matching characteristic arrive to the scenario. This bucket has a capacity and leak-speed, when the bucket "overflows", the scenario has been trigger.
-
-_Bucket partitioning_ : One scenario usually leads to many bucket creation, as each bucket is only tracking a specific subset of events. For example, if we are tracking brute-force, it makes sense that each "offending peer" get its own bucket.
+_Bucket partitioning_ : One scenario usually leads to many buckets creation, as each bucket is only tracking a specific subset of events. For example, if we are tracking brute-force, each "offending peer" get its own bucket.
 
 
 A way to detect a http scanner might be to track the number of distinct non-existing pages it's requesting, and the scenario might look like this :

@@ -1,19 +1,4 @@
 
-
-## Finding configurations
-
-{{crowdsec.Name}} efficiency is dictated by installed parsers and scenarios, so [take a look at the {{hub.name}}]({{hub.url}}) to find the appropriated ones !
-
-If you didn't perform the setup with the wizard, or if you are reading logs from other machines, you will have to pick the right {{collections.htmlname}}. This will ensure that {{crowdsec.name}} can parse the logs and has the corresponding scenarios.
-
-For example, if you're processing [nginx](http://nginx.org) logs, you might want to install the [nginx collection](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx).
-
-A collection can be installed by typing `cscli install collection crowdsecurity/nginx`, and provides all the necessary parsers and scenarios to handle said log source. `systemctl reload crowdsec` to ensure the new scenarios are loaded.
-
-In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
-
-While {{crowdsec.name}} is running, a quick look at [`cscli metrics`](/observability/command_line/) should help you ensure that your log sources are correctly parsed.
-
 ## List installed configurations
 
 > List installed parsers/scenarios/collections/enricher
@@ -72,6 +57,23 @@ INFO[0000] POSTOVERFLOWS:
 --------------------------------------
 ```
 </details>
+
+
+
+
+## Finding configurations
+
+{{crowdsec.Name}} efficiency is dictated by installed parsers and scenarios, so [take a look at the {{hub.name}}]({{hub.url}}) to find the appropriated ones !
+
+If you didn't perform the setup with the wizard, or if you are reading logs from other machines, you will have to pick the right {{collections.htmlname}}. This will ensure that {{crowdsec.name}} can parse the logs and has the corresponding scenarios.
+
+For example, if you're processing [nginx](http://nginx.org) logs, you might want to install the [nginx collection](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx).
+
+A collection can be installed by typing `cscli install collection crowdsecurity/nginx`, and provides all the necessary parsers and scenarios to handle said log source. `systemctl reload crowdsec` to ensure the new scenarios are loaded.
+
+In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
+
+While {{crowdsec.name}} is running, a quick look at [`cscli metrics`](/observability/command_line/) should help you ensure that your log sources are correctly parsed.
 
 
 ## List existing bans

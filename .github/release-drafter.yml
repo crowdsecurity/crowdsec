@@ -2,10 +2,10 @@ categories:
   - title: 'New Features'
     labels:
       - 'new feature'
-  - title: 'Improvments'
+  - title: 'Improvements'
     labels:
       - 'enhancement'
-      - 'improvment'
+      - 'improvement'
   - title: 'Bug Fixes'
     labels:
       - 'fix'
@@ -13,7 +13,7 @@ categories:
       - 'bug'
   - title: 'Documentation'
     labels:
-      - 'documention'
+      - 'documentation'
       - 'doc'
 tag-template: "- $TITLE @$AUTHOR (#$NUMBER)"
 template: |

@@ -86,7 +86,7 @@ whitelist:
         - "80.x.x.x"
 ```
 
-and reload {{crowdsec.name}} : `sudo systemctl restart crowdsec`
+and reload {{crowdsec.name}} : `sudo systemctl reload crowdsec`
 
 ### Test the whitelist
 

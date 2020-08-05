@@ -3,7 +3,7 @@ Enrichers are basically {{parsers.htmlname}} that can rely on external methods t
 Enrichers functions should all accept a string as a parameter, and return an associative string array, that will be automatically merged into the `Enriched` map of the {{event.htmlname}}.
 
 !!! warning
-    At the time of writing, enrichers plugin mechanism implementation is still ongoing (read: the list of available is currently hardcoded).
+    At the time of writing, enrichers plugin mechanism implementation is still ongoing (read: the list of available enrichment methods is currently hardcoded).
 
 
 As an example let's look into the geoip-enrich parser/enricher :

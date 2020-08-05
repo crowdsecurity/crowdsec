@@ -134,6 +134,7 @@ extra:
         update_doc: /cscli/cscli_update/
         upgrade_doc: /cscli/cscli_upgrade/
         backup_doc: /cscli/cscli_backup/
+        simulation_doc: /cscli/cscli_simulation/
     config:
         cli_dir: /etc/crowdsec/cscli/
         crowdsec_dir: "/etc/crowdsec/config/"
@@ -174,8 +175,8 @@ extra:
     expr:
         name: expr
         Name: Expr
-        htmlname: "[expr](https://github.com/antonmedv/expr)"
-        Htmlname: "[Expr](https://github.com/antonmedv/expr)"
+        htmlname: "[expr](/write_configurations/expressions/)"
+        Htmlname: "[Expr](/write_configurations/expressions/)"
     stages:
         name: stages
         name: Stages

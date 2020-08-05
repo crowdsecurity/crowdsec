@@ -21,7 +21,7 @@ You can as well [write your own](/write_configurations/parsers/) !
 
 Enrichment is the action of adding extra context to an event based on the information we already have, so that better decision can later be taken. In most cases, you should be able to find the relevant enrichers on our {{hub.htmlname}}.
 
-The most common/simple type of enrichment would be geoip-enrichment of an event (adding information such as : origin country, origin AS and origin IP range to an event).
+A common/simple type of enrichment would be geoip-enrichment of an event (adding information such as : origin country, origin AS and origin IP range to an event).
 
 Once again, you should be able to find the ones you're looking for on the {{hub.htmlname}} !
 
