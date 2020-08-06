@@ -90,5 +90,5 @@ You can now jump to the next step : [writing our own parser !](/write_configurat
 
 ### Custom stage
 
-It is possible to write custom stages. If you want some specific parsing or enrichment to be done after the `s02-enrich` stage, it is possible by creating a new folder `s03-<custom_stage>` (and so on). The configuration that will be created in this folder will process the logs configured to go to `next_stage` in the `s02-enrich` stage. 
+It is possible to write custom stage. If you want some specific parsing or enrichment to be done after the `s02-enrich` stage, it is possible by creating a new folder `s03-<custom_stage>` (and so on). The configuration that will be created in this folder will process the logs configured to go to `next_stage` in the `s02-enrich` stage. 
 

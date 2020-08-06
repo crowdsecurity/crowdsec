@@ -124,7 +124,7 @@ You can find details on the configuration file format of {{ref.output}}.
 
 This directory holds all the {{parsers.htmlname}} that are enabled on your system.
 
-The parsers are organized in {{stages.htmlname}} (which are just folders) and the {{parsers.htmlname}} themselves are yaml files.
+The parsers are organized in {{stage.htmlname}} (which are just folders) and the {{parsers.htmlname}} themselves are yaml files.
 
 
 ## scenarios/

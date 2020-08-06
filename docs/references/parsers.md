@@ -1,15 +1,34 @@
 ## Understanding parsers
 
 
-Parsers are configurations that define a transformation on an {{event.htmlname}}.
-Parsers are expressed as YAML files composed of one or more individual 'parsing' nodes.
-An {{event.htmlname}} can be the representation of a log line, or an overflow.
+A parser is a YAML configuration file that describes how a string is being parsed. Said string can be a log line, or a field extracted from a previous parser. While a lot of parsers rely on the **GROK** approach (a.k.a regular expression named capture groups), parsers can as well reference enrichment modules to allow specific data processing, or use specific {{expr.htmlname}} feature to perform parsing on specific data, such as JSON.
 
-A parser itself can be used to perform various actions, including :
+Parsers are organized into stages to allow pipelines and branching in parsing.
 
- - Parse a string with regular expression (grok patterns)
- - Enrich an event by relying on "external" code (such as the geoip-enrichment parser)
- - Process one or more fields of an {{event.name}} with {{expr.htmlname}}
+See the [{{hub.name}}]({{hub.url}}) to explore parsers, or see below some examples :
+
+ - [apache2 access/error log parser](https://github.com/crowdsecurity/hub/blob/master/parsers/s01-parse/crowdsecurity/apache2-logs.yaml)
+ - [iptables logs parser](https://github.com/crowdsecurity/hub/blob/master/parsers/s01-parse/crowdsecurity/iptables-logs.yaml)
+ - [http logs post-processing](https://github.com/crowdsecurity/hub/blob/master/parsers/s02-enrich/crowdsecurity/http-logs.yaml)
+
+
+## Stages
+
+Stages concept is central to data parsing in {{crowdsec.name}}, as it allows to have various "steps" of parsing. All parsers belong to a given stage. While users can add or modify the stages order, the following stages exist :
+
+ - `s00-raw` : low level parser, such as syslog
+ - `s01-parse` :  most of the services parsers (ssh, nginx etc.)
+ - `s02-enrich` : enrichment that requires parsed events (ie. geoip-enrichment) or generic parsers that apply on parsed logs (ie. second stage http parser)
+
+
+Every event starts in the first stage, and will move to the next stage once it has been successfully processed by a parser that has the `onsuccess` directive set to `next_stage`, and so on until it reaches the last stage, when it's going to start to be matched against scenarios. Thus a sshd log might follow this pipeline :
+
+ - `s00-raw` : be parsed by `crowdsecurity/syslog-logs` (will move event to the next stage)
+ - `s01-raw` : be parsed by `crowdsecurity/sshd-logs` (will move event to the next stage)
+ - `s02-enrich` : will be parsed by `crowdsecurity/geoip-enrich` and `crowdsecurity/dateparse-enrich`
+
+
+## Parser configuration format
 
 
 A parser node might look like :
@@ -34,6 +53,8 @@ grok:
   apply_on: evt.Parsed.some_field
 #statics are transformations that are applied on the event if the node is considered "successfull"
 statics:
+  - parsed: something
+    expression: JsonExtract(evt.Event.extracted_value, "nested.an_array[0]")
   #to which field the value will be written (here -> evt.Meta.log_type)
   - meta: log_type
     #and here a static value
@@ -44,14 +65,12 @@ statics:
     expression: "evt.Parsed.src_ip"
 ```
 
-
-The parser nodes are processed sequentially based on the alphabetical order of {{stages.htmlname}} and subsequent files.
+The parser nodes are processed sequentially based on the alphabetical order of {{stage.htmlname}} and subsequent files.
 If the node is considered successful (grok is present and returned data or no grok is present) and "onsuccess" equals to `next_stage`, then the {{event.name}} is moved to the next stage.
-
 
 ## Parser trees
 
-A parser node can contain sub-nodes, to provide proper branching.
+A parser node can contain sub-nodes, to provide proper branching (on top of stages).
 It can be useful when you want to apply different parsing based on different criterias, or when you have a set of candidates parsers that you want to apply to an event :
 
 ```yaml
@@ -339,10 +358,10 @@ data:
 
 ## Parser concepts
 
-
 ### Success and failure
 
 A parser is considered "successful" if :
+
  - A grok pattern was present and successfully matched
  - No grok pattern was present
  

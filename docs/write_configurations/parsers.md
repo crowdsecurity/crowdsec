@@ -1,8 +1,5 @@
 # Writing {{crowdsec.Name}} parser
 
-!!! info
-    Please ensure that you have working env or setup test environment before writing your parser.
-
 !!! warning "Parser dependency"
     The crowdsecurity/syslog-logs parsers is needed by the core parsing
     engine. Deletion or modification of this could result of {{crowdsec.name}}
@@ -14,6 +11,7 @@
 ## Base parser file
 
 The most simple parser can be defined as :
+
 
 ```yaml
 filter: 1 == 1
@@ -44,32 +42,25 @@ May 11 16:23:43 sd-126005 kernel: [47615895.771900] IN=enp1s0 OUT= MAC=00:08:a2:
 May 11 16:23:50 sd-126005 kernel: [47615902.763137] IN=enp1s0 OUT= MAC=00:08:a2:0c:1f:12:00:c8:8b:e2:d6:87:08:00 SRC=44.44.44.44 DST=127.0.0.1 LEN=60 TOS=0x00 PREC=0x00 TTL=49 ID=17451 DF PROTO=TCP SPT=53668 DPT=80 WINDOW=14600 RES=0x00 SYN URGP=0 
 ```
 
-## Let's try our mock parser
+## Trying our mock parser
 
 !!! warning
-    Your yaml file must be in the `config/parsers/s01-parser/` directory (relative to your current test directory).
+    Your yaml file must be in the `config/parsers/s01-parser/` directory.
 
-    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`
+    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`, or `/etc/crowdsec/config/parsers/s01-parser/myparser.yaml`.
 
-    The stage directory might not exist, don't forget to create it.
+    The {{stage.htmlname}} directory might not exist, don't forget to create it.
 
+(deployment is assuming [you're using a test environment](/write_configurations/requirements/))
 
 Setting up our new parser :
 ```bash
 cd crowdsec-v0.X.Y/tests
-```
-
-```bash
 mkdir -p config/parsers/s01-parser
-```
-```bash
 cp myparser.yaml config/parsers/s01-parser/                  
-```
-
-Testing our new parser :
-```bash
 ./crowdsec -c ./dev.yaml -file ./x.log -type foobar
 ```
+
 <details>
   <summary>Expected output</summary>
 
