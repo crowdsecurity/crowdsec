@@ -27,7 +27,7 @@ labels:
 
 The `labels` part is here to tag the incoming logs with a type. `labels.type` are used by the parsers to know which logs to process.
 
-## Parsers
+## Parsers [[reference](/references/parsers/)]
 
 For logs to be able to be exploited and analyzed, they need to be parsed and normalized, and this is where parsers are used.
 
@@ -72,7 +72,7 @@ A common/simple type of enrichment would be [geoip-enrich](https://github.com/cr
 
 Once again, you should be able to find the ones you're looking for on the {{hub.htmlname}} !
 
-## Scenarios
+## Scenarios [[reference](/references/scenarios/)]
 
 Scenarios is the expression of a heuristic that allows you to qualify a specific event (usually an attack).It is a YAML file that describes a set of events characterizing a scenario. Scenarios in {{crowdsec.name}} gravitate around the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) principle.
 
