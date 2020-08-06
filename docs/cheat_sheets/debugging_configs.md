@@ -10,7 +10,7 @@ When trying to debug a parser or a scenario :
  - Work on "cold logs" (with the `-file` and `-type` options) rather than live ones
  - Use the `/etc/crowdsec/config/user.yaml` configuration files to have logs on stdout
 
-## Example
+## Using user-mode configuration
 
 ```bash
 crowdsec -c /etc/crowdsec/config/user.yaml -file mylogs.log.gz -type syslog
@@ -26,6 +26,25 @@ WARN[05-08-2020 16:16:12] 182.x.x.x triggered a 4h0m0s ip ban remediation for [c
  - `-file` must point to a flat file or a gzip file
 
 When processing logs like this, {{crowdsec.name}} runs in "time machine" mode, and relies on the timestamps *in* the logs to evaluate scenarios. You will most likely need the `crowdsecurity/dateparse-enrich` parser for this.
+
+
+## Testing configurations on live system
+
+If you're playing around with parser/scenarios on a live system, you can use the `-t` (lint) option of {{crowdsec.Name}} to check your configurations validity before restarting/reloading services :
+
+```bash
+$ emacs /etc/crowdsec/config/scenarios/ssh-bf.yaml
+...
+$ crowdsec -c /etc/crowdsec/config/user.yaml -t        
+INFO[06-08-2020 13:36:04] Crowdsec v0.3.0-rc3-4cffef42732944d4b81b3e62a03d4040ad74f185 
+...
+ERRO[06-08-2020 13:36:05] Bad yaml in /etc/crowdsec/config/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
+  line 2: field typex not found in type leakybucket.BucketFactory 
+FATA[06-08-2020 13:36:05] Failed to load scenarios: Scenario loading failed : bad yaml in /etc/crowdsec/config/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
+  line 2: field typex not found in type leakybucket.BucketFactory 
+```
+
+Using this, you won't have to kill your running service before you know the scenarios/parsers are at least syntactically correct.
 
 
 ## Using debug
