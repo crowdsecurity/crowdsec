@@ -2,10 +2,9 @@ site_name: Crowdsec
 nav:
   - Home: index.md
   - Getting Started:
-    - Concepts : getting_started/concepts.md
     - Installation : getting_started/installation.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
-    - Glossary : getting_started/glossary.md
+    - Concepts & Glossary : getting_started/concepts.md
     - FAQ: getting_started/FAQ.md
   - Guide:
     - Overview: guide/crowdsec/overview.md
@@ -171,18 +170,13 @@ extra:
     event:
         name: event
         Name: Event
-        htmlname: "[event](/getting_started/glossary/#event)"
-        Htmlname: "[Event](/getting_started/glossary/#event)" 
+        htmlname: "[event](/getting_started/concepts/#event)"
+        Htmlname: "[Event](/getting_started/concepts/#event)" 
     expr:
         name: expr
         Name: Expr
         htmlname: "[expr](/write_configurations/expressions/)"
         Htmlname: "[Expr](/write_configurations/expressions/)"
-    stages:
-        name: stages
-        name: Stages
-        htmlname: "[stages](/getting_started/glossary/#stages)"
-        Htmlname: "[Stages](/getting_started/glossary/#stages)"
     filter:
         name: filter
         Name: Filter
@@ -201,13 +195,13 @@ extra:
     parsers:
         name: parsers
         Name: Parsers
-        htmlname: "[parsers](/getting_started/glossary/#parser)"
-        Htmlname: "[Parsers](/getting_started/glossary/#parser)"
+        htmlname: "[parsers](/getting_started/concepts/#parser)"
+        Htmlname: "[Parsers](/getting_started/concepts/#parser)"
     scenarios:
         name: scenarios
         Name: Scenarios
-        htmlname: "[scenarios](/getting_started/glossary/#scenario)"
-        Htmlname: "[Scenarios](/getting_started/glossary/#scenario)"
+        htmlname: "[scenarios](/getting_started/concepts/#scenario)"
+        Htmlname: "[Scenarios](/getting_started/concepts/#scenario)"
     collections:
         name: collections
         Name: Collections
@@ -216,13 +210,13 @@ extra:
     timeMachine:
         name: timeMachine
         Name: TimeMachine
-        htmlname: "[timeMachine](/getting_started/glossary/#timemachine)"
-        Htmlname: "[TimeMachine](/getting_started/glossary/#timemachine)"
+        htmlname: "[timeMachine](/getting_started/concepts/#timemachine)"
+        Htmlname: "[TimeMachine](/getting_started/concepts/#timemachine)"
     overflow:
         name: overflow
         Name: Overflow
-        htmlname: "[overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
-        Htmlname: "[Overflow](/getting_started/glossary/#overflow-or-signaloccurence)"
+        htmlname: "[overflow](/getting_started/concepts/#overflow-or-signaloccurence)"
+        Htmlname: "[Overflow](/getting_started/concepts/#overflow-or-signaloccurence)"
     whitelists:
         name: whitelists
         Name: Whitelists
@@ -231,9 +225,14 @@ extra:
     signal:
         name: signal
         Name: Signal
-        htmlname: "[signal](/getting_started/glossary/#overflow-or-signaloccurence)"
-        Htmlname: "[Signal](/getting_started/glossary/#overflow-or-signaloccurence)"
+        htmlname: "[signal](/getting_started/concepts/#overflow-or-signaloccurence)"
+        Htmlname: "[Signal](/getting_started/concepts/#overflow-or-signaloccurence)"
 #scenario stuff
+    stage:
+        name: stage
+        Name: Stage
+        htmlname: "[stage](/getting_started/concepts/#stages)"
+        Htmlname: "[Stage](/getting_started/concepts/#stages)"
     leakspeed:
         name: leakspeed
         Name: Leakspeed

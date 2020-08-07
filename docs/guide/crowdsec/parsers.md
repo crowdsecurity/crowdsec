@@ -5,7 +5,7 @@
 
 !!! info
 
-    Alphabetical file order dictates the order of {{stages.htmlname}} and the orders of parsers within stage.
+    Alphabetical file order dictates the order of {{stage.htmlname}} and the orders of parsers within stage.
 
 You can use the following command to view installed parsers:
 
