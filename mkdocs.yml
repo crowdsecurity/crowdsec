@@ -55,7 +55,9 @@ nav:
     - Wordpress:
       - Installation : "https://github.com/crowdsecurity/cs-wordpress-plugin/#installation"
       - Configuration : "https://github.com/crowdsecurity/cs-wordpress-plugin/#configuration"
-  - Contributing: contributing/
+  - Contributing: 
+    - General: contributing/
+    - Creating Plugins: references/plugins_api.md
   - Cscli commands:
     - API: cscli/cscli_api.md
     - Backup: cscli/cscli_backup.md

@@ -1,0 +1,147 @@
+## Foreword
+
+You can create your own `.so` plugins to perform specific actions when a scenario is triggered.
+Each plugin has its own configuration file, allowing you to provide parameters to your code.
+
+
+
+Plugins are created in go and must conform to the following interface :
+
+```go
+type Backend interface {
+	Insert(types.SignalOccurence) error
+	ReadAT(time.Time) ([]map[string]string, error)
+	Delete(string) (int, error)
+	Init(map[string]string) error
+	Flush() error
+	Shutdown() error
+	DeleteAll() error
+	StartAutoCommit() error
+}
+```
+
+Each plugin has its own configuration file :
+
+```bash
+$ cat config/plugins/backend/dummy.yaml
+# name of the plugin, is used by profiles.yaml
+name: dummy
+# path to the .so
+path: ./plugins/backend/dummy.so
+# your plugin specific configuration
+config:
+  some_parameter: some value
+  other_parameter: more data
+  token: fooobarjajajajaja
+```
+
+
+## Dummy plugin
+
+```go
+package main
+
+import (
+	"time"
+
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
+)
+
+//This is where you would hold your plugin-specific context
+type pluginDummy struct {
+	//somme persistent data
+}
+
+func (p *pluginDummy) Shutdown() error {
+	return nil
+}
+
+func (p *pluginDummy) StartAutoCommit() error {
+	return nil
+}
+
+func (p *pluginDummy) Init(config map[string]string) error {
+	log.Infof("pluginDummy config : %+v ", config)
+	return nil
+}
+
+func (p *pluginDummy) Delete(target string) (int, error) {
+	return 0, nil
+}
+
+func (p *pluginDummy) DeleteAll() error {
+	return nil
+}
+
+func (p *pluginDummy) Insert(sig types.SignalOccurence) error {
+	log.Infof("insert signal : %+v", sig)
+	return nil
+}
+
+func (p *pluginDummy) Flush() error {
+	return nil
+}
+
+func (p *pluginDummy) ReadAT(timeAT time.Time) ([]map[string]string, error) {
+	return nil, nil
+}
+
+// New is used by the plugin system to get the context
+func New() interface{} {
+    return &pluginDummy
+    {}
+}
+
+// empty main function is mandatory since we are in a main package
+func main() {}
+```
+
+
+## Building plugin
+
+```bash
+$ go build -buildmode=plugin -o dummy.so
+```
+
+
+## Testing plugin
+
+
+<details open>
+  <summary>Get a test env from fresh crowdsec release</summary>
+
+```bash
+$ cd crowdsec-v0.3.0
+$ ./test_env.sh
+$ cd tests
+```
+</details>
+
+
+
+
+```bash
+$ cp ../../plugins/backend/dummy/dummy.so ./plugins/backend/            
+$ cat > config/plugins/backend/dummy.yaml
+name: dummy
+path: ./plugins/backend/dummy.so
+config:
+  some_parameter: some value
+  other_parameter: more data
+  token: fooobarjajajajaja
+$ ./crowdsec -c dev.yaml -file test.log -type mylog
+...
+INFO[06-08-2020 17:21:30] pluginDummy config : map[flush:false max_records:10000 max_records_age:720h other_parameter:more data some_parameter:some value token:fooobarjajajajaja]  
+...
+INFO[06-08-2020 17:21:30] Starting processing routines                 
+...
+INFO[06-08-2020 17:21:30] Processing Overflow ...
+INFO[06-08-2020 17:21:30] insert signal : {Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} MapKey:97872dfae02c523577eff8ec8e19706eec5fa21e Scenario:trigger on stuff Bucket_id:summer-field Alert_message:0.0.0.0 performed 'trigger on stuff' (1 events over 59ns) at 2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Events_count:1 Events_sequence:[{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Time:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 Source:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]} Source_ip:0.0.0.0 Source_range: Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: SignalOccurenceID:0 Serialized:{"ASNNumber":"0","IsInEU":"false","command":"tail -f /data/logs/hosts/rsyslog-1/falco.log","cwd":"/etc/crowdsec/config/parsers/s01-parse/","log_type":"falco-exec","orig_uid":"1915000001","orig_user":"\u003cNA\u003e","parent":"bash","service":"falco-exec","source_ip":"0.0.0.0","user":"root"}}] Start_at:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 BanApplications:[] Stop_at:2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Source:0xc000248410 Source_ip:0.0.0.0 Source_range:<nil> Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: Source_Latitude:0 Source_Longitude:0 Sources:map[0.0.0.0:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]}] Dest_ip: Capacity:0 Leak_speed:0s Whitelisted:false Simulation:false Reprocess:false Labels:map[type:foobar]} 
+...
+```
+
+
+## Notes
+
+
