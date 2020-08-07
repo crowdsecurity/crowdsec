@@ -3,7 +3,7 @@
 # Parser
 
 Parser is in charge of turning raw log lines into objects that can be manipulated by heuristics.
-Parsing has several stages represented by directories on config/stages.
+Parsing has several stages represented by directories on config/stage.
 The alphabetical order dictates the order in which the stages/parsers are processed.
 
 The runtime representation of a line being parsed (or an overflow) is an `Event`, and has fields that can be manipulated by user :

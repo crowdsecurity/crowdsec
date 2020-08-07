@@ -1,8 +1,5 @@
 # Writing {{crowdsec.Name}} parser
 
-!!! info
-    Please ensure that you have working env or setup test environment before writing your parser.
-
 !!! warning "Parser dependency"
     The crowdsecurity/syslog-logs parsers is needed by the core parsing
     engine. Deletion or modification of this could result of {{crowdsec.name}}
@@ -14,6 +11,7 @@
 ## Base parser file
 
 The most simple parser can be defined as :
+
 
 ```yaml
 filter: 1 == 1
@@ -44,32 +42,25 @@ May 11 16:23:43 sd-126005 kernel: [47615895.771900] IN=enp1s0 OUT= MAC=00:08:a2:
 May 11 16:23:50 sd-126005 kernel: [47615902.763137] IN=enp1s0 OUT= MAC=00:08:a2:0c:1f:12:00:c8:8b:e2:d6:87:08:00 SRC=44.44.44.44 DST=127.0.0.1 LEN=60 TOS=0x00 PREC=0x00 TTL=49 ID=17451 DF PROTO=TCP SPT=53668 DPT=80 WINDOW=14600 RES=0x00 SYN URGP=0 
 ```
 
-## Let's try our mock parser
+## Trying our mock parser
 
 !!! warning
-    Your yaml file must be in the `config/parsers/s01-parser/` directory (relative to your current test directory).
+    Your yaml file must be in the `config/parsers/s01-parser/` directory.
 
-    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`
+    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`, or `/etc/crowdsec/config/parsers/s01-parser/myparser.yaml`.
 
-    The stage directory might not exist, don't forget to create it.
+    The {{stage.htmlname}} directory might not exist, don't forget to create it.
 
+(deployment is assuming [you're using a test environment](/write_configurations/requirements/))
 
 Setting up our new parser :
 ```bash
 cd crowdsec-v0.X.Y/tests
-```
-
-```bash
 mkdir -p config/parsers/s01-parser
-```
-```bash
 cp myparser.yaml config/parsers/s01-parser/                  
-```
-
-Testing our new parser :
-```bash
 ./crowdsec -c ./dev.yaml -file ./x.log -type foobar
 ```
+
 <details>
   <summary>Expected output</summary>
 
@@ -264,155 +255,5 @@ DEBU[0000] move Event from stage s01-parser to s02-enrich  id=shy-forest name=cr
 We have now a fully functional parser for {{crowdsec.name}} !
 We can either deploy it to our production systems to do stuff, or even better, contribute to the {{hub.htmlname}} !
 
+If you want to know more about directives and possibilities, take a look at [the parser reference documentation](/references/parsers/) !
 
-
-
-
-
-
-
-<!-- 
-
-
-
-
-
-The first field that you will write is the `onsuccess` one. This one indicate what to do in case of success log parsing. Put the value `next_stage` if you want the log to be processed by the next stages in case of parsing success:
-```yaml
-onsuccess: next_stage
-```
-
-Then come the `filter` part. 
-You will mostly want to filter on the `program` of the event:
-
-```yaml
-filter: evt.Parsed.program == '<program>'
-```
-
-The `name` (please name your parser like `<github_account_name>/<parser_name>`):
-
-```yaml
-name: crowdsecurity/example
-```
-
-A small description: 
-
-```yaml
-description: this parser can process X/Y/Z logs from <program>
-```
-
-
-The grok part:
-
- - If you have only one type of log then you can start with the `grok` object which is defined as below:
-```yaml
-grok:
-  pattern: <your_grok_pattern_here> # can't be used with 'name'
-  name: <grok_name> # grok name loaded from https://github.com/crowdsecurity/crowdsec/tree/master/config/patterns. can't be used with 'pattern'
-  apply_on: message
-  statics:
-    - <meta|target> : <field_name>
-      <value|expression> : <field_value>
-    - <meta|target> : <field_name>
-      <value|expression> : <field_value>
-
-```
-The grok pattern will be applied on the `message` field of the previous success stage.
-The `pattern` and `name` keyword can't be use together
-
-
- - If you have more type of logs, you will have to start with the `node` keyword that is a list of grok:
-
-```yaml
-nodes:
-  grok:
-    pattern: <your_first_grok_pattern>
-    apply_on: message
-    statics:
-      - <meta|target> : <field_name>
-        <value|expression> : <field_value>
-      - <meta|target> : <field_name>
-        <value|expression> : <field_value>
-  grok:
-    pattern: <your_second_grok_pattern>
-    apply_on: message
-    statics:
-      - <meta|target> : <field_name>
-        <value|expression> : <field_value>
-      - <meta|target> : <field_name>
-        <value|expression> : <field_value>
-statics:
-  - <meta|target> : <field_name>
-    <value|expression> : <field_value>
-  - <meta|target> : <field_name>
-    <value|expression> : <field_value>
-```
-
-The `statics` is a process that will set up a value for a given key in the parsed event.
-For the field `name` the keyword can be either `meta` or `target`:
-
- - `meta` : the new field will be created in the evt.Meta object to be accessible like : `evt.Meta.<new_field>`;
-```yaml
-meta: log_type
-```
- - `target`: the name of the new field:
-```yaml
-target: evt.source_ip
-```
-
-For the field value, it can be either `value` or `expression`:
-
-- `value` is the value assigned, for example : `http_access_log`
-
-```yaml
-value: http_access_log
-```
-
- - `expression` the result of a parsed field, for example : `evt.Parsed.remote_addr` 
-```yaml
-expression : evt.Parsed.remote_addr
-```
-
-The `statics` can be applied only for the grok it succeed, if it is in the `grok` object, else for whatever grok if at the root level.
-
-Full example with NGINX:
-
-<details>
-<summary>Nginx </summary>
-
-```yaml
-filter: "evt.Parsed.program == 'nginx'"
-onsuccess: next_stage
-#debug: true
-name: crowdsecurity/nginx-logs
-description: "Parse nginx access and error logs"
-nodes:
-  - grok:
-      name: NGINXACCESS
-      apply_on: message
-      statics:
-        - meta: log_type
-          value: http_access-log
-        - target: evt.StrTime
-          expression: evt.Parsed.time_local
-  - grok:
-        # and this one the error log
-        name: NGINXERROR
-        apply_on: message
-        statics:
-          - meta: log_type
-            value: http_error-log
-          - target: evt.StrTime
-            expression: evt.Parsed.time
-# these ones apply for both grok patterns
-statics:
-  - meta: service
-    value: http
-  - meta: source_ip
-    expression: "evt.Parsed.remote_addr"
-  - meta: http_status
-    expression: "evt.Parsed.status"
-  - meta: http_path
-    expression: "evt.Parsed.request"
-```
-</details> -->
