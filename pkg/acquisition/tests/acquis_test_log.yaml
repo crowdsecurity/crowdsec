@@ -3,5 +3,3 @@ filenames:
 mode: tail
 labels:
   type: my_test_log
----
-
