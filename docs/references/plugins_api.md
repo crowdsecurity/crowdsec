@@ -74,7 +74,7 @@ import (
 
 //This is where you would hold your plugin-specific context
 type pluginDummy struct {
-	//somme persistent data
+	//some persistent data
 }
 
 func (p *pluginDummy) Shutdown() error {
