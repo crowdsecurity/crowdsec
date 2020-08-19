@@ -118,7 +118,7 @@ func TestAcquisStartReadingTailKilled(t *testing.T) {
 L:
 	for {
 		select {
-		case _ = <-outputChan:
+		case <-outputChan:
 			reads++
 			if reads == 2 {
 				acquisTomb.Kill(nil)
@@ -135,7 +135,13 @@ L:
 	}
 
 	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
-	f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.Close()
 }
 
@@ -178,7 +184,7 @@ func TestAcquisStartReadingTail(t *testing.T) {
 L:
 	for {
 		select {
-		case _ = <-outputChan:
+		case <-outputChan:
 			reads++
 			//log.Printf("evt %+v", evt)
 		case <-time.After(1 * time.Second):
@@ -192,73 +198,14 @@ L:
 	}
 
 	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
-	f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.Close()
-	// Test in CAT mode
-	// 	testFilePath := "./tests/test.log"
-
-	// 	csConfig = &csconfig.CrowdSec{
-	// 		SingleFile:      testFilePath,
-	// 		SingleFileLabel: "my_test_log",
-	// 		Profiling:       false,
-	// 	}
-
-	// 	fCTX, err = LoadAcquisitionConfig(csConfig)
-	// 	if err != nil {
-	// 		t.Fatalf(err.Error())
-	// 	}
-	// 	outputChan = make(chan types.Event)
-	// 	acquisTomb = tomb.Tomb{}
-
-	// 	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	// 	if !acquisTomb.Alive() {
-	// 		t.Fatal("acquisition tomb is not alive")
-	// 	}
-
-	// 	reads = 0
-	// M:
-	// 	for {
-	// 		select {
-	// 		case <-outputChan:
-	// 			reads++
-	// 		default:
-	// 			break M
-	// 		}
-	// 	}
-	// 	log.Printf("-> %d", reads)
-
-	// 	// Test with a .gz file
-	// 	testFilePath = "./tests/test.log.gz"
-
-	// 	csConfig = &csconfig.CrowdSec{
-	// 		SingleFile:      testFilePath,
-	// 		SingleFileLabel: "my_test_log",
-	// 		Profiling:       false,
-	// 	}
-
-	// 	fCTX, err = LoadAcquisitionConfig(csConfig)
-	// 	if err != nil {
-	// 		t.Fatalf(err.Error())
-	// 	}
-	// 	outputChan = make(chan types.Event)
-	// 	acquisTomb = tomb.Tomb{}
-
-	// 	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	// 	if !acquisTomb.Alive() {
-	// 		t.Fatal("acquisition tomb is not alive")
-	// 	}
-	// 	reads = 0
-	// N:
-	// 	for {
-	// 		select {
-	// 		case <-outputChan:
-	// 			reads++
-	// 		default:
-	// 			break N
-	// 		}
-	// 	}
-	// 	log.Printf("-> %d", reads)
-
 }
 
 func TestAcquisStartReadingCat(t *testing.T) {
@@ -300,7 +247,7 @@ func TestAcquisStartReadingCat(t *testing.T) {
 L:
 	for {
 		select {
-		case _ = <-outputChan:
+		case <-outputChan:
 			reads++
 			//log.Printf("evt %+v", evt)
 		case <-time.After(1 * time.Second):
@@ -314,7 +261,13 @@ L:
 	}
 
 	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
-	f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = f.WriteString("one log line\n")
+	if err != nil {
+		t.Fatal(err)
+	}
 	f.Close()
 }
 
@@ -344,7 +297,7 @@ func TestAcquisStartReadingCatGz(t *testing.T) {
 L:
 	for {
 		select {
-		case _ = <-outputChan:
+		case <-outputChan:
 			reads++
 			//log.Printf("evt %+v", evt)
 		case <-time.After(1 * time.Second):
