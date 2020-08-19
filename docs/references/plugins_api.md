@@ -1,9 +1,10 @@
 ## Foreword
 
-You can create your own `.so` plugins to perform specific actions when a scenario is triggered.
+You can create your own `.so` plugins to perform specific actions when a scenario is triggered. A plugin can either be used to implement a notification plugin (ie. slack), or to fully manage a backend (ie. your-favorite-database)
 Each plugin has its own configuration file, allowing you to provide parameters to your code.
 
 
+## Interface
 
 Plugins are created in go and must conform to the following interface :
 
@@ -19,6 +20,29 @@ type Backend interface {
 	StartAutoCommit() error
 }
 ```
+
+> Startup/shutdown methods
+
+ - `Init` : called at startup time and receives the custom configuration as a string map. Errors aren't fatal, but plugin will be discarded.
+ - `Shutdown` : called when {{crowdsec.Name}} is shutting down or restarting
+
+
+> Writing/Deleting events
+
+ - `Insert` : called every time an overflow happens, receives the `SignalOccurence` as a single parameter. Returned errors are non-fatal and will be logged in warning level.
+ - `Delete` : called to delete existing bans. Receives the exact `ip_text` (ban target) to delete. Only used by `cscli ban del`, only relevant for read/write plugins such as database ones.
+ - `DeleteAll` : called to delete *all* existing bans. Only used by `cscli ban flush`, only relevant for read/write plugins such as database ones)
+
+> Reading events
+
+ - `ReadAT` : returns the list of bans that where active at the given time. The following keys are relevant in the list returned : source, iptext, reason, bancount, action, cn, as, events_count, until. Only used by `cscli ban list`, only relevant for read/write plugins such as database ones)
+
+> Backend
+
+ - `Flush` is called regulary by crowdsec for each plugin that received events. For example it will be called after each write in `cscli` (as it's one-shot) and every few hundreds of ms / few events in {{crowdsec.name}} itself. It might be a good place to deal with slower write operations.
+
+
+## Configurations
 
 Each plugin has its own configuration file :
 
@@ -143,5 +167,9 @@ INFO[06-08-2020 17:21:30] insert signal : {Model:{ID:0 CreatedAt:0001-01-01 00:0
 
 
 ## Notes
+
+ - All the calls to the plugin methods are blocking. If you need to perform long running operations, it's the plugin duty to handle the background processing with [tombs](https://godoc.org/gopkg.in/tomb.v2) or such.
+ - Due to [current golang limitation](https://github.com/golang/go/issues/31354) you need to build your module on the same machine as you build crowdsec itself.
+
 
 
