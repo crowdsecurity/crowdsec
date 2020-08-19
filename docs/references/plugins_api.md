@@ -1,12 +1,15 @@
 ## Foreword
 
-You can create your own `.so` plugins to perform specific actions when a scenario is triggered. A plugin can either be used to implement a notification plugin (ie. slack), or to fully manage a backend (ie. your-favorite-database)
-Each plugin has its own configuration file, allowing you to provide parameters to your code.
+Output plugins handle Signal Occurences resulting from bucket overflows.
+This allows to either make a simple notification/alerting plugin or fully manage a backend (this is what {{crowdsec.name}} uses to manage SQLite and MySQL).
 
+You can create your own plugins to perform specific actions when a scenario is triggered.
+
+The plugin itself will be compiled into a `.so` and will have its dedicated configuration.
 
 ## Interface
 
-Plugins are created in go and must conform to the following interface :
+Plugins are created in golang and must conform to the following interface :
 
 ```go
 type Backend interface {
@@ -161,15 +164,15 @@ INFO[06-08-2020 17:21:30] pluginDummy config : map[flush:false max_records:10000
 INFO[06-08-2020 17:21:30] Starting processing routines                 
 ...
 INFO[06-08-2020 17:21:30] Processing Overflow ...
-INFO[06-08-2020 17:21:30] insert signal : {Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} MapKey:97872dfae02c523577eff8ec8e19706eec5fa21e Scenario:trigger on stuff Bucket_id:summer-field Alert_message:0.0.0.0 performed 'trigger on stuff' (1 events over 59ns) at 2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Events_count:1 Events_sequence:[{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Time:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 Source:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]} Source_ip:0.0.0.0 Source_range: Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: SignalOccurenceID:0 Serialized:{"ASNNumber":"0","IsInEU":"false","command":"tail -f /data/logs/hosts/rsyslog-1/falco.log","cwd":"/etc/crowdsec/config/parsers/s01-parse/","log_type":"falco-exec","orig_uid":"1915000001","orig_user":"\u003cNA\u003e","parent":"bash","service":"falco-exec","source_ip":"0.0.0.0","user":"root"}}] Start_at:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 BanApplications:[] Stop_at:2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Source:0xc000248410 Source_ip:0.0.0.0 Source_range:<nil> Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: Source_Latitude:0 Source_Longitude:0 Sources:map[0.0.0.0:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]}] Dest_ip: Capacity:0 Leak_speed:0s Whitelisted:false Simulation:false Reprocess:false Labels:map[type:foobar]} 
+INFO[06-08-2020 17:21:30] insert signal : {Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} MapKey:97872dfae02c523577eff8ec8e19706eec5fa21e Scenario:trigger on stuff Bucket_id:summer-field Alert_message:0.0.0.0 performed 'trigger on stuff' (1 events over 59ns) at 2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Events_count:1 Events_sequence:[{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Time:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 Source:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]} Source_ip:0.0.0.0 Source_range: Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: SignalOccurenceID:0 Serialized:{"ASNNumber":"0","IsInEU":"false","command":"...","cwd":"...":"...","orig_uid":"...","orig_user":"...","parent":"bash","service":"...","source_ip":"...","user":"..."}}] Start_at:2020-08-06 17:21:30.491000368 +0200 CEST m=+0.722674247 BanApplications:[] Stop_at:2020-08-06 17:21:30.491000439 +0200 CEST m=+0.722674306 Source:0xc000248410 Source_ip:0.0.0.0 Source_range:<nil> Source_AutonomousSystemNumber:0 Source_AutonomousSystemOrganization: Source_Country: Source_Latitude:0 Source_Longitude:0 Sources:map[0.0.0.0:{Model:{ID:0 CreatedAt:0001-01-01 00:00:00 +0000 UTC UpdatedAt:0001-01-01 00:00:00 +0000 UTC DeletedAt:<nil>} Ip:0.0.0.0 Range:{IP:<nil> Mask:<nil>} AutonomousSystemNumber:0 AutonomousSystemOrganization: Country: Latitude:0 Longitude:0 Flags:map[]}] Dest_ip: Capacity:0 Leak_speed:0s Whitelisted:false Simulation:false Reprocess:false Labels:map[type:foobar]} 
 ...
 ```
 
 
 ## Notes
 
- - All the calls to the plugin methods are blocking. If you need to perform long running operations, it's the plugin duty to handle the background processing with [tombs](https://godoc.org/gopkg.in/tomb.v2) or such.
- - Due to [current golang limitation](https://github.com/golang/go/issues/31354) you need to build your module on the same machine as you build crowdsec itself.
+ - All the calls to the plugin methods are blocking. If you need to perform long running operations, it's the plugin's task to handle the background processing with [tombs](https://godoc.org/gopkg.in/tomb.v2) or such.
+ - Due to [a golang limitation](https://github.com/golang/go/issues/31354) you might have to build crowdsec in the same environment as the plugins.
 
 
 
