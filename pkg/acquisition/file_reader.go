@@ -202,23 +202,26 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 	}
 	/* start one go routine reading for each file, and pushing to chan output */
 	for idx, fctx := range ctx.Files {
-		log.Printf("starting reader file %d/%d : %s", idx, len(ctx.Files), fctx.Filename)
 		if ctx.Profiling {
 			fctx.Profiling = true
 		}
 		fctx := fctx
+		mode := "?"
 		switch fctx.Mode {
 		case TAILMODE:
+			mode = "tail"
 			AcquisTomb.Go(func() error {
 				return AcquisReadOneFile(fctx, output, AcquisTomb)
 			})
 		case CATMODE:
+			mode = "cat"
 			AcquisTomb.Go(func() error {
 				return ReadAtOnce(fctx, output, AcquisTomb)
 			})
 		default:
 			log.Fatalf("unknown read mode %s for %+v", fctx.Mode, fctx.Filenames)
 		}
+		log.Printf("starting (%s) reader file %d/%d : %s", mode, idx, len(ctx.Files), fctx.Filename)
 	}
 	log.Printf("Started %d routines for polling/read", len(ctx.Files))
 }
@@ -228,7 +231,6 @@ func AcquisReadOneFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.To
 	clog := log.WithFields(log.Fields{
 		"acquisition file": ctx.Filename,
 	})
-
 	if ctx.Type != FILETYPE {
 		log.Errorf("Can't tail %s type for %+v", ctx.Type, ctx.Filenames)
 		return fmt.Errorf("can't tail %s type for %+v", ctx.Type, ctx.Filenames)
