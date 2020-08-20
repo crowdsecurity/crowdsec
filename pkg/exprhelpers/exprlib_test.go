@@ -282,6 +282,16 @@ func TestAtof(t *testing.T) {
 	}
 
 	log.Printf("test 'Atof()' : OK")
+
+	//bad float
+	testFloat = "1aaa.5"
+	expectedFloat = 0.0
+
+	if Atof(testFloat) != expectedFloat {
+		t.Fatalf("Atof should returned a negative value (error) as a float got")
+	}
+
+	log.Printf("test 'Atof()' : OK")
 }
 
 func TestUpper(t *testing.T) {
