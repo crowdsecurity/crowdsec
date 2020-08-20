@@ -134,7 +134,7 @@ L:
 		t.Fatal()
 	}
 
-	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
+	f, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,6 +148,7 @@ L:
 func TestAcquisStartReadingTail(t *testing.T) {
 	// Test in TAIL mode
 	acquisFilePath := "./tests/acquis_test_log.yaml"
+	filename := "./tests/test.log"
 	csConfig := &csconfig.CrowdSec{
 		AcquisitionFile: acquisFilePath,
 		Profiling:       false,
@@ -165,7 +166,6 @@ func TestAcquisStartReadingTail(t *testing.T) {
 	}
 
 	time.Sleep(500 * time.Millisecond)
-	filename := "./tests/test.log"
 
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
@@ -197,7 +197,12 @@ L:
 		t.Fatal()
 	}
 
-	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
+	acquisTomb.Kill(nil)
+	if err := acquisTomb.Wait(); err != nil {
+		t.Fatalf("Acquisition returned error : %s", err)
+	}
+
+	f, err = os.OpenFile(filename, os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,6 +217,18 @@ func TestAcquisStartReadingCat(t *testing.T) {
 	// Test in TAIL mode
 	testFilePath := "./tests/test.log"
 
+	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.Close()
+
 	csConfig := &csconfig.CrowdSec{
 		SingleFile:      testFilePath,
 		SingleFileLabel: "my_test_log",
@@ -223,19 +240,6 @@ func TestAcquisStartReadingCat(t *testing.T) {
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
-	filename := "./tests/test.log"
-
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 5; i++ {
-		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	f.Close()
 
 	AcquisStartReading(fCTX, outputChan, &acquisTomb)
 	if !acquisTomb.Alive() {
@@ -260,7 +264,12 @@ L:
 		t.Fatal()
 	}
 
-	f, err = os.OpenFile(filename, os.O_CREATE|os.O_TRUNC, 0644)
+	acquisTomb.Kill(nil)
+	if err := acquisTomb.Wait(); err != nil {
+		t.Fatalf("Acquisition returned error : %s", err)
+	}
+
+	f, err = os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +280,7 @@ L:
 	f.Close()
 }
 
-func TestAcquisStartReadingCatGz(t *testing.T) {
+func TestAcquisStartReadingGzCat(t *testing.T) {
 	// Test in TAIL mode
 	testFilePath := "./tests/test.log.gz"
 
