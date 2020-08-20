@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/antonmedv/expr"
 
@@ -412,6 +413,9 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		n.logger.Debugf("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	} else if n.Grok.RegexpValue != "" {
+		if strings.HasSuffix(n.Grok.RegexpValue, "\n") {
+			n.logger.Debugf("Beware, pattern ends with \\n : '%s'", n.Grok.RegexpValue)
+		}
 		//n.logger.Debugf("+ Regexp Compilation '%s'", n.Grok.RegexpValue)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
 		if err != nil {
