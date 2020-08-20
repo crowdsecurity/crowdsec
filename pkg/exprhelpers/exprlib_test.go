@@ -1,7 +1,10 @@
 package exprhelpers
 
 import (
-	"log"
+	"fmt"
+
+	log "github.com/sirupsen/logrus"
+
 	"testing"
 
 	"github.com/antonmedv/expr"
@@ -12,6 +15,93 @@ import (
 var (
 	TestFolder = "tests"
 )
+
+func TestVisitor(t *testing.T) {
+	if err := Init(); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	tests := []struct {
+		name   string
+		filter string
+		result bool
+		env    map[string]interface{}
+		err    error
+	}{
+		{
+			name:   "debug : no variable",
+			filter: "'crowdsec' startsWith 'crowdse'",
+			result: true,
+			err:    nil,
+			env:    map[string]interface{}{},
+		},
+		{
+			name:   "debug : simple variable",
+			filter: "'crowdsec' startsWith static_one && 1 == 1",
+			result: true,
+			err:    nil,
+			env:    map[string]interface{}{"static_one": string("crowdse")},
+		},
+		{
+			name:   "debug : simple variable re-used",
+			filter: "static_one.foo == 'bar' && static_one.foo != 'toto'",
+			result: true,
+			err:    nil,
+			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
+		},
+		{
+			name:   "debug : can't compile",
+			filter: "static_one.foo.toto == 'lol'",
+			result: false,
+			err:    fmt.Errorf("bad syntax"),
+			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
+		},
+		{
+			name:   "debug : can't compile #2",
+			filter: "static_one.f!oo.to/to == 'lol'",
+			result: false,
+			err:    fmt.Errorf("bad syntax"),
+			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
+		},
+		{
+			name:   "debug : can't compile #3",
+			filter: "",
+			result: false,
+			err:    fmt.Errorf("bad syntax"),
+			env:    map[string]interface{}{"static_one": map[string]string{"foo": "bar"}},
+		},
+	}
+
+	log.SetLevel(log.DebugLevel)
+	clog := log.WithFields(log.Fields{
+		"type": "test",
+	})
+
+	for _, test := range tests {
+		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(test.env)))
+		if err != nil && test.err == nil {
+			log.Fatalf("compile: %s", err.Error())
+		}
+		debugFilter, err := NewDebugger(test.filter, expr.Env(GetExprEnv(test.env)))
+		if err != nil && test.err == nil {
+			log.Fatalf("debug: %s", err.Error())
+		}
+
+		if compiledFilter != nil {
+			result, err := expr.Run(compiledFilter, GetExprEnv(test.env))
+			if err != nil && test.err == nil {
+				log.Fatalf("run : %s", err.Error())
+			}
+			if isOk := assert.Equal(t, test.result, result); !isOk {
+				t.Fatalf("test '%s' : NOK", test.filter)
+			}
+		}
+
+		if debugFilter != nil {
+			debugFilter.Run(clog, test.result, GetExprEnv(test.env))
+		}
+	}
+}
 
 func TestRegexpInFile(t *testing.T) {
 	if err := Init(); err != nil {
@@ -189,6 +279,16 @@ func TestAtof(t *testing.T) {
 
 	if Atof(testFloat) != expectedFloat {
 		t.Fatalf("Atof should returned 1.5 as a float")
+	}
+
+	log.Printf("test 'Atof()' : OK")
+
+	//bad float
+	testFloat = "1aaa.5"
+	expectedFloat = 0.0
+
+	if Atof(testFloat) != expectedFloat {
+		t.Fatalf("Atof should returned a negative value (error) as a float got")
 	}
 
 	log.Printf("test 'Atof()' : OK")
