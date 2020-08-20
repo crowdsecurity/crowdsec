@@ -80,7 +80,6 @@ func TestLoadAcquisitionConfig(t *testing.T) {
 }
 
 func TestAcquisStartReadingTailKilled(t *testing.T) {
-	// Test in TAIL mode
 	acquisFilePath := "./tests/acquis_test_log.yaml"
 	csConfig := &csconfig.CrowdSec{
 		AcquisitionFile: acquisFilePath,
@@ -146,7 +145,6 @@ L:
 }
 
 func TestAcquisStartReadingTail(t *testing.T) {
-	// Test in TAIL mode
 	acquisFilePath := "./tests/acquis_test_log.yaml"
 	filename := "./tests/test.log"
 	csConfig := &csconfig.CrowdSec{
@@ -214,7 +212,6 @@ L:
 }
 
 func TestAcquisStartReadingCat(t *testing.T) {
-	// Test in TAIL mode
 	testFilePath := "./tests/test.log"
 
 	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
@@ -253,7 +250,6 @@ L:
 		select {
 		case <-outputChan:
 			reads++
-			//log.Printf("evt %+v", evt)
 		case <-time.After(1 * time.Second):
 			break L
 		}
@@ -281,7 +277,6 @@ L:
 }
 
 func TestAcquisStartReadingGzCat(t *testing.T) {
-	// Test in TAIL mode
 	testFilePath := "./tests/test.log.gz"
 
 	csConfig := &csconfig.CrowdSec{
@@ -308,7 +303,6 @@ L:
 		select {
 		case <-outputChan:
 			reads++
-			//log.Printf("evt %+v", evt)
 		case <-time.After(1 * time.Second):
 			break L
 		}
