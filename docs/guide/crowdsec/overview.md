@@ -73,6 +73,9 @@ To enable or disable {{crowdsec.Name}} daemon mode.
 #### `prometheus:`
 To enable or disable Prometheus metrics.
 
+### `prometheus_mode:`
+If `prometheus` is enabled, and is set to `aggregated`, will restrict prometheus metrics to global ones. All metrics containing a source as a label will be unregistered. Meant to keep cardinality low when relevant.
+
 #### `http_listen:`
 To configure the Prometheus service listening `address:port` or {{crowdsec.Name}} profiling
 
