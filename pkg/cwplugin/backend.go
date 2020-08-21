@@ -209,9 +209,9 @@ func (b *BackendManager) StartAutoCommit() error {
 
 func (b *BackendManager) ReadAT(timeAT time.Time) ([]map[string]string, error) {
 	var ret []map[string]string
-	var err error
 	for _, plugin := range b.backendPlugins {
-		ret, err = plugin.funcs.ReadAT(timeAT)
+		subret, err := plugin.funcs.ReadAT(timeAT)
+		ret = append(ret, subret...)
 		if err != nil {
 			return nil, err
 		}
