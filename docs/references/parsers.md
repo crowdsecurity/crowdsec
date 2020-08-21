@@ -337,14 +337,14 @@ statics:
 data:
   - source_url: https://URL/TO/FILE
     dest_file: LOCAL_FILENAME
-    [type: regexp]
+    type: (regexp|string)
 ```
 
 `data` allows user to specify an external source of data.
 This section is only relevant when `cscli` is used to install parser from hub, as it will download the `source_url` and store it to `dest_file`. When the parser is not installed from the hub, {{crowdsec.name}} won't download the URL, but the file must exist for the parser to be loaded correctly.
 
-If `type` is set to `regexp`, the content of the file must be one valid (re2) regular expression per line.
-Those regexps will be compiled and kept in cache.
+The `type` is mandatory, and should be `regex` for valid (re2) regular expression per line or `string` for string per line.
+The regexps will be compiled and kept in cache.
 
 
 ```yaml
@@ -353,6 +353,7 @@ name: crowdsecurity/cdn-whitelist
 data:
   - source_url: https://www.cloudflare.com/ips-v4
     dest_file: cloudflare_ips.txt
+    type: string
 ```
 
 
