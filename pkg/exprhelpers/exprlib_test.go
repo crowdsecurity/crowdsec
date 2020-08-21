@@ -165,7 +165,7 @@ func TestFile(t *testing.T) {
 		log.Fatalf(err.Error())
 	}
 
-	err := FileInit(TestFolder, "test_data.txt", "")
+	err := FileInit(TestFolder, "test_data.txt", "string")
 	if err != nil {
 		log.Fatalf(err.Error())
 	}

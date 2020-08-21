@@ -60,11 +60,12 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	}
 	defer file.Close()
 
+	if fileType == "" {
+		log.Debugf("ignored file %s%s because no type specified", fileFolder, filename)
+		return nil
+	}
 	if _, ok := dataFile[filename]; !ok {
 		dataFile[filename] = []string{}
-	}
-	if fileType == "" {
-		fileType = "string"
 	}
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
