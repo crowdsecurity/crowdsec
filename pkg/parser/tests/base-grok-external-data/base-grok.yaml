@@ -5,6 +5,7 @@ name: tests/base-grok
 data:
   - source_url: https://invalid.com/test.list
     dest_file: ./sample_strings.txt
+    type: string
 
 pattern_syntax:
   MYCAP_EXT: ".*"
