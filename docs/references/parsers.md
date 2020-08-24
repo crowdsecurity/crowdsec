@@ -345,7 +345,7 @@ This section is only relevant when `cscli` is used to install parser from hub, a
 
 The `type` is mandatory if you want to evaluate the data in the file, and should be `regex` for valid (re2) regular expression per line or `string` for string per line.
 The regexps will be compiled, the strings will be loaded into a list and both will be kept in memory.
-Without specifying a `type`, the file will be downloaded and store as file and not in memory.
+Without specifying a `type`, the file will be downloaded and stored as file and not in memory.
 
 
 ```yaml
