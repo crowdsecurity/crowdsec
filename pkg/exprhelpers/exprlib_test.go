@@ -160,6 +160,68 @@ func TestRegexpInFile(t *testing.T) {
 	}
 }
 
+func TestFileInit(t *testing.T) {
+	if err := Init(); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	tests := []struct {
+		name     string
+		filename string
+		types    string
+		result   int
+		err      error
+	}{
+		{
+			name:     "file with type:string",
+			filename: "test_data.txt",
+			types:    "string",
+			result:   3,
+		},
+		{
+			name:     "file with type:re",
+			filename: "test_data_re.txt",
+			types:    "regex",
+			result:   2,
+		},
+		{
+			name:     "file without type",
+			filename: "test_data_no_type.txt",
+			types:    "",
+		},
+	}
+
+	for _, test := range tests {
+		err := FileInit(TestFolder, test.filename, test.types)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		if test.types == "string" {
+			if _, ok := dataFile[test.filename]; !ok {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+			if isOk := assert.Equal(t, test.result, len(dataFile[test.filename])); !isOk {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+		} else if test.types == "regex" {
+			if _, ok := dataFileRegex[test.filename]; !ok {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+			if isOk := assert.Equal(t, test.result, len(dataFileRegex[test.filename])); !isOk {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+		} else {
+			if _, ok := dataFileRegex[test.filename]; ok {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+			if _, ok := dataFile[test.filename]; ok {
+				t.Fatalf("test '%s' : NOK", test.name)
+			}
+		}
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
 func TestFile(t *testing.T) {
 	if err := Init(); err != nil {
 		log.Fatalf(err.Error())
