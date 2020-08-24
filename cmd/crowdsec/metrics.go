@@ -126,12 +126,22 @@ func runTachymeter(HTTPListen string) {
 	log.Fatal(http.ListenAndServe(HTTPListen, nil))
 }
 
-func registerPrometheus() {
+func registerPrometheus(mode string) {
 	/*Registering prometheus*/
-	log.Warningf("Loading prometheus collectors")
-	prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
-		parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
-		acquisition.ReaderHits, globalCsInfo,
-		leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
+	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
+	if mode == "aggregated" {
+		log.Infof("Loading aggregated prometheus collectors")
+		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
+			acquisition.ReaderHits, globalCsInfo,
+			leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow,
+			leaky.BucketsCurrentCount)
+	} else {
+		log.Infof("Loading prometheus collectors")
+		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
+			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
+			acquisition.ReaderHits, globalCsInfo,
+			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
+
+	}
 	http.Handle("/metrics", promhttp.Handler())
 }

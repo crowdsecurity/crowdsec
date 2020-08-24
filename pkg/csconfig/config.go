@@ -41,6 +41,7 @@ type CrowdSec struct {
 	SimulationCfg     *SimulationConfig
 	Linter            bool
 	Prometheus        bool
+	PrometheusMode    string `yaml:"prometheus_mode"`
 	HTTPListen        string `yaml:"http_listen,omitempty"`
 	RestoreMode       string
 	DumpBuckets       bool
