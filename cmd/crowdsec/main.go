@@ -276,7 +276,7 @@ func main() {
 
 	// Enable profiling early
 	if cConfig.Prometheus {
-		registerPrometheus()
+		registerPrometheus(cConfig.PrometheusMode)
 		cConfig.Profiling = true
 	}
 	if cConfig.Profiling {
