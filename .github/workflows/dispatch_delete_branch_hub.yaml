@@ -9,16 +9,16 @@ jobs:
     name: dispatch to hub-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Get Latest Release
-        id: latest_version
-        uses: abatilo/release-info-action@v1.2.0
+      - id: keydb
+        uses: pozetroninc/github-action-get-latest-release@master
         with:
           owner: crowdsecurity
           repo: crowdsec
+          excludes: prerelease, draft
       - name: Repository Dispatch
         uses: peter-evans/repository-dispatch@v1
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: delete_branch
           repository: crowdsecurity/hub
-          client-payload: '{"version": "${{ steps.latest_version.outputs.latest_tag }}"}'
+          client-payload: '{"version": "${{ steps.keydb.outputs.release }}"}'
