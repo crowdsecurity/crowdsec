@@ -1,4 +1,4 @@
-name: Dispatch when pre-release
+name: Dispatch to hub when creating pre-release
 
 on: 
   release:

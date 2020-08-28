@@ -1,4 +1,4 @@
-name: Dispatch when deleting pre-release
+name: Dispatch to hub when deleting pre-release
 
 on: 
   release:
