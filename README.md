@@ -58,8 +58,6 @@ yum install bash gettext newt curl wget
  ```
 </details>
 
-
-
 ```bash
 curl -s https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest | grep browser_download_url| cut -d '"' -f 4  | wget -i -
 tar xvzf crowdsec-release.tgz
