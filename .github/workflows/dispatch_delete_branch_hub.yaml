@@ -1,0 +1,24 @@
+name: Dispatch to hub when deleting pre-release
+
+on: 
+  release:
+    types: deleted
+
+jobs:
+  dispatch:
+    name: dispatch to hub-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Latest Release
+        id: latest_version
+        uses: abatilo/release-info-action@v1.2.0
+        with:
+          owner: crowdsecurity
+          repo: crowdsec
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          event-type: delete_branch
+          repository: crowdsecurity/hub
+          client-payload: '{"version": "${{ steps.latest_version.outputs.latest_tag }}"}'
