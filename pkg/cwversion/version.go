@@ -1,8 +1,10 @@
 package cwversion
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 
 	version "github.com/hashicorp/go-version"
 )
@@ -59,4 +61,20 @@ func Statisfies(strvers string, constraint string) (bool, error) {
 		return false, nil
 	}
 	return true, nil
+}
+
+func Latest() (string, error) {
+	latest := make(map[string]interface{}, 0)
+
+	resp, err := http.Get("https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	err = json.NewDecoder(resp.Body).Decode(&latest)
+	if err != nil {
+		return "", err
+	}
+	return latest["name"].(string), nil
 }
