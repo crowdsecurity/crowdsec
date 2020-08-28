@@ -21,4 +21,4 @@ jobs:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: delete_branch
           repository: crowdsecurity/hub
-          client-payload: '{"version": "${{ steps.latest_version.outputs.latest_tag }}", "sha": "${{ github.sha }}"}'
+          client-payload: '{"version": "${{ steps.latest_version.outputs.latest_tag }}"}'
