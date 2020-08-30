@@ -135,6 +135,7 @@ API interaction:
 		log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest)
 		branch = cwversion.Version
 	}
+	log.Debugf("Using branch '%s' for the hub", branch)
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", branch, "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to make branch hidden : %s", err)
