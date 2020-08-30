@@ -85,7 +85,6 @@ func testOneBucket(t *testing.T, dir string) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
-	log.Printf("file : %+v \n", dir)
 	if !testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) {
 		t.Fatalf("the test failed")
 	}
