@@ -47,10 +47,8 @@ jobs:
           ./cscli -c dev.yaml install parser $i ; 
         done
     - name: Setup hub ci in crowdsec
-      working-directory: ./crowdsec-xxx/tests/
+      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
       run: |
-        pwd
-        ls -lR ../../
         cp -R ../../hub-tests/tests .
         cp ../../hub-tests/main .
     - name: Run the HUB CI
