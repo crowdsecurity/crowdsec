@@ -18,6 +18,8 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
     - name: Build release
       run: make release
     # - name: Cache release
