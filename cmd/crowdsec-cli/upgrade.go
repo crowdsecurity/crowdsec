@@ -91,6 +91,10 @@ cscli upgrade --force # Overwrite tainted configuration
 			if !config.configured {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
+
+			/*
+				if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
+			*/
 			if cwhub.HubBranch == "" {
 				latest, err := cwversion.Latest()
 				if err != nil {

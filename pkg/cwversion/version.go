@@ -63,8 +63,9 @@ func Statisfies(strvers string, constraint string) (bool, error) {
 	return true, nil
 }
 
+// Latest return latest crowdsec version based on github
 func Latest() (string, error) {
-	latest := make(map[string]interface{}, 0)
+	latest := make(map[string]interface{})
 
 	resp, err := http.Get("https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest")
 	if err != nil {
