@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
@@ -74,23 +73,6 @@ cscli list -a # List all local and remote configurations
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			/*
-				if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
-			*/
-			if cwhub.HubBranch == "" {
-				latest, err := cwversion.Latest()
-				if err != nil {
-					log.Fatalf("unable to get last crowdsec version: %s", err)
-				}
-
-				if cwversion.Version == latest {
-					cwhub.HubBranch = "master"
-				} else {
-					log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest)
-					cwhub.HubBranch = cwversion.Version
-				}
-				log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
-			}
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
