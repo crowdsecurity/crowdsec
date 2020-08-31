@@ -21,11 +21,6 @@ Additional labels for pre-release and build metadata are available as extensions
 
 */
 
-type versionInfo struct {
-	Date string
-	Str  string
-}
-
 var (
 	Version             string // = "v0.0.0"
 	Codename            string // = "SoumSoum"
@@ -69,22 +64,22 @@ func Statisfies(strvers string, constraint string) (bool, error) {
 }
 
 // Latest return latest crowdsec version based on github
-func Latest() (versionInfo, error) {
+func Latest() (string, error) {
 	latest := make(map[string]interface{})
 
 	resp, err := http.Get("https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest")
 	if err != nil {
-		return versionInfo{}, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	err = json.NewDecoder(resp.Body).Decode(&latest)
 	if err != nil {
-		return versionInfo{}, err
+		return "", err
 	}
-	ret := versionInfo{
-		Date: latest["published_at"].(string),
-		Str:  latest["name"].(string),
+	if _, ok := latest["name"]; !ok {
+		return "", fmt.Errorf("unable to find latest release name from github api")
 	}
-	return ret, nil
+
+	return latest["name"].(string), nil
 }
