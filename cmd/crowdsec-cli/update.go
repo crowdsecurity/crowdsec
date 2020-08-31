@@ -30,13 +30,14 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			if cwhub.HubBranch == "" {
 				latest, err := cwversion.Latest()
 				if err != nil {
-					log.Fatalf("unable to get last crowdsec version: %s", err)
+					cwhub.HubBranch = "master"
 				}
 
-				if cwversion.Version == latest {
+				if cwversion.Version == latest.Str {
 					cwhub.HubBranch = "master"
 				} else {
-					log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest)
+					log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest.Str)
+					log.Warnf("As a result, you will not be able to use new or udpated parsers/scenarios/collections from the Crowdsec Hub after %s", latest.Date)
 					cwhub.HubBranch = cwversion.Version
 				}
 				log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
