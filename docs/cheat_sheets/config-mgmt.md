@@ -1,5 +1,8 @@
 {{cli.bin}} allows you install, list, upgrade and remove configurations : parsers, enrichment, scenarios.
 
+!!! warning
+    If you're not running the latest CrowdSec version, configurations might not be the latest available. `cscli` will use the branch of the corresponding CrowdSec version to download and install configurations from the hub (it will use the `master` branch if you are on the latest CrowdSec version). 
+
 The various parsers, enrichers and scenarios installed on your machine makes a coherent ensemble to provide detection capabilities.
 
 _Parsers, Scenarios and Enrichers are often bundled together in "collections" to facilitate configuration._
