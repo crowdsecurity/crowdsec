@@ -65,7 +65,7 @@ you should [update cscli](./cscli_update.md).
 			}
 
 			if err := setHubBranch(); err != nil {
-				log.Errorf("error while setting hub branch: %s", err)
+				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 			return nil
 		},

@@ -92,7 +92,7 @@ cscli upgrade --force # Overwrite tainted configuration
 			}
 
 			if err := setHubBranch(); err != nil {
-				log.Errorf("error while setting hub branch: %s", err)
+				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 			return nil
 		},

@@ -24,9 +24,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			}
 
 			if err := setHubBranch(); err != nil {
-				log.Errorf("error while setting hub branch: %s", err)
+				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
-
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
