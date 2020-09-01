@@ -4,6 +4,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 )
 
 func inSlice(s string, slice []string) bool {
@@ -37,6 +38,9 @@ func setHubBranch() error {
 		}
 
 		if cwversion.Version == latest {
+			cwhub.HubBranch = "master"
+		} else if semver.Compare(cwversion.Version, latest) == 1 { // if current version is greater than the latest we are in pre-release
+			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", cwversion.Version)
 			cwhub.HubBranch = "master"
 		} else {
 			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and latest version is '%s'. Please update it!", cwversion.Version, latest)
