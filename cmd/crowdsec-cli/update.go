@@ -20,7 +20,11 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 		Args: cobra.ExactArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if !config.configured {
-				return fmt.Errorf("you must configure cli before interacting with hub.")
+				return fmt.Errorf("you must configure cli before interacting with hub")
+			}
+
+			if err := setHubBranch(); err != nil {
+				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 			return nil
 		},

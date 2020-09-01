@@ -13,3 +13,8 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+
+# crowdsec binaries
+cmd/crowdsec-cli/cscli
+cmd/crowdsec/crowdsec

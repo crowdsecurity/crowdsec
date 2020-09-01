@@ -90,6 +90,10 @@ cscli upgrade --force # Overwrite tainted configuration
 			if !config.configured {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
+
+			if err := setHubBranch(); err != nil {
+				return fmt.Errorf("error while setting hub branch: %s", err)
+			}
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {

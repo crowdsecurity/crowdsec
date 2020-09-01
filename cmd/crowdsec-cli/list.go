@@ -72,6 +72,7 @@ cscli list -a # List all local and remote configurations
 			if !config.configured {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
+
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
