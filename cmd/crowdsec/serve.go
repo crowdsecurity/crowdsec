@@ -6,7 +6,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/sevlyar/go-daemon"
@@ -65,9 +64,9 @@ func reloadHandler(sig os.Signal) error {
 		log.Fatalf("unable to restore buckets : %s", err)
 	}
 
-	if err := LoadOutputs(cConfig); err != nil {
-		log.Fatalf("failed to initialize outputs : %s", err)
-	}
+	// if err := LoadOutputs(cConfig); err != nil {
+	// 	log.Fatalf("failed to initialize outputs : %s", err)
+	// }
 
 	if err := LoadAcquisition(cConfig); err != nil {
 		log.Fatalf("Error while loading acquisition config : %s", err)
@@ -133,7 +132,7 @@ func termHandler(sig os.Signal) error {
 	return daemon.ErrStop
 }
 
-func serveOneTimeRun(outputRunner outputs.Output) error {
+func serveOneTimeRun() error {
 	if err := acquisTomb.Wait(); err != nil {
 		log.Warningf("acquisition returned error : %s", err)
 	}
@@ -181,7 +180,6 @@ func serveOneTimeRun(outputRunner outputs.Output) error {
 		log.Errorf("failed shutting down routines : %s", err)
 	}
 	dumpMetrics()
-	outputRunner.Flush()
 	log.Warningf("all routines are done, bye.")
 	return nil
 }

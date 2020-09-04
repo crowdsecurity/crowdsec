@@ -157,7 +157,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			src = net.ParseIP(p.Meta["source_ip"])
 		}
 	} else if p.Type == types.OVFLW {
-		src = net.ParseIP(p.Overflow.Source_ip)
+		// src = net.ParseIP(p.Overflow.Source_ip)
 	}
 	if src != nil {
 		for _, v := range n.Whitelist.B_Ips {
@@ -214,7 +214,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			//			p.Overflow.OverflowAction = ""
 			//Break this for now. Souldn't have been done this way, but that's not taht serious
 			/*only display logs when we discard ban to avoid spam*/
-			clog.Infof("Ban for %s whitelisted, reason [%s]", p.Overflow.Source.Ip.String(), n.Whitelist.Reason)
+			// clog.Infof("Ban for %s whitelisted, reason [%s]", p.Overflow.Source.Ip.String(), n.Whitelist.Reason)
 			p.Overflow.Whitelisted = true
 		}
 	}
