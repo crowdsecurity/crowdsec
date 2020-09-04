@@ -71,6 +71,7 @@ func NewAlert(l *Leaky, queue *Queue) types.Alert {
 		EventsCount: l.Total_count,
 	}
 
+	sources = make(map[string]types.Source)
 	for _, evt := range queue.Queue {
 		// check if the source is already known,
 		// If we don't know the source then add it to the known list of sources
@@ -95,7 +96,7 @@ func NewAlert(l *Leaky, queue *Queue) types.Alert {
 
 	//Management of Alert.Message
 	if len(alert.Sources) > 1 {
-		am = fmt.Sprintf("%d Sources on scope %s", len(alert.Sources))
+		am = fmt.Sprintf("%d Sources on scope.", len(alert.Sources))
 	} else if len(alert.Sources) == 1 {
 
 	} else {
