@@ -39,7 +39,7 @@ type BucketFactory struct {
 	Duration       string                    `yaml:"duration"`            //Duration allows 'counter' buckets to have a fixed life-time
 	Filter         string                    `yaml:"filter"`              //Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
 	GroupBy        string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
-	Distinct       string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on uniq_filter expr result)
+	Distinct       string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
 	Debug          bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
 	Labels         map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
 	Blackhole      string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
@@ -48,6 +48,7 @@ type BucketFactory struct {
 	CacheSize      int                       `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
 	Profiling      bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
+	Scope          string                    `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName     string                    `yaml:"-"`
 	Filename       string                    `yaml:"-"`
 	RunTimeFilter  *vm.Program               `json:"-"`
@@ -160,6 +161,9 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			g.Filename = filepath.Clean(f)
 			g.BucketName = seed.Generate()
 			g.ret = response
+			if g.Scope == "" {
+				g.Scope = "IP"
+			}
 			err = LoadBucket(&g, dataFolder)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", g.Name, err)

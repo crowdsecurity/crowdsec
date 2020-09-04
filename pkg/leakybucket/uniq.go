@@ -40,8 +40,8 @@ func (u *Uniq) OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *ty
 	}
 }
 
-func (u *Uniq) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, sig types.SignalOccurence, queue *Queue) (types.SignalOccurence, *Queue) {
+func (u *Uniq) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(l *Leaky, sig types.Alert, queue *Queue) (types.Alert, *Queue) {
 		return sig, queue
 	}
 }

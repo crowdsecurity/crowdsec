@@ -34,8 +34,8 @@ func NewBlackhole(g *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
-func (bl *Blackhole) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, s types.SignalOccurence, q *Queue) (types.SignalOccurence, *Queue) {
+func (bl *Blackhole) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(l *Leaky, s types.Alert, q *Queue) (types.Alert, *Queue) {
 		var blackholed bool = false
 		var tmp []HiddenKey
 		// search if we are blackholed and refresh the slice
@@ -59,8 +59,8 @@ func (bl *Blackhole) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Signa
 
 		if blackholed {
 			l.logger.Tracef("Event is blackholed (%s)", l.First_ts)
-			return types.SignalOccurence{
-				MapKey: l.Mapkey,
+			return types.Alert{
+				Mapkey: l.Mapkey,
 				// BucketConfiguration: bcfg,
 			}, nil
 		}
