@@ -46,6 +46,7 @@ type Leaky struct {
 	Mapkey string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
+	Scope        string
 	Reprocess    bool
 	Uuid         string
 	First_ts     time.Time
@@ -148,6 +149,7 @@ func FromFactory(g BucketFactory) *Leaky {
 		Leakspeed:    g.leakspeed,
 		BucketConfig: &g,
 		Pour:         Pour,
+		Scope:        g.Scope,
 		Reprocess:    g.Reprocess,
 		Profiling:    g.Profiling,
 		Mode:         LIVE,
@@ -218,41 +220,41 @@ func LeakRoutine(l *Leaky) {
 		case <-l.KillSwitch:
 			close(l.Signal)
 			l.logger.Debugf("Bucket externally killed, return")
-			l.AllOut <- types.Event{Overflow: types.SignalOccurence{MapKey: l.Mapkey}, Type: types.OVFLW}
+			l.AllOut <- types.Event{Type: types.OVFLW}
 			return
 		/*we overflowed*/
 		case ofw := <-l.Out:
 			close(l.Signal)
-			sig := FormatOverflow(l, ofw)
+			alert := NewAlert(l, ofw)
 			l.logger.Tracef("Overflow hooks time : %v", l.BucketConfig.processors)
 			for _, f := range l.BucketConfig.processors {
-				sig, ofw = f.OnBucketOverflow(l.BucketConfig)(l, sig, ofw)
+				alert, ofw = f.OnBucketOverflow(l.BucketConfig)(l, alert, ofw)
 				if ofw == nil {
 					l.logger.Debugf("Overflow has been discard (%T)", f)
 					break
 				}
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: sig}))
+			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Alert(alert)))
 			mt, _ := l.Ovflw_ts.MarshalText()
 			l.logger.Tracef("overflow time : %s", mt)
 
 			BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 
-			l.AllOut <- types.Event{Overflow: sig, Type: types.OVFLW, MarshaledTime: string(mt)}
+			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 			return
 			/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
 			l.Ovflw_ts = time.Now()
 			close(l.Signal)
 			ofw := l.Queue
-			sig := types.SignalOccurence{MapKey: l.Mapkey}
+			alert := types.Alert{Mapkey: l.Mapkey}
 
 			if l.timedOverflow {
 				BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
 
-				sig = FormatOverflow(l, ofw)
+				alert = NewAlert(l, ofw)
 				for _, f := range l.BucketConfig.processors {
-					sig, ofw = f.OnBucketOverflow(l.BucketConfig)(l, sig, ofw)
+					alert, ofw = f.OnBucketOverflow(l.BucketConfig)(l, alert, ofw)
 					if ofw == nil {
 						l.logger.Debugf("Overflow has been discard (%T)", f)
 						break
@@ -264,9 +266,9 @@ func LeakRoutine(l *Leaky) {
 				BucketsUnderflow.With(prometheus.Labels{"name": l.Name}).Inc()
 
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: sig}))
+			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 
-			l.AllOut <- types.Event{Overflow: sig, Type: types.OVFLW}
+			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		}

@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 
 	log "github.com/sirupsen/logrus"
@@ -142,46 +141,46 @@ func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 	return nil
 }
 
-func LoadOutputs(cConfig *csconfig.CrowdSec) error {
-	var err error
-	/*
-		Load output profiles
-	*/
-	log.Infof("Loading output profiles")
-	outputProfiles, err = outputs.LoadOutputProfiles(cConfig.ConfigFolder + "/profiles.yaml")
-	if err != nil || len(outputProfiles) == 0 {
-		return fmt.Errorf("Failed to load output profiles : %v", err)
-	}
+// func LoadOutputs(cConfig *csconfig.CrowdSec) error {
+// 	var err error
+// 	/*
+// 		Load output profiles
+// 	*/
+// 	log.Infof("Loading output profiles")
+// 	outputProfiles, err = outputs.LoadOutputProfiles(cConfig.ConfigFolder + "/profiles.yaml")
+// 	if err != nil || len(outputProfiles) == 0 {
+// 		return fmt.Errorf("Failed to load output profiles : %v", err)
+// 	}
 
-	//If the user is providing a single file (ie forensic mode), don't flush expired records
-	if cConfig.SingleFile != "" {
-		log.Infof("forensic mode, disable flush")
-		cConfig.OutputConfig.Flush = false
-	} else {
-		cConfig.OutputConfig.Flush = true
-	}
-	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
-	if err != nil {
-		return fmt.Errorf("output plugins initialization error : %s", err.Error())
-	}
+// 	//If the user is providing a single file (ie forensic mode), don't flush expired records
+// 	if cConfig.SingleFile != "" {
+// 		log.Infof("forensic mode, disable flush")
+// 		cConfig.OutputConfig.Flush = false
+// 	} else {
+// 		cConfig.OutputConfig.Flush = true
+// 	}
+// 	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
+// 	if err != nil {
+// 		return fmt.Errorf("output plugins initialization error : %s", err.Error())
+// 	}
 
-	if err := OutputRunner.StartAutoCommit(); err != nil {
-		return errors.Wrap(err, "failed to start autocommit")
-	}
+// 	if err := OutputRunner.StartAutoCommit(); err != nil {
+// 		return errors.Wrap(err, "failed to start autocommit")
+// 	}
 
-	/* Init the API connector */
-	if cConfig.APIMode {
-		log.Infof("Loading API client")
-		var apiConfig = map[string]string{
-			"path":    cConfig.ConfigFolder + "/api.yaml",
-			"profile": GetEnabledScenarios(),
-		}
-		if err := OutputRunner.InitAPI(apiConfig); err != nil {
-			return fmt.Errorf("failed to load api : %s", err)
-		}
-	}
-	return nil
-}
+// 	/* Init the API connector */
+// 	if cConfig.APIMode {
+// 		log.Infof("Loading API client")
+// 		var apiConfig = map[string]string{
+// 			"path":    cConfig.ConfigFolder + "/api.yaml",
+// 			"profile": GetEnabledScenarios(),
+// 		}
+// 		if err := OutputRunner.InitAPI(apiConfig); err != nil {
+// 			return fmt.Errorf("failed to load api : %s", err)
+// 		}
+// 	}
+// 	return nil
+// }
 
 func LoadAcquisition(cConfig *csconfig.CrowdSec) error {
 	var err error
@@ -297,9 +296,9 @@ func main() {
 		log.Fatalf("Failed to load scenarios: %s", err)
 	}
 
-	if err := LoadOutputs(cConfig); err != nil {
-		log.Fatalf("failed to initialize outputs : %s", err)
-	}
+	// if err := LoadOutputs(cConfig); err != nil {
+	// 	log.Fatalf("failed to initialize outputs : %s", err)
+	// }
 
 	if err := LoadAcquisition(cConfig); err != nil {
 		log.Fatalf("Error while loading acquisition config : %s", err)

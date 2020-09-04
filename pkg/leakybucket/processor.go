@@ -5,7 +5,7 @@ import "github.com/crowdsecurity/crowdsec/pkg/types"
 type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
 	OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
-	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue)
+	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue)
 }
 
 type DumbProcessor struct {
@@ -21,8 +21,8 @@ func (d *DumbProcessor) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky)
 	}
 }
 
-func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, s types.SignalOccurence, q *Queue) (types.SignalOccurence, *Queue) {
+func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(l *Leaky, s types.Alert, q *Queue) (types.Alert, *Queue) {
 		return s, q
 	}
 
