@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -226,21 +227,21 @@ POLL_AGAIN:
 				} else {
 					log.Infof("(scenario) %s == %s", out.Overflow.Scenario, expected.Overflow.Scenario)
 				}
-				//Events_count
-				if out.Overflow.Events_count != expected.Overflow.Events_count {
-					log.Errorf("(Events_count) %d != %d", out.Overflow.Events_count, expected.Overflow.Events_count)
+				//EventsCount
+				if out.Overflow.EventsCount != expected.Overflow.EventsCount {
+					log.Errorf("(EventsCount) %d != %d", out.Overflow.EventsCount, expected.Overflow.EventsCount)
 					valid = false
 					continue
 				} else {
-					log.Infof("(Events_count) %d == %d", out.Overflow.Events_count, expected.Overflow.Events_count)
+					log.Infof("(EventsCount) %d == %d", out.Overflow.EventsCount, expected.Overflow.EventsCount)
 				}
 				//Source_ip
-				if out.Overflow.Source_ip != expected.Overflow.Source_ip {
-					log.Errorf("(Source_ip) %s != %s", out.Overflow.Source_ip, expected.Overflow.Source_ip)
+				if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
+					log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 					valid = false
 					continue
 				} else {
-					log.Infof("(Source_ip) %s == %s", out.Overflow.Source_ip, expected.Overflow.Source_ip)
+					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
 
 				//CheckFailed:
