@@ -19,9 +19,13 @@ lines:
     Parsed:
       tainted_data: ZZZBBBBBBB11111XXX
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-trigger
-      Source_ip: 1.2.3.4
-      Events_count: 1
+      events_count: 1
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
 
 

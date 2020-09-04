@@ -12,7 +12,6 @@ lines:
       ASNumber: 1234
       IsoCode: FR
       ASNOrg: random AS
-      SourceRange: 1.2.3.0/24
   - Line:
       Labels:
         type: testlog
@@ -25,15 +24,28 @@ lines:
       ASNumber: 1234
       IsoCode: FR
       ASNOrg: random AS
-      SourceRange: ratata
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-trigger
-      Source_ip: 1.2.3.4
-      Events_count: 1
-  - Overflow:
+      events_count: 1
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
+          as_number: 1234
+          country: FR
+          as_org: "random AS"
+  - Alert:
       scenario: test/simple-trigger
-      Source_ip: 1.2.3.4
-      Events_count: 1
+      events_count: 1
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
+          as_number: 1234
+          country: FR
+          as_org: "random AS"
 
 

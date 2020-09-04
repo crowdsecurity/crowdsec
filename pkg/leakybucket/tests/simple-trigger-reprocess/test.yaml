@@ -8,12 +8,20 @@ lines:
     Meta:
       source_ip: 1.2.3.4
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-trigger
-      Source_ip: 1.2.3.4
-      Events_count: 1
-  - Overflow:
+      events_count: 1
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
+  - Alert:
       scenario: test/simple-postoverflow-scenario
-      Source_ip: 1.2.3.4
-      Events_count: 1
+      events_count: 1
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
 

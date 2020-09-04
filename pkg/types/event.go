@@ -59,16 +59,17 @@ type EventSequence struct {
 
 //Source is the generic representation of a source ip implicated in events / overflows. It contains both information extracted directly from logs and enrichment
 type Source struct {
-	Scope string
-	Value string
+	//tags here are used for unit tests
+	Scope string `yaml:"scope"`
+	Value string `yaml:"value"`
 
-	Ip                           net.IP //shorthand for scope=ip&value=<X>
-	Range                        net.IPNet
-	AutonomousSystemNumber       string
-	AutonomousSystemOrganization string
-	Country                      string
-	Latitude                     float64
-	Longitude                    float64
+	Ip                           net.IP    `yaml:"ipv4"` //shorthand for scope=ip&value=<X>
+	Range                        net.IPNet `yaml:"range"`
+	AutonomousSystemNumber       string    `yaml:"as_number"`
+	AutonomousSystemOrganization string    `yaml:"as_org"`
+	Country                      string    `yaml:"country"`
+	Latitude                     float64   `yaml:"latitude"`
+	Longitude                    float64   `yaml:"longitude"`
 }
 
 type Alert struct {
@@ -77,9 +78,9 @@ type Alert struct {
 	Bucket_id string //The 'runtime' bucket-name (mostly for debug), ie. `sunny-flower`
 
 	/*actual overflow*/
-	Scenario    string    //The unique name of the scenario, ie. ssh_bruteforce_multi-user
+	Scenario    string    `yaml:"scenario"` //The unique name of the scenario, ie. ssh_bruteforce_multi-user
 	Message     string    //Human-friendly label (to be displayed)
-	EventsCount int       //Number of events between first occurence and ban
+	EventsCount int       `yaml:"events_count"` //Number of events between first occurence and ban
 	StartAt     time.Time //first event (usually bucket creation time)
 	StopAt      time.Time //last event (usually bucket overflow time)
 	Capacity    int
@@ -93,7 +94,7 @@ type Alert struct {
 	/*Associated decisions*/
 	Decisions []Decision
 	/*all the source implicated in said overflow*/
-	Sources map[string]Source
+	Sources map[string]Source `yaml:"sources"`
 	/*defined by user/bucket configuration*/
 	Labels map[string]string
 }
