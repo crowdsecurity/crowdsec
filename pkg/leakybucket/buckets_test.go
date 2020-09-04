@@ -236,12 +236,12 @@ POLL_AGAIN:
 					log.Infof("(EventsCount) %d == %d", out.Overflow.EventsCount, expected.Overflow.EventsCount)
 				}
 				//Source_ip
-				if reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
+				if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 					log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 					valid = false
 					continue
 				} else {
-					log.Infof("(Sources: %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
 
 				//CheckFailed:

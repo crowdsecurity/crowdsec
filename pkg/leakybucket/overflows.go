@@ -14,7 +14,7 @@ func NewSource(evt types.Event, l *Leaky) types.Source {
 	if _, ok := evt.Meta["source_ip"]; ok {
 		source_ip := evt.Meta["source_ip"]
 		src.Ip = net.ParseIP(source_ip)
-		if v, ok := evt.Enriched["ASNNumber"]; ok {
+		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AutonomousSystemNumber = v
 		}
 		if v, ok := evt.Enriched["IsoCode"]; ok {
@@ -38,6 +38,11 @@ func NewSource(evt types.Event, l *Leaky) types.Source {
 				l.logger.Tracef("Valid range from %s : %s", src.Ip.String(), src.Range.String())
 			}
 		}
+		if l.Scope == "" || l.Scope == "IP" {
+			src.Scope = "IP"
+			src.Value = source_ip
+		}
+
 	}
 	if l.Scope != "IP" {
 		src.Scope = l.Scope
@@ -94,6 +99,7 @@ func NewAlert(l *Leaky, queue *Queue) types.Alert {
 		}
 	}
 
+	alert.Sources = sources
 	//Management of Alert.Message
 	if len(alert.Sources) > 1 {
 		am = fmt.Sprintf("%d Sources on scope.", len(alert.Sources))

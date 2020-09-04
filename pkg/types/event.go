@@ -59,16 +59,17 @@ type EventSequence struct {
 
 //Source is the generic representation of a source ip implicated in events / overflows. It contains both information extracted directly from logs and enrichment
 type Source struct {
+	//tags here are used for unit tests
 	Scope string `yaml:"scope"`
 	Value string `yaml:"value"`
 
 	Ip                           net.IP    `yaml:"ipv4"` //shorthand for scope=ip&value=<X>
 	Range                        net.IPNet `yaml:"range"`
-	AutonomousSystemNumber       string
-	AutonomousSystemOrganization string
-	Country                      string
-	Latitude                     float64
-	Longitude                    float64
+	AutonomousSystemNumber       string    `yaml:"as_number"`
+	AutonomousSystemOrganization string    `yaml:"as_org"`
+	Country                      string    `yaml:"country"`
+	Latitude                     float64   `yaml:"latitude"`
+	Longitude                    float64   `yaml:"longitude"`
 }
 
 type Alert struct {
