@@ -200,6 +200,9 @@ func LeakRoutine(leaky *Leaky) {
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
 				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
+
+			for _, processor := range l.BucketConfig.processors {
+				msg := processor.OnBucketPour(l.BucketConfig)(msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -268,6 +271,7 @@ func LeakRoutine(leaky *Leaky) {
 
 			}
 			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
+
 
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, Mapkey: leaky.Mapkey}
 			leaky.logger.Tracef("Returning from leaky routine.")
