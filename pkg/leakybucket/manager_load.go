@@ -129,8 +129,8 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 		dec := yaml.NewDecoder(bucketConfigurationFile)
 		dec.SetStrict(true)
 		for {
-			g := BucketFactory{}
-			err = dec.Decode(&g)
+			bucketFactory := BucketFactory{}
+			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if err == io.EOF {
 					log.Tracef("End of yaml file")
@@ -141,35 +141,35 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 				}
 			}
 			//check empty
-			if g.Name == "" {
+			if bucketFactory.Name == "" {
 				log.Errorf("Won't load nameless bucket")
 				return nil, nil, fmt.Errorf("nameless bucket")
 			}
 			//check compat
-			if g.FormatVersion == "" {
-				log.Debugf("no version in %s : %s, assuming '1.0'", g.Name, f)
-				g.FormatVersion = "1.0"
+			if bucketFactory.FormatVersion == "" {
+				log.Debugf("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
+				bucketFactory.FormatVersion = "1.0"
 			}
-			ok, err := cwversion.Statisfies(g.FormatVersion, cwversion.Constraint_scenario)
+			ok, err := cwversion.Statisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
 				log.Fatalf("Failed to check version : %s", err)
 			}
 			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", g.Name, g.FormatVersion, cwversion.Constraint_scenario)
+				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 				continue
 			}
-			g.Filename = filepath.Clean(f)
-			g.BucketName = seed.Generate()
-			g.ret = response
-			if g.Scope == "" {
-				g.Scope = "IP"
+			bucketFactory.Filename = filepath.Clean(f)
+			bucketFactory.BucketName = seed.Generate()
+			bucketFactory.ret = response
+			if bucketFactory.Scope == "" {
+				bucketFactory.Scope = "IP"
 			}
-			err = LoadBucket(&g, dataFolder)
+			err = LoadBucket(&bucketFactory, dataFolder)
 			if err != nil {
-				log.Errorf("Failed to load bucket %s : %v", g.Name, err)
-				return nil, nil, fmt.Errorf("loading of %s failed : %v", g.Name, err)
+				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
+				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
 			}
-			ret = append(ret, g)
+			ret = append(ret, bucketFactory)
 		}
 	}
 	log.Warningf("Loaded %d scenarios", len(ret))
@@ -191,124 +191,124 @@ func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.E
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(g *BucketFactory, dataFolder string) error {
+func LoadBucket(bucketFactory *BucketFactory, dataFolder string) error {
 	var err error
-	if g.Debug {
+	if bucketFactory.Debug {
 		var clog = logrus.New()
 		if err := types.ConfigureLogger(clog); err != nil {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
 		clog.SetLevel(log.DebugLevel)
-		g.logger = clog.WithFields(log.Fields{
-			"cfg":  g.BucketName,
-			"name": g.Name,
-			"file": g.Filename,
+		bucketFactory.logger = clog.WithFields(log.Fields{
+			"cfg":  bucketFactory.BucketName,
+			"name": bucketFactory.Name,
+			"file": bucketFactory.Filename,
 		})
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
-		g.logger = log.WithFields(log.Fields{
-			"cfg":  g.BucketName,
-			"name": g.Name,
-			"file": g.Filename,
+		bucketFactory.logger = log.WithFields(log.Fields{
+			"cfg":  bucketFactory.BucketName,
+			"name": bucketFactory.Name,
+			"file": bucketFactory.Filename,
 		})
 	}
 
-	if g.LeakSpeed != "" {
-		if g.leakspeed, err = time.ParseDuration(g.LeakSpeed); err != nil {
-			return fmt.Errorf("bad leakspeed '%s' in %s : %v", g.LeakSpeed, g.Filename, err)
+	if bucketFactory.LeakSpeed != "" {
+		if bucketFactory.leakspeed, err = time.ParseDuration(bucketFactory.LeakSpeed); err != nil {
+			return fmt.Errorf("bad leakspeed '%s' in %s : %v", bucketFactory.LeakSpeed, bucketFactory.Filename, err)
 		}
 	} else {
-		g.leakspeed = time.Duration(0)
+		bucketFactory.leakspeed = time.Duration(0)
 	}
-	if g.Duration != "" {
-		if g.duration, err = time.ParseDuration(g.Duration); err != nil {
-			return fmt.Errorf("invalid Duration '%s' in %s : %v", g.Duration, g.Filename, err)
+	if bucketFactory.Duration != "" {
+		if bucketFactory.duration, err = time.ParseDuration(bucketFactory.Duration); err != nil {
+			return fmt.Errorf("invalid Duration '%s' in %s : %v", bucketFactory.Duration, bucketFactory.Filename, err)
 		}
 	}
 
-	if g.Filter == "" {
-		g.logger.Warningf("Bucket without filter, abort.")
+	if bucketFactory.Filter == "" {
+		bucketFactory.logger.Warningf("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
-	g.RunTimeFilter, err = expr.Compile(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
-		return fmt.Errorf("invalid filter '%s' in %s : %v", g.Filter, g.Filename, err)
+		return fmt.Errorf("invalid filter '%s' in %s : %v", bucketFactory.Filter, bucketFactory.Filename, err)
 	}
-	if g.Debug {
-		g.ExprDebugger, err = exprhelpers.NewDebugger(g.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	if bucketFactory.Debug {
+		bucketFactory.ExprDebugger, err = exprhelpers.NewDebugger(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			log.Errorf("unable to build debug filter for '%s' : %s", g.Filter, err)
+			log.Errorf("unable to build debug filter for '%s' : %s", bucketFactory.Filter, err)
 		}
 	}
 
-	if g.GroupBy != "" {
-		g.RunTimeGroupBy, err = expr.Compile(g.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	if bucketFactory.GroupBy != "" {
+		bucketFactory.RunTimeGroupBy, err = expr.Compile(bucketFactory.GroupBy, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			return fmt.Errorf("invalid groupby '%s' in %s : %v", g.GroupBy, g.Filename, err)
+			return fmt.Errorf("invalid groupby '%s' in %s : %v", bucketFactory.GroupBy, bucketFactory.Filename, err)
 		}
 	}
 
-	g.logger.Infof("Adding %s bucket", g.Type)
+	bucketFactory.logger.Infof("Adding %s bucket", bucketFactory.Type)
 	//return the Holder correponding to the type of bucket
-	g.processors = []Processor{}
-	switch g.Type {
+	bucketFactory.processors = []Processor{}
+	switch bucketFactory.Type {
 	case "leaky":
-		g.processors = append(g.processors, &DumbProcessor{})
+		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	case "trigger":
-		g.processors = append(g.processors, &Trigger{})
+		bucketFactory.processors = append(bucketFactory.processors, &Trigger{})
 	case "counter":
-		g.processors = append(g.processors, &DumbProcessor{})
+		bucketFactory.processors = append(bucketFactory.processors, &DumbProcessor{})
 	default:
-		return fmt.Errorf("invalid type '%s' in %s : %v", g.Type, g.Filename, err)
+		return fmt.Errorf("invalid type '%s' in %s : %v", bucketFactory.Type, bucketFactory.Filename, err)
 	}
 
-	if g.Distinct != "" {
-		g.logger.Debugf("Adding a non duplicate filter on %s.", g.Name)
-		g.processors = append(g.processors, &Uniq{})
+	if bucketFactory.Distinct != "" {
+		bucketFactory.logger.Debugf("Adding a non duplicate filter on %s.", bucketFactory.Name)
+		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
-	if g.OverflowFilter != "" {
-		g.logger.Debugf("Adding an overflow filter")
-		filovflw, err := NewOverflowFilter(g)
+	if bucketFactory.OverflowFilter != "" {
+		bucketFactory.logger.Debugf("Adding an overflow filter")
+		filovflw, err := NewOverflowFilter(bucketFactory)
 		if err != nil {
-			g.logger.Errorf("Error creating overflow_filter : %s", err)
+			bucketFactory.logger.Errorf("Error creating overflow_filter : %s", err)
 			return fmt.Errorf("error creating overflow_filter : %s", err)
 		}
-		g.processors = append(g.processors, filovflw)
+		bucketFactory.processors = append(bucketFactory.processors, filovflw)
 	}
 
-	if g.Blackhole != "" {
-		g.logger.Debugf("Adding blackhole.")
-		blackhole, err := NewBlackhole(g)
+	if bucketFactory.Blackhole != "" {
+		bucketFactory.logger.Debugf("Adding blackhole.")
+		blackhole, err := NewBlackhole(bucketFactory)
 		if err != nil {
-			g.logger.Errorf("Error creating blackhole : %s", err)
+			bucketFactory.logger.Errorf("Error creating blackhole : %s", err)
 			return fmt.Errorf("error creating blackhole : %s", err)
 		}
-		g.processors = append(g.processors, blackhole)
+		bucketFactory.processors = append(bucketFactory.processors, blackhole)
 	}
 
-	if len(g.Data) > 0 {
-		for _, data := range g.Data {
+	if len(bucketFactory.Data) > 0 {
+		for _, data := range bucketFactory.Data {
 			if data.DestPath == "" {
-				g.logger.Errorf("no dest_file provided for '%s'", g.Name)
+				bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
 				continue
 			}
 			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
-				g.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
+				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
 			}
 		}
 	}
 
-	g.output = false
-	if err := ValidateFactory(g); err != nil {
-		return fmt.Errorf("invalid bucket from %s : %v", g.Filename, err)
+	bucketFactory.output = false
+	if err := ValidateFactory(bucketFactory); err != nil {
+		return fmt.Errorf("invalid bucket from %s : %v", bucketFactory.Filename, err)
 	}
 	return nil
 
 }
 
-func LoadBucketsState(file string, buckets *Buckets, holders []BucketFactory) error {
+func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFactory) error {
 	var state map[string]Leaky
 	body, err := ioutil.ReadFile(file)
 	if err != nil {
@@ -326,7 +326,7 @@ func LoadBucketsState(file string, buckets *Buckets, holders []BucketFactory) er
 		}
 		//find back our holder
 		found := false
-		for _, h := range holders {
+		for _, h := range bucketFactories {
 			if h.Name == v.Name {
 				log.Debugf("found factory %s/%s -> %s", h.Author, h.Name, h.Description)
 				//check in which mode the bucket was
