@@ -3,6 +3,8 @@ package types
 import (
 	"net"
 	"time"
+
+	"github.com/antonmedv/expr/vm"
 )
 
 const (
@@ -57,12 +59,29 @@ type EventSequence struct {
 	Meta map[string]string //the evt.Meta
 }
 
+const (
+	Undefined = iota
+	Ip
+	Range
+	Filter
+)
+
+// golang fuckin lacks generics ...
+type ScopeData struct {
+	Scope int    `yaml:"scope"`
+	Value string `yaml:"value"`
+}
+
+type ScopeType struct {
+	Scope         int    `yaml:"scope_type"`
+	Filter        string `yaml:"filter"`
+	RunTimeFilter *vm.Program
+}
+
 //Source is the generic representation of a source ip implicated in events / overflows. It contains both information extracted directly from logs and enrichment
 type Source struct {
 	//tags here are used for unit tests
-	Scope string `yaml:"scope"`
-	Value string `yaml:"value"`
-
+	ScopeData                    ScopeData `yaml:"scope_data"`
 	Ip                           net.IP    `yaml:"ipv4"` //shorthand for scope=ip&value=<X>
 	Range                        net.IPNet `yaml:"range"`
 	AutonomousSystemNumber       string    `yaml:"as_number"`

@@ -57,8 +57,9 @@ results:
       events_count: 2
       sources:
         1.2.3.4:
-          scope: IP
-          value: 1.2.3.4
+          scope_data:
+            scope: 1
+            value: 1.2.3.4
           ipv4: 1.2.3.4
 #the blackholed one
   - Alert:
@@ -69,6 +70,7 @@ results:
       events_count: 2
       sources:
         1.2.3.4:
-          scope: IP
-          value: 1.2.3.4
+          scope_data:
+            scope: 1
+            value: 1.2.3.4
           ipv4: 1.2.3.4

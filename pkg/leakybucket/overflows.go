@@ -9,8 +9,6 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-
 )
 
 // for now return the struct directly in order to compare between returned struct
@@ -43,21 +41,31 @@ func NewSource(evt types.Event, leaky *Leaky) types.Source {
 				leaky.logger.Tracef("Valid range from %s : %s", src.Ip.String(), src.Range.String())
 			}
 		}
-		if leaky.Scope == types.Undefined || leaky.Scope == types.Ip {
-			src.Scope = types.Ip
-			src.Value = source_ip
+		if leaky.scopeType.Scope == types.Undefined || leaky.scopeType.Scope == types.Ip {
+			src.ScopeData.Scope = types.Ip
+			src.ScopeData.Value = source_ip
 		}
 
 	}
-	if leaky.Scope == types.Filter {
-		filter, err := expr.Compile(
-		//					output, err := expr.Run(holder.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
-		
-		src.Scope = leaky.Scope
-		if _, ok := evt.Meta[leaky.Scope]; ok {
-			src.Value = evt.Meta[leaky.Scope]
+	src.ScopeData.Scope = leaky.scopeType.Scope
+
+	if leaky.scopeType.Scope == types.Filter {
+		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+		if err != nil {
+			leaky.logger.Errorf("Scope filter failed at runtime. Don't konw how to handle this: %s", err)
 		}
+
+		value, ok := retValue.(string)
+		if !ok {
+			value = ""
+		}
+		src.ScopeData.Value = value
 	}
+	// 	src.Scope = leaky.Scope
+	// 	if _, ok := evt.Meta[leaky.Scope]; ok {
+	// 		src.Value = evt.Meta[leaky.Scope]
+	// 	}
+	// }
 	return src
 }
 
@@ -94,12 +102,12 @@ func NewAlert(leaky *Leaky, queue *Queue) types.Alert {
 		case types.LOG:
 			src := NewSource(evt, leaky)
 			if scope == types.Undefined {
-				scope = src.Scope
+				scope = src.ScopeData.Scope
 			}
-			if src.Scope != scope {
-				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", alert.Scenario, alert.Bucket_id, src.Scope, scope)
+			if src.ScopeData.Scope != scope {
+				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %d != %d", alert.Scenario, alert.Bucket_id, src.ScopeData.Scope, scope)
 			}
-			sources[src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
+			sources[src.ScopeData.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
 		case types.OVFLW:
 			for k, v := range evt.Overflow.Sources {
 				sources[k] = v
