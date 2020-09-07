@@ -109,49 +109,49 @@ var LeakyRoutineCount int64
 // Events created by the bucket (overflow, bucket empty) are sent to a chan defined by BucketFactory
 // The leaky bucket implementation is based on rate limiter (see https://godoc.org/golang.org/x/time/rate)
 // There's a trick to have an event said when the bucket gets empty to allow its destruction
-func NewLeaky(g BucketFactory) *Leaky {
-	g.logger.Tracef("Instantiating live bucket %s", g.Name)
-	return FromFactory(g)
+func NewLeaky(bucketFactory BucketFactory) *Leaky {
+	bucketFactory.logger.Tracef("Instantiating live bucket %s", bucketFactory.Name)
+	return FromFactory(bucketFactory)
 }
 
-func FromFactory(g BucketFactory) *Leaky {
+func FromFactory(bucketFactory BucketFactory) *Leaky {
 	var limiter rate.RateLimiter
 	//golang rate limiter. It's mainly intended for http rate limiter
-	Qsize := g.Capacity
-	if g.CacheSize > 0 {
+	Qsize := bucketFactory.Capacity
+	if bucketFactory.CacheSize > 0 {
 		//cache is smaller than actual capacity
-		if g.CacheSize <= g.Capacity {
-			Qsize = g.CacheSize
+		if bucketFactory.CacheSize <= bucketFactory.Capacity {
+			Qsize = bucketFactory.CacheSize
 			//bucket might be counter (infinite size), allow cache limitation
-		} else if g.Capacity == -1 {
-			Qsize = g.CacheSize
+		} else if bucketFactory.Capacity == -1 {
+			Qsize = bucketFactory.CacheSize
 		}
 	}
-	if g.Capacity == -1 {
+	if bucketFactory.Capacity == -1 {
 		//In this case we allow all events to pass.
 		//maybe in the future we could avoid using a limiter
 		limiter = &rate.AlwaysFull{}
 	} else {
-		limiter = rate.NewLimiter(rate.Every(g.leakspeed), g.Capacity)
+		limiter = rate.NewLimiter(rate.Every(bucketFactory.leakspeed), bucketFactory.Capacity)
 	}
-	BucketsInstanciation.With(prometheus.Labels{"name": g.Name}).Inc()
+	BucketsInstanciation.With(prometheus.Labels{"name": bucketFactory.Name}).Inc()
 
 	//create the leaky bucket per se
 	l := &Leaky{
-		Name:         g.Name,
+		Name:         bucketFactory.Name,
 		Limiter:      limiter,
 		Uuid:         namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
 		Queue:        NewQueue(Qsize),
-		CacheSize:    g.CacheSize,
+		CacheSize:    bucketFactory.CacheSize,
 		Out:          make(chan *Queue, 1),
-		AllOut:       g.ret,
-		Capacity:     g.Capacity,
-		Leakspeed:    g.leakspeed,
-		BucketConfig: &g,
+		AllOut:       bucketFactory.ret,
+		Capacity:     bucketFactory.Capacity,
+		Leakspeed:    bucketFactory.leakspeed,
+		BucketConfig: &bucketFactory,
 		Pour:         Pour,
-		Scope:        g.Scope,
-		Reprocess:    g.Reprocess,
-		Profiling:    g.Profiling,
+		Scope:        bucketFactory.Scope,
+		Reprocess:    bucketFactory.Reprocess,
+		Profiling:    bucketFactory.Profiling,
 		Mode:         LIVE,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
@@ -167,128 +167,133 @@ func FromFactory(g BucketFactory) *Leaky {
 
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
-func LeakRoutine(l *Leaky) {
+func LeakRoutine(leaky *Leaky) {
 
 	var (
 		durationTicker <-chan time.Time = make(<-chan time.Time)
 	)
 
-	BucketsCurrentCount.With(prometheus.Labels{"name": l.Name}).Inc()
-	defer BucketsCurrentCount.With(prometheus.Labels{"name": l.Name}).Dec()
+	BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
+	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()
 
 	/*todo : we create a logger at runtime while we want leakroutine to be up asap, might not be a good idea*/
-	l.logger = l.BucketConfig.logger.WithFields(log.Fields{"capacity": l.Capacity, "partition": l.Mapkey, "bucket_id": l.Uuid})
+	leaky.logger = leaky.BucketConfig.logger.WithFields(log.Fields{"capacity": leaky.Capacity, "partition": leaky.Mapkey, "bucket_id": leaky.Uuid})
 
-	l.Signal <- true
+	leaky.Signal <- true
 	atomic.AddInt64(&LeakyRoutineCount, 1)
 	defer atomic.AddInt64(&LeakyRoutineCount, -1)
 
-	for _, f := range l.BucketConfig.processors {
-		err := f.OnBucketInit(l.BucketConfig)
+	for _, f := range leaky.BucketConfig.processors {
+		err := f.OnBucketInit(leaky.BucketConfig)
 		if err != nil {
-			l.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
-			close(l.Signal)
+			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
+			close(leaky.Signal)
 			return
 		}
 	}
 
-	l.logger.Debugf("Leaky routine starting, lifetime : %s", l.Duration)
+	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
 	for {
 		select {
 		/*receiving an event*/
-		case msg := <-l.In:
+		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
-			for _, f := range l.BucketConfig.processors {
-				msg := f.OnBucketPour(l.BucketConfig)(msg, l)
+			for _, processor := range leaky.BucketConfig.processors {
+				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
+
+			for _, processor := range l.BucketConfig.processors {
+				msg := processor.OnBucketPour(l.BucketConfig)(msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
 				}
 			}
-			l.logger.Tracef("Pour event: %s", spew.Sdump(msg))
-			l.logger.Debugf("Pouring event.")
+			leaky.logger.Tracef("Pour event: %s", spew.Sdump(msg))
+			leaky.logger.Debugf("Pouring event.")
 
-			BucketsPour.With(prometheus.Labels{"name": l.Name, "source": msg.Line.Src}).Inc()
+			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src}).Inc()
 
-			l.Pour(l, msg) // glue for now
+			leaky.Pour(leaky, msg) // glue for now
 			//Clear cache on behalf of pour
-			tmp := time.NewTicker(l.Duration)
+			tmp := time.NewTicker(leaky.Duration)
 			durationTicker = tmp.C
-			l.Signal <- true
+			leaky.Signal <- true
 			defer tmp.Stop()
 		/*a kill chan to allow externally killing the leaky routines*/
-		case <-l.KillSwitch:
-			close(l.Signal)
-			l.logger.Debugf("Bucket externally killed, return")
-			l.AllOut <- types.Event{Type: types.OVFLW}
+		case <-leaky.KillSwitch:
+			close(leaky.Signal)
+			leaky.logger.Debugf("Bucket externally killed, return")
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Mapkey: leaky.Mapkey}
 			return
 		/*we overflowed*/
-		case ofw := <-l.Out:
-			close(l.Signal)
-			alert := NewAlert(l, ofw)
-			l.logger.Tracef("Overflow hooks time : %v", l.BucketConfig.processors)
-			for _, f := range l.BucketConfig.processors {
-				alert, ofw = f.OnBucketOverflow(l.BucketConfig)(l, alert, ofw)
+		case ofw := <-leaky.Out:
+			close(leaky.Signal)
+			alert := NewAlert(leaky, ofw)
+			leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
+			for _, f := range leaky.BucketConfig.processors {
+				alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
 				if ofw == nil {
-					l.logger.Debugf("Overflow has been discard (%T)", f)
+					leaky.logger.Debugf("Overflow has been discard (%T)", f)
 					break
 				}
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Alert(alert)))
-			mt, _ := l.Ovflw_ts.MarshalText()
-			l.logger.Tracef("overflow time : %s", mt)
+			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Alert(alert)))
+			mt, _ := leaky.Ovflw_ts.MarshalText()
+			leaky.logger.Tracef("overflow time : %s", mt)
 
-			BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
+			BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+			leaky.logger.Infof("Pouet: %s", spew.Sdump(alert))
 
-			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
+			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 			return
 			/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
-			l.Ovflw_ts = time.Now()
-			close(l.Signal)
-			ofw := l.Queue
-			alert := types.Alert{Mapkey: l.Mapkey}
+			leaky.Ovflw_ts = time.Now()
+			close(leaky.Signal)
+			ofw := leaky.Queue
+			alert := types.Alert{Mapkey: leaky.Mapkey}
 
-			if l.timedOverflow {
-				BucketsOverflow.With(prometheus.Labels{"name": l.Name}).Inc()
+			if leaky.timedOverflow {
+				BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
-				alert = NewAlert(l, ofw)
-				for _, f := range l.BucketConfig.processors {
-					alert, ofw = f.OnBucketOverflow(l.BucketConfig)(l, alert, ofw)
+				alert = NewAlert(leaky, ofw)
+				for _, f := range leaky.BucketConfig.processors {
+					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
 					if ofw == nil {
-						l.logger.Debugf("Overflow has been discard (%T)", f)
+						leaky.logger.Debugf("Overflow has been discard (%T)", f)
 						break
 					}
 				}
-				l.logger.Infof("Timed Overflow")
+				leaky.logger.Infof("Timed Overflow")
 			} else {
-				l.logger.Debugf("bucket underflow, destroy")
-				BucketsUnderflow.With(prometheus.Labels{"name": l.Name}).Inc()
+				leaky.logger.Debugf("bucket underflow, destroy")
+				BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 			}
-			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
+			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 
-			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
-			l.logger.Tracef("Returning from leaky routine.")
+
+			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, Mapkey: leaky.Mapkey}
+			leaky.logger.Tracef("Returning from leaky routine.")
 			return
 		}
 	End:
 	}
 }
 
-func Pour(l *Leaky, msg types.Event) {
+func Pour(leaky *Leaky, msg types.Event) {
 
-	l.Total_count += 1
-	if l.First_ts.IsZero() {
-		l.First_ts = time.Now()
+	leaky.Total_count += 1
+	if leaky.First_ts.IsZero() {
+		leaky.First_ts = time.Now()
 	}
-	l.Last_ts = time.Now()
-	if l.Limiter.Allow() {
-		l.Queue.Add(msg)
+	leaky.Last_ts = time.Now()
+	if leaky.Limiter.Allow() {
+		leaky.Queue.Add(msg)
 	} else {
-		l.Ovflw_ts = time.Now()
-		l.logger.Debugf("Last event to be poured, bucket overflow.")
-		l.Queue.Add(msg)
-		l.Out <- l.Queue
+		leaky.Ovflw_ts = time.Now()
+		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
+		leaky.Queue.Add(msg)
+		leaky.Out <- leaky.Queue
 	}
 }

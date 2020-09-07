@@ -11,19 +11,19 @@ type Processor interface {
 type DumbProcessor struct {
 }
 
-func (d *DumbProcessor) OnBucketInit(b *BucketFactory) error {
+func (d *DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func (d *DumbProcessor) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, l *Leaky) *types.Event {
+func (d *DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
 		return &msg
 	}
 }
 
 func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
-	return func(l *Leaky, s types.Alert, q *Queue) (types.Alert, *Queue) {
-		return s, q
+	return func(leaky *Leaky, alert types.Alert, queue *Queue) (types.Alert, *Queue) {
+		return alert, queue
 	}
 
 }

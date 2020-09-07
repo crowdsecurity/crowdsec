@@ -17,12 +17,16 @@ lines:
       source_ip: 1.2.3.4
       specvalue: 2
 results:
-  - Overflow:
+  - Alert:
       scenario:
-  - Overflow:
+  - Alert:
       scenario: test/filter-ok
-      Events_count: 2
-      Source_ip: 1.2.3.4
-      
+      events_count: 2
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
+
 
 

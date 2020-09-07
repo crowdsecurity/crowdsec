@@ -27,9 +27,13 @@ lines:
       source_ip: 1.2.3.4
       uniq_key: bab
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-leaky
-      Source_ip: 1.2.3.4
-      Events_count: 4
+      events_count: 4
+      sources:
+        1.2.3.4:
+          scope: IP
+          value: 1.2.3.4
+          ipv4: 1.2.3.4
 
 
