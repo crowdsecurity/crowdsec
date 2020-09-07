@@ -48,7 +48,7 @@ type BucketFactory struct {
 	CacheSize      int                       `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
 	Profiling      bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
 	OverflowFilter string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
-	Scope          string                    `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
+	ScopeType      types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
 	BucketName     string                    `yaml:"-"`
 	Filename       string                    `yaml:"-"`
 	RunTimeFilter  *vm.Program               `json:"-"`
@@ -96,6 +96,22 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
+	//Compile the scope filter if any
+	if bucketFactory.ScopeType.Scope == types.Filter {
+		var (
+			runTimeFilter *vm.Program
+			err           error
+		)
+		if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			return fmt.Errorf("Error compiling the scope filter: %s", err)
+		}
+		bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
+	}
+	//default scope to IP
+	if bucketFactory.ScopeType.Scope == types.Undefined {
+		bucketFactory.ScopeType.Scope = types.Ip
+	}
+
 	return nil
 }
 
@@ -161,9 +177,6 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			if bucketFactory.Scope == "" {
-				bucketFactory.Scope = "IP"
-			}
 			err = LoadBucket(&bucketFactory, dataFolder)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
