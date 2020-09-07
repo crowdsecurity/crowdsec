@@ -62,39 +62,39 @@ type BucketFactory struct {
 	output         bool                      //??
 }
 
-func ValidateFactory(b *BucketFactory) error {
-	if b.Name == "" {
+func ValidateFactory(bucketFactory *BucketFactory) error {
+	if bucketFactory.Name == "" {
 		return fmt.Errorf("bucket must have name")
 	}
-	if b.Description == "" {
+	if bucketFactory.Description == "" {
 		return fmt.Errorf("description is mandatory")
 	}
-	if b.Type == "leaky" {
-		if b.Capacity <= 0 { //capacity must be a positive int
-			return fmt.Errorf("bad capacity for leaky '%d'", b.Capacity)
+	if bucketFactory.Type == "leaky" {
+		if bucketFactory.Capacity <= 0 { //capacity must be a positive int
+			return fmt.Errorf("bad capacity for leaky '%d'", bucketFactory.Capacity)
 		}
-		if b.LeakSpeed == "" {
+		if bucketFactory.LeakSpeed == "" {
 			return fmt.Errorf("leakspeed can't be empty for leaky")
 		}
-		if b.leakspeed == 0 {
-			return fmt.Errorf("bad leakspeed for leaky '%s'", b.LeakSpeed)
+		if bucketFactory.leakspeed == 0 {
+			return fmt.Errorf("bad leakspeed for leaky '%s'", bucketFactory.LeakSpeed)
 		}
-	} else if b.Type == "counter" {
-		if b.Duration == "" {
+	} else if bucketFactory.Type == "counter" {
+		if bucketFactory.Duration == "" {
 			return fmt.Errorf("duration ca't be empty for counter")
 		}
-		if b.duration == 0 {
-			return fmt.Errorf("bad duration for counter bucket '%d'", b.duration)
+		if bucketFactory.duration == 0 {
+			return fmt.Errorf("bad duration for counter bucket '%d'", bucketFactory.duration)
 		}
-		if b.Capacity != -1 {
+		if bucketFactory.Capacity != -1 {
 			return fmt.Errorf("counter bucket must have -1 capacity")
 		}
-	} else if b.Type == "trigger" {
-		if b.Capacity != 0 {
+	} else if bucketFactory.Type == "trigger" {
+		if bucketFactory.Capacity != 0 {
 			return fmt.Errorf("trigger bucket must have 0 capacity")
 		}
 	} else {
-		return fmt.Errorf("unknown bucket type '%s'", b.Type)
+		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
 	return nil
 }
