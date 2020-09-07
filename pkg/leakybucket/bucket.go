@@ -198,8 +198,8 @@ func LeakRoutine(l *Leaky) {
 		/*receiving an event*/
 		case msg := <-l.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
-			for _, f := range l.BucketConfig.processors {
-				msg := f.OnBucketPour(l.BucketConfig)(msg, l)
+			for _, processor := range l.BucketConfig.processors {
+				msg := processor.OnBucketPour(l.BucketConfig)(msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -220,7 +220,7 @@ func LeakRoutine(l *Leaky) {
 		case <-l.KillSwitch:
 			close(l.Signal)
 			l.logger.Debugf("Bucket externally killed, return")
-			l.AllOut <- types.Event{Type: types.OVFLW}
+			l.AllOut <- types.Event{Type: types.OVFLW, Mapkey: l.Mapkey}
 			return
 		/*we overflowed*/
 		case ofw := <-l.Out:
@@ -269,7 +269,7 @@ func LeakRoutine(l *Leaky) {
 			}
 			l.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 
-			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
+			l.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, Mapkey: l.Mapkey}
 			l.logger.Tracef("Returning from leaky routine.")
 			return
 		}
