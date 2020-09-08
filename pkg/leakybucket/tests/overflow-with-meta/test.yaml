@@ -30,9 +30,10 @@ results:
       events_count: 1
       sources:
         1.2.3.4:
-          scope: IP
-          value: 1.2.3.4
-          ipv4: 1.2.3.4
+          scope_data:
+            scope: Ip
+            value: 1.2.3.4
+          ip: 1.2.3.4
           as_number: 1234
           country: FR
           as_org: "random AS"
@@ -41,9 +42,10 @@ results:
       events_count: 1
       sources:
         1.2.3.4:
-          scope: IP
-          value: 1.2.3.4
-          ipv4: 1.2.3.4
+          scope_data:
+            scope: Ip
+            value: 1.2.3.4
+          ip: 1.2.3.4
           as_number: 1234
           country: FR
           as_org: "random AS"

@@ -46,7 +46,6 @@ type Leaky struct {
 	Mapkey string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
-	Scope        string
 	Reprocess    bool
 	Uuid         string
 	First_ts     time.Time
@@ -61,6 +60,7 @@ type Leaky struct {
 	Profiling     bool
 	timedOverflow bool
 	logger        *log.Entry
+	scopeType     types.ScopeType
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -149,10 +149,10 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Leakspeed:    bucketFactory.leakspeed,
 		BucketConfig: &bucketFactory,
 		Pour:         Pour,
-		Scope:        bucketFactory.Scope,
 		Reprocess:    bucketFactory.Reprocess,
 		Profiling:    bucketFactory.Profiling,
 		Mode:         LIVE,
+		scopeType:    bucketFactory.ScopeType,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -200,9 +200,6 @@ func LeakRoutine(leaky *Leaky) {
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
 				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
-
-			for _, processor := range l.BucketConfig.processors {
-				msg := processor.OnBucketPour(l.BucketConfig)(msg, l)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -223,7 +220,7 @@ func LeakRoutine(leaky *Leaky) {
 		case <-leaky.KillSwitch:
 			close(leaky.Signal)
 			leaky.logger.Debugf("Bucket externally killed, return")
-			leaky.AllOut <- types.Event{Type: types.OVFLW, Mapkey: leaky.Mapkey}
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.Alert{Mapkey: leaky.Mapkey}}
 			return
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
@@ -242,7 +239,6 @@ func LeakRoutine(leaky *Leaky) {
 			leaky.logger.Tracef("overflow time : %s", mt)
 
 			BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-			leaky.logger.Infof("Pouet: %s", spew.Sdump(alert))
 
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 			return
@@ -272,8 +268,7 @@ func LeakRoutine(leaky *Leaky) {
 			}
 			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 
-
-			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, Mapkey: leaky.Mapkey}
+			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return
 		}
