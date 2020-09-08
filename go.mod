@@ -43,6 +43,7 @@ require (
 	github.com/spf13/cobra v0.0.7
 	github.com/stretchr/testify v1.5.1
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/mod v0.2.0
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/tools v0.0.0-20200422022333-3d57cf2e726e // indirect
