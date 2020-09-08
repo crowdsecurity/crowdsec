@@ -53,10 +53,6 @@ func initConfig() {
 	/*read config*/
 	config.InstallFolder = filepath.Clean(csConfig.ConfigFolder)
 	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
-	if csConfig.OutputConfig == nil {
-		log.Fatalf("Missing backend plugin configuration in %s", config.ConfigFilePath)
-	}
-	config.BackendPluginFolder = filepath.Clean(csConfig.OutputConfig.BackendFolder)
 	config.DataFolder = filepath.Clean(csConfig.DataFolder)
 	//
 	cwhub.Installdir = config.InstallFolder
@@ -132,16 +128,13 @@ API interaction:
 	rootCmd.Flags().SortFlags = false
 	rootCmd.PersistentFlags().SortFlags = false
 
-	rootCmd.AddCommand(NewBanCmds())
 	rootCmd.AddCommand(NewConfigCmd())
 	rootCmd.AddCommand(NewInstallCmd())
 	rootCmd.AddCommand(NewListCmd())
 	rootCmd.AddCommand(NewRemoveCmd())
 	rootCmd.AddCommand(NewUpdateCmd())
 	rootCmd.AddCommand(NewUpgradeCmd())
-	rootCmd.AddCommand(NewAPICmd())
 	rootCmd.AddCommand(NewMetricsCmd())
-	rootCmd.AddCommand(NewBackupCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
