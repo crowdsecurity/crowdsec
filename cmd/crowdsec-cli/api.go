@@ -12,11 +12,6 @@ var (
 	digits         = "0123456789"
 )
 
-var (
-	userID string // for flag parsing
-
-)
-
 const (
 	uuid          = "/proc/sys/kernel/random/uuid"
 	apiConfigFile = "api.yaml"
