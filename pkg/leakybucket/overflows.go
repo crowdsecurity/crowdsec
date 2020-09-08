@@ -72,7 +72,7 @@ func NewSource(evt types.Event, leaky *Leaky) types.Source {
 func NewAlert(leaky *Leaky, queue *Queue) types.Alert {
 	var (
 		am      string
-		scope   int = types.Undefined
+		scope   string = types.Undefined
 		sources map[string]types.Source
 	)
 
@@ -105,7 +105,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.Alert {
 				scope = src.ScopeData.Scope
 			}
 			if src.ScopeData.Scope != scope {
-				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %d != %d", alert.Scenario, alert.Bucket_id, src.ScopeData.Scope, scope)
+				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", alert.Scenario, alert.Bucket_id, src.ScopeData.Scope, scope)
 			}
 			sources[src.ScopeData.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
 		case types.OVFLW:

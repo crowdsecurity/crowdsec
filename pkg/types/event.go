@@ -60,20 +60,21 @@ type EventSequence struct {
 }
 
 const (
-	Undefined = iota
-	Ip
-	Range
-	Filter
+	Undefined = ""
+	Ip        = "Ip"
+	Range     = "Range"
+	Filter    = "Filter"
 )
 
 // golang fuckin lacks generics ...
+// tags are used only for unit tests
 type ScopeData struct {
-	Scope int    `yaml:"scope"`
+	Scope string `yaml:"scope"`
 	Value string `yaml:"value"`
 }
 
 type ScopeType struct {
-	Scope         int    `yaml:"scope_type"`
+	Scope         string `yaml:"scope_type"`
 	Filter        string `yaml:"filter"`
 	RunTimeFilter *vm.Program
 }
@@ -82,7 +83,7 @@ type ScopeType struct {
 type Source struct {
 	//tags here are used for unit tests
 	ScopeData                    ScopeData `yaml:"scope_data"`
-	Ip                           net.IP    `yaml:"ipv4"` //shorthand for scope=ip&value=<X>
+	Ip                           net.IP    `yaml:"ip"` //shorthand for scope=ip&value=<X>
 	Range                        net.IPNet `yaml:"range"`
 	AutonomousSystemNumber       string    `yaml:"as_number"`
 	AutonomousSystemOrganization string    `yaml:"as_org"`

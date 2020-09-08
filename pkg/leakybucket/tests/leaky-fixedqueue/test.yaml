@@ -48,8 +48,8 @@ results:
       events_count: 6
       sources:
         1.2.3.4:
-          ipv4: 1.2.3.4
+          ip: 1.2.3.4
           scope_data:
-            scope: 1
+            scope: Ip
             value: 1.2.3.4
 
