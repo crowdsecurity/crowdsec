@@ -163,11 +163,10 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 	}
 	for _, src := range srcs {
-		wl := false
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
-				wl = true
+				isWhitelisted = true
 			} else {
 				clog.Debugf("whitelist: %s is not eq [%s]", src, v)
 			}
@@ -177,18 +176,17 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
-				wl = true
+				isWhitelisted = true
 			} else {
 				clog.Debugf("whitelist: %s not in [%s]", src, v)
 			}
 			hasWhitelist = true
 		}
-		if !wl {
+		if !isWhitelisted {
 			goto end //break directly further
 		}
 	}
 	p.Whitelisted = true
-	isWhitelisted = true
 end:
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
