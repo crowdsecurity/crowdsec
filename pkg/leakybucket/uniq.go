@@ -18,38 +18,38 @@ type Uniq struct {
 	DistinctCompiled *vm.Program
 }
 
-func (u *Uniq) OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, Leaky *Leaky) *types.Event {
+func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
 		element, err := getElement(msg, u.DistinctCompiled)
 		if err != nil {
-			Leaky.logger.Errorf("Uniq filter exec failed : %v", err)
+			leaky.logger.Errorf("Uniq filter exec failed : %v", err)
 			return &msg
 		}
-		Leaky.logger.Tracef("Uniq '%s' -> '%s'", Bucket.Distinct, element)
-		for _, evt := range Leaky.Queue.GetQueue() {
+		leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
+		for _, evt := range leaky.Queue.GetQueue() {
 			if val, err := getElement(evt, u.DistinctCompiled); err == nil && val == element {
-				Leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
+				leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
 				return nil
 			}
 			if err != nil {
-				Leaky.logger.Errorf("Uniq filter exec failed : %v", err)
+				leaky.logger.Errorf("Uniq filter exec failed : %v", err)
 			}
 		}
-		Leaky.logger.Debugf("Uniq(%s) : ok", element)
+		leaky.logger.Debugf("Uniq(%s) : ok", element)
 		return &msg
 	}
 }
 
-func (u *Uniq) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
-	return func(l *Leaky, sig types.Alert, queue *Queue) (types.Alert, *Queue) {
-		return sig, queue
+func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(leaky *Leaky, alert types.Alert, queue *Queue) (types.Alert, *Queue) {
+		return alert, queue
 	}
 }
 
-func (u *Uniq) OnBucketInit(Bucket *BucketFactory) error {
+func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 
-	u.DistinctCompiled, err = expr.Compile(Bucket.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	u.DistinctCompiled, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	return err
 }
 

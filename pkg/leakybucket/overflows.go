@@ -6,15 +6,18 @@ import (
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+
+	"github.com/antonmedv/expr"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
 // for now return the struct directly in order to compare between returned struct
-func NewSource(evt types.Event, l *Leaky) types.Source {
+func NewSource(evt types.Event, leaky *Leaky) types.Source {
 	src := types.Source{}
 	if _, ok := evt.Meta["source_ip"]; ok {
 		source_ip := evt.Meta["source_ip"]
 		src.Ip = net.ParseIP(source_ip)
-		if v, ok := evt.Enriched["ASNNumber"]; ok {
+		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AutonomousSystemNumber = v
 		}
 		if v, ok := evt.Enriched["IsoCode"]; ok {
@@ -32,45 +35,59 @@ func NewSource(evt types.Event, l *Leaky) types.Source {
 		if v, ok := evt.Meta["SourceRange"]; ok {
 			_, ipNet, err := net.ParseCIDR(v)
 			if err != nil {
-				l.logger.Errorf("Declared range %s of %s can't be parsed", v, src.Ip.String())
+				leaky.logger.Errorf("Declared range %s of %s can't be parsed", v, src.Ip.String())
 			} else if ipNet != nil {
 				src.Range = *ipNet
-				l.logger.Tracef("Valid range from %s : %s", src.Ip.String(), src.Range.String())
+				leaky.logger.Tracef("Valid range from %s : %s", src.Ip.String(), src.Range.String())
 			}
 		}
-	}
-	if l.Scope != "IP" {
-		src.Scope = l.Scope
-		if _, ok := evt.Meta[l.Scope]; ok {
-			src.Value = evt.Meta[l.Scope]
+		if leaky.scopeType.Scope == types.Undefined || leaky.scopeType.Scope == types.Ip {
+			src.ScopeData.Scope = types.Ip
+			src.ScopeData.Value = source_ip
 		}
+
+	}
+	src.ScopeData.Scope = leaky.scopeType.Scope
+
+	if leaky.scopeType.RunTimeFilter != nil {
+		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+		if err != nil {
+			leaky.logger.Errorf("Scope filter failed at runtime. Don't konw how to handle this: %s", err)
+		}
+
+		value, ok := retValue.(string)
+		if !ok {
+			value = ""
+		}
+		src.ScopeData.Value = value
 	}
 	return src
 }
 
-func NewAlert(l *Leaky, queue *Queue) types.Alert {
+func NewAlert(leaky *Leaky, queue *Queue) types.Alert {
 	var (
 		am      string
-		scope   string = ""
+		scope   string = types.Undefined
 		sources map[string]types.Source
 	)
 
-	l.logger.Debugf("Overflow (start: %s, end: %s)", l.First_ts, l.Ovflw_ts)
+	leaky.logger.Debugf("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
 
 	alert := types.Alert{
-		Mapkey:      l.Mapkey,
-		Bucket_id:   l.Uuid,
-		Scenario:    l.Name,
-		StartAt:     l.First_ts,
-		StopAt:      l.Ovflw_ts,
+		Mapkey:      leaky.Mapkey,
+		Bucket_id:   leaky.Uuid,
+		Scenario:    leaky.Name,
+		StartAt:     leaky.First_ts,
+		StopAt:      leaky.Ovflw_ts,
 		Sources:     make(map[string]types.Source),
-		Labels:      l.BucketConfig.Labels,
-		Capacity:    l.Capacity,
-		Reprocess:   l.Reprocess,
-		LeakSpeed:   l.Leakspeed,
-		EventsCount: l.Total_count,
+		Labels:      leaky.BucketConfig.Labels,
+		Capacity:    leaky.Capacity,
+		Reprocess:   leaky.Reprocess,
+		LeakSpeed:   leaky.Leakspeed,
+		EventsCount: leaky.Total_count,
 	}
 
+	sources = make(map[string]types.Source)
 	for _, evt := range queue.Queue {
 		// check if the source is already known,
 		// If we don't know the source then add it to the known list of sources
@@ -78,14 +95,14 @@ func NewAlert(l *Leaky, queue *Queue) types.Alert {
 		//one overflow can have multiple sources for example
 		switch evt.Type {
 		case types.LOG:
-			src := NewSource(evt, l)
-			if scope == "" {
-				scope = src.Scope
+			src := NewSource(evt, leaky)
+			if scope == types.Undefined {
+				scope = src.ScopeData.Scope
 			}
-			if src.Scope != scope {
-				l.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", alert.Scenario, alert.Bucket_id, src.Scope, scope)
+			if src.ScopeData.Scope != scope {
+				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", alert.Scenario, alert.Bucket_id, src.ScopeData.Scope, scope)
 			}
-			sources[src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
+			sources[src.ScopeData.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
 		case types.OVFLW:
 			for k, v := range evt.Overflow.Sources {
 				sources[k] = v
@@ -93,15 +110,16 @@ func NewAlert(l *Leaky, queue *Queue) types.Alert {
 		}
 	}
 
+	alert.Sources = sources
 	//Management of Alert.Message
 	if len(alert.Sources) > 1 {
-		am = fmt.Sprintf("%d Sources on scope %s", len(alert.Sources))
+		am = fmt.Sprintf("%d Sources on scope.", len(alert.Sources))
 	} else if len(alert.Sources) == 1 {
 
 	} else {
 		am = "UNKNOWN"
 	}
-	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", l.Name, l.Total_count, l.Ovflw_ts.Sub(l.First_ts), l.Ovflw_ts)
+	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
 	alert.Message = am
 	return alert
 }
