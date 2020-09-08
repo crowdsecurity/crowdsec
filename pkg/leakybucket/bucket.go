@@ -239,7 +239,6 @@ func LeakRoutine(leaky *Leaky) {
 			leaky.logger.Tracef("overflow time : %s", mt)
 
 			BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-			leaky.logger.Infof("Pouet: %s", spew.Sdump(alert))
 
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 			return

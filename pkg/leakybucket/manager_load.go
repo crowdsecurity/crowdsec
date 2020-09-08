@@ -96,8 +96,14 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	} else {
 		return fmt.Errorf("unknown bucket type '%s'", bucketFactory.Type)
 	}
-	//Compile the scope filter if any
-	if bucketFactory.ScopeType.Scope == types.Filter {
+
+	switch bucketFactory.ScopeType.Scope {
+	case types.Undefined:
+		bucketFactory.ScopeType.Scope = types.Ip
+	case types.Ip:
+	case types.Range:
+	default:
+		//Compile the scope filter
 		var (
 			runTimeFilter *vm.Program
 			err           error
@@ -107,11 +113,6 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		}
 		bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 	}
-	//default scope to IP
-	if bucketFactory.ScopeType.Scope == types.Undefined {
-		bucketFactory.ScopeType.Scope = types.Ip
-	}
-
 	return nil
 }
 

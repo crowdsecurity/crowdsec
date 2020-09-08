@@ -49,7 +49,7 @@ func NewSource(evt types.Event, leaky *Leaky) types.Source {
 	}
 	src.ScopeData.Scope = leaky.scopeType.Scope
 
-	if leaky.scopeType.Scope == types.Filter {
+	if leaky.scopeType.RunTimeFilter != nil {
 		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
 		if err != nil {
 			leaky.logger.Errorf("Scope filter failed at runtime. Don't konw how to handle this: %s", err)
@@ -61,11 +61,6 @@ func NewSource(evt types.Event, leaky *Leaky) types.Source {
 		}
 		src.ScopeData.Value = value
 	}
-	// 	src.Scope = leaky.Scope
-	// 	if _, ok := evt.Meta[leaky.Scope]; ok {
-	// 		src.Value = evt.Meta[leaky.Scope]
-	// 	}
-	// }
 	return src
 }
 
