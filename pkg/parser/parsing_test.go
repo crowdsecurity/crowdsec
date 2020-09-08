@@ -192,7 +192,7 @@ func loadTestFile(file string) []TestFile {
 
 func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
 	var retInfo []string
-	var valid bool
+	var valid bool =false
 	expectMaps := []map[string]string{expected.Parsed, expected.Meta, expected.Enriched}
 	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
 	outLabels := []string{"Parsed", "Meta", "Enriched"}
@@ -203,7 +203,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			if debug {
 				retInfo = append(retInfo, fmt.Sprintf("mismatch stage %s != %s", expected.Stage, out.Stage))
 			}
-			valid = false
 			goto checkFinished
 		} else {
 			valid = true
@@ -217,7 +216,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 		if debug {
 			retInfo = append(retInfo, fmt.Sprintf("mismatch process %t != %t", expected.Process, out.Process))
 		}
-		valid = false
 		goto checkFinished
 	} else {
 		valid = true
@@ -230,7 +228,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 		if debug {
 			retInfo = append(retInfo, fmt.Sprintf("mismatch whitelist %t != %t", expected.Whitelisted, out.Whitelisted))
 		}
-		valid = false
 		goto checkFinished
 	} else {
 		if debug {
@@ -251,7 +248,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 					if debug {
 						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
 					}
-					valid = false
 					goto checkFinished
 				}
 			} else { //missing entry
