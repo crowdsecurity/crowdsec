@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -77,13 +76,6 @@ func TestLoadConfig(t *testing.T) {
 					Exclusions: nil,
 				},
 				SimulationCfgPath: "./tests/simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
@@ -117,13 +109,6 @@ func TestLoadConfig(t *testing.T) {
 					Exclusions: nil,
 				},
 				SimulationCfgPath: "./tests/simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
@@ -186,13 +171,6 @@ func TestLoadConfig(t *testing.T) {
 					Exclusions: nil,
 				},
 				SimulationCfgPath: "./tests/simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 				RestoreMode: "./tests/states.json",
 				DumpBuckets: true,
 			},
@@ -235,13 +213,6 @@ func TestLoadConfig(t *testing.T) {
 				HTTPListen:        "127.0.0.1:6060",
 				CsCliFolder:       "./tests/cscli/",
 				SimulationCfgPath: "./tests/simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
@@ -270,13 +241,6 @@ func TestLoadConfig(t *testing.T) {
 				HTTPListen:        "127.0.0.1:6060",
 				CsCliFolder:       "./tests/cscli/",
 				SimulationCfgPath: "./tests/bad_simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
@@ -305,13 +269,6 @@ func TestLoadConfig(t *testing.T) {
 				HTTPListen:        "127.0.0.1:6060",
 				CsCliFolder:       "./tests/cscli/",
 				SimulationCfgPath: "./tests/simulation.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
@@ -340,13 +297,6 @@ func TestLoadConfig(t *testing.T) {
 				HTTPListen:        "127.0.0.1:6060",
 				CsCliFolder:       "./tests/cscli/",
 				SimulationCfgPath: "./tests/non_exist.yaml",
-				OutputConfig: &outputs.OutputFactory{
-					BackendFolder: "./tests/plugins/backend",
-					MaxRecords:    "",
-					MaxRecordsAge: "720h",
-					Flush:         false,
-					Debug:         false,
-				},
 			},
 			Args: []string{
 				"crowdsec",
