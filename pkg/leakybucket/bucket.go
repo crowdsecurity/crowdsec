@@ -220,7 +220,7 @@ func LeakRoutine(leaky *Leaky) {
 		case <-leaky.KillSwitch:
 			close(leaky.Signal)
 			leaky.logger.Debugf("Bucket externally killed, return")
-			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.Alert{Mapkey: leaky.Mapkey}}
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
@@ -234,7 +234,7 @@ func LeakRoutine(leaky *Leaky) {
 					break
 				}
 			}
-			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Alert(alert)))
+			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
 			mt, _ := leaky.Ovflw_ts.MarshalText()
 			leaky.logger.Tracef("overflow time : %s", mt)
 
@@ -247,7 +247,7 @@ func LeakRoutine(leaky *Leaky) {
 			leaky.Ovflw_ts = time.Now()
 			close(leaky.Signal)
 			ofw := leaky.Queue
-			alert := types.Alert{Mapkey: leaky.Mapkey}
+			alert := types.RuntimeAlert{Mapkey: leaky.Mapkey}
 
 			if leaky.timedOverflow {
 				BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
