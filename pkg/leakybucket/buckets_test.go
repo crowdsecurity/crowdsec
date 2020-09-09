@@ -220,20 +220,20 @@ POLL_AGAIN:
 
 				log.Infof("go %s", spew.Sdump(out))
 				//Scenario
-				if out.Overflow.Scenario != expected.Overflow.Scenario {
-					log.Errorf("(scenario) %s != %s", out.Overflow.Scenario, expected.Overflow.Scenario)
+				if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
+					log.Errorf("(scenario) %s != %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
 					valid = false
 					continue
 				} else {
-					log.Infof("(scenario) %s == %s", out.Overflow.Scenario, expected.Overflow.Scenario)
+					log.Infof("(scenario) %s == %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
 				}
 				//EventsCount
-				if out.Overflow.EventsCount != expected.Overflow.EventsCount {
-					log.Errorf("(EventsCount) %d != %d", out.Overflow.EventsCount, expected.Overflow.EventsCount)
+				if out.Overflow.Alert.EventsCount != expected.Overflow.Alert.EventsCount {
+					log.Errorf("(EventsCount) %d != %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
 					valid = false
 					continue
 				} else {
-					log.Infof("(EventsCount) %d == %d", out.Overflow.EventsCount, expected.Overflow.EventsCount)
+					log.Infof("(EventsCount) %d == %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
 				}
 				//Source_ip
 				if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
