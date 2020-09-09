@@ -98,18 +98,6 @@ func LoadParsers(cConfig *csconfig.CrowdSec) error {
 	return nil
 }
 
-func GetEnabledScenarios() string {
-	/*keep track of scenarios name for consensus profiling*/
-	var scenariosEnabled string
-	for _, x := range holders {
-		if scenariosEnabled != "" {
-			scenariosEnabled += ","
-		}
-		scenariosEnabled += x.Name
-	}
-	return scenariosEnabled
-}
-
 func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 
 	var err error
@@ -233,10 +221,6 @@ func main() {
 		registerPrometheus(cConfig.PrometheusMode)
 		cConfig.Profiling = true
 	}
-	if cConfig.Profiling {
-		go runTachymeter(cConfig.HTTPListen)
-	}
-
 	err = exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("Failed to init expr helpers : %s", err)
@@ -250,10 +234,6 @@ func main() {
 	if err := LoadBuckets(cConfig); err != nil {
 		log.Fatalf("Failed to load scenarios: %s", err)
 	}
-
-	// if err := LoadOutputs(cConfig); err != nil {
-	// 	log.Fatalf("failed to initialize outputs : %s", err)
-	// }
 
 	if err := LoadAcquisition(cConfig); err != nil {
 		log.Fatalf("Error while loading acquisition config : %s", err)
@@ -274,10 +254,6 @@ func main() {
 		if len(holders) == 0 {
 			log.Fatalf("no bucket(s) loaded, abort.")
 		}
-
-		// if len(outputProfiles) == 0 {
-		// 	log.Fatalf("no output profile(s) loaded, abort.")
-		// }
 	}
 
 	//Start the background routines that comunicate via chan
