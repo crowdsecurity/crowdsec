@@ -12,22 +12,22 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var PARSERS = "parsers"
-var PARSERS_OVFLW = "postoverflows"
-var SCENARIOS = "scenarios"
-var COLLECTIONS = "collections"
+const PARSERS = "parsers"
+const PARSERS_OVFLW = "postoverflows"
+const SCENARIOS = "scenarios"
+const COLLECTIONS = "collections"
 
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
 var HubIdx map[string]map[string]Item
 
-var Installdir = "/etc/crowdsec/"
-var Hubdir = "/etc/crowdsec/cscli/hub/"
-var Cfgdir = "/etc/crowdsec/cscli/"
+const Installdir = "/etc/crowdsec/"
+const Hubdir = "/etc/crowdsec/cscli/hub/"
+const Cfgdir = "/etc/crowdsec/cscli/"
 
-var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
-var HubIndexFile = ".index.json"
-var HubBranch = "master"
+const RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
+const HubIndexFile = ".index.json"
+const HubBranch = "master"
 
 type ItemVersion struct {
 	Digest     string
@@ -75,8 +75,8 @@ var skippedLocal = 0
 var skippedTainted = 0
 
 /*To be used when reference(s) (is/are) missing in a collection*/
-var ReferenceMissingError = errors.New("Reference(s) missing in collection")
-var MissingHubIndex = errors.New("hub index can't be found")
+const ReferenceMissingError = errors.New("Reference(s) missing in collection")
+const MissingHubIndex = errors.New("hub index can't be found")
 
 // calculate sha256 of a file
 func getSHA256(filepath string) (string, error) {
