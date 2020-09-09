@@ -13,6 +13,3 @@ daemon: true
 prometheus: true
 #for prometheus agent / golang debugging
 http_listen: 127.0.0.1:6060
-plugin:
-  backend: "./tests/plugins/backend"
-  max_records_age: 720h

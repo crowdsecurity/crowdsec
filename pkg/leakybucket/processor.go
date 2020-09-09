@@ -5,25 +5,25 @@ import "github.com/crowdsecurity/crowdsec/pkg/types"
 type Processor interface {
 	OnBucketInit(Bucket *BucketFactory) error
 	OnBucketPour(Bucket *BucketFactory) func(types.Event, *Leaky) *types.Event
-	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue)
+	OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue)
 }
 
 type DumbProcessor struct {
 }
 
-func (d *DumbProcessor) OnBucketInit(b *BucketFactory) error {
+func (d *DumbProcessor) OnBucketInit(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func (d *DumbProcessor) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
-	return func(msg types.Event, l *Leaky) *types.Event {
+func (d *DumbProcessor) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+	return func(msg types.Event, leaky *Leaky) *types.Event {
 		return &msg
 	}
 }
 
-func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, s types.SignalOccurence, q *Queue) (types.SignalOccurence, *Queue) {
-		return s, q
+func (d *DumbProcessor) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(leaky *Leaky, alert types.Alert, queue *Queue) (types.Alert, *Queue) {
+		return alert, queue
 	}
 
 }

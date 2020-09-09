@@ -12,10 +12,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/pkg/errors"
 	"github.com/sevlyar/go-daemon"
 
 	log "github.com/sirupsen/logrus"
@@ -37,9 +35,6 @@ var (
 	holders         []leaky.BucketFactory
 	buckets         *leaky.Buckets
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
-	/*the state of outputs*/
-	OutputRunner   *outputs.Output
-	outputProfiles []types.Profile
 	/*the state of the parsers*/
 	parserCTX         *parser.UnixParserCtx
 	postOverflowCTX   *parser.UnixParserCtx
@@ -142,47 +137,6 @@ func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 	return nil
 }
 
-func LoadOutputs(cConfig *csconfig.CrowdSec) error {
-	var err error
-	/*
-		Load output profiles
-	*/
-	log.Infof("Loading output profiles")
-	outputProfiles, err = outputs.LoadOutputProfiles(cConfig.ConfigFolder + "/profiles.yaml")
-	if err != nil || len(outputProfiles) == 0 {
-		return fmt.Errorf("Failed to load output profiles : %v", err)
-	}
-
-	//If the user is providing a single file (ie forensic mode), don't flush expired records
-	if cConfig.SingleFile != "" {
-		log.Infof("forensic mode, disable flush")
-		cConfig.OutputConfig.Flush = false
-	} else {
-		cConfig.OutputConfig.Flush = true
-	}
-	OutputRunner, err = outputs.NewOutput(cConfig.OutputConfig)
-	if err != nil {
-		return fmt.Errorf("output plugins initialization error : %s", err.Error())
-	}
-
-	if err := OutputRunner.StartAutoCommit(); err != nil {
-		return errors.Wrap(err, "failed to start autocommit")
-	}
-
-	/* Init the API connector */
-	if cConfig.APIMode {
-		log.Infof("Loading API client")
-		var apiConfig = map[string]string{
-			"path":    cConfig.ConfigFolder + "/api.yaml",
-			"profile": GetEnabledScenarios(),
-		}
-		if err := OutputRunner.InitAPI(apiConfig); err != nil {
-			return fmt.Errorf("failed to load api : %s", err)
-		}
-	}
-	return nil
-}
-
 func LoadAcquisition(cConfig *csconfig.CrowdSec) error {
 	var err error
 	//Init the acqusition : from cli or from acquis.yaml file
@@ -225,7 +179,7 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec) (chan types.Event, erro
 	})
 
 	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes, outputProfiles, OutputRunner)
+		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes)
 		if err != nil {
 			log.Errorf("runPour error : %s", err)
 			return err
@@ -297,9 +251,9 @@ func main() {
 		log.Fatalf("Failed to load scenarios: %s", err)
 	}
 
-	if err := LoadOutputs(cConfig); err != nil {
-		log.Fatalf("failed to initialize outputs : %s", err)
-	}
+	// if err := LoadOutputs(cConfig); err != nil {
+	// 	log.Fatalf("failed to initialize outputs : %s", err)
+	// }
 
 	if err := LoadAcquisition(cConfig); err != nil {
 		log.Fatalf("Error while loading acquisition config : %s", err)
@@ -321,9 +275,9 @@ func main() {
 			log.Fatalf("no bucket(s) loaded, abort.")
 		}
 
-		if len(outputProfiles) == 0 {
-			log.Fatalf("no output profile(s) loaded, abort.")
-		}
+		// if len(outputProfiles) == 0 {
+		// 	log.Fatalf("no output profile(s) loaded, abort.")
+		// }
 	}
 
 	//Start the background routines that comunicate via chan
@@ -339,7 +293,7 @@ func main() {
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 
 	if !cConfig.Daemonize {
-		if err = serveOneTimeRun(*OutputRunner); err != nil {
+		if err = serveOneTimeRun(); err != nil {
 			log.Errorf(err.Error())
 		} else {
 			return

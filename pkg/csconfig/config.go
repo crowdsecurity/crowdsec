@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/outputs"
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -45,7 +44,6 @@ type CrowdSec struct {
 	HTTPListen        string `yaml:"http_listen,omitempty"`
 	RestoreMode       string
 	DumpBuckets       bool
-	OutputConfig      *outputs.OutputFactory `yaml:"plugin"`
 }
 
 // NewCrowdSecConfig create a new crowdsec configuration with default configuration

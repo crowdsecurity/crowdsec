@@ -3,6 +3,7 @@ module github.com/crowdsecurity/crowdsec
 go 1.13
 
 require (
+	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/antonmedv/expr v1.8.2
 	github.com/buger/jsonparser v1.0.0
@@ -23,6 +24,8 @@ require (
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
+	github.com/modern-go/reflect2 v1.0.1 // indirect
 	github.com/nxadm/tail v1.4.4
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
@@ -34,10 +37,13 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.9.1
 	github.com/prometheus/prom2json v1.3.0
+	github.com/rogpeppe/godef v1.1.2 // indirect
 	github.com/sevlyar/go-daemon v0.1.5
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v0.0.7
+	github.com/stretchr/testify v1.5.1
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
+	golang.org/x/mod v0.2.0
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/tools v0.0.0-20200422022333-3d57cf2e726e // indirect

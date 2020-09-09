@@ -18,12 +18,12 @@ type Blackhole struct {
 	DumbProcessor
 }
 
-func NewBlackhole(g *BucketFactory) (*Blackhole, error) {
+func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 
 	var duration time.Duration
-	if d, err := time.ParseDuration(g.Blackhole); err != nil {
-		g.logger.Warning("Blackhole duration not valid, using 1h")
-		return nil, fmt.Errorf("blackhole duration not valid '%s'", g.Blackhole)
+	if d, err := time.ParseDuration(bucketFactory.Blackhole); err != nil {
+		bucketFactory.logger.Warning("Blackhole duration not valid, using 1h")
+		return nil, fmt.Errorf("blackhole duration not valid '%s'", bucketFactory.Blackhole)
 	} else {
 		duration = d
 	}
@@ -34,39 +34,39 @@ func NewBlackhole(g *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
-func (bl *Blackhole) OnBucketOverflow(b *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, s types.SignalOccurence, q *Queue) (types.SignalOccurence, *Queue) {
+func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.Alert, *Queue) (types.Alert, *Queue) {
+	return func(leaky *Leaky, alert types.Alert, queue *Queue) (types.Alert, *Queue) {
 		var blackholed bool = false
 		var tmp []HiddenKey
 		// search if we are blackholed and refresh the slice
 		for _, element := range bl.hiddenKeys {
 
-			if element.key == l.Mapkey {
-				if element.expiration.After(l.Ovflw_ts) {
-					l.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(l.Ovflw_ts))
+			if element.key == leaky.Mapkey {
+				if element.expiration.After(leaky.Ovflw_ts) {
+					leaky.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(leaky.Ovflw_ts))
 					blackholed = true
 				}
 			}
 
-			if element.expiration.After(l.Ovflw_ts) {
+			if element.expiration.After(leaky.Ovflw_ts) {
 				tmp = append(tmp, element)
 			} else {
-				l.logger.Debugf("%s left blackhole %s ago", element.key, l.Ovflw_ts.Sub(element.expiration))
+				leaky.logger.Debugf("%s left blackhole %s ago", element.key, leaky.Ovflw_ts.Sub(element.expiration))
 
 			}
 		}
 		bl.hiddenKeys = tmp
 
 		if blackholed {
-			l.logger.Tracef("Event is blackholed (%s)", l.First_ts)
-			return types.SignalOccurence{
-				MapKey: l.Mapkey,
+			leaky.logger.Tracef("Event is blackholed (%s)", leaky.First_ts)
+			return types.Alert{
+				Mapkey: leaky.Mapkey,
 				// BucketConfiguration: bcfg,
 			}, nil
 		}
-		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{l.Mapkey, l.Ovflw_ts.Add(bl.duration)})
-		l.logger.Debugf("Adding overflow to blackhole (%s)", l.First_ts)
-		return s, q
+		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration)})
+		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.First_ts)
+		return alert, queue
 	}
 
 }

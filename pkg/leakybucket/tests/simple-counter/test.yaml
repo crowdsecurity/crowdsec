@@ -15,9 +15,14 @@ lines:
     Meta:
       source_ip: 1.2.3.4
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-trigger
-      Source_ip: 1.2.3.4
-      Events_count: 2
+      events_count: 2
+      sources:
+        1.2.3.4:
+          scope_data:
+            scope: Ip
+            value: 1.2.3.4
+          ip: 1.2.3.4
 
 

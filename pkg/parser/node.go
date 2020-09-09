@@ -149,21 +149,23 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 	isWhitelisted := false
 	hasWhitelist := false
-	var src net.IP
+	var srcs []net.IP
 	/*overflow and log don't hold the source ip in the same field, should be changed */
 	/* perform whitelist checks for ips, cidr accordingly */
+	/* TODO move whitelist elsewhere */
 	if p.Type == types.LOG {
 		if _, ok := p.Meta["source_ip"]; ok {
-			src = net.ParseIP(p.Meta["source_ip"])
+			srcs = append(srcs, net.ParseIP(p.Meta["source_ip"]))
 		}
 	} else if p.Type == types.OVFLW {
-		src = net.ParseIP(p.Overflow.Source_ip)
+		for k, _ := range p.Overflow.Sources {
+			srcs = append(srcs, net.ParseIP(k))
+		}
 	}
-	if src != nil {
+	for _, src := range srcs {
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
-				p.Whitelisted = true
 				isWhitelisted = true
 			} else {
 				clog.Debugf("whitelist: %s is not eq [%s]", src, v)
@@ -174,16 +176,18 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
-				p.Whitelisted = true
 				isWhitelisted = true
 			} else {
 				clog.Debugf("whitelist: %s not in [%s]", src, v)
 			}
 			hasWhitelist = true
 		}
-	} else {
-		clog.Debugf("no ip in event, cidr/ip whitelists not checked")
+		if !isWhitelisted {
+			goto end //break directly further
+		}
 	}
+	p.Whitelisted = true
+end:
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
 		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
@@ -214,7 +218,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			//			p.Overflow.OverflowAction = ""
 			//Break this for now. Souldn't have been done this way, but that's not taht serious
 			/*only display logs when we discard ban to avoid spam*/
-			clog.Infof("Ban for %s whitelisted, reason [%s]", p.Overflow.Source.Ip.String(), n.Whitelist.Reason)
+			ips := []string{}
+			for _, src := range srcs {
+				ips = append(ips, src.String())
+			}
+			clog.Infof("Ban for %s whitelisted, reason [%s]", strings.Join(ips, ","), n.Whitelist.Reason)
 			p.Overflow.Whitelisted = true
 		}
 	}

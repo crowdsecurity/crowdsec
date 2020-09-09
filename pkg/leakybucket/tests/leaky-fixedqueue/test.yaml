@@ -6,46 +6,50 @@ lines:
       Raw: xxheader VALUE1 trailing stuff
     MarshaledTime: 2020-01-01T10:00:00Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
   - Line:
       Labels:
         type: testlog
       Raw: xxheader VALUE2 trailing stuff
     MarshaledTime: 2020-01-01T10:00:05Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
   - Line:
       Labels:
         type: testlog
       Raw: xxheader VALUE3 trailing stuff
     MarshaledTime: 2020-01-01T10:00:05Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
   - Line:
       Labels:
         type: testlog
       Raw: xxheader VALUE4 trailing stuff
     MarshaledTime: 2020-01-01T10:00:05Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
   - Line:
       Labels:
         type: testlog
       Raw: xxheader VALUE5 trailing stuff
     MarshaledTime: 2020-01-01T10:00:05Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
   - Line:
       Labels:
         type: testlog
       Raw: xxheader VALUE6 trailing stuff
     MarshaledTime: 2020-01-01T10:00:05Z
     Meta:
-      source_ip: 1.2.3.4
+      source_ip: "2a00:1450:4007:816::200e"
 results:
-  - Overflow:
+  - Alert:
       scenario: test/simple-leaky
-      Source_ip: 1.2.3.4
-      Events_count: 6
-
+      events_count: 6
+      sources:
+        "2a00:1450:4007:816::200e":
+          ip: "2a00:1450:4007:816::200e"
+          scope_data:
+            scope: Ip
+            value: "2a00:1450:4007:816::200e"
 
