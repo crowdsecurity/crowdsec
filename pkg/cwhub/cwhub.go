@@ -22,8 +22,8 @@ var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 var HubIdx map[string]map[string]Item
 
 var Installdir = "/etc/crowdsec/"
-var Hubdir = "/etc/crowdsec/cscli/hub/"
-var Cfgdir = "/etc/crowdsec/cscli/"
+var Hubdir = "/etc/crowdsec/config/cscli/hub/"
+var Cfgdir = "/etc/crowdsec/config"
 
 var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
 var HubIndexFile = ".index.json"

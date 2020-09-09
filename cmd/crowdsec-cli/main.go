@@ -37,11 +37,11 @@ func initConfig() {
 	}
 
 	csConfig := csconfig.NewCrowdSecConfig()
+	log.Infof("Config folder is : %s", config.ConfigFilePath)
 	if err := csConfig.LoadConfigurationFile(&config.ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
 	config.configFolder = filepath.Clean(csConfig.CsCliFolder)
-
 	if strings.HasPrefix(config.configFolder, "~/") {
 		usr, err := user.Current()
 		if err != nil {

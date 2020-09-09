@@ -9,6 +9,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -44,7 +45,7 @@ var (
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 )
 
-func LoadParsers(cConfig *csconfig.CrowdSec) error {
+func LoadParsers(cConfig *csconfig.CrowdSec, stagesfiles []parser.Stagefile) error {
 	var p parser.UnixParser
 	var err error
 
@@ -77,7 +78,8 @@ func LoadParsers(cConfig *csconfig.CrowdSec) error {
 	*/
 
 	log.Infof("Loading parsers")
-	parserNodes, err = parser.LoadStageDir(cConfig.ConfigFolder+"/parsers/", parserCTX)
+
+	parserNodes, err = parser.LoadStages(stagesfiles, parserCTX)
 
 	if err != nil {
 		return fmt.Errorf("failed to load parser config : %v", err)
@@ -242,18 +244,28 @@ func main() {
 		log.Fatalf("Failed to init expr helpers : %s", err)
 	}
 
+	// Populate cwhub package tools
+	cwhub.Cfgdir = cConfig.ConfigFolder
+	cwhub.GetHubIdx()
 	// Start loading configs
-	if err := LoadParsers(cConfig); err != nil {
+
+	stagefiles := []parser.Stagefile{}
+	for _, hubParserItem := range cwhub.HubIdx[cwhub.PARSERS] {
+		if hubParserItem.Installed {
+			stagefile := parser.Stagefile{
+				Filename: hubParserItem.LocalPath,
+				Stage:    hubParserItem.Stage,
+			}
+			stagefiles = append(stagefiles, stagefile)
+		}
+	}
+	if err := LoadParsers(cConfig, stagefiles); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
 	}
 
 	if err := LoadBuckets(cConfig); err != nil {
 		log.Fatalf("Failed to load scenarios: %s", err)
 	}
-
-	// if err := LoadOutputs(cConfig); err != nil {
-	// 	log.Fatalf("failed to initialize outputs : %s", err)
-	// }
 
 	if err := LoadAcquisition(cConfig); err != nil {
 		log.Fatalf("Error while loading acquisition config : %s", err)

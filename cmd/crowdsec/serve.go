@@ -5,7 +5,9 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/sevlyar/go-daemon"
@@ -49,8 +51,17 @@ func reloadHandler(sig os.Signal) error {
 		log.Errorf("reload error (simulation) : %s", err)
 	}
 
-	//reload all and start processing again :)
-	if err := LoadParsers(cConfig); err != nil {
+	stagefiles := []parser.Stagefile{}
+	for _, hubParserItem := range cwhub.HubIdx[cwhub.PARSERS] {
+		if hubParserItem.Installed {
+			stagefile := parser.Stagefile{
+				Filename: hubParserItem.LocalPath,
+				Stage:    hubParserItem.Stage,
+			}
+			stagefiles = append(stagefiles, stagefile)
+		}
+	}
+	if err := LoadParsers(cConfig, stagefiles); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
 	}
 

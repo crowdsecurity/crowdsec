@@ -279,7 +279,7 @@ install_plugins() {
 
 install_plugins_bin() {
     mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
-    (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
+#    (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
 }
 
 
