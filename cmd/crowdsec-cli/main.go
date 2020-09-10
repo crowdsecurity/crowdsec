@@ -37,7 +37,7 @@ func initConfig() {
 	}
 
 	csConfig := csconfig.NewCrowdSecConfig()
-	log.Infof("Config folder is : %s", config.ConfigFilePath)
+	log.Debugf("Config folder is : %s", config.ConfigFilePath)
 	if err := csConfig.LoadConfigurationFile(&config.ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
