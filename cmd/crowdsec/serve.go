@@ -5,9 +5,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/sevlyar/go-daemon"
@@ -51,17 +49,8 @@ func reloadHandler(sig os.Signal) error {
 		log.Errorf("reload error (simulation) : %s", err)
 	}
 
-	stagefiles := []parser.Stagefile{}
-	for _, hubParserItem := range cwhub.HubIdx[cwhub.PARSERS] {
-		if hubParserItem.Installed {
-			stagefile := parser.Stagefile{
-				Filename: hubParserItem.LocalPath,
-				Stage:    hubParserItem.Stage,
-			}
-			stagefiles = append(stagefiles, stagefile)
-		}
-	}
-	if err := LoadParsers(cConfig, stagefiles); err != nil {
+	parsers := newParsers()
+	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
 	}
 
@@ -84,7 +73,7 @@ func reloadHandler(sig os.Signal) error {
 	}
 	//Start the background routines that comunicate via chan
 	log.Infof("Starting processing routines")
-	inputLineChan, err := StartProcessingRoutines(cConfig)
+	inputLineChan, err := StartProcessingRoutines(cConfig, parsers)
 	if err != nil {
 		log.Fatalf("failed to start processing routines : %s", err)
 	}

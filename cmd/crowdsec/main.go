@@ -36,42 +36,69 @@ var (
 	holders         []leaky.BucketFactory
 	buckets         *leaky.Buckets
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
-	/*the state of the parsers*/
-	parserCTX         *parser.UnixParserCtx
-	postOverflowCTX   *parser.UnixParserCtx
-	parserNodes       []parser.Node
-	postOverflowNodes []parser.Node
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 )
 
-func LoadParsers(cConfig *csconfig.CrowdSec, stagesfiles []parser.Stagefile) error {
-	var p parser.UnixParser
-	var err error
+type parsers struct {
+	ctx             *parser.UnixParserCtx
+	povfwctx        *parser.UnixParserCtx
+	stageFiles      []parser.Stagefile
+	povfwStageFiles []parser.Stagefile
+	nodes           []parser.Node
+	povfwnodes      []parser.Node
+}
 
-	parserNodes = make([]parser.Node, 0)
-	postOverflowNodes = make([]parser.Node, 0)
+// Return new parsers
+// nodes and povfwnodes are already initialized in parser.LoadStages
+func newParsers() *parsers {
+	parsers := &parsers{
+		ctx:             &parser.UnixParserCtx{},
+		povfwctx:        &parser.UnixParserCtx{},
+		stageFiles:      make([]parser.Stagefile, 0),
+		povfwStageFiles: make([]parser.Stagefile, 0),
+	}
+	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
+		for _, hubParserItem := range cwhub.HubIdx[itemType] {
+			if hubParserItem.Installed {
+				stagefile := parser.Stagefile{
+					Filename: hubParserItem.LocalPath,
+					Stage:    hubParserItem.Stage,
+				}
+				if itemType == cwhub.PARSERS {
+					parsers.stageFiles = append(parsers.stageFiles, stagefile)
+				}
+				if itemType == cwhub.PARSERS_OVFLW {
+					parsers.povfwStageFiles = append(parsers.povfwStageFiles, stagefile)
+				}
+			}
+		}
+	}
+	return parsers
+}
+
+func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error) {
+	var err error
 
 	log.Infof("Loading grok library")
 	/* load base regexps for two grok parsers */
-	parserCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
+	parsers.ctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
 	if err != nil {
-		return fmt.Errorf("failed to load parser patterns : %v", err)
+		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
-	postOverflowCTX, err = p.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
+	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
 	if err != nil {
-		return fmt.Errorf("failed to load postovflw parser patterns : %v", err)
+		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}
 
 	/*
 		Load enrichers
 	*/
 	log.Infof("Loading enrich plugins")
-	parserPlugins, err := parser.Loadplugin(cConfig.DataFolder)
+	err = parser.Loadplugin(cConfig.DataFolder)
 	if err != nil {
-		return fmt.Errorf("Failed to load enrich plugin : %v", err)
+		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
 	}
-	parser.ECTX = []parser.EnricherCtx{parserPlugins}
 
 	/*
 	 Load the actual parsers
@@ -79,25 +106,24 @@ func LoadParsers(cConfig *csconfig.CrowdSec, stagesfiles []parser.Stagefile) err
 
 	log.Infof("Loading parsers")
 
-	parserNodes, err = parser.LoadStages(stagesfiles, parserCTX)
-
+	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx)
 	if err != nil {
-		return fmt.Errorf("failed to load parser config : %v", err)
+		return parsers, fmt.Errorf("failed to load parser config : %v", err)
 	}
 
-	log.Infof("Loading postoverflow parsers")
-	postOverflowNodes, err = parser.LoadStageDir(cConfig.ConfigFolder+"/postoverflows/", postOverflowCTX)
+	log.Infof("Loading postoverflow parsers") //cConfig.ConfigFolder+"/postoverflows/"
+	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx)
 
 	if err != nil {
-		return fmt.Errorf("failed to load postoverflow config : %v", err)
+		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
 	}
 
 	if cConfig.Profiling {
-		parserCTX.Profiling = true
-		postOverflowCTX.Profiling = true
+		parsers.ctx.Profiling = true
+		parsers.povfwctx.Profiling = true
 	}
 
-	return nil
+	return parsers, nil
 }
 
 func GetEnabledScenarios() string {
@@ -149,7 +175,7 @@ func LoadAcquisition(cConfig *csconfig.CrowdSec) error {
 	return nil
 }
 
-func StartProcessingRoutines(cConfig *csconfig.CrowdSec) (chan types.Event, error) {
+func StartProcessingRoutines(cConfig *csconfig.CrowdSec, parsers *parsers) (chan types.Event, error) {
 
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -162,7 +188,7 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec) (chan types.Event, erro
 	//start go-routines for parsing, buckets pour and ouputs.
 	for i := 0; i < cConfig.NbParsers; i++ {
 		parsersTomb.Go(func() error {
-			err := runParse(inputLineChan, inputEventChan, *parserCTX, parserNodes)
+			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
 			if err != nil {
 				log.Errorf("runParse error : %s", err)
 				return err
@@ -181,7 +207,7 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec) (chan types.Event, erro
 	})
 
 	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *postOverflowCTX, postOverflowNodes)
+		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *parsers.povfwctx, parsers.povfwnodes)
 		if err != nil {
 			log.Errorf("runPour error : %s", err)
 			return err
@@ -249,17 +275,8 @@ func main() {
 	cwhub.GetHubIdx()
 	// Start loading configs
 
-	stagefiles := []parser.Stagefile{}
-	for _, hubParserItem := range cwhub.HubIdx[cwhub.PARSERS] {
-		if hubParserItem.Installed {
-			stagefile := parser.Stagefile{
-				Filename: hubParserItem.LocalPath,
-				Stage:    hubParserItem.Stage,
-			}
-			stagefiles = append(stagefiles, stagefile)
-		}
-	}
-	if err := LoadParsers(cConfig, stagefiles); err != nil {
+	parsers := newParsers()
+	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
 	}
 
@@ -279,7 +296,7 @@ func main() {
 	/*if the user is in "single file mode" (might be writting scenario or parsers),
 	allow loading **without** parsers or scenarios */
 	if cConfig.SingleFile == "" {
-		if len(parserNodes) == 0 {
+		if len(parsers.nodes) == 0 {
 			log.Fatalf("no parser(s) loaded, abort.")
 		}
 
@@ -294,7 +311,7 @@ func main() {
 
 	//Start the background routines that comunicate via chan
 	log.Infof("Starting processing routines")
-	inputLineChan, err := StartProcessingRoutines(cConfig)
+	inputLineChan, err := StartProcessingRoutines(cConfig, parsers)
 	if err != nil {
 		log.Fatalf("failed to start processing routines : %s", err)
 	}

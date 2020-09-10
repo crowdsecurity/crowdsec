@@ -7,8 +7,7 @@ import (
 )
 
 func TestParserConfigs(t *testing.T) {
-	var p UnixParser
-	pctx, err := p.Init(map[string]interface{}{"patterns": "../../config/patterns/", "data": "./tests/"})
+	pctx, err := Init(map[string]interface{}{"patterns": "../../config/patterns/", "data": "./tests/"})
 	if err != nil {
 		t.Fatalf("unable to load patterns : %s", err)
 	}

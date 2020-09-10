@@ -138,21 +138,22 @@ func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
 
 //prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
 func prepTests() (*UnixParserCtx, error) {
-	var pctx *UnixParserCtx
-	var p UnixParser
-	err := exprhelpers.Init()
+	var (
+		err  error
+		pctx *UnixParserCtx
+	)
+
+	err = exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	//Load enrichment
 	datadir := "../../data/"
-	pplugins, err := Loadplugin(datadir)
+	err = Loadplugin(datadir)
 	if err != nil {
 		log.Fatalf("failed to load plugin geoip : %v", err)
 	}
-	ECTX = nil
-	ECTX = append(ECTX, pplugins)
 	log.Printf("Loaded -> %+v", ECTX)
 
 	//Load the parser patterns
@@ -160,7 +161,7 @@ func prepTests() (*UnixParserCtx, error) {
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
+	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize parser : %v", err)
 	}
@@ -192,7 +193,7 @@ func loadTestFile(file string) []TestFile {
 
 func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
 	var retInfo []string
-	var valid bool =false
+	var valid bool = false
 	expectMaps := []map[string]string{expected.Parsed, expected.Meta, expected.Enriched}
 	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
 	outLabels := []string{"Parsed", "Meta", "Enriched"}
