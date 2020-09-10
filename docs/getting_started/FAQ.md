@@ -17,7 +17,7 @@
 
 Our aim is to build a strong community that can share malevolent attackers IPs, for that we need to collect the bans triggered locally by each user.
 
-The signal sent by your {{crowdsec.name}} to the central API only contains only meta-data about the attack :
+The alert sent by your {{crowdsec.name}} to the central API only contains only meta-data about the attack :
 
  - Attacker IP
  - Scenario name

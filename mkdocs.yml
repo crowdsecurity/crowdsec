@@ -225,10 +225,10 @@ extra:
         htmlname: "[whitelists](/write_configurations/whitelist/)"
         Htmlname: "[Whitelists](/write_configurations/whitelist/)"
     signal:
-        name: signal
-        Name: Signal
-        htmlname: "[signal](/getting_started/concepts/#overflow-or-signaloccurence)"
-        Htmlname: "[Signal](/getting_started/concepts/#overflow-or-signaloccurence)"
+        name: alert
+        Name: Alert
+        htmlname: "[alert](/getting_started/concepts/#overflow-or-signaloccurence)"
+        Htmlname: "[Alert](/getting_started/concepts/#overflow-or-signaloccurence)"
 #scenario stuff
     stage:
         name: stage

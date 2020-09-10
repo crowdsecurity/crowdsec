@@ -5,7 +5,7 @@ Crowdsec API interaction
 ### Synopsis
 
 
-Allow to register your machine into crowdsec API to send and receive signal.
+Allow to register your machine into crowdsec API to send and receive alert.
 		
 
 ### Examples
