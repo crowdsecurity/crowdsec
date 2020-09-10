@@ -7,6 +7,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
@@ -15,13 +16,13 @@ import (
 
 func metaFromEvent(evt types.Event) models.Meta {
 	var meta models.Meta
-	var idx int
 
-	meta = make(models.Meta, len(evt.Meta))
+	if evt.Meta == nil {
+		return nil
+	}
 	for k, v := range evt.Meta {
-		meta[idx].Key = k
-		meta[idx].Value = v
-		idx++
+		subMeta := models.MetaItems0{Key: k, Value: v}
+		meta = append(meta, &subMeta)
 	}
 	return meta
 }
@@ -30,9 +31,9 @@ func metaFromEvent(evt types.Event) models.Meta {
 func NewSource(evt types.Event, leaky *Leaky) models.Source {
 	src := models.Source{}
 
+	//log.Printf("source type : %s", leaky.scopeType.Scope)
 	switch leaky.scopeType.Scope {
-	case types.Ip:
-	case types.Range:
+	case types.Range, types.Ip:
 		source_ip := evt.Meta["source_ip"]
 		if net.ParseIP(source_ip) == nil {
 			log.Warningf("%s isn't a valid ip", source_ip)
@@ -168,6 +169,8 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 			for k, v := range evt.Overflow.Sources {
 				sources[k] = v
 			}
+		default:
+			log.Fatalf("unknown event type : %d", evt.Type)
 		}
 
 	}
@@ -183,5 +186,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	}
 	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
 	alert.Alert.Message = am
+
+	log.Printf("The event is : %s", spew.Sdump(alert))
 	return alert
 }

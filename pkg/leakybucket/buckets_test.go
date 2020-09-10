@@ -2,6 +2,7 @@ package leakybucket
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
@@ -86,7 +87,7 @@ func testOneBucket(t *testing.T, dir string) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
-	if !testFile(t, dir+"/test.yaml", dir+"/in-buckets_state.json", holders, response) {
+	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response) {
 		t.Fatalf("the test failed")
 	}
 	return nil
@@ -113,8 +114,9 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	if err != nil {
 		t.Errorf("yamlFile.Get err   #%v ", err)
 	}
-	dec := yaml.NewDecoder(yamlFile)
-	dec.SetStrict(true)
+	dec := json.NewDecoder(yamlFile)
+	dec.DisallowUnknownFields()
+	//dec.SetStrict(true)
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
@@ -218,7 +220,15 @@ POLL_AGAIN:
 				log.Debugf("Checking next expected result.")
 				valid = true
 
-				log.Infof("go %s", spew.Sdump(out))
+				//log.Infof("got %s", spew.Sdump(out))
+
+				x, err := json.MarshalIndent(out, "", " ")
+				if err != nil {
+					t.Fatalf("unable to marshal stuff : %s", err)
+				}
+				log.Printf("Got %s", x)
+				//log.Infof("expected %s", spew.Sdump(expected))
+
 				//Scenario
 				if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
 					log.Errorf("(scenario) %s != %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
@@ -235,7 +245,7 @@ POLL_AGAIN:
 				} else {
 					log.Infof("(EventsCount) %d == %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
 				}
-				//Source_ip
+				//Sources
 				if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 					log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 					valid = false
@@ -243,6 +253,15 @@ POLL_AGAIN:
 				} else {
 					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
+
+				//Events
+				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
+				// 	log.Errorf("(Events %s != %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
+				// 	valid = false
+				// 	continue
+				// } else {
+				// 	log.Infof("(Events: %s == %s)", spew.Sdump(out.Overflow.Alert.Events), spew.Sdump(expected.Overflow.Alert.Events))
+				// }
 
 				//CheckFailed:
 
