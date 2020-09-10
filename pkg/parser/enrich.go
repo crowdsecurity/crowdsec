@@ -23,7 +23,8 @@ type EnricherCtx struct {
 }
 
 /* mimic plugin loading */
-func Loadplugin(path string) (EnricherCtx, error) {
+// TODO fix this shit with real plugin loading
+func Loadplugin(path string) error {
 	var err error
 
 	c := EnricherCtx{}
@@ -43,9 +44,12 @@ func Loadplugin(path string) (EnricherCtx, error) {
 	if err != nil {
 		log.Warningf("load (fake) plugin load : %v", err)
 		c.initiated = false
+		ECTX = []EnricherCtx{c} //TODO
+		return err
 	}
 	c.initiated = true
-	return c, nil
+	ECTX = []EnricherCtx{c} //TODO
+	return nil
 }
 
 func GenDateParse(date string) (string, time.Time) {

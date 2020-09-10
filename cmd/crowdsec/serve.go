@@ -49,8 +49,8 @@ func reloadHandler(sig os.Signal) error {
 		log.Errorf("reload error (simulation) : %s", err)
 	}
 
-	//reload all and start processing again :)
-	if err := LoadParsers(cConfig); err != nil {
+	parsers := newParsers()
+	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
 	}
 
@@ -73,7 +73,7 @@ func reloadHandler(sig os.Signal) error {
 	}
 	//Start the background routines that comunicate via chan
 	log.Infof("Starting processing routines")
-	inputLineChan, err := StartProcessingRoutines(cConfig)
+	inputLineChan, err := StartProcessingRoutines(cConfig, parsers)
 	if err != nil {
 		log.Fatalf("failed to start processing routines : %s", err)
 	}

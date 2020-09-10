@@ -279,7 +279,7 @@ func LocalSync() error {
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
 		/*Scan install and Hubdir to get local status*/
-		for _, dir := range []string{Installdir, Hubdir} {
+		for _, dir := range []string{Cfgdir, Hubdir} {
 			//walk the user's directory
 			err := filepath.Walk(dir+"/"+scan, parser_visit)
 			if err != nil {

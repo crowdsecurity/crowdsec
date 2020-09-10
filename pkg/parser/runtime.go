@@ -27,12 +27,6 @@ import (
 //ECTX : DID YOU SEE THAT GLOBAL, ISN'T IT HUGLY
 var ECTX []EnricherCtx
 
-type Parser interface {
-	Init(map[string]interface{}) (interface{}, error)
-	IsParsable(types.Line) (bool, error)
-	Parse(interface{}, types.Line) (map[string]interface{}, error)
-}
-
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
 

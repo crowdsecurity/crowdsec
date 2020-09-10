@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 
@@ -60,6 +61,8 @@ type BucketFactory struct {
 	ret            chan types.Event          //the bucket-specific output chan for overflows
 	processors     []Processor               //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
 	output         bool                      //??
+	version        string
+	hash           string
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -178,6 +181,13 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
+			for _, hubItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
+				if hubItem.Name != bucketFactory.Name {
+					continue
+				}
+				bucketFactory.version = hubItem.LocalVersion
+				bucketFactory.hash = hubItem.LocalHash
+			}
 			err = LoadBucket(&bucketFactory, dataFolder)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
