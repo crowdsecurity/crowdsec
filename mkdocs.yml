@@ -37,8 +37,8 @@ nav:
     - Scenarios: write_configurations/scenarios.md
     - Whitelists: write_configurations/whitelist.md
     - Expressions: write_configurations/expressions.md
-  - Blockers:
-    - Overview : blockers/index.md
+  - Bouncers:
+    - Overview : bouncers/index.md
     - Nginx:
       - Installation : "https://github.com/crowdsecurity/cs-nginx-blocker#installation"
       - Configuration : "https://github.com/crowdsecurity/cs-nginx-blocker#configuration"
@@ -141,12 +141,12 @@ extra:
         cli_dir: /etc/crowdsec/cscli/
         crowdsec_dir: "/etc/crowdsec/config/"
         acquis_path: "/etc/crowdsec/config/acquis.yaml"
-    blockers:
-        name: blockers
-        Name: Blockers
+    bouncers:
+        name: bouncers
+        Name: Bouncers
         url: "https://hub.crowdsec.net/browse/#blockers"
-        htmlname: "[blockers](/blockers/)"
-        Htmlname: "[blockers](/blockers/)"
+        htmlname: "[bouncers](/bouncers/)"
+        Htmlname: "[Bouncers](/bouncers/)"
     plugins:
         name: backend plugins
         configpath: "/etc/crowdsec/plugins/backend/"
