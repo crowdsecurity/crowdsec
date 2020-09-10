@@ -1,11 +1,11 @@
 # Output
 
-The output mechanism is composed of plugins. In order to store the bans for {{blockers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
+The output mechanism is composed of plugins. In order to store the bans for {{bouncers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
 
 
 Currently the supported backends are SQLite (default) and MySQL.
 
-In order to filter which signals will be sent to which plugin, {{crowdsec.name}} use a system of `profile` that can allow to granularly process your bans and signals.
+In order to filter which alerts will be sent to which plugin, {{crowdsec.name}} use a system of `profile` that can allow to granularly process your bans and alerts.
 
 ## Profile
 
@@ -14,7 +14,7 @@ Here is a sample of a profile configuration:
 ```yaml
 profile: <profile_name>
 filter: "<filter_expression>"
-api: true # default true : send signal to crowdsec API
+api: true # default true : send alert to crowdsec API
 outputs:  # here choose your output plugins for this profile
     - plugin: plugin1
       custom_config: <config>
@@ -44,7 +44,7 @@ outputs:
     store: false
 ```
 
-Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{signal.htmlname}} object to choose which signal will be process by which plugin.
+Here we can use {{filter.htmlname}} like in parsers and scenarios with the {{signal.htmlname}} object to choose which alert will be process by which plugin.
 
 
 

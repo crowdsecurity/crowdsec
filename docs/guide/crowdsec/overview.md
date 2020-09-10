@@ -65,7 +65,7 @@ To specify the logging level, available levels:
 To enable or disable the profiling in {{crowdsec.Name}}.
 
 #### `apimode:`
-To enable or disable signals sending to the {{api.htmlname}}.
+To enable or disable alerts sending to the {{api.htmlname}}.
 
 #### `daemon:`
 To enable or disable {{crowdsec.Name}} daemon mode.
@@ -116,8 +116,8 @@ Or if you loose your credentials:
 The profiles is what allows you to decide how do you react when a scenario is triggered :
 
  - do you notify yourself on mattermost/slack ?
- - do you push the signal to a database so that your blockers can stop the IP from continuing its attack ?
- - do you want to avoid pushing this signal to the API ?
+ - do you push the alert to a database so that your bouncers can stop the IP from continuing its attack ?
+ - do you want to avoid pushing this alert to the API ?
 
 Behind the scenes, the "profiles" system actually allows you to dispatch an event/overflow to various output plugins.
 

@@ -17,7 +17,7 @@
 
 Our aim is to build a strong community that can share malevolent attackers IPs, for that we need to collect the bans triggered locally by each user.
 
-The signal sent by your {{crowdsec.name}} to the central API only contains only meta-data about the attack :
+The alert sent by your {{crowdsec.name}} to the central API only contains only meta-data about the attack :
 
  - Attacker IP
  - Scenario name
@@ -28,7 +28,7 @@ Your logs are not sent to our central API, only meta-data about blocked attacks 
 ## What is the performance impact ?
 
 As {{crowdsec.name}} only works on logs, it shouldn't impact your production.
-When it comes to {{blockers.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
+When it comes to {{bouncers.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
 
 ## How fast is it ?
 
@@ -42,7 +42,7 @@ Currently (0.3.0), {{crowdsec.name}} supports SQLite (default) and MySQL databas
 See [backend configuration](/references/output/#switching-backend-database) for relevant configuration.
 
 SQLite is the default backend as it's suitable for standalone/single-machine setups.
-On the other hand, MySQL is more suitable for distributed architectures where blockers across the applicative stack need to access a centralized ban database.
+On the other hand, MySQL is more suitable for distributed architectures where bouncers across the applicative stack need to access a centralized ban database.
 
 ## How to control granularity of actions ? (whitelists, learning etc.)
 
@@ -96,7 +96,7 @@ Feel free to ask for some help to the {{doc.community}}.
 
 ### On Configurations (Parsers, scenarios)
 
-### On Blockers
+### On bouncers
 
 
 
