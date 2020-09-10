@@ -14,6 +14,7 @@
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/Hub-CI/badge.svg">
+<a href="https://gitter.im/crowdsec-project/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link"><img src="https://badges.gitter.im/crowdsec-project/community.svg"></a>
 </p>
 
 <p align="center">
