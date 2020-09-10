@@ -77,11 +77,6 @@ func newParsers() *parsers {
 	return parsers
 }
 
-func bucketPaths() []string {
-	var ret []string
-	return ret
-}
-
 func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error) {
 	var err error
 
@@ -272,10 +267,6 @@ func main() {
 		registerPrometheus(cConfig.PrometheusMode)
 		cConfig.Profiling = true
 	}
-	if cConfig.Profiling {
-		go runTachymeter(cConfig.HTTPListen)
-	}
-
 	err = exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("Failed to init expr helpers : %s", err)
@@ -314,10 +305,6 @@ func main() {
 		if len(holders) == 0 {
 			log.Fatalf("no bucket(s) loaded, abort.")
 		}
-
-		// if len(outputProfiles) == 0 {
-		// 	log.Fatalf("no output profile(s) loaded, abort.")
-		// }
 	}
 
 	//Start the background routines that comunicate via chan
