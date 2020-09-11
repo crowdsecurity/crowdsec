@@ -184,6 +184,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 				bucketFactory.version = hubItem.LocalVersion
 				bucketFactory.hash = hubItem.LocalHash
 			}
+
 			err = LoadBucket(&bucketFactory, csconfig.DataFolder)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
