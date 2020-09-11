@@ -220,38 +220,41 @@ POLL_AGAIN:
 				log.Debugf("Checking next expected result.")
 				valid = true
 
-				//log.Infof("got %s", spew.Sdump(out))
-
 				x, err := json.MarshalIndent(out, "", " ")
 				if err != nil {
 					t.Fatalf("unable to marshal stuff : %s", err)
 				}
 				log.Printf("Got %s", x)
-				//log.Infof("expected %s", spew.Sdump(expected))
+				//empty overflow
+				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {
+					valid = true
+					//match stuff
+				} else {
 
-				//Scenario
-				if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
-					log.Errorf("(scenario) %s != %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
-					valid = false
-					continue
-				} else {
-					log.Infof("(scenario) %s == %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
-				}
-				//EventsCount
-				if out.Overflow.Alert.EventsCount != expected.Overflow.Alert.EventsCount {
-					log.Errorf("(EventsCount) %d != %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
-					valid = false
-					continue
-				} else {
-					log.Infof("(EventsCount) %d == %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
-				}
-				//Sources
-				if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
-					log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
-					valid = false
-					continue
-				} else {
-					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+					//Scenario
+					if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
+						log.Errorf("(scenario) %s != %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
+						valid = false
+						continue
+					} else {
+						log.Infof("(scenario) %s == %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
+					}
+					//EventsCount
+					if out.Overflow.Alert.EventsCount != expected.Overflow.Alert.EventsCount {
+						log.Errorf("(EventsCount) %d != %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
+						valid = false
+						continue
+					} else {
+						log.Infof("(EventsCount) %d == %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
+					}
+					//Sources
+					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
+						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+						valid = false
+						continue
+					} else {
+						log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+					}
 				}
 
 				//Events

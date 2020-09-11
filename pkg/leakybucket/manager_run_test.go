@@ -78,9 +78,8 @@ func TestGCandDump(t *testing.T) {
 	}
 }
 
-func TestBucketsShutdown(t *testing.T) {
+func TestShutdownBuckets(t *testing.T) {
 	var buckets *Buckets = NewBuckets()
-
 	var Holders = []BucketFactory{
 		//one long counter
 		BucketFactory{Name: "test_counter_slow", Description: "test_counter_slow", Debug: true, Type: "counter", Capacity: -1, Duration: "10m", Filter: "true"},
