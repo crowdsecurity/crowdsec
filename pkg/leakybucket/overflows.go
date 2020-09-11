@@ -135,6 +135,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 		BucketId:  leaky.Uuid,
 		Sources:   make(map[string]models.Source),
 		APIAlerts: []models.Alert{apiAlert},
+		Reprocess: leaky.Reprocess,
 	}
 
 	alert.Alert = &alert.APIAlerts[0]
