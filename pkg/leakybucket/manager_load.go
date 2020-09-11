@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -119,12 +120,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-/* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func Init(cfg map[string]string) ([]BucketFactory, chan types.Event, error) {
-	return LoadBucketDir(cfg["patterns"], cfg["data"])
-}
-
-func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
@@ -188,7 +184,8 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 				bucketFactory.version = hubItem.LocalVersion
 				bucketFactory.hash = hubItem.LocalHash
 			}
-			err = LoadBucket(&bucketFactory, dataFolder)
+
+			err = LoadBucket(&bucketFactory, csconfig.DataFolder)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
@@ -198,20 +195,6 @@ func LoadBuckets(files []string, dataFolder string) ([]BucketFactory, chan types
 	}
 	log.Warningf("Loaded %d scenarios", len(ret))
 	return ret, response, nil
-}
-
-func LoadBucketDir(dir string, dataFolder string) ([]BucketFactory, chan types.Event, error) {
-	var (
-		filenames []string
-	)
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, f := range files {
-		filenames = append(filenames, dir+f.Name())
-	}
-	return LoadBuckets(filenames, dataFolder)
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
@@ -317,6 +300,7 @@ func LoadBucket(bucketFactory *BucketFactory, dataFolder string) error {
 				bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
 				continue
 			}
+			bucketFactory.logger.Infof("POUET: %s %s %s", dataFolder, data.DestPath, data.Type)
 			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
 			if err != nil {
 				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())

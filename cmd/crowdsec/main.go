@@ -128,10 +128,16 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 
 func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 
-	var err error
+	var (
+		err   error
+		files []string
+	)
+	for _, hubScenarioItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
+		files = append(files, hubScenarioItem.LocalPath)
+	}
 
 	log.Infof("Loading scenarios")
-	holders, outputEventChan, err = leaky.Init(map[string]string{"patterns": cConfig.ConfigFolder + "/scenarios/", "data": cConfig.DataFolder})
+	holders, outputEventChan, err = leaky.LoadBuckets(*cConfig, files)
 
 	if err != nil {
 		return fmt.Errorf("Scenario loading failed : %v", err)
