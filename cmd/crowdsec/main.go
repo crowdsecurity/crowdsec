@@ -131,18 +131,6 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 	return parsers, nil
 }
 
-func GetEnabledScenarios() string {
-	/*keep track of scenarios name for consensus profiling*/
-	var scenariosEnabled string
-	for _, x := range holders {
-		if scenariosEnabled != "" {
-			scenariosEnabled += ","
-		}
-		scenariosEnabled += x.Name
-	}
-	return scenariosEnabled
-}
-
 func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 
 	var (
