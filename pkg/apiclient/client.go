@@ -51,8 +51,8 @@ type Response struct {
 
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error
-	Message  string         `json:"message"` // error message
-	Errors   []string       `json:"errors"`  // more detail on individual errors
+	Message  string         `json:"message"`          // error message
+	Errors   []string       `json:"errors,omitempty"` // more detail on individual errors
 }
 
 func (e *ErrorResponse) Error() string {
