@@ -1,0 +1,123 @@
+{
+  "lines": [
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE1 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:00+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "1"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:04+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "2"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE3 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:15+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "3"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE4 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:16+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "4"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE5 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:01:15+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "5"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE6 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:01:16+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "entry": "6"
+      }
+    }
+  ],
+  "results": [
+    {
+      "Alert": {
+        "sources": {
+          "1.2.3.4": {
+              "scope": "Ip",
+              "value": "1.2.3.4",
+            
+            "ip": "1.2.3.4"
+          }
+        },
+        "Alert" : {
+          "scenario": "test/simple-leaky",
+          "events_count": 2
+          
+        }
+      }
+    },
+    {
+      "Alert": {
+      }
+    },
+    {
+      "Alert": {
+        "sources": {
+          "1.2.3.4": {
+              "scope": "Ip",
+              "value": "1.2.3.4",
+            
+            "ip": "1.2.3.4"
+          }
+        },
+        "Alert" : {
+          "scenario": "test/simple-leaky",
+          "events_count": 2
+          
+        }
+      }
+    }
+  ]
+}
+
