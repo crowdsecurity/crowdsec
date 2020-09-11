@@ -2,7 +2,7 @@ type: trigger
 debug: true
 name: test/simple-postoverflow-scenario
 description: "Simple post overflow"
-filter: "len(evt.Overflow.Scenario) > 0"
+filter: "len(evt.Overflow.Alert.Scenario) > 0"
 labels:
  type: overflow_2
 
