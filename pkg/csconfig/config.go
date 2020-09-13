@@ -14,11 +14,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type SimulationConfig struct {
-	Simulation bool     `yaml:"simulation"`
-	Exclusions []string `yaml:"exclusions,omitempty"`
-}
-
 // CrowdSec is the structure of the crowdsec configuration
 type CrowdSec struct {
 	WorkingFolder     string    `yaml:"working_dir,omitempty"`
@@ -44,6 +39,8 @@ type CrowdSec struct {
 	HTTPListen        string `yaml:"http_listen,omitempty"`
 	RestoreMode       string
 	DumpBuckets       bool
+	DBConfig          *DatabaseConfig  `yaml:"database"`
+	APIServerConfig   *APIServerConfig `yaml:"api"`
 }
 
 // NewCrowdSecConfig create a new crowdsec configuration with default configuration

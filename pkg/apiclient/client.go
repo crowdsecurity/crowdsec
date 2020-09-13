@@ -9,6 +9,9 @@ import (
 	"net/url"
 )
 
+var BaseURL *url.URL
+var UserAgent string
+
 type ApiClient struct {
 	/*The http client used to make requests*/
 	client *http.Client
@@ -32,9 +35,10 @@ func NewClient(httpClient *http.Client) *ApiClient {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
-	baseURL, _ := url.Parse("http://127.0.0.1:8080/")
+	BaseURL, _ := url.Parse("http://127.0.0.1:8080/")
+	UserAgent := "crowdsec-api"
 
-	c := &ApiClient{client: httpClient, BaseURL: baseURL}
+	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -51,8 +55,8 @@ type Response struct {
 
 type ErrorResponse struct {
 	Response *http.Response // HTTP response that caused this error
-	Message  string         `json:"message"`          // error message
-	Errors   []string       `json:"errors,omitempty"` // more detail on individual errors
+	Message  string         `json:"message"` // error message
+	Errors   []string       `json:"errors"`  // more detail on individual errors
 }
 
 func (e *ErrorResponse) Error() string {

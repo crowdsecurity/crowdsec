@@ -1,0 +1,21 @@
+working_dir: /tmp/
+data_dir: ${DATA}
+config_dir: ${CFG}
+pid_dir: ${PID}
+log_dir: /var/log/
+cscli_dir: ${CFG}/cscli
+log_mode: stdout
+log_level: info
+profiling: false
+apimode: false
+daemon: false
+prometheus: false
+#for prometheus agent / golang debugging
+http_listen: 127.0.0.1:6060
+api:
+  url: localhost:8080
+  cert_path: ./cert.key
+  log_file: ./csapi.log
+database:
+  type: sqlite
+  path: ./ent.db
