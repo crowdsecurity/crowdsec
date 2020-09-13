@@ -75,7 +75,7 @@ $ {{cli.bin}} ban list
 
 ### Create the whitelist by IP
 
-Let's create a `/etc/crowdsec/crowdsec/parsers/s02-enrich/mywhitelists.yaml` file with the following content :
+Let's create a `/etc/crowdsec/config/parsers/s02-enrich/mywhitelists.yaml` file with the following content :
 
 ```yaml
 name: crowdsecurity/whitelists
