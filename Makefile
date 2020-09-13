@@ -74,7 +74,6 @@ else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
 endif
-#	@bash ./scripts/build_plugins.sh
 
 
 cscli_static:
@@ -124,7 +123,6 @@ release: check_release build
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
-	@bash ./scripts/build_plugins.sh
 	@mkdir -p "$(RELDIR)/plugins/backend"
 	@find ./plugins -type f -name "*.so" -exec install -Dm 644 {} "$(RELDIR)/{}" \; || exiting 
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	
