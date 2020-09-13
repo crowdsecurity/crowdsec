@@ -288,6 +288,7 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
     (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
+    mkdir -p "${CROWDSEC_CONFIG_PATH}/parsers" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
