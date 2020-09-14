@@ -5,12 +5,13 @@ import (
 	"os"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -54,7 +55,12 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		Where(machine.MachineId(machineID)).
 		Select(machine.FieldPassword, machine.FieldIsValidated).Scan(j.DbClient.CTX, &response)
 	if err != nil {
-		log.Errorf("error while auth machine: %s", err)
+		log.Printf("Error machine login : %+v ", err)
+		return nil, err
+	}
+
+	if len(response) == 0 {
+		log.Errorf("Nothing for '%s'", machineID)
 		return nil, jwt.ErrFailedAuthentication
 	}
 

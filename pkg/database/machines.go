@@ -31,14 +31,14 @@ func (c *Client) CreateMachine(machineID string, password string, ipAddres strin
 		Save(c.CTX)
 
 	if err != nil {
-		return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("creating machine '%s'", machineID))
+		return &ent.Machine{}, errors.Wrap(InsertFail, fmt.Sprintf("creating machine '%s'", machineID))
 	}
 
 	return machines, nil
 }
 
 func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
-	machine, err := c.Ent.Debug().Machine.
+	machine, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(machineID)).
 		Only(c.CTX)
