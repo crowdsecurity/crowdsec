@@ -18,7 +18,7 @@ import (
 type WatcherAuthResponse struct {
 
 	// code
-	Code float64 `json:"code,omitempty"`
+	Code int64 `json:"code,omitempty"`
 
 	// expire
 	Expire string `json:"expire,omitempty"`
