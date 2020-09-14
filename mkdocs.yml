@@ -106,7 +106,7 @@ extra:
         name: Crowdsec Hub
         htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
         url: "https://hub.crowdsec.net/"
-        plugins_url: "https://hub.crowdsec.net/browse/#blockers"
+        plugins_url: "https://hub.crowdsec.net/browse/#bouncers"
         scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
         parsers_url: "https://hub.crowdsec.net/browse/#configurations"
         collections_url: "https://hub.crowdsec.net/browse/#collections"
@@ -144,7 +144,7 @@ extra:
     bouncers:
         name: bouncers
         Name: Bouncers
-        url: "https://hub.crowdsec.net/browse/#blockers"
+        url: "https://hub.crowdsec.net/browse/#bouncers"
         htmlname: "[bouncers](/bouncers/)"
         Htmlname: "[Bouncers](/bouncers/)"
     plugins:
