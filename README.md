@@ -19,7 +19,8 @@
 <p align="center">
 :books: <a href="https://doc.crowdsec.net">Documentation</a>
 :diamond_shape_with_a_dot_inside: <a href="https://hub.crowdsec.net">Hub</a>
-:speech_balloon: <a href="https://discourse.crowdsec.net">Discourse </a>
+:speech_balloon: <a href="https://discourse.crowdsec.net">Discourse Forum</a>
+:speech_balloon: <a href="https://gitter.im/crowdsec-project/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link">Gitter Chat</a>
 </p>
 
 ## About the crowdsec project
