@@ -1,0 +1,741 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Swagger CrowdSec
+  description: CrowdSec local API
+  contact:
+    email: contact@crowdsec.net
+host: api.crowdsec.net
+basePath: /v2
+securityDefinitions: {}
+schemes:
+  - https
+  - http
+consumes:
+  - application/json
+produces:
+  - application/json
+paths:
+  /decisions/stream:
+    get:
+      description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
+      summary: getDecisionsStream
+      tags:
+        - blockers
+      operationId: getDecisionsStream
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: startup
+          in: query
+          required: false
+          type: boolean
+          description: 'If true, means that the blocker is starting and a full list must be provided'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/DecisionsStreamResponse'
+          headers: {}
+        '400':
+          description: Invalid filters
+          schema: {}
+    delete:
+      description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
+      summary: stopDecisionsStream
+      tags:
+        - blockers
+      operationId: stopDecisionsStream
+      deprecated: false
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        '200':
+          description: successful operation
+          headers: {}
+        '400':
+          description: Invalid filters
+          schema: {}
+  /ping:
+    get:
+      description: Both blockers/watcher can/will use ping for healthcheck
+      summary: ping
+      tags:
+        - blockers
+        - watchers
+      operationId: ping
+      deprecated: false
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        '200':
+          description: successful operation
+          headers: {}
+        '400':
+          description: Invalid filters
+          schema: {}
+  /decisions:
+    get:
+      description: Returns information about existing decisions
+      summary: getDecisions
+      tags:
+        - blockers
+        - watchers
+      operationId: getDecisions
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          type: string
+          description: scope to which the decision applies (ie. IP/Range/Username/Session/...)
+        - name: value
+          in: query
+          required: false
+          type: string
+          description: the value to match for in the specified scope
+        - name: type
+          in: query
+          required: false
+          type: string
+          description: type of decision
+      responses:
+        '200':
+          description: "successful operation"
+          schema:
+            $ref: '#/definitions/GetDecisionsResponse'
+        '400':
+          description: Invalid filters
+          schema: {}
+    delete:
+      description: Delete decisions(s) for given filters (only from cscli)
+      summary: deleteDecisions
+      tags:
+        - watchers
+      operationId: deleteDecisions
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          type: string
+          description: scope in which decisions should be looked up
+        - name: value
+          in: query
+          required: false
+          type: string
+          description: value to search for in specified scope
+        - name: decision_type
+          in: query
+          required: false
+          type: string
+          description: 'matching decision type (ie. ban, captcha ...)'
+        - name: ip
+          in: query
+          required: false
+          type: string
+          description: IP to delete (shorthand for scope=ip&value=)
+        - name: range
+          in: query
+          required: false
+          type: string
+          description: range to delete  (shorthand for scope=range&value=)
+        - name: country
+          in: query
+          required: false
+          type: string
+          description: country to delete  (shorthand for scope=cn&value=)
+        - name: as_name
+          in: query
+          required: false
+          type: string
+          description: as name to delete  (shorthand for scope=as_name&value=)
+        - name: as_num
+          in: query
+          required: false
+          type: string
+          description: as number to delete  (shorthand for scope=as_num&value=)
+        - name: reason
+          in: query
+          required: false
+          type: string
+          description: reason to delete
+        - name: since
+          in: query
+          required: false
+          type: string
+          format: date-time
+          description: 'ban to delete since YYYY-mm-DD-HH:MM:SS'
+        - name: pagination
+          in: query
+          required: false
+          type: string
+          description: pagination
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/DeleteDecisionResponse'
+          headers: {}
+        '400':
+          description: Invalid input
+          schema: {}
+  '/decisions/{decision_id}':
+    delete:
+      description: Delete decision for given ban ID (only from cscli)
+      summary: DeleteDecision
+      tags:
+        - watchers
+        - blockers
+      operationId: DeleteDecision
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: decision_id
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/DeleteDecisionResponse'
+          headers: {}
+        '404':
+          description: Decision was not found
+          schema: {}
+  /watchers:
+    post:
+      description: This method is used when installing crowdsec (cscli->APIL)
+      summary: RegisterWatcher
+      tags:
+        - watchers
+        - APIC
+      operationId: RegisterWatcher
+      deprecated: false
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: Information about the watcher to be registered
+          schema:
+            $ref: '#/definitions/WatcherRegistrationRequest'
+      responses:
+        '200':
+          description: Watcher registered
+          headers: {}
+        '400':
+          description: Invalid watcher information
+          schema: {}
+    delete:
+      description: This method is used when uninstalling crowdsec
+      summary: DeleteWatcher
+      tags:
+        - watchers
+        - APIC
+      operationId: DeleteWatcher
+      deprecated: false
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        '200':
+          description: Watcher removed successfully
+          headers: {}
+        '404':
+          description: Watcher was not registered
+          schema: {}
+  /watchers/login:
+    post:
+      description: Authenticate current to get session ID
+      summary: AuthenticateWatcher
+      tags:
+        - watchers
+        - APIC
+      operationId: AuthenticateWatcher
+      deprecated: false
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: Information about the watcher to be reset
+          schema:
+            $ref: '#/definitions/WatcherAuthRequest'
+      responses:
+        '200':
+          description: Login successful
+          schema:
+            $ref: '#/definitions/WatcherAuthResponse'
+        '403':
+          description: Failed authentication
+          schema: {}
+  /alerts:
+    post:
+      description: Push alerts to API
+      summary: pushAlerts
+      tags:
+        - watchers
+        - APIC
+      operationId: pushAlerts
+      deprecated: false
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: Push alerts to the API
+          schema:
+            $ref: '#/definitions/AddAlertsRequest'
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/AddAlertsResponse'
+          headers: {}
+        '400':
+          description: Invalid alert
+          schema: {}
+    get:
+      description: Allows to search for alerts
+      summary: searchAlerts
+      tags:
+        - watchers
+        - blockers
+      operationId: searchAlerts
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: source_scope
+          in: query
+          required: false
+          type: string
+          description: show alerts for this scope
+        - name: source_value
+          in: query
+          required: false
+          type: string
+          description: show alerts for this value (used with source_scope)
+        - name: scenario
+          in: query
+          required: false
+          type: string
+          description: show alerts for this scenario
+        - name: ip
+          in: query
+          required: false
+          type: string
+          description: IP to search for (shorthand for scope=ip&value=)
+        - name: range
+          in: query
+          required: false
+          type: string
+          description: range to search for (shorthand for scope=range&value=)
+        - name: since
+          in: query
+          required: false
+          type: string
+          format: date-time
+          description: 'search alerts added after YYYY-mm-DD-HH:MM:SS'
+        - name: until
+          in: query
+          required: false
+          type: string
+          format: date-time
+          description: 'search alerts added before YYYY-mm-DD-HH:MM:SS'
+        - name: has_active_decision
+          in: query
+          required: false
+          type: boolean
+          description: ''
+        - name: alert_source
+          in: query
+          required: false
+          type: string
+          description: ony return alerts with matching source (ie. cscli/crowdsec)
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/GetAlertsResponse'
+          headers: {}
+        '400':
+          description: Invalid filters
+          schema: {}
+  /topx:
+    get:
+      description: This method will pull the list of decisions from central API into APIL local db
+      summary: getApicNewTopX
+      tags:
+        - APIC
+      operationId: getApicNewTopX
+      deprecated: false
+      produces:
+        - application/json
+      parameters: []
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/TopxResponse'
+          headers: {}
+        '404':
+          description: No available topX
+          schema: {}
+  /apic/watchers:
+    post:
+      description: Report watcher from APIL to APIC
+      summary: ApicReportWatchers
+      tags:
+        - APIC
+      operationId: ApicReportWatchers
+      deprecated: false
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: Report watcher from APIL to APIC
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Successful operation
+          headers: {}
+        '400':
+          description: Invalid watchers
+          schema: {}
+  '/apic/watchers/{watcher_machine_id}':
+    delete:
+      description: Report deletion of watchers from APIL to APIC
+      summary: ApicDeleteWatchers
+      tags:
+        - APIC
+      operationId: ApicDeleteWatchers
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: watcher_machine_id
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: Successful operation
+          headers: {}
+        '400':
+          description: Invalid watchers
+          schema: {}
+  /apic/blockers:
+    post:
+      description: Report blockers from APIL to APIC
+      summary: ApicReportBlockers
+      tags:
+        - APIC
+      operationId: ApicReportBlockers
+      deprecated: false
+      produces:
+        - application/json
+      consumes:
+        - application/json
+      parameters:
+        - name: body
+          in: body
+          required: true
+          description: Report blockers from APIL to APIC
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        '200':
+          description: Successful operation
+          headers: {}
+        '400':
+          description: Invalid blockers
+          schema: {}
+  '/apic/blockers/{blocker_machine_id}':
+    delete:
+      description: Report deletion of blockers from APIL to APIC
+      summary: ApicDeleteBlockers
+      tags:
+        - APIC
+      operationId: ApicDeleteBlockers
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: blocker_machine_id
+          in: path
+          required: true
+          type: string
+          description: ''
+      responses:
+        '200':
+          description: Successful operation
+          headers: {}
+        '400':
+          description: Invalid watchers
+          schema: {}
+definitions:
+  WatcherRegistrationRequest:
+    title: WatcherRegistrationRequest
+    type: object
+    properties:
+      machine_id:
+        type: string
+      password:
+        type: string
+  WatcherAuthRequest:
+    title: WatcherAuthRequest
+    type: object
+    properties:
+      machine_id:
+        type: string
+      password:
+        type: string
+      scenarios:
+        description: the list of scenarios enabled on the watcher
+        type: array
+        items:
+          type: string
+  WatcherAuthResponse:
+    title: WatcherAuthResponse
+    description: the response of a successful authentication
+    type: object
+    properties:
+      code:
+        type: integer
+      expire:
+        type: string
+      token:
+        type: string
+  Alert:
+    title: Alert
+    type: object
+    properties:
+      alert_id:
+        description: 'only relevant for GET, ignored in POST requests'
+        type: string
+      machine_id:
+        description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
+        type: string
+      scenario:
+        type: string
+      scenario_hash:
+        type: string
+      scenario_version:
+        type: string
+      message:
+        description: a human readable message
+        type: string
+      events_count:
+        type: integer
+        format: int32
+      start_at:
+        type: string
+      stop_at:
+        type: string
+      capacity:
+        type: integer
+        format: int32
+      leakspeed:
+        type: string
+      simulated:
+        type: boolean
+      events:
+        description: the Meta of the events leading to overflow
+        type: array
+        items:
+          $ref: '#/definitions/Event'
+      decisions:
+        type: array
+        items:
+          $ref: '#/definitions/Decision'
+      source:
+        $ref: '#/definitions/Source'
+      meta:
+        description: the Meta data of the Alert itself
+        $ref: '#/definitions/Meta'
+      labels:
+        type: array
+        items:
+          type: string
+  Source:
+    title: Source
+    type: object
+    properties:
+      scope:
+        description: 'the scope of a source : ip,range,username,etc'
+        type: string
+      value:
+        description: 'the value of a source : the ip, the range, the username,etc'
+        type: string
+      ip:
+        description: provided as a convenience when the source is an IP
+        type: string
+      range:
+        description: provided as a convenience when the source is an IP
+        type: string
+      as_number:
+        description: provided as a convenience when the source is an IP
+        type: string
+      as_name:
+        description: provided as a convenience when the source is an IP
+        type: string
+      cn:
+        type: string
+      latitude:
+        type: number
+        format: float
+      longitude:
+        type: number
+        format: float
+  Decision:
+    title: Decision
+    type: object
+    properties:
+      decision_id:
+        description: (only relevant for GET ops) the unique id
+        type: string
+      origin:
+        description: 'the origin of the decision : cscli, crowdsec'
+        type: string
+      type:
+        description: 'the type of decision, might be ''ban'', ''captcha'' or something custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL.'
+        type: string
+      scope:
+        description: 'the scope of decision : does it apply to an IP, a range, a username, etc'
+        type: string
+      target:
+        description: 'the target of the decision : an IP, a range, a username, etc'
+        type: string
+      start_ip:
+        description: '(only relevant for GET ops) when the target is an IP or range, its numeric representation'
+        type: integer
+      end_ip:
+        description: '(only relevant for GET ops) when the target is an IP or range, its numeric representation'
+        type: integer
+      duration:
+        type: string
+      scenario:
+        type: string
+  DeleteDecisionResponse:
+    title: DeleteDecisionResponse
+    type: array
+    items:
+      type: string
+      description: "decision_id"
+  FlushDecisionResponse:
+    title: FlushDecisionResponse
+    type: object
+    properties:
+      decision_id:
+        type: string
+  AddDecisionResponse:
+    title: AddDecisionResponse
+    type: object
+    properties:
+      decision_id:
+        type: string
+  AddAlertsRequest:
+    title: AddAlertsRequest
+    type: array
+    items:
+      $ref: '#/definitions/Alert'
+  AddAlertsResponse:
+    title: AddAlertsResponse
+    type: array
+    items:
+      type: string
+      description: alert_id
+  GetAlertsResponse:
+    title: AlertsResponse
+    type: array
+    items:
+      $ref: '#/definitions/Alert'
+  DecisionsStreamResponse:
+    title: DecisionsStreamResponse
+    type: object
+    properties:
+      new:
+        $ref: '#/definitions/GetDecisionsResponse'
+      deleted:
+        $ref: '#/definitions/GetDecisionsResponse'
+  Event:
+    title: Event
+    type: object
+    properties:
+      timestamp:
+        type: string
+      meta:
+        $ref: '#/definitions/Meta'
+  GetDecisionsResponse:
+    title: GetDecisionsResponse
+    type: array
+    items:
+      $ref: '#/definitions/Decision'
+  Meta:
+    title: Meta
+    type: array
+    items:
+      type: object
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+  TopxResponse:
+    title: TopxResponse
+    type: object
+    properties:
+      new:
+        type: array
+        items:
+          type: array
+          items:
+            $ref: '#/definitions/GetDecisionsResponse'
+      deleted:
+        description: 'We keep the deleted array for the duration of the initial decision. So that when the initial decision is expired, it won''t be present in deleted array anymore.'
+        type: array
+        items:
+          type: array
+          items:
+            $ref: '#/definitions/GetDecisionsResponse'
+tags:
+  - name: blockers
+    description: 'Operations about decisions : bans, captcha, rate-limit etc.'
+  - name: watchers
+    description: 'Operations about watchers : cscli & crowdsec'
+  - name: APIC
+    description: Operations relevant only for central API
+externalDocs:
+  url: 'https://github.com/crowdsecurity/crowdsec'
+  description: Find out more about CrowdSec
