@@ -281,7 +281,8 @@ paths:
       responses:
         '200':
           description: Login successful
-          headers: {}
+          schema:
+            $ref: '#/definitions/WatcherAuthResponse'
         '403':
           description: Failed authentication
           schema: {}
@@ -525,6 +526,17 @@ definitions:
         type: array
         items:
           type: string
+  WatcherAuthResponse:
+    title: WatcherAuthResponse
+    description: the response of a successful authentication
+    type: object
+    properties:
+      code:
+        type: number
+      expire:
+        type: string
+      token:
+        type: string
   Alert:
     title: Alert
     type: object
