@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
+	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/rand"
-	"net/http"
 	"sync"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/goombaio/namegenerator"
@@ -59,92 +57,12 @@ var (
 	machineIPAddrTemplate = "1.1.1.%d"
 	MachineIDTemplate     = "machine%d"
 	MachinePassword       = "%s"
-)
 
-type Session struct {
-	Token     string
-	MachineID string
-	Expire    time.Time
-}
 
 type Machine struct {
 	IPAddress string
 	ID        string
 	password  string
-	Session   *Session
-}
-
-type loginRespone struct {
-	Code   int       `json:"code"`
-	Expire time.Time `json:"expire"`
-	Token  string    `json:"token"`
-}
-
-func (m *Machine) Register() error {
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(&models.WatcherRegistrationRequest{MachineID: m.ID, Password: m.password})
-	res, err := http.Post(machinesURL, "application/json;charset=utf-8", b)
-	if err != nil {
-		return fmt.Errorf("unable to register machine '%s': %s", m.ID, err)
-	}
-
-	if res.StatusCode != 200 {
-		bodyBytes, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		bodyString := string(bodyBytes)
-		log.Printf("Bad code: %s", bodyString)
-	}
-
-	return nil
-}
-
-func (m *Machine) Login() (*Session, error) {
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(&models.WatcherRegistrationRequest{MachineID: m.ID, Password: m.password})
-	res, err := http.Post(loginURL, "application/json;charset=utf-8", b)
-	if err != nil {
-		return &Session{}, err
-	}
-	bodyBytes, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return &Session{}, err
-	}
-	response := &loginRespone{}
-	if err := json.Unmarshal(bodyBytes, response); err != nil {
-		return &Session{}, err
-	}
-
-	return &Session{
-		Token:     response.Token,
-		Expire:    response.Expire,
-		MachineID: m.ID,
-	}, nil
-}
-
-func (m *Machine) SendAlert(alert *models.Alert) error {
-	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(alert)
-	httpClient := &http.Client{}
-	req, _ := http.NewRequest("POST", alertsURL, b)
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", m.Session.Token))
-	req.Header.Set("Content-Type", "application/json;charset=utf-8")
-	res, err := httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("unable to send alert for machine '%s': %s", m.ID, err)
-	}
-
-	if res.StatusCode != 200 {
-		bodyBytes, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		bodyString := string(bodyBytes)
-		log.Printf("Bad code: %s", bodyString)
-	}
-
-	return nil
 }
 
 func (m *Machine) CreateAlert() *models.Alert {
@@ -226,27 +144,26 @@ func (m *Machine) Run(url string, nbRequest int, wg *sync.WaitGroup) {
 	var err error
 	defer wg.Done()
 
+	var Client *apiclient.ApiClient
+	ctx := context.Background()
+	apiclient.BaseURL, _ = url.Parse("http://127.0.0.1:8080/")
+	t := &apiclient.JWTTransport{
+		MachineID: m.ID,
+		Password:  m.password,
+		Scenarios: []string{"aaaaaa", "bbbbb"},
+	}
+
 	seed := time.Now().UTC().UnixNano()
 	nameGenerator := namegenerator.NewNameGenerator(seed)
 	name := nameGenerator.Generate()
 	log.Printf("[Process:%s] Running", name)
 
-	//apiClient := apiclient.NewClient(nil)
-
-	// register machine
-	if err := m.Register(); err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	//login machine
-	m.Session, err = m.Login()
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
+	Client = apiclient.NewClient(t.Client())
 
 	for i := 0; i < nbRequest-1; i++ {
 		alert := m.CreateAlert()
-		if err := m.SendAlert(alert); err != nil {
+		_, _, err := Client.Alerts.Add(ctx, alert)
+		if err != nil {
 			log.Fatalf(err.Error())
 		}
 	}
