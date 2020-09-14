@@ -61,6 +61,8 @@ type Leaky struct {
 	timedOverflow bool
 	logger        *log.Entry
 	scopeType     types.ScopeType
+	hash          string
+	version       string
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -153,6 +155,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Profiling:    bucketFactory.Profiling,
 		Mode:         LIVE,
 		scopeType:    bucketFactory.ScopeType,
+		version:      bucketFactory.version,
+		hash:         bucketFactory.hash,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
