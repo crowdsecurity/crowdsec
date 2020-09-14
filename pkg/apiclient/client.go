@@ -23,7 +23,7 @@ type ApiClient struct {
 	/*exposed Services*/
 	Decisions *DecisionsService
 	Alerts    *AlertsService
-	// Auth      *ApiAuth
+	Auth      *AuthService
 	// Consensus *ApiConsensus
 }
 
@@ -42,6 +42,7 @@ func NewClient(httpClient *http.Client) *ApiClient {
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
+	c.Auth = (*AuthService)(&c.common)
 
 	return c
 }
@@ -73,12 +74,15 @@ func CheckResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-	log.Printf("we has error %d : %+v", r.StatusCode, r.Body)
 	errorResponse := &ErrorResponse{Response: r}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
+	bodyString := string(data)
+
+	log.Printf("we has error %d : %s", r.StatusCode, bodyString)
+
 	return errorResponse
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -44,14 +45,20 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	machineID := loginInput.MachineID
 	password := loginInput.Password
 
-	hashFromDB, err := j.DbClient.Ent.Machine.Query().
+	response := []struct {
+		Password    string `json:"password"`
+		IsValidated bool   `json:"is_validated"`
+	}{}
+
+	err := j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(machineID)).
-		Select(machine.FieldPassword).String(j.DbClient.CTX)
+		Select(machine.FieldPassword, machine.FieldIsValidated).Scan(j.DbClient.CTX, &response)
 	if err != nil {
+		log.Errorf("error while auth machine: %s", err)
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(hashFromDB), []byte(password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(response[0].Password), []byte(password)); err != nil {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
