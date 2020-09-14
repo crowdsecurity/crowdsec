@@ -29,7 +29,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	var data []*ent.Decision
 	var err error
 
-	decisions := c.Ent.Debug().Decision.Query().
+	decisions := c.Ent.Decision.Query().
 		Where(decision.UntilGTE(time.Now()))
 
 	decisions, err = BuildDecisionRequestWithFilter(decisions, filter)
@@ -55,7 +55,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 }
 
 func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
-	data, err := c.Ent.Debug().Decision.Query().All(c.CTX)
+	data, err := c.Ent.Decision.Query().All(c.CTX)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions")
 	}
@@ -63,7 +63,7 @@ func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
 }
 
 func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
-	data, err := c.Ent.Debug().Decision.Query().Where(decision.UntilLT(time.Now())).All(c.CTX)
+	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).All(c.CTX)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
@@ -71,7 +71,7 @@ func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 }
 
 func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error) {
-	data, err := c.Ent.Debug().Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
+	data, err := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, fmt.Sprintf("new decisions since '%s'", since.String()))
 	}
@@ -80,7 +80,7 @@ func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error
 }
 
 func (c *Client) DeleteDecisionById(decisionId int) error {
-	err := c.Ent.Debug().Decision.DeleteOneID(decisionId).Exec(c.CTX)
+	err := c.Ent.Decision.DeleteOneID(decisionId).Exec(c.CTX)
 	if err != nil {
 		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d'", decisionId))
 	}
@@ -90,7 +90,7 @@ func (c *Client) DeleteDecisionById(decisionId int) error {
 func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (int, error) {
 	var err error
 
-	decisions := c.Ent.Debug().Decision.Delete()
+	decisions := c.Ent.Decision.Delete()
 
 	for param, value := range filter {
 		switch param {

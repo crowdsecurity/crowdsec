@@ -4,8 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"log"
 	"math/rand"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -14,12 +15,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/goombaio/namegenerator"
 	"github.com/rs/xid"
+	log "github.com/sirupsen/logrus"
 )
-
-const URL = "http://localhost:8080/"
-const machinesURL = URL + "watchers"
-const alertsURL = URL + "alerts"
-const loginURL = URL + "watchers/login"
 
 var (
 	IPAddressTemplate = []string{
@@ -57,7 +54,7 @@ var (
 	machineIPAddrTemplate = "1.1.1.%d"
 	MachineIDTemplate     = "machine%d"
 	MachinePassword       = "%s"
-
+)
 
 type Machine struct {
 	IPAddress string
@@ -81,7 +78,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 
 	decision := &models.Decision{
 		DecisionID: guid.String(),
-		Duration:   fmt.Sprintf("%d", rand.Intn(4)),
+		Duration:   fmt.Sprintf("%dh", rand.Intn(4)),
 		EndIP:      endIP,
 		StartIP:    startIP,
 		Origin:     "crowdsec",
@@ -94,7 +91,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 	events := []*models.Event{}
 	event := &models.Event{
 		Meta:      models.Meta{},
-		Timestamp: time.Now().String(),
+		Timestamp: time.Now().Format(time.RFC3339),
 	}
 	MetaItem := &models.MetaItems0{
 		Key:   "ip",
@@ -132,42 +129,49 @@ func (m *Machine) CreateAlert() *models.Alert {
 			Scope:     "ip",
 			Value:     ipAddr,
 		},
-		StartAt: time.Now().String(),
-		StopAt:  time.Now().String(),
+		StartAt: time.Now().Format(time.RFC3339),
+		StopAt:  time.Now().Format(time.RFC3339),
 	}
 
 	return alert
 
 }
 
-func (m *Machine) Run(url string, nbRequest int, wg *sync.WaitGroup) {
-	var err error
-	defer wg.Done()
-
+func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup) {
 	var Client *apiclient.ApiClient
-	ctx := context.Background()
-	apiclient.BaseURL, _ = url.Parse("http://127.0.0.1:8080/")
-	t := &apiclient.JWTTransport{
-		MachineID: m.ID,
-		Password:  m.password,
-		Scenarios: []string{"aaaaaa", "bbbbb"},
-	}
+
+	defer wg.Done()
 
 	seed := time.Now().UTC().UnixNano()
 	nameGenerator := namegenerator.NewNameGenerator(seed)
 	name := nameGenerator.Generate()
 	log.Printf("[Process:%s] Running", name)
 
+	ctx := context.Background()
+
+	Client = apiclient.NewClient(nil)
+	_, err := Client.Auth.RegisterWatcher(ctx, models.WatcherRegistrationRequest{MachineID: m.ID, Password: m.password})
+	if err != nil {
+		log.Errorf(err.Error())
+	}
+
+	apiclient.BaseURL, _ = url.Parse(apiURL)
+	t := &apiclient.JWTTransport{
+		MachineID: m.ID,
+		Password:  m.password,
+		Scenarios: []string{"aaaaaa", "bbbbb"},
+	}
 	Client = apiclient.NewClient(t.Client())
 
+	log.Printf("[Process:%s] Going to ingest %d alerts", name, nbRequest)
 	for i := 0; i < nbRequest-1; i++ {
 		alert := m.CreateAlert()
-		_, _, err := Client.Alerts.Add(ctx, alert)
+		_, _, err := Client.Alerts.Add(ctx, []*models.Alert{alert})
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
 	}
-	log.Printf("[Process:%s] Finished", name)
+	log.Printf("[Process:%s] Finished: %d alerts sended", name, nbRequest)
 }
 
 func main() {
@@ -175,9 +179,14 @@ func main() {
 
 	nbMachine := flag.Int("c", 10, "Number of concurrent simulated machines")
 	nbRequest := flag.Int("n", 100, "Total number of request to send (distributed by machine)")
-	url := flag.String("u", "http://localhost:8080", "URL of API")
-
+	url := flag.String("u", "http://localhost:8080/", "URL of API")
 	flag.Parse()
+
+	cleanURL := *url
+
+	if !strings.HasSuffix(cleanURL, "/") {
+		cleanURL = fmt.Sprintf("%s/", cleanURL)
+	}
 
 	nbRequestPerMachine := *nbRequest / *nbMachine
 

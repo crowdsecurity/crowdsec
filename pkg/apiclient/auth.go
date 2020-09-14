@@ -69,7 +69,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		Scenarios: t.Scenarios,
 	}
 
-	var response models.LoginOK
+	var response models.WatcherAuthResponse
 
 	/*
 		we don't use the main client, so let's build the body

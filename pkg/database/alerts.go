@@ -191,7 +191,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 }
 
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
-	alerts := c.Ent.Debug().Alert.Query()
+	alerts := c.Ent.Alert.Query()
 	alerts, err := BuildAlertRequestFromFilter(alerts, filter)
 	if err != nil {
 		return []*ent.Alert{}, err

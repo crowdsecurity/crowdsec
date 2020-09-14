@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -89,8 +88,8 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		return response, err
 	}
 
-	x, _ := ioutil.ReadAll(resp.Body)
-	log.Printf("body : %s", string(x))
+	//x, _ := ioutil.ReadAll(resp.Body)
+	//log.Printf("body : %s", string(x))
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
 			io.Copy(w, resp.Body)
