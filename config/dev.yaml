@@ -10,9 +10,3 @@ prometheus: false
 simulation_path: ./config/simulation.yaml
 profiling: false
 apimode: false
-plugin:
-  backend: "./config/plugins/backend"
-  max_records: 10000
-  #30 days = 720 hours
-  max_records_age: 720h
-  
