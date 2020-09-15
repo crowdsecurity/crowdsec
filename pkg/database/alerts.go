@@ -74,7 +74,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (int, error) {
 			}
 			marshallMetas, err := json.Marshal(eventItem.Meta)
 			if err != nil {
-				return 0, errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%s' : %s", eventItem.Meta, err))
+				return 0, errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%+v' : %s", eventItem.Meta, err))
 			}
 
 			bulk[i] = c.Ent.Event.Create().
