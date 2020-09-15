@@ -9,16 +9,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
 func LoadHubIdx() error {
-	bidx, err := ioutil.ReadFile(path.Join(Cfgdir, "/.index.json"))
+	bidx, err := ioutil.ReadFile(csconfig.GConfig.Cscli.IndexPath)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func UpdateHubIdx() error {
 }
 
 func DownloadHubIdx() ([]byte, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, ".index.json"), nil)
 	if err != nil {
 		log.Errorf("failed request : %s", err)
 		return nil, err
@@ -76,8 +76,7 @@ func DownloadHubIdx() ([]byte, error) {
 		log.Errorf("failed request reqd: %s", err)
 		return nil, err
 	}
-	//os.Remove(path.Join(configFolder, GitIndexFile))
-	file, err := os.OpenFile(path.Join(Cfgdir, "/.index.json"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(csconfig.GConfig.Cscli.IndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -88,7 +87,7 @@ func DownloadHubIdx() ([]byte, error) {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	log.Infof("Wrote new %d bytes index to %s", wsize, path.Join(Cfgdir, "/.index.json"))
+	log.Infof("Wrote new %d bytes index to %s", wsize, csconfig.GConfig.Cscli.IndexPath)
 	return body, nil
 }
 

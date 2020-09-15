@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,9 +38,9 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, Hubdir, Installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, csconfig.GConfig.Cscli.HubDir, csconfig.GConfig.Crowdsec.ConfigDir)
 	/*we're in hub (~/.cscli/hub/)*/
-	if strings.HasPrefix(path, Hubdir) {
+	if strings.HasPrefix(path, csconfig.GConfig.Cscli.HubDir) {
 		inhub = true
 		//~/.cscli/hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//~/.cscli/hub/scenarios/crowdsec/ssh_bf.yaml
@@ -53,7 +54,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = subs[len(subs)-4]
 		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
-	} else if strings.HasPrefix(path, Installdir) { /*we're in install /etc/crowdsec/<type>/... */
+	} else if strings.HasPrefix(path, csconfig.GConfig.Crowdsec.ConfigDir) { /*we're in install /etc/crowdsec/<type>/... */
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s", path)
 		}
@@ -67,7 +68,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = ""
 		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
-		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, Installdir, Hubdir)
+		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -153,7 +154,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if v.Name+".yaml" != fauthor+"/"+fname {
 				continue
 			}
-			if path == Hubdir+"/"+v.RemotePath {
+			if path == csconfig.GConfig.Cscli.HubDir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
@@ -278,8 +279,8 @@ func LocalSync() error {
 	skippedTainted = 0
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
-		/*Scan install and Hubdir to get local status*/
-		for _, dir := range []string{Cfgdir, Hubdir} {
+		/*Scan install and csconfig.GConfig.Cscli.HubDir to get local status*/
+		for _, dir := range []string{csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir} {
 			//walk the user's directory
 			err := filepath.Walk(dir+"/"+scan, parser_visit)
 			if err != nil {
@@ -299,7 +300,7 @@ func LocalSync() error {
 
 func GetHubIdx() error {
 
-	bidx, err := ioutil.ReadFile(Cfgdir + "/.index.json")
+	bidx, err := ioutil.ReadFile(csconfig.GConfig.Cscli.IndexPath)
 	if err != nil {
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}

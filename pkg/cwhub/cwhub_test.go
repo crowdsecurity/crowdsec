@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,58 +25,72 @@ var testDataFolder = "."
 
 func TestIndexDownload(t *testing.T) {
 
-	os.RemoveAll(Cfgdir)
+	if csconfig.GConfig == nil {
+		csconfig.GConfig = csconfig.NewDefaultConfig()
+	}
+	if csconfig.GConfig.Crowdsec != nil {
+		os.RemoveAll(csconfig.GConfig.Crowdsec.ConfigDir)
+	}
+	if csconfig.GConfig.Cscli != nil {
+		os.RemoveAll(csconfig.GConfig.Cscli.HubDir)
+	}
 	test_prepenv()
 
-	err := LoadHubIdx()
+	err := UpdateHubIdx()
 	//DownloadHubIdx()
 	if err != nil {
-		t.Fatalf("failed to download index")
+		t.Fatalf("failed to download index : %s", err)
 	}
 	if err := GetHubIdx(); err != nil {
-		t.Fatalf("failed to load hub index")
+		t.Fatalf("failed to load hub index : %s", err)
 	}
 }
 
 func test_prepenv() {
 	log.SetLevel(log.DebugLevel)
 
-	Cfgdir = filepath.Clean("./cscli")
-	Installdir = filepath.Clean("./install")
-	Hubdir = filepath.Clean("./hubdir")
+	if csconfig.GConfig == nil {
+		csconfig.GConfig = csconfig.NewDefaultConfig()
+	}
+
+	csconfig.GConfig.Crowdsec.ConfigDir = filepath.Clean("./install")
+	csconfig.GConfig.Cscli.HubDir = filepath.Clean("./hubdir")
+	csconfig.GConfig.Cscli.IndexPath = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.RemoveAll(Cfgdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Installdir, err)
+	if err := os.RemoveAll(csconfig.GConfig.Crowdsec.ConfigDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", csconfig.GConfig.Crowdsec.ConfigDir, err)
 	}
 
-	if err := os.MkdirAll(Cfgdir, 0700); err != nil {
+	if err := os.MkdirAll(csconfig.GConfig.Crowdsec.ConfigDir, 0700); err != nil {
 		log.Fatalf("mkdir : %s", err)
 	}
+
+	if err := os.RemoveAll(csconfig.GConfig.Cscli.HubDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", csconfig.GConfig.Cscli.HubDir, err)
+	}
+	if err := os.MkdirAll(csconfig.GConfig.Cscli.HubDir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", csconfig.GConfig.Cscli.HubDir, err)
+	}
+
 	if err := UpdateHubIdx(); err != nil {
 		log.Fatalf("failed to download index : %s", err)
 	}
 
-	if err := os.RemoveAll(Installdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Installdir, err)
-	}
-	if err := os.MkdirAll(Installdir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", Installdir, err)
-	}
-	if err := os.RemoveAll(Hubdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Hubdir, err)
-	}
-	if err := os.MkdirAll(Hubdir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", Hubdir, err)
-	}
+	// if err := os.RemoveAll(csconfig.GConfig.Crowdsec.ConfigDir); err != nil {
+	// 	log.Fatalf("failed to remove %s : %s", csconfig.GConfig.Crowdsec.ConfigDir, err)
+	// }
+	// if err := os.MkdirAll(csconfig.GConfig.Crowdsec.ConfigDir, 0700); err != nil {
+	// 	log.Fatalf("failed to mkdir %s : %s", csconfig.GConfig.Crowdsec.ConfigDir, err)
+	// }
 
 }
 
 func testInstallItem(t *testing.T, item Item) {
 	//Install the parser
-	item, err := DownloadLatest(item, Hubdir, false, testDataFolder)
+	item, err := DownloadLatest(item, csconfig.GConfig.Cscli.HubDir, false, testDataFolder)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -92,7 +107,7 @@ func testInstallItem(t *testing.T, item Item) {
 		t.Fatalf("download: %s should not be tainted", item.Name)
 	}
 
-	item, err = EnableItem(item, Installdir, Hubdir)
+	item, err = EnableItem(item, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir)
 	if err != nil {
 		t.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
@@ -132,7 +147,7 @@ func testUpdateItem(t *testing.T, item Item) {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
-	item, err := DownloadLatest(item, Hubdir, true, testDataFolder)
+	item, err := DownloadLatest(item, csconfig.GConfig.Cscli.HubDir, true, testDataFolder)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
@@ -153,7 +168,7 @@ func testDisableItem(t *testing.T, item Item) {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
 	//Remove
-	item, err := DisableItem(item, Installdir, Hubdir, false)
+	item, err := DisableItem(item, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
@@ -171,7 +186,7 @@ func testDisableItem(t *testing.T, item Item) {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
 	//Purge
-	item, err = DisableItem(item, Installdir, Hubdir, true)
+	item, err = DisableItem(item, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir, true)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}
