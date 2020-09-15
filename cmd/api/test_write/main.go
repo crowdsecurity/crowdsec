@@ -69,6 +69,7 @@ type Metrics struct {
 	MachineID string
 	NBSend    int
 	Time      time.Duration
+	Bulk      bool // bulk or single
 }
 
 func (m *Machine) CreateAlert() *models.Alert {
@@ -160,7 +161,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 
 }
 
-func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics) {
+func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics, bulk bool)
 	var Client *apiclient.ApiClient
 
 	defer wg.Done()
@@ -270,4 +271,3 @@ func main() {
 	table.Render()
 
 }
-
