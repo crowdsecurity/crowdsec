@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"errors"
-	log "github.com/sirupsen/logrus"
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
 

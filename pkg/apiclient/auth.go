@@ -11,6 +11,7 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	//"google.golang.org/appengine/log"
@@ -51,8 +52,8 @@ func (t *APIKeyTransport) transport() http.RoundTripper {
 }
 
 type JWTTransport struct {
-	MachineID  string
-	Password   string
+	MachineID  *string
+	Password   *strfmt.Password
 	token      string
 	Expiration time.Time
 	Scenarios  []string
