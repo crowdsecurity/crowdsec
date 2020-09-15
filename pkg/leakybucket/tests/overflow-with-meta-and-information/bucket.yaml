@@ -1,0 +1,10 @@
+# ssh bruteforce
+version: 1.0
+type: trigger
+debug: true
+name: test/simple-trigger
+description: "Simple trigger"
+filter: "evt.Line.Labels.type =='testlog'"
+labels:
+ type: overflow_1
+

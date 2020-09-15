@@ -57,12 +57,12 @@ type Leaky struct {
 	Duration     time.Duration
 	Pour         func(*Leaky, types.Event) `json:"-"`
 	//Profiling when set to true enables profiling of bucket
-	Profiling     bool
-	timedOverflow bool
-	logger        *log.Entry
-	scopeType     types.ScopeType
-	hash          string
-	version       string
+	Profiling       bool
+	timedOverflow   bool
+	logger          *log.Entry
+	scopeType       types.ScopeType
+	hash            string
+	scenarioVersion string
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -140,23 +140,23 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 
 	//create the leaky bucket per se
 	l := &Leaky{
-		Name:         bucketFactory.Name,
-		Limiter:      limiter,
-		Uuid:         namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
-		Queue:        NewQueue(Qsize),
-		CacheSize:    bucketFactory.CacheSize,
-		Out:          make(chan *Queue, 1),
-		AllOut:       bucketFactory.ret,
-		Capacity:     bucketFactory.Capacity,
-		Leakspeed:    bucketFactory.leakspeed,
-		BucketConfig: &bucketFactory,
-		Pour:         Pour,
-		Reprocess:    bucketFactory.Reprocess,
-		Profiling:    bucketFactory.Profiling,
-		Mode:         LIVE,
-		scopeType:    bucketFactory.ScopeType,
-		version:      bucketFactory.version,
-		hash:         bucketFactory.hash,
+		Name:            bucketFactory.Name,
+		Limiter:         limiter,
+		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
+		Queue:           NewQueue(Qsize),
+		CacheSize:       bucketFactory.CacheSize,
+		Out:             make(chan *Queue, 1),
+		AllOut:          bucketFactory.ret,
+		Capacity:        bucketFactory.Capacity,
+		Leakspeed:       bucketFactory.leakspeed,
+		BucketConfig:    &bucketFactory,
+		Pour:            Pour,
+		Reprocess:       bucketFactory.Reprocess,
+		Profiling:       bucketFactory.Profiling,
+		Mode:            LIVE,
+		scopeType:       bucketFactory.ScopeType,
+		scenarioVersion: bucketFactory.ScenarioVersion,
+		hash:            bucketFactory.hash,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed

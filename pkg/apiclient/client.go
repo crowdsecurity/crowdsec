@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 )
@@ -79,9 +78,6 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
-	bodyString := string(data)
-
-	log.Printf("we has error %d : %s", r.StatusCode, bodyString)
 
 	return errorResponse
 }

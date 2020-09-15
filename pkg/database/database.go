@@ -15,7 +15,7 @@ type Client struct {
 }
 
 func NewClient(config *csconfig.DatabaseConfig) (*Client, error) {
-	client, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_fk=1", config.Path))
+	client, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.Path))
 	if err != nil {
 		return nil, fmt.Errorf("failed opening connection to sqlite: %v", err)
 	}
