@@ -17,6 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+/*the walk/parser_visit function can't receive extra args*/
+var hubdir, installdir, indexpath string
+
 func parser_visit(path string, f os.FileInfo, err error) error {
 
 	var target Item
@@ -38,9 +41,9 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, csconfig.GConfig.Cscli.HubDir, csconfig.GConfig.Crowdsec.ConfigDir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
-	if strings.HasPrefix(path, csconfig.GConfig.Cscli.HubDir) {
+	if strings.HasPrefix(path, hubdir) {
 		inhub = true
 		//~/.cscli/hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//~/.cscli/hub/scenarios/crowdsec/ssh_bf.yaml
@@ -54,7 +57,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = subs[len(subs)-4]
 		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
-	} else if strings.HasPrefix(path, csconfig.GConfig.Crowdsec.ConfigDir) { /*we're in install /etc/crowdsec/<type>/... */
+	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s", path)
 		}
@@ -68,7 +71,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = ""
 		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
-		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir)
+		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, installdir, hubdir)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -154,7 +157,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if v.Name+".yaml" != fauthor+"/"+fname {
 				continue
 			}
-			if path == csconfig.GConfig.Cscli.HubDir+"/"+v.RemotePath {
+			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
@@ -274,13 +277,13 @@ func CollecDepsCheck(v *Item) error {
 }
 
 /* Updates the infos from HubInit() with the local state */
-func LocalSync() error {
+func LocalSync(cscli *csconfig.CscliCfg) error {
 	skippedLocal = 0
 	skippedTainted = 0
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
-		/*Scan install and csconfig.GConfig.Cscli.HubDir to get local status*/
-		for _, dir := range []string{csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir} {
+		/*Scan install and hub dir to get status*/
+		for _, dir := range []string{cscli.InstallDir, cscli.HubDir} {
 			//walk the user's directory
 			err := filepath.Walk(dir+"/"+scan, parser_visit)
 			if err != nil {
@@ -298,9 +301,9 @@ func LocalSync() error {
 	return nil
 }
 
-func GetHubIdx() error {
+func GetHubIdx(cscli *csconfig.CscliCfg) error {
 
-	bidx, err := ioutil.ReadFile(csconfig.GConfig.Cscli.IndexPath)
+	bidx, err := ioutil.ReadFile(cscli.IndexPath)
 	if err != nil {
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}
@@ -312,7 +315,7 @@ func GetHubIdx() error {
 		return err
 	}
 	HubIdx = ret
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cscli); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil

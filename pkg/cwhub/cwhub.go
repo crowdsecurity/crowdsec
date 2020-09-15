@@ -12,19 +12,19 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+/*managed configuration types*/
 var PARSERS = "parsers"
 var PARSERS_OVFLW = "postoverflows"
 var SCENARIOS = "scenarios"
 var COLLECTIONS = "collections"
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
-// var csconfig.GConfig.Crowdsec.ConfigDir = "/etc/crowdsec/"
-// var csconfig.GConfig.Cscli.HubDir = "/etc/crowdsec/config/cscli/hub/"
-// var csconfig.GConfig.Crowdsec.ConfigDir = "/etc/crowdsec/config"
-
+/*upstream hub info*/
 var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
 var HubBranch = "master"
 var HubIndexFile = ".index.json"
+
+/*global hub state*/
 var HubIdx map[string]map[string]Item
 
 type ItemVersion struct {
