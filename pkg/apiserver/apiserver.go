@@ -36,7 +36,7 @@ type APIServer struct {
 func NewServer(config *csconfig.CrowdSec) (*APIServer, error) {
 	dbClient, err := database.NewClient(config.DBConfig)
 	if err != nil {
-		return &APIServer{}, fmt.Errorf("unable to init database client: %s", config.DBConfig.Path)
+		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
 	}
 
 	middleware, err := middlewares.NewMiddlewares(dbClient)

@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -78,23 +77,18 @@ func FormatAlerts(result []*ent.Alert) []models.Alert {
 }
 
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-	var input []models.Alert
-	var alertID int
+	var input []*models.Alert
+	//var alertID int
 	var responses []string
-	var err error
+	//var err error
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	for _, alertItem := range input {
-		alertID, err = c.DBClient.CreateAlert(&alertItem)
-		if err != nil {
-			c.HandleDBErrors(gctx, err)
-			return
-		}
-		responses = append(responses, strconv.Itoa(alertID))
-	}
+	begin := time.Now()
+	_, _ = c.DBClient.CreateAlertBulk(input)
+	log.Printf("Tooks '%s' to insert %d alerts in DB", time.Now().Sub(begin), len(input))
 	gctx.JSON(http.StatusOK, responses)
 	return
 }

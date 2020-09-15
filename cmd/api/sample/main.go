@@ -68,6 +68,7 @@ type Metrics struct {
 	MachineID string
 	NBSend    int
 	Time      time.Duration
+	Bulk      bool // bulk or single
 }
 
 func (m *Machine) CreateAlert() *models.Alert {
@@ -145,7 +146,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 
 }
 
-func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics) {
+func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics, bulk bool) {
 	var Client *apiclient.ApiClient
 
 	defer wg.Done()
@@ -173,17 +174,35 @@ func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics 
 	Client = apiclient.NewClient(t.Client())
 
 	log.Printf("[Process:%s] Going to ingest %d alerts", name, nbRequest)
-	now := time.Now()
-	for i := 0; i < nbRequest-1; i++ {
-		alert := m.CreateAlert()
-		_, _, err := Client.Alerts.Add(ctx, []*models.Alert{alert})
+
+	var duration time.Duration
+
+	if bulk {
+		toSend := []*models.Alert{}
+		for i := 0; i < nbRequest-1; i++ {
+			alert := m.CreateAlert()
+			toSend = append(toSend, alert)
+		}
+		now := time.Now()
+		_, _, err := Client.Alerts.Add(ctx, toSend)
 		if err != nil {
 			log.Fatalf(err.Error())
 		}
+		duration = time.Now().Sub(now)
+
+	} else {
+		for i := 0; i < nbRequest-1; i++ {
+			alert := m.CreateAlert()
+			now := time.Now()
+			_, _, err := Client.Alerts.Add(ctx, []*models.Alert{alert})
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			duration += time.Now().Sub(now)
+		}
 	}
-	duration := time.Now().Sub(now)
 	log.Printf("[Process:%s] Finished: %d alerts sended => '%s'", name, nbRequest, duration)
-	metrics <- Metrics{MachineID: m.ID, NBSend: nbRequest, Time: duration}
+	metrics <- Metrics{MachineID: m.ID, NBSend: nbRequest, Time: duration, Bulk: bulk}
 }
 
 func main() {
@@ -192,6 +211,7 @@ func main() {
 	nbMachine := flag.Int("c", 10, "Number of concurrent simulated machines")
 	//nbRequest := flag.Int("n", 100, "Total number of request to send (distributed by machine)")
 	nbRequestPerMachine := flag.Int("n", 100, "Total of request to send by machine")
+	bulk := flag.Bool("b", false, "Send all alerts in one request")
 
 	url := flag.String("u", "http://localhost:8080/", "URL of API")
 	flag.Parse()
@@ -213,7 +233,7 @@ func main() {
 			password:  "abcdefgh",
 		}
 		wg.Add(1)
-		go machine.Run(*url, *nbRequestPerMachine, &wg, metricsChan)
+		go machine.Run(*url, *nbRequestPerMachine, &wg, metricsChan, *bulk)
 	}
 
 	wg.Wait()
@@ -228,10 +248,10 @@ func main() {
 	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 	table.SetAlignment(tablewriter.ALIGN_LEFT)
 
-	table.SetHeader([]string{"Machine", "NbRequest Sent", "Time to send"})
+	table.SetHeader([]string{"Machine", "NbRequest Sent", "Bulk", "Time to send"})
 
 	for m := range metricsChan {
-		table.Append([]string{m.MachineID, fmt.Sprintf("%d", m.NBSend), fmt.Sprintf("%s", m.Time)})
+		table.Append([]string{m.MachineID, fmt.Sprintf("%d", m.NBSend), fmt.Sprintf("%t", m.Bulk), fmt.Sprintf("%s", m.Time)})
 	}
 
 	table.Render()

@@ -17,5 +17,10 @@ api:
   cert_path: ./cert.key
   log_file: ./csapi.log
 database:
-  type: sqlite
+  type: mysql
+  username: root
+  password: crowdsec
+  database: crowdsec
+  host: "172.16.0.2"
+  port: 3306
   path: ./ent.db
