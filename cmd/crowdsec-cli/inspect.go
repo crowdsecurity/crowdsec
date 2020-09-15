@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"gopkg.in/yaml.v2"
 
@@ -41,7 +40,7 @@ Inspect give you full detail about local installed configuration.
 cscli inspect collection crowdsec/xxx`,
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csconfig.GConfig.Cscli == nil {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 			return nil
@@ -55,7 +54,7 @@ cscli inspect collection crowdsec/xxx`,
 		Example: `cscli inspect parser crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			InspectItem(args[0], cwhub.PARSERS)
@@ -69,7 +68,7 @@ cscli inspect collection crowdsec/xxx`,
 		Example: `cscli inspect scenario crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			InspectItem(args[0], cwhub.SCENARIOS)
@@ -84,7 +83,7 @@ cscli inspect collection crowdsec/xxx`,
 		Example: `cscli inspect collection crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			InspectItem(args[0], cwhub.COLLECTIONS)
@@ -99,7 +98,7 @@ cscli inspect collection crowdsec/xxx`,
 		Example: `cscli inspect postoverflow crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			InspectItem(args[0], cwhub.PARSERS_OVFLW)

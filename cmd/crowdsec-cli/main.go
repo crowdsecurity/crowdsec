@@ -12,8 +12,21 @@ import (
 
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 var ConfigFilePath string
+var csConfig *csconfig.GlobalConfig
 
 func initConfig() {
+
+	csConfig := csconfig.NewConfig()
+
+	if ConfigFilePath == "" {
+		ConfigFilePath = "/etc/crowdsec/default.yaml"
+		log.Infof("Falling back to %s", ConfigFilePath)
+	}
+
+	log.Debugf("Config folder is : %s", ConfigFilePath)
+	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
+		log.Fatalf(err.Error())
+	}
 
 	if dbg_lvl {
 		log.SetLevel(log.DebugLevel)
@@ -24,18 +37,14 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	if csconfig.GConfig.Cscli.Output == "json" {
+
+	if csConfig.Cscli.Output == "json" {
 		log.SetLevel(log.WarnLevel)
 		log.SetFormatter(&log.JSONFormatter{})
-	} else if csconfig.GConfig.Cscli.Output == "raw" {
+	} else if csConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	csConfig := csconfig.NewConfig()
-	log.Debugf("Config folder is : %s", ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
-		log.Fatalf(err.Error())
-	}
 }
 
 func main() {
@@ -86,7 +95,7 @@ API interaction:
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&csconfig.GConfig.Cscli.Output, "output", "o", "human", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&csConfig.Cscli.Output, "output", "o", "human", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")

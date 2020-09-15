@@ -23,6 +23,15 @@ type GlobalConfig struct {
 	Lapi       *LapiServiceCfg     `yaml:"lapi,omitempty"`
 	LapiClient *LocalApiClientCfg  `yaml:"lapi_client,omitempty"`
 	ApiClient  *OnlineApiClientCfg `yaml:"online_api_client,omitempty"`
+	DbConfig   *DatabaseCfg        `yaml:"db_config,omitempty"`
+}
+
+type DatabaseCfg struct {
+	User     string `yaml:"user"`
+	Password string `yaml:"password"`
+	Name     string `yaml:"dbname"`
+	Uri      string `yaml:"uri"`
+	Type     string `yaml:"type"`
 }
 
 /*daemonization/service related stuff*/
@@ -47,6 +56,7 @@ type CrowdsecServiceCfg struct {
 	ParserRoutines      int               `yaml:"parser_routines"`
 	SimulationFilePath  string            `yaml:"simulation_path,omitempty"`
 	SimulationConfig    *SimulationConfig `yaml:"-"`
+	LintOnly            bool              `yaml:"-"` //if set to true, exit after loading configs
 	ConfigDir           string            `yaml:"config_dir"`
 	DataDir             string            `yaml:"data_dir,omitempty"`
 	BucketStateFile     string            `yaml:"state_input_file,omitempty"` //if we need to unserialize buckets at start
@@ -74,19 +84,20 @@ type LocalApiClientCfg struct {
 
 /*local api service configuration*/
 type LapiServiceCfg struct {
-	Routines     int
-	DbUri        string `yaml:"db_uri,omitempty"` //sqlite:/tmp/lapi.db
-	CertFilePath string `yaml:"cert_path,omitempty"`
-	ListenUri    string `yaml:"listen_uri,omitempty"` //127.0.0.1:4242
+	CertFilePath string       `yaml:"cert_path,omitempty"`
+	ListenUri    string       `yaml:"listen_uri,omitempty"` //127.0.0.1:4242
+	DbConfig     *DatabaseCfg `yaml:"-"`
 }
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	HubDir     string
-	Output     string `yaml:"output,omitempty"`
-	IndexPath  string `yaml:"index_path,omitempty"` //path the the .index.json
-	InstallDir string `yaml:"install_dir,omitempty"`
-	DataDir    string `yaml:"data_dir,omitempty"`
+	HubDir    string
+	Output    string `yaml:"output,omitempty"`
+	IndexPath string `yaml:"index_path,omitempty"` //path the the .index.json
+	/*InstallDir and DataDir are used by both crowdsec and cscli, how to handle it ?*/
+	InstallDir string       `yaml:"install_dir,omitempty"`
+	DataDir    string       `yaml:"data_dir,omitempty"`
+	DbConfig   *DatabaseCfg `yaml:"-"`
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -115,6 +126,8 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 	if err := c.CleanupPaths(); err != nil {
 		return errors.Wrap(err, "invalid config")
 	}
+	c.Cscli.DbConfig = c.DbConfig
+	c.Lapi.DbConfig = c.DbConfig
 	return nil
 }
 
@@ -172,8 +185,6 @@ func NewDefaultConfig() *GlobalConfig {
 		ConfigDir:           "/etc/crowdsec/",
 	}
 	lapiCfg := LapiServiceCfg{
-		Routines:     1,
-		DbUri:        "sqlite://tmp/crowdsec.db",
 		CertFilePath: "", //no cert by default ?
 		ListenUri:    "http://127.0.0.1:4242/",
 	}

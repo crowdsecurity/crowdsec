@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
 	log "github.com/sirupsen/logrus"
@@ -17,14 +16,14 @@ func RemoveMany(ttype string, name string) {
 	var disabled int
 	for _, v := range cwhub.HubIdx[ttype] {
 		if name != "" && v.Name == name {
-			v, err = cwhub.DisableItem(v, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir, purge_remove)
+			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge_remove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
 			cwhub.HubIdx[ttype][v.Name] = v
 			return
 		} else if name == "" && remove_all {
-			v, err = cwhub.DisableItem(v, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir, purge_remove)
+			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge_remove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
@@ -54,7 +53,7 @@ func NewRemoveCmd() *cobra.Command {
 		Example: `cscli remove [type] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csconfig.GConfig.Cscli == nil {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 			return nil
@@ -71,7 +70,7 @@ func NewRemoveCmd() *cobra.Command {
 		Long:  `<config> must be a valid parser.`,
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 
@@ -91,7 +90,7 @@ func NewRemoveCmd() *cobra.Command {
 		Long:  `<config> must be a valid scenario.`,
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if remove_all {
@@ -110,7 +109,7 @@ func NewRemoveCmd() *cobra.Command {
 		Long:  `<config> must be a valid collection.`,
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if remove_all {
@@ -130,7 +129,7 @@ func NewRemoveCmd() *cobra.Command {
 		Long:  `<config> must be a valid collection.`,
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if remove_all {

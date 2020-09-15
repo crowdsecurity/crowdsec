@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -12,24 +11,24 @@ import (
 )
 
 func addToExclusion(name string) error {
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions = append(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions, name)
+	csConfig.Crowdsec.SimulationConfig.Exclusions = append(csConfig.Crowdsec.SimulationConfig.Exclusions, name)
 	return nil
 }
 
 func removeFromExclusion(name string) error {
-	index := indexOf(name, csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)
+	index := indexOf(name, csConfig.Crowdsec.SimulationConfig.Exclusions)
 
 	// Remove element from the slice
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions[index] = csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions[len(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)-1]
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions[len(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)-1] = ""
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions = csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions[:len(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)-1]
+	csConfig.Crowdsec.SimulationConfig.Exclusions[index] = csConfig.Crowdsec.SimulationConfig.Exclusions[len(csConfig.Crowdsec.SimulationConfig.Exclusions)-1]
+	csConfig.Crowdsec.SimulationConfig.Exclusions[len(csConfig.Crowdsec.SimulationConfig.Exclusions)-1] = ""
+	csConfig.Crowdsec.SimulationConfig.Exclusions = csConfig.Crowdsec.SimulationConfig.Exclusions[:len(csConfig.Crowdsec.SimulationConfig.Exclusions)-1]
 
 	return nil
 }
 
 func enableGlobalSimulation() error {
-	csconfig.GConfig.Crowdsec.SimulationConfig.Simulation = true
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
+	csConfig.Crowdsec.SimulationConfig.Simulation = true
+	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 
 	if err := dumpSimulationFile(); err != nil {
 		log.Fatalf("unable to dump simulation file: %s", err.Error())
@@ -41,28 +40,28 @@ func enableGlobalSimulation() error {
 }
 
 func dumpSimulationFile() error {
-	newConfigSim, err := yaml.Marshal(csconfig.GConfig.Crowdsec.SimulationConfig)
+	newConfigSim, err := yaml.Marshal(csConfig.Crowdsec.SimulationConfig)
 	if err != nil {
 		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csconfig.GConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
+	err = ioutil.WriteFile(csConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
-		return fmt.Errorf("write simulation config in '%s' : %s", csconfig.GConfig.Crowdsec.SimulationFilePath, err)
+		return fmt.Errorf("write simulation config in '%s' : %s", csConfig.Crowdsec.SimulationFilePath, err)
 	}
 
 	return nil
 }
 
 func disableGlobalSimulation() error {
-	csconfig.GConfig.Crowdsec.SimulationConfig.Simulation = false
-	csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
-	newConfigSim, err := yaml.Marshal(csconfig.GConfig.Crowdsec.SimulationConfig)
+	csConfig.Crowdsec.SimulationConfig.Simulation = false
+	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
+	newConfigSim, err := yaml.Marshal(csConfig.Crowdsec.SimulationConfig)
 	if err != nil {
 		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csconfig.GConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
+	err = ioutil.WriteFile(csConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
-		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csconfig.GConfig.Crowdsec.SimulationFilePath, err)
+		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csConfig.Crowdsec.SimulationFilePath, err)
 	}
 
 	log.Printf("global simulation: disabled")
@@ -70,23 +69,23 @@ func disableGlobalSimulation() error {
 }
 
 func simulationStatus() error {
-	if csconfig.GConfig.Crowdsec.SimulationConfig == nil {
+	if csConfig.Crowdsec.SimulationConfig == nil {
 		log.Printf("global simulation: disabled (configuration file is missing)")
 		return nil
 	}
-	if csconfig.GConfig.Crowdsec.SimulationConfig.Simulation {
+	if csConfig.Crowdsec.SimulationConfig.Simulation {
 		log.Println("global simulation: enabled")
-		if len(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions) > 0 {
+		if len(csConfig.Crowdsec.SimulationConfig.Exclusions) > 0 {
 			log.Println("Scenarios not in simulation mode :")
-			for _, scenario := range csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions {
+			for _, scenario := range csConfig.Crowdsec.SimulationConfig.Exclusions {
 				log.Printf("  - %s", scenario)
 			}
 		}
 	} else {
 		log.Println("global simulation: disabled")
-		if len(csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions) > 0 {
+		if len(csConfig.Crowdsec.SimulationConfig.Exclusions) > 0 {
 			log.Println("Scenarios in simulation mode :")
-			for _, scenario := range csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions {
+			for _, scenario := range csConfig.Crowdsec.SimulationConfig.Exclusions {
 				log.Printf("  - %s", scenario)
 			}
 		}
@@ -100,7 +99,7 @@ func NewSimulationCmds() *cobra.Command {
 		Short: "",
 		Long:  ``,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csconfig.GConfig.Cscli == nil {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before using simulation")
 			}
 			return nil
@@ -118,7 +117,7 @@ func NewSimulationCmds() *cobra.Command {
 		Long:    ``,
 		Example: `cscli simulation enable`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 
@@ -135,16 +134,16 @@ func NewSimulationCmds() *cobra.Command {
 							log.Warningf("'%s' isn't enabled", scenario)
 						}
 					}
-					isExcluded := inSlice(scenario, csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)
-					if csconfig.GConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
+					isExcluded := inSlice(scenario, csConfig.Crowdsec.SimulationConfig.Exclusions)
+					if csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
 						log.Warningf("global simulation is already enabled")
 						continue
 					}
-					if !csconfig.GConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if !csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						log.Warningf("simulation for '%s' already enabled", scenario)
 						continue
 					}
-					if csconfig.GConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
@@ -176,12 +175,12 @@ func NewSimulationCmds() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				for _, scenario := range args {
-					isExcluded := inSlice(scenario, csconfig.GConfig.Crowdsec.SimulationConfig.Exclusions)
-					if !csconfig.GConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
+					isExcluded := inSlice(scenario, csConfig.Crowdsec.SimulationConfig.Exclusions)
+					if !csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
 						log.Warningf("%s isn't in simulation mode", scenario)
 						continue
 					}
-					if !csconfig.GConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if !csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}

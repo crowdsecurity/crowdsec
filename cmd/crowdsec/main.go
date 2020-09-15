@@ -29,7 +29,7 @@ var (
 	bucketsTomb tomb.Tomb
 	outputsTomb tomb.Tomb
 	/*global crowdsec config*/
-	cConfig *csconfig.CrowdSec
+	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
 	acquisitionCTX *acquisition.FileAcquisCtx
 	/*the state of the buckets*/
@@ -212,29 +212,105 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec, parsers *parsers) (chan
 	return inputLineChan, nil
 }
 
+// LoadConfig return configuration parsed from command line and configuration file
+func LoadConfig(config *csconfig.GlobalConfig) error {
+	// AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
+	// configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
+	// printTrace := flag.Bool("trace", false, "VERY verbose")
+	// printDebug := flag.Bool("debug", false, "print debug-level on stdout")
+	// printInfo := flag.Bool("info", false, "print info-level on stdout")
+	// printVersion := flag.Bool("version", false, "display version")
+	// APIMode := flag.Bool("api", false, "perform pushes to api")
+	// profileMode := flag.Bool("profile", false, "Enable performance profiling")
+	// catFile := flag.String("file", "", "Process a single file in time-machine")
+	// catFileType := flag.String("type", "", "Labels.type for file in time-machine")
+	// daemonMode := flag.Bool("daemon", false, "Daemonize, go background, drop PID file, log to file")
+	// testMode := flag.Bool("t", false, "only test configs")
+	// prometheus := flag.Bool("prometheus-metrics", false, "expose http prometheus collector (see http_listen)")
+	// restoreMode := flag.String("restore-state", "", "[dev] restore buckets state from json file")
+	// dumpMode := flag.Bool("dump-state", false, "[dev] Dump bucket state at the end of run.")
+
+	// flag.Parse()
+
+	// if *printVersion {
+	// 	cwversion.Show()
+	// 	os.Exit(0)
+	// }
+
+	// if *catFile != "" {
+	// 	if *catFileType == "" {
+	// 		return fmt.Errorf("-file requires -type")
+	// 	}
+	// 	c.SingleFile = *catFile
+	// 	c.SingleFileLabel = *catFileType
+	// }
+
+	// if err := c.LoadConfigurationFile(configFile); err != nil {
+	// 	return fmt.Errorf("Error while loading configuration : %s", err)
+	// }
+
+	// if *AcquisitionFile != "" {
+	// 	c.AcquisitionFile = *AcquisitionFile
+	// }
+	// if *dumpMode {
+	// 	c.DumpBuckets = true
+	// }
+	// if *prometheus {
+	// 	c.Prometheus = true
+	// }
+	// if *testMode {
+	// 	c.Linter = true
+	// }
+	// /*overriden by cmdline*/
+	// if *daemonMode {
+	// 	c.Daemonize = true
+	// }
+	// if *profileMode {
+	// 	c.Profiling = true
+	// }
+	// if *printDebug {
+	// 	c.LogLevel = log.DebugLevel
+	// }
+	// if *printInfo {
+	// 	c.LogLevel = log.InfoLevel
+	// }
+	// if *printTrace {
+	// 	c.LogLevel = log.TraceLevel
+	// }
+	// if *APIMode {
+	// 	c.APIMode = true
+	// }
+
+	// if *restoreMode != "" {
+	// 	c.RestoreMode = *restoreMode
+	// }
+
+	return nil
+}
+
 func main() {
 	var (
 		err error
 	)
 
-	cConfig = csconfig.NewCrowdSecConfig()
+	cConfig = csconfig.NewConfig()
 
 	// Handle command line arguments
-	if err := cConfig.LoadConfig(); err != nil {
+	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.LogMode, cConfig.LogFolder, cConfig.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Daemon.LogMedia, cConfig.Daemon.LogDir, cConfig.Daemon.LogLevel); err != nil {
 		log.Fatal(err.Error())
 	}
 
 	daemonCTX := &daemon.Context{
-		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
+		PidFileName: cConfig.Daemon.PidDir + "/crowdsec.pid",
 		PidFilePerm: 0644,
 		WorkDir:     "./",
 		Umask:       027,
 	}
-	if cConfig.Daemonize {
+	if cConfig.Daemon.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
@@ -251,9 +327,8 @@ func main() {
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	// Enable profiling early
-	if cConfig.Prometheus {
-		registerPrometheus(cConfig.PrometheusMode)
-		cConfig.Profiling = true
+	if cConfig.Prometheus != nil {
+		registerPrometheus(cConfig.Prometheus.Level)
 	}
 	err = exprhelpers.Init()
 	if err != nil {
@@ -261,10 +336,9 @@ func main() {
 	}
 
 	// Populate cwhub package tools
-	cwhub.Cfgdir = cConfig.ConfigFolder
-	cwhub.GetHubIdx()
-	// Start loading configs
+	cwhub.GetHubIdx(cConfig.Cscli)
 
+	// Start loading configs
 	parsers := newParsers()
 	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
@@ -279,10 +353,12 @@ func main() {
 	}
 
 	/* if it's just linting, we're done */
-	if cConfig.Linter {
+	if cConfig.Crowdsec.LintOnly {
+		log.Infof("lint done")
 		return
 	}
 
+	/*TBD : need to be cleaned up a bit*/
 	/*if the user is in "single file mode" (might be writting scenario or parsers),
 	allow loading **without** parsers or scenarios */
 	if cConfig.SingleFile == "" {

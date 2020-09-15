@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -26,13 +25,13 @@ If no commands are specified, config is in interactive mode.`,
 		Long:  `Displays the current cli configuration.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if csconfig.GConfig.Cscli.Output == "json" {
+			if csConfig.Cscli.Output == "json" {
 				log.WithFields(log.Fields{
-					"crowdsec_configuration_file": csconfig.GConfig.Self,
-					"data_folder":                 csconfig.GConfig.Crowdsec.DataDir,
+					"crowdsec_configuration_file": csConfig.Self,
+					"data_folder":                 csConfig.Crowdsec.DataDir,
 				}).Warning("Current config")
 			} else {
-				x, err := yaml.Marshal(csconfig.GConfig.Cscli)
+				x, err := yaml.Marshal(csConfig.Cscli)
 				if err != nil {
 					log.Fatalf("failed to marshal current configuration : %v", err)
 				}

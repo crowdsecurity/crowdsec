@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -170,7 +169,7 @@ func ShowPrometheus(url string) {
 
 		}
 	}
-	if csconfig.GConfig.Cscli.Output == "human" {
+	if csConfig.Cscli.Output == "human" {
 
 		acquisTable := tablewriter.NewWriter(os.Stdout)
 		acquisTable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
@@ -198,7 +197,7 @@ func ShowPrometheus(url string) {
 		acquisTable.Render()
 		log.Printf("Parser Metrics:")
 		parsersTable.Render()
-	} else if csconfig.GConfig.Cscli.Output == "json" {
+	} else if csConfig.Cscli.Output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
@@ -206,7 +205,7 @@ func ShowPrometheus(url string) {
 			}
 			fmt.Printf("%s\n", string(x))
 		}
-	} else if csconfig.GConfig.Cscli.Output == "raw" {
+	} else if csConfig.Cscli.Output == "raw" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {

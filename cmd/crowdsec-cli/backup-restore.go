@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
 )
@@ -18,15 +17,15 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 			if download_only && it.Downloaded && it.UpToDate {
 				return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 			}
-			it, err := cwhub.DownloadLatest(it, csconfig.GConfig.Cscli.HubDir, force_install, csconfig.GConfig.Crowdsec.DataDir)
+			it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
 			if err != nil {
 				return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 			}
 			cwhub.HubIdx[obtype][it.Name] = it
 			if download_only {
-				return fmt.Sprintf("Downloaded %s to %s", it.Name, csconfig.GConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+				return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
 			}
-			it, err = cwhub.EnableItem(it, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir)
+			it, err = cwhub.EnableItem(csConfig.Cscli, it)
 			if err != nil {
 				return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
 			}
