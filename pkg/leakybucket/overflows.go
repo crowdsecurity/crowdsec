@@ -117,7 +117,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	apiAlert := models.Alert{
 		Scenario:        leaky.Name,
 		ScenarioHash:    leaky.hash,
-		ScenarioVersion: leaky.version,
+		ScenarioVersion: leaky.scenarioVersion,
 		Capacity:        int32(leaky.Capacity),
 		EventsCount:     int32(leaky.Total_count),
 		Leakspeed:       leaky.Leakspeed.String(),

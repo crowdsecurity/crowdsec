@@ -1,0 +1,81 @@
+{
+    "lines": [
+       {
+          "Line": {
+             "Labels": {
+                "type": "testlog"
+             },
+             "Raw": "xxheader VALUE1 trailing stuff"
+          },
+          "MarshaledTime": "2020-01-01T10:00:00.000Z",
+          "Meta": {
+             "source_ip": "1.2.3.4",
+             "uniq_key": "aaa"
+          },
+          "Enriched": {
+             "ASNumber": "1234",
+             "IsoCode": "FR",
+             "ASNOrg": "random AS"
+          }
+       },
+       {
+          "Line": {
+             "Labels": {
+                "type": "testlog"
+             },
+             "Raw": "xxheader VALUE1 trailing stuff"
+          },
+          "MarshaledTime": "2020-01-01T10:00:00.000Z",
+          "Meta": {
+             "source_ip": "1.2.3.4",
+             "uniq_key": "aaa"
+          },
+          "Enriched": {
+             "ASNumber": "1234",
+             "IsoCode": "FR",
+             "ASNOrg": "random AS"
+          }
+       }
+      ],
+      "results" : [
+         {
+             "Alert": {
+               "Sources": {
+                  "1.2.3.4": {
+                     "as_name": "random AS",
+                     "as_number": "1234",
+                     "cn": "FR",
+                     "ip": "1.2.3.4",
+                     "scope": "Ip",
+                     "value": "1.2.3.4"
+                  }
+               },            
+               "Alert" : {
+                  "events_count": 1,
+                   "scenario": "test/simple-trigger",
+                  "scenario_version": "1.0"
+               }
+            }
+         },
+         {
+            "Alert": {
+               "Sources": {
+                  "1.2.3.4": {
+                     "as_name": "random AS",
+                     "as_number": "1234",
+                     "cn": "FR",
+                     "ip": "1.2.3.4",
+                     "scope": "Ip",
+                     "value": "1.2.3.4"
+                  }
+               },            
+               "Alert" : {
+                  "events_count": 1,
+                  "scenario": "test/simple-trigger",
+                  "scenario_version": "1.0"
+               }
+            }
+            
+         }
+      ]
+ }
