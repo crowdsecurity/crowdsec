@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
 	log "github.com/sirupsen/logrus"
@@ -19,16 +20,16 @@ func InstallItem(name string, obtype string) {
 				log.Warningf("%s is already downloaded and up-to-date", it.Name)
 				return
 			}
-			it, err := cwhub.DownloadLatest(it, config.Cscli.HubDir, force_install, config.Crowdsec.DataDir)
+			it, err := cwhub.DownloadLatest(it, csconfig.GConfig.Cscli.HubDir, force_install, csconfig.GConfig.Crowdsec.DataDir)
 			if err != nil {
 				log.Fatalf("error while downloading %s : %v", it.Name, err)
 			}
 			cwhub.HubIdx[obtype][it.Name] = it
 			if download_only {
-				log.Infof("Downloaded %s to %s", it.Name, config.Cscli.HubDir+"/"+it.RemotePath)
+				log.Infof("Downloaded %s to %s", it.Name, csconfig.GConfig.Cscli.HubDir+"/"+it.RemotePath)
 				return
 			}
-			it, err = cwhub.EnableItem(it, config.Crowdsec.ConfigDir, config.Cscli.HubDir)
+			it, err = cwhub.EnableItem(it, csconfig.GConfig.Crowdsec.ConfigDir, csconfig.GConfig.Cscli.HubDir)
 			if err != nil {
 				log.Fatalf("error while enabled %s : %v.", it.Name, err)
 			}
@@ -60,7 +61,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install [type] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if config.Cscli == nil {
+			if csconfig.GConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
 	"github.com/enescakir/emoji"
@@ -25,7 +26,7 @@ func doListing(ttype string, args []string) {
 		pkgst = cwhub.HubStatus(ttype, "", listAll)
 	}
 
-	if config.Cscli.Output == "human" {
+	if csconfig.GConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetCenterSeparator("")
@@ -38,13 +39,13 @@ func doListing(ttype string, args []string) {
 			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
 		}
 		table.Render()
-	} else if config.Cscli.Output == "json" {
+	} else if csconfig.GConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(pkgst, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
 		fmt.Printf("%s", string(x))
-	} else if config.Cscli.Output == "raw" {
+	} else if csconfig.GConfig.Cscli.Output == "raw" {
 		for _, v := range pkgst {
 			fmt.Printf("%s %s\n", v["name"], v["description"])
 		}
@@ -69,7 +70,7 @@ cscli list -a # List all local and remote configurations
 		`,
 		Args: cobra.ExactArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if config.Cscli == nil {
+			if csconfig.GConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 

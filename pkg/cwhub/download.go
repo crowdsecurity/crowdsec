@@ -55,7 +55,7 @@ func UpdateHubIdx() error {
 }
 
 func DownloadHubIdx() ([]byte, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, ".index.json"), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
 		log.Errorf("failed request : %s", err)
 		return nil, err

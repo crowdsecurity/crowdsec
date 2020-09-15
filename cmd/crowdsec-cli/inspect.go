@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"gopkg.in/yaml.v2"
 
@@ -40,7 +41,7 @@ Inspect give you full detail about local installed configuration.
 cscli inspect collection crowdsec/xxx`,
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if config.Cscli == nil {
+			if csconfig.GConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 			return nil

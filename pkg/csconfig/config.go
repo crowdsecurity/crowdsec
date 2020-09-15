@@ -10,6 +10,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var GConfig *GlobalConfig
+
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
 type GlobalConfig struct {
 	//just a path to ourself :p
@@ -80,8 +82,9 @@ type LapiServiceCfg struct {
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	HubDir string
-	Output string `yaml:"output,omitempty"`
+	HubDir    string
+	Output    string `yaml:"output,omitempty"`
+	IndexPath string `yaml:"index_path,omitempty"` //path the the .index.json
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -151,6 +154,11 @@ func NewDefaultConfig() *GlobalConfig {
 		LogLevel:   log.InfoLevel,
 		WorkingDir: ".",
 	}
+	cscli := CscliCfg{
+		HubDir:    "/etc/crowdsec/config/cscli/hub/",
+		IndexPath: "/etc/crowdsec/config/cscli/.index.json",
+		Output:    "human",
+	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
 		Level:   "full",
@@ -180,6 +188,7 @@ func NewDefaultConfig() *GlobalConfig {
 		Lapi:       &lapiCfg,
 		LapiClient: &lapiClientCfg,
 		ApiClient:  &oapiClientCfg,
+		Cscli:      &cscli,
 	}
 	return &globalCfg
 }

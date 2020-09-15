@@ -13,10 +13,6 @@ import (
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 var ConfigFilePath string
 
-//var config cliConfig
-
-var config *csconfig.GlobalConfig
-
 func initConfig() {
 
 	if dbg_lvl {
@@ -28,10 +24,10 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	if config.Cscli.Output == "json" {
+	if csconfig.GConfig.Cscli.Output == "json" {
 		log.SetLevel(log.WarnLevel)
 		log.SetFormatter(&log.JSONFormatter{})
-	} else if config.Cscli.Output == "raw" {
+	} else if csconfig.GConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}
 
@@ -89,9 +85,8 @@ API interaction:
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	//rootCmd.PersistentFlags().BoolVarP(&config.simulation, "simulate", "s", false, "No action; perform a simulation of events that would occur based on the current arguments.")
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVarP(&config.Cscli.Output, "output", "o", "human", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&csconfig.GConfig.Cscli.Output, "output", "o", "human", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")

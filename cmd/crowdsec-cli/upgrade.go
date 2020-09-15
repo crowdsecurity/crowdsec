@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
 	"github.com/enescakir/emoji"
@@ -35,7 +36,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%s : up-to-date", v.Name)
 			continue
 		}
-		v, err = cwhub.DownloadLatest(v, config.Cscli.HubDir, force_upgrade, config.Crowdsec.DataDir)
+		v, err = cwhub.DownloadLatest(v, csconfig.GConfig.Cscli.HubDir, force_upgrade, csconfig.GConfig.Crowdsec.DataDir)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -87,7 +88,7 @@ cscli upgrade --force # Overwrite tainted configuration
 
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if config.Cscli == nil {
+			if csconfig.GConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
