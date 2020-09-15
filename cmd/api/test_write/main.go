@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"math/rand"
 	"net/url"
 	"os"
@@ -11,14 +12,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/goombaio/namegenerator"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/xid"
 	log "github.com/sirupsen/logrus"
@@ -72,7 +69,6 @@ type Metrics struct {
 	MachineID string
 	NBSend    int
 	Time      time.Duration
-	Bulk      bool // bulk or single
 }
 
 func (m *Machine) CreateAlert() *models.Alert {
@@ -164,7 +160,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 
 }
 
-func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics, bulk bool) {
+func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics) {
 	var Client *apiclient.ApiClient
 
 	defer wg.Done()
