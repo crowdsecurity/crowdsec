@@ -35,7 +35,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%s : up-to-date", v.Name)
 			continue
 		}
-		v, err = cwhub.DownloadLatest(v, cwhub.Hubdir, force_upgrade, config.DataFolder)
+		v, err = cwhub.DownloadLatest(v, config.Cscli.HubDir, force_upgrade, config.Crowdsec.DataDir)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -87,7 +87,7 @@ cscli upgrade --force # Overwrite tainted configuration
 
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if config.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 

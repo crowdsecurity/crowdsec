@@ -40,7 +40,7 @@ Inspect give you full detail about local installed configuration.
 cscli inspect collection crowdsec/xxx`,
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if config.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 			return nil

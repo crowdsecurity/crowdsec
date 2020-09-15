@@ -19,16 +19,16 @@ func InstallItem(name string, obtype string) {
 				log.Warningf("%s is already downloaded and up-to-date", it.Name)
 				return
 			}
-			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.DataFolder)
+			it, err := cwhub.DownloadLatest(it, config.Cscli.HubDir, force_install, config.Crowdsec.DataDir)
 			if err != nil {
 				log.Fatalf("error while downloading %s : %v", it.Name, err)
 			}
 			cwhub.HubIdx[obtype][it.Name] = it
 			if download_only {
-				log.Infof("Downloaded %s to %s", it.Name, cwhub.Hubdir+"/"+it.RemotePath)
+				log.Infof("Downloaded %s to %s", it.Name, config.Cscli.HubDir+"/"+it.RemotePath)
 				return
 			}
-			it, err = cwhub.EnableItem(it, cwhub.Installdir, cwhub.Hubdir)
+			it, err = cwhub.EnableItem(it, config.Crowdsec.ConfigDir, config.Cscli.HubDir)
 			if err != nil {
 				log.Fatalf("error while enabled %s : %v.", it.Name, err)
 			}
@@ -60,7 +60,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install [type] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if config.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 

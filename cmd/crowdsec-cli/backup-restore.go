@@ -17,7 +17,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 			if download_only && it.Downloaded && it.UpToDate {
 				return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 			}
-			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.DataFolder)
+			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.Crowdsec.DataDir)
 			if err != nil {
 				return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 			}
