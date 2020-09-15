@@ -21,6 +21,6 @@ database:
   username: root
   password: crowdsec
   database: crowdsec
-  host: "172.16.0.2"
+  host: "172.17.0.2"
   port: 3306
   path: ./ent.db

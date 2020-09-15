@@ -8,7 +8,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	_ "github.com/go-sql-driver/mysql"
-	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -17,7 +16,7 @@ type Client struct {
 }
 
 func NewClient(config *csconfig.DatabaseConfig) (*Client, error) {
-	/*var client *ent.Client
+	var client *ent.Client
 	var err error
 	switch config.Type {
 	case "sqlite":
@@ -26,23 +25,17 @@ func NewClient(config *csconfig.DatabaseConfig) (*Client, error) {
 			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
 		}
 	case "mysql":
-		client, err = ent.Open("mysql", "root:crowdsec@tcp(172.16.0.2:3306)/crowdsec?parseTime=True")
+		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.Username, config.Password, config.Host, config.Port, config.Database))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
 		}
 	default:
 		return &Client{}, fmt.Errorf("unknown database type")
-	}*/
-
-	client, err := ent.Open("mysql", "root:crowdsec@tcp(172.16.0.2:3306)/crowdsec?parseTime=True")
-	if err != nil {
-		return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
 	}
-	log.Printf("Creating schema")
-	if err = client.Debug().Schema.Create(context.Background()); err != nil {
+
+	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	log.Printf("Schema created!!")
 	return &Client{Ent: client, CTX: context.Background()}, nil
 }
 
