@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var GConfig *GlobalConfig
+//var GConfig *GlobalConfig
 
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
 type GlobalConfig struct {
@@ -82,9 +82,11 @@ type LapiServiceCfg struct {
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	HubDir    string
-	Output    string `yaml:"output,omitempty"`
-	IndexPath string `yaml:"index_path,omitempty"` //path the the .index.json
+	HubDir     string
+	Output     string `yaml:"output,omitempty"`
+	IndexPath  string `yaml:"index_path,omitempty"` //path the the .index.json
+	InstallDir string `yaml:"install_dir,omitempty"`
+	DataDir    string `yaml:"data_dir,omitempty"`
 }
 
 func (c *GlobalConfig) Dump() error {

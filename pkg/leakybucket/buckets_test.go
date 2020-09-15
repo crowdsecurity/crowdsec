@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -84,7 +83,7 @@ func testOneBucket(t *testing.T, dir string) error {
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
-	holders, response, err := LoadBuckets(csconfig.CrowdSec{DataFolder: dir}, files)
+	holders, response, err := LoadBuckets(files)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}

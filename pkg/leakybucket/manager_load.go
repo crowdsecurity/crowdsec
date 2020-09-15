@@ -120,7 +120,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(files []string) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
@@ -185,7 +185,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 				bucketFactory.hash = hubItem.LocalHash
 			}
 
-			err = LoadBucket(&bucketFactory, csconfig.DataFolder)
+			err = LoadBucket(&bucketFactory, csconfig.GConfig.Crowdsec.DataDir)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
