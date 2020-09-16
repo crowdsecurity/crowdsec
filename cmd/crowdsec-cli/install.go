@@ -19,16 +19,16 @@ func InstallItem(name string, obtype string) {
 				log.Warningf("%s is already downloaded and up-to-date", it.Name)
 				return
 			}
-			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.DataFolder)
+			it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
 			if err != nil {
 				log.Fatalf("error while downloading %s : %v", it.Name, err)
 			}
 			cwhub.HubIdx[obtype][it.Name] = it
 			if download_only {
-				log.Infof("Downloaded %s to %s", it.Name, cwhub.Hubdir+"/"+it.RemotePath)
+				log.Infof("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath)
 				return
 			}
-			it, err = cwhub.EnableItem(it, cwhub.Installdir, cwhub.Hubdir)
+			it, err = cwhub.EnableItem(csConfig.Cscli, it)
 			if err != nil {
 				log.Fatalf("error while enabled %s : %v.", it.Name, err)
 			}
@@ -60,7 +60,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install [type] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
@@ -83,7 +83,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install parser crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
@@ -99,7 +99,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install scenario crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
@@ -116,7 +116,7 @@ you should [update cscli](./cscli_update.md).
 		Example: `cscli install collection crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
@@ -134,7 +134,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		Example: `cscli install collection crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {

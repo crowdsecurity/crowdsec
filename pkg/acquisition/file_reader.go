@@ -67,37 +67,24 @@ var ReaderHits = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
-func LoadAcquisitionConfig(cConfig *csconfig.CrowdSec) (*FileAcquisCtx, error) {
-	var acquisitionCTX *FileAcquisCtx
-	var err error
-	/*Init the acqusition : from cli or from acquis.yaml file*/
-	if cConfig.SingleFile != "" {
-		var input FileCtx
-		input.Filename = cConfig.SingleFile
-		input.Mode = CATMODE
-		input.Labels = make(map[string]string)
-		input.Labels["type"] = cConfig.SingleFileLabel
-		acquisitionCTX, err = InitReaderFromFileCtx([]FileCtx{input})
-	} else { /* Init file reader if we tail */
-		acquisitionCTX, err = InitReader(cConfig.AcquisitionFile)
-	}
-	if err != nil {
-		return nil, fmt.Errorf("unable to start file acquisition, bailout %v", err)
-	}
-	if acquisitionCTX == nil {
-		return nil, fmt.Errorf("no inputs to process")
-	}
-	if cConfig.Profiling {
-		acquisitionCTX.Profiling = true
-	}
-
-	return acquisitionCTX, nil
+/*LoadAcquisCtxSingleFile Loading a single file path/type for acquisition*/
+func LoadAcquisCtxSingleFile(path string, filetype string) ([]FileCtx, error) {
+	var input FileCtx
+	input.Filename = path
+	input.Mode = CATMODE
+	input.Labels = make(map[string]string)
+	input.Labels["type"] = filetype
+	return []FileCtx{input}, nil
 }
 
-func InitReader(cfg string) (*FileAcquisCtx, error) {
+/*LoadAcquisCtxConfigFile Loading a acquis.yaml file for acquisition*/
+func LoadAcquisCtxConfigFile(config *csconfig.GlobalConfig) ([]FileCtx, error) {
 	var files []FileCtx
 
-	yamlFile, err := os.Open(cfg)
+	if config.Crowdsec == nil || config.Crowdsec.AcquisitionFilePath == "" {
+		return nil, fmt.Errorf("no acquisition file")
+	}
+	yamlFile, err := os.Open(config.Crowdsec.AcquisitionFilePath)
 	if err != nil {
 		log.Errorf("Can't access acquisition configuration file with '%v'.", err)
 		return nil, err
@@ -113,12 +100,12 @@ func InitReader(cfg string) (*FileAcquisCtx, error) {
 				log.Tracef("End of yaml file")
 				break
 			}
-			log.Fatalf("Error decoding acquisition configuration file with '%s': %v", cfg, err)
+			log.Fatalf("Error decoding acquisition configuration file with '%s': %v", config.Crowdsec.AcquisitionFilePath, err)
 			break
 		}
 		files = append(files, t)
 	}
-	return InitReaderFromFileCtx(files)
+	return files, nil
 }
 
 //InitReader iterates over the FileCtx objects of cfg and resolves globbing to open files
@@ -211,12 +198,12 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 		case TAILMODE:
 			mode = "tail"
 			AcquisTomb.Go(func() error {
-				return AcquisReadOneFile(fctx, output, AcquisTomb)
+				return TailFile(fctx, output, AcquisTomb)
 			})
 		case CATMODE:
 			mode = "cat"
 			AcquisTomb.Go(func() error {
-				return ReadAtOnce(fctx, output, AcquisTomb)
+				return CatFile(fctx, output, AcquisTomb)
 			})
 		default:
 			log.Fatalf("unknown read mode %s for %+v", fctx.Mode, fctx.Filenames)
@@ -227,7 +214,7 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 }
 
 /*A tail-mode file reader (tail) */
-func AcquisReadOneFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+func TailFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 	clog := log.WithFields(log.Fields{
 		"acquisition file": ctx.Filename,
 	})
@@ -280,7 +267,7 @@ LOOP:
 }
 
 /*A one shot file reader (cat) */
-func ReadAtOnce(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 	var scanner *bufio.Scanner
 
 	if len(ctx.Filenames) > 0 {

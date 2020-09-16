@@ -19,7 +19,7 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 `,
 		Args: cobra.ExactArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
@@ -29,7 +29,7 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.UpdateHubIdx(); err != nil {
+			if err := cwhub.UpdateHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 		},

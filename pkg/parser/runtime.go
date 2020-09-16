@@ -18,14 +18,10 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
 )
-
-//ECTX : DID YOU SEE THAT GLOBAL, ISN'T IT HUGLY
-var ECTX []EnricherCtx
 
 /* ok, this is kinda experimental, I don't know how bad of an idea it is .. */
 func SetTargetByName(target string, value string, evt *types.Event) bool {
@@ -107,10 +103,11 @@ func printStaticTarget(static types.ExtraField) string {
 	}
 }
 
-func ProcessStatics(statics []types.ExtraField, event *types.Event, clog *logrus.Entry) error {
+func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
+	clog := n.logger
 
 	for _, static := range statics {
 		value = ""
@@ -141,7 +138,7 @@ func ProcessStatics(statics []types.ExtraField, event *types.Event, clog *logrus
 		if static.Method != "" {
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
-			for _, x := range ECTX {
+			for _, x := range n.EnrichFunctions {
 				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
 					clog.Tracef("Found method '%s'", static.Method)
 					ret, err := fptr(value, event, x.RuntimeCtx)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,62 +25,67 @@ var testDataFolder = "."
 
 func TestIndexDownload(t *testing.T) {
 
-	os.RemoveAll(Cfgdir)
-	test_prepenv()
+	cfg := test_prepenv()
 
-	err := LoadHubIdx()
+	err := UpdateHubIdx(cfg.Cscli)
 	//DownloadHubIdx()
 	if err != nil {
-		t.Fatalf("failed to download index")
+		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(); err != nil {
-		t.Fatalf("failed to load hub index")
+	if err := GetHubIdx(cfg.Cscli); err != nil {
+		t.Fatalf("failed to load hub index : %s", err)
 	}
 }
 
-func test_prepenv() {
+func test_prepenv() *csconfig.GlobalConfig {
 	log.SetLevel(log.DebugLevel)
 
-	Cfgdir = filepath.Clean("./cscli")
-	Installdir = filepath.Clean("./install")
-	Hubdir = filepath.Clean("./hubdir")
+	var cfg = csconfig.NewConfig()
+	cfg.Cscli = &csconfig.CscliCfg{}
+	cfg.Cscli.InstallDir = filepath.Clean("./install")
+	cfg.Cscli.HubDir = filepath.Clean("./hubdir")
+	cfg.Cscli.IndexPath = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.RemoveAll(Cfgdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Installdir, err)
+	if err := os.RemoveAll(cfg.Cscli.InstallDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Cscli.InstallDir, err)
 	}
 
-	if err := os.MkdirAll(Cfgdir, 0700); err != nil {
+	if err := os.MkdirAll(cfg.Cscli.InstallDir, 0700); err != nil {
 		log.Fatalf("mkdir : %s", err)
 	}
-	if err := UpdateHubIdx(); err != nil {
+
+	if err := os.RemoveAll(cfg.Cscli.HubDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Cscli.HubDir, err)
+	}
+	if err := os.MkdirAll(cfg.Cscli.HubDir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.HubDir, err)
+	}
+
+	if err := UpdateHubIdx(cfg.Cscli); err != nil {
 		log.Fatalf("failed to download index : %s", err)
 	}
 
-	if err := os.RemoveAll(Installdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Installdir, err)
-	}
-	if err := os.MkdirAll(Installdir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", Installdir, err)
-	}
-	if err := os.RemoveAll(Hubdir); err != nil {
-		log.Fatalf("failed to remove %s : %s", Hubdir, err)
-	}
-	if err := os.MkdirAll(Hubdir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", Hubdir, err)
-	}
+	// if err := os.RemoveAll(cfg.Cscli.InstallDir); err != nil {
+	// 	log.Fatalf("failed to remove %s : %s", cfg.Cscli.InstallDir, err)
+	// }
+	// if err := os.MkdirAll(cfg.Cscli.InstallDir, 0700); err != nil {
+	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.InstallDir, err)
+	// }
+	return cfg
 
 }
 
-func testInstallItem(t *testing.T, item Item) {
+func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+
 	//Install the parser
-	item, err := DownloadLatest(item, Hubdir, false, testDataFolder)
+	item, err := DownloadLatest(cfg, item, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !HubIdx[item.Type][item.Name].UpToDate {
@@ -92,11 +98,11 @@ func testInstallItem(t *testing.T, item Item) {
 		t.Fatalf("download: %s should not be tainted", item.Name)
 	}
 
-	item, err = EnableItem(item, Installdir, Hubdir)
+	item, err = EnableItem(cfg, item)
 	if err != nil {
 		t.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !HubIdx[item.Type][item.Name].Installed {
@@ -104,7 +110,7 @@ func testInstallItem(t *testing.T, item Item) {
 	}
 }
 
-func testTaintItem(t *testing.T, item Item) {
+func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if HubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
 	}
@@ -118,7 +124,7 @@ func testTaintItem(t *testing.T, item Item) {
 	}
 	f.Close()
 	//Local sync and check status
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !HubIdx[item.Type][item.Name].Tainted {
@@ -126,18 +132,18 @@ func testTaintItem(t *testing.T, item Item) {
 	}
 }
 
-func testUpdateItem(t *testing.T, item Item) {
+func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 
 	if HubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
-	item, err := DownloadLatest(item, Hubdir, true, testDataFolder)
+	item, err := DownloadLatest(cfg, item, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
 	//Local sync and check status
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
 	if !HubIdx[item.Type][item.Name].UpToDate {
@@ -148,17 +154,17 @@ func testUpdateItem(t *testing.T, item Item) {
 	}
 }
 
-func testDisableItem(t *testing.T, item Item) {
+func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if !item.Installed {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
 	//Remove
-	item, err := DisableItem(item, Installdir, Hubdir, false)
+	item, err := DisableItem(cfg, item, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
 	if HubIdx[item.Type][item.Name].Tainted {
@@ -171,12 +177,12 @@ func testDisableItem(t *testing.T, item Item) {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
 	//Purge
-	item, err = DisableItem(item, Installdir, Hubdir, true)
+	item, err = DisableItem(cfg, item, true)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
 	if HubIdx[item.Type][item.Name].Installed {
@@ -198,22 +204,22 @@ func TestInstallParser(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	test_prepenv()
+	cfg := test_prepenv()
 
-	if err := GetHubIdx(); err != nil {
+	if err := GetHubIdx(cfg.Cscli); err != nil {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
 	for _, it := range HubIdx[PARSERS] {
-		testInstallItem(t, it)
+		testInstallItem(cfg.Cscli, t, it)
 		it = HubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
-		testTaintItem(t, it)
+		testTaintItem(cfg.Cscli, t, it)
 		it = HubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
-		testUpdateItem(t, it)
+		testUpdateItem(cfg.Cscli, t, it)
 		it = HubIdx[PARSERS][it.Name]
-		testDisableItem(t, it)
+		testDisableItem(cfg.Cscli, t, it)
 		it = HubIdx[PARSERS][it.Name]
 
 		break
@@ -231,20 +237,20 @@ func TestInstallCollection(t *testing.T) {
 	 - check its status
 	 - remove it
 	*/
-	test_prepenv()
+	cfg := test_prepenv()
 
-	if err := GetHubIdx(); err != nil {
+	if err := GetHubIdx(cfg.Cscli); err != nil {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
 	for _, it := range HubIdx[COLLECTIONS] {
-		testInstallItem(t, it)
+		testInstallItem(cfg.Cscli, t, it)
 		it = HubIdx[COLLECTIONS][it.Name]
-		testTaintItem(t, it)
+		testTaintItem(cfg.Cscli, t, it)
 		it = HubIdx[COLLECTIONS][it.Name]
-		testUpdateItem(t, it)
+		testUpdateItem(cfg.Cscli, t, it)
 		it = HubIdx[COLLECTIONS][it.Name]
-		testDisableItem(t, it)
+		testDisableItem(cfg.Cscli, t, it)
 		it = HubIdx[COLLECTIONS][it.Name]
 		x := HubStatus(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)
