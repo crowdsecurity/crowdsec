@@ -16,14 +16,14 @@ import (
 type GlobalConfig struct {
 	//just a path to ourself :p
 	Self       *string             `yaml:"-"`
-	Daemon     *DaemonCfg          `yaml:"daemon,omitempty"`
+	Daemon     *DaemonCfg          `yaml:"common,omitempty"`
 	Prometheus *PrometheusCfg      `yaml:"prometheus,omitempty"`
-	Crowdsec   *CrowdsecServiceCfg `yaml:"crowdsec,omitempty"`
+	Crowdsec   *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
 	Cscli      *CscliCfg           `yaml:"cscli,omitempty"`
-	Lapi       *LapiServiceCfg     `yaml:"lapi,omitempty"`
-	LapiClient *LocalApiClientCfg  `yaml:"lapi_client,omitempty"`
-	ApiClient  *OnlineApiClientCfg `yaml:"online_api_client,omitempty"`
+	Lapi       *LapiServiceCfg     `yaml:"localapi_service,omitempty"`
+	LapiClient *LocalApiClientCfg  `yaml:"api_client,omitempty"`
 	DbConfig   *DatabaseCfg        `yaml:"db_config,omitempty"`
+	ApiClient  *OnlineApiClientCfg `yaml:"online_api_client,omitempty"`
 }
 
 type DatabaseCfg struct {
@@ -92,7 +92,7 @@ type LapiServiceCfg struct {
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	HubDir     string
+	HubDir     string `yaml:"hub_dir,omitempty"`
 	Output     string `yaml:"output,omitempty"`
 	IndexPath  string `yaml:"index_path,omitempty"` //path the the .index.json
 	InstallDir string `yaml:"install_dir,omitempty"`
