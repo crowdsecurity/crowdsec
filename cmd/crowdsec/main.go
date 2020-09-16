@@ -47,6 +47,7 @@ type parsers struct {
 	povfwStageFiles []parser.Stagefile
 	nodes           []parser.Node
 	povfwnodes      []parser.Node
+	enricherCtx     []parser.EnricherCtx
 }
 
 // Return new parsers
@@ -95,7 +96,7 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 		Load enrichers
 	*/
 	log.Infof("Loading enrich plugins")
-	err = parser.Loadplugin(cConfig.DataFolder)
+	parsers.enricherCtx, err = parser.Loadplugin(cConfig.DataFolder)
 	if err != nil {
 		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
 	}
@@ -106,13 +107,13 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 
 	log.Infof("Loading parsers")
 
-	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx)
+	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx, parsers.enricherCtx)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser config : %v", err)
 	}
 
 	log.Infof("Loading postoverflow parsers") //cConfig.ConfigFolder+"/postoverflows/"
-	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx)
+	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx, parsers.enricherCtx)
 
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)

@@ -42,7 +42,7 @@ type Node struct {
 	RunTimeFilter *vm.Program               `yaml:"-" json:"-"` //the actual compiled filter
 	ExprDebugger  *exprhelpers.ExprDebugger `yaml:"-" json:"-"` //used to debug expression by printing the content of each variable of the expression
 	//If node has leafs, execute all of them until one asks for a 'break'
-	SuccessNodes []Node `yaml:"nodes,omitempty"`
+	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
 	// BreakBehaviour string `yaml:"break,omitempty"`
 	// Error          string `yaml:"error,omitempty"`
@@ -59,7 +59,7 @@ type Node struct {
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
-func (n *Node) validate(pctx *UnixParserCtx) error {
+func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 
 	//stage is being set automagically
 	if n.Stage == "" {
@@ -89,7 +89,7 @@ func (n *Node) validate(pctx *UnixParserCtx) error {
 				return fmt.Errorf("static %d : when method is set, expression must be present", idx)
 			}
 			method_found := false
-			for _, enricherCtx := range ECTX {
+			for _, enricherCtx := range ectx {
 				if _, ok := enricherCtx.Funcs[static.Method]; ok && enricherCtx.initiated {
 					method_found = true
 					break
@@ -228,8 +228,8 @@ end:
 	}
 
 	//Iterate on leafs
-	if len(n.SuccessNodes) > 0 {
-		for _, leaf := range n.SuccessNodes {
+	if len(n.LeavesNodes) > 0 {
+		for _, leaf := range n.LeavesNodes {
 			//clog.Debugf("Processing sub-node %d/%d : %s", idx, len(n.SuccessNodes), leaf.rn)
 			ret, err := leaf.process(p, ctx)
 			if err != nil {
@@ -240,7 +240,7 @@ end:
 			clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
 			if ret {
 				NodeState = true
-				/* if chil is successful, stop processing */
+				/* if child is successful, stop processing */
 				if n.OnSuccess == "next_stage" {
 					clog.Debugf("child is success, OnSuccess=next_stage, skip")
 					break
@@ -350,7 +350,7 @@ end:
 	return NodeState, nil
 }
 
-func (n *Node) compile(pctx *UnixParserCtx) error {
+func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	var err error
 	var valid bool
 
@@ -451,20 +451,20 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		valid = true
 	}
 	/* compile leafs if present */
-	if len(n.SuccessNodes) > 0 {
-		for idx := range n.SuccessNodes {
-			if n.SuccessNodes[idx].Name == "" {
-				n.SuccessNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
+	if len(n.LeavesNodes) > 0 {
+		for idx := range n.LeavesNodes {
+			if n.LeavesNodes[idx].Name == "" {
+				n.LeavesNodes[idx].Name = fmt.Sprintf("child-%s", n.Name)
 			}
 			/*propagate debug/stats to child nodes*/
-			if !n.SuccessNodes[idx].Debug && n.Debug {
-				n.SuccessNodes[idx].Debug = true
+			if !n.LeavesNodes[idx].Debug && n.Debug {
+				n.LeavesNodes[idx].Debug = true
 			}
-			if !n.SuccessNodes[idx].Profiling && n.Profiling {
-				n.SuccessNodes[idx].Profiling = true
+			if !n.LeavesNodes[idx].Profiling && n.Profiling {
+				n.LeavesNodes[idx].Profiling = true
 			}
-			n.SuccessNodes[idx].Stage = n.Stage
-			err = n.SuccessNodes[idx].compile(pctx)
+			n.LeavesNodes[idx].Stage = n.Stage
+			err = n.LeavesNodes[idx].compile(pctx, ectx)
 			if err != nil {
 				return err
 			}
@@ -518,7 +518,7 @@ func (n *Node) compile(pctx *UnixParserCtx) error {
 		n.logger.Infof("Node is empty: %s", spew.Sdump(n))
 		n.Stage = ""
 	}
-	if err := n.validate(pctx); err != nil {
+	if err := n.validate(pctx, ectx); err != nil {
 		return err
 		//n.logger.Fatalf("Node is invalid : %s", err)
 	}

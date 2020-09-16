@@ -107,7 +107,7 @@ func printStaticTarget(static types.ExtraField) string {
 	}
 }
 
-func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Entry) error {
+func ProcessStatics(statics []types.ExtraField, event *types.Event, clog *logrus.Entry) error {
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
@@ -117,7 +117,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			output, err := expr.Run(static.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": event}))
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -144,7 +144,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 			for _, x := range ECTX {
 				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
 					clog.Tracef("Found method '%s'", static.Method)
-					ret, err := fptr(value, p, x.RuntimeCtx)
+					ret, err := fptr(value, event, x.RuntimeCtx)
 					if err != nil {
 						clog.Fatalf("plugin function error : %v", err)
 					}
@@ -155,7 +155,7 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 					}
 					for k, v := range ret {
 						clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
-						p.Enriched[k] = v
+						event.Enriched[k] = v
 					}
 					break
 				} else {
@@ -167,15 +167,15 @@ func ProcessStatics(statics []types.ExtraField, p *types.Event, clog *logrus.Ent
 			}
 		} else if static.Parsed != "" {
 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
-			p.Parsed[static.Parsed] = value
+			event.Parsed[static.Parsed] = value
 		} else if static.Meta != "" {
 			clog.Debugf(".Meta[%s] = '%s'", static.Meta, value)
-			p.Meta[static.Meta] = value
+			event.Meta[static.Meta] = value
 		} else if static.Enriched != "" {
 			clog.Debugf(".Enriched[%s] = '%s'", static.Enriched, value)
-			p.Enriched[static.Enriched] = value
+			event.Enriched[static.Enriched] = value
 		} else if static.TargetByName != "" {
-			if !SetTargetByName(static.TargetByName, value, p) {
+			if !SetTargetByName(static.TargetByName, value, event) {
 				clog.Errorf("Unable to set value of '%s'", static.TargetByName)
 			} else {
 				clog.Debugf("%s = '%s'", static.TargetByName, value)
@@ -224,7 +224,7 @@ func stageidx(stage string, stages []string) int {
 var ParseDump bool
 var StageParseCache map[string]map[string]types.Event
 
-func /*(u types.UnixParser)*/ Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
+func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
 
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
