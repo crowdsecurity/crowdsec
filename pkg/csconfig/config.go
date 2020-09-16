@@ -29,7 +29,7 @@ type GlobalConfig struct {
 type DatabaseCfg struct {
 	User     string `yaml:"user"`
 	Password string `yaml:"password"`
-	Name     string `yaml:"dbname"`
+	DbName   string `yaml:"db_name"`
 	Uri      string `yaml:"uri"`
 	Type     string `yaml:"type"`
 }
