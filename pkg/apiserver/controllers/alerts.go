@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -82,7 +83,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 }
 
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-	var input []models.Alert
+	var input models.AddAlertsRequest
 	var alertID int
 	var responses []string
 	var err error
@@ -91,8 +92,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+	if err = input.Validate(strfmt.Default); err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+
 	for _, alertItem := range input {
-		alertID, err = c.DBClient.CreateAlert(&alertItem)
+		alertID, err = c.DBClient.CreateAlert(alertItem)
 		if err != nil {
 			c.HandleDBErrors(gctx, err)
 			return
