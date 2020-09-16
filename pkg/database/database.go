@@ -8,11 +8,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	_ "github.com/go-sql-driver/mysql"
-<<<<<<< HEAD
 	_ "github.com/mattn/go-sqlite3"
 
-=======
->>>>>>> add mysql config
 )
 
 type Client struct {
