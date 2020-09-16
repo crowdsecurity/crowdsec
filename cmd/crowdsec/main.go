@@ -291,10 +291,6 @@ func main() {
 	)
 
 	cConfig = csconfig.NewConfig()
-
-	x := csconfig.NewDefaultConfig()
-	x.Dump()
-
 	// Handle command line arguments
 	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
