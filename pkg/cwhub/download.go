@@ -9,16 +9,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
-func LoadHubIdx() error {
-	bidx, err := ioutil.ReadFile(path.Join(Cfgdir, "/.index.json"))
+func LoadHubIdx(cscli *csconfig.CscliCfg) error {
+	bidx, err := ioutil.ReadFile(cscli.IndexPath)
 	if err != nil {
 		return err
 	}
@@ -29,15 +29,15 @@ func LoadHubIdx() error {
 		}
 	}
 	HubIdx = ret
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cscli); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
 }
 
-func UpdateHubIdx() error {
+func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 
-	bidx, err := DownloadHubIdx()
+	bidx, err := DownloadHubIdx(cscli)
 	if err != nil {
 		log.Fatalf("Unable to download index : %v.", err)
 	}
@@ -48,13 +48,13 @@ func UpdateHubIdx() error {
 		}
 	}
 	HubIdx = ret
-	if err := LocalSync(); err != nil {
+	if err := LocalSync(cscli); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
 }
 
-func DownloadHubIdx() ([]byte, error) {
+func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
 		log.Errorf("failed request : %s", err)
@@ -76,8 +76,7 @@ func DownloadHubIdx() ([]byte, error) {
 		log.Errorf("failed request reqd: %s", err)
 		return nil, err
 	}
-	//os.Remove(path.Join(configFolder, GitIndexFile))
-	file, err := os.OpenFile(path.Join(Cfgdir, "/.index.json"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(cscli.IndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		log.Fatalf(err.Error())
@@ -88,13 +87,14 @@ func DownloadHubIdx() ([]byte, error) {
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
-	log.Infof("Wrote new %d bytes index to %s", wsize, path.Join(Cfgdir, "/.index.json"))
+	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.IndexPath)
 	return body, nil
 }
 
 //DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string) (Item, error) {
+func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
 	var err error
+
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
@@ -106,13 +106,13 @@ func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
+						HubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
-					HubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
+					HubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
@@ -123,18 +123,20 @@ func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string)
 				}
 			}
 		}
-		target, err = DownloadItem(target, tdir, overwrite, dataFolder)
+		target, err = DownloadItem(cscli, target, overwrite)
 		if err != nil {
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
-		return DownloadItem(target, tdir, overwrite, dataFolder)
+		return DownloadItem(cscli, target, overwrite)
 	}
 	return target, nil
 }
 
-func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (Item, error) {
+func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
 
+	var tdir = cscli.InstallDir
+	var dataFolder = cscli.DataDir
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
 	if !overwrite {
 		if target.Tainted {

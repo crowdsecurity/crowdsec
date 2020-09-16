@@ -7,7 +7,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
@@ -194,6 +193,6 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
 	alert.Alert.Message = &am
 
-	log.Printf("The event is : %s", spew.Sdump(alert))
+	//log.Printf("The event is : %s", spew.Sdump(alert))
 	return alert
 }

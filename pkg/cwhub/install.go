@@ -5,11 +5,15 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 )
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error) {
+func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error) {
+	var tdir = cscli.InstallDir
+	var hdir = cscli.HubDir
+
 	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
 		return Item{}, err
@@ -25,7 +29,7 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := HubIdx[ptrtype][p]; ok {
-					HubIdx[ptrtype][p], err = DisableItem(val, Installdir, Hubdir, false)
+					HubIdx[ptrtype][p], err = DisableItem(cscli, val, false)
 					if err != nil {
 						log.Errorf("Encountered error while disabling %s %s : %s.", ptrtype, p, err)
 					}
@@ -42,7 +46,7 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 		log.Warningf("%s (%s) doesn't exist, can't disable", target.Name, syml)
 		//return target, nil //fmt.Errorf("'%s' doesn't exist", syml)
 	} else {
-		//if it's managed by hub, it's a symlink to Hubdir / ...
+		//if it's managed by hub, it's a symlink to csconfig.GConfig.Cscli.HubDir / ...
 		if stat.Mode()&os.ModeSymlink == 0 {
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -81,7 +85,9 @@ func DisableItem(target Item, tdir string, hdir string, purge bool) (Item, error
 	return target, nil
 }
 
-func EnableItem(target Item, tdir string, hdir string) (Item, error) {
+func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
+	var tdir = cscli.InstallDir
+	var hdir = cscli.HubDir
 	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	/*create directories if needed*/
@@ -112,7 +118,7 @@ func EnableItem(target Item, tdir string, hdir string) (Item, error) {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := HubIdx[ptrtype][p]; ok {
-					HubIdx[ptrtype][p], err = EnableItem(val, Installdir, Hubdir)
+					HubIdx[ptrtype][p], err = EnableItem(cscli, val)
 					if err != nil {
 						log.Errorf("Encountered error while installing sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while install %s for %s, abort.", val.Name, target.Name)

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"syscall"
 
 	_ "net/http/pprof"
@@ -29,7 +31,7 @@ var (
 	bucketsTomb tomb.Tomb
 	outputsTomb tomb.Tomb
 	/*global crowdsec config*/
-	cConfig *csconfig.CrowdSec
+	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
 	acquisitionCTX *acquisition.FileAcquisCtx
 	/*the state of the buckets*/
@@ -78,16 +80,18 @@ func newParsers() *parsers {
 	return parsers
 }
 
-func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error) {
+func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *parsers) (*parsers, error) {
 	var err error
 
-	log.Infof("Loading grok library")
+	log.Infof("Loading grok library %s", cConfig.Crowdsec.ConfigDir+string("/patterns/"))
 	/* load base regexps for two grok parsers */
-	parsers.ctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
+	parsers.ctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
+		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
-	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.ConfigFolder + string("/patterns/"), "data": cConfig.DataFolder})
+	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
+		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}
@@ -96,7 +100,8 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 		Load enrichers
 	*/
 	log.Infof("Loading enrich plugins")
-	parsers.enricherCtx, err = parser.Loadplugin(cConfig.DataFolder)
+
+	parsers.enricherCtx, err = parser.Loadplugin(cConfig.Crowdsec.DataDir)
 	if err != nil {
 		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
 	}
@@ -105,21 +110,21 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 	 Load the actual parsers
 	*/
 
-	log.Infof("Loading parsers")
+	log.Infof("Loading parsers %d stages", len(parsers.stageFiles))
 
 	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx, parsers.enricherCtx)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser config : %v", err)
 	}
 
-	log.Infof("Loading postoverflow parsers") //cConfig.ConfigFolder+"/postoverflows/"
+	log.Infof("Loading postoverflow parsers")
 	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx, parsers.enricherCtx)
 
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
 	}
 
-	if cConfig.Profiling {
+	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		parsers.ctx.Profiling = true
 		parsers.povfwctx.Profiling = true
 	}
@@ -127,18 +132,20 @@ func LoadParsers(cConfig *csconfig.CrowdSec, parsers *parsers) (*parsers, error)
 	return parsers, nil
 }
 
-func LoadBuckets(cConfig *csconfig.CrowdSec) error {
+func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 
 	var (
 		err   error
 		files []string
 	)
 	for _, hubScenarioItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
-		files = append(files, hubScenarioItem.LocalPath)
+		if hubScenarioItem.Installed {
+			files = append(files, hubScenarioItem.LocalPath)
+		}
 	}
 
-	log.Infof("Loading scenarios")
-	holders, outputEventChan, err = leaky.LoadBuckets(*cConfig, files)
+	log.Infof("Loading %d scenarios", len(files))
+	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files)
 
 	if err != nil {
 		return fmt.Errorf("Scenario loading failed : %v", err)
@@ -146,13 +153,13 @@ func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 	buckets = leaky.NewBuckets()
 
 	/*restore as well previous state if present*/
-	if cConfig.RestoreMode != "" {
-		log.Warningf("Restoring buckets state from %s", cConfig.RestoreMode)
-		if err := leaky.LoadBucketsState(cConfig.RestoreMode, buckets, holders); err != nil {
+	if cConfig.Crowdsec.BucketStateFile != "" {
+		log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
+		if err := leaky.LoadBucketsState(cConfig.Crowdsec.BucketStateFile, buckets, holders); err != nil {
 			return fmt.Errorf("unable to restore buckets : %s", err)
 		}
 	}
-	if cConfig.Profiling {
+	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		for holderIndex := range holders {
 			holders[holderIndex].Profiling = true
 		}
@@ -160,17 +167,32 @@ func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.CrowdSec) error {
+func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	var err error
-	//Init the acqusition : from cli or from acquis.yaml file
-	acquisitionCTX, err = acquisition.LoadAcquisitionConfig(cConfig)
+	var tmpctx []acquisition.FileCtx
+
+	if *SingleFilePath != "" {
+		log.Debugf("Building acquisition for %s (%s)", *SingleFilePath, *SingleFileType)
+		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(*SingleFilePath, *SingleFileType)
+		if err != nil {
+			return fmt.Errorf("Failed to load acquisition : %s", err)
+		}
+	} else {
+		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
+		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to load acquisition : %s", err)
+		}
+	}
+
+	acquisitionCTX, err = acquisition.InitReaderFromFileCtx(tmpctx)
 	if err != nil {
 		return fmt.Errorf("Failed to start acquisition : %s", err)
 	}
 	return nil
 }
 
-func StartProcessingRoutines(cConfig *csconfig.CrowdSec, parsers *parsers) (chan types.Event, error) {
+func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (chan types.Event, error) {
 
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
@@ -181,7 +203,7 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec, parsers *parsers) (chan
 	inputEventChan := make(chan types.Event)
 
 	//start go-routines for parsing, buckets pour and ouputs.
-	for i := 0; i < cConfig.NbParsers; i++ {
+	for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 		parsersTomb.Go(func() error {
 			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
 			if err != nil {
@@ -213,29 +235,78 @@ func StartProcessingRoutines(cConfig *csconfig.CrowdSec, parsers *parsers) (chan
 	return inputLineChan, nil
 }
 
+var SingleFilePath, SingleFileType *string
+
+// LoadConfig return configuration parsed from command line and configuration file
+func LoadConfig(config *csconfig.GlobalConfig) error {
+	configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
+	printTrace := flag.Bool("trace", false, "VERY verbose")
+	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
+	printInfo := flag.Bool("info", false, "print info-level on stdout")
+	printVersion := flag.Bool("version", false, "display version")
+	SingleFilePath = flag.String("file", "", "Process a single file in time-machine")
+	SingleFileType = flag.String("type", "", "Labels.type for file in time-machine")
+	testMode := flag.Bool("t", false, "only test configs")
+	flag.Parse()
+	if *printVersion {
+		cwversion.Show()
+		os.Exit(0)
+	}
+
+	if configFile != nil {
+		if err := config.LoadConfigurationFile(*configFile); err != nil {
+			return fmt.Errorf("Error while loading configuration : %s", err)
+		}
+	} else {
+		log.Warningf("no configuration file provided")
+	}
+
+	if *SingleFilePath != "" {
+		if *SingleFileType == "" {
+			return fmt.Errorf("-file requires -type")
+		}
+
+	}
+
+	if *printDebug {
+		config.Daemon.LogLevel = log.DebugLevel
+	}
+	if *printInfo {
+		config.Daemon.LogLevel = log.InfoLevel
+	}
+	if *printTrace {
+		config.Daemon.LogLevel = log.TraceLevel
+	}
+
+	if *testMode {
+		config.Crowdsec.LintOnly = true
+	}
+
+	return nil
+}
+
 func main() {
 	var (
 		err error
 	)
 
-	cConfig = csconfig.NewCrowdSecConfig()
-
+	cConfig = csconfig.NewConfig()
 	// Handle command line arguments
-	if err := cConfig.LoadConfig(); err != nil {
+	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.LogMode, cConfig.LogFolder, cConfig.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Daemon.LogMedia, cConfig.Daemon.LogDir, cConfig.Daemon.LogLevel); err != nil {
 		log.Fatal(err.Error())
 	}
 
 	daemonCTX := &daemon.Context{
-		PidFileName: cConfig.PIDFolder + "/crowdsec.pid",
+		PidFileName: cConfig.Daemon.PidDir + "/crowdsec.pid",
 		PidFilePerm: 0644,
 		WorkDir:     "./",
 		Umask:       027,
 	}
-	if cConfig.Daemonize {
+	if cConfig.Daemon.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
@@ -252,9 +323,8 @@ func main() {
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	// Enable profiling early
-	if cConfig.Prometheus {
-		registerPrometheus(cConfig.PrometheusMode)
-		cConfig.Profiling = true
+	if cConfig.Prometheus != nil {
+		registerPrometheus(cConfig.Prometheus.Level)
 	}
 	err = exprhelpers.Init()
 	if err != nil {
@@ -262,10 +332,12 @@ func main() {
 	}
 
 	// Populate cwhub package tools
-	cwhub.Cfgdir = cConfig.ConfigFolder
-	cwhub.GetHubIdx()
-	// Start loading configs
 
+	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
+		log.Fatalf("Failed to load hub index : %s", err)
+	}
+
+	// Start loading configs
 	parsers := newParsers()
 	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
 		log.Fatalf("Failed to load parsers: %s", err)
@@ -280,21 +352,23 @@ func main() {
 	}
 
 	/* if it's just linting, we're done */
-	if cConfig.Linter {
+	if cConfig.Crowdsec.LintOnly {
+		log.Infof("lint done")
 		return
 	}
 
+	/*TBD : need to be cleaned up a bit*/
 	/*if the user is in "single file mode" (might be writting scenario or parsers),
 	allow loading **without** parsers or scenarios */
-	if cConfig.SingleFile == "" {
-		if len(parsers.nodes) == 0 {
-			log.Fatalf("no parser(s) loaded, abort.")
-		}
+	// if cConfig.SingleFile == "" {
+	// 	if len(parsers.nodes) == 0 {
+	// 		log.Fatalf("no parser(s) loaded, abort.")
+	// 	}
 
-		if len(holders) == 0 {
-			log.Fatalf("no bucket(s) loaded, abort.")
-		}
-	}
+	// 	if len(holders) == 0 {
+	// 		log.Fatalf("no bucket(s) loaded, abort.")
+	// 	}
+	// }
 
 	//Start the background routines that comunicate via chan
 	log.Infof("Starting processing routines")
@@ -308,7 +382,7 @@ func main() {
 
 	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
 
-	if !cConfig.Daemonize {
+	if cConfig.Daemon != nil {
 		if err = serveOneTimeRun(); err != nil {
 			log.Errorf(err.Error())
 		} else {

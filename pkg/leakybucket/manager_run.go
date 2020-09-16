@@ -69,8 +69,12 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	return nil
 }
 
-func DumpBucketsStateAt(deadline time.Time, buckets *Buckets) (string, error) {
+func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
 	//var file string
+
+	if outputdir == "" {
+		return "", fmt.Errorf("empty output dir for dump bucket state")
+	}
 	tmpFd, err := ioutil.TempFile(os.TempDir(), "crowdsec-buckets-dump-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file : %s", err)

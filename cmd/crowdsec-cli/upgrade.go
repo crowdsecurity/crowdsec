@@ -35,7 +35,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%s : up-to-date", v.Name)
 			continue
 		}
-		v, err = cwhub.DownloadLatest(v, cwhub.Hubdir, force_upgrade, config.DataFolder)
+		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, force_upgrade)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -87,7 +87,7 @@ cscli upgrade --force # Overwrite tainted configuration
 
 		Args: cobra.MinimumNArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
@@ -101,7 +101,7 @@ cscli upgrade --force # Overwrite tainted configuration
 				_ = cmd.Help()
 				return
 			}
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgrade_all && len(args) == 0 {
@@ -128,7 +128,7 @@ cscli upgrade --force # Overwrite tainted configuration
  - cscli upgrade parser crowdsec/apache-logs --force`,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgrade_all {
@@ -150,7 +150,7 @@ cscli upgrade --force # Overwrite tainted configuration
  - cscli upgrade scenario crowdsec/http-404 --force  `,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgrade_all {
@@ -172,7 +172,7 @@ cscli upgrade --force # Overwrite tainted configuration
  - cscli upgrade collection crowdsec/apache-lamp --force`,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgrade_all {
@@ -195,7 +195,7 @@ cscli upgrade --force # Overwrite tainted configuration
  - cscli upgrade postoverflow crowdsec/enrich-rdns --force`,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgrade_all {

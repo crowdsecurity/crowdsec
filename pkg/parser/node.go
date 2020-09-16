@@ -44,8 +44,7 @@ type Node struct {
 	//If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
-	// BreakBehaviour string `yaml:"break,omitempty"`
-	// Error          string `yaml:"error,omitempty"`
+	EnrichFunctions []EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
 	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
@@ -163,6 +162,9 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 	}
 	for _, src := range srcs {
+		if isWhitelisted {
+			break
+		}
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
@@ -172,7 +174,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			}
 			hasWhitelist = true
 		}
-
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
@@ -182,12 +183,11 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			}
 			hasWhitelist = true
 		}
-		if !isWhitelisted {
-			goto end //break directly further
-		}
 	}
-	p.Whitelisted = true
-end:
+
+	if isWhitelisted {
+		p.Whitelisted = true
+	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
 		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
@@ -202,7 +202,7 @@ end:
 				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 			}
 			if out {
-				clog.Debugf("Event is whitelisted by Expr !")
+				clog.Infof("Event is whitelisted by Expr !")
 				p.Whitelisted = true
 				isWhitelisted = true
 			}
@@ -215,9 +215,6 @@ end:
 		p.WhiteListReason = n.Whitelist.Reason
 		/*huglily wipe the ban order if the event is whitelisted and it's an overflow */
 		if p.Type == types.OVFLW { /*don't do this at home kids */
-			//			p.Overflow.OverflowAction = ""
-			//Break this for now. Souldn't have been done this way, but that's not taht serious
-			/*only display logs when we discard ban to avoid spam*/
 			ips := []string{}
 			for _, src := range srcs {
 				ips = append(ips, src.String())
@@ -290,7 +287,7 @@ end:
 				p.Parsed[k] = v
 			}
 			// if the grok succeed, process associated statics
-			err := ProcessStatics(n.Grok.Statics, p, clog)
+			err := n.ProcessStatics(n.Grok.Statics, p)
 			if err != nil {
 				clog.Fatalf("(%s) Failed to process statics : %v", n.rn, err)
 			}
@@ -317,10 +314,13 @@ end:
 	if n.Name != "" {
 		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
 	}
+	/*
+		Please kill me. this is to apply statics when the node *has* whitelists that successfully matched the node.
+	*/
 	if hasWhitelist && isWhitelisted && len(n.Statics) > 0 || len(n.Statics) > 0 && !hasWhitelist {
 		clog.Debugf("+ Processing %d statics", len(n.Statics))
 		// if all else is good in whitelist, process node's statics
-		err := ProcessStatics(n.Statics, p, clog)
+		err := n.ProcessStatics(n.Statics, p)
 		if err != nil {
 			clog.Fatalf("Failed to process statics : %v", err)
 		}
@@ -359,6 +359,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	dumpr := spew.ConfigState{MaxDepth: 1, DisablePointerAddresses: true}
 	n.rn = seed.Generate()
 
+	n.EnrichFunctions = ectx
 	log.Debugf("compile, node is %s", n.Stage)
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
