@@ -117,7 +117,7 @@ func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *parsers) (*parsers, er
 		return parsers, fmt.Errorf("failed to load parser config : %v", err)
 	}
 
-	log.Infof("Loading postoverflow parsers") 
+	log.Infof("Loading postoverflow parsers")
 	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx, parsers.enricherCtx)
 
 	if err != nil {
@@ -169,11 +169,22 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 
 func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	var err error
-	//Init the acqusition : from cli or from acquis.yaml file
-	tmpctx, err := acquisition.LoadAcquisCtxConfigFile(cConfig)
-	if err != nil {
-		return fmt.Errorf("Failed to load acquisition : %s", err)
+	var tmpctx []acquisition.FileCtx
+
+	if *SingleFilePath != "" {
+		log.Debugf("Building acquisition for %s (%s)", *SingleFilePath, *SingleFileType)
+		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(*SingleFilePath, *SingleFileType)
+		if err != nil {
+			return fmt.Errorf("Failed to load acquisition : %s", err)
+		}
+	} else {
+		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
+		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig)
+		if err != nil {
+			return fmt.Errorf("Failed to load acquisition : %s", err)
+		}
 	}
+
 	acquisitionCTX, err = acquisition.InitReaderFromFileCtx(tmpctx)
 	if err != nil {
 		return fmt.Errorf("Failed to start acquisition : %s", err)
@@ -224,6 +235,8 @@ func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (
 	return inputLineChan, nil
 }
 
+var SingleFilePath, SingleFileType *string
+
 // LoadConfig return configuration parsed from command line and configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
 	configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
@@ -231,8 +244,8 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
 	printInfo := flag.Bool("info", false, "print info-level on stdout")
 	printVersion := flag.Bool("version", false, "display version")
-	catFile := flag.String("file", "", "Process a single file in time-machine")
-	catFileType := flag.String("type", "", "Labels.type for file in time-machine")
+	SingleFilePath = flag.String("file", "", "Process a single file in time-machine")
+	SingleFileType = flag.String("type", "", "Labels.type for file in time-machine")
 	testMode := flag.Bool("t", false, "only test configs")
 	flag.Parse()
 	if *printVersion {
@@ -248,13 +261,11 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		log.Warningf("no configuration file provided")
 	}
 
-	if *catFile != "" {
-		if *catFileType == "" {
+	if *SingleFilePath != "" {
+		if *SingleFileType == "" {
 			return fmt.Errorf("-file requires -type")
 		}
-		log.Errorf("tbd craft struct")
-		// c.SingleFile = *catFile
-		// c.SingleFileLabel = *catFileType
+
 	}
 
 	if *printDebug {

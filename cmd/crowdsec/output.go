@@ -8,6 +8,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func runOutput(input chan types.Event, overflow chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets,
@@ -47,10 +48,10 @@ LOOP:
 				}
 			}
 
-			if event.Overflow.Alert.Scenario == nil && event.Overflow.Mapkey != "" {
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 			} else {
-				log.Warningf("overflow : %+v", event)
+				log.Warningf("overflow : %s", spew.Sdump(event))
 			}
 		}
 	}
