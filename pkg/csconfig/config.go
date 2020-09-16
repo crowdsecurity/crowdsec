@@ -264,6 +264,9 @@ func (s *GlobalConfig) CleanupPaths() error {
 
 	var cscli_cleanup = []*string{
 		&s.Cscli.HubDir,
+		&s.Cscli.IndexPath,
+		&s.Cscli.InstallDir,
+		&s.Cscli.DataDir,
 	}
 	if s.Daemon != nil {
 		for _, k := range cscli_cleanup {

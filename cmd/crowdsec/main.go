@@ -82,14 +82,15 @@ func newParsers() *parsers {
 func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *parsers) (*parsers, error) {
 	var err error
 
-	log.Infof("Loading grok library")
+	log.Infof("Loading grok library %s", cConfig.Crowdsec.ConfigDir+string("/patterns/"))
 	/* load base regexps for two grok parsers */
 	parsers.ctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
 		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
-	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"), "data": cConfig.Crowdsec.DataDir})
+	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
+		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
 	}
@@ -107,7 +108,7 @@ func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *parsers) (*parsers, er
 	 Load the actual parsers
 	*/
 
-	log.Infof("Loading parsers")
+	log.Infof("Loading parsers %d stages", len(parsers.stageFiles))
 
 	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx)
 	if err != nil {
@@ -136,10 +137,12 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 		files []string
 	)
 	for _, hubScenarioItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
-		files = append(files, hubScenarioItem.LocalPath)
+		if hubScenarioItem.Installed {
+			files = append(files, hubScenarioItem.LocalPath)
+		}
 	}
 
-	log.Infof("Loading scenarios")
+	log.Infof("Loading %d scenarios", len(files))
 	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files)
 
 	if err != nil {
@@ -243,7 +246,7 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		log.Warningf("no configuration file provided")
 	}
 
-	if catFile != nil {
+	if *catFile != "" {
 		if *catFileType == "" {
 			return fmt.Errorf("-file requires -type")
 		}
@@ -320,7 +323,10 @@ func main() {
 	}
 
 	// Populate cwhub package tools
-	cwhub.GetHubIdx(cConfig.Cscli)
+
+	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
+		log.Fatalf("Failed to load hub index : %s", err)
+	}
 
 	// Start loading configs
 	parsers := newParsers()

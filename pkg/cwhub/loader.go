@@ -30,6 +30,11 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var ftype string
 	var fauthor string
 	var stage string
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
 	//we only care about files
 	if f == nil || f.IsDir() {
 		return nil
@@ -41,15 +46,16 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Debugf("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
+		log.Debugf("in hub dir")
 		inhub = true
-		//~/.cscli/hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		//~/.cscli/hub/scenarios/crowdsec/ssh_bf.yaml
-		//~/.cscli/hub/profiles/crowdsec/linux.yaml
+		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+		//.../hub/scenarios/crowdsec/ssh_bf.yaml
+		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s", path)
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
 		fname = subs[len(subs)-1]
 		fauthor = subs[len(subs)-2]
@@ -58,13 +64,14 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
 	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
+		log.Debugf("in install dir")
 		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s", path)
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
-		///etc/.../parser/stage/file.yaml
-		///etc/.../postoverflow/stage/file.yaml
-		///etc/.../scenarios/scenar.yaml
-		///etc/.../collections/linux.yaml //file is empty
+		///.../config/parser/stage/file.yaml
+		///.../config/postoverflow/stage/file.yaml
+		///.../config/scenarios/scenar.yaml
+		///.../config/collections/linux.yaml //file is empty
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
@@ -276,20 +283,22 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-/* Updates the infos from HubInit() with the local state */
-func LocalSync(cscli *csconfig.CscliCfg) error {
-	skippedLocal = 0
-	skippedTainted = 0
+func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
+	hubdir = cscli.HubDir
+	installdir = cscli.InstallDir
+	indexpath = cscli.IndexPath
+
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
-		/*Scan install and hub dir to get status*/
-		for _, dir := range []string{cscli.InstallDir, cscli.HubDir} {
-			//walk the user's directory
-			err := filepath.Walk(dir+"/"+scan, parser_visit)
-			if err != nil {
-				return err
-			}
+		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		if err != nil {
+			log.Errorf("failed %s : %s", cpath, err)
 		}
+		err = filepath.Walk(cpath, parser_visit)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	for k, v := range HubIdx[COLLECTIONS] {
@@ -301,8 +310,24 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 	return nil
 }
 
+/* Updates the infos from HubInit() with the local state */
+func LocalSync(cscli *csconfig.CscliCfg) error {
+	skippedLocal = 0
+	skippedTainted = 0
+
+	for _, dir := range []string{cscli.InstallDir, cscli.HubDir} {
+		log.Debugf("scanning %s", dir)
+		if err := SyncDir(cscli, dir); err != nil {
+			return fmt.Errorf("failed to scan %s : %s", dir, err)
+		}
+	}
+
+	return nil
+}
+
 func GetHubIdx(cscli *csconfig.CscliCfg) error {
 
+	log.Debugf("loading hub idx %s", cscli.IndexPath)
 	bidx, err := ioutil.ReadFile(cscli.IndexPath)
 	if err != nil {
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
@@ -331,9 +356,11 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 		return nil, fmt.Errorf("failed to unmarshal index : %v", err)
 	}
 
+	log.Debugf("%d item types in hub index", len(ItemTypes))
 	/*Iterate over the different types to complete struct */
 	for _, itemType := range ItemTypes {
 		/*complete struct*/
+		log.Debugf("%d item", len(RawIndex[itemType]))
 		for idx, item := range RawIndex[itemType] {
 			item.Name = idx
 			item.Type = itemType

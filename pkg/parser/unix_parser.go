@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 
 	"github.com/logrusorgru/grokky"
-	"github.com/prometheus/common/log"
+	log "github.com/sirupsen/logrus"
 )
 
 type UnixParserCtx struct {
