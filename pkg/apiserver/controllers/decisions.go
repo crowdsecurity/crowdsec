@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
 	"net/http"
 	"time"
@@ -16,16 +16,16 @@ import (
 func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 	var results []*models.Decision
 	for _, dbDecision := range decisions {
-		duration := dbDecision.Until.Sub(time.Now())
+		duration := dbDecision.Until.Sub(time.Now()).String()
 		decision := models.Decision{
 			DecisionID: fmt.Sprintf("%d", dbDecision.ID),
-			Duration:   duration.String(),
+			Duration:   &duration,
 			EndIP:      dbDecision.EndIP,
 			StartIP:    dbDecision.StartIP,
-			Scenario:   dbDecision.Scenario,
-			Scope:      dbDecision.Scope,
-			Target:     dbDecision.Target,
-			Type:       dbDecision.Type,
+			Scenario:   &dbDecision.Scenario,
+			Scope:      &dbDecision.Scope,
+			Target:     &dbDecision.Target,
+			Type:       &dbDecision.Type,
 		}
 		results = append(results, &decision)
 	}
@@ -100,10 +100,12 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
-	val, _ := gctx.Request.Header[c.APIKeyHeader]
-	hashedKey := sha256.New()
-	hashedKey.Write([]byte(val[0]))
+	val := gctx.Request.Header.Get(c.APIKeyHeader)
+	log.Infof("KEY : %s", val)
+	hashedKey := sha512.New()
+	hashedKey.Write([]byte(val))
 	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+	log.Infof("HASH : %s", hashStr)
 	lastPull, err := c.DBClient.LastBlockerPull(hashStr)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

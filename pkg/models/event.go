@@ -9,6 +9,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Event Event
@@ -17,10 +18,12 @@ import (
 type Event struct {
 
 	// meta
-	Meta Meta `json:"meta,omitempty"`
+	// Required: true
+	Meta Meta `json:"meta"`
 
 	// timestamp
-	Timestamp string `json:"timestamp,omitempty"`
+	// Required: true
+	Timestamp *string `json:"timestamp"`
 }
 
 // Validate validates this event
@@ -28,6 +31,10 @@ func (m *Event) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateMeta(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTimestamp(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -39,14 +46,23 @@ func (m *Event) Validate(formats strfmt.Registry) error {
 
 func (m *Event) validateMeta(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.Meta) { // not required
-		return nil
+	if err := validate.Required("meta", "body", m.Meta); err != nil {
+		return err
 	}
 
 	if err := m.Meta.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("meta")
 		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *Event) validateTimestamp(formats strfmt.Registry) error {
+
+	if err := validate.Required("timestamp", "body", m.Timestamp); err != nil {
 		return err
 	}
 

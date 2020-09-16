@@ -13,7 +13,6 @@ import (
 	"io"
 	_ "net/http/pprof"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -38,7 +37,7 @@ type Stagefile struct {
 	Stage    string `yaml:"stage"`
 }
 
-func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
+func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx) ([]Node, error) {
 	var nodes []Node
 	tmpstages := make(map[string]bool)
 	pctx.Stages = []string{}
@@ -100,7 +99,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 				tmpstages[stageFile.Stage] = true
 			}
 			//compile the node : grok pattern and expression
-			err = node.compile(pctx)
+			err = node.compile(pctx, ectx)
 			if err != nil {
 				if node.Name != "" {
 					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err.Error())
@@ -133,24 +132,4 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx) ([]Node, error) {
 	log.Infof("Loaded %d nodes, %d stages", len(nodes), len(pctx.Stages))
 
 	return nodes, nil
-}
-
-func LoadStageDir(dir string, pctx *UnixParserCtx) ([]Node, error) {
-
-	var files []Stagefile
-
-	m, err := filepath.Glob(dir + "/*/*")
-	if err != nil {
-		return nil, fmt.Errorf("unable to find configs in '%s' : %v", dir, err)
-	}
-	for _, f := range m {
-		tmp := Stagefile{}
-		tmp.Filename = f
-		//guess stage : (prefix - file).split('/')[0]
-		stages := strings.Split(f, "/")
-		stage := stages[len(stages)-2]
-		tmp.Stage = stage
-		files = append(files, tmp)
-	}
-	return LoadStages(files, pctx)
 }
