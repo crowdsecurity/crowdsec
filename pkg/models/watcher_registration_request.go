@@ -6,8 +6,10 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // WatcherRegistrationRequest WatcherRegistrationRequest
@@ -16,14 +18,52 @@ import (
 type WatcherRegistrationRequest struct {
 
 	// machine id
-	MachineID string `json:"machine_id,omitempty"`
+	// Required: true
+	MachineID *string `json:"machine_id"`
 
 	// password
-	Password string `json:"password,omitempty"`
+	// Required: true
+	// Format: password
+	Password *strfmt.Password `json:"password"`
 }
 
 // Validate validates this watcher registration request
 func (m *WatcherRegistrationRequest) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateMachineID(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validatePassword(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *WatcherRegistrationRequest) validateMachineID(formats strfmt.Registry) error {
+
+	if err := validate.Required("machine_id", "body", m.MachineID); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *WatcherRegistrationRequest) validatePassword(formats strfmt.Registry) error {
+
+	if err := validate.Required("password", "body", m.Password); err != nil {
+		return err
+	}
+
+	if err := validate.FormatOf("password", "body", "password", m.Password.String(), formats); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Alert Alert
@@ -19,60 +20,79 @@ import (
 type Alert struct {
 
 	// only relevant for GET, ignored in POST requests
+	// Read Only: true
 	AlertID string `json:"alert_id,omitempty"`
 
 	// capacity
-	Capacity int32 `json:"capacity,omitempty"`
+	// Required: true
+	Capacity *int32 `json:"capacity"`
 
 	// decisions
+	// Required: true
 	Decisions []*Decision `json:"decisions"`
 
 	// the Meta of the events leading to overflow
+	// Required: true
 	Events []*Event `json:"events"`
 
 	// events count
-	EventsCount int32 `json:"events_count,omitempty"`
+	// Required: true
+	EventsCount *int32 `json:"events_count"`
 
 	// labels
 	Labels []string `json:"labels"`
 
 	// leakspeed
-	Leakspeed string `json:"leakspeed,omitempty"`
+	// Required: true
+	Leakspeed *string `json:"leakspeed"`
 
 	// only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL
+	// Read Only: true
 	MachineID string `json:"machine_id,omitempty"`
 
 	// a human readable message
-	Message string `json:"message,omitempty"`
+	// Required: true
+	Message *string `json:"message"`
 
 	// the Meta data of the Alert itself
 	Meta Meta `json:"meta,omitempty"`
 
 	// scenario
-	Scenario string `json:"scenario,omitempty"`
+	// Required: true
+	Scenario *string `json:"scenario"`
 
 	// scenario hash
-	ScenarioHash string `json:"scenario_hash,omitempty"`
+	// Required: true
+	ScenarioHash *string `json:"scenario_hash"`
 
 	// scenario version
-	ScenarioVersion string `json:"scenario_version,omitempty"`
+	// Required: true
+	ScenarioVersion *string `json:"scenario_version"`
 
 	// simulated
-	Simulated bool `json:"simulated,omitempty"`
+	// Required: true
+	Simulated *bool `json:"simulated"`
 
 	// source
-	Source *Source `json:"source,omitempty"`
+	// Required: true
+	Source *Source `json:"source"`
 
 	// start at
-	StartAt string `json:"start_at,omitempty"`
+	// Required: true
+	StartAt *string `json:"start_at"`
 
 	// stop at
-	StopAt string `json:"stop_at,omitempty"`
+	// Required: true
+	StopAt *string `json:"stop_at"`
 }
 
 // Validate validates this alert
 func (m *Alert) Validate(formats strfmt.Registry) error {
 	var res []error
+
+	if err := m.validateCapacity(formats); err != nil {
+		res = append(res, err)
+	}
 
 	if err := m.validateDecisions(formats); err != nil {
 		res = append(res, err)
@@ -82,11 +102,47 @@ func (m *Alert) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateEventsCount(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateLeakspeed(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateMessage(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateMeta(formats); err != nil {
 		res = append(res, err)
 	}
 
+	if err := m.validateScenario(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenarioHash(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenarioVersion(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateSimulated(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateSource(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateStartAt(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateStopAt(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -96,10 +152,19 @@ func (m *Alert) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Alert) validateCapacity(formats strfmt.Registry) error {
+
+	if err := validate.Required("capacity", "body", m.Capacity); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *Alert) validateDecisions(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.Decisions) { // not required
-		return nil
+	if err := validate.Required("decisions", "body", m.Decisions); err != nil {
+		return err
 	}
 
 	for i := 0; i < len(m.Decisions); i++ {
@@ -123,8 +188,8 @@ func (m *Alert) validateDecisions(formats strfmt.Registry) error {
 
 func (m *Alert) validateEvents(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.Events) { // not required
-		return nil
+	if err := validate.Required("events", "body", m.Events); err != nil {
+		return err
 	}
 
 	for i := 0; i < len(m.Events); i++ {
@@ -146,6 +211,33 @@ func (m *Alert) validateEvents(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Alert) validateEventsCount(formats strfmt.Registry) error {
+
+	if err := validate.Required("events_count", "body", m.EventsCount); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateLeakspeed(formats strfmt.Registry) error {
+
+	if err := validate.Required("leakspeed", "body", m.Leakspeed); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateMessage(formats strfmt.Registry) error {
+
+	if err := validate.Required("message", "body", m.Message); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *Alert) validateMeta(formats strfmt.Registry) error {
 
 	if swag.IsZero(m.Meta) { // not required
@@ -162,10 +254,46 @@ func (m *Alert) validateMeta(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *Alert) validateScenario(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario", "body", m.Scenario); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateScenarioHash(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario_hash", "body", m.ScenarioHash); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateScenarioVersion(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario_version", "body", m.ScenarioVersion); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateSimulated(formats strfmt.Registry) error {
+
+	if err := validate.Required("simulated", "body", m.Simulated); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *Alert) validateSource(formats strfmt.Registry) error {
 
-	if swag.IsZero(m.Source) { // not required
-		return nil
+	if err := validate.Required("source", "body", m.Source); err != nil {
+		return err
 	}
 
 	if m.Source != nil {
@@ -175,6 +303,24 @@ func (m *Alert) validateSource(formats strfmt.Registry) error {
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *Alert) validateStartAt(formats strfmt.Registry) error {
+
+	if err := validate.Required("start_at", "body", m.StartAt); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Alert) validateStopAt(formats strfmt.Registry) error {
+
+	if err := validate.Required("stop_at", "body", m.StopAt); err != nil {
+		return err
 	}
 
 	return nil

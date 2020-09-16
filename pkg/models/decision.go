@@ -6,8 +6,10 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Decision Decision
@@ -16,35 +18,125 @@ import (
 type Decision struct {
 
 	// (only relevant for GET ops) the unique id
+	// Read Only: true
 	DecisionID string `json:"decision_id,omitempty"`
 
 	// duration
-	Duration string `json:"duration,omitempty"`
+	// Required: true
+	Duration *string `json:"duration"`
 
 	// (only relevant for GET ops) when the target is an IP or range, its numeric representation
 	EndIP int64 `json:"end_ip,omitempty"`
 
 	// the origin of the decision : cscli, crowdsec
-	Origin string `json:"origin,omitempty"`
+	// Required: true
+	Origin *string `json:"origin"`
 
 	// scenario
-	Scenario string `json:"scenario,omitempty"`
+	// Required: true
+	Scenario *string `json:"scenario"`
 
 	// the scope of decision : does it apply to an IP, a range, a username, etc
-	Scope string `json:"scope,omitempty"`
+	// Required: true
+	Scope *string `json:"scope"`
 
 	// (only relevant for GET ops) when the target is an IP or range, its numeric representation
 	StartIP int64 `json:"start_ip,omitempty"`
 
 	// the target of the decision : an IP, a range, a username, etc
-	Target string `json:"target,omitempty"`
+	// Required: true
+	Target *string `json:"target"`
 
 	// the type of decision, might be 'ban', 'captcha' or something custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL.
-	Type string `json:"type,omitempty"`
+	// Required: true
+	Type *string `json:"type"`
 }
 
 // Validate validates this decision
 func (m *Decision) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateDuration(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateOrigin(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenario(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScope(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateTarget(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateType(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Decision) validateDuration(formats strfmt.Registry) error {
+
+	if err := validate.Required("duration", "body", m.Duration); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) validateOrigin(formats strfmt.Registry) error {
+
+	if err := validate.Required("origin", "body", m.Origin); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) validateScenario(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario", "body", m.Scenario); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) validateScope(formats strfmt.Registry) error {
+
+	if err := validate.Required("scope", "body", m.Scope); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) validateTarget(formats strfmt.Registry) error {
+
+	if err := validate.Required("target", "body", m.Target); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Decision) validateType(formats strfmt.Registry) error {
+
+	if err := validate.Required("type", "body", m.Type); err != nil {
+		return err
+	}
+
 	return nil
 }
 
