@@ -41,7 +41,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		val, ok := c.Request.Header[APIKeyHeader]
 		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access forbidden"})
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 			return
 		}
@@ -61,7 +61,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		if len(exist) == 0 {
-			c.JSON(http.StatusForbidden, gin.H{"error": "access forbidden"})
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 			return
 		}

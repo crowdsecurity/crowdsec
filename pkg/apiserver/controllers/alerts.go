@@ -9,26 +9,29 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 )
 
-func FormatAlerts(result []*ent.Alert) []models.Alert {
-	var data []models.Alert
+func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
+	var data models.AddAlertsRequest
 	for _, alertItem := range result {
 		var outputAlert models.Alert
+		startAt := alertItem.StartedAt.String()
+		StopAt := alertItem.StoppedAt.String()
 		outputAlert = models.Alert{
 			MachineID:   alertItem.Edges.Owner.MachineId,
-			Scenario:    alertItem.Scenario,
+			Scenario:    &alertItem.Scenario,
 			AlertID:     alertItem.BucketId,
-			Message:     alertItem.Message,
-			EventsCount: alertItem.EventsCount,
-			StartAt:     alertItem.StartedAt.String(),
-			StopAt:      alertItem.StoppedAt.String(),
-			Capacity:    alertItem.Capacity,
-			Leakspeed:   alertItem.LeakSpeed,
+			Message:     &alertItem.Message,
+			EventsCount: &alertItem.EventsCount,
+			StartAt:     &startAt,
+			StopAt:      &StopAt,
+			Capacity:    &alertItem.Capacity,
+			Leakspeed:   &alertItem.LeakSpeed,
 			Source: &models.Source{
-				Scope:     alertItem.SourceScope,
-				Value:     alertItem.SourceValue,
+				Scope:     &alertItem.SourceScope,
+				Value:     &alertItem.SourceValue,
 				IP:        alertItem.SourceIp,
 				Range:     alertItem.SourceRange,
 				AsNumber:  alertItem.SourceAsNumber,
@@ -41,11 +44,12 @@ func FormatAlerts(result []*ent.Alert) []models.Alert {
 		for _, eventItem := range alertItem.Edges.Events {
 			var outputEvents []*models.Event
 			var Metas models.Meta
+			timestamp := eventItem.Time.String()
 			if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
 				log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
 			}
 			outputEvents = append(outputEvents, &models.Event{
-				Timestamp: eventItem.Time.String(),
+				Timestamp: &timestamp,
 				Meta:      Metas,
 			})
 			outputAlert.Events = outputEvents
@@ -60,36 +64,40 @@ func FormatAlerts(result []*ent.Alert) []models.Alert {
 		}
 		for _, decisionItem := range alertItem.Edges.Decisions {
 			var outputDecisions []*models.Decision
+			duration := decisionItem.Until.Sub(time.Now()).String()
 			outputDecisions = append(outputDecisions, &models.Decision{
-				Duration: decisionItem.Until.Sub(time.Now()).String(), // transform into time.Time ?
-				Scenario: decisionItem.Scenario,
-				Type:     decisionItem.Type,
+				Duration: &duration, // transform into time.Time ?
+				Scenario: &decisionItem.Scenario,
+				Type:     &decisionItem.Type,
 				StartIP:  decisionItem.StartIP,
 				EndIP:    decisionItem.EndIP,
-				Scope:    decisionItem.Scope,
-				Target:   decisionItem.Target,
+				Scope:    &decisionItem.Scope,
+				Target:   &decisionItem.Target,
 			})
 			outputAlert.Decisions = outputDecisions
 		}
-		data = append(data, outputAlert)
+		data = append(data, &outputAlert)
 	}
 	return data
 }
 
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-	var input []*models.Alert
-	//var alertID int
-	var responses []string
-	//var err error
+	var input models.AddAlertsRequest
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
-		gctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	begin := time.Now()
-	_, _ = c.DBClient.CreateAlertBulk(input)
-	log.Printf("Tooks '%s' to insert %d alerts in DB", time.Now().Sub(begin), len(input))
-	gctx.JSON(http.StatusOK, responses)
+	if err := input.Validate(strfmt.Default); err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+	alerts, err := c.DBClient.CreateAlertBulk(input)
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+	gctx.JSON(http.StatusOK, alerts)
 	return
 }
 
@@ -116,3 +124,4 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d deleted alerts", len(deleted))})
 	return
 }
+

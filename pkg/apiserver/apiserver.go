@@ -9,7 +9,6 @@ import (
 	"os"
 	"time"
 
-	jwt "github.com/appleboy/gin-jwt"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -85,9 +84,9 @@ func (s *APIServer) Run() {
 	router.POST("/watchers", s.controller.CreateMachine)
 
 	router.POST("/watchers/login", s.middlewares.JWT.Middleware.LoginHandler)
-	router.NoRoute(s.middlewares.JWT.Middleware.MiddlewareFunc(), func(c *gin.Context) {
-		_ = jwt.ExtractClaims(c)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Page not found"})
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
+		return
 	})
 
 	jwtAuth := router.Group("/")
@@ -97,6 +96,7 @@ func (s *APIServer) Run() {
 		jwtAuth.POST("/alerts", s.controller.CreateAlert)
 		jwtAuth.GET("/alerts", s.controller.FindAlerts)
 		jwtAuth.DELETE("/alerts", s.controller.DeleteAlerts)
+
 	}
 
 	apiKeyAuth := router.Group("/")
