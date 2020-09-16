@@ -22,7 +22,8 @@ LOOP:
 		case event := <-overflow:
 			//if global simulation -> everything is simulation unless told otherwise
 			if cConfig.Crowdsec.SimulationConfig != nil && cConfig.Crowdsec.SimulationConfig.Simulation {
-				event.Overflow.Alert.Simulated = true
+				event.Overflow.Alert.Simulated = new(bool)
+				*event.Overflow.Alert.Simulated = true
 
 			}
 
@@ -39,8 +40,8 @@ LOOP:
 			//check scenarios in simulation
 			if cConfig.Crowdsec.SimulationConfig != nil {
 				for _, scenario_name := range cConfig.Crowdsec.SimulationConfig.Exclusions {
-					if event.Overflow.Alert.Scenario == scenario_name {
-						event.Overflow.Alert.Simulated = !event.Overflow.Alert.Simulated
+					if *event.Overflow.Alert.Scenario == scenario_name {
+						*event.Overflow.Alert.Simulated = !*event.Overflow.Alert.Simulated
 
 					}
 				}
