@@ -28,7 +28,7 @@ func LoadHubIdx() error {
 			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
 		}
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
@@ -47,7 +47,7 @@ func UpdateHubIdx() error {
 			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
 		}
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
@@ -101,18 +101,18 @@ func DownloadLatest(target Item, tdir string, overwrite bool, dataFolder string)
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-						HubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
+						hubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
-					HubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
+					hubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
@@ -227,6 +227,6 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 			return target, fmt.Errorf("unable to get data: %s", err)
 		}
 	}
-	HubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }

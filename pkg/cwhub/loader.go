@@ -126,14 +126,14 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		x := strings.Split(path, "/")
 		target.FileName = x[len(x)-1]
 
-		HubIdx[ftype][fname] = target
+		hubIdx[ftype][fname] = target
 		return nil
 	}
 	//try to find which configuration item it is
 	log.Tracef("check [%s] of %s", fname, ftype)
 
 	match := false
-	for k, v := range HubIdx[ftype] {
+	for k, v := range hubIdx[ftype] {
 		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
 		if fname != v.FileName {
 			log.Tracef("%s != %s (filename)", fname, v.FileName)
@@ -221,7 +221,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 		}
 		//update the entry
-		HubIdx[ftype][k] = v
+		hubIdx[ftype][k] = v
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)
@@ -236,7 +236,7 @@ func CollecDepsCheck(v *Item) error {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					log.Tracef("check %s installed:%t", val.Name, val.Installed)
 					if !v.Installed {
 						continue
@@ -246,7 +246,7 @@ func CollecDepsCheck(v *Item) error {
 						if err := CollecDepsCheck(&val); err != nil {
 							return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
 						}
-						HubIdx[ptrtype][p] = val
+						hubIdx[ptrtype][p] = val
 					}
 
 					//propagate the state of sub-items to set
@@ -261,7 +261,7 @@ func CollecDepsCheck(v *Item) error {
 						return fmt.Errorf("outdated %s %s", ptrtype, p)
 					}
 					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
-					HubIdx[ptrtype][p] = val
+					hubIdx[ptrtype][p] = val
 					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 				} else {
 					log.Fatalf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, v.Name)
@@ -288,11 +288,11 @@ func LocalSync() error {
 		}
 	}
 
-	for k, v := range HubIdx[COLLECTIONS] {
+	for k, v := range hubIdx[COLLECTIONS] {
 		if err := CollecDepsCheck(&v); err != nil {
 			log.Infof("dependency issue %s : %s", v.Name, err)
 		}
-		HubIdx[COLLECTIONS][k] = v
+		hubIdx[COLLECTIONS][k] = v
 	}
 	return nil
 }
@@ -310,7 +310,7 @@ func GetHubIdx() error {
 		}
 		return err
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}

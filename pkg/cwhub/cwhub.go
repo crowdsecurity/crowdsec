@@ -19,7 +19,7 @@ var COLLECTIONS = "collections"
 
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
-var HubIdx map[string]map[string]Item
+var hubIdx map[string]map[string]Item
 
 var Installdir = "/etc/crowdsec/"
 var Hubdir = "/etc/crowdsec/config/cscli/hub/"
@@ -96,9 +96,40 @@ func getSHA256(filepath string) (string, error) {
 	return fmt.Sprintf("%x", h.Sum(nil)), nil
 }
 
+func GetItemMap(itemType string) map[string]Item {
+	in := false
+	for _, itype := range ItemTypes {
+		if itype == itemType {
+			in = true
+		}
+	}
+	if !in {
+		return nil
+	}
+	if m, ok := hubIdx[itemType]; !ok {
+		return nil
+	} else {
+		return m
+	}
+}
+
+func AddItemMap(itemType string, item Item) error {
+	in := false
+	for _, itype := range ItemTypes {
+		if itype == itemType {
+			in = true
+		}
+	}
+	if !in {
+		return fmt.Errorf("ItemType %s is unknown", itemType)
+	}
+	hubIdx[itemType][item.Name] = item
+	return nil
+}
+
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(HubIdx[COLLECTIONS]),
-		len(HubIdx[PARSERS]), len(HubIdx[SCENARIOS]), len(HubIdx[PARSERS_OVFLW]))
+	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items : %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -137,14 +168,14 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
 func HubStatus(itype string, name string, list_all bool) []map[string]string {
-	if _, ok := HubIdx[itype]; !ok {
+	if _, ok := hubIdx[itype]; !ok {
 		log.Errorf("type %s doesn't exist", itype)
 		return nil
 	}
 
 	var mli []map[string]string
 	/*remember, you do it for the user :)*/
-	for _, v := range HubIdx[itype] {
+	for _, v := range hubIdx[itype] {
 		if name != "" && name != v.Name {
 			//user has required a specific name
 			continue

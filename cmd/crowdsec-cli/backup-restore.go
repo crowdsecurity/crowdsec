@@ -12,7 +12,7 @@ import (
 
 //it's a rip of the cli version, but in silent-mode
 func silenceInstallItem(name string, obtype string) (string, error) {
-	for _, it := range cwhub.HubIdx[obtype] {
+	for _, it := range cwhub.GetItemMap(obtype) {
 		if it.Name == name {
 			if download_only && it.Downloaded && it.UpToDate {
 				return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
@@ -21,7 +21,8 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 			}
-			cwhub.HubIdx[obtype][it.Name] = it
+			cwhub.AddItemMap(obtype, it)
+
 			if download_only {
 				return fmt.Sprintf("Downloaded %s to %s", it.Name, cwhub.Hubdir+"/"+it.RemotePath), nil
 			}
@@ -29,7 +30,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 			if err != nil {
 				return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
 			}
-			cwhub.HubIdx[obtype][it.Name] = it
+			cwhub.AddItemMap(obtype, it)
 
 			return fmt.Sprintf("Enabled %s", it.Name), nil
 		}

@@ -60,7 +60,7 @@ func newParsers() *parsers {
 		povfwStageFiles: make([]parser.Stagefile, 0),
 	}
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
-		for _, hubParserItem := range cwhub.HubIdx[itemType] {
+		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
 			if hubParserItem.Installed {
 				stagefile := parser.Stagefile{
 					Filename: hubParserItem.LocalPath,
@@ -133,7 +133,7 @@ func LoadBuckets(cConfig *csconfig.CrowdSec) error {
 		err   error
 		files []string
 	)
-	for _, hubScenarioItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
+	for _, hubScenarioItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
 		files = append(files, hubScenarioItem.LocalPath)
 	}
 

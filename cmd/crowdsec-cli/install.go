@@ -13,7 +13,7 @@ import (
 var download_only, force_install bool
 
 func InstallItem(name string, obtype string) {
-	for _, it := range cwhub.HubIdx[obtype] {
+	for _, it := range cwhub.GetItemMap(obtype) {
 		if it.Name == name {
 			if download_only && it.Downloaded && it.UpToDate {
 				log.Warningf("%s is already downloaded and up-to-date", it.Name)
@@ -23,7 +23,7 @@ func InstallItem(name string, obtype string) {
 			if err != nil {
 				log.Fatalf("error while downloading %s : %v", it.Name, err)
 			}
-			cwhub.HubIdx[obtype][it.Name] = it
+			cwhub.AddItemMap(obtype, it)
 			if download_only {
 				log.Infof("Downloaded %s to %s", it.Name, cwhub.Hubdir+"/"+it.RemotePath)
 				return
@@ -32,7 +32,7 @@ func InstallItem(name string, obtype string) {
 			if err != nil {
 				log.Fatalf("error while enabled %s : %v.", it.Name, err)
 			}
-			cwhub.HubIdx[obtype][it.Name] = it
+			cwhub.AddItemMap(obtype, it)
 			log.Infof("Enabled %s", it.Name)
 			return
 		}

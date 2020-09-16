@@ -14,20 +14,20 @@ var purge_remove, remove_all bool
 func RemoveMany(ttype string, name string) {
 	var err error
 	var disabled int
-	for _, v := range cwhub.HubIdx[ttype] {
+	for _, v := range cwhub.GetItemMap(ttype) {
 		if name != "" && v.Name == name {
 			v, err = cwhub.DisableItem(v, cwhub.Installdir, cwhub.Hubdir, purge_remove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			cwhub.HubIdx[ttype][v.Name] = v
+			cwhub.AddItemMap(ttype, v)
 			return
 		} else if name == "" && remove_all {
 			v, err = cwhub.DisableItem(v, cwhub.Installdir, cwhub.Hubdir, purge_remove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			cwhub.HubIdx[ttype][v.Name] = v
+			cwhub.AddItemMap(ttype, v)
 			disabled += 1
 		}
 	}

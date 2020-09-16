@@ -17,7 +17,7 @@ func UpgradeConfig(ttype string, name string) {
 	var updated int
 	var found bool
 
-	for _, v := range cwhub.HubIdx[ttype] {
+	for _, v := range cwhub.GetItemMap(ttype) {
 		//name mismatch
 		if name != "" && name != v.Name {
 			continue
@@ -49,7 +49,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated += 1
 		}
-		cwhub.HubIdx[ttype][v.Name] = v
+		cwhub.AddItemMap(ttype, v)
 	}
 	if !found {
 		log.Errorf("Didn't find %s", name)
