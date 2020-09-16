@@ -21,7 +21,7 @@ LOOP:
 			break LOOP
 		case event := <-overflow:
 			//if global simulation -> everything is simulation unless told otherwise
-			if cConfig.SimulationCfg != nil && cConfig.SimulationCfg.Simulation {
+			if cConfig.Crowdsec.SimulationConfig != nil && cConfig.Crowdsec.SimulationConfig.Simulation {
 				event.Overflow.Alert.Simulated = true
 			}
 
@@ -36,8 +36,8 @@ LOOP:
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 			//check scenarios in simulation
-			if cConfig.SimulationCfg != nil {
-				for _, scenario_name := range cConfig.SimulationCfg.Exclusions {
+			if cConfig.Crowdsec.SimulationConfig != nil {
+				for _, scenario_name := range cConfig.Crowdsec.SimulationConfig.Exclusions {
 					if event.Overflow.Alert.Scenario == scenario_name {
 						event.Overflow.Alert.Simulated = !event.Overflow.Alert.Simulated
 					}

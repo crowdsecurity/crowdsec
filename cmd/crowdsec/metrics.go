@@ -64,9 +64,9 @@ func dumpMetrics() {
 	var tmpFile string
 	var err error
 
-	if cConfig.DumpBuckets {
+	if cConfig.Crowdsec.BucketStateDumpDir != "" {
 		log.Infof("!! Dumping buckets state")
-		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
+		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
 			log.Fatalf("Failed dumping bucket state : %s", err)
 		}
 		log.Infof("Buckets state dumped to %s", tmpFile)

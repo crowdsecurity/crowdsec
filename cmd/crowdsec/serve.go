@@ -20,7 +20,7 @@ func debugHandler(sig os.Signal) error {
 		log.Warningf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
-	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
+	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
 		log.Warningf("Failed dumping bucket state : %s", err)
 	}
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
@@ -37,8 +37,10 @@ func reloadHandler(sig os.Signal) error {
 	if err := ShutdownRoutines(); err != nil {
 		log.Fatalf("Failed to shut down routines: %s", err)
 	}
-	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
-		log.Fatalf("Failed dumping bucket state : %s", err)
+	if cConfig.Crowdsec != nil && cConfig.Crowdsec.BucketStateDumpDir != "" {
+		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
+			log.Fatalf("Failed dumping bucket state : %s", err)
+		}
 	}
 
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {

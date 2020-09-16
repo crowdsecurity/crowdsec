@@ -53,7 +53,7 @@ type PrometheusCfg struct {
 /*Configurations needed for crowdsec to load parser/scenarios/... + acquisition*/
 type CrowdsecServiceCfg struct {
 	AcquisitionFilePath string            `yaml:"acquisition_path,omitempty"`
-	ParserRoutines      int               `yaml:"parser_routines"`
+	ParserRoutinesCount int               `yaml:"parser_routines"`
 	SimulationFilePath  string            `yaml:"simulation_path,omitempty"`
 	SimulationConfig    *SimulationConfig `yaml:"-"`
 	LintOnly            bool              `yaml:"-"` //if set to true, exit after loading configs
@@ -61,6 +61,7 @@ type CrowdsecServiceCfg struct {
 	DataDir             string            `yaml:"data_dir,omitempty"`
 	BucketStateFile     string            `yaml:"state_input_file,omitempty"` //if we need to unserialize buckets at start
 	BucketStateDumpDir  string            `yaml:"state_output_dir,omitempty"` //if we need to unserialize buckets on shutdown
+	BucketsGCEnabled    bool              `yaml:"-"`                          //we need to garbage collect buckets when in forensic mode
 
 }
 
@@ -155,6 +156,27 @@ func (c *GlobalConfig) LoadSubConfigurations() error {
 	return nil
 }
 
+func (c *GlobalConfig) LoadSimulation() error {
+	/*
+	     string            `yaml:"simulation_path,omitempty"`
+	   	SimulationConfig    *SimulationConfig `yaml:"-"`
+	*/
+	if c.Crowdsec == nil || c.Crowdsec.SimulationFilePath == "" {
+		return nil
+	}
+	rcfg, err := ioutil.ReadFile(c.Crowdsec.SimulationFilePath)
+	if err != nil {
+		return fmt.Errorf("while reading '%s' : %s", c.Crowdsec.SimulationFilePath, err)
+	}
+	simCfg := SimulationConfig{}
+	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+		return fmt.Errorf("while parsing '%s' : %s", c.Crowdsec.SimulationFilePath, err)
+	}
+	c.Crowdsec.SimulationConfig = &simCfg
+
+	return nil
+}
+
 func NewConfig() *GlobalConfig {
 	cfg := GlobalConfig{}
 	return &cfg
@@ -180,7 +202,7 @@ func NewDefaultConfig() *GlobalConfig {
 	}
 	crowdsecCfg := CrowdsecServiceCfg{
 		AcquisitionFilePath: "/etc/crowdsec/config/acquis.yaml",
-		ParserRoutines:      1,
+		ParserRoutinesCount: 1,
 		SimulationFilePath:  "/etc/crowdsec/config/simulation.yaml",
 		ConfigDir:           "/etc/crowdsec/",
 	}
