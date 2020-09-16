@@ -123,8 +123,11 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshaling config")
 	}
-	x, _ := filepath.Abs(path)
-	c.Self = &x
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return errors.Wrap(err, "failed to load absolute path")
+	}
+	c.Self = &path
 	if err := c.LoadSubConfigurations(); err != nil {
 		return errors.Wrap(err, "failed to load sub configurations")
 	}
@@ -161,10 +164,7 @@ func (c *GlobalConfig) LoadSubConfigurations() error {
 }
 
 func (c *GlobalConfig) LoadSimulation() error {
-	/*
-	     string            `yaml:"simulation_path,omitempty"`
-	   	SimulationConfig    *SimulationConfig `yaml:"-"`
-	*/
+
 	if c.Crowdsec == nil || c.Crowdsec.SimulationFilePath == "" {
 		return nil
 	}
@@ -232,15 +232,15 @@ func NewDefaultConfig() *GlobalConfig {
 	return &globalCfg
 }
 
-func (s *GlobalConfig) CleanupPaths() error {
+func (c *GlobalConfig) CleanupPaths() error {
 	var err error
 
 	var daemon_cleanup = []*string{
-		&s.Daemon.PidDir,
-		&s.Daemon.LogDir,
-		&s.Daemon.WorkingDir,
+		&c.Daemon.PidDir,
+		&c.Daemon.LogDir,
+		&c.Daemon.WorkingDir,
 	}
-	if s.Daemon != nil {
+	if c.Daemon != nil {
 		for _, k := range daemon_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
@@ -250,12 +250,12 @@ func (s *GlobalConfig) CleanupPaths() error {
 	}
 
 	var crowdsec_cleanup = []*string{
-		&s.Crowdsec.AcquisitionFilePath,
-		&s.Crowdsec.SimulationFilePath,
-		&s.Crowdsec.ConfigDir,
-		&s.Crowdsec.DataDir,
+		&c.Crowdsec.AcquisitionFilePath,
+		&c.Crowdsec.SimulationFilePath,
+		&c.Crowdsec.ConfigDir,
+		&c.Crowdsec.DataDir,
 	}
-	if s.Daemon != nil {
+	if c.Crowdsec != nil {
 		for _, k := range crowdsec_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
@@ -265,12 +265,12 @@ func (s *GlobalConfig) CleanupPaths() error {
 	}
 
 	var cscli_cleanup = []*string{
-		&s.Cscli.HubDir,
-		&s.Cscli.IndexPath,
-		&s.Cscli.InstallDir,
-		&s.Cscli.DataDir,
+		&c.Cscli.HubDir,
+		&c.Cscli.IndexPath,
+		&c.Cscli.InstallDir,
+		&c.Cscli.DataDir,
 	}
-	if s.Daemon != nil {
+	if c.Cscli != nil {
 		for _, k := range cscli_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
