@@ -28,7 +28,7 @@ func LoadHubIdx(cscli *csconfig.CscliCfg) error {
 			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
 		}
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(cscli); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
@@ -47,8 +47,10 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
 		}
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(cscli); err != nil {
+	hubIdx = ret
+	if err := LocalSync(); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
@@ -101,18 +103,26 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
+<<<<<<< HEAD
 						HubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
+=======
+						hubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
+>>>>>>> b114bd1... HubIdx is now unexported, first piece of work to get rid of it.
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
+<<<<<<< HEAD
 					HubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
+=======
+					hubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
+>>>>>>> b114bd1... HubIdx is now unexported, first piece of work to get rid of it.
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
@@ -229,6 +239,6 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 			return target, fmt.Errorf("unable to get data: %s", err)
 		}
 	}
-	HubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }

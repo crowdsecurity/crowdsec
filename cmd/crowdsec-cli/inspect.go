@@ -13,7 +13,7 @@ import (
 
 func InspectItem(name string, objectType string) {
 
-	for _, hubItem := range cwhub.HubIdx[objectType] {
+	for _, hubItem := range cwhub.GetItemMap(objectType) {
 		if hubItem.Name != name {
 			continue
 		}

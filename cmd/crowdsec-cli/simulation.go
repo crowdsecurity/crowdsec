@@ -125,8 +125,8 @@ func NewSimulationCmds() *cobra.Command {
 				for _, scenario := range args {
 					var v cwhub.Item
 					var ok bool
-					if _, ok = cwhub.HubIdx[cwhub.SCENARIOS]; ok {
-						if v, ok = cwhub.HubIdx[cwhub.SCENARIOS][scenario]; !ok {
+					if scenarioMap := cwhub.GetItemMap(cwhub.SCENARIOS); scenarioMap != nil {
+						if v, ok = scenarioMap[scenario]; !ok {
 							log.Errorf("'%s' isn't present in hub index", scenario)
 							continue
 						}
