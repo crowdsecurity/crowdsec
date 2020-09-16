@@ -17,7 +17,7 @@ api:
   cert_path: ./cert.key
   log_file: ./csapi.log
 database:
-  type: mysql
+  type: sqlite
   username: root
   password: crowdsec
   database: crowdsec

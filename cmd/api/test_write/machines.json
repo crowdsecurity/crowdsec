@@ -1,0 +1,18 @@
+[
+    {
+      "machine_id": "machine1",
+      "password": "machine1",
+      "ip_address": "1.1.1.1"
+    },
+    {
+      "machine_id": "machine2",
+      "password": "machine2",
+      "ip_address": "2.2.2.2"
+    },
+    {
+      "machine_id": "machine3",
+      "password": "machine3",
+      "ip_address": "3.3.3.3"
+    }
+]
+
