@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/go-openapi/strfmt"
 	"math/rand"
 	"net/url"
 	"os"
@@ -60,8 +61,8 @@ var (
 
 type Machine struct {
 	IPAddress string
-	ID        string
-	password  string
+	ID        *string
+	password  *strfmt.Password
 }
 
 type Metrics struct {
@@ -83,23 +84,27 @@ func (m *Machine) CreateAlert() *models.Alert {
 	}
 
 	scenario := fmt.Sprintf("crowdsecurity/%s", scenarioTemplate[rand.Intn(len(scenarioTemplate))])
-
+	duration := fmt.Sprintf("%dh", rand.Intn(4))
+	origin := "crowdsec"
+	scope := "ip"
+	decisionType := "ban"
 	decision := &models.Decision{
 		DecisionID: guid.String(),
-		Duration:   fmt.Sprintf("%dh", rand.Intn(4)),
+		Duration:   &duration,
 		EndIP:      endIP,
 		StartIP:    startIP,
-		Origin:     "crowdsec",
-		Scenario:   scenario,
-		Scope:      "ip",
-		Target:     ipAddr,
-		Type:       "ban",
+		Origin:     &origin,
+		Scenario:   &scenario,
+		Scope:      &scope,
+		Target:     &ipAddr,
+		Type:       &decisionType,
 	}
 
 	events := []*models.Event{}
+	timestamp := time.Now().Format(time.RFC3339)
 	event := &models.Event{
 		Meta:      models.Meta{},
-		Timestamp: time.Now().Format(time.RFC3339),
+		Timestamp: &timestamp,
 	}
 	MetaItem := &models.MetaItems0{
 		Key:   "ip",
@@ -113,19 +118,29 @@ func (m *Machine) CreateAlert() *models.Alert {
 	event.Meta = append(event.Meta, MetaItem)
 	events = append(events, event)
 
+	capacity := int32(rand.Intn(20))
+	eventsCount := int32(2)
+	leakSpeed := "5evt/s"
+	message := "test"
+	scenarioHash := xid.New().String()
+	scenarii := fmt.Sprintf("v0.%d", rand.Intn(10))
+	simulated := false
+	startAt := time.Now().Format(time.RFC3339)
+	stopAt := time.Now().Format(time.RFC3339)
+
 	alert := &models.Alert{
 		AlertID:      xid.New().String(),
-		Capacity:     int32(rand.Intn(20)),
+		Capacity:     &capacity,
 		Decisions:    []*models.Decision{decision},
 		Events:       events,
-		EventsCount:  2,
+		EventsCount:  &eventsCount,
 		Labels:       []string{"bf"},
-		Leakspeed:    "5evt/s",
-		MachineID:    m.ID,
-		Message:      "test",
-		ScenarioHash: xid.New().String(),
-		Scenario:     fmt.Sprintf("v0.%d", rand.Intn(10)),
-		Simulated:    false,
+		Leakspeed:    &leakSpeed,
+		MachineID:    *m.ID,
+		Message:      &message,
+		ScenarioHash: &scenarioHash,
+		Scenario:     &scenarii,
+		Simulated:    &simulated,
 		Source: &models.Source{
 			AsName:    AS[rand.Intn(len(AS))],
 			AsNumber:  fmt.Sprintf("%d", rand.Intn(len(AS))),
@@ -134,11 +149,11 @@ func (m *Machine) CreateAlert() *models.Alert {
 			Latitude:  rand.Float32(),
 			Longitude: rand.Float32(),
 			Range:     ipRange,
-			Scope:     "ip",
-			Value:     ipAddr,
+			Scope:     &scope,
+			Value:     &ipAddr,
 		},
-		StartAt: time.Now().Format(time.RFC3339),
-		StopAt:  time.Now().Format(time.RFC3339),
+		StartAt: &startAt,
+		StopAt:  &stopAt,
 	}
 
 	return alert
@@ -183,7 +198,7 @@ func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics 
 	}
 	duration := time.Now().Sub(now)
 	log.Printf("[Process:%s] Finished: %d alerts sended => '%s'", name, nbRequest, duration)
-	metrics <- Metrics{MachineID: m.ID, NBSend: nbRequest, Time: duration}
+	metrics <- Metrics{MachineID: *m.ID, NBSend: nbRequest, Time: duration}
 }
 
 func main() {
@@ -207,10 +222,12 @@ func main() {
 	metricsChan := make(chan Metrics, *nbMachine)
 
 	for i := 0; i <= *nbMachine-1; i++ {
+		id := fmt.Sprintf(MachineIDTemplate, i)
+		password := strfmt.Password("abcdefgh")
 		machine := &Machine{
 			IPAddress: fmt.Sprintf(machineIPAddrTemplate, rand.Intn(254)),
-			ID:        fmt.Sprintf(MachineIDTemplate, i),
-			password:  "abcdefgh",
+			ID:        &id,
+			password:  &password,
 		}
 		wg.Add(1)
 		go machine.Run(*url, *nbRequestPerMachine, &wg, metricsChan)

@@ -21,8 +21,9 @@ LOOP:
 			break LOOP
 		case event := <-overflow:
 			//if global simulation -> everything is simulation unless told otherwise
+			simulated := true
 			if cConfig.SimulationCfg != nil && cConfig.SimulationCfg.Simulation {
-				event.Overflow.Alert.Simulated = true
+				event.Overflow.Alert.Simulated = &simulated
 			}
 
 			if event.Overflow.Reprocess {
@@ -38,13 +39,14 @@ LOOP:
 			//check scenarios in simulation
 			if cConfig.SimulationCfg != nil {
 				for _, scenario_name := range cConfig.SimulationCfg.Exclusions {
-					if event.Overflow.Alert.Scenario == scenario_name {
-						event.Overflow.Alert.Simulated = !event.Overflow.Alert.Simulated
+					if event.Overflow.Alert.Scenario == &scenario_name {
+						simulated := !*event.Overflow.Alert.Simulated
+						event.Overflow.Alert.Simulated = &simulated
 					}
 				}
 			}
 
-			if event.Overflow.Alert.Scenario == "" && event.Overflow.Mapkey != "" {
+			if event.Overflow.Alert.Scenario == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 			} else {
 				log.Warningf("overflow : %+v", event)
