@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -84,7 +83,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 	err = CheckResponse(resp)
 	if err != nil {
-		log.Printf("error checking response :<")
 		return response, err
 	}
 

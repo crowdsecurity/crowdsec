@@ -6,8 +6,10 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
+	"github.com/go-openapi/validate"
 )
 
 // Source Source
@@ -37,14 +39,47 @@ type Source struct {
 	Range string `json:"range,omitempty"`
 
 	// the scope of a source : ip,range,username,etc
-	Scope string `json:"scope,omitempty"`
+	// Required: true
+	Scope *string `json:"scope"`
 
 	// the value of a source : the ip, the range, the username,etc
-	Value string `json:"value,omitempty"`
+	// Required: true
+	Value *string `json:"value"`
 }
 
 // Validate validates this source
 func (m *Source) Validate(formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.validateScope(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateValue(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *Source) validateScope(formats strfmt.Registry) error {
+
+	if err := validate.Required("scope", "body", m.Scope); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *Source) validateValue(formats strfmt.Registry) error {
+
+	if err := validate.Required("value", "body", m.Value); err != nil {
+		return err
+	}
+
 	return nil
 }
 

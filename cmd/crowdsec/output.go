@@ -23,6 +23,7 @@ LOOP:
 			//if global simulation -> everything is simulation unless told otherwise
 			if cConfig.Crowdsec.SimulationConfig != nil && cConfig.Crowdsec.SimulationConfig.Simulation {
 				event.Overflow.Alert.Simulated = true
+
 			}
 
 			if event.Overflow.Reprocess {
@@ -40,11 +41,12 @@ LOOP:
 				for _, scenario_name := range cConfig.Crowdsec.SimulationConfig.Exclusions {
 					if event.Overflow.Alert.Scenario == scenario_name {
 						event.Overflow.Alert.Simulated = !event.Overflow.Alert.Simulated
+
 					}
 				}
 			}
 
-			if event.Overflow.Alert.Scenario == "" && event.Overflow.Mapkey != "" {
+			if event.Overflow.Alert.Scenario == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 			} else {
 				log.Warningf("overflow : %+v", event)

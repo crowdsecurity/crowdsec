@@ -40,7 +40,7 @@ func NewSource(evt types.Event, leaky *Leaky) models.Source {
 		} else {
 			src.IP = source_ip
 		}
-		src.Scope = leaky.scopeType.Scope
+		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
 		}
@@ -74,9 +74,9 @@ func NewSource(evt types.Event, leaky *Leaky) models.Source {
 			}
 		}
 		if leaky.scopeType.Scope == types.Ip {
-			src.Value = src.IP
+			src.Value = &src.IP
 		} else if leaky.scopeType.Scope == types.Range {
-			src.Value = src.Range
+			src.Value = &src.Range
 		}
 	default:
 		if leaky.scopeType.RunTimeFilter != nil {
@@ -89,7 +89,7 @@ func NewSource(evt types.Event, leaky *Leaky) models.Source {
 			if !ok {
 				value = ""
 			}
-			src.Value = value
+			src.Value = &value
 		} else {
 			log.Warningf("Empty scope information")
 		}
@@ -114,16 +114,22 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	if err != nil {
 		log.Warningf("failed to marshal ts %s : %s", leaky.First_ts.String(), err)
 	}
+	capacity := int32(leaky.Capacity)
+	EventsCount := int32(leaky.Total_count)
+	leakSpeed := leaky.Leakspeed.String()
+	message := "stuff happened"
+	startAt := string(start_at)
+	stopAt := string(stop_at)
 	apiAlert := models.Alert{
-		Scenario:        leaky.Name,
-		ScenarioHash:    "xxx", //TBD
-		ScenarioVersion: "xxx", //TBD
-		Capacity:        int32(leaky.Capacity),
-		EventsCount:     int32(leaky.Total_count),
-		Leakspeed:       leaky.Leakspeed.String(),
-		Message:         "stuff happened", //TBD
-		StartAt:         string(start_at),
-		StopAt:          string(stop_at),
+		Scenario:        &leaky.Name,
+		ScenarioHash:    &leaky.hash,
+		ScenarioVersion: &leaky.scenarioVersion,
+		Capacity:        &capacity,
+		EventsCount:     &EventsCount,
+		Leakspeed:       &leakSpeed,
+		Message:         &message, //TBD
+		StartAt:         &startAt,
+		StopAt:          &stopAt,
 
 		//TBD(m): Decisions
 		//TBD(m): Meta
@@ -154,16 +160,16 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 		case types.LOG:
 			src := NewSource(evt, leaky)
 			if scope == types.Undefined {
-				scope = src.Scope
+				scope = *src.Scope
 			}
-			if src.Scope != scope {
-				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", alert.Alert.Scenario, alert.BucketId, src.Scope, scope)
+			if src.Scope != &scope {
+				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", *alert.Alert.Scenario, alert.BucketId, *src.Scope, scope)
 			}
-			sources[src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
+			sources[*src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
 			//Iterate over the meta of the Events to aggregate them
 			ovflwEvent := models.Event{
 				Meta:      metaFromEvent(evt),
-				Timestamp: evt.MarshaledTime,
+				Timestamp: &evt.MarshaledTime,
 			}
 			alert.Alert.Events = append(alert.Alert.Events, &ovflwEvent)
 		case types.OVFLW:
@@ -186,7 +192,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 		am = "UNKNOWN"
 	}
 	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
-	alert.Alert.Message = am
+	alert.Alert.Message = &am
 
 	log.Printf("The event is : %s", spew.Sdump(alert))
 	return alert

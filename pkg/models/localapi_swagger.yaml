@@ -513,6 +513,10 @@ definitions:
         type: string
       password:
         type: string
+        format: password
+    required:
+      - machine_id
+      - password
   WatcherAuthRequest:
     title: WatcherAuthRequest
     type: object
@@ -521,11 +525,16 @@ definitions:
         type: string
       password:
         type: string
+        format: password
       scenarios:
         description: the list of scenarios enabled on the watcher
         type: array
         items:
           type: string
+    required:
+      - machine_id
+      - password
+      - scenarios
   WatcherAuthResponse:
     title: WatcherAuthResponse
     description: the response of a successful authentication
@@ -544,9 +553,11 @@ definitions:
       alert_id:
         description: 'only relevant for GET, ignored in POST requests'
         type: string
+        readOnly: true
       machine_id:
         description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
         type: string
+        readOnly: true
       scenario:
         type: string
       scenario_hash:
@@ -588,6 +599,20 @@ definitions:
         type: array
         items:
           type: string
+    required:
+      - scenario
+      - scenario_hash
+      - scenario_version
+      - message
+      - events_count
+      - start_at
+      - stop_at
+      - capacity
+      - leakspeed
+      - simulated
+      - events
+      - decisions
+      - source
   Source:
     title: Source
     type: object
@@ -618,6 +643,9 @@ definitions:
       longitude:
         type: number
         format: float
+    required:
+      - scope
+      - value
   Decision:
     title: Decision
     type: object
@@ -625,6 +653,7 @@ definitions:
       decision_id:
         description: (only relevant for GET ops) the unique id
         type: string
+        readOnly: true
       origin:
         description: 'the origin of the decision : cscli, crowdsec'
         type: string
@@ -647,6 +676,13 @@ definitions:
         type: string
       scenario:
         type: string
+    required:
+      - origin
+      - type
+      - scope
+      - target
+      - duration
+      - scenario
   DeleteDecisionResponse:
     title: DeleteDecisionResponse
     type: array
@@ -697,6 +733,9 @@ definitions:
         type: string
       meta:
         $ref: '#/definitions/Meta'
+    required:
+      - timestamp
+      - meta
   GetDecisionsResponse:
     title: GetDecisionsResponse
     type: array
