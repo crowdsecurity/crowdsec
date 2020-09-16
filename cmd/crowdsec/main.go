@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"syscall"
 
 	_ "net/http/pprof"
@@ -219,76 +221,50 @@ func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (
 
 // LoadConfig return configuration parsed from command line and configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
-	// AcquisitionFile := flag.String("acquis", "", "path to acquis.yaml")
-	// configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
-	// printTrace := flag.Bool("trace", false, "VERY verbose")
-	// printDebug := flag.Bool("debug", false, "print debug-level on stdout")
-	// printInfo := flag.Bool("info", false, "print info-level on stdout")
-	// printVersion := flag.Bool("version", false, "display version")
-	// APIMode := flag.Bool("api", false, "perform pushes to api")
-	// profileMode := flag.Bool("profile", false, "Enable performance profiling")
-	// catFile := flag.String("file", "", "Process a single file in time-machine")
-	// catFileType := flag.String("type", "", "Labels.type for file in time-machine")
-	// daemonMode := flag.Bool("daemon", false, "Daemonize, go background, drop PID file, log to file")
-	// testMode := flag.Bool("t", false, "only test configs")
-	// prometheus := flag.Bool("prometheus-metrics", false, "expose http prometheus collector (see http_listen)")
-	// restoreMode := flag.String("restore-state", "", "[dev] restore buckets state from json file")
-	// dumpMode := flag.Bool("dump-state", false, "[dev] Dump bucket state at the end of run.")
+	configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
+	printTrace := flag.Bool("trace", false, "VERY verbose")
+	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
+	printInfo := flag.Bool("info", false, "print info-level on stdout")
+	printVersion := flag.Bool("version", false, "display version")
+	catFile := flag.String("file", "", "Process a single file in time-machine")
+	catFileType := flag.String("type", "", "Labels.type for file in time-machine")
+	testMode := flag.Bool("t", false, "only test configs")
+	flag.Parse()
+	if *printVersion {
+		cwversion.Show()
+		os.Exit(0)
+	}
 
-	// flag.Parse()
+	if configFile != nil {
+		if err := config.LoadConfigurationFile(*configFile); err != nil {
+			return fmt.Errorf("Error while loading configuration : %s", err)
+		}
+	} else {
+		log.Warningf("no configuration file provided")
+	}
 
-	// if *printVersion {
-	// 	cwversion.Show()
-	// 	os.Exit(0)
-	// }
+	if catFile != nil {
+		if *catFileType == "" {
+			return fmt.Errorf("-file requires -type")
+		}
+		log.Errorf("tbd craft struct")
+		// c.SingleFile = *catFile
+		// c.SingleFileLabel = *catFileType
+	}
 
-	// if *catFile != "" {
-	// 	if *catFileType == "" {
-	// 		return fmt.Errorf("-file requires -type")
-	// 	}
-	// 	c.SingleFile = *catFile
-	// 	c.SingleFileLabel = *catFileType
-	// }
+	if *printDebug {
+		config.Daemon.LogLevel = log.DebugLevel
+	}
+	if *printInfo {
+		config.Daemon.LogLevel = log.InfoLevel
+	}
+	if *printTrace {
+		config.Daemon.LogLevel = log.TraceLevel
+	}
 
-	// if err := c.LoadConfigurationFile(configFile); err != nil {
-	// 	return fmt.Errorf("Error while loading configuration : %s", err)
-	// }
-
-	// if *AcquisitionFile != "" {
-	// 	c.AcquisitionFile = *AcquisitionFile
-	// }
-	// if *dumpMode {
-	// 	c.DumpBuckets = true
-	// }
-	// if *prometheus {
-	// 	c.Prometheus = true
-	// }
-	// if *testMode {
-	// 	c.Linter = true
-	// }
-	// /*overriden by cmdline*/
-	// if *daemonMode {
-	// 	c.Daemonize = true
-	// }
-	// if *profileMode {
-	// 	c.Profiling = true
-	// }
-	// if *printDebug {
-	// 	c.LogLevel = log.DebugLevel
-	// }
-	// if *printInfo {
-	// 	c.LogLevel = log.InfoLevel
-	// }
-	// if *printTrace {
-	// 	c.LogLevel = log.TraceLevel
-	// }
-	// if *APIMode {
-	// 	c.APIMode = true
-	// }
-
-	// if *restoreMode != "" {
-	// 	c.RestoreMode = *restoreMode
-	// }
+	if *testMode {
+		config.Crowdsec.LintOnly = true
+	}
 
 	return nil
 }
@@ -299,6 +275,9 @@ func main() {
 	)
 
 	cConfig = csconfig.NewConfig()
+
+	x := csconfig.NewDefaultConfig()
+	x.Dump()
 
 	// Handle command line arguments
 	if err := LoadConfig(cConfig); err != nil {

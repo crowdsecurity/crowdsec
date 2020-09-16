@@ -73,14 +73,14 @@ type ApiCredentialsConfig struct {
 
 /*global api config (for lapi->oapi)*/
 type OnlineApiClientCfg struct {
-	CredentialsFilePath string `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
-	Credentials         *ApiCredentialsConfig
+	CredentialsFilePath string                `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
+	Credentials         *ApiCredentialsConfig `yaml:"-"`
 }
 
 /*local api config (for crowdsec/cscli->lapi)*/
 type LocalApiClientCfg struct {
-	CredentialsFilePath string `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
-	Credentials         *ApiCredentialsConfig
+	CredentialsFilePath string                `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
+	Credentials         *ApiCredentialsConfig `yaml:"-"`
 }
 
 /*local api service configuration*/
@@ -92,13 +92,14 @@ type LapiServiceCfg struct {
 
 /*cscli specific config, such as hub directory*/
 type CscliCfg struct {
-	HubDir    string
-	Output    string `yaml:"output,omitempty"`
-	IndexPath string `yaml:"index_path,omitempty"` //path the the .index.json
+	HubDir     string
+	Output     string `yaml:"output,omitempty"`
+	IndexPath  string `yaml:"index_path,omitempty"` //path the the .index.json
+	InstallDir string `yaml:"install_dir,omitempty"`
+	DataDir    string `yaml:"data_dir,omitempty"`
 	/*InstallDir and DataDir are used by both crowdsec and cscli, how to handle it ?*/
-	InstallDir string       `yaml:"install_dir,omitempty"`
-	DataDir    string       `yaml:"data_dir,omitempty"`
-	DbConfig   *DatabaseCfg `yaml:"-"`
+
+	DbConfig *DatabaseCfg `yaml:"-"`
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -120,7 +121,8 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshaling config")
 	}
-	*c.Self, _ = filepath.Abs(path)
+	x, _ := filepath.Abs(path)
+	c.Self = &x
 	if err := c.LoadSubConfigurations(); err != nil {
 		return errors.Wrap(err, "failed to load sub configurations")
 	}

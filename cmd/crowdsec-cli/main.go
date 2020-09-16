@@ -16,7 +16,7 @@ var csConfig *csconfig.GlobalConfig
 
 func initConfig() {
 
-	csConfig := csconfig.NewConfig()
+	csConfig = csconfig.NewConfig()
 
 	if ConfigFilePath == "" {
 		ConfigFilePath = "/etc/crowdsec/default.yaml"
@@ -93,6 +93,9 @@ API interaction:
 		},
 	}
 	rootCmd.AddCommand(cmdVersion)
+
+	csConfig = csconfig.NewConfig()
+	csConfig.Cscli = &csconfig.CscliCfg{}
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&csConfig.Cscli.Output, "output", "o", "human", "Output format : human, json, raw.")
