@@ -57,13 +57,13 @@ type BucketFactory struct {
 	ExprDebugger    *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
-  DataDir        string
-	leakspeed       time.Duration             //internal representation of `Leakspeed`
-	duration        time.Duration             //internal representation of `Duration`
-	ret             chan types.Event          //the bucket-specific output chan for overflows
-	processors      []Processor               //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	output          bool                      //??
-	ScenarioVersion string                    `yaml:"version,omitempty"`
+	DataDir         string
+	leakspeed       time.Duration    //internal representation of `Leakspeed`
+	duration        time.Duration    //internal representation of `Duration`
+	ret             chan types.Event //the bucket-specific output chan for overflows
+	processors      []Processor      //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	output          bool             //??
+	ScenarioVersion string           `yaml:"version,omitempty"`
 	hash            string
 }
 
@@ -179,13 +179,12 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			for _, hubItem := range cwhub.HubIdx[cwhub.SCENARIOS] {
-				if hubItem.Name != bucketFactory.Name {
-					continue
-				}
-				bucketFactory.ScenarioVersion = hubItem.LocalVersion
-				bucketFactory.hash = hubItem.LocalHash
+			hubItem := cwhub.GetItem(cwhub.SCENARIOS, bucketFactory.Name)
+			if hubItem == nil {
+				continue
 			}
+			bucketFactory.ScenarioVersion = hubItem.LocalVersion
+			bucketFactory.hash = hubItem.LocalHash
 
 			err = LoadBucket(&bucketFactory)
 			if err != nil {

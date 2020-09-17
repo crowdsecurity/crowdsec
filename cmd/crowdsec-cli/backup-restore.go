@@ -12,28 +12,31 @@ import (
 
 //it's a rip of the cli version, but in silent-mode
 func silenceInstallItem(name string, obtype string) (string, error) {
-	for _, it := range cwhub.HubIdx[obtype] {
-		if it.Name == name {
-			if download_only && it.Downloaded && it.UpToDate {
-				return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
-			}
-			it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
-			if err != nil {
-				return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
-			}
-			cwhub.HubIdx[obtype][it.Name] = it
-			if download_only {
-				return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
-			}
-			it, err = cwhub.EnableItem(csConfig.Cscli, it)
-			if err != nil {
-				return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
-			}
-			cwhub.HubIdx[obtype][it.Name] = it
-
-			return fmt.Sprintf("Enabled %s", it.Name), nil
-		}
+	var item *cwhub.Item
+	item = cwhub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
 	}
+	it := *item
+	if download_only && it.Downloaded && it.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	}
+	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+	}
+	cwhub.AddItemMap(obtype, it)
+
+	if download_only {
+		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+	}
+	it, err = cwhub.EnableItem(csConfig.Cscli, it)
+	if err != nil {
+		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
+	}
+	cwhub.AddItemMap(obtype, it)
+
+	return fmt.Sprintf("Enabled %s", it.Name), nil
 	return "", fmt.Errorf("%s not found in hub index", name)
 }
 

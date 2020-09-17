@@ -88,13 +88,13 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
-	if !HubIdx[item.Type][item.Name].UpToDate {
+	if !hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("download: %s should be up-to-date", item.Name)
 	}
-	if HubIdx[item.Type][item.Name].Installed {
+	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("download: %s should not be install", item.Name)
 	}
-	if HubIdx[item.Type][item.Name].Tainted {
+	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("download: %s should not be tainted", item.Name)
 	}
 
@@ -105,13 +105,13 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
-	if !HubIdx[item.Type][item.Name].Installed {
+	if !hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("install: %s should be install", item.Name)
 	}
 }
 
 func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
-	if HubIdx[item.Type][item.Name].Tainted {
+	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
 	}
 	f, err := os.OpenFile(item.LocalPath, os.O_APPEND|os.O_WRONLY, 0600)
@@ -127,14 +127,14 @@ func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
-	if !HubIdx[item.Type][item.Name].Tainted {
+	if !hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("taint: %s should be tainted", item.Name)
 	}
 }
 
 func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 
-	if HubIdx[item.Type][item.Name].UpToDate {
+	if hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
@@ -146,10 +146,10 @@ func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
-	if !HubIdx[item.Type][item.Name].UpToDate {
+	if !hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should be up-to-date", item.Name)
 	}
-	if HubIdx[item.Type][item.Name].Tainted {
+	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("update: %s should not be tainted anymore", item.Name)
 	}
 }
@@ -167,13 +167,13 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
-	if HubIdx[item.Type][item.Name].Tainted {
+	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("disable: %s should not be tainted anymore", item.Name)
 	}
-	if HubIdx[item.Type][item.Name].Installed {
+	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
 	}
-	if !HubIdx[item.Type][item.Name].Downloaded {
+	if !hubIdx[item.Type][item.Name].Downloaded {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
 	//Purge
@@ -185,10 +185,10 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
-	if HubIdx[item.Type][item.Name].Installed {
+	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
 	}
-	if HubIdx[item.Type][item.Name].Downloaded {
+	if hubIdx[item.Type][item.Name].Downloaded {
 		t.Fatalf("disable: %s should not be downloaded", item.Name)
 	}
 }
@@ -210,17 +210,17 @@ func TestInstallParser(t *testing.T) {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
-	for _, it := range HubIdx[PARSERS] {
+	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Cscli, t, it)
-		it = HubIdx[PARSERS][it.Name]
+		it = hubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
 		testTaintItem(cfg.Cscli, t, it)
-		it = HubIdx[PARSERS][it.Name]
+		it = hubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
 		testUpdateItem(cfg.Cscli, t, it)
-		it = HubIdx[PARSERS][it.Name]
+		it = hubIdx[PARSERS][it.Name]
 		testDisableItem(cfg.Cscli, t, it)
-		it = HubIdx[PARSERS][it.Name]
+		it = hubIdx[PARSERS][it.Name]
 
 		break
 	}
@@ -245,13 +245,14 @@ func TestInstallCollection(t *testing.T) {
 	//map iteration is random by itself
 	for _, it := range HubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Cscli, t, it)
-		it = HubIdx[COLLECTIONS][it.Name]
+		it = hubIdx[COLLECTIONS][it.Name]
 		testTaintItem(cfg.Cscli, t, it)
-		it = HubIdx[COLLECTIONS][it.Name]
+		it = hubIdx[COLLECTIONS][it.Name]
 		testUpdateItem(cfg.Cscli, t, it)
-		it = HubIdx[COLLECTIONS][it.Name]
+		it = hubIdx[COLLECTIONS][it.Name]
 		testDisableItem(cfg.Cscli, t, it)
-		it = HubIdx[COLLECTIONS][it.Name]
+
+		it = hubIdx[COLLECTIONS][it.Name]
 		x := HubStatus(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)
 		break

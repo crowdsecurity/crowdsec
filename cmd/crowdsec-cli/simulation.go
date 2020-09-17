@@ -123,16 +123,15 @@ func NewSimulationCmds() *cobra.Command {
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var v cwhub.Item
-					var ok bool
-					if _, ok = cwhub.HubIdx[cwhub.SCENARIOS]; ok {
-						if v, ok = cwhub.HubIdx[cwhub.SCENARIOS][scenario]; !ok {
-							log.Errorf("'%s' isn't present in hub index", scenario)
-							continue
-						}
-						if !v.Installed {
-							log.Warningf("'%s' isn't enabled", scenario)
-						}
+					var (
+						item *cwhub.Item
+					)
+					item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
+					if item == nil {
+						log.Errorf("'%s' isn't present in hub index", scenario)
+					}
+					if !item.Installed {
+						log.Warningf("'%s' isn't enabled", scenario)
 					}
 					isExcluded := inSlice(scenario, csConfig.Crowdsec.SimulationConfig.Exclusions)
 					if csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
