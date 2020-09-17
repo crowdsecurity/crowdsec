@@ -45,8 +45,6 @@ func initConfig() {
 	if err := config.LoadConfigurationFile(cfgFile); err != nil {
 		log.Fatalf(err.Error())
 	}
-	log.Printf("config : %+v \n", config)
-
 }
 
 func init() {
