@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+
 	"github.com/go-openapi/strfmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"

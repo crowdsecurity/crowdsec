@@ -1,10 +1,11 @@
 package schema
 
 import (
+	"time"
+
 	"github.com/facebook/ent"
 	"github.com/facebook/ent/schema/edge"
 	"github.com/facebook/ent/schema/field"
-	"time"
 )
 
 // Event holds the schema definition for the Event entity.
