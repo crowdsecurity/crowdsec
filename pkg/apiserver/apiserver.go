@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
 )
 
 var (
@@ -56,12 +55,12 @@ func NewServer(config *csconfig.LapiServiceCfg) (*APIServer, error) {
 
 }
 
-func (s *APIServer) Run() {
+func (s *APIServer) Run() error {
 	defer s.controller.DBClient.Ent.Close()
 
 	file, err := os.Create(s.logFile)
 	if err != nil {
-		log.Fatalf("unable to create log file '%s': %s", s.logFile, err.Error())
+		return fmt.Errorf("unable to create log file '%s': %s", s.logFile, err.Error())
 	}
 	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 
@@ -110,12 +109,13 @@ func (s *APIServer) Run() {
 
 	/*puller, err := NewPuller(s.dbClient)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	go puller.Pull()
 	*/
 	router.Run(s.url)
+	return nil
 }
 
 func (s *APIServer) Generate(name string) (string, error) {
