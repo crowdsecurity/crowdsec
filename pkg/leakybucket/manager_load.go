@@ -179,7 +179,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			for _, hubItem := range cwhub.GetItemMap(cwhub.SCENARIOS]) {
+			for _, hubItem := range cwhub.GetItemMap(cwhub.SCENARIOS) {
 				if hubItem.Name != bucketFactory.Name {
 					continue
 				}
