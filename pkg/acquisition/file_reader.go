@@ -78,13 +78,13 @@ func LoadAcquisCtxSingleFile(path string, filetype string) ([]FileCtx, error) {
 }
 
 /*LoadAcquisCtxConfigFile Loading a acquis.yaml file for acquisition*/
-func LoadAcquisCtxConfigFile(config *csconfig.GlobalConfig) ([]FileCtx, error) {
+func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, error) {
 	var files []FileCtx
 
-	if config.Crowdsec == nil || config.Crowdsec.AcquisitionFilePath == "" {
+	if config == nil || config.AcquisitionFilePath == "" {
 		return nil, fmt.Errorf("no acquisition file")
 	}
-	yamlFile, err := os.Open(config.Crowdsec.AcquisitionFilePath)
+	yamlFile, err := os.Open(config.AcquisitionFilePath)
 	if err != nil {
 		log.Errorf("Can't access acquisition configuration file with '%v'.", err)
 		return nil, err
@@ -100,7 +100,7 @@ func LoadAcquisCtxConfigFile(config *csconfig.GlobalConfig) ([]FileCtx, error) {
 				log.Tracef("End of yaml file")
 				break
 			}
-			log.Fatalf("Error decoding acquisition configuration file with '%s': %v", config.Crowdsec.AcquisitionFilePath, err)
+			log.Fatalf("Error decoding acquisition configuration file with '%s': %v", config.AcquisitionFilePath, err)
 			break
 		}
 		files = append(files, t)

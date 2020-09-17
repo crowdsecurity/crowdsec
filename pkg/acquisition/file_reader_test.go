@@ -8,25 +8,24 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/nxadm/tail"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/tomb.v2"
+	tomb "gopkg.in/tomb.v2"
 )
 
-func TestLoadAcquisitionConfig(t *testing.T) {
+func TestLoadAcquisitionSingleFile(t *testing.T) {
 	testFilePath := "./tests/test.log"
 
 	tests := []struct {
-		csConfig *csconfig.CrowdSec
-		result   *FileAcquisCtx
-		err      string
+		fname  string
+		ftype  string
+		result *FileAcquisCtx
+		err    string
 	}{
 		{
-			csConfig: &csconfig.CrowdSec{
-				SingleFile:      testFilePath,
-				SingleFileLabel: "my_test_log",
-				Profiling:       false,
-			},
+			fname: testFilePath,
+			ftype: "my_test_log",
 			result: &FileAcquisCtx{
 				Files: []FileCtx{
 					{
@@ -44,33 +43,12 @@ func TestLoadAcquisitionConfig(t *testing.T) {
 			},
 			err: "",
 		},
-		{
-			csConfig: &csconfig.CrowdSec{
-				SingleFile:      testFilePath,
-				SingleFileLabel: "my_test_log",
-				Profiling:       true,
-			},
-			result: &FileAcquisCtx{
-				Files: []FileCtx{
-					{
-						Type:      "file",
-						Mode:      "cat",
-						Filename:  testFilePath,
-						Filenames: []string{},
-						Labels: map[string]string{
-							"type": "my_test_log",
-						},
-						Profiling: false,
-					},
-				},
-				Profiling: true,
-			},
-			err: "",
-		},
 	}
 
 	for _, test := range tests {
-		result, err := LoadAcquisitionConfig(test.csConfig)
+		ctx, err := LoadAcquisCtxSingleFile(test.fname, test.ftype)
+		result, err := InitReaderFromFileCtx(ctx)
+		//result, err := LoadAcquisitionConfig(test.csConfig)
 		assert.Equal(t, test.result, result)
 		if test.err == "" && err == nil {
 			continue
@@ -80,19 +58,37 @@ func TestLoadAcquisitionConfig(t *testing.T) {
 }
 
 func TestAcquisStartReadingTailKilled(t *testing.T) {
-	acquisFilePath := "./tests/acquis_test_log.yaml"
-	csConfig := &csconfig.CrowdSec{
-		AcquisitionFile: acquisFilePath,
-		Profiling:       false,
+	acquisFilePath := "./tests/acquis_test.yaml"
+	testFilePath := "./tests/test.log"
+
+	csConfig := &csconfig.CrowdsecServiceCfg{
+		AcquisitionFilePath: acquisFilePath,
 	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
+
+	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	f.Close()
+
+	fCTX, err := LoadAcquisCtxConfigFile(csConfig)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
 
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
+	acquisCtx, err := InitReaderFromFileCtx(fCTX)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	AcquisStartReading(acquisCtx, outputChan, &acquisTomb)
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
@@ -100,7 +96,7 @@ func TestAcquisStartReadingTailKilled(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 	filename := "./tests/test.log"
 
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	f, err = os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,20 +141,23 @@ L:
 }
 
 func TestAcquisStartReadingTail(t *testing.T) {
-	acquisFilePath := "./tests/acquis_test_log.yaml"
+	acquisFilePath := "./tests/acquis_test.yaml"
 	filename := "./tests/test.log"
-	csConfig := &csconfig.CrowdSec{
-		AcquisitionFile: acquisFilePath,
-		Profiling:       false,
+	csConfig := &csconfig.CrowdsecServiceCfg{
+		AcquisitionFilePath: acquisFilePath,
 	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
+	fCTX, err := LoadAcquisCtxConfigFile(csConfig)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
 
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
+	acquisCtx, err := InitReaderFromFileCtx(fCTX)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	AcquisStartReading(acquisCtx, outputChan, &acquisTomb)
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
@@ -226,18 +225,16 @@ func TestAcquisStartReadingCat(t *testing.T) {
 	}
 	f.Close()
 
-	csConfig := &csconfig.CrowdSec{
-		SingleFile:      testFilePath,
-		SingleFileLabel: "my_test_log",
-		Profiling:       false,
-	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
+	ctx, err := LoadAcquisCtxSingleFile(testFilePath, "my_test_log")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("LoadAcquisCtxSingleFile")
+	}
+	fCTX, err := InitReaderFromFileCtx(ctx)
+	if err != nil {
+		t.Fatalf("InitReaderFromFileCtx")
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
-
 	AcquisStartReading(fCTX, outputChan, &acquisTomb)
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
@@ -279,18 +276,16 @@ L:
 func TestAcquisStartReadingGzCat(t *testing.T) {
 	testFilePath := "./tests/test.log.gz"
 
-	csConfig := &csconfig.CrowdSec{
-		SingleFile:      testFilePath,
-		SingleFileLabel: "my_test_log",
-		Profiling:       false,
-	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
+	ctx, err := LoadAcquisCtxSingleFile(testFilePath, "my_test_log")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatalf("LoadAcquisCtxSingleFile")
+	}
+	fCTX, err := InitReaderFromFileCtx(ctx)
+	if err != nil {
+		t.Fatalf("InitReaderFromFileCtx")
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
-
 	AcquisStartReading(fCTX, outputChan, &acquisTomb)
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
@@ -312,4 +307,125 @@ L:
 	if reads != 1 {
 		t.Fatal()
 	}
+}
+
+func TestCatFromAcquisStruct(t *testing.T) {
+	tests := []struct {
+		Config []FileCtx
+		Result *FileAcquisCtx
+		err    string
+	}{
+		{
+			Config: []FileCtx{FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Files: []FileCtx{
+					FileCtx{Type: "file",
+						Mode:      "cat",
+						Filename:  "./tests/test.log",
+						Filenames: []string{},
+						tail:      nil,
+						Labels: map[string]string{
+							"type": "ratata"},
+						Profiling: false,
+					},
+				},
+				Profiling: false,
+			},
+		},
+
+		{
+			Config: []FileCtx{FileCtx{
+				Type: FILETYPE,
+				//Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Files: []FileCtx{
+					FileCtx{Type: "file",
+						Mode:      "tail",
+						Filename:  "./tests/test.log",
+						Filenames: []string{},
+						tail:      &tail.Tail{},
+						Labels: map[string]string{
+							"type": "ratata"},
+						Profiling: false,
+					},
+				},
+				Profiling: false,
+			},
+		},
+
+		{
+			Config: []FileCtx{FileCtx{
+				//Type: FILETYPE,
+				//Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Files: []FileCtx{
+					FileCtx{Type: "file",
+						Mode:      "tail",
+						Filename:  "./tests/test.log",
+						Filenames: []string{},
+						tail:      &tail.Tail{},
+						Labels: map[string]string{
+							"type": "ratata"},
+						Profiling: false,
+					},
+				},
+				Profiling: false,
+			},
+		},
+
+		{
+			Config: []FileCtx{FileCtx{
+				Type: FILETYPE,
+				//Mode:     CATMODE,
+				Filename: "",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{},
+		},
+	}
+
+	for testidx, test := range tests {
+		AcqCtx, err := InitReaderFromFileCtx(test.Config)
+		//we can't compare the tail object, it's not ours, just check non-nil
+		for ridx, res := range AcqCtx.Files {
+			if res.tail == nil {
+				if test.Result.Files[ridx].tail != nil {
+					t.Fatalf("(%d/%d) expected nil tail, got non-nil tail", testidx, len(tests))
+				}
+			}
+			if res.tail != nil {
+				if test.Result.Files[ridx].tail == nil {
+					t.Fatalf("(%d/%d) expected non-nil tail, got nil tail", testidx, len(tests))
+				}
+			}
+			test.Result.Files[ridx].tail = nil
+			AcqCtx.Files[ridx].tail = nil
+		}
+		assert.Equal(t, test.Result, AcqCtx)
+		if test.err == "" && err == nil {
+			continue
+		}
+		log.Printf("->%s", err)
+		assert.EqualError(t, err, test.err)
+	}
+
 }
