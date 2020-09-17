@@ -179,7 +179,7 @@ func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 		}
 	} else {
 		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
-		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig)
+		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig.Crowdsec)
 		if err != nil {
 			return fmt.Errorf("Failed to load acquisition : %s", err)
 		}
