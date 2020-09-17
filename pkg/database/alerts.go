@@ -180,14 +180,14 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 
 	alert := c.Ent.Alert.
 		Create().
-		SetScenario(alertItem.Scenario).
+		SetScenario(*alertItem.Scenario).
 		SetBucketId(alertItem.AlertID).
-		SetMessage(alertItem.Message).
-		SetEventsCount(alertItem.EventsCount).
+		SetMessage(*alertItem.Message).
+		SetEventsCount(*alertItem.EventsCount).
 		SetStartedAt(startAtTime).
 		SetStoppedAt(stopAtTime).
-		SetSourceScope(alertItem.Source.Scope).
-		SetSourceValue(alertItem.Source.Value).
+		SetSourceScope(*alertItem.Source.Scope).
+		SetSourceValue(*alertItem.Source.Value).
 		SetSourceIp(alertItem.Source.IP).
 		SetSourceRange(alertItem.Source.Range).
 		SetSourceAsNumber(alertItem.Source.AsNumber).
@@ -195,8 +195,8 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		SetSourceCountry(alertItem.Source.Cn).
 		SetSourceLatitude(alertItem.Source.Latitude).
 		SetSourceLongitude(alertItem.Source.Longitude).
-		SetCapacity(alertItem.Capacity).
-		SetLeakSpeed(alertItem.Leakspeed)
+		SetCapacity(*alertItem.Capacity).
+		SetLeakSpeed(*alertItem.Leakspeed)
 
 	if owner != nil {
 		alert.SetOwner(owner)
@@ -210,7 +210,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 	if len(alertItem.Events) > 0 {
 		bulk := make([]*ent.EventCreate, len(alertItem.Events))
 		for i, eventItem := range alertItem.Events {
-			ts, err := time.Parse(time.RFC3339, eventItem.Timestamp)
+			ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 			if err != nil {
 				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", eventItem.Timestamp, err))
 			}
@@ -248,18 +248,18 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 	if len(alertItem.Decisions) > 0 {
 		bulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 		for i, decisionItem := range alertItem.Decisions {
-			duration, err := time.ParseDuration(decisionItem.Duration)
+			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
 				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
 			}
 			bulk[i] = c.Ent.Decision.Create().
 				SetUntil(time.Now().Add(duration)).
-				SetScenario(decisionItem.Scenario).
-				SetType(decisionItem.Type).
+				SetScenario(*decisionItem.Scenario).
+				SetType(*decisionItem.Type).
 				SetStartIP(decisionItem.StartIP).
 				SetEndIP(decisionItem.EndIP).
-				SetTarget(decisionItem.Target).
-				SetScope(decisionItem.Scope).
+				SetTarget(*decisionItem.Target).
+				SetScope(*decisionItem.Scope).
 				SetOwner(alertCreated)
 		}
 		_, err := c.Ent.Decision.CreateBulk(bulk...).Save(c.CTX)
