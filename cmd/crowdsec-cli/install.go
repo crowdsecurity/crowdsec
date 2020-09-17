@@ -13,30 +13,31 @@ import (
 var download_only, force_install bool
 
 func InstallItem(name string, obtype string) {
-	for _, it := range cwhub.GetItemMap(obtype) {
-		if it.Name == name {
-			if download_only && it.Downloaded && it.UpToDate {
-				log.Warningf("%s is already downloaded and up-to-date", it.Name)
-				return
-			}
-			it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
-			if err != nil {
-				log.Fatalf("error while downloading %s : %v", it.Name, err)
-			}
-			cwhub.AddItemMap(obtype, it)
-			if download_only {
-				log.Infof("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath)
-				return
-			}
-			it, err = cwhub.EnableItem(csConfig.Cscli, it)
-			if err != nil {
-				log.Fatalf("error while enabled %s : %v.", it.Name, err)
-			}
-			cwhub.AddItemMap(obtype, it)
-			log.Infof("Enabled %s", it.Name)
-			return
-		}
+	it := cwhub.GetItem(obtype, name)
+	if it == nil {
+		log.Fatalf("unable to retrive item : %s", name)
 	}
+	item := *it
+	if download_only && item.Downloaded && item.UpToDate {
+		log.Warningf("%s is already downloaded and up-to-date", item.Name)
+		return
+	}
+	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, force_install)
+	if err != nil {
+		log.Fatalf("error while downloading %s : %v", item.Name, err)
+	}
+	cwhub.AddItemMap(obtype, item)
+	if download_only {
+		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
+		return
+	}
+	item, err = cwhub.EnableItem(csConfig.Cscli, item)
+	if err != nil {
+		log.Fatalf("error while enabled %s : %v.", item.Name, err)
+	}
+	cwhub.AddItemMap(obtype, item)
+	log.Infof("Enabled %s", item.Name)
+	return
 	log.Warningf("%s not found in hub index", name)
 	/*iterate of pkg index data*/
 }

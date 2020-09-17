@@ -14,15 +14,20 @@ var purge_remove, remove_all bool
 func RemoveMany(ttype string, name string) {
 	var err error
 	var disabled int
-	for _, v := range cwhub.GetItemMap(ttype) {
-		if name != "" && v.Name == name {
-			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge_remove)
-			if err != nil {
-				log.Fatalf("unable to disable %s : %v", v.Name, err)
-			}
-			cwhub.AddItemMap(ttype, v)
-			return
-		} else if name == "" && remove_all {
+	if name != "" {
+		it := cwhub.GetItem(ttype, name)
+		if it != nil {
+			log.Fatalf("unable to retrieve: %s", name)
+		}
+		item := *it
+		item, err = cwhub.DisableItem(csConfig.Cscli, item, purge_remove)
+		if err != nil {
+			log.Fatalf("unable to disable %s : %v", item.Name, err)
+		}
+		cwhub.AddItemMap(ttype, item)
+		return
+	} else if name == "" && remove_all {
+		for _, v := range cwhub.GetItemMap(ttype) {
 			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge_remove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)

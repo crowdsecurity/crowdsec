@@ -109,6 +109,13 @@ func GetItemMap(itemType string) map[string]Item {
 	}
 }
 
+func GetItem(itemType string, itemName string) *Item {
+	if m, ok := GetItemMap(itemType)[itemName]; ok {
+		return &m
+	}
+	return nil
+}
+
 func AddItemMap(itemType string, item Item) error {
 	in := false
 	for _, itype := range ItemTypes {

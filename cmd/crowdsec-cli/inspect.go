@@ -13,16 +13,16 @@ import (
 
 func InspectItem(name string, objectType string) {
 
-	for _, hubItem := range cwhub.GetItemMap(objectType) {
-		if hubItem.Name != name {
-			continue
-		}
-		buff, err := yaml.Marshal(hubItem)
-		if err != nil {
-			log.Fatalf("unable to marshal item : %s", err)
-		}
-		fmt.Printf("%s", string(buff))
+	hubItem := cwhub.GetItem(objectType, name)
+	if hubItem == nil {
+		log.Fatalf("unable to retrieve item.")
 	}
+	buff, err := yaml.Marshal(*hubItem)
+	if err != nil {
+		log.Fatalf("unable to marshal item : %s", err)
+	}
+	fmt.Printf("%s", string(buff))
+
 }
 
 func NewInspectCmd() *cobra.Command {
