@@ -25,7 +25,7 @@ func doListing(ttype string, args []string) {
 		pkgst = cwhub.HubStatus(ttype, "", listAll)
 	}
 
-	if config.output == "human" {
+	if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetCenterSeparator("")
@@ -38,13 +38,13 @@ func doListing(ttype string, args []string) {
 			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
 		}
 		table.Render()
-	} else if config.output == "json" {
+	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(pkgst, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
 		fmt.Printf("%s", string(x))
-	} else if config.output == "raw" {
+	} else if csConfig.Cscli.Output == "raw" {
 		for _, v := range pkgst {
 			fmt.Printf("%s %s\n", v["name"], v["description"])
 		}
@@ -69,14 +69,14 @@ cscli list -a # List all local and remote configurations
 		`,
 		Args: cobra.ExactArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if !config.configured {
+			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 
@@ -99,7 +99,7 @@ cscli list -a # List all local and remote configurations
 		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			doListing(cwhub.PARSERS, args)
@@ -113,7 +113,7 @@ cscli list -a # List all local and remote configurations
 		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			doListing(cwhub.SCENARIOS, args)
@@ -127,7 +127,7 @@ cscli list -a # List all local and remote configurations
 		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			doListing(cwhub.COLLECTIONS, args)
@@ -141,7 +141,7 @@ cscli list -a # List all local and remote configurations
 		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			doListing(cwhub.PARSERS_OVFLW, args)

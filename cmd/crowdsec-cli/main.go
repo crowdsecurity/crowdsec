@@ -1,10 +1,6 @@
 package main
 
 import (
-	"os/user"
-	"path/filepath"
-	"strings"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -15,10 +11,27 @@ import (
 )
 
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
-
-var config cliConfig
+var ConfigFilePath string
+var csConfig *csconfig.GlobalConfig
+var OutputFormat string
 
 func initConfig() {
+
+	csConfig = csconfig.NewConfig()
+
+	if ConfigFilePath == "" {
+		ConfigFilePath = "/etc/crowdsec/default.yaml"
+		log.Infof("Falling back to %s", ConfigFilePath)
+	}
+
+	log.Debugf("Config folder is : %s", ConfigFilePath)
+	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if OutputFormat != "" {
+		csConfig.Cscli.Output = OutputFormat
+	}
 
 	if dbg_lvl {
 		log.SetLevel(log.DebugLevel)
@@ -29,38 +42,14 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-	if config.output == "json" {
+
+	if csConfig.Cscli.Output == "json" {
 		log.SetLevel(log.WarnLevel)
 		log.SetFormatter(&log.JSONFormatter{})
-	} else if config.output == "raw" {
+	} else if csConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}
 
-	csConfig := csconfig.NewCrowdSecConfig()
-	log.Debugf("Config folder is : %s", config.ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(&config.ConfigFilePath); err != nil {
-		log.Fatalf(err.Error())
-	}
-	config.configFolder = filepath.Clean(csConfig.CsCliFolder)
-	if strings.HasPrefix(config.configFolder, "~/") {
-		usr, err := user.Current()
-		if err != nil {
-			log.Fatalf("failed to resolve path ~/ : %s", err)
-		}
-		config.configFolder = usr.HomeDir + "/" + config.configFolder[2:]
-	}
-
-	/*read config*/
-	config.InstallFolder = filepath.Clean(csConfig.ConfigFolder)
-	config.HubFolder = filepath.Clean(config.configFolder + "/hub/")
-	config.DataFolder = filepath.Clean(csConfig.DataFolder)
-	//
-	cwhub.Installdir = config.InstallFolder
-	cwhub.Cfgdir = config.configFolder
-	cwhub.Hubdir = config.HubFolder
-	config.configured = true
-	config.SimulationCfg = csConfig.SimulationCfg
-	config.SimulationCfgPath = csConfig.SimulationCfgPath
 }
 
 func main() {
@@ -110,10 +99,8 @@ API interaction:
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	//rootCmd.PersistentFlags().BoolVarP(&config.simulation, "simulate", "s", false, "No action; perform a simulation of events that would occur based on the current arguments.")
-	rootCmd.PersistentFlags().StringVarP(&config.ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
-
-	rootCmd.PersistentFlags().StringVarP(&config.output, "output", "o", "human", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
+	rootCmd.PersistentFlags().StringVar(&OutputFormat, "output", "o", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")

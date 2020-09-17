@@ -57,6 +57,7 @@ type BucketFactory struct {
 	ExprDebugger    *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
+  DataDir        string
 	leakspeed       time.Duration             //internal representation of `Leakspeed`
 	duration        time.Duration             //internal representation of `Duration`
 	ret             chan types.Event          //the bucket-specific output chan for overflows
@@ -120,7 +121,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
@@ -130,7 +131,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {
-		log.Debugf("Loading %s", f)
+		log.Debugf("Loading '%s'", f)
 		if !strings.HasSuffix(f, ".yaml") {
 			log.Debugf("Skipping %s : not a yaml file", f)
 			continue
@@ -156,6 +157,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
 			}
+			bucketFactory.DataDir = cscfg.DataDir
 			//check empty
 			if bucketFactory.Name == "" {
 				log.Errorf("Won't load nameless bucket")
@@ -185,7 +187,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 				bucketFactory.hash = hubItem.LocalHash
 			}
 
-			err = LoadBucket(&bucketFactory, csconfig.DataFolder)
+			err = LoadBucket(&bucketFactory)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
@@ -198,7 +200,7 @@ func LoadBuckets(csconfig csconfig.CrowdSec, files []string) ([]BucketFactory, c
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(bucketFactory *BucketFactory, dataFolder string) error {
+func LoadBucket(bucketFactory *BucketFactory) error {
 	var err error
 	if bucketFactory.Debug {
 		var clog = logrus.New()
@@ -300,8 +302,7 @@ func LoadBucket(bucketFactory *BucketFactory, dataFolder string) error {
 				bucketFactory.logger.Errorf("no dest_file provided for '%s'", bucketFactory.Name)
 				continue
 			}
-			bucketFactory.logger.Infof("POUET: %s %s %s", dataFolder, data.DestPath, data.Type)
-			err = exprhelpers.FileInit(dataFolder, data.DestPath, data.Type)
+			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
 				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
 			}

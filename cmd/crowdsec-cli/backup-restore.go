@@ -17,15 +17,15 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 			if download_only && it.Downloaded && it.UpToDate {
 				return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 			}
-			it, err := cwhub.DownloadLatest(it, cwhub.Hubdir, force_install, config.DataFolder)
+			it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
 			if err != nil {
 				return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 			}
 			cwhub.HubIdx[obtype][it.Name] = it
 			if download_only {
-				return fmt.Sprintf("Downloaded %s to %s", it.Name, cwhub.Hubdir+"/"+it.RemotePath), nil
+				return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
 			}
-			it, err = cwhub.EnableItem(it, cwhub.Installdir, cwhub.Hubdir)
+			it, err = cwhub.EnableItem(csConfig.Cscli, it)
 			if err != nil {
 				return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
 			}
