@@ -49,8 +49,6 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 	}
 	hubIdx = ret
 	if err := LocalSync(cscli); err != nil {
-	hubIdx = ret
-	if err := LocalSync(); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
@@ -108,21 +106,13 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-<<<<<<< HEAD
-						HubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
-=======
-						hubIdx[ptrtype][p], err = DownloadLatest(val, tdir, overwrite, dataFolder)
->>>>>>> b114bd1... HubIdx is now unexported, first piece of work to get rid of it.
+						hubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
 						if err != nil {
 							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
 						}
 					}
-<<<<<<< HEAD
-					HubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
-=======
-					hubIdx[ptrtype][p], err = DownloadItem(val, tdir, overwrite, dataFolder)
->>>>>>> b114bd1... HubIdx is now unexported, first piece of work to get rid of it.
+					hubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
 					if err != nil {
 						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
 						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)

@@ -210,7 +210,7 @@ func TestInstallParser(t *testing.T) {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
-	for _, it := range HubIdx[PARSERS] {
+	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Cscli, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
@@ -251,6 +251,7 @@ func TestInstallCollection(t *testing.T) {
 		testUpdateItem(cfg.Cscli, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
 		testDisableItem(cfg.Cscli, t, it)
+
 		it = hubIdx[COLLECTIONS][it.Name]
 		x := HubStatus(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)

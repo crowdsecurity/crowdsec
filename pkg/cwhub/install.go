@@ -28,7 +28,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					hubIdx[ptrtype][p], err = DisableItem(cscli, val, false)
 					if err != nil {
 						log.Errorf("Encountered error while disabling %s %s : %s.", ptrtype, p, err)
@@ -117,7 +117,7 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					hubIdx[ptrtype][p], err = EnableItem(cscli, val)
 					if err != nil {
 						log.Errorf("Encountered error while installing sub-item %s %s : %s.", ptrtype, p, err)
