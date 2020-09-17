@@ -24,8 +24,16 @@ cscli:
   install_dir: ./config/
   data_dir: ./data/
 localapi_service:
-  listen_uri: http://127.0.0.1:4242/
+  listen_uri: 127.0.0.1:8080
 api_client:
   credentials_path: ./lapi-secrets.yaml
 online_api_client:
   credentials_path: ./online-api-secrets.yaml
+db_config:
+  type: sqlite
+  db_path: ./crowdsec.db
+  user: root
+  password: crowdsec
+  db_name: crowdsec
+  host: "172.17.0.2"
+  port: 3306

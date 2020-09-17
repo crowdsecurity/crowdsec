@@ -26,7 +26,6 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	for i, alertItem := range alertList {
-		log.Printf("Query machine for alert '%d'| len() = %d | cap() = %d", i, len(bulk), cap(bulk))
 		owner, err := c.QueryMachineByID(alertItem.MachineID)
 		if err != nil {
 			if errors.Cause(err) == UserNotExists {
@@ -37,12 +36,12 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", alertItem.StartAt, err))
+			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", *alertItem.StartAt, err))
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", alertItem.StopAt, err))
+			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", *alertItem.StopAt, err))
 		}
 
 		if len(alertItem.Events) > 0 {
@@ -50,11 +49,11 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", eventItem.Timestamp, err))
+					return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", *eventItem.Timestamp, err))
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
-					return []string{}, errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%s' : %s", eventItem.Meta, err))
+					return []string{}, errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%v' : %s", eventItem.Meta, err))
 				}
 
 				eventBulk[i] = c.Ent.Event.Create().
@@ -129,11 +128,9 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		if owner != nil {
 			alertB.SetOwner(owner)
 		}
-		log.Printf("adding alert(%d) to bulkd!", i)
 		bulk = append(bulk, alertB)
 
 		if len(bulk) == bulkSize {
-			log.Printf("bulk : %+v \n", bulk)
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
 				return []string{}, errors.Wrap(BulkError, fmt.Sprintf("creating alert : %s", err))
@@ -143,17 +140,13 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 			}
 
 			if len(alertList)-i <= bulkSize {
-				log.Printf("Recreating bulk with size: %d", len(alertList)-i)
-				log.Printf("I : %+v | full : %+v \n", i, len(alertList))
 				bulk = make([]*ent.AlertCreate, 0, (len(alertList) - i))
 			} else {
 				bulk = make([]*ent.AlertCreate, 0, bulkSize)
 			}
-			bulkCpt = 0
 		}
 	}
 
-	log.Printf("bulk : %+v \n", bulk)
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
 		return []string{}, errors.Wrap(BulkError, fmt.Sprintf("creating alert : %s", err))

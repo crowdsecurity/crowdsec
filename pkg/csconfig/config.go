@@ -90,6 +90,7 @@ type LapiServiceCfg struct {
 	CertFilePath string       `yaml:"cert_path,omitempty"`
 	ListenUri    string       `yaml:"listen_uri,omitempty"` //127.0.0.1:4242
 	DbConfig     *DatabaseCfg `yaml:"-"`
+	LogDir       string       `yaml:"-"`
 }
 
 /*cscli specific config, such as hub directory*/
@@ -136,6 +137,7 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 	}
 	c.Cscli.DbConfig = c.DbConfig
 	c.Lapi.DbConfig = c.DbConfig
+	c.Lapi.LogDir = c.Daemon.LogDir
 	return nil
 }
 
