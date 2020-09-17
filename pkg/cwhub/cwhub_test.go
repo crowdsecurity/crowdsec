@@ -42,8 +42,8 @@ func test_prepenv() *csconfig.GlobalConfig {
 
 	var cfg = csconfig.NewConfig()
 	cfg.Cscli = &csconfig.CscliCfg{}
-	cfg.Cscli.InstallDir = filepath.Clean("./install")
-	cfg.Cscli.HubDir = filepath.Clean("./hubdir")
+	cfg.Cscli.InstallDir, _ = filepath.Abs("./install")
+	cfg.Cscli.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Cscli.IndexPath = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
@@ -243,7 +243,7 @@ func TestInstallCollection(t *testing.T) {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
-	for _, it := range HubIdx[COLLECTIONS] {
+	for _, it := range hubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Cscli, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
 		testTaintItem(cfg.Cscli, t, it)

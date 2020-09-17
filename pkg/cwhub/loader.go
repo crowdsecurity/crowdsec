@@ -78,7 +78,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = ""
 		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
-		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, installdir, hubdir)
+		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -89,7 +89,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = COLLECTIONS
 		stage = ""
 	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
-		return fmt.Errorf("unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
+		return fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
