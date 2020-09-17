@@ -2,7 +2,7 @@ package database
 
 import "errors"
 
-(
+var (
 	UserExists        = errors.New("user already exist")
 	UserNotExists     = errors.New("user doesn't exist")
 	HashError         = errors.New("unable to hash")
