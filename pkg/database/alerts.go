@@ -28,11 +28,10 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 	for i, alertItem := range alertList {
 		owner, err := c.QueryMachineByID(alertItem.MachineID)
 		if err != nil {
-			if errors.Cause(err) == UserNotExists {
-				owner = nil
-			} else {
+			if errors.Cause(err) != UserNotExists {
 				return []string{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", alertItem.MachineID, err))
 			}
+			owner = nil
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
