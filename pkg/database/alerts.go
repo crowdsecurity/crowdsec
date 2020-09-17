@@ -21,9 +21,12 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 	var metas []*ent.Meta
 	var events []*ent.Event
 
-	bulk := make([]*ent.AlertCreate, len(alertList))
+	ret := []string{}
+	bulkSize := 20
 
+	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	for i, alertItem := range alertList {
+		log.Printf("Query machine for alert '%d'| len() = %d | cap() = %d", i, len(bulk), cap(bulk))
 		owner, err := c.QueryMachineByID(alertItem.MachineID)
 		if err != nil {
 			if errors.Cause(err) == UserNotExists {
@@ -32,12 +35,12 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 				return []string{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", alertItem.MachineID, err))
 			}
 		}
-		startAtTime, err := time.Parse(time.RFC3339, alertItem.StartAt)
+		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
 			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", alertItem.StartAt, err))
 		}
 
-		stopAtTime, err := time.Parse(time.RFC3339, alertItem.StopAt)
+		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
 			return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", alertItem.StopAt, err))
 		}
@@ -45,7 +48,7 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		if len(alertItem.Events) > 0 {
 			eventBulk := make([]*ent.EventCreate, len(alertItem.Events))
 			for i, eventItem := range alertItem.Events {
-				ts, err := time.Parse(time.RFC3339, eventItem.Timestamp)
+				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
 					return []string{}, errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", eventItem.Timestamp, err))
 				}
@@ -80,18 +83,18 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
-				duration, err := time.ParseDuration(decisionItem.Duration)
+				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
 					return []string{}, errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
 				}
 				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(time.Now().Add(duration)).
-					SetScenario(decisionItem.Scenario).
-					SetType(decisionItem.Type).
+					SetScenario(*decisionItem.Scenario).
+					SetType(*decisionItem.Type).
 					SetStartIP(decisionItem.StartIP).
 					SetEndIP(decisionItem.EndIP).
-					SetTarget(decisionItem.Target).
-					SetScope(decisionItem.Scope)
+					SetTarget(*decisionItem.Target).
+					SetScope(*decisionItem.Scope)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -102,14 +105,14 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 
 		alertB := c.Ent.Alert.
 			Create().
-			SetScenario(alertItem.Scenario).
+			SetScenario(*alertItem.Scenario).
 			SetBucketId(alertItem.AlertID).
-			SetMessage(alertItem.Message).
-			SetEventsCount(alertItem.EventsCount).
+			SetMessage(*alertItem.Message).
+			SetEventsCount(*alertItem.EventsCount).
 			SetStartedAt(startAtTime).
 			SetStoppedAt(stopAtTime).
-			SetSourceScope(alertItem.Source.Scope).
-			SetSourceValue(alertItem.Source.Value).
+			SetSourceScope(*alertItem.Source.Scope).
+			SetSourceValue(*alertItem.Source.Value).
 			SetSourceIp(alertItem.Source.IP).
 			SetSourceRange(alertItem.Source.Range).
 			SetSourceAsNumber(alertItem.Source.AsNumber).
@@ -117,8 +120,8 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 			SetSourceCountry(alertItem.Source.Cn).
 			SetSourceLatitude(alertItem.Source.Latitude).
 			SetSourceLongitude(alertItem.Source.Longitude).
-			SetCapacity(alertItem.Capacity).
-			SetLeakSpeed(alertItem.Leakspeed).
+			SetCapacity(*alertItem.Capacity).
+			SetLeakSpeed(*alertItem.Leakspeed).
 			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
@@ -126,16 +129,36 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		if owner != nil {
 			alertB.SetOwner(owner)
 		}
-		bulk[i] = alertB
+		log.Printf("adding alert(%d) to bulkd!", i)
+		bulk = append(bulk, alertB)
+
+		if len(bulk) == bulkSize {
+			log.Printf("bulk : %+v \n", bulk)
+			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
+			if err != nil {
+				return []string{}, errors.Wrap(BulkError, fmt.Sprintf("creating alert : %s", err))
+			}
+			for _, alert := range alerts {
+				ret = append(ret, strconv.Itoa(alert.ID))
+			}
+
+			if len(alertList)-i <= bulkSize {
+				log.Printf("Recreating bulk with size: %d", len(alertList)-i)
+				log.Printf("I : %+v | full : %+v \n", i, len(alertList))
+				bulk = make([]*ent.AlertCreate, 0, (len(alertList) - i))
+			} else {
+				bulk = make([]*ent.AlertCreate, 0, bulkSize)
+			}
+			bulkCpt = 0
+		}
 	}
 
+	log.Printf("bulk : %+v \n", bulk)
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
-
 	if err != nil {
 		return []string{}, errors.Wrap(BulkError, fmt.Sprintf("creating alert : %s", err))
 	}
 
-	ret := []string{}
 	for _, alert := range alerts {
 		ret = append(ret, strconv.Itoa(alert.ID))
 	}
@@ -152,12 +175,12 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		owner = nil
 	}
 
-	startAtTime, err := time.Parse(time.RFC3339, alertItem.StartAt)
+	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
 		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", alertItem.StartAt, err))
 	}
 
-	stopAtTime, err := time.Parse(time.RFC3339, alertItem.StopAt)
+	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
 		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", alertItem.StopAt, err))
 	}

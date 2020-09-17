@@ -4,13 +4,14 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/go-openapi/strfmt"
 	"math/rand"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/go-openapi/strfmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -125,6 +126,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 	eventsCount := int32(2)
 	leakSpeed := "5evt/s"
 	message := "test"
+	scenarioVersion := fmt.Sprintf("v0.%d", rand.Intn(9))
 	scenarioHash := xid.New().String()
 	scenarii := fmt.Sprintf("v0.%d", rand.Intn(10))
 	simulated := false
@@ -132,18 +134,19 @@ func (m *Machine) CreateAlert() *models.Alert {
 	stopAt := time.Now().Format(time.RFC3339)
 
 	alert := &models.Alert{
-		AlertID:      xid.New().String(),
-		Capacity:     &capacity,
-		Decisions:    []*models.Decision{decision},
-		Events:       events,
-		EventsCount:  &eventsCount,
-		Labels:       []string{"bf"},
-		Leakspeed:    &leakSpeed,
-		MachineID:    *m.ID,
-		Message:      &message,
-		ScenarioHash: &scenarioHash,
-		Scenario:     &scenarii,
-		Simulated:    &simulated,
+		AlertID:         xid.New().String(),
+		Capacity:        &capacity,
+		Decisions:       []*models.Decision{decision},
+		Events:          events,
+		EventsCount:     &eventsCount,
+		Labels:          []string{"bf"},
+		Leakspeed:       &leakSpeed,
+		MachineID:       *m.ID,
+		Message:         &message,
+		ScenarioHash:    &scenarioHash,
+		Scenario:        &scenarii,
+		ScenarioVersion: &scenarioVersion,
+		Simulated:       &simulated,
 		Source: &models.Source{
 			AsName:    AS[rand.Intn(len(AS))],
 			AsNumber:  fmt.Sprintf("%d", rand.Intn(len(AS))),
@@ -163,7 +166,7 @@ func (m *Machine) CreateAlert() *models.Alert {
 
 }
 
-func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics, bulk bool)
+func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics chan Metrics, bulk bool) {
 	var Client *apiclient.ApiClient
 
 	defer wg.Done()
@@ -196,7 +199,7 @@ func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics 
 
 	if bulk {
 		toSend := []*models.Alert{}
-		for i := 0; i < nbRequest-1; i++ {
+		for i := 0; i < nbRequest; i++ {
 			alert := m.CreateAlert()
 			toSend = append(toSend, alert)
 		}
