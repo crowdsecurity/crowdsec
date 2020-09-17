@@ -38,17 +38,6 @@ PARSER_S01="$PARSER_DIR/s01-parse"
 PARSER_S02="$PARSER_DIR/s02-enrich"
 SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
-PLUGIN_BACKEND_DIR="$CONFIG_DIR/plugins/backend/"
-DB_PLUGIN_FILE="$PLUGIN_BACKEND_DIR/database.yaml"
-
-gen_sqlite_config() {
-	echo "name: database" >> "$DB_PLUGIN_FILE"
-	echo "path: ./plugins/backend/database.so" >> "$DB_PLUGIN_FILE"
-	echo "config:" >> "$DB_PLUGIN_FILE"
-	echo "  type: sqlite" >> "$DB_PLUGIN_FILE"
-	echo "  db_path: ./test.db" >> "$DB_PLUGIN_FILE"
-	echo "  flush: true" >> "$DB_PLUGIN_FILE"
-}
 
 log_info() {
 	msg=$1
@@ -68,7 +57,6 @@ create_arbo() {
 	mkdir -p "$SCENARIOS_DIR"
 	mkdir -p "$POSTOVERFLOWS_DIR"
 	mkdir -p "$CSCLI_DIR"
-	mkdir -p "$PLUGIN_BACKEND_DIR"
 }
 
 copy_files() {
@@ -78,7 +66,6 @@ copy_files() {
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"
-	cp -r "./plugins/" "$BASE"
 }
 
 
@@ -100,7 +87,6 @@ main() {
 	cd $BASE
 	setup
 	cd $CURRENT_PWD
-	gen_sqlite_config
 	log_info "Environment is ready in $BASE"
 }
 

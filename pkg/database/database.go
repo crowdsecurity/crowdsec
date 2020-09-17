@@ -7,6 +7,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Client struct {
@@ -14,10 +16,22 @@ type Client struct {
 	CTX context.Context
 }
 
-func NewClient(config *csconfig.DatabaseConfig) (*Client, error) {
-	client, err := ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.Path))
-	if err != nil {
-		return nil, fmt.Errorf("failed opening connection to sqlite: %v", err)
+func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
+	var client *ent.Client
+	var err error
+	switch config.Type {
+	case "sqlite":
+		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
+		if err != nil {
+			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
+		}
+	case "mysql":
+		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName))
+		if err != nil {
+			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
+		}
+	default:
+		return &Client{}, fmt.Errorf("unknown database type")
 	}
 
 	if err = client.Schema.Create(context.Background()); err != nil {

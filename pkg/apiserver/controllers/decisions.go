@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	"strconv"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-	"strconv"
 )
 
 func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {

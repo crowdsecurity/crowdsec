@@ -168,7 +168,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				holder.ExprDebugger.Run(holder.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			}
 			if !condition {
-				holder.logger.Debugf("Event leaving node : ko")
+				holder.logger.Debugf("Event leaving node : ko (filter mismatch)")
 				continue
 			}
 		}

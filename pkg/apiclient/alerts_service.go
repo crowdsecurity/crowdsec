@@ -13,9 +13,16 @@ import (
 type AlertsService service
 
 type AlertsListOpts struct {
-	Scope_equals *string `url:"scope,omitempty"`
-	Value_equals *string `url:"value,omitempty"`
-	Type_equals  *string `url:"type,omitempty"`
+	ScopeEquals          *string `url:"scope,omitempty"`
+	ValueEquals          *string `url:"value,omitempty"`
+	TypeEquals           *string `url:"type,omitempty"`
+	ScenarioEquals       *string `url:"scenario,omitempty"`
+	IPEquals             *string `url:"ip,omitempty"`
+	RangeEquals          *string `url:"range,omitempty"`
+	SinceEquals          *string `url:"since,omitempty"`
+	UntilEquals          *string `url:"until,omitempty"`
+	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
+	SourceEquals         *string `url:"alert_source,omitempty"`
 	ListOpts
 }
 
