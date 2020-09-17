@@ -135,7 +135,7 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 
 func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
 
-	var tdir = cscli.InstallDir
+	var tdir = cscli.HubDir
 	var dataFolder = cscli.DataDir
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
 	if !overwrite {

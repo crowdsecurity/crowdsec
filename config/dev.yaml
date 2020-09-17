@@ -24,8 +24,8 @@ cscli:
   install_dir: ./config/
   data_dir: ./data/
 localapi_service:
-  listen_uri: http://127.0.0.1:4242/
+  listen_uri: 127.0.0.1:4242
 api_client:
-  credentials_path: ./lapi-secrets.yaml
+#  credentials_path: ./lapi-secrets.yaml
 online_api_client:
-  credentials_path: ./online-api-secrets.yaml
+#  credentials_path: ./online-api-secrets.yaml

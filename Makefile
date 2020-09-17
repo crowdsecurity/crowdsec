@@ -3,7 +3,6 @@ CFG_PREFIX = $(PREFIX)"/etc/crowdsec/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 
-PLUGIN_FOLDER="./plugins"
 PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
@@ -123,6 +122,4 @@ release: check_release build
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
-	@mkdir -p "$(RELDIR)/plugins/backend"
-	@find ./plugins -type f -name "*.so" -exec install -Dm 644 {} "$(RELDIR)/{}" \; || exiting 
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	
