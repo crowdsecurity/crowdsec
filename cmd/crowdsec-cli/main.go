@@ -32,6 +32,9 @@ func initConfig() {
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
 	}
+	if csConfig.Cscli.Output == "" {
+		csConfig.Cscli.Output = "human"
+	}
 
 	if dbg_lvl {
 		log.SetLevel(log.DebugLevel)
@@ -100,7 +103,7 @@ API interaction:
 	rootCmd.AddCommand(cmdVersion)
 
 	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
-	rootCmd.PersistentFlags().StringVar(&OutputFormat, "output", "o", "Output format : human, json, raw.")
+	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")

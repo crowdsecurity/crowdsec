@@ -161,7 +161,7 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 			if scope == types.Undefined {
 				scope = *src.Scope
 			}
-			if src.Scope != &scope {
+			if *src.Scope != scope {
 				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", *alert.Alert.Scenario, alert.BucketId, *src.Scope, scope)
 			}
 			sources[*src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.

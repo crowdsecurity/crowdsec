@@ -129,7 +129,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 			}
 			if !out {
-				clog.Debugf("Event leaving node : ko")
+				clog.Debugf("Event leaving node : ko (failed filter)")
 				return false, nil
 			}
 		default:

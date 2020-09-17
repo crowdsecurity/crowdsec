@@ -231,8 +231,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			target.FileName = x[len(x)-1]
 
 		}
-		//update the entry
-		hubIdx[ftype][k] = v
+		//update the entry if appropriate
+		if _, ok := hubIdx[ftype][k]; !ok {
+			hubIdx[ftype][k] = v
+		} else if !inhub {
+			hubIdx[ftype][k] = v
+		}
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)
