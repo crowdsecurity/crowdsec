@@ -52,5 +52,4 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVarP(&cfgFile, "config", "c", "../../config/dev.yaml", "path to crowdsec config file")
 	rootCmd.AddCommand(NewRunCommand())
-	rootCmd.AddCommand(NewGenerateCommand())
 }

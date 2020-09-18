@@ -133,6 +133,7 @@ API interaction:
 	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewKeysCmd())
+	rootCmd.AddCommand(NewWatchersCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
