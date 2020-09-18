@@ -27,6 +27,7 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 			Scope:      &dbDecision.Scope,
 			Target:     &dbDecision.Target,
 			Type:       &dbDecision.Type,
+			Origin:     &dbDecision.Origin,
 		}
 		results = append(results, &decision)
 	}

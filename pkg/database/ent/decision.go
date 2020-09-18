@@ -35,6 +35,8 @@ type Decision struct {
 	Scope string `json:"scope,omitempty"`
 	// Target holds the value of the "target" field.
 	Target string `json:"target,omitempty"`
+	// Origin holds the value of the "origin" field.
+	Origin string `json:"origin,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
 	Edges           DecisionEdges `json:"edges"`
@@ -77,6 +79,7 @@ func (*Decision) scanValues() []interface{} {
 		&sql.NullInt64{},  // end_ip
 		&sql.NullString{}, // scope
 		&sql.NullString{}, // target
+		&sql.NullString{}, // origin
 	}
 }
 
@@ -144,7 +147,12 @@ func (d *Decision) assignValues(values ...interface{}) error {
 	} else if value.Valid {
 		d.Target = value.String
 	}
-	values = values[9:]
+	if value, ok := values[9].(*sql.NullString); !ok {
+		return fmt.Errorf("unexpected type %T for field origin", values[9])
+	} else if value.Valid {
+		d.Origin = value.String
+	}
+	values = values[10:]
 	if len(values) == len(decision.ForeignKeys) {
 		if value, ok := values[0].(*sql.NullInt64); !ok {
 			return fmt.Errorf("unexpected type %T for edge-field alert_decisions", value)
@@ -202,6 +210,8 @@ func (d *Decision) String() string {
 	builder.WriteString(d.Scope)
 	builder.WriteString(", target=")
 	builder.WriteString(d.Target)
+	builder.WriteString(", origin=")
+	builder.WriteString(d.Origin)
 	builder.WriteByte(')')
 	return builder.String()
 }

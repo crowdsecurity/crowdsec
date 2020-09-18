@@ -141,6 +141,12 @@ func (du *DecisionUpdate) SetTarget(s string) *DecisionUpdate {
 	return du
 }
 
+// SetOrigin sets the origin field.
+func (du *DecisionUpdate) SetOrigin(s string) *DecisionUpdate {
+	du.mutation.SetOrigin(s)
+	return du
+}
+
 // SetOwnerID sets the owner edge to Alert by id.
 func (du *DecisionUpdate) SetOwnerID(id int) *DecisionUpdate {
 	du.mutation.SetOwnerID(id)
@@ -330,6 +336,13 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldTarget,
 		})
 	}
+	if value, ok := du.mutation.Origin(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldOrigin,
+		})
+	}
 	if du.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -492,6 +505,12 @@ func (duo *DecisionUpdateOne) SetScope(s string) *DecisionUpdateOne {
 // SetTarget sets the target field.
 func (duo *DecisionUpdateOne) SetTarget(s string) *DecisionUpdateOne {
 	duo.mutation.SetTarget(s)
+	return duo
+}
+
+// SetOrigin sets the origin field.
+func (duo *DecisionUpdateOne) SetOrigin(s string) *DecisionUpdateOne {
+	duo.mutation.SetOrigin(s)
 	return duo
 }
 
@@ -680,6 +699,13 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (d *Decision, err err
 			Type:   field.TypeString,
 			Value:  value,
 			Column: decision.FieldTarget,
+		})
+	}
+	if value, ok := duo.mutation.Origin(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldOrigin,
 		})
 	}
 	if duo.mutation.OwnerCleared() {

@@ -27,6 +27,7 @@ func (Decision) Fields() []ent.Field {
 		field.Int64("end_ip").Optional(),
 		field.String("scope"),
 		field.String("target"),
+		field.String("origin"),
 	}
 }
 

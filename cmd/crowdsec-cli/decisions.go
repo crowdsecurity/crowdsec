@@ -101,7 +101,6 @@ To list/add/delete decisions
 			}
 
 			Client = apiclient.NewClient(t.Client())
-			log.Infof("client: %+v", Client)
 		},
 	}
 
@@ -206,7 +205,6 @@ Args :
 				StopAt:  &stopAt,
 			}
 			alerts = append(alerts, &alert)
-			log.Infof("alerts : %+v \n", alerts)
 
 			_, _, err := Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {

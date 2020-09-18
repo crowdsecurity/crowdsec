@@ -29,6 +29,8 @@ const (
 	FieldScope = "scope"
 	// FieldTarget holds the string denoting the target field in the database.
 	FieldTarget = "target"
+	// FieldOrigin holds the string denoting the origin field in the database.
+	FieldOrigin = "origin"
 
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
@@ -56,6 +58,7 @@ var Columns = []string{
 	FieldEndIP,
 	FieldScope,
 	FieldTarget,
+	FieldOrigin,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the Decision type.

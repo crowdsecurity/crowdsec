@@ -107,6 +107,12 @@ func (dc *DecisionCreate) SetTarget(s string) *DecisionCreate {
 	return dc
 }
 
+// SetOrigin sets the origin field.
+func (dc *DecisionCreate) SetOrigin(s string) *DecisionCreate {
+	dc.mutation.SetOrigin(s)
+	return dc
+}
+
 // SetOwnerID sets the owner edge to Alert by id.
 func (dc *DecisionCreate) SetOwnerID(id int) *DecisionCreate {
 	dc.mutation.SetOwnerID(id)
@@ -195,6 +201,9 @@ func (dc *DecisionCreate) preSave() error {
 	}
 	if _, ok := dc.mutation.Target(); !ok {
 		return &ValidationError{Name: "target", err: errors.New("ent: missing required field \"target\"")}
+	}
+	if _, ok := dc.mutation.Origin(); !ok {
+		return &ValidationError{Name: "origin", err: errors.New("ent: missing required field \"origin\"")}
 	}
 	return nil
 }
@@ -294,6 +303,14 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Column: decision.FieldTarget,
 		})
 		d.Target = value
+	}
+	if value, ok := dc.mutation.Origin(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldOrigin,
+		})
+		d.Origin = value
 	}
 	if nodes := dc.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

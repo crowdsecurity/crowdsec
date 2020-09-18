@@ -156,6 +156,13 @@ func Target(v string) predicate.Decision {
 	})
 }
 
+// Origin applies equality check predicate on the "origin" field. It's identical to OriginEQ.
+func Origin(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldOrigin), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
@@ -1005,6 +1012,117 @@ func TargetEqualFold(v string) predicate.Decision {
 func TargetContainsFold(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldTarget), v))
+	})
+}
+
+// OriginEQ applies the EQ predicate on the "origin" field.
+func OriginEQ(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginNEQ applies the NEQ predicate on the "origin" field.
+func OriginNEQ(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginIn applies the In predicate on the "origin" field.
+func OriginIn(vs ...string) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldOrigin), v...))
+	})
+}
+
+// OriginNotIn applies the NotIn predicate on the "origin" field.
+func OriginNotIn(vs ...string) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldOrigin), v...))
+	})
+}
+
+// OriginGT applies the GT predicate on the "origin" field.
+func OriginGT(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginGTE applies the GTE predicate on the "origin" field.
+func OriginGTE(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginLT applies the LT predicate on the "origin" field.
+func OriginLT(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginLTE applies the LTE predicate on the "origin" field.
+func OriginLTE(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginContains applies the Contains predicate on the "origin" field.
+func OriginContains(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginHasPrefix applies the HasPrefix predicate on the "origin" field.
+func OriginHasPrefix(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginHasSuffix applies the HasSuffix predicate on the "origin" field.
+func OriginHasSuffix(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginEqualFold applies the EqualFold predicate on the "origin" field.
+func OriginEqualFold(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldOrigin), v))
+	})
+}
+
+// OriginContainsFold applies the ContainsFold predicate on the "origin" field.
+func OriginContainsFold(v string) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldOrigin), v))
 	})
 }
 
