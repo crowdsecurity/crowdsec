@@ -147,7 +147,7 @@ func (c *GlobalConfig) LoadSubConfigurations() error {
 		if err != nil {
 			return errors.Wrap(err, "failed to read config file")
 		}
-		err = yaml.UnmarshalStrict(fcontent, c.LapiClient.Credentials)
+		err = yaml.UnmarshalStrict(fcontent, &c.LapiClient.Credentials)
 		if err != nil {
 			return errors.Wrap(err, "failed unmarshaling config")
 		}

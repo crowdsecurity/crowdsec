@@ -126,6 +126,7 @@ API interaction:
 	rootCmd.AddCommand(NewUpgradeCmd())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
+	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
 	if err := rootCmd.Execute(); err != nil {
