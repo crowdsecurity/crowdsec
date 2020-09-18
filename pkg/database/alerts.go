@@ -83,7 +83,7 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 			for i, decisionItem := range alertItem.Decisions {
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
+					return []string{}, errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%v' : %s", decisionItem.Duration, err))
 				}
 				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(time.Now().Add(duration)).
@@ -92,7 +92,8 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 					SetStartIP(decisionItem.StartIP).
 					SetEndIP(decisionItem.EndIP).
 					SetTarget(*decisionItem.Target).
-					SetScope(*decisionItem.Scope)
+					SetScope(*decisionItem.Scope).
+					SetOrigin(*decisionItem.Origin)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -169,12 +170,12 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", alertItem.StartAt, err))
+		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%v': %s", alertItem.StartAt, err))
 	}
 
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", alertItem.StopAt, err))
+		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%v': %s", alertItem.StopAt, err))
 	}
 
 	alert := c.Ent.Alert.
@@ -211,11 +212,11 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		for i, eventItem := range alertItem.Events {
 			ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 			if err != nil {
-				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", eventItem.Timestamp, err))
+				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%v' : %s", eventItem.Timestamp, err))
 			}
 			marshallMetas, err := json.Marshal(eventItem.Meta)
 			if err != nil {
-				return "", errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%s' : %s", eventItem.Meta, err))
+				return "", errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%v' : %s", eventItem.Meta, err))
 			}
 
 			bulk[i] = c.Ent.Event.Create().
@@ -249,7 +250,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		for i, decisionItem := range alertItem.Decisions {
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
+				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%v' : %s", decisionItem.Duration, err))
 			}
 			bulk[i] = c.Ent.Decision.Create().
 				SetUntil(time.Now().Add(duration)).
