@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"context"
-	"crypto/sha512"
 	"fmt"
 	"io"
 	"net/http"
@@ -116,25 +115,4 @@ func (s *APIServer) Run() error {
 	*/
 	router.Run(s.url)
 	return nil
-}
-
-func (s *APIServer) Generate(name string) (string, error) {
-	key, err := middlewares.GenerateKey(keyLength)
-	if err != nil {
-		return "", fmt.Errorf("unable to generate api key: %s", err)
-	}
-
-	hashedKey := sha512.New()
-	hashedKey.Write([]byte(key))
-
-	_, err = s.dbClient.Ent.Blocker.
-		Create().
-		SetName(name).
-		SetAPIKey(fmt.Sprintf("%x", hashedKey.Sum(nil))).
-		SetRevoked(false).
-		Save(s.dbClient.CTX)
-	if err != nil {
-		return "", fmt.Errorf("unable to save api key in database: %s", err)
-	}
-	return key, nil
 }
