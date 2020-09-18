@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -50,23 +51,43 @@ To list/add/delete watchers
 			if err != nil {
 				log.Errorf("unable to list blockers: %s", err)
 			}
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
+			if csConfig.Cscli.Output == "human" {
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetCenterSeparator("")
+				table.SetColumnSeparator("")
 
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", "IP Address", "Status"})
-			for _, w := range watchers {
-				var validated string
-				if w.IsValidated {
-					validated = fmt.Sprintf("%s", emoji.CheckMark)
-				} else {
-					validated = fmt.Sprintf("%s", emoji.Prohibited)
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+				table.SetHeader([]string{"Name", "IP Address", "Status"})
+				for _, w := range watchers {
+					var validated string
+					if w.IsValidated {
+						validated = fmt.Sprintf("%s", emoji.CheckMark)
+					} else {
+						validated = fmt.Sprintf("%s", emoji.Prohibited)
+					}
+					table.Append([]string{w.MachineId, w.IpAddress, validated})
 				}
-				table.Append([]string{w.MachineId, w.IpAddress, validated})
+				table.Render()
+			} else if csConfig.Cscli.Output == "json" {
+				x, err := json.MarshalIndent(watchers, "", " ")
+				if err != nil {
+					log.Fatalf("failed to unmarshal")
+				}
+				fmt.Printf("%s", string(x))
+			} else if csConfig.Cscli.Output == "raw" {
+				for _, w := range watchers {
+					var validated string
+					if w.IsValidated {
+						validated = "true"
+					} else {
+						validated = "false"
+					}
+					fmt.Printf("%s %s %s\n", w.MachineId, w.IpAddress, validated)
+				}
+			} else {
+				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 			}
-			table.Render()
 		},
 	}
 	cmdWatchers.AddCommand(cmdWatchersList)

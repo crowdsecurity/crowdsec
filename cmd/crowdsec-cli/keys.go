@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"time"
@@ -49,23 +50,45 @@ To list/add/delete api keys
 			if err != nil {
 				log.Errorf("unable to list blockers: %s", err)
 			}
-			table := tablewriter.NewWriter(os.Stdout)
-			table.SetCenterSeparator("")
-			table.SetColumnSeparator("")
+			if csConfig.Cscli.Output == "human" {
 
-			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-			table.SetAlignment(tablewriter.ALIGN_LEFT)
-			table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull"})
-			for _, b := range blockers {
-				var revoked string
-				if !b.Revoked {
-					revoked = fmt.Sprintf("%s", emoji.CheckMark)
-				} else {
-					revoked = fmt.Sprintf("%s", emoji.Prohibited)
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetCenterSeparator("")
+				table.SetColumnSeparator("")
+
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull"})
+				for _, b := range blockers {
+					var revoked string
+					if !b.Revoked {
+						revoked = fmt.Sprintf("%s", emoji.CheckMark)
+					} else {
+						revoked = fmt.Sprintf("%s", emoji.Prohibited)
+					}
+					table.Append([]string{b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339))})
 				}
-				table.Append([]string{b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339))})
+				table.Render()
+			} else if csConfig.Cscli.Output == "json" {
+				x, err := json.MarshalIndent(blockers, "", " ")
+				if err != nil {
+					log.Fatalf("failed to unmarshal")
+				}
+				fmt.Printf("%s", string(x))
+			} else if csConfig.Cscli.Output == "raw" {
+				for _, b := range blockers {
+					var revoked string
+					if !b.Revoked {
+						revoked = "validated"
+					} else {
+						revoked = "pending"
+					}
+					fmt.Printf("%s %s %s %s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)))
+				}
+			} else {
+				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 			}
-			table.Render()
+
 		},
 	}
 	cmdKeys.AddCommand(cmdKeysList)
