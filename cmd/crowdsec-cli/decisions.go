@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -26,7 +27,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
-					decisionItem.DecisionID,
+					decisionItem.ID,
 					*decisionItem.Origin,
 					*decisionItem.Scope+":"+*decisionItem.Target,
 					*decisionItem.Scenario,
@@ -52,9 +53,8 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				log.Infof("decision: %#v", decisionItem)
 				table.Append([]string{
-					decisionItem.DecisionID,
+					strconv.Itoa(int(decisionItem.ID)),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Target,
 					*decisionItem.Scenario,
@@ -154,6 +154,9 @@ Args :
 		Example: `cscli decisions add ban ip 1.2.3.4 12h "is manually blacklisted"`,
 		Args:    cobra.MinimumNArgs(5),
 		Run: func(cmd *cobra.Command, args []string) {
+			var startIP, endIP int64
+			var err error
+			var ip, ipRange string
 			alerts := models.AddAlertsRequest{}
 			origin := "cscli"
 			ttype := args[0]
@@ -169,6 +172,25 @@ Args :
 			startAt := time.Now().Format(time.RFC3339)
 			stopAt := time.Now().Format(time.RFC3339)
 
+			if scope == "ip" {
+				isValidIP := database.IsIpv4(target)
+				if !isValidIP {
+					log.Fatalf("unable to parse IP or Range : '%s'", target)
+				}
+				startIP, endIP, err = database.GetIpsFromIpRange(target + "/32")
+				if err != nil {
+					log.Fatalf("unable to parse IP or Range : '%s'", target)
+				}
+				ip = target
+			}
+			if scope == "range" {
+				startIP, endIP, err = database.GetIpsFromIpRange(target)
+				if err != nil {
+					log.Fatalf("unable to parse IP or Range : '%s'", target)
+				}
+				ipRange = target
+			}
+
 			decision := models.Decision{
 				Duration: &duration,
 				Scope:    &scope,
@@ -176,6 +198,8 @@ Args :
 				Type:     &ttype,
 				Scenario: &reason,
 				Origin:   &origin,
+				StartIP:  startIP,
+				EndIP:    endIP,
 			}
 			alert := models.Alert{
 				Capacity:        &capacity,
@@ -193,8 +217,8 @@ Args :
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
-					IP:       empty,
-					Range:    empty,
+					IP:       ip,
+					Range:    ipRange,
 					Scope:    &scope,
 					Value:    &target,
 				},
@@ -203,7 +227,7 @@ Args :
 			}
 			alerts = append(alerts, &alert)
 
-			_, _, err := Client.Alerts.Add(context.Background(), alerts)
+			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}

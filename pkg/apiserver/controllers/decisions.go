@@ -19,15 +19,15 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 	for _, dbDecision := range decisions {
 		duration := dbDecision.Until.Sub(time.Now()).String()
 		decision := models.Decision{
-			DecisionID: fmt.Sprintf("%d", dbDecision.ID),
-			Duration:   &duration,
-			EndIP:      dbDecision.EndIP,
-			StartIP:    dbDecision.StartIP,
-			Scenario:   &dbDecision.Scenario,
-			Scope:      &dbDecision.Scope,
-			Target:     &dbDecision.Target,
-			Type:       &dbDecision.Type,
-			Origin:     &dbDecision.Origin,
+			ID:       int64(dbDecision.ID),
+			Duration: &duration,
+			EndIP:    dbDecision.EndIP,
+			StartIP:  dbDecision.StartIP,
+			Scenario: &dbDecision.Scenario,
+			Scope:    &dbDecision.Scope,
+			Target:   &dbDecision.Target,
+			Type:     &dbDecision.Type,
+			Origin:   &dbDecision.Origin,
 		}
 		results = append(results, &decision)
 	}

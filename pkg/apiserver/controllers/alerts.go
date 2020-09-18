@@ -22,7 +22,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 		outputAlert = models.Alert{
 			MachineID:   alertItem.Edges.Owner.MachineId,
 			Scenario:    &alertItem.Scenario,
-			AlertID:     alertItem.BucketId,
+			ID:          int64(alertItem.ID),
 			Message:     &alertItem.Message,
 			EventsCount: &alertItem.EventsCount,
 			StartAt:     &startAt,
@@ -74,6 +74,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 				Scope:    &decisionItem.Scope,
 				Target:   &decisionItem.Target,
 				Origin:   &decisionItem.Origin,
+				ID:       int64(decisionItem.ID),
 			})
 			outputAlert.Decisions = outputDecisions
 		}

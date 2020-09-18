@@ -19,10 +19,6 @@ import (
 // swagger:model Alert
 type Alert struct {
 
-	// only relevant for GET, ignored in POST requests
-	// Read Only: true
-	AlertID string `json:"alert_id,omitempty"`
-
 	// capacity
 	// Required: true
 	Capacity *int32 `json:"capacity"`
@@ -38,6 +34,10 @@ type Alert struct {
 	// events count
 	// Required: true
 	EventsCount *int32 `json:"events_count"`
+
+	// only relevant for GET, ignored in POST requests
+	// Read Only: true
+	ID int64 `json:"id,omitempty"`
 
 	// labels
 	Labels []string `json:"labels"`

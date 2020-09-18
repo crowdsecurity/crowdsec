@@ -17,16 +17,16 @@ import (
 // swagger:model Decision
 type Decision struct {
 
-	// (only relevant for GET ops) the unique id
-	// Read Only: true
-	DecisionID string `json:"decision_id,omitempty"`
-
 	// duration
 	// Required: true
 	Duration *string `json:"duration"`
 
 	// (only relevant for GET ops) when the target is an IP or range, its numeric representation
 	EndIP int64 `json:"end_ip,omitempty"`
+
+	// (only relevant for GET ops) the unique id
+	// Read Only: true
+	ID int64 `json:"id,omitempty"`
 
 	// the origin of the decision : cscli, crowdsec
 	// Required: true

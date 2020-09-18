@@ -550,9 +550,9 @@ definitions:
     title: Alert
     type: object
     properties:
-      alert_id:
+      id:
         description: 'only relevant for GET, ignored in POST requests'
-        type: string
+        type: integer
         readOnly: true
       machine_id:
         description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
@@ -650,9 +650,9 @@ definitions:
     title: Decision
     type: object
     properties:
-      decision_id:
+      id:
         description: (only relevant for GET ops) the unique id
-        type: string
+        type: integer
         readOnly: true
       origin:
         description: 'the origin of the decision : cscli, crowdsec'
@@ -691,12 +691,6 @@ definitions:
       description: "decision_id"
   FlushDecisionResponse:
     title: FlushDecisionResponse
-    type: object
-    properties:
-      decision_id:
-        type: string
-  AddDecisionResponse:
-    title: AddDecisionResponse
     type: object
     properties:
       decision_id:

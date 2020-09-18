@@ -105,7 +105,6 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		alertB := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
-			SetBucketId(alertItem.AlertID).
 			SetMessage(*alertItem.Message).
 			SetEventsCount(*alertItem.EventsCount).
 			SetStartedAt(startAtTime).
@@ -181,7 +180,6 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 	alert := c.Ent.Alert.
 		Create().
 		SetScenario(*alertItem.Scenario).
-		SetBucketId(alertItem.AlertID).
 		SetMessage(*alertItem.Message).
 		SetEventsCount(*alertItem.EventsCount).
 		SetStartedAt(startAtTime).
