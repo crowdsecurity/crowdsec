@@ -260,6 +260,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 				SetEndIP(decisionItem.EndIP).
 				SetTarget(*decisionItem.Target).
 				SetScope(*decisionItem.Scope).
+				SetOrigin(*decisionItem.Origin).
 				SetOwner(alertCreated)
 		}
 		_, err := c.Ent.Decision.CreateBulk(bulk...).Save(c.CTX)

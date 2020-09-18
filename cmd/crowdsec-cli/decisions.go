@@ -53,13 +53,9 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				log.Infof("decision: %#v", decisionItem)
-				origin := ""
-				if decisionItem.Origin != nil {
-					origin = *decisionItem.Origin
-				}
 				table.Append([]string{
 					decisionItem.DecisionID,
-					origin,
+					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Target,
 					*decisionItem.Scenario,
 					*decisionItem.Type,

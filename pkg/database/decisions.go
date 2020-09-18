@@ -7,6 +7,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -46,7 +47,9 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldEndIP,
 		decision.FieldTarget,
 		decision.FieldScope,
+		decision.FieldOrigin,
 	).Scan(c.CTX, &data)
+	log.Infof("decisions : %#v", data)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "creating decision failed")
 	}
