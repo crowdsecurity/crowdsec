@@ -148,9 +148,10 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 		for {
 			bucketFactory := BucketFactory{}
 			err = dec.Decode(&bucketFactory)
+			log.Infof("Holders input : %s", spew.Sdump(err))
 			if err != nil {
 				if err == io.EOF {
-					log.Tracef("End of yaml file")
+					log.Errorf("End of yaml file")
 					break
 				} else {
 					log.Errorf("Bad yaml in %s : %v", f, err)

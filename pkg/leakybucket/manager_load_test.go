@@ -13,7 +13,7 @@ type cfgTest struct {
 
 func runTest(tests []cfgTest) error {
 	for idx, cfg := range tests {
-		err := LoadBucket(&cfg.cfg, ".")
+		err := LoadBucket(&cfg.cfg)
 		if cfg.loadable && err != nil {
 			return fmt.Errorf("expected loadable result (%d/%d), got: %s", idx+1, len(tests), err)
 		}
