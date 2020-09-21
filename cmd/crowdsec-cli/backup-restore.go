@@ -18,16 +18,16 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 		return "", fmt.Errorf("error retrieving item")
 	}
 	it := *item
-	if download_only && it.Downloaded && it.UpToDate {
+	if downloadOnly && it.Downloaded && it.UpToDate {
 		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 	}
-	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, force_install)
+	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceInstall)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 	}
 	cwhub.AddItemMap(obtype, it)
 
-	if download_only {
+	if downloadOnly {
 		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
 	}
 	it, err = cwhub.EnableItem(csConfig.Cscli, it)

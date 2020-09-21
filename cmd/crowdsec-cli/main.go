@@ -12,11 +12,19 @@ import (
 )
 
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
+
 var ConfigFilePath string
 var csConfig *csconfig.GlobalConfig
+var dbClient *database.Client
+
 var OutputFormat string
 
-var dbClient *database.Client
+var downloadOnly bool
+var forceInstall bool
+var forceUpgrade bool
+var removeAll bool
+var purgeRemove bool
+var upgradeAll bool
 
 func initConfig() {
 
@@ -122,11 +130,8 @@ API interaction:
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewInstallCmd())
 	rootCmd.AddCommand(NewListCmd())
-	rootCmd.AddCommand(NewRemoveCmd())
 	rootCmd.AddCommand(NewUpdateCmd())
-	rootCmd.AddCommand(NewUpgradeCmd())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())
@@ -135,6 +140,10 @@ API interaction:
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewKeysCmd())
 	rootCmd.AddCommand(NewWatchersCmd())
+	rootCmd.AddCommand(NewParserCmd())
+	rootCmd.AddCommand(NewScenarioCmd())
+	rootCmd.AddCommand(NewCollectionCmd())
+	rootCmd.AddCommand(NewPostOverflowCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
