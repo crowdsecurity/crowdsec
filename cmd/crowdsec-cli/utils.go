@@ -91,7 +91,7 @@ func RemoveMany(ttype string, name string) {
 	var disabled int
 	if name != "" {
 		it := cwhub.GetItem(ttype, name)
-		if it != nil {
+		if it == nil {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 		item := *it
@@ -124,7 +124,6 @@ func UpgradeConfig(ttype string, name string) {
 	var found bool
 
 	for _, v := range cwhub.GetItemMap(ttype) {
-		//name mismatch
 		if name != "" && name != v.Name {
 			continue
 		}
