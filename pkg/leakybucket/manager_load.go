@@ -57,14 +57,14 @@ type BucketFactory struct {
 	ExprDebugger    *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
-	DataDir         string
-	leakspeed       time.Duration    //internal representation of `Leakspeed`
-	duration        time.Duration    //internal representation of `Duration`
-	ret             chan types.Event //the bucket-specific output chan for overflows
-	processors      []Processor      //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	output          bool             //??
-	ScenarioVersion string           `yaml:"version,omitempty"`
-	hash            string
+	DataDir         string                    `yaml:"-"`
+	leakspeed       time.Duration             //internal representation of `Leakspeed`
+	duration        time.Duration             //internal representation of `Duration`
+	ret             chan types.Event          //the bucket-specific output chan for overflows
+	processors      []Processor               //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	output          bool                      //??
+	ScenarioVersion string                    `yaml:"version,omitempty"`
+	hash            string                    `yaml:"-"`
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -150,7 +150,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if err == io.EOF {
-					log.Tracef("End of yaml file")
+					log.Errorf("End of yaml file")
 					break
 				} else {
 					log.Errorf("Bad yaml in %s : %v", f, err)
@@ -176,15 +176,17 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 				continue
 			}
+
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 			hubItem := cwhub.GetItem(cwhub.SCENARIOS, bucketFactory.Name)
-			if hubItem == nil {
-				continue
+			if hubItem != nil {
+				bucketFactory.ScenarioVersion = hubItem.LocalVersion
+				bucketFactory.hash = hubItem.LocalHash
+			} else {
+				log.Errorf("cwhub error, the scenario couldn't be synce'd. This shouldn't happen unless we are doing unit tests: %s", bucketFactory.Name)
 			}
-			bucketFactory.ScenarioVersion = hubItem.LocalVersion
-			bucketFactory.hash = hubItem.LocalHash
 
 			err = LoadBucket(&bucketFactory)
 			if err != nil {
