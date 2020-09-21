@@ -49,7 +49,9 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated += 1
 		}
-		cwhub.AddItemMap(ttype, v)
+		if err := cwhub.AddItem(ttype, v); err != nil {
+			log.Errorf("%s", err)
+		}
 	}
 	if !found {
 		log.Errorf("Didn't find %s", name)

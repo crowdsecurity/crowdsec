@@ -1,6 +1,7 @@
 package cwhub
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -23,6 +24,113 @@ import (
 
 var testDataFolder = "."
 
+func TestItemStatus(t *testing.T) {
+	cfg := test_prepenv()
+
+	err := UpdateHubIdx(cfg.Cscli)
+	//DownloadHubIdx()
+	if err != nil {
+		t.Fatalf("failed to download index : %s", err)
+	}
+	if err := GetHubIdx(cfg.Cscli); err != nil {
+		t.Fatalf("failed to load hub index : %s", err)
+	}
+
+	//get existing map
+	x := GetItemMap(COLLECTIONS)
+	if len(x) == 0 {
+		t.Fatalf("expected non empty result")
+	}
+
+	//Get item : good and bad
+	for k, _ := range x {
+		item := GetItem(COLLECTIONS, k)
+		if item == nil {
+			t.Fatalf("expected item")
+		}
+		item.Installed = true
+		item.UpToDate = false
+		item.Local = false
+		item.Tainted = false
+		txt, _, _, _ := ItemStatus(*item)
+		if txt != "enabled,update-available" {
+			log.Fatalf("got '%s'", txt)
+		}
+
+		item.Installed = false
+		item.UpToDate = false
+		item.Local = true
+		item.Tainted = false
+		txt, _, _, _ = ItemStatus(*item)
+		if txt != "disabled,local" {
+			log.Fatalf("got '%s'", txt)
+		}
+
+		break
+	}
+	DisplaySummary()
+}
+
+func TestGetters(t *testing.T) {
+	cfg := test_prepenv()
+
+	err := UpdateHubIdx(cfg.Cscli)
+	//DownloadHubIdx()
+	if err != nil {
+		t.Fatalf("failed to download index : %s", err)
+	}
+	if err := GetHubIdx(cfg.Cscli); err != nil {
+		t.Fatalf("failed to load hub index : %s", err)
+	}
+
+	//get non existing map
+	empty := GetItemMap("ratata")
+	if empty != nil {
+		t.Fatalf("expected nil result")
+	}
+	//get existing map
+	x := GetItemMap(COLLECTIONS)
+	if len(x) == 0 {
+		t.Fatalf("expected non empty result")
+	}
+
+	//Get item : good and bad
+	for k, _ := range x {
+		empty := GetItem(COLLECTIONS, k+"nope")
+		if empty != nil {
+			t.Fatalf("expected empty item")
+		}
+
+		item := GetItem(COLLECTIONS, k)
+		if item == nil {
+			t.Fatalf("expected non empty item")
+		}
+
+		//Add item and get it
+		item.Name += "nope"
+		if err := AddItem(COLLECTIONS, *item); err != nil {
+			t.Fatalf("didn't expect error : %s", err)
+		}
+
+		newitem := GetItem(COLLECTIONS, item.Name)
+		if newitem == nil {
+			t.Fatalf("expected non empty item")
+		}
+
+		//Add bad item
+		if err := AddItem("ratata", *item); err != nil {
+			if fmt.Sprintf("%s", err) != "ItemType ratata is unknown" {
+				t.Fatalf("unexpected error")
+			}
+		} else {
+			t.Fatalf("Expected error")
+		}
+
+		break
+	}
+
+}
+
 func TestIndexDownload(t *testing.T) {
 
 	cfg := test_prepenv()
@@ -42,8 +150,8 @@ func test_prepenv() *csconfig.GlobalConfig {
 
 	var cfg = csconfig.NewConfig()
 	cfg.Cscli = &csconfig.CscliCfg{}
-	cfg.Cscli.InstallDir = filepath.Clean("./install")
-	cfg.Cscli.HubDir = filepath.Clean("./hubdir")
+	cfg.Cscli.InstallDir, _ = filepath.Abs("./install")
+	cfg.Cscli.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Cscli.IndexPath = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
@@ -243,7 +351,7 @@ func TestInstallCollection(t *testing.T) {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
-	for _, it := range HubIdx[COLLECTIONS] {
+	for _, it := range hubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Cscli, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
 		testTaintItem(cfg.Cscli, t, it)

@@ -237,12 +237,12 @@ func NewDefaultConfig() *GlobalConfig {
 func (c *GlobalConfig) CleanupPaths() error {
 	var err error
 
-	var daemon_cleanup = []*string{
-		&c.Daemon.PidDir,
-		&c.Daemon.LogDir,
-		&c.Daemon.WorkingDir,
-	}
 	if c.Daemon != nil {
+		var daemon_cleanup = []*string{
+			&c.Daemon.PidDir,
+			&c.Daemon.LogDir,
+			&c.Daemon.WorkingDir,
+		}
 		for _, k := range daemon_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
@@ -251,13 +251,13 @@ func (c *GlobalConfig) CleanupPaths() error {
 		}
 	}
 
-	var crowdsec_cleanup = []*string{
-		&c.Crowdsec.AcquisitionFilePath,
-		&c.Crowdsec.SimulationFilePath,
-		&c.Crowdsec.ConfigDir,
-		&c.Crowdsec.DataDir,
-	}
 	if c.Crowdsec != nil {
+		var crowdsec_cleanup = []*string{
+			&c.Crowdsec.AcquisitionFilePath,
+			&c.Crowdsec.SimulationFilePath,
+			&c.Crowdsec.ConfigDir,
+			&c.Crowdsec.DataDir,
+		}
 		for _, k := range crowdsec_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
@@ -266,13 +266,13 @@ func (c *GlobalConfig) CleanupPaths() error {
 		}
 	}
 
-	var cscli_cleanup = []*string{
-		&c.Cscli.HubDir,
-		&c.Cscli.IndexPath,
-		&c.Cscli.InstallDir,
-		&c.Cscli.DataDir,
-	}
 	if c.Cscli != nil {
+		var cscli_cleanup = []*string{
+			&c.Cscli.HubDir,
+			&c.Cscli.IndexPath,
+			&c.Cscli.InstallDir,
+			&c.Cscli.DataDir,
+		}
 		for _, k := range cscli_cleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {

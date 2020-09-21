@@ -116,7 +116,7 @@ func GetItem(itemType string, itemName string) *Item {
 	return nil
 }
 
-func AddItemMap(itemType string, item Item) error {
+func AddItem(itemType string, item Item) error {
 	in := false
 	for _, itype := range ItemTypes {
 		if itype == itemType {
@@ -162,7 +162,7 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 	if v.Tainted {
 		Warning = true
 		strret += ",tainted"
-	} else if !v.UpToDate {
+	} else if !v.UpToDate && !v.Local {
 		strret += ",update-available"
 		Warning = true
 	}

@@ -26,7 +26,9 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	if err := cwhub.AddItem(obtype, item); err != nil {
+		log.Errorf("%s", err)
+	}
 	if download_only {
 		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
 		return
@@ -35,11 +37,11 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	if err := cwhub.AddItem(obtype, item); err != nil {
+		log.Errorf("%s", err)
+	}
 	log.Infof("Enabled %s", item.Name)
 	return
-	log.Warningf("%s not found in hub index", name)
-	/*iterate of pkg index data*/
 }
 
 func NewInstallCmd() *cobra.Command {

@@ -179,7 +179,7 @@ func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 		}
 	} else {
 		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
-		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig)
+		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig.Crowdsec)
 		if err != nil {
 			return fmt.Errorf("Failed to load acquisition : %s", err)
 		}
@@ -380,7 +380,9 @@ func main() {
 	//Fire!
 	log.Warningf("Starting processing data")
 
-	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
+	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
+		log.Fatalf("While starting to read : %s", err)
+	}
 
 	if cConfig.Daemon != nil {
 		if err = serveOneTimeRun(); err != nil {
