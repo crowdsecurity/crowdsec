@@ -122,12 +122,10 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 		}
 		//minimalist sanity check
 		if t.Filename == "" && len(t.Filenames) == 0 {
-			log.Debugf("No filename or filenames, skipping empty item %+v", t)
-			continue
+			return nil, fmt.Errorf("no filename in %+v", t)
 		}
 		if len(t.Labels) == 0 {
-			log.Debugf("Acquisition has no tags, skipping empty item %+v", t)
-			continue
+			return nil, fmt.Errorf("no tags in %+v", t)
 		}
 
 		if len(t.Filename) > 0 {

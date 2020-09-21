@@ -3,6 +3,7 @@ package acquisition
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,27 @@ func TestLoadAcquisitionSingleFile(t *testing.T) {
 			},
 			err: "",
 		},
+
+		// { //test empty label
+		// 	fname: testFilePath,
+		// 	//ftype: "my_test_log",
+		// 	result: &FileAcquisCtx{
+		// 		Files: []FileCtx{
+		// 			{
+		// 				Type:      "file",
+		// 				Mode:      "cat",
+		// 				Filename:  testFilePath,
+		// 				Filenames: []string{},
+		// 				Labels: map[string]string{
+		// 					"type": "",
+		// 				},
+		// 				Profiling: false,
+		// 			},
+		// 		},
+		// 		Profiling: false,
+		// 	},
+		// 	err: "xxx",
+		// },
 	}
 
 	for _, test := range tests {
@@ -140,6 +162,41 @@ L:
 		t.Fatal(err)
 	}
 	f.Close()
+}
+
+func TestLoadAcquisCtxConfigFile(t *testing.T) {
+	tests := []struct {
+		cfg    csconfig.CrowdsecServiceCfg
+		result []FileCtx
+		err    string
+	}{
+		{
+			cfg: csconfig.CrowdsecServiceCfg{},
+			err: "missing config or acquisition file path",
+		},
+		{
+			cfg: csconfig.CrowdsecServiceCfg{AcquisitionFilePath: "/doesnt/exist"},
+			err: "can't open /doesnt/exist: open /doesnt",
+		},
+		{
+			cfg: csconfig.CrowdsecServiceCfg{AcquisitionFilePath: "/etc/passwd"},
+			err: "failed to yaml decode /etc/passwd",
+		},
+	}
+
+	for _, test := range tests {
+		res, err := LoadAcquisCtxConfigFile(&test.cfg)
+		if test.err != "" {
+			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+				t.Fatalf("mismatch error : %s expected %s", err, test.err)
+			}
+		}
+		if test.err == "" && err != nil {
+			t.Fatalf("unexpected error, got %s", err)
+		}
+		assert.Equal(t, test.result, res)
+	}
+
 }
 
 func TestAcquisStartReadingTail(t *testing.T) {
@@ -408,11 +465,30 @@ func TestCatFromAcquisStruct(t *testing.T) {
 				},
 			}},
 			Result: &FileAcquisCtx{},
+			err:    "no filename in {Type:file",
 		},
 	}
 
 	for testidx, test := range tests {
 		AcqCtx, err := InitReaderFromFileCtx(test.Config)
+		if err != nil && test.err == "" {
+			t.Fatalf("unexpected error : %s", err)
+		}
+		if err != nil && test.err != "" {
+			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+				t.Fatalf("expected '%s' got '%s'", test.err, err)
+			}
+		}
+		if err == nil && test.err != "" {
+			t.Fatalf("expected error %s, didn't got", test.err)
+		}
+
+		if AcqCtx == nil {
+			continue
+		}
+		// if err != nil {
+		// 	t.Fatalf("%d/%d : %s", testidx, len(tests), err)
+		// }
 		//we can't compare the tail object, it's not ours, just check non-nil
 		for ridx, res := range AcqCtx.Files {
 			if res.tail == nil {
