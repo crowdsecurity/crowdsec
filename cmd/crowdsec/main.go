@@ -380,7 +380,9 @@ func main() {
 	//Fire!
 	log.Warningf("Starting processing data")
 
-	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
+	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
+		log.Fatalf("While starting to read : %s", err)
+	}
 
 	if cConfig.Daemon != nil {
 		if err = serveOneTimeRun(); err != nil {

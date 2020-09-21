@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"compress/gzip"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -82,12 +83,11 @@ func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, er
 	var files []FileCtx
 
 	if config == nil || config.AcquisitionFilePath == "" {
-		return nil, fmt.Errorf("no acquisition file")
+		return nil, fmt.Errorf("missing config or acquisition file path")
 	}
 	yamlFile, err := os.Open(config.AcquisitionFilePath)
 	if err != nil {
-		log.Errorf("Can't access acquisition configuration file with '%v'.", err)
-		return nil, err
+		return nil, errors.Wrap(err, fmt.Sprintf("can't open %s", config.AcquisitionFilePath))
 	}
 	//process the yaml
 	dec := yaml.NewDecoder(yamlFile)
@@ -100,8 +100,7 @@ func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, er
 				log.Tracef("End of yaml file")
 				break
 			}
-			log.Fatalf("Error decoding acquisition configuration file with '%s': %v", config.AcquisitionFilePath, err)
-			break
+			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
 		}
 		files = append(files, t)
 	}
@@ -123,11 +122,11 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 		}
 		//minimalist sanity check
 		if t.Filename == "" && len(t.Filenames) == 0 {
-			log.Infof("No filename or filenames, skipping empty item %+v", t)
+			log.Debugf("No filename or filenames, skipping empty item %+v", t)
 			continue
 		}
 		if len(t.Labels) == 0 {
-			log.Infof("Acquisition has no tags, skipping empty item %+v", t)
+			log.Debugf("Acquisition has no tags, skipping empty item %+v", t)
 			continue
 		}
 
@@ -140,17 +139,16 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 			opcpt = 0
 			files, err := filepath.Glob(fglob)
 			if err != nil {
-				log.Errorf("error while globing '%s' : %v", fglob, err)
-				return nil, err
+				return nil, errors.Wrap(err, fmt.Sprintf("while globbing %s", fglob))
 			}
 			if len(files) == 0 {
-				log.Errorf("nothing to glob for '%s'", fglob)
+				log.Warningf("no results for %s", fglob)
 				continue
 			}
 			for _, file := range files {
 				/*check that we can read said file*/
 				if err := unix.Access(file, unix.R_OK); err != nil {
-					log.Errorf("Unable to open file [%s] : %v", file, err)
+					log.Errorf("unable to open %s : %v", file, err)
 					continue
 				}
 				log.Infof("Opening file '%s' (pattern:%s)", file, fglob)
@@ -163,14 +161,14 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 					if t.Mode == TAILMODE {
 						fdesc.tail, err = tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
 						if err != nil {
-							log.Errorf("skipping '%s' : %v", file, err)
+							log.Errorf("skipping %s : %v", file, err)
 							continue
 						}
 					}
 				case BINTYPE:
 
 				default:
-					log.Fatalf("unexpected type %s for %+v", t.Type, t.Filenames)
+					return nil, fmt.Errorf("%s is of unknown type %s", file, t.Type)
 				}
 				opcpt++
 				ctx.Files = append(ctx.Files, fdesc)
@@ -182,10 +180,10 @@ func InitReaderFromFileCtx(files []FileCtx) (*FileAcquisCtx, error) {
 }
 
 //let's return an array of chans for signaling for now
-func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb *tomb.Tomb) {
+func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 	if len(ctx.Files) == 0 {
-		log.Errorf("No files to read")
+		return fmt.Errorf("no files to read")
 	}
 	/* start one go routine reading for each file, and pushing to chan output */
 	for idx, fctx := range ctx.Files {
@@ -206,11 +204,12 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 				return CatFile(fctx, output, AcquisTomb)
 			})
 		default:
-			log.Fatalf("unknown read mode %s for %+v", fctx.Mode, fctx.Filenames)
+			return fmt.Errorf("unknown read mode %s for %+v", fctx.Mode, fctx.Filenames)
 		}
 		log.Printf("starting (%s) reader file %d/%d : %s", mode, idx, len(ctx.Files), fctx.Filename)
 	}
 	log.Printf("Started %d routines for polling/read", len(ctx.Files))
+	return nil
 }
 
 /*A tail-mode file reader (tail) */
@@ -219,10 +218,9 @@ func TailFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error
 		"acquisition file": ctx.Filename,
 	})
 	if ctx.Type != FILETYPE {
-		log.Errorf("Can't tail %s type for %+v", ctx.Type, ctx.Filenames)
-		return fmt.Errorf("can't tail %s type for %+v", ctx.Type, ctx.Filenames)
+		return fmt.Errorf("can't tail %s type for %s", ctx.Type, ctx.Filename)
 	}
-	log.Infof("Starting tail of %s", ctx.Filename)
+	clog.Infof("Starting tail")
 	timeout := time.Tick(20 * time.Second)
 LOOP:
 	for {
@@ -236,11 +234,11 @@ LOOP:
 			break LOOP
 		case <-ctx.tail.Tomb.Dying(): //our tailer is dying
 			clog.Warningf("Reader is dying/dead")
-			return errors.New("reader is dead")
+			return fmt.Errorf("reader for %s is dead", ctx.Filename)
 		case line := <-ctx.tail.Lines:
 			if line == nil {
 				clog.Debugf("Nil line")
-				return errors.New("Tail is empty")
+				return fmt.Errorf("tail for %s is empty", ctx.Filename)
 			}
 			if line.Err != nil {
 				log.Warningf("fetch error : %v", line.Err)
@@ -284,7 +282,7 @@ func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error 
 	defer fd.Close()
 	if err != nil {
 		clog.Errorf("Failed opening file: %s", err)
-		return err
+		return errors.Wrap(err, fmt.Sprintf("failed opening %s", ctx.Filename))
 	}
 
 	if ctx.Type == FILETYPE {
@@ -292,7 +290,7 @@ func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error 
 			gz, err := gzip.NewReader(fd)
 			if err != nil {
 				clog.Errorf("Failed to read gz file: %s", err)
-				return err
+				return errors.Wrap(err, fmt.Sprintf("failed to read gz %s", ctx.Filename))
 			}
 			defer gz.Close()
 			scanner = bufio.NewScanner(gz)

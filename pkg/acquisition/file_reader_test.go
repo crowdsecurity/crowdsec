@@ -88,7 +88,9 @@ func TestAcquisStartReadingTailKilled(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	AcquisStartReading(acquisCtx, outputChan, &acquisTomb)
+	if err := AcquisStartReading(acquisCtx, outputChan, &acquisTomb); err != nil {
+		t.Fatalf("while AcquisStartReading: %s", err)
+	}
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
@@ -157,7 +159,9 @@ func TestAcquisStartReadingTail(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	AcquisStartReading(acquisCtx, outputChan, &acquisTomb)
+	if err := AcquisStartReading(acquisCtx, outputChan, &acquisTomb); err != nil {
+		t.Fatalf("AcquisStartReading : %s", err)
+	}
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
@@ -235,7 +239,9 @@ func TestAcquisStartReadingCat(t *testing.T) {
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
+	if err := AcquisStartReading(fCTX, outputChan, &acquisTomb); err != nil {
+		t.Fatalf("AcquisStartReading : %s", err)
+	}
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
@@ -286,7 +292,9 @@ func TestAcquisStartReadingGzCat(t *testing.T) {
 	}
 	outputChan := make(chan types.Event)
 	acquisTomb := tomb.Tomb{}
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
+	if err := AcquisStartReading(fCTX, outputChan, &acquisTomb); err != nil {
+		t.Fatalf("AcquisStartReading : %s", err)
+	}
 	if !acquisTomb.Alive() {
 		t.Fatal("acquisition tomb is not alive")
 	}
