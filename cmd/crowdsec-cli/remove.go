@@ -24,7 +24,7 @@ func RemoveMany(ttype string, name string) {
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
-		cwhub.AddItemMap(ttype, item)
+		cwhub.AddItem(ttype, item)
 		return
 	} else if name == "" && remove_all {
 		for _, v := range cwhub.GetItemMap(ttype) {
@@ -32,7 +32,7 @@ func RemoveMany(ttype string, name string) {
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			cwhub.AddItemMap(ttype, v)
+			cwhub.AddItem(ttype, v)
 			disabled += 1
 		}
 	}

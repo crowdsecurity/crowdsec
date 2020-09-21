@@ -26,7 +26,7 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	cwhub.AddItem(obtype, item)
 	if download_only {
 		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
 		return
@@ -35,7 +35,7 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
 	return
 	log.Warningf("%s not found in hub index", name)

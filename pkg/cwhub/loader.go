@@ -2,10 +2,12 @@ package cwhub
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"fmt"
 	"io/ioutil"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	//"log"
 
@@ -49,7 +51,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	log.Debugf("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
-		log.Debugf("in hub dir")
+		//log.Debugf("in hub dir")
 		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
@@ -334,6 +336,7 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 	log.Debugf("loading hub idx %s", cscli.IndexPath)
 	bidx, err := ioutil.ReadFile(cscli.IndexPath)
 	if err != nil {
+		return errors.Wrap(err, "unable to read index file")
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}
 	ret, err := LoadPkgIndex(bidx)
