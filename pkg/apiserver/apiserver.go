@@ -94,15 +94,14 @@ func (s *APIServer) Run() error {
 		jwtAuth.POST("/alerts", s.controller.CreateAlert)
 		jwtAuth.GET("/alerts", s.controller.FindAlerts)
 		jwtAuth.DELETE("/alerts", s.controller.DeleteAlerts)
-
+		jwtAuth.DELETE("/decisions", s.controller.DeleteDecisions)
+		jwtAuth.DELETE("/decisions/:decision_id", s.controller.DeleteDecisionById)
 	}
 
 	apiKeyAuth := router.Group("/")
 	apiKeyAuth.Use(s.middlewares.APIKey.MiddlewareFunc())
 	{
 		apiKeyAuth.GET("/decisions", s.controller.GetDecision)
-		apiKeyAuth.DELETE("/decisions", s.controller.DeleteDecisions)
-		apiKeyAuth.DELETE("/decisions/:decision_id", s.controller.DeleteDecisionById)
 		apiKeyAuth.GET("/decisions/stream", s.controller.StreamDecision)
 	}
 

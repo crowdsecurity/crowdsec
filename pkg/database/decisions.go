@@ -8,6 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"strconv"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -85,12 +86,12 @@ func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error
 func (c *Client) DeleteDecisionById(decisionId int) error {
 	err := c.Ent.Decision.DeleteOneID(decisionId).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d'", decisionId))
+		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionId))
 	}
 	return nil
 }
 
-func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (int, error) {
+func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
 
 	decisions := c.Ent.Decision.Delete()
@@ -104,13 +105,13 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (int, err
 		case "type":
 			decisions = decisions.Where(decision.TypeEQ(value[0]))
 		default:
-			return 0, errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
 	}
 
 	nbDeleted, err := decisions.Exec(c.CTX)
 	if err != nil {
-		return 0, errors.Wrap(DeleteFail, "decisions with provided filter")
+		return "0", errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
-	return nbDeleted, nil
+	return strconv.Itoa(nbDeleted), nil
 }

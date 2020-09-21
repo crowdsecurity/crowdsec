@@ -83,7 +83,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("decisions/?%s", params.Encode())
+	u := fmt.Sprintf("decisions?%s", params.Encode())
 
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {

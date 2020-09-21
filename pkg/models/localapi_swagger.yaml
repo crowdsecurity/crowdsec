@@ -126,58 +126,17 @@ paths:
           in: query
           required: false
           type: string
-          description: scope in which decisions should be looked up
+          description: scope to which the decision applies (ie. IP/Range/Username/Session/...)
         - name: value
           in: query
           required: false
           type: string
-          description: value to search for in specified scope
-        - name: decision_type
+          description: the value to match for in the specified scope
+        - name: type
           in: query
           required: false
           type: string
-          description: 'matching decision type (ie. ban, captcha ...)'
-        - name: ip
-          in: query
-          required: false
-          type: string
-          description: IP to delete (shorthand for scope=ip&value=)
-        - name: range
-          in: query
-          required: false
-          type: string
-          description: range to delete  (shorthand for scope=range&value=)
-        - name: country
-          in: query
-          required: false
-          type: string
-          description: country to delete  (shorthand for scope=cn&value=)
-        - name: as_name
-          in: query
-          required: false
-          type: string
-          description: as name to delete  (shorthand for scope=as_name&value=)
-        - name: as_num
-          in: query
-          required: false
-          type: string
-          description: as number to delete  (shorthand for scope=as_num&value=)
-        - name: reason
-          in: query
-          required: false
-          type: string
-          description: reason to delete
-        - name: since
-          in: query
-          required: false
-          type: string
-          format: date-time
-          description: 'ban to delete since YYYY-mm-DD-HH:MM:SS'
-        - name: pagination
-          in: query
-          required: false
-          type: string
-          description: pagination
+          description: type of decision
       responses:
         '200':
           description: successful operation
@@ -685,10 +644,11 @@ definitions:
       - scenario
   DeleteDecisionResponse:
     title: DeleteDecisionResponse
-    type: array
-    items:
-      type: string
-      description: "decision_id"
+    type: object
+    properties:
+      nbDeleted:
+        type: string
+        description: "number of deleted decisions"
   FlushDecisionResponse:
     title: FlushDecisionResponse
     type: object

@@ -18,7 +18,8 @@ import (
 	"time"
 )
 
-var Scope, Value, Type string
+var Scope, Value, Type, DecisionID string
+var DeleteAll bool
 var Client *apiclient.ApiClient
 
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
@@ -85,6 +86,9 @@ To list/add/delete decisions
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+			if csConfig.LapiClient == nil {
+				log.Fatalln("There is no configuration on 'api_client:'")
+			}
 			apiclient.BaseURL, err = url.Parse(csConfig.LapiClient.Credentials.Url)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())
@@ -102,7 +106,7 @@ To list/add/delete decisions
 	}
 
 	var cmdDecisionsList = &cobra.Command{
-		Use:     "list [filter]",
+		Use:     "list --scope [scope] --value [value] --type [type]",
 		Short:   "List decisions",
 		Long:    `List decisions from the LAPI`,
 		Example: `cscli decisions list --scope ip --value 1.2.3.4 --type ban"`,
@@ -235,8 +239,66 @@ Args :
 			log.Info("Decision successfully added")
 		},
 	}
-
 	cmdDecisions.AddCommand(cmdDecisionsAdd)
+
+	var cmdDecisionsDelete = &cobra.Command{
+		Use:   "delete (--scope [scope] --value [value] --type [type] | --id [decision_id] | --all)",
+		Short: "Delete decisions",
+		Long: `
+Delete decisions from the LAPI
+You can delete uniq decision by id (--id), with other filters (--scope/--value/--type) or all decisions with --all
+/!\ You can't use filters (--scope/--value/--type) with --id or --all
+`,
+		Example: `
+		cscli decisions delete --scope ip --value 1.2.3.4 --type ban"
+		cscli decisions delete --id 1"
+		`,
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if DecisionID != "" && (Scope != "" || Value != "" || Type != "" || DeleteAll == true) {
+				cmd.Usage()
+				log.Fatalln("--id parameter is used to delete uniq decision without filter")
+			}
+			if DeleteAll == false && (Scope == "" && Value == "" && Type == "" && DecisionID == "") {
+				cmd.Usage()
+				log.Fatalln("You need to specify a filter or use --all to delete all decisions")
+			}
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			var decisions *models.DeleteDecisionResponse
+
+			filter := apiclient.DecisionsDeleteOpts{}
+			if Scope != "" {
+				filter.Scope_equals = &Scope
+			}
+			if Value != "" {
+				filter.Value_equals = &Value
+			}
+			if Type != "" {
+				filter.Type_equals = &Type
+			}
+
+			if DecisionID == "" {
+				decisions, _, err = Client.Decisions.Delete(context.Background(), filter)
+				if err != nil {
+					log.Fatalf("Unable to delete decisions : %v", err.Error())
+				}
+			} else {
+				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), DecisionID)
+				if err != nil {
+					log.Fatalf("Unable to delete decision : %v", err.Error())
+				}
+			}
+
+			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
+		},
+	}
+	cmdDecisionsDelete.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
+	cmdDecisionsDelete.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
+	cmdDecisionsDelete.Flags().StringVar(&Type, "type", "", "type of decision")
+	cmdDecisionsDelete.Flags().StringVar(&DecisionID, "id", "", "decision id")
+	cmdDecisionsDelete.Flags().BoolVar(&DeleteAll, "all", false, "delete all decisions")
+	cmdDecisions.AddCommand(cmdDecisionsDelete)
 
 	return cmdDecisions
 }

@@ -65,9 +65,14 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	err = c.DBClient.DeleteDecisionById(decisionId)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+		return
 	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": "successfully deleted"})
+	deleteDecisionResp := models.DeleteDecisionResponse{
+		NbDeleted: "1",
+	}
+
+	gctx.JSON(http.StatusOK, deleteDecisionResp)
 	return
 }
 
@@ -78,8 +83,11 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 	}
+	deleteDecisionResp := models.DeleteDecisionResponse{
+		NbDeleted: nbDeleted,
+	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d deleted decisions", nbDeleted)})
+	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
