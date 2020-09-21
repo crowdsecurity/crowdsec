@@ -44,27 +44,6 @@ func TestLoadAcquisitionSingleFile(t *testing.T) {
 			},
 			err: "",
 		},
-
-		// { //test empty label
-		// 	fname: testFilePath,
-		// 	//ftype: "my_test_log",
-		// 	result: &FileAcquisCtx{
-		// 		Files: []FileCtx{
-		// 			{
-		// 				Type:      "file",
-		// 				Mode:      "cat",
-		// 				Filename:  testFilePath,
-		// 				Filenames: []string{},
-		// 				Labels: map[string]string{
-		// 					"type": "",
-		// 				},
-		// 				Profiling: false,
-		// 			},
-		// 		},
-		// 		Profiling: false,
-		// 	},
-		// 	err: "xxx",
-		// },
 	}
 
 	for _, test := range tests {
@@ -77,6 +56,47 @@ func TestLoadAcquisitionSingleFile(t *testing.T) {
 		}
 		assert.EqualError(t, err, test.err)
 	}
+}
+
+func TestAcquisStartReadingErrors(t *testing.T) {
+
+	//test: empty files
+	test := FileAcquisCtx{
+		Profiling: true,
+	}
+	outputChan := make(chan types.Event)
+	acquisTomb := tomb.Tomb{}
+
+	if err := AcquisStartReading(&test, outputChan, &acquisTomb); err != nil {
+		if !strings.HasPrefix(fmt.Sprintf("%s", err), "no files to read") {
+			t.Fatalf("error mismatch")
+		}
+	} else {
+		t.Fatalf("expected error")
+	}
+
+	//test: bad read mode
+	test = FileAcquisCtx{
+		Profiling: true,
+		Files: []FileCtx{
+			FileCtx{
+				Type:     "",
+				Mode:     "unknown",
+				Filename: "./tests/test.log",
+			},
+		},
+	}
+	outputChan = make(chan types.Event)
+	acquisTomb = tomb.Tomb{}
+
+	if err := AcquisStartReading(&test, outputChan, &acquisTomb); err != nil {
+		if !strings.HasPrefix(fmt.Sprintf("%s", err), "unknown read mode unknown") {
+			t.Fatalf("error mismatch")
+		}
+	} else {
+		t.Fatalf("expected error")
+	}
+
 }
 
 func TestAcquisStartReadingTailKilled(t *testing.T) {
@@ -161,6 +181,21 @@ L:
 	if err != nil {
 		t.Fatal(err)
 	}
+	f.Close()
+}
+
+func recreateTestFile(fname string) {
+	f, err := os.OpenFile(fname, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for i := 0; i < 5; i++ {
+		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	f.Close()
 }
 
@@ -274,17 +309,7 @@ L:
 func TestAcquisStartReadingCat(t *testing.T) {
 	testFilePath := "./tests/test.log"
 
-	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 5; i++ {
-		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	f.Close()
+	recreateTestFile(testFilePath)
 
 	ctx, err := LoadAcquisCtxSingleFile(testFilePath, "my_test_log")
 	if err != nil {
@@ -325,7 +350,7 @@ L:
 		t.Fatalf("Acquisition returned error : %s", err)
 	}
 
-	f, err = os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -374,7 +399,94 @@ L:
 	}
 }
 
-func TestCatFromAcquisStruct(t *testing.T) {
+func TestCatFileErrors(t *testing.T) {
+	tests := []struct {
+		Config FileCtx
+		err    string
+	}{
+		{
+			Config: FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			},
+			//err: "rata",
+		},
+
+		{ //error : multi file
+			Config: FileCtx{
+				Type:      FILETYPE,
+				Mode:      CATMODE,
+				Filenames: []string{"./tests/test.log", "xxuuu"},
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			},
+			err: "no multi-file support for this mode",
+		},
+
+		{ //error : unreadable file
+			Config: FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/notexist.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			},
+			err: "failed opening ./tests/notexist.log:",
+		},
+
+		{ //error : bad gz file
+			Config: FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/badlog.gz",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			},
+			err: "failed to read gz ./tests/badlog.gz: ",
+		},
+	}
+
+	for _, test := range tests {
+		outputChan := make(chan types.Event)
+		acquisTomb := tomb.Tomb{}
+
+		go func(msg chan types.Event) {
+			time.Sleep(500 * time.Millisecond)
+		L:
+			for {
+				select {
+				case x := <-msg:
+					log.Printf("got '%+v'", x)
+				default:
+					break L
+				}
+			}
+			fmt.Printf("bye")
+		}(outputChan)
+
+		err := CatFile(test.Config, outputChan, &acquisTomb)
+		if err != nil && test.err == "" {
+			t.Fatalf("unexpected error : %s", err)
+		}
+		if err != nil && test.err != "" {
+			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+				t.Fatalf("expected '%s' got '%s'", test.err, err)
+			}
+		}
+		if err == nil && test.err != "" {
+			t.Fatalf("expected error %s, didn't got", test.err)
+		}
+	}
+}
+
+func TestInitReaderFromFileCtxConfigs(t *testing.T) {
 	tests := []struct {
 		Config []FileCtx
 		Result *FileAcquisCtx
@@ -467,6 +579,91 @@ func TestCatFromAcquisStruct(t *testing.T) {
 			Result: &FileAcquisCtx{},
 			err:    "no filename in {Type:file",
 		},
+
+		{ //test error - no tag
+			Config: []FileCtx{FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels:   map[string]string{
+					//"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Files: []FileCtx{
+					FileCtx{Type: "file",
+						Mode:      "cat",
+						Filename:  "./tests/test.log",
+						Filenames: []string{},
+						tail:      nil,
+						Labels: map[string]string{
+							"type": "ratata"},
+						Profiling: false,
+					},
+				},
+				Profiling: false,
+			},
+			err: "no tags in {Type:fil",
+		},
+
+		{ //test error - no glob result, no error
+			Config: []FileCtx{FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/*notexits*",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Profiling: false,
+			},
+		},
+
+		{ //test error - glob error
+			Config: []FileCtx{FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "./tests/*[notexits*",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Profiling: false,
+			},
+			err: "while globbing ./tests/*[notexits*: syntax error in pattern",
+		},
+
+		{ //test error - bad type
+			Config: []FileCtx{FileCtx{
+				Type:     "RATATATA",
+				Mode:     CATMODE,
+				Filename: "./tests/test.log",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Profiling: false,
+			},
+			err: "./tests/test.log is of unknown type RATATATA",
+		},
+
+		{ //test error - can't access file
+			Config: []FileCtx{FileCtx{
+				Type:     FILETYPE,
+				Mode:     CATMODE,
+				Filename: "/etc/shadow",
+				Labels: map[string]string{
+					"type": "ratata",
+				},
+			}},
+			Result: &FileAcquisCtx{
+				Profiling: false,
+			},
+			//err: "./tests/test.log is of unknown type RATATATA",
+		},
 	}
 
 	for testidx, test := range tests {
@@ -486,10 +683,6 @@ func TestCatFromAcquisStruct(t *testing.T) {
 		if AcqCtx == nil {
 			continue
 		}
-		// if err != nil {
-		// 	t.Fatalf("%d/%d : %s", testidx, len(tests), err)
-		// }
-		//we can't compare the tail object, it's not ours, just check non-nil
 		for ridx, res := range AcqCtx.Files {
 			if res.tail == nil {
 				if test.Result.Files[ridx].tail != nil {

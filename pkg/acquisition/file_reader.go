@@ -219,7 +219,7 @@ func TailFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error
 		return fmt.Errorf("can't tail %s type for %s", ctx.Type, ctx.Filename)
 	}
 	clog.Infof("Starting tail")
-	timeout := time.Tick(20 * time.Second)
+	timeout := time.Tick(1 * time.Second)
 LOOP:
 	for {
 		l := types.Line{}
@@ -299,6 +299,7 @@ func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error 
 		scanner.Split(bufio.ScanLines)
 		count := 0
 		for scanner.Scan() {
+			log.Printf("line %s", scanner.Text())
 			count++
 			l := types.Line{}
 			l.Raw = scanner.Text()
