@@ -21,7 +21,7 @@ type Decision struct {
 	// Required: true
 	Duration *string `json:"duration"`
 
-	// (only relevant for GET ops) when the target is an IP or range, its numeric representation
+	// (only relevant for GET ops) when the value is an IP or range, its numeric representation
 	EndIP int64 `json:"end_ip,omitempty"`
 
 	// (only relevant for GET ops) the unique id
@@ -40,16 +40,16 @@ type Decision struct {
 	// Required: true
 	Scope *string `json:"scope"`
 
-	// (only relevant for GET ops) when the target is an IP or range, its numeric representation
+	// (only relevant for GET ops) when the value is an IP or range, its numeric representation
 	StartIP int64 `json:"start_ip,omitempty"`
-
-	// the target of the decision : an IP, a range, a username, etc
-	// Required: true
-	Target *string `json:"target"`
 
 	// the type of decision, might be 'ban', 'captcha' or something custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL.
 	// Required: true
 	Type *string `json:"type"`
+
+	// the value of the decision scope : an IP, a range, a username, etc
+	// Required: true
+	Value *string `json:"value"`
 }
 
 // Validate validates this decision
@@ -72,11 +72,11 @@ func (m *Decision) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateTarget(formats); err != nil {
+	if err := m.validateType(formats); err != nil {
 		res = append(res, err)
 	}
 
-	if err := m.validateType(formats); err != nil {
+	if err := m.validateValue(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -122,18 +122,18 @@ func (m *Decision) validateScope(formats strfmt.Registry) error {
 	return nil
 }
 
-func (m *Decision) validateTarget(formats strfmt.Registry) error {
+func (m *Decision) validateType(formats strfmt.Registry) error {
 
-	if err := validate.Required("target", "body", m.Target); err != nil {
+	if err := validate.Required("type", "body", m.Type); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (m *Decision) validateType(formats strfmt.Registry) error {
+func (m *Decision) validateValue(formats strfmt.Registry) error {
 
-	if err := validate.Required("type", "body", m.Type); err != nil {
+	if err := validate.Required("value", "body", m.Value); err != nil {
 		return err
 	}
 

@@ -25,7 +25,7 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 			StartIP:  dbDecision.StartIP,
 			Scenario: &dbDecision.Scenario,
 			Scope:    &dbDecision.Scope,
-			Target:   &dbDecision.Target,
+			Value:    &dbDecision.Value,
 			Type:     &dbDecision.Type,
 			Origin:   &dbDecision.Origin,
 		}
@@ -111,11 +111,9 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	val := gctx.Request.Header.Get(c.APIKeyHeader)
-	log.Infof("KEY : %s", val)
 	hashedKey := sha512.New()
 	hashedKey.Write([]byte(val))
 	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
-	log.Infof("HASH : %s", hashStr)
 	lastPull, err := c.DBClient.LastBlockerPull(hashStr)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

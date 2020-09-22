@@ -33,8 +33,8 @@ type Decision struct {
 	EndIP int64 `json:"end_ip,omitempty"`
 	// Scope holds the value of the "scope" field.
 	Scope string `json:"scope,omitempty"`
-	// Target holds the value of the "target" field.
-	Target string `json:"target,omitempty"`
+	// Value holds the value of the "value" field.
+	Value string `json:"value,omitempty"`
 	// Origin holds the value of the "origin" field.
 	Origin string `json:"origin,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -78,7 +78,7 @@ func (*Decision) scanValues() []interface{} {
 		&sql.NullInt64{},  // start_ip
 		&sql.NullInt64{},  // end_ip
 		&sql.NullString{}, // scope
-		&sql.NullString{}, // target
+		&sql.NullString{}, // value
 		&sql.NullString{}, // origin
 	}
 }
@@ -143,9 +143,9 @@ func (d *Decision) assignValues(values ...interface{}) error {
 		d.Scope = value.String
 	}
 	if value, ok := values[8].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field target", values[8])
+		return fmt.Errorf("unexpected type %T for field value", values[8])
 	} else if value.Valid {
-		d.Target = value.String
+		d.Value = value.String
 	}
 	if value, ok := values[9].(*sql.NullString); !ok {
 		return fmt.Errorf("unexpected type %T for field origin", values[9])
@@ -208,8 +208,8 @@ func (d *Decision) String() string {
 	builder.WriteString(fmt.Sprintf("%v", d.EndIP))
 	builder.WriteString(", scope=")
 	builder.WriteString(d.Scope)
-	builder.WriteString(", target=")
-	builder.WriteString(d.Target)
+	builder.WriteString(", value=")
+	builder.WriteString(d.Value)
 	builder.WriteString(", origin=")
 	builder.WriteString(d.Origin)
 	builder.WriteByte(')')
