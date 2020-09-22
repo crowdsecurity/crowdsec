@@ -2,12 +2,13 @@ package cwhub
 
 import (
 	"crypto/sha256"
-	"errors"
+	//"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/enescakir/emoji"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -167,6 +168,33 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		Warning = true
 	}
 	return strret, Ok, Warning, Managed
+}
+
+func GetUpstreamInstalledScenariosAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetUpstreamInstalledScenarios()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching scenarios")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
+}
+
+func GetUpstreamInstalledScenarios() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[SCENARIOS]; !ok {
+		return nil, fmt.Errorf("no scenarios in hubIdx")
+	}
+	for _, item := range hubIdx[SCENARIOS] {
+		if item.Installed && !item.Tainted {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
 }
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)

@@ -1,31 +1,130 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/url"
+	"sync"
+	"time"
 
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 )
 
-func runOutput(input chan types.Event, overflow chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets,
-	poctx parser.UnixParserCtx, ponodes []parser.Node) error {
+func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
+
+	var dedupCache []*models.Alert
+
+	for idx, alert := range alerts {
+		log.Debugf("alert %d/%d", idx, len(alerts))
+		/*if we have more than one source, we need to dedup */
+		if len(alert.Sources) == 0 || len(alert.Sources) == 1 {
+			dedupCache = append(dedupCache, alert.Alert)
+			continue
+		}
+		for k, src := range alert.Sources {
+			refsrc := *alert.Alert //copy
+			log.Debugf("source[%s]", k)
+			refsrc.Source = &src
+			dedupCache = append(dedupCache, &refsrc)
+		}
+	}
+	if len(dedupCache) != len(alerts) {
+		log.Debugf("went from %d to %d alerts", len(alerts), len(dedupCache))
+	}
+	return dedupCache, nil
+}
+
+func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error {
+	ctx := context.Background()
+	alertsToPush, err := dedupAlerts(alerts)
+
+	if err != nil {
+		return errors.Wrap(err, "failed to transform alerts for api")
+	}
+	resp, _, err := client.Alerts.Add(ctx, alertsToPush)
+	if err != nil {
+		return errors.Wrap(err, "failed sending alert to apil")
+	}
+	for _, id := range *resp {
+		log.Infof("alert id %s", id)
+	}
+	return nil
+}
+
+func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
+	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsConfig) error {
+
+	var err error
+	ticker := time.NewTicker(1 * time.Second)
+
+	var cache []types.RuntimeAlert
+	var cacheMutex sync.Mutex
+
+	apiclient.BaseURL, err = url.Parse(apiConfig.Url)
+	if err != nil {
+		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.Url, err)
+	}
+
+	scenarStr, err := cwhub.GetUpstreamInstalledScenariosAsString()
+	if err != nil {
+		return errors.Wrap(err, "while fetching relevant scenarios for JWT auth")
+	}
+	password := strfmt.Password(apiConfig.Password)
+	t := &apiclient.JWTTransport{
+		MachineID: &apiConfig.Login,
+		Password:  &password,
+		Scenarios: scenarStr,
+	}
+	Client := apiclient.NewClient(t.Client())
 
 LOOP:
 	for {
 		select {
+		case <-ticker.C:
+			if len(cache) > 0 {
+				cacheMutex.Lock()
+				cachecopy := cache
+				newcache := make([]types.RuntimeAlert, 0)
+				cache = newcache
+				cacheMutex.Unlock()
+				if err := PushAlerts(cachecopy, Client); err != nil {
+					log.Errorf("while pushing to api : %s", err)
+				}
+			}
 		case <-outputsTomb.Dying():
-			log.Infof("Flushing outputs")
+			if len(cache) > 0 {
+				cacheMutex.Lock()
+				cachecopy := cache
+				newcache := make([]types.RuntimeAlert, 0)
+				cache = newcache
+				cacheMutex.Unlock()
+				if err := PushAlerts(cachecopy, Client); err != nil {
+					log.Errorf("while pushing leftovers to api : %s", err)
+				}
+			}
 			break LOOP
 		case event := <-overflow:
 			//if global simulation -> everything is simulation unless told otherwise
-			if cConfig.Crowdsec.SimulationConfig != nil && cConfig.Crowdsec.SimulationConfig.Simulation {
-				event.Overflow.Alert.Simulated = new(bool)
-				*event.Overflow.Alert.Simulated = true
-
+			if cConfig.Crowdsec.SimulationConfig != nil { //&&
+				if *cConfig.Crowdsec.SimulationConfig.Simulation {
+					*event.Overflow.Alert.Simulated = true
+				}
+				for _, scenarioName := range cConfig.Crowdsec.SimulationConfig.Exclusions {
+					if *event.Overflow.Alert.Scenario == scenarioName {
+						result := *event.Overflow.Alert.Simulated
+						*event.Overflow.Alert.Simulated = !result
+					}
+				}
 			}
 
 			if event.Overflow.Reprocess {
@@ -34,27 +133,22 @@ LOOP:
 			}
 
 			/* process post overflow parser nodes */
-			event, err := parser.Parse(poctx, event, ponodes)
+			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
-			//check scenarios in simulation
-			if cConfig.Crowdsec.SimulationConfig != nil {
-				for _, scenario_name := range cConfig.Crowdsec.SimulationConfig.Exclusions {
-					if *event.Overflow.Alert.Scenario == scenario_name {
-						*event.Overflow.Alert.Simulated = !*event.Overflow.Alert.Simulated
 
-					}
-				}
-			}
-
-			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+			if *event.Overflow.Alert.Scenario == "" && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 			} else {
-				log.Warningf("overflow : %s", spew.Sdump(event))
+				cacheMutex.Lock()
+				cache = append(cache, event.Overflow)
+				cacheMutex.Unlock()
 			}
 		}
 	}
+
+	ticker.Stop()
 	return nil
 
 }

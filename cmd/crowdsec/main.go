@@ -224,7 +224,7 @@ func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (
 	})
 
 	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, holders, buckets, *parsers.povfwctx, parsers.povfwnodes)
+		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.ApiClient.Credentials)
 		if err != nil {
 			log.Errorf("runPour error : %s", err)
 			return err
