@@ -34,7 +34,7 @@ Crowdsec is an open-source, lightweight software, detecting peers with aggressiv
 Processing is done in 5 steps:
  1. Read Data sources (log files, streams, trails, messages ...), normalize and enrich signals
  2. Matching those signals to behavior patterns, aka scenarios (*)
- 3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) (block, send some 403 and soon captcha, 2FA, etc.)
+ 3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) : a software component integrated into your applicative stack that supports various remediations such as block, return 403, and soon captcha, 2FA, etc.
  4. *(ONLY)* The aggressive IP, the scenario name triggered and a timestamp is then sent to our curation platform (to avoid poisoning & false positives)
  5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (which is used as an enrichment source in step1)
 
