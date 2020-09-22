@@ -136,7 +136,7 @@ API interaction:
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())
 	rootCmd.AddCommand(NewAlertsCmd())
-	rootCmd.AddCommand(NewInspectCmd())
+	//	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewKeysCmd())
 	rootCmd.AddCommand(NewWatchersCmd())
