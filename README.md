@@ -25,7 +25,7 @@
 
 ## <TL;DR>
 
-A modern behavior detection system, written in Golang. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs, a modern decoupled approach (detect here, remedy there) for Cloud/Containers/VM based infrastructures. Once detected you can remedy threats with various bouncers (block, 403, Captchas, etc.) and the IP blocked are shared among all users to further improve their security.
+A modern behavior detection system, written in Golang. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs, a modern decoupled approach (detect here, remedy there) for Cloud/Containers/VM based infrastructures. Once detected you can remedy threats with various bouncers (block, 403, Captchas, etc.) and the blocked IPs are shared among all users to further improve their security.
 
 ## About the crowdsec project
 
