@@ -170,10 +170,10 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 	return strret, Ok, Warning, Managed
 }
 
-func GetRelevantScenariosAsString() ([]string, error) {
+func GetUpstreamInstalledScenariosAsString() ([]string, error) {
 	var retStr []string
 
-	items, err := GetRelevantScenarios()
+	items, err := GetUpstreamInstalledScenarios()
 	if err != nil {
 		return nil, errors.Wrap(err, "while fetching scenarios")
 	}
@@ -183,7 +183,7 @@ func GetRelevantScenariosAsString() ([]string, error) {
 	return retStr, nil
 }
 
-func GetRelevantScenarios() ([]Item, error) {
+func GetUpstreamInstalledScenarios() ([]Item, error) {
 	var retItems []Item
 
 	if _, ok := hubIdx[SCENARIOS]; !ok {

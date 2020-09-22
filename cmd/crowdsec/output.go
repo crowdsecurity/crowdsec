@@ -75,7 +75,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.Url, err)
 	}
 
-	scenarStr, err := cwhub.GetRelevantScenariosAsString()
+	scenarStr, err := cwhub.GetUpstreamInstalledScenariosAsString()
 	if err != nil {
 		return errors.Wrap(err, "while fetching relevant scenarios for JWT auth")
 	}
