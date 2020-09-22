@@ -101,6 +101,11 @@ To list/add/delete decisions
 				scenarios = append(scenarios, scenario.Name)
 			}
 
+			//initialize cwhub
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
+			}
+
 			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)
 			t := &apiclient.JWTTransport{
 				MachineID: &csConfig.LapiClient.Credentials.Login,

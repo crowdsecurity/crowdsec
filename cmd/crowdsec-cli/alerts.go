@@ -11,10 +11,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Scenario, AlertID string
+var Scenario, AlertID, IP, Range, Since, Until, Source string
+var ActiveDecision bool
 
 func NewAlertsCmd() *cobra.Command {
-	/* ---- DECISIONS COMMAND */
+	/* ---- ALERTS COMMAND */
 	var cmdAlerts = &cobra.Command{
 		Use:   "alerts [action]",
 		Short: "Manage alerts",
@@ -33,6 +34,11 @@ To list/add/delete decisions
 			apiclient.BaseURL, err = url.Parse(csConfig.LapiClient.Credentials.Url)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())
+			}
+
+			//initialize cwhub
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
 			scenarios := []string{}
@@ -58,10 +64,10 @@ To list/add/delete decisions
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			activeDecision := true
 
 			filter := apiclient.AlertsListOpts{}
-			filter.ActiveDecisionEquals = &activeDecision
+			filter.ActiveDecisionEquals = &ActiveDecision
+
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
 			}
@@ -71,9 +77,28 @@ To list/add/delete decisions
 			if Type != "" {
 				filter.TypeEquals = &Type
 			}
-
 			if Scenario != "" {
 				filter.ScenarioEquals = &Scenario
+			}
+
+			if IP != "" {
+				filter.IPEquals = &IP
+			}
+
+			if Range != "" {
+				filter.RangeEquals = &Range
+			}
+
+			if Since != "" {
+				filter.SinceEquals = &Since
+			}
+
+			if Until != "" {
+				filter.SinceEquals = &Until
+			}
+
+			if Source != "" {
+				filter.SourceEquals = &Source
 			}
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
@@ -90,6 +115,12 @@ To list/add/delete decisions
 	cmdAlertsList.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
 	cmdAlertsList.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().StringVar(&Type, "type", "", "type of decision")
+	cmdAlertsList.Flags().StringVar(&Scenario, "scenario", "", "Scenario")
+	cmdAlertsList.Flags().StringVar(&IP, "ip", "", "Source ip")
+	cmdAlertsList.Flags().StringVar(&Range, "range", "", "Range source ip")
+	cmdAlertsList.Flags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlertsList.Flags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlertsList.Flags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	return cmdAlerts
