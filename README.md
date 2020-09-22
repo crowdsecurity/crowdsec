@@ -23,19 +23,32 @@
 :speech_balloon: <a href="https://gitter.im/crowdsec-project/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link">Gitter Chat</a>
 </p>
 
+## <TL;DR>
+
+A modern behavior detection system, written in Golang. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs, a modern decoupled approach (detect here, remedy there) for Cloud/Containers/VM based infrastructures. Once detected you can remedy threats with various bouncers (block, 403, Captchas, etc.) and the blocked IPs are shared among all users to further improve their security.
+
 ## About the crowdsec project
 
-Crowdsec is an open-source and lightweight software that allows you to detect peers with malevolent behaviors and block them from accessing your systems at various levels (infrastructural, system, applicative).
+Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user friendly design and assistance offers a low technical barrier of entry and nevertheless a high security gain.
 
-To achieve this, Crowdsec reads logs from different sources (files, streams ...) to parse, normalize and enrich them before matching them to threats patterns aka scenarios. 
+Processing is done in 5 steps:
+ 1. Read Data sources (log files, streams, trails, messages ...), normalize and enrich signals
+ 2. Matching those signals to behavior patterns, aka scenarios (*)
+ 3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) : a software component integrated into your applicative stack that supports various remediations such as block, return 403, and soon captcha, 2FA, etc.
+ 4. *(ONLY)* The aggressive IP, the scenario name triggered and a timestamp is then sent to our curation platform (to avoid poisoning & false positives)
+ 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (which is used as an enrichment source in step1)
 
-Crowdsec is a modular and plug-able framework, it ships a large variety of well known popular scenarios; users can choose what scenarios they want to be protected from as well as easily add new custom ones to better fit their environment.
+By detecting, blocking and sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
-Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers](https://hub.crowdsec.net/browse/#bouncers) at various levels (applicative, system, infrastructural) of your stack.
+(*) CrowdSec ships by default with scenario (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the [hub](https://hub.crowdsec.net). It is also very easy to adapt an existing one or create one yourself.
 
-One of the advantages of Crowdsec when compared to other solutions is its crowded aspect : Meta information about detected attacks (source IP, time and triggered scenario) are sent to a central API and then shared amongst all users.
+## What it is not
 
-Besides detecting and stopping attacks in real time based on your logs, it allows you to preemptively block known bad actors from accessing your information system.
+CrowdSec is not a SIEM, storing your logs (neither locally nor remotely).
+
+Your data stay in your premices and are only analyzed and forgotten.
+
+Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attemps.
 
 
 ## Install it !
