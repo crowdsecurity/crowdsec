@@ -135,9 +135,9 @@ func (du *DecisionUpdate) SetScope(s string) *DecisionUpdate {
 	return du
 }
 
-// SetTarget sets the target field.
-func (du *DecisionUpdate) SetTarget(s string) *DecisionUpdate {
-	du.mutation.SetTarget(s)
+// SetValue sets the value field.
+func (du *DecisionUpdate) SetValue(s string) *DecisionUpdate {
+	du.mutation.SetValue(s)
 	return du
 }
 
@@ -329,11 +329,11 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldScope,
 		})
 	}
-	if value, ok := du.mutation.Target(); ok {
+	if value, ok := du.mutation.Value(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: decision.FieldTarget,
+			Column: decision.FieldValue,
 		})
 	}
 	if value, ok := du.mutation.Origin(); ok {
@@ -502,9 +502,9 @@ func (duo *DecisionUpdateOne) SetScope(s string) *DecisionUpdateOne {
 	return duo
 }
 
-// SetTarget sets the target field.
-func (duo *DecisionUpdateOne) SetTarget(s string) *DecisionUpdateOne {
-	duo.mutation.SetTarget(s)
+// SetValue sets the value field.
+func (duo *DecisionUpdateOne) SetValue(s string) *DecisionUpdateOne {
+	duo.mutation.SetValue(s)
 	return duo
 }
 
@@ -694,11 +694,11 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (d *Decision, err err
 			Column: decision.FieldScope,
 		})
 	}
-	if value, ok := duo.mutation.Target(); ok {
+	if value, ok := duo.mutation.Value(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: decision.FieldTarget,
+			Column: decision.FieldValue,
 		})
 	}
 	if value, ok := duo.mutation.Origin(); ok {

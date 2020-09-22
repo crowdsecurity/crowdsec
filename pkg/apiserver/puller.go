@@ -78,7 +78,7 @@ func (p *Puller) Pull() {
 						SetType(alert["action"]).
 						SetStartIP(startIP).
 						SetEndIP(endIP).
-						SetTarget(alert["range_ip"]).
+						SetValue(alert["range_ip"]).
 						SetScope("ip").
 						SetOwner(alertCreated).Save(p.dbClient.CTX)
 					if err != nil {

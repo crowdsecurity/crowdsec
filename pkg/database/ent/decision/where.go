@@ -149,10 +149,10 @@ func Scope(v string) predicate.Decision {
 	})
 }
 
-// Target applies equality check predicate on the "target" field. It's identical to TargetEQ.
-func Target(v string) predicate.Decision {
+// Value applies equality check predicate on the "value" field. It's identical to ValueEQ.
+func Value(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldTarget), v))
+		s.Where(sql.EQ(s.C(FieldValue), v))
 	})
 }
 
@@ -904,22 +904,22 @@ func ScopeContainsFold(v string) predicate.Decision {
 	})
 }
 
-// TargetEQ applies the EQ predicate on the "target" field.
-func TargetEQ(v string) predicate.Decision {
+// ValueEQ applies the EQ predicate on the "value" field.
+func ValueEQ(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.EQ(s.C(FieldTarget), v))
+		s.Where(sql.EQ(s.C(FieldValue), v))
 	})
 }
 
-// TargetNEQ applies the NEQ predicate on the "target" field.
-func TargetNEQ(v string) predicate.Decision {
+// ValueNEQ applies the NEQ predicate on the "value" field.
+func ValueNEQ(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.NEQ(s.C(FieldTarget), v))
+		s.Where(sql.NEQ(s.C(FieldValue), v))
 	})
 }
 
-// TargetIn applies the In predicate on the "target" field.
-func TargetIn(vs ...string) predicate.Decision {
+// ValueIn applies the In predicate on the "value" field.
+func ValueIn(vs ...string) predicate.Decision {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -931,12 +931,12 @@ func TargetIn(vs ...string) predicate.Decision {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.In(s.C(FieldTarget), v...))
+		s.Where(sql.In(s.C(FieldValue), v...))
 	})
 }
 
-// TargetNotIn applies the NotIn predicate on the "target" field.
-func TargetNotIn(vs ...string) predicate.Decision {
+// ValueNotIn applies the NotIn predicate on the "value" field.
+func ValueNotIn(vs ...string) predicate.Decision {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -948,70 +948,70 @@ func TargetNotIn(vs ...string) predicate.Decision {
 			s.Where(sql.False())
 			return
 		}
-		s.Where(sql.NotIn(s.C(FieldTarget), v...))
+		s.Where(sql.NotIn(s.C(FieldValue), v...))
 	})
 }
 
-// TargetGT applies the GT predicate on the "target" field.
-func TargetGT(v string) predicate.Decision {
+// ValueGT applies the GT predicate on the "value" field.
+func ValueGT(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.GT(s.C(FieldTarget), v))
+		s.Where(sql.GT(s.C(FieldValue), v))
 	})
 }
 
-// TargetGTE applies the GTE predicate on the "target" field.
-func TargetGTE(v string) predicate.Decision {
+// ValueGTE applies the GTE predicate on the "value" field.
+func ValueGTE(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.GTE(s.C(FieldTarget), v))
+		s.Where(sql.GTE(s.C(FieldValue), v))
 	})
 }
 
-// TargetLT applies the LT predicate on the "target" field.
-func TargetLT(v string) predicate.Decision {
+// ValueLT applies the LT predicate on the "value" field.
+func ValueLT(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.LT(s.C(FieldTarget), v))
+		s.Where(sql.LT(s.C(FieldValue), v))
 	})
 }
 
-// TargetLTE applies the LTE predicate on the "target" field.
-func TargetLTE(v string) predicate.Decision {
+// ValueLTE applies the LTE predicate on the "value" field.
+func ValueLTE(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.LTE(s.C(FieldTarget), v))
+		s.Where(sql.LTE(s.C(FieldValue), v))
 	})
 }
 
-// TargetContains applies the Contains predicate on the "target" field.
-func TargetContains(v string) predicate.Decision {
+// ValueContains applies the Contains predicate on the "value" field.
+func ValueContains(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.Contains(s.C(FieldTarget), v))
+		s.Where(sql.Contains(s.C(FieldValue), v))
 	})
 }
 
-// TargetHasPrefix applies the HasPrefix predicate on the "target" field.
-func TargetHasPrefix(v string) predicate.Decision {
+// ValueHasPrefix applies the HasPrefix predicate on the "value" field.
+func ValueHasPrefix(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.HasPrefix(s.C(FieldTarget), v))
+		s.Where(sql.HasPrefix(s.C(FieldValue), v))
 	})
 }
 
-// TargetHasSuffix applies the HasSuffix predicate on the "target" field.
-func TargetHasSuffix(v string) predicate.Decision {
+// ValueHasSuffix applies the HasSuffix predicate on the "value" field.
+func ValueHasSuffix(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.HasSuffix(s.C(FieldTarget), v))
+		s.Where(sql.HasSuffix(s.C(FieldValue), v))
 	})
 }
 
-// TargetEqualFold applies the EqualFold predicate on the "target" field.
-func TargetEqualFold(v string) predicate.Decision {
+// ValueEqualFold applies the EqualFold predicate on the "value" field.
+func ValueEqualFold(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.EqualFold(s.C(FieldTarget), v))
+		s.Where(sql.EqualFold(s.C(FieldValue), v))
 	})
 }
 
-// TargetContainsFold applies the ContainsFold predicate on the "target" field.
-func TargetContainsFold(v string) predicate.Decision {
+// ValueContainsFold applies the ContainsFold predicate on the "value" field.
+func ValueContainsFold(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
-		s.Where(sql.ContainsFold(s.C(FieldTarget), v))
+		s.Where(sql.ContainsFold(s.C(FieldValue), v))
 	})
 }
 

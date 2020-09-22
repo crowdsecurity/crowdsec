@@ -2838,7 +2838,7 @@ type DecisionMutation struct {
 	end_ip        *int64
 	addend_ip     *int64
 	scope         *string
-	target        *string
+	value         *string
 	origin        *string
 	clearedFields map[string]struct{}
 	owner         *int
@@ -3290,41 +3290,41 @@ func (m *DecisionMutation) ResetScope() {
 	m.scope = nil
 }
 
-// SetTarget sets the target field.
-func (m *DecisionMutation) SetTarget(s string) {
-	m.target = &s
+// SetValue sets the value field.
+func (m *DecisionMutation) SetValue(s string) {
+	m.value = &s
 }
 
-// Target returns the target value in the mutation.
-func (m *DecisionMutation) Target() (r string, exists bool) {
-	v := m.target
+// Value returns the value value in the mutation.
+func (m *DecisionMutation) Value() (r string, exists bool) {
+	v := m.value
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldTarget returns the old target value of the Decision.
+// OldValue returns the old value value of the Decision.
 // If the Decision object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *DecisionMutation) OldTarget(ctx context.Context) (v string, err error) {
+func (m *DecisionMutation) OldValue(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldTarget is allowed only on UpdateOne operations")
+		return v, fmt.Errorf("OldValue is allowed only on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldTarget requires an ID field in the mutation")
+		return v, fmt.Errorf("OldValue requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTarget: %w", err)
+		return v, fmt.Errorf("querying old value for OldValue: %w", err)
 	}
-	return oldValue.Target, nil
+	return oldValue.Value, nil
 }
 
-// ResetTarget reset all changes of the "target" field.
-func (m *DecisionMutation) ResetTarget() {
-	m.target = nil
+// ResetValue reset all changes of the "value" field.
+func (m *DecisionMutation) ResetValue() {
+	m.value = nil
 }
 
 // SetOrigin sets the origin field.
@@ -3442,8 +3442,8 @@ func (m *DecisionMutation) Fields() []string {
 	if m.scope != nil {
 		fields = append(fields, decision.FieldScope)
 	}
-	if m.target != nil {
-		fields = append(fields, decision.FieldTarget)
+	if m.value != nil {
+		fields = append(fields, decision.FieldValue)
 	}
 	if m.origin != nil {
 		fields = append(fields, decision.FieldOrigin)
@@ -3472,8 +3472,8 @@ func (m *DecisionMutation) Field(name string) (ent.Value, bool) {
 		return m.EndIP()
 	case decision.FieldScope:
 		return m.Scope()
-	case decision.FieldTarget:
-		return m.Target()
+	case decision.FieldValue:
+		return m.Value()
 	case decision.FieldOrigin:
 		return m.Origin()
 	}
@@ -3501,8 +3501,8 @@ func (m *DecisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldEndIP(ctx)
 	case decision.FieldScope:
 		return m.OldScope(ctx)
-	case decision.FieldTarget:
-		return m.OldTarget(ctx)
+	case decision.FieldValue:
+		return m.OldValue(ctx)
 	case decision.FieldOrigin:
 		return m.OldOrigin(ctx)
 	}
@@ -3570,12 +3570,12 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetScope(v)
 		return nil
-	case decision.FieldTarget:
+	case decision.FieldValue:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTarget(v)
+		m.SetValue(v)
 		return nil
 	case decision.FieldOrigin:
 		v, ok := value.(string)
@@ -3700,8 +3700,8 @@ func (m *DecisionMutation) ResetField(name string) error {
 	case decision.FieldScope:
 		m.ResetScope()
 		return nil
-	case decision.FieldTarget:
-		m.ResetTarget()
+	case decision.FieldValue:
+		m.ResetValue()
 		return nil
 	case decision.FieldOrigin:
 		m.ResetOrigin()

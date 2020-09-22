@@ -72,7 +72,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 				StartIP:  decisionItem.StartIP,
 				EndIP:    decisionItem.EndIP,
 				Scope:    &decisionItem.Scope,
-				Target:   &decisionItem.Target,
+				Value:    &decisionItem.Value,
 				Origin:   &decisionItem.Origin,
 				ID:       int64(decisionItem.ID),
 			})
