@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -38,7 +39,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 		}
 	}
 	if len(dedupCache) != len(alerts) {
-		log.Infof("went from %d to %d alerts", len(alerts), len(dedupCache))
+		log.Debugf("went from %d to %d alerts", len(alerts), len(dedupCache))
 	}
 	return dedupCache, nil
 }
@@ -53,6 +54,9 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	resp, _, err := client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
 		return errors.Wrap(err, "failed sending alert to apil")
+	}
+	for _, id := range *resp {
+		log.Infof("alert id %s", id)
 	}
 	return nil
 }
@@ -70,11 +74,16 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.Url, err)
 	}
+
+	scenarStr, err := cwhub.GetRelevantScenariosAsString()
+	if err != nil {
+		return errors.Wrap(err, "while fetching relevant scenarios for JWT auth")
+	}
 	password := strfmt.Password(apiConfig.Password)
 	t := &apiclient.JWTTransport{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
-		Scenarios: []string{"aaaaaa", "bbbbb"},
+		Scenarios: scenarStr,
 	}
 	Client := apiclient.NewClient(t.Client())
 
@@ -87,17 +96,35 @@ LOOP:
 				cachecopy := cache
 				newcache := make([]types.RuntimeAlert, 0)
 				cache = newcache
+				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
 				}
-				cacheMutex.Unlock()
 			}
 		case <-outputsTomb.Dying():
+			if len(cache) > 0 {
+				cacheMutex.Lock()
+				cachecopy := cache
+				newcache := make([]types.RuntimeAlert, 0)
+				cache = newcache
+				cacheMutex.Unlock()
+				if err := PushAlerts(cachecopy, Client); err != nil {
+					log.Errorf("while pushing leftovers to api : %s", err)
+				}
+			}
 			break LOOP
 		case event := <-overflow:
 			//if global simulation -> everything is simulation unless told otherwise
-			if cConfig.Crowdsec.SimulationConfig.Simulation != nil && *cConfig.Crowdsec.SimulationConfig.Simulation {
-				*event.Overflow.Alert.Simulated = true
+			if cConfig.Crowdsec.SimulationConfig != nil { //&&
+				if *cConfig.Crowdsec.SimulationConfig.Simulation {
+					*event.Overflow.Alert.Simulated = true
+				}
+				for _, scenarioName := range cConfig.Crowdsec.SimulationConfig.Exclusions {
+					if *event.Overflow.Alert.Scenario == scenarioName {
+						result := *event.Overflow.Alert.Simulated
+						*event.Overflow.Alert.Simulated = !result
+					}
+				}
 			}
 
 			if event.Overflow.Reprocess {
@@ -109,15 +136,6 @@ LOOP:
 			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed : %s", err)
-			}
-			//check scenarios in simulation
-			if cConfig.Crowdsec.SimulationConfig != nil {
-				for _, scenarioName := range cConfig.Crowdsec.SimulationConfig.Exclusions {
-					if *event.Overflow.Alert.Scenario == scenarioName {
-						result := *event.Overflow.Alert.Simulated
-						*event.Overflow.Alert.Simulated = !result
-					}
-				}
 			}
 
 			if *event.Overflow.Alert.Scenario == "" && event.Overflow.Mapkey != "" {
