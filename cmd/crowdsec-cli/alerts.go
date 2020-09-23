@@ -58,7 +58,7 @@ To list/add/delete decisions
 
 	var cmdAlertsList = &cobra.Command{
 		Use:     "list [filter]",
-		Short:   "List alerts",
+		Short:   "List alertsxx",
 		Long:    `List alerts from the LAPI`,
 		Example: `cscli alerts list --scope ip --value 1.2.3.4 --type ban"`,
 		Args:    cobra.MaximumNArgs(1),
