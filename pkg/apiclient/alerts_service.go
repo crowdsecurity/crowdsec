@@ -85,7 +85,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("alerts/?%s", params.Encode())
+	u := fmt.Sprintf("alerts?%s", params.Encode())
 
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
