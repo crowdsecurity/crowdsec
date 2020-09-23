@@ -37,7 +37,7 @@ you should [update cscli](./cscli_update.md).
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if cmd.Name() == "inspect" {
+			if cmd.Name() == "inspect" || cmd.Name() == "list" {
 				return
 			}
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
@@ -125,6 +125,21 @@ you should [update cscli](./cscli_update.md).
 	}
 	cmdCollectionInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
 	cmdCollection.AddCommand(cmdCollectionInspect)
+
+	var cmdCollectionList = &cobra.Command{
+		Use:   "list [config]",
+		Short: "List all collection or given one",
+		Long:  `List all collection or given one`,
+		Example: `cscli collection list
+cscli collection list crowdsecurity/xxx`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+				log.Fatalf("failed to get Hub index : %v", err)
+			}
+			ListItem(cwhub.COLLECTIONS, args)
+		},
+	}
+	cmdCollection.AddCommand(cmdCollectionList)
 
 	return cmdCollection
 }

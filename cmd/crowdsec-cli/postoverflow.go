@@ -39,7 +39,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			if cmd.Name() == "inspect" {
+			if cmd.Name() == "inspect" || cmd.Name() == "list" {
 				return
 			}
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
@@ -126,6 +126,21 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		},
 	}
 	cmdPostOverflow.AddCommand(cmdPostOverflowInspect)
+
+	var cmdPostOverflowList = &cobra.Command{
+		Use:   "list [config]",
+		Short: "List all postoverflow or given one",
+		Long:  `List all postoverflow or given one`,
+		Example: `cscli postoverflow list
+cscli postoverflow list crowdsecurity/xxx`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+				log.Fatalf("failed to get Hub index : %v", err)
+			}
+			ListItem(cwhub.PARSERS_OVFLW, args)
+		},
+	}
+	cmdPostOverflow.AddCommand(cmdPostOverflowList)
 
 	return cmdPostOverflow
 }
