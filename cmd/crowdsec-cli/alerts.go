@@ -66,7 +66,7 @@ To list/add/delete decisions
 			var err error
 
 			filter := apiclient.AlertsListOpts{}
-			filter.ActiveDecisionEquals = &ActiveDecision
+			//			filter.ActiveDecisionEquals = &ActiveDecision
 
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
@@ -127,13 +127,13 @@ To list/add/delete decisions
 		Use:     "delete [filter]",
 		Short:   "Delete alerts",
 		Long:    `Delete alerts from the LAPI`,
-		Example: `cscli alerts delete --scope ip --value 1.2.3.4 --type ban"`,
+		Example: `cscli alerts delete --scope ip --value 1.2.3.4 --type ban --active_decision"`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
 			filter := apiclient.AlertsDeleteOpts{}
-			filter.ActiveDecisionEquals = &ActiveDecision
+			//			filter.ActiveDecisionEquals = &ActiveDecision
 
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
