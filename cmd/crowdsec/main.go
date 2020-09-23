@@ -324,7 +324,7 @@ func main() {
 
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
-		registerPrometheus(cConfig.Prometheus.Level)
+		go registerPrometheus(cConfig.Prometheus.Level)
 	}
 	err = exprhelpers.Init()
 	if err != nil {

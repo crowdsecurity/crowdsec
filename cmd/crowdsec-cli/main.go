@@ -26,6 +26,8 @@ var removeAll bool
 var purgeRemove bool
 var upgradeAll bool
 
+var prometheusURL string
+
 func initConfig() {
 
 	csConfig = csconfig.NewConfig()

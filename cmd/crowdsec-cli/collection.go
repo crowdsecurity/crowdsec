@@ -123,6 +123,7 @@ you should [update cscli](./cscli_update.md).
 			InspectItem(args[0], cwhub.COLLECTIONS)
 		},
 	}
+	cmdCollectionInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
 	cmdCollection.AddCommand(cmdCollectionInspect)
 
 	return cmdCollection
