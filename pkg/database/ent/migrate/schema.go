@@ -78,7 +78,7 @@ var (
 		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
 		{Name: "end_ip", Type: field.TypeInt64, Nullable: true},
 		{Name: "scope", Type: field.TypeString},
-		{Name: "target", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}

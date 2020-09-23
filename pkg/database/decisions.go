@@ -7,22 +7,44 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"strconv"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
+	var err error
+	var startIP, endIP int64
 	for param, value := range filter {
 		switch param {
 		case "scope":
 			query = query.Where(decision.ScopeEQ(value[0]))
 		case "value":
-			query = query.Where(decision.TargetEQ(value[0]))
+			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
 			query = query.Where(decision.TypeEQ(value[0]))
+		case "ip":
+			isValidIP := IsIpv4(value[0])
+			if !isValidIP {
+				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
+			}
+			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+			if err != nil {
+				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
+		case "range":
+			startIP, endIP, err = GetIpsFromIpRange(value[0])
+			if err != nil {
+				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
 		default:
 			return query, errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
+	}
+
+	if startIP != 0 && endIP != 0 {
+		query = query.Where(decision.And(
+			decision.StartIPGTE(startIP),
+			decision.EndIPLTE(endIP),
+		))
 	}
 	return query, nil
 }
@@ -46,11 +68,10 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldType,
 		decision.FieldStartIP,
 		decision.FieldEndIP,
-		decision.FieldTarget,
+		decision.FieldValue,
 		decision.FieldScope,
 		decision.FieldOrigin,
 	).Scan(c.CTX, &data)
-	log.Infof("decisions : %#v", data)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "creating decision failed")
 	}
@@ -93,6 +114,7 @@ func (c *Client) DeleteDecisionById(decisionId int) error {
 
 func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
+	var startIP, endIP int64
 
 	decisions := c.Ent.Decision.Delete()
 
@@ -101,11 +123,32 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		case "scope":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
 		case "value":
-			decisions = decisions.Where(decision.TargetEQ(value[0]))
+			decisions = decisions.Where(decision.ValueEQ(value[0]))
 		case "type":
 			decisions = decisions.Where(decision.TypeEQ(value[0]))
+		case "ip":
+			isValidIP := IsIpv4(value[0])
+			if !isValidIP {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
+			}
+			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+			if err != nil {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
+		case "range":
+			startIP, endIP, err = GetIpsFromIpRange(value[0])
+			if err != nil {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
 		default:
 			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+		}
+
+		if startIP != 0 && endIP != 0 {
+			decisions = decisions.Where(decision.And(
+				decision.StartIPGTE(startIP),
+				decision.EndIPLTE(endIP),
+			))
 		}
 	}
 

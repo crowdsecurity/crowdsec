@@ -83,7 +83,7 @@ To list/add/delete api keys
 					} else {
 						revoked = "pending"
 					}
-					fmt.Printf("%s %s %s %s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)))
+					fmt.Printf("%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)))
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)

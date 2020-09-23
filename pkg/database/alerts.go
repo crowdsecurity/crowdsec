@@ -91,7 +91,7 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 					SetType(*decisionItem.Type).
 					SetStartIP(decisionItem.StartIP).
 					SetEndIP(decisionItem.EndIP).
-					SetTarget(*decisionItem.Target).
+					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin)
 			}
@@ -256,7 +256,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 				SetType(*decisionItem.Type).
 				SetStartIP(decisionItem.StartIP).
 				SetEndIP(decisionItem.EndIP).
-				SetTarget(*decisionItem.Target).
+				SetValue(*decisionItem.Value).
 				SetScope(*decisionItem.Scope).
 				SetOrigin(*decisionItem.Origin).
 				SetOwner(alertCreated)
@@ -273,8 +273,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	var err error
-	var startIP int64
-	var endIP int64
+	var startIP, endIP int64
 	var hasActiveDecision bool
 	for param, value := range filter {
 		switch param {
@@ -326,7 +325,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	if startIP != 0 && endIP != 0 {
 		alerts = alerts.Where(alert.And(
 			alert.HasDecisionsWith(decision.StartIPGTE(startIP)),
-			alert.HasDecisionsWith(decision.EndIP(endIP)),
+			alert.HasDecisionsWith(decision.EndIPLTE(endIP)),
 		))
 	}
 	return alerts, nil
