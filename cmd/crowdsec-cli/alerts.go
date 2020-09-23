@@ -123,5 +123,69 @@ To list/add/delete decisions
 	cmdAlertsList.Flags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
+	var cmdAlertsDelete = &cobra.Command{
+		Use:     "list [filter]",
+		Short:   "List alerts",
+		Long:    `List alerts from the LAPI`,
+		Example: `cscli alerts list --scope ip --value 1.2.3.4 --type ban"`,
+		Args:    cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+
+			filter := apiclient.AlertsDeleteOpts{}
+			filter.ActiveDecisionEquals = &ActiveDecision
+
+			if Scope != "" {
+				filter.ScopeEquals = &Scope
+			}
+			if Value != "" {
+				filter.ValueEquals = &Value
+			}
+			if Type != "" {
+				filter.TypeEquals = &Type
+			}
+			if Scenario != "" {
+				filter.ScenarioEquals = &Scenario
+			}
+
+			if IP != "" {
+				filter.IPEquals = &IP
+			}
+
+			if Range != "" {
+				filter.RangeEquals = &Range
+			}
+
+			if Since != "" {
+				filter.SinceEquals = &Since
+			}
+
+			if Until != "" {
+				filter.SinceEquals = &Until
+			}
+
+			if Source != "" {
+				filter.SourceEquals = &Source
+			}
+
+			alerts, _, err := Client.Alerts.Delete(context.Background(), filter)
+			if err != nil {
+				log.Fatalf("Unable to list alerts : %v", err.Error())
+			}
+			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
+
+		},
+	}
+	cmdAlertsDelete.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
+	cmdAlertsDelete.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
+	cmdAlertsDelete.Flags().StringVar(&Type, "type", "", "type of decision")
+	cmdAlertsDelete.Flags().StringVar(&Scenario, "scenario", "", "Scenario")
+	cmdAlertsDelete.Flags().StringVar(&IP, "ip", "", "Source ip")
+	cmdAlertsDelete.Flags().StringVar(&Range, "range", "", "Range source ip")
+	cmdAlertsDelete.Flags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlertsDelete.Flags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlertsDelete.Flags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
+	cmdAlerts.AddCommand(cmdAlertsDelete)
+
 	return cmdAlerts
 }

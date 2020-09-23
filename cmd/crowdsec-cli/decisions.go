@@ -25,8 +25,6 @@ var (
 	Value      string
 	Type       string
 	DecisionID string
-	IP         string
-	Range      string
 )
 var DeleteAll bool
 var Client *apiclient.ApiClient
@@ -227,7 +225,6 @@ Args :
 				}
 				ipRange = value
 			}
-
 			decision := models.Decision{
 				Duration: &duration,
 				Scope:    &scope,

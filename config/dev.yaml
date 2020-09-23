@@ -20,13 +20,13 @@ crowdsec_service:
 cscli:
   hub_dir: ./config/crowdsec-cli/hub
   output: human
-  index_path: ./config/crowdsec-cli/.index.json
+  index_path: ../../config/.index.json
   install_dir: ./config/
   data_dir: ./data/
 localapi_service:
   listen_uri: 127.0.0.1:8080
 api_client:
-#  credentials_path: ./lapi-secrets.yaml
+  credentials_path: ../../config/lapi-secrets.yaml
 online_api_client:
 #  credentials_path: ./online-api-secrets.yaml
 db_config:
