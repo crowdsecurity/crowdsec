@@ -168,7 +168,7 @@ To list/add/delete decisions
 				filter.SourceEquals = &Source
 			}
 
-			if len(args) == 0 {
+			if Scope == "" && Value == "" && Type == "" && Scenario == "" && IP == "" && Range == "" && Until == "" && Source == "" {
 				log.Infof("No alert deleted")
 				return
 			}
