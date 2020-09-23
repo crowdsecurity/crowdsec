@@ -247,6 +247,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
+				continue
 			}
 			ival := int(fval)
 
@@ -254,6 +255,10 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			case "cs_reader_hits_total":
 				if _, ok := stats[source]; !ok {
 					stats[source] = make(map[string]int)
+					stats[source]["parsed"] = 0
+					stats[source]["reads"] = 0
+					stats[source]["unparsed"] = 0
+					stats[source]["hits"] = 0
 				}
 				stats[source]["reads"] += ival
 			case "cs_parser_hits_ok_total":
@@ -292,6 +297,12 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 func GetScenarioMetric(url string, itemName string) map[string]int {
 	stats := make(map[string]int)
 
+	stats["instanciation"] = 0
+	stats["curr_count"] = 0
+	stats["overflow"] = 0
+	stats["pour"] = 0
+	stats["underflow"] = 0
+
 	result := GetPrometheusMetric(url)
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -311,6 +322,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
+				continue
 			}
 			ival := int(fval)
 
@@ -361,21 +373,31 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 }
 
 func ShowScenarioMetric(itemName string, metrics map[string]int) {
-	fmt.Printf(" - (Scenario) %s: \n", itemName)
+	if metrics["instanciation"] == 0 {
+		return
+	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
 	table.Append([]string{fmt.Sprintf("%d", metrics["curr_count"]), fmt.Sprintf("%d", metrics["overflow"]), fmt.Sprintf("%d", metrics["instanciation"]), fmt.Sprintf("%d", metrics["pour"]), fmt.Sprintf("%d", metrics["underflow"])})
+
+	fmt.Printf(" - (Scenario) %s: \n", itemName)
 	table.Render()
 	fmt.Println()
 }
 
 func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
-	fmt.Printf(" - (Parser) %s: \n", itemName)
+	skip := true
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed"})
 	for source, stats := range metrics {
-		table.Append([]string{source, fmt.Sprintf("%d", stats["read"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
+		if stats["read"] > 0 {
+			table.Append([]string{source, fmt.Sprintf("%d", stats["read"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
+			skip = false
+		}
 	}
-	table.Render()
-	fmt.Println()
+	if !skip {
+		fmt.Printf(" - (Parser) %s: \n", itemName)
+		table.Render()
+		fmt.Println()
+	}
 }
