@@ -170,6 +170,7 @@ To list/add/delete decisions
 
 			if len(args) == 0 {
 				log.Infof("No alert deleted")
+				return
 			}
 
 			alerts, _, err := Client.Alerts.Delete(context.Background(), filter)
