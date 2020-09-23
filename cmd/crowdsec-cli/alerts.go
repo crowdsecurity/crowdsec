@@ -124,10 +124,10 @@ To list/add/delete decisions
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var cmdAlertsDelete = &cobra.Command{
-		Use:     "list [filter]",
-		Short:   "List alerts",
-		Long:    `List alerts from the LAPI`,
-		Example: `cscli alerts list --scope ip --value 1.2.3.4 --type ban"`,
+		Use:     "delete [filter]",
+		Short:   "Delete alerts",
+		Long:    `Delete alerts from the LAPI`,
+		Example: `cscli alerts delete --scope ip --value 1.2.3.4 --type ban"`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -168,9 +168,13 @@ To list/add/delete decisions
 				filter.SourceEquals = &Source
 			}
 
+			if len(args) == 0 {
+				log.Infof("No alert deleted")
+			}
+
 			alerts, _, err := Client.Alerts.Delete(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list alerts : %v", err.Error())
+				log.Fatalf("Unable to delete alerts : %v", err.Error())
 			}
 			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
 
