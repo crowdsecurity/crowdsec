@@ -67,12 +67,12 @@ func setHubBranch() error {
 
 func ListItem(itemType string, args []string) {
 
-	var pkgst []map[string]string
+	var hubStatus []map[string]string
 
 	if len(args) == 1 {
-		pkgst = cwhub.HubStatus(itemType, args[0], listAll)
+		hubStatus = cwhub.HubStatus(itemType, args[0], listAll)
 	} else {
-		pkgst = cwhub.HubStatus(itemType, "", listAll)
+		hubStatus = cwhub.HubStatus(itemType, "", listAll)
 	}
 
 	if csConfig.Cscli.Output == "human" {
@@ -84,18 +84,18 @@ func ListItem(itemType string, args []string) {
 		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 		table.SetAlignment(tablewriter.ALIGN_LEFT)
 		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-		for _, v := range pkgst {
+		for _, v := range hubStatus {
 			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
 		}
 		table.Render()
 	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(pkgst, "", " ")
+		x, err := json.MarshalIndent(hubStatus, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
-		for _, v := range pkgst {
+		for _, v := range hubStatus {
 			fmt.Printf("%s %s\n", v["name"], v["description"])
 		}
 	}
