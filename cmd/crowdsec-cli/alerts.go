@@ -22,7 +22,7 @@ func NewAlertsCmd() *cobra.Command {
 		Long: `
 Alerts Management.
 
-To list/add/delete decisions
+To list/add/delete alerts
 `,
 		Example: `cscli alerts [action] [filter]`,
 		Args:    cobra.MinimumNArgs(1),
@@ -133,7 +133,7 @@ To list/add/delete decisions
 			var err error
 
 			filter := apiclient.AlertsDeleteOpts{}
-			//			filter.ActiveDecisionEquals = &ActiveDecision
+			filter.ActiveDecisionEquals = &ActiveDecision
 
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
