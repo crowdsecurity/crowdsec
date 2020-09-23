@@ -61,7 +61,7 @@ To list/add/delete decisions
 		Short:   "List alertsxx",
 		Long:    `List alerts from the LAPI`,
 		Example: `cscli alerts list --scope ip --value 1.2.3.4 --type ban"`,
-		Args:    cobra.MaximumNArgs(1),
+		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
