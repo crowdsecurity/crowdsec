@@ -28,7 +28,7 @@ import (
 
 var (
 	metabaseImage  = "metabase/metabase"
-	metabaseDbURI  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db2.zip"
+	metabaseDbURI  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
 	metabaseDbPath = "/var/lib/crowdsec/data"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
@@ -50,9 +50,6 @@ func NewDashboardCmd() *cobra.Command {
 		Short: "Start a dashboard (metabase) container.",
 		Long:  `Start a metabase container exposing dashboard and metrics.`,
 		Args:  cobra.ExactArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-
-		},
 		Example: `
 cscli dashboard setup
 cscli dashboard setup --force
@@ -143,6 +140,11 @@ cscli dashboard remove --force
 			}
 			if err := removeMetabase(); err != nil {
 				log.Fatalf("Failed to remove metabase container : %s", err)
+			}
+			if force {
+				if err := removeMetabaseImage(); err != nil {
+					log.Fatalf("Failed to stop metabase container : %s", err)
+				}
 			}
 		},
 	}
@@ -350,6 +352,21 @@ func removeMetabase() error {
 	log.Printf("Removing docker metabase %s", metabaseContainerID)
 	if err := cli.ContainerRemove(ctx, metabaseContainerID, types.ContainerRemoveOptions{}); err != nil {
 		return fmt.Errorf("failed remove container %s : %s", metabaseContainerID, err)
+	}
+
+	return nil
+}
+
+func removeMetabaseImage() error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+
+	log.Printf("Removing docker image %s", metabaseImage)
+	if _, err := cli.ImageRemove(ctx, metabaseImage, types.ImageRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove %s image: %s", metabaseImage, err)
 	}
 
 	return nil
