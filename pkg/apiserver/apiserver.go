@@ -30,7 +30,7 @@ type APIServer struct {
 	controller  *controllers.Controller
 }
 
-func NewServer(config *csconfig.LapiServiceCfg) (*APIServer, error) {
+func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
 		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
@@ -44,7 +44,7 @@ func NewServer(config *csconfig.LapiServiceCfg) (*APIServer, error) {
 
 	controller := controllers.New(ctx, dbClient, middleware.APIKey.HeaderName)
 	return &APIServer{
-		url:         config.ListenUri,
+		url:         config.ListenURI,
 		certPath:    config.CertFilePath,
 		logFile:     fmt.Sprintf("%s/api.log", config.LogDir),
 		dbClient:    dbClient,

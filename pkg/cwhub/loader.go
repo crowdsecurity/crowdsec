@@ -291,8 +291,8 @@ func CollecDepsCheck(v *Item) error {
 
 func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
 	hubdir = cscli.HubDir
-	installdir = cscli.InstallDir
-	indexpath = cscli.IndexPath
+	installdir = cscli.ConfigDir
+	indexpath = cscli.HubIndexFile
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
@@ -321,7 +321,7 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	for _, dir := range []string{cscli.InstallDir, cscli.HubDir} {
+	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
 		log.Debugf("scanning %s", dir)
 		if err := SyncDir(cscli, dir); err != nil {
 			return fmt.Errorf("failed to scan %s : %s", dir, err)
@@ -333,8 +333,8 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 
 func GetHubIdx(cscli *csconfig.CscliCfg) error {
 
-	log.Debugf("loading hub idx %s", cscli.IndexPath)
-	bidx, err := ioutil.ReadFile(cscli.IndexPath)
+	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
+	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)

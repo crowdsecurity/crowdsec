@@ -27,7 +27,9 @@ func removeFromExclusion(name string) error {
 }
 
 func enableGlobalSimulation() error {
-	*csConfig.Crowdsec.SimulationConfig.Simulation = true
+	tmpBool := true
+
+	csConfig.Crowdsec.SimulationConfig.Simulation = &tmpBool
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 
 	if err := dumpSimulationFile(); err != nil {
@@ -53,7 +55,9 @@ func dumpSimulationFile() error {
 }
 
 func disableGlobalSimulation() error {
-	*csConfig.Crowdsec.SimulationConfig.Simulation = false
+	tmpBool := false
+
+	csConfig.Crowdsec.SimulationConfig.Simulation = &tmpBool
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 	newConfigSim, err := yaml.Marshal(csConfig.Crowdsec.SimulationConfig)
 	if err != nil {

@@ -224,7 +224,7 @@ func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (
 	})
 
 	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.ApiClient.Credentials)
+		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
 		if err != nil {
 			log.Errorf("runPour error : %s", err)
 			return err
@@ -269,13 +269,13 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	}
 
 	if *printDebug {
-		config.Daemon.LogLevel = log.DebugLevel
+		config.Common.LogLevel = log.DebugLevel
 	}
 	if *printInfo {
-		config.Daemon.LogLevel = log.InfoLevel
+		config.Common.LogLevel = log.InfoLevel
 	}
 	if *printTrace {
-		config.Daemon.LogLevel = log.TraceLevel
+		config.Common.LogLevel = log.TraceLevel
 	}
 
 	if *testMode {
@@ -296,17 +296,17 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Daemon.LogMedia, cConfig.Daemon.LogDir, cConfig.Daemon.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, cConfig.Common.LogLevel); err != nil {
 		log.Fatal(err.Error())
 	}
 
 	daemonCTX := &daemon.Context{
-		PidFileName: cConfig.Daemon.PidDir + "/crowdsec.pid",
+		PidFileName: cConfig.Common.PidDir + "/crowdsec.pid",
 		PidFilePerm: 0644,
 		WorkDir:     "./",
 		Umask:       027,
 	}
-	if cConfig.Daemon.Daemonize {
+	if cConfig.Common.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
@@ -384,7 +384,7 @@ func main() {
 		log.Fatalf("While starting to read : %s", err)
 	}
 
-	if cConfig.Daemon != nil {
+	if cConfig.Common != nil {
 		if err = serveOneTimeRun(); err != nil {
 			log.Errorf(err.Error())
 		} else {

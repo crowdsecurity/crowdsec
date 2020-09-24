@@ -150,18 +150,18 @@ func test_prepenv() *csconfig.GlobalConfig {
 
 	var cfg = csconfig.NewConfig()
 	cfg.Cscli = &csconfig.CscliCfg{}
-	cfg.Cscli.InstallDir, _ = filepath.Abs("./install")
+	cfg.Cscli.ConfigDir, _ = filepath.Abs("./install")
 	cfg.Cscli.HubDir, _ = filepath.Abs("./hubdir")
-	cfg.Cscli.IndexPath = filepath.Clean("./hubdir/.index.json")
+	cfg.Cscli.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.RemoveAll(cfg.Cscli.InstallDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Cscli.InstallDir, err)
+	if err := os.RemoveAll(cfg.Cscli.ConfigDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Cscli.ConfigDir, err)
 	}
 
-	if err := os.MkdirAll(cfg.Cscli.InstallDir, 0700); err != nil {
+	if err := os.MkdirAll(cfg.Cscli.ConfigDir, 0700); err != nil {
 		log.Fatalf("mkdir : %s", err)
 	}
 

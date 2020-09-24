@@ -28,12 +28,12 @@ To list/add/delete alerts
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-			if csConfig.LapiClient == nil {
+			if csConfig.API.Client == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.LapiClient.Credentials.Url)
+			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())
+				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
 			}
 
 			//initialize cwhub
@@ -45,10 +45,9 @@ To list/add/delete alerts
 			if err != nil {
 				log.Fatalf("Failed to load the list of local scenarios : %s", err)
 			}
-
-			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)
+			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			t := &apiclient.JWTTransport{
-				MachineID: &csConfig.LapiClient.Credentials.Login,
+				MachineID: &csConfig.API.Client.Credentials.Login,
 				Password:  &password,
 				Scenarios: scenarios,
 			}
