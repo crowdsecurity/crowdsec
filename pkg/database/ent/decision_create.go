@@ -101,9 +101,15 @@ func (dc *DecisionCreate) SetScope(s string) *DecisionCreate {
 	return dc
 }
 
-// SetTarget sets the target field.
-func (dc *DecisionCreate) SetTarget(s string) *DecisionCreate {
-	dc.mutation.SetTarget(s)
+// SetValue sets the value field.
+func (dc *DecisionCreate) SetValue(s string) *DecisionCreate {
+	dc.mutation.SetValue(s)
+	return dc
+}
+
+// SetOrigin sets the origin field.
+func (dc *DecisionCreate) SetOrigin(s string) *DecisionCreate {
+	dc.mutation.SetOrigin(s)
 	return dc
 }
 
@@ -193,8 +199,11 @@ func (dc *DecisionCreate) preSave() error {
 	if _, ok := dc.mutation.Scope(); !ok {
 		return &ValidationError{Name: "scope", err: errors.New("ent: missing required field \"scope\"")}
 	}
-	if _, ok := dc.mutation.Target(); !ok {
-		return &ValidationError{Name: "target", err: errors.New("ent: missing required field \"target\"")}
+	if _, ok := dc.mutation.Value(); !ok {
+		return &ValidationError{Name: "value", err: errors.New("ent: missing required field \"value\"")}
+	}
+	if _, ok := dc.mutation.Origin(); !ok {
+		return &ValidationError{Name: "origin", err: errors.New("ent: missing required field \"origin\"")}
 	}
 	return nil
 }
@@ -287,13 +296,21 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 		})
 		d.Scope = value
 	}
-	if value, ok := dc.mutation.Target(); ok {
+	if value, ok := dc.mutation.Value(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: decision.FieldTarget,
+			Column: decision.FieldValue,
 		})
-		d.Target = value
+		d.Value = value
+	}
+	if value, ok := dc.mutation.Origin(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: decision.FieldOrigin,
+		})
+		d.Origin = value
 	}
 	if nodes := dc.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

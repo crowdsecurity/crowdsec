@@ -229,7 +229,7 @@ func NewMetricsCmd() *cobra.Command {
 			ShowPrometheus(purl)
 		},
 	}
-	cmdMetrics.PersistentFlags().StringVarP(&purl, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
 
 	return cmdMetrics
 }

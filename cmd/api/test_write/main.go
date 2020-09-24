@@ -77,7 +77,6 @@ type Metrics struct {
 
 func (m *Machine) CreateAlert() *models.Alert {
 
-	guid := xid.New()
 	ip := IPAddressTemplate[rand.Intn(len(IPAddressTemplate))]
 	ipAddr := fmt.Sprintf(ip, rand.Intn(254))
 	ipRange := fmt.Sprintf(ip+"/24", 0)
@@ -93,15 +92,14 @@ func (m *Machine) CreateAlert() *models.Alert {
 	scope := "ip"
 	decisionType := "ban"
 	decision := &models.Decision{
-		DecisionID: guid.String(),
-		Duration:   &duration,
-		EndIP:      endIP,
-		StartIP:    startIP,
-		Origin:     &origin,
-		Scenario:   &scenario,
-		Scope:      &scope,
-		Target:     &ipAddr,
-		Type:       &decisionType,
+		Duration: &duration,
+		EndIP:    endIP,
+		StartIP:  startIP,
+		Origin:   &origin,
+		Scenario: &scenario,
+		Scope:    &scope,
+		Value:    &ipAddr,
+		Type:     &decisionType,
 	}
 
 	events := []*models.Event{}
@@ -134,7 +132,6 @@ func (m *Machine) CreateAlert() *models.Alert {
 	stopAt := time.Now().Format(time.RFC3339)
 
 	alert := &models.Alert{
-		AlertID:         xid.New().String(),
 		Capacity:        &capacity,
 		Decisions:       []*models.Decision{decision},
 		Events:          events,

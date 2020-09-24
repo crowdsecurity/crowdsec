@@ -83,7 +83,7 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 			for i, decisionItem := range alertItem.Decisions {
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
+					return []string{}, errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%v' : %s", decisionItem.Duration, err))
 				}
 				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(time.Now().Add(duration)).
@@ -91,8 +91,9 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 					SetType(*decisionItem.Type).
 					SetStartIP(decisionItem.StartIP).
 					SetEndIP(decisionItem.EndIP).
-					SetTarget(*decisionItem.Target).
-					SetScope(*decisionItem.Scope)
+					SetValue(*decisionItem.Value).
+					SetScope(*decisionItem.Scope).
+					SetOrigin(*decisionItem.Origin)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -104,7 +105,6 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 		alertB := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
-			SetBucketId(alertItem.AlertID).
 			SetMessage(*alertItem.Message).
 			SetEventsCount(*alertItem.EventsCount).
 			SetStartedAt(startAtTime).
@@ -169,18 +169,17 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%s': %s", alertItem.StartAt, err))
+		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%v': %s", alertItem.StartAt, err))
 	}
 
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%s': %s", alertItem.StopAt, err))
+		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%v': %s", alertItem.StopAt, err))
 	}
 
 	alert := c.Ent.Alert.
 		Create().
 		SetScenario(*alertItem.Scenario).
-		SetBucketId(alertItem.AlertID).
 		SetMessage(*alertItem.Message).
 		SetEventsCount(*alertItem.EventsCount).
 		SetStartedAt(startAtTime).
@@ -211,11 +210,11 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		for i, eventItem := range alertItem.Events {
 			ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 			if err != nil {
-				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%s' : %s", eventItem.Timestamp, err))
+				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%v' : %s", eventItem.Timestamp, err))
 			}
 			marshallMetas, err := json.Marshal(eventItem.Meta)
 			if err != nil {
-				return "", errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%s' : %s", eventItem.Meta, err))
+				return "", errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%v' : %s", eventItem.Meta, err))
 			}
 
 			bulk[i] = c.Ent.Event.Create().
@@ -249,7 +248,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 		for i, decisionItem := range alertItem.Decisions {
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%s' : %s", decisionItem.Duration, err))
+				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%v' : %s", decisionItem.Duration, err))
 			}
 			bulk[i] = c.Ent.Decision.Create().
 				SetUntil(time.Now().Add(duration)).
@@ -257,8 +256,9 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 				SetType(*decisionItem.Type).
 				SetStartIP(decisionItem.StartIP).
 				SetEndIP(decisionItem.EndIP).
-				SetTarget(*decisionItem.Target).
+				SetValue(*decisionItem.Value).
 				SetScope(*decisionItem.Scope).
+				SetOrigin(*decisionItem.Origin).
 				SetOwner(alertCreated)
 		}
 		_, err := c.Ent.Decision.CreateBulk(bulk...).Save(c.CTX)
@@ -273,8 +273,7 @@ func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	var err error
-	var startIP int64
-	var endIP int64
+	var startIP, endIP int64
 	var hasActiveDecision bool
 	for param, value := range filter {
 		switch param {
@@ -326,7 +325,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	if startIP != 0 && endIP != 0 {
 		alerts = alerts.Where(alert.And(
 			alert.HasDecisionsWith(decision.StartIPGTE(startIP)),
-			alert.HasDecisionsWith(decision.EndIP(endIP)),
+			alert.HasDecisionsWith(decision.EndIPLTE(endIP)),
 		))
 	}
 	return alerts, nil

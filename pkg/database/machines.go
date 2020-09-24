@@ -19,6 +19,9 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 	if len(machineExist) > 0 {
 		return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
 	}
+	if err != nil {
+		return &ent.Machine{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
+	}
 
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
@@ -30,6 +33,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		SetMachineId(*machineID).
 		SetPassword(string(hashPassword)).
 		SetIpAddress(ipAddres).
+		SetIsValidated(true).
 		Save(c.CTX)
 
 	if err != nil {
@@ -50,7 +54,7 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 	return machine, nil
 }
 
-func (c *Client) QueryAllMachines() ([]*ent.Machine, error) {
+func (c *Client) ListWatchers() ([]*ent.Machine, error) {
 	var machines []*ent.Machine
 	var err error
 
@@ -78,4 +82,15 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 		return []*ent.Machine{}, errors.Wrap(UpdateFail, "setting machine status")
 	}
 	return machines, nil
+}
+
+func (c *Client) DeleteWatcher(name string) error {
+	_, err := c.Ent.Machine.
+		Delete().
+		Where(machine.MachineIdEQ(name)).
+		Exec(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to save api key in database: %s", err)
+	}
+	return nil
 }

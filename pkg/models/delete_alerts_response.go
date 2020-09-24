@@ -10,22 +10,22 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// AddDecisionResponse AddDecisionResponse
+// DeleteAlertsResponse DeleteAlertsResponse
 //
-// swagger:model AddDecisionResponse
-type AddDecisionResponse struct {
+// swagger:model DeleteAlertsResponse
+type DeleteAlertsResponse struct {
 
-	// decision id
-	DecisionID string `json:"decision_id,omitempty"`
+	// number of deleted alerts
+	NbDeleted string `json:"nbDeleted,omitempty"`
 }
 
-// Validate validates this add decision response
-func (m *AddDecisionResponse) Validate(formats strfmt.Registry) error {
+// Validate validates this delete alerts response
+func (m *DeleteAlertsResponse) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *AddDecisionResponse) MarshalBinary() ([]byte, error) {
+func (m *DeleteAlertsResponse) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -33,8 +33,8 @@ func (m *AddDecisionResponse) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *AddDecisionResponse) UnmarshalBinary(b []byte) error {
-	var res AddDecisionResponse
+func (m *DeleteAlertsResponse) UnmarshalBinary(b []byte) error {
+	var res DeleteAlertsResponse
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

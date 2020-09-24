@@ -4,6 +4,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -11,9 +12,21 @@ import (
 )
 
 var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
+
 var ConfigFilePath string
 var csConfig *csconfig.GlobalConfig
+var dbClient *database.Client
+
 var OutputFormat string
+
+var downloadOnly bool
+var forceInstall bool
+var forceUpgrade bool
+var removeAll bool
+var purgeRemove bool
+var upgradeAll bool
+
+var prometheusURL string
 
 func initConfig() {
 
@@ -102,7 +115,7 @@ API interaction:
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config/default.yaml", "path to crowdsec config file")
+	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "../../config/dev.yaml", "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
@@ -119,15 +132,20 @@ API interaction:
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewInstallCmd())
 	rootCmd.AddCommand(NewListCmd())
-	rootCmd.AddCommand(NewRemoveCmd())
 	rootCmd.AddCommand(NewUpdateCmd())
-	rootCmd.AddCommand(NewUpgradeCmd())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
-	rootCmd.AddCommand(NewInspectCmd())
+	rootCmd.AddCommand(NewDecisionsCmd())
+	rootCmd.AddCommand(NewAlertsCmd())
+	//	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
+	rootCmd.AddCommand(NewKeysCmd())
+	rootCmd.AddCommand(NewWatchersCmd())
+	rootCmd.AddCommand(NewParserCmd())
+	rootCmd.AddCommand(NewScenarioCmd())
+	rootCmd.AddCommand(NewCollectionCmd())
+	rootCmd.AddCommand(NewPostOverflowCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}

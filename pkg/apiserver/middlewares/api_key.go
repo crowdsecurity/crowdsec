@@ -22,7 +22,7 @@ type APIKey struct {
 	DbClient   *database.Client
 }
 
-func GenerateKey(n int) (string, error) {
+func GenerateAPIKey(n int) (string, error) {
 	bytes := make([]byte, n)
 	if _, err := rand.Read(bytes); err != nil {
 		return "", err
@@ -37,6 +37,15 @@ func NewAPIKey(dbClient *database.Client) *APIKey {
 	}
 }
 
+func HashSHA512(str string) string {
+	hashedKey := sha512.New()
+	hashedKey.Write([]byte(str))
+
+	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+
+	return hashStr
+}
+
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		val, ok := c.Request.Header[APIKeyHeader]
@@ -46,10 +55,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
-		hashedKey := sha512.New()
-		hashedKey.Write([]byte(val[0]))
-
-		hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+		hashStr := HashSHA512(val[0])
 		exist, err := a.DbClient.Ent.Blocker.Query().
 			Where(blocker.APIKeyEQ(hashStr)).
 			Select(blocker.FieldAPIKey).

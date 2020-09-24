@@ -91,4 +91,5 @@ func registerPrometheus(mode string) {
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
+	http.ListenAndServe(":6060", nil)
 }

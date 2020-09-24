@@ -104,6 +104,16 @@ paths:
           required: false
           type: string
           description: type of decision
+        - name: ip
+          in: query
+          required: false
+          type: string
+          description: IP to search for (shorthand for scope=ip&value=)
+        - name: range
+          in: query
+          required: false
+          type: string
+          description: range to search for (shorthand for scope=range&value=)
       responses:
         '200':
           description: "successful operation"
@@ -126,58 +136,27 @@ paths:
           in: query
           required: false
           type: string
-          description: scope in which decisions should be looked up
+          description: scope to which the decision applies (ie. IP/Range/Username/Session/...)
         - name: value
           in: query
           required: false
           type: string
-          description: value to search for in specified scope
-        - name: decision_type
+          description: the value to match for in the specified scope
+        - name: type
           in: query
           required: false
           type: string
-          description: 'matching decision type (ie. ban, captcha ...)'
+          description: type of decision
         - name: ip
           in: query
           required: false
           type: string
-          description: IP to delete (shorthand for scope=ip&value=)
+          description: IP to search for (shorthand for scope=ip&value=)
         - name: range
           in: query
           required: false
           type: string
-          description: range to delete  (shorthand for scope=range&value=)
-        - name: country
-          in: query
-          required: false
-          type: string
-          description: country to delete  (shorthand for scope=cn&value=)
-        - name: as_name
-          in: query
-          required: false
-          type: string
-          description: as name to delete  (shorthand for scope=as_name&value=)
-        - name: as_num
-          in: query
-          required: false
-          type: string
-          description: as number to delete  (shorthand for scope=as_num&value=)
-        - name: reason
-          in: query
-          required: false
-          type: string
-          description: reason to delete
-        - name: since
-          in: query
-          required: false
-          type: string
-          format: date-time
-          description: 'ban to delete since YYYY-mm-DD-HH:MM:SS'
-        - name: pagination
-          in: query
-          required: false
-          type: string
-          description: pagination
+          description: range to search for (shorthand for scope=range&value=)
       responses:
         '200':
           description: successful operation
@@ -193,7 +172,6 @@ paths:
       summary: DeleteDecision
       tags:
         - watchers
-        - blockers
       operationId: DeleteDecision
       deprecated: false
       produces:
@@ -320,22 +298,21 @@ paths:
       summary: searchAlerts
       tags:
         - watchers
-        - blockers
       operationId: searchAlerts
       deprecated: false
       produces:
         - application/json
       parameters:
-        - name: source_scope
+        - name: scope
           in: query
           required: false
           type: string
           description: show alerts for this scope
-        - name: source_value
+        - name: value
           in: query
           required: false
           type: string
-          description: show alerts for this value (used with source_scope)
+          description: show alerts for this value (used with scope)
         - name: scenario
           in: query
           required: false
@@ -367,17 +344,83 @@ paths:
           in: query
           required: false
           type: boolean
-          description: ''
+          description: 'only return alerts with decisions not expired yet'
         - name: alert_source
           in: query
           required: false
           type: string
-          description: ony return alerts with matching source (ie. cscli/crowdsec)
+          description: only return alerts with matching source (ie. cscli/crowdsec)
       responses:
         '200':
           description: successful operation
           schema:
             $ref: '#/definitions/GetAlertsResponse'
+          headers: {}
+        '400':
+          description: Invalid filters
+          schema: {}
+    delete:
+      description: Allows to delete alerts
+      summary: deleteAlerts
+      tags:
+        - watchers
+      operationId: deleteAlerts
+      deprecated: false
+      produces:
+        - application/json
+      parameters:
+        - name: scope
+          in: query
+          required: false
+          type: string
+          description: delete alerts for this scope
+        - name: value
+          in: query
+          required: false
+          type: string
+          description: delete alerts for this value (used with scope)
+        - name: scenario
+          in: query
+          required: false
+          type: string
+          description: delete alerts for this scenario
+        - name: ip
+          in: query
+          required: false
+          type: string
+          description: delete Alerts with IP (shorthand for scope=ip&value=)
+        - name: range
+          in: query
+          required: false
+          type: string
+          description: delete alerts concerned by range (shorthand for scope=range&value=)
+        - name: since
+          in: query
+          required: false
+          type: string
+          format: date-time
+          description: 'delete alerts added after YYYY-mm-DD-HH:MM:SS'
+        - name: until
+          in: query
+          required: false
+          type: string
+          format: date-time
+          description: 'delete alerts added before YYYY-mm-DD-HH:MM:SS'
+        - name: has_active_decision
+          in: query
+          required: false
+          type: boolean
+          description: 'delete only alerts with decisions not expired yet'
+        - name: alert_source
+          in: query
+          required: false
+          type: string
+          description: delete only alerts with matching source (ie. cscli/crowdsec)
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/DeleteAlertsResponse'
           headers: {}
         '400':
           description: Invalid filters
@@ -550,9 +593,9 @@ definitions:
     title: Alert
     type: object
     properties:
-      alert_id:
+      id:
         description: 'only relevant for GET, ignored in POST requests'
-        type: string
+        type: integer
         readOnly: true
       machine_id:
         description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
@@ -650,9 +693,9 @@ definitions:
     title: Decision
     type: object
     properties:
-      decision_id:
+      id:
         description: (only relevant for GET ops) the unique id
-        type: string
+        type: integer
         readOnly: true
       origin:
         description: 'the origin of the decision : cscli, crowdsec'
@@ -663,14 +706,14 @@ definitions:
       scope:
         description: 'the scope of decision : does it apply to an IP, a range, a username, etc'
         type: string
-      target:
-        description: 'the target of the decision : an IP, a range, a username, etc'
+      value:
+        description: 'the value of the decision scope : an IP, a range, a username, etc'
         type: string
       start_ip:
-        description: '(only relevant for GET ops) when the target is an IP or range, its numeric representation'
+        description: '(only relevant for GET ops) when the value is an IP or range, its numeric representation'
         type: integer
       end_ip:
-        description: '(only relevant for GET ops) when the target is an IP or range, its numeric representation'
+        description: '(only relevant for GET ops) when the value is an IP or range, its numeric representation'
         type: integer
       duration:
         type: string
@@ -680,23 +723,18 @@ definitions:
       - origin
       - type
       - scope
-      - target
+      - value
       - duration
       - scenario
   DeleteDecisionResponse:
     title: DeleteDecisionResponse
-    type: array
-    items:
-      type: string
-      description: "decision_id"
-  FlushDecisionResponse:
-    title: FlushDecisionResponse
     type: object
     properties:
-      decision_id:
+      nbDeleted:
         type: string
-  AddDecisionResponse:
-    title: AddDecisionResponse
+        description: "number of deleted decisions"
+  FlushDecisionResponse:
+    title: FlushDecisionResponse
     type: object
     properties:
       decision_id:
@@ -717,6 +755,13 @@ definitions:
     type: array
     items:
       $ref: '#/definitions/Alert'
+  DeleteAlertsResponse:
+    title: DeleteAlertsResponse
+    type: object
+    properties:
+      nbDeleted:
+        type: string
+        description: "number of deleted alerts"
   DecisionsStreamResponse:
     title: DecisionsStreamResponse
     type: object

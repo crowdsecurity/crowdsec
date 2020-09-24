@@ -19,14 +19,15 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 	for _, dbDecision := range decisions {
 		duration := dbDecision.Until.Sub(time.Now()).String()
 		decision := models.Decision{
-			DecisionID: fmt.Sprintf("%d", dbDecision.ID),
-			Duration:   &duration,
-			EndIP:      dbDecision.EndIP,
-			StartIP:    dbDecision.StartIP,
-			Scenario:   &dbDecision.Scenario,
-			Scope:      &dbDecision.Scope,
-			Target:     &dbDecision.Target,
-			Type:       &dbDecision.Type,
+			ID:       int64(dbDecision.ID),
+			Duration: &duration,
+			EndIP:    dbDecision.EndIP,
+			StartIP:  dbDecision.StartIP,
+			Scenario: &dbDecision.Scenario,
+			Scope:    &dbDecision.Scope,
+			Value:    &dbDecision.Value,
+			Type:     &dbDecision.Type,
+			Origin:   &dbDecision.Origin,
 		}
 		results = append(results, &decision)
 	}
@@ -64,9 +65,14 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	err = c.DBClient.DeleteDecisionById(decisionId)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+		return
 	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": "successfully deleted"})
+	deleteDecisionResp := models.DeleteDecisionResponse{
+		NbDeleted: "1",
+	}
+
+	gctx.JSON(http.StatusOK, deleteDecisionResp)
 	return
 }
 
@@ -77,8 +83,11 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 	}
+	deleteDecisionResp := models.DeleteDecisionResponse{
+		NbDeleted: nbDeleted,
+	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d deleted decisions", nbDeleted)})
+	gctx.JSON(http.StatusOK, deleteDecisionResp)
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
@@ -102,11 +111,9 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	val := gctx.Request.Header.Get(c.APIKeyHeader)
-	log.Infof("KEY : %s", val)
 	hashedKey := sha512.New()
 	hashedKey.Write([]byte(val))
 	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
-	log.Infof("HASH : %s", hashStr)
 	lastPull, err := c.DBClient.LastBlockerPull(hashStr)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

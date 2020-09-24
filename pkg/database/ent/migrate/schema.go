@@ -78,7 +78,8 @@ var (
 		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
 		{Name: "end_ip", Type: field.TypeInt64, Nullable: true},
 		{Name: "scope", Type: field.TypeString},
-		{Name: "target", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString},
+		{Name: "origin", Type: field.TypeString},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -89,7 +90,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[10]},
+				Columns: []*schema.Column{DecisionsColumns[11]},
 
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,
