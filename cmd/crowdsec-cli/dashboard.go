@@ -58,7 +58,8 @@ cscli dashboard setup
 cscli dashboard setup --force
 cscli dashboard start
 cscli dashboard stop
-cscli dashboard remove`,
+cscli dashboard remove
+cscli dashboard remove --force`,
 	}
 
 	var force bool
