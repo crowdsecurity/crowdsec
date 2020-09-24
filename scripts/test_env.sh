@@ -70,8 +70,8 @@ copy_files() {
 
 
 setup() {
-	$BASE/cscli -c "$CONFIG_FILE" update
-	$BASE/cscli -c "$CONFIG_FILE" install collection crowdsecurity/linux
+	$BASE/cscli -c "$CONFIG_FILE" hub update
+	$BASE/cscli -c "$CONFIG_FILE" collection install crowdsecurity/linux
 }
 
 

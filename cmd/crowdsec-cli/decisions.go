@@ -96,6 +96,9 @@ To list/add/delete decisions
 			if csConfig.LapiClient == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
+			if csConfig.LapiClient.Credentials.Url == "" {
+				log.Fatalln("There is no configuration on 'url:'")
+			}
 			apiclient.BaseURL, err = url.Parse(csConfig.LapiClient.Credentials.Url)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())

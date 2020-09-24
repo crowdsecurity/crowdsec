@@ -20,6 +20,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var listAll bool
+
 func inSlice(s string, slice []string) bool {
 	for _, str := range slice {
 		if s == str {

@@ -132,8 +132,7 @@ API interaction:
 	rootCmd.PersistentFlags().SortFlags = false
 
 	rootCmd.AddCommand(NewConfigCmd())
-	rootCmd.AddCommand(NewListCmd())
-	rootCmd.AddCommand(NewUpdateCmd())
+	rootCmd.AddCommand(NewHubCmd())
 	rootCmd.AddCommand(NewMetricsCmd())
 	rootCmd.AddCommand(NewDashboardCmd())
 	rootCmd.AddCommand(NewDecisionsCmd())
