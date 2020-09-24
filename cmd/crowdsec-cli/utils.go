@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -64,6 +65,42 @@ func setHubBranch() error {
 	return nil
 }
 
+func ListItem(itemType string, args []string) {
+
+	var hubStatus []map[string]string
+
+	if len(args) == 1 {
+		hubStatus = cwhub.HubStatus(itemType, args[0], listAll)
+	} else {
+		hubStatus = cwhub.HubStatus(itemType, "", listAll)
+	}
+
+	if csConfig.Cscli.Output == "human" {
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetCenterSeparator("")
+		table.SetColumnSeparator("")
+
+		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+		table.SetAlignment(tablewriter.ALIGN_LEFT)
+		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
+		for _, v := range hubStatus {
+			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
+		}
+		table.Render()
+	} else if csConfig.Cscli.Output == "json" {
+		x, err := json.MarshalIndent(hubStatus, "", " ")
+		if err != nil {
+			log.Fatalf("failed to unmarshal")
+		}
+		fmt.Printf("%s", string(x))
+	} else if csConfig.Cscli.Output == "raw" {
+		for _, v := range hubStatus {
+			fmt.Printf("%s %s\n", v["name"], v["description"])
+		}
+	}
+}
+
 func InstallItem(name string, obtype string) {
 	it := cwhub.GetItem(obtype, name)
 	if it == nil {
@@ -94,11 +131,11 @@ func InstallItem(name string, obtype string) {
 	/*iterate of pkg index data*/
 }
 
-func RemoveMany(ttype string, name string) {
+func RemoveMany(itemType string, name string) {
 	var err error
 	var disabled int
 	if name != "" {
-		it := cwhub.GetItem(ttype, name)
+		it := cwhub.GetItem(itemType, name)
 		if it == nil {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
@@ -107,15 +144,15 @@ func RemoveMany(ttype string, name string) {
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
-		cwhub.AddItemMap(ttype, item)
+		cwhub.AddItemMap(itemType, item)
 		return
 	} else if name == "" && removeAll {
-		for _, v := range cwhub.GetItemMap(ttype) {
+		for _, v := range cwhub.GetItemMap(itemType) {
 			v, err = cwhub.DisableItem(csConfig.Cscli, v, purgeRemove)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			cwhub.AddItemMap(ttype, v)
+			cwhub.AddItemMap(itemType, v)
 			disabled++
 		}
 	}
@@ -126,12 +163,12 @@ func RemoveMany(ttype string, name string) {
 	log.Infof("Disabled %d items", disabled)
 }
 
-func UpgradeConfig(ttype string, name string) {
+func UpgradeConfig(itemType string, name string) {
 	var err error
 	var updated int
 	var found bool
 
-	for _, v := range cwhub.GetItemMap(ttype) {
+	for _, v := range cwhub.GetItemMap(itemType) {
 		if name != "" && name != v.Name {
 			continue
 		}
@@ -162,7 +199,7 @@ func UpgradeConfig(ttype string, name string) {
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
 		}
-		cwhub.AddItemMap(ttype, v)
+		cwhub.AddItemMap(itemType, v)
 	}
 	if !found {
 		log.Errorf("Didn't find %s", name)
@@ -174,9 +211,9 @@ func UpgradeConfig(ttype string, name string) {
 
 }
 
-func InspectItem(name string, objectType string) {
+func InspectItem(name string, objecitemType string) {
 
-	hubItem := cwhub.GetItem(objectType, name)
+	hubItem := cwhub.GetItem(objecitemType, name)
 	if hubItem == nil {
 		log.Fatalf("unable to retrieve item.")
 	}
