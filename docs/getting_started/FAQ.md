@@ -25,6 +25,9 @@ The alert sent by your {{crowdsec.name}} to the central API only contains only m
 
 Your logs are not sent to our central API, only meta-data about blocked attacks will be.
 
+When your crowdsec is authenticating to the central API, it as well sends the list of the scenarios you have enabled from the hub. This is used by us to provide you the most accurate consensus list, so that we can provide you IPs that have triggered scenario(s) that you are interested into as well.
+
+
 ## What is the performance impact ?
 
 As {{crowdsec.name}} only works on logs, it shouldn't impact your production.
