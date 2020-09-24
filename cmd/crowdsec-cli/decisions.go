@@ -4,18 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"net/url"
-	"os"
-	"strconv"
-	"strings"
-	"time"
 )
 
 var (
@@ -23,8 +25,6 @@ var (
 	Value      string
 	Type       string
 	DecisionID string
-	IP         string
-	Range      string
 )
 var DeleteAll bool
 var Client *apiclient.ApiClient
@@ -101,11 +101,21 @@ To list/add/delete decisions
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())
 			}
 
+			scenarios := []string{}
+			for _, scenario := range cwhub.GetItemMap(cwhub.SCENARIOS) {
+				scenarios = append(scenarios, scenario.Name)
+			}
+
+			//initialize cwhub
+			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
+			}
+
 			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)
 			t := &apiclient.JWTTransport{
 				MachineID: &csConfig.LapiClient.Credentials.Login,
 				Password:  &password,
-				Scenarios: []string{"aaaaaa", "bbbbb"},
+				Scenarios: scenarios,
 			}
 
 			Client = apiclient.NewClient(t.Client())
@@ -215,7 +225,6 @@ Args :
 				}
 				ipRange = value
 			}
-
 			decision := models.Decision{
 				Duration: &duration,
 				Scope:    &scope,
