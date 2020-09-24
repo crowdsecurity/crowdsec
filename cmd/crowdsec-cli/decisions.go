@@ -111,7 +111,7 @@ To list/add/delete decisions
 				log.Fatalf("Failed to load the list of local scenarios : %s", err)
 			}
 
-			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)
+			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			t := &apiclient.JWTTransport{
 				MachineID: &csConfig.API.Client.Credentials.Login,
 				Password:  &password,
