@@ -55,17 +55,15 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 }
 
 func (c *GlobalConfig) LoadConfiguration() error {
-	if err := c.CleanupPaths(); err != nil {
-		return errors.Wrap(err, "invalid config")
-	}
-
 	if c.ConfigPaths.ConfigDir == "" {
 		return fmt.Errorf("please provide a configuration directory with the 'config_dir' directive in the 'config_paths' section")
 	}
 
-	if c.ConfigPaths.ConfigDir == "" {
+	if c.ConfigPaths.DataDir == "" {
 		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
+
+	log.Printf("Config dir!!!!!!!!!! : %+v \n", c.ConfigPaths)
 
 	if c.ConfigPaths.HubDir == "" {
 		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
@@ -73,6 +71,10 @@ func (c *GlobalConfig) LoadConfiguration() error {
 
 	if c.ConfigPaths.HubIndexFile == "" {
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
+	}
+
+	if err := c.CleanupPaths(); err != nil {
+		return errors.Wrap(err, "invalid config")
 	}
 
 	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
@@ -85,6 +87,8 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	c.Cscli.DataDir = c.ConfigPaths.DataDir
 	c.Cscli.HubDir = c.ConfigPaths.HubDir
 	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	log.Printf("CSCLI CONFiG : %+v \n", c.Cscli)
 
 	c.API.Server.DbConfig = c.DbConfig
 	c.API.Server.LogDir = c.Common.LogDir
