@@ -2,12 +2,13 @@ package cwhub
 
 import (
 	"crypto/sha256"
-	"errors"
+	//"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/enescakir/emoji"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -116,7 +117,7 @@ func GetItem(itemType string, itemName string) *Item {
 	return nil
 }
 
-func AddItemMap(itemType string, item Item) error {
+func AddItem(itemType string, item Item) error {
 	in := false
 	for _, itype := range ItemTypes {
 		if itype == itemType {
@@ -162,17 +163,45 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 	if v.Tainted {
 		Warning = true
 		strret += ",tainted"
-	} else if !v.UpToDate {
+	} else if !v.UpToDate && !v.Local {
 		strret += ",update-available"
 		Warning = true
 	}
 	return strret, Ok, Warning, Managed
 }
 
-// HubStatus returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
-func HubStatus(itemType string, name string, listAll bool) []map[string]string {
-	if _, ok := hubIdx[itemType]; !ok {
-		log.Errorf("type %s doesn't exist", itemType)
+func GetUpstreamInstalledScenariosAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetUpstreamInstalledScenarios()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching scenarios")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
+}
+
+func GetUpstreamInstalledScenarios() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[SCENARIOS]; !ok {
+		return nil, fmt.Errorf("no scenarios in hubIdx")
+	}
+	for _, item := range hubIdx[SCENARIOS] {
+		if item.Installed && !item.Tainted {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
+}
+
+//Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
+func HubStatus(itype string, name string, list_all bool) []map[string]string {
+	if _, ok := hubIdx[itype]; !ok {
+		log.Errorf("type %s doesn't exist", itype)
+
 		return nil
 	}
 

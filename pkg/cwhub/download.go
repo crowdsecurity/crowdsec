@@ -3,7 +3,11 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
-	"errors"
+
+	//"errors"
+	"github.com/pkg/errors"
+
+	//"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -17,39 +21,21 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func LoadHubIdx(cscli *csconfig.CscliCfg) error {
-	bidx, err := ioutil.ReadFile(cscli.IndexPath)
-	if err != nil {
-		return err
-	}
-	ret, err := LoadPkgIndex(bidx)
-	if err != nil {
-		if !errors.Is(err, ReferenceMissingError) {
-			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
-		}
-	}
-	hubIdx = ret
-	if err := LocalSync(cscli); err != nil {
-		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
-	}
-	return nil
-}
-
 func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 
 	bidx, err := DownloadHubIdx(cscli)
 	if err != nil {
-		log.Fatalf("Unable to download index : %v.", err)
+		return errors.Wrap(err, "failed to download index")
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
 		if !errors.Is(err, ReferenceMissingError) {
-			log.Fatalf("Unable to load freshly downloaded index : %v.", err)
+			return errors.Wrap(err, "failed to read index")
 		}
 	}
 	hubIdx = ret
 	if err := LocalSync(cscli); err != nil {
-		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
+		return errors.Wrap(err, "failed to sync")
 	}
 	return nil
 }
@@ -57,35 +43,30 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
-		log.Errorf("failed request : %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "failed to build request for hub index")
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Errorf("failed request Do : %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "failed http request for hub index")
 	}
 	if resp.StatusCode != 200 {
-		log.Errorf("got code %d while requesting %s, abort", resp.StatusCode,
-			fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
-		return nil, fmt.Errorf("bad http code")
+		return nil, fmt.Errorf("bad http code %d while requesting %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("failed request reqd: %s", err)
-		return nil, err
+		return nil, errors.Wrap(err, "failed to read request answer for hub index")
 	}
 	file, err := os.OpenFile(cscli.IndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
-		log.Fatalf(err.Error())
+		return nil, errors.Wrap(err, "while opening hub index file")
 	}
 	defer file.Close()
 
 	wsize, err := file.WriteString(string(body))
 	if err != nil {
-		log.Fatalf(err.Error())
+		return nil, errors.Wrap(err, "while writting hub index file")
 	}
 	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.IndexPath)
 	return body, nil
@@ -108,17 +89,14 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 						log.Tracef("collection, recurse")
 						hubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
 						if err != nil {
-							log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
-							return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
+							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 						}
 					}
 					hubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
 					if err != nil {
-						log.Errorf("Encountered error while downloading sub-item %s %s : %s.", ptrtype, p, err)
-						return target, fmt.Errorf("encountered error while downloading %s for %s, abort", val.Name, target.Name)
+						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
 				} else {
-					//log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
 					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
 			}
@@ -149,36 +127,31 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 		}
 	}
 
-	//log.Infof("Downloading %s to %s", target.Name, tdir)
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
-		log.Errorf("%s : request creation failed : %s", target.Name, err)
-		return target, err
+		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
 	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Errorf("%s : request failed : %s", target.Name, err)
-		return target, err
+		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
 	}
 	if resp.StatusCode != 200 {
-		log.Errorf("%s : non 200 response : %d", target.Name, resp.StatusCode)
-		return target, fmt.Errorf("bad http code")
+		return target, fmt.Errorf("bad http code %d for %s", resp.StatusCode, req.URL.String())
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("%s : failed request read: %s", target.Name, err)
-		return target, err
+		return target, errors.Wrap(err, fmt.Sprintf("while reading %s", req.URL.String()))
 	}
 	h := sha256.New()
 	if _, err := h.Write([]byte(body)); err != nil {
-		return target, fmt.Errorf("%s : failed to write : %s", target.Name, err)
+		return target, errors.Wrap(err, fmt.Sprintf("while hashing %s", target.Name))
 	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))
 	if meow != target.Versions[target.Version].Digest {
 		log.Errorf("Downloaded version doesn't match index, please 'hub update'")
 		log.Debugf("got %s, expected %s", meow, target.Versions[target.Version].Digest)
-		return target, fmt.Errorf("invalid download hash")
+		return target, fmt.Errorf("invalid download hash for %s", target.Name)
 	}
 	//all good, install
 	//check if parent dir exists
@@ -189,7 +162,7 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parent_dir)
 		if err := os.MkdirAll(parent_dir, os.ModePerm); err != nil {
-			return target, fmt.Errorf("unable to create parent directories")
+			return target, errors.Wrap(err, "while creating parent directories")
 		}
 	}
 	/*check actual file*/
@@ -202,12 +175,12 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 
 	f, err := os.OpenFile(tdir+"/"+target.RemotePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
-		return target, fmt.Errorf("failed to open destination file %s : %v", tdir+"/"+target.RemotePath, err)
+		return target, errors.Wrap(err, "while opening file")
 	}
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, fmt.Errorf("failed to write destination file %s : %v", tdir+"/"+target.RemotePath, err)
+		return target, errors.Wrap(err, "while writting file")
 	}
 	target.Downloaded = true
 	target.Tainted = false
@@ -221,12 +194,12 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 			if err == io.EOF {
 				break
 			} else {
-				return target, fmt.Errorf("unable to read file %s data: %s", tdir+"/"+target.RemotePath, err)
+				return target, errors.Wrap(err, "while reading file")
 			}
 		}
 		err = types.GetData(data.Data, dataFolder)
 		if err != nil {
-			return target, fmt.Errorf("unable to get data: %s", err)
+			return target, errors.Wrap(err, "while getting data")
 		}
 	}
 	hubIdx[target.Type][target.Name] = target

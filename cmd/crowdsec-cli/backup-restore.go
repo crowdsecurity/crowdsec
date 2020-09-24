@@ -25,7 +25,9 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 	}
-	cwhub.AddItemMap(obtype, it)
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
 
 	if downloadOnly {
 		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
@@ -34,8 +36,9 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
 	}
-	cwhub.AddItemMap(obtype, it)
-
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
 	return fmt.Sprintf("Enabled %s", it.Name), nil
 	return "", fmt.Errorf("%s not found in hub index", name)
 }

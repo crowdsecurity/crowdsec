@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -83,7 +84,11 @@ func testOneBucket(t *testing.T, dir string) error {
 	for _, x := range stages {
 		files = append(files, x.Filename)
 	}
-	holders, response, err := LoadBuckets(files)
+
+	cscfg := &csconfig.CrowdsecServiceCfg{
+		DataDir: "tests",
+	}
+	holders, response, err := LoadBuckets(cscfg, files)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
@@ -142,7 +147,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		}
 
 		in.ExpectMode = TIMEMACHINE
-		log.Debugf("Buckets input : %s", spew.Sdump(in))
+		log.Infof("Buckets input : %s", spew.Sdump(in))
 		ok, err := PourItemToHolders(in, holders, buckets)
 		if err != nil {
 			t.Fatalf("Failed to pour : %s", err)
@@ -192,7 +197,7 @@ POLL_AGAIN:
 		if len(tf.Results) == 0 && len(results) == 0 {
 			log.Warningf("Test is successfull")
 			if dump {
-				if tmpFile, err = DumpBucketsStateAt(latest_ts, buckets); err != nil {
+				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
 					t.Fatalf("Failed dumping bucket state : %s", err)
 				}
 				log.Infof("dumped bucket to %s", tmpFile)
@@ -202,7 +207,7 @@ POLL_AGAIN:
 			log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
 			if len(tf.Results) != len(results) {
 				if dump {
-					if tmpFile, err = DumpBucketsStateAt(latest_ts, buckets); err != nil {
+					if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
 						t.Fatalf("Failed dumping bucket state : %s", err)
 					}
 					log.Infof("dumped bucket to %s", tmpFile)
@@ -237,11 +242,11 @@ POLL_AGAIN:
 						//Scenario
 
 						if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
-							log.Errorf("(scenario) %s != %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
+							log.Errorf("(scenario) %v != %v", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
 							valid = false
 							continue
 						} else {
-							log.Infof("(scenario) %s == %s", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
+							log.Infof("(scenario) %v == %v", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
 						}
 						//EventsCount
 						if out.Overflow.Alert.EventsCount != expected.Overflow.Alert.EventsCount {

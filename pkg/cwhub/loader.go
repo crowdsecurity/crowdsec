@@ -2,10 +2,12 @@ package cwhub
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"fmt"
 	"io/ioutil"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	//"log"
 
@@ -49,7 +51,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	log.Debugf("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
-		log.Debugf("in hub dir")
+		//log.Debugf("in hub dir")
 		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
@@ -78,7 +80,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = ""
 		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
-		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, installdir, hubdir)
+		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -89,7 +91,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = COLLECTIONS
 		stage = ""
 	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
-		return fmt.Errorf("unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
+		return fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
@@ -334,6 +336,7 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 	log.Debugf("loading hub idx %s", cscli.IndexPath)
 	bidx, err := ioutil.ReadFile(cscli.IndexPath)
 	if err != nil {
+		return errors.Wrap(err, "unable to read index file")
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}
 	ret, err := LoadPkgIndex(bidx)

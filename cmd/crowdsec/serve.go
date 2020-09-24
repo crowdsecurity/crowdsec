@@ -83,7 +83,9 @@ func reloadHandler(sig os.Signal) error {
 	//Fire!
 	log.Warningf("Starting processing data")
 
-	acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb)
+	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
+		log.Fatalf("While starting reading : %s", err)
+	}
 
 	log.Printf("Reload is finished")
 	//delete the tmp file, it's safe now :)
