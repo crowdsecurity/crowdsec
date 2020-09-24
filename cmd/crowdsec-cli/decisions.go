@@ -101,14 +101,14 @@ To list/add/delete decisions
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.LapiClient.Credentials.Url, err.Error())
 			}
 
-			scenarios := []string{}
-			for _, scenario := range cwhub.GetItemMap(cwhub.SCENARIOS) {
-				scenarios = append(scenarios, scenario.Name)
-			}
-
 			//initialize cwhub
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
+			}
+
+			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+			if err != nil {
+				log.Fatalf("Failed to load the list of local scenarios : %s", err)
 			}
 
 			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)

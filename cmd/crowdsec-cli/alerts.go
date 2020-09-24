@@ -41,10 +41,11 @@ To list/add/delete alerts
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
-			scenarios := []string{}
-			for _, scenario := range cwhub.GetItemMap(cwhub.SCENARIOS) {
-				scenarios = append(scenarios, scenario.Name)
+			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+			if err != nil {
+				log.Fatalf("Failed to load the list of local scenarios : %s", err)
 			}
+
 			password := strfmt.Password(csConfig.LapiClient.Credentials.Password)
 			t := &apiclient.JWTTransport{
 				MachineID: &csConfig.LapiClient.Credentials.Login,
