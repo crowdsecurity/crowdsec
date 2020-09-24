@@ -207,13 +207,13 @@ func HubStatus(itype string, name string, list_all bool) []map[string]string {
 
 	var ret []map[string]string
 	/*remember, you do it for the user :)*/
-	for _, item := range hubIdx[itemType] {
+	for _, item := range hubIdx[itype] {
 		if name != "" && name != item.Name {
 			//user has required a specific name
 			continue
 		}
 		//Only enabled items ?
-		if !listAll && !item.Installed {
+		if !list_all && !item.Installed {
 			continue
 		}
 		//Check the item status

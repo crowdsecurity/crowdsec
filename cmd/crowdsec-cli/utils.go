@@ -115,7 +115,7 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	cwhub.AddItem(obtype, item)
 	if downloadOnly {
 		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
 		return
@@ -124,7 +124,7 @@ func InstallItem(name string, obtype string) {
 	if err != nil {
 		log.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
-	cwhub.AddItemMap(obtype, item)
+	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
 	return
 	log.Warningf("%s not found in hub index", name)
@@ -144,7 +144,7 @@ func RemoveMany(itemType string, name string) {
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
-		cwhub.AddItemMap(itemType, item)
+		cwhub.AddItem(itemType, item)
 		return
 	} else if name == "" && removeAll {
 		for _, v := range cwhub.GetItemMap(itemType) {
@@ -152,7 +152,7 @@ func RemoveMany(itemType string, name string) {
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			cwhub.AddItemMap(itemType, v)
+			cwhub.AddItem(itemType, v)
 			disabled++
 		}
 	}
@@ -199,7 +199,7 @@ func UpgradeConfig(itemType string, name string) {
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
 		}
-		cwhub.AddItemMap(itemType, v)
+		cwhub.AddItem(itemType, v)
 	}
 	if !found {
 		log.Errorf("Didn't find %s", name)

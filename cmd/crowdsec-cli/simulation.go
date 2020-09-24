@@ -27,7 +27,7 @@ func removeFromExclusion(name string) error {
 }
 
 func enableGlobalSimulation() error {
-	csConfig.Crowdsec.SimulationConfig.Simulation = true
+	*csConfig.Crowdsec.SimulationConfig.Simulation = true
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 
 	if err := dumpSimulationFile(); err != nil {
@@ -53,7 +53,7 @@ func dumpSimulationFile() error {
 }
 
 func disableGlobalSimulation() error {
-	csConfig.Crowdsec.SimulationConfig.Simulation = false
+	*csConfig.Crowdsec.SimulationConfig.Simulation = false
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 	newConfigSim, err := yaml.Marshal(csConfig.Crowdsec.SimulationConfig)
 	if err != nil {
@@ -73,7 +73,7 @@ func simulationStatus() error {
 		log.Printf("global simulation: disabled (configuration file is missing)")
 		return nil
 	}
-	if csConfig.Crowdsec.SimulationConfig.Simulation {
+	if *csConfig.Crowdsec.SimulationConfig.Simulation {
 		log.Println("global simulation: enabled")
 		if len(csConfig.Crowdsec.SimulationConfig.Exclusions) > 0 {
 			log.Println("Scenarios not in simulation mode :")
@@ -134,15 +134,15 @@ func NewSimulationCmds() *cobra.Command {
 						log.Warningf("'%s' isn't enabled", scenario)
 					}
 					isExcluded := inSlice(scenario, csConfig.Crowdsec.SimulationConfig.Exclusions)
-					if csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
+					if *csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
 						log.Warningf("global simulation is already enabled")
 						continue
 					}
-					if !csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if !*csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						log.Warningf("simulation for '%s' already enabled", scenario)
 						continue
 					}
-					if csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if *csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
@@ -175,11 +175,11 @@ func NewSimulationCmds() *cobra.Command {
 			if len(args) > 0 {
 				for _, scenario := range args {
 					isExcluded := inSlice(scenario, csConfig.Crowdsec.SimulationConfig.Exclusions)
-					if !csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
+					if !*csConfig.Crowdsec.SimulationConfig.Simulation && !isExcluded {
 						log.Warningf("%s isn't in simulation mode", scenario)
 						continue
 					}
-					if !csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
+					if !*csConfig.Crowdsec.SimulationConfig.Simulation && isExcluded {
 						if err := removeFromExclusion(scenario); err != nil {
 							log.Fatalf(err.Error())
 						}
