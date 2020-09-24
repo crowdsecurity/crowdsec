@@ -48,12 +48,15 @@ func NewDashboardCmd() *cobra.Command {
 	var cmdDashboard = &cobra.Command{
 		Use:   "dashboard",
 		Short: "Start a dashboard (metabase) container.",
-		Long:  `Start a metabase container exposing dashboards and metrics.`,
+		Long:  `Start a metabase container exposing dashboard and metrics.`,
 		Args:  cobra.ExactArgs(1),
-		Example: `cscli dashboard setup
+		Example: `
+cscli dashboard setup
+cscli dashboard setup --force
 cscli dashboard start
 cscli dashboard stop
-cscli dashboard setup --force`,
+cscli dashboard remove
+cscli dashboard remove --force`,
 	}
 
 	var force bool
@@ -62,7 +65,8 @@ cscli dashboard setup --force`,
 		Short: "Setup a metabase container.",
 		Long:  `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
 		Args:  cobra.ExactArgs(0),
-		Example: `cscli dashboard setup
+		Example: `
+cscli dashboard setup
 cscli dashboard setup --force
 cscli dashboard setup -l 0.0.0.0 -p 443
  `,
@@ -106,20 +110,47 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 	}
 	cmdDashboard.AddCommand(cmdDashStart)
 
-	var remove bool
 	var cmdDashStop = &cobra.Command{
 		Use:   "stop",
 		Short: "Stops the metabase container.",
 		Long:  `Stops the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := stopMetabase(remove); err != nil {
+			if err := stopMetabase(); err != nil {
 				log.Fatalf("Failed to stop metabase container : %s", err)
 			}
 		},
 	}
-	cmdDashStop.Flags().BoolVarP(&remove, "remove", "r", false, "remove (docker rm) container as well.")
 	cmdDashboard.AddCommand(cmdDashStop)
+
+	var cmdDashRemove = &cobra.Command{
+		Use:   "remove",
+		Short: "removes the metabase container.",
+		Long:  `removes the metabase container using docker.`,
+		Args:  cobra.ExactArgs(0),
+		Example: `
+cscli dashboard remove
+cscli dashboard remove --force
+ `,
+		Run: func(cmd *cobra.Command, args []string) {
+			if force {
+				if err := stopMetabase(); err != nil {
+					log.Fatalf("Failed to stop metabase container : %s", err)
+				}
+			}
+			if err := removeMetabase(); err != nil {
+				log.Fatalf("Failed to remove metabase container : %s", err)
+			}
+			if force {
+				if err := removeMetabaseImage(); err != nil {
+					log.Fatalf("Failed to stop metabase container : %s", err)
+				}
+			}
+		},
+	}
+	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
+	cmdDashboard.AddCommand(cmdDashRemove)
+
 	return cmdDashboard
 }
 
@@ -296,7 +327,7 @@ func startMetabase() error {
 	return nil
 }
 
-func stopMetabase(remove bool) error {
+func stopMetabase() error {
 	log.Printf("Stop docker metabase %s", metabaseContainerID)
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
@@ -308,12 +339,36 @@ func stopMetabase(remove bool) error {
 		return fmt.Errorf("failed while stopping %s : %s", metabaseContainerID, err)
 	}
 
-	if remove {
-		log.Printf("Removing docker metabase %s", metabaseContainerID)
-		if err := cli.ContainerRemove(ctx, metabaseContainerID, types.ContainerRemoveOptions{}); err != nil {
-			return fmt.Errorf("failed remove container %s : %s", metabaseContainerID, err)
-		}
+	return nil
+}
+
+func removeMetabase() error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
 	}
+
+	log.Printf("Removing docker metabase %s", metabaseContainerID)
+	if err := cli.ContainerRemove(ctx, metabaseContainerID, types.ContainerRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove container %s : %s", metabaseContainerID, err)
+	}
+
+	return nil
+}
+
+func removeMetabaseImage() error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+
+	log.Printf("Removing docker image %s", metabaseImage)
+	if _, err := cli.ImageRemove(ctx, metabaseImage, types.ImageRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove %s image: %s", metabaseImage, err)
+	}
+
 	return nil
 }
 

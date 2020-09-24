@@ -201,36 +201,37 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 func HubStatus(itype string, name string, list_all bool) []map[string]string {
 	if _, ok := hubIdx[itype]; !ok {
 		log.Errorf("type %s doesn't exist", itype)
+
 		return nil
 	}
 
-	var mli []map[string]string
+	var ret []map[string]string
 	/*remember, you do it for the user :)*/
-	for _, v := range hubIdx[itype] {
-		if name != "" && name != v.Name {
+	for _, item := range hubIdx[itemType] {
+		if name != "" && name != item.Name {
 			//user has required a specific name
 			continue
 		}
 		//Only enabled items ?
-		if !list_all && !v.Installed {
+		if !listAll && !item.Installed {
 			continue
 		}
 		//Check the item status
-		st, ok, warning, managed := ItemStatus(v)
+		status, ok, warning, managed := ItemStatus(item)
 		tmp := make(map[string]string)
-		tmp["name"] = v.Name
-		tmp["status"] = st
-		tmp["local_version"] = v.LocalVersion
-		tmp["local_path"] = v.LocalPath
-		tmp["description"] = v.Description
-		if !managed || !v.Installed {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Prohibited, st)
+		tmp["name"] = item.Name
+		tmp["status"] = status
+		tmp["local_version"] = item.LocalVersion
+		tmp["local_path"] = item.LocalPath
+		tmp["description"] = item.Description
+		if !managed || !item.Installed {
+			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
 		} else if warning {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Warning, st)
+			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Warning, status)
 		} else if ok {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.CheckMark, st)
+			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
 		}
-		mli = append(mli, tmp)
+		ret = append(ret, tmp)
 	}
-	return mli
+	return ret
 }

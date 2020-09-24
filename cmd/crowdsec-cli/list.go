@@ -1,55 +1,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 
-	"github.com/enescakir/emoji"
-	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var listAll bool
-
-func doListing(ttype string, args []string) {
-
-	var pkgst []map[string]string
-
-	if len(args) == 1 {
-		pkgst = cwhub.HubStatus(ttype, args[0], listAll)
-	} else {
-		pkgst = cwhub.HubStatus(ttype, "", listAll)
-	}
-
-	if csConfig.Cscli.Output == "human" {
-
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-		for _, v := range pkgst {
-			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
-		}
-		table.Render()
-	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(pkgst, "", " ")
-		if err != nil {
-			log.Fatalf("failed to unmarshal")
-		}
-		fmt.Printf("%s", string(x))
-	} else if csConfig.Cscli.Output == "raw" {
-		for _, v := range pkgst {
-			fmt.Printf("%s %s\n", v["name"], v["description"])
-		}
-	}
-}
 
 func NewListCmd() *cobra.Command {
 	/* ---- LIST COMMAND */
@@ -82,13 +42,13 @@ cscli list -a # List all local and remote configurations
 
 			cwhub.DisplaySummary()
 			log.Printf("PARSERS:")
-			doListing(cwhub.PARSERS, args)
+			ListItem(cwhub.PARSERS, args)
 			log.Printf("SCENARIOS:")
-			doListing(cwhub.SCENARIOS, args)
+			ListItem(cwhub.SCENARIOS, args)
 			log.Printf("COLLECTIONS:")
-			doListing(cwhub.COLLECTIONS, args)
+			ListItem(cwhub.COLLECTIONS, args)
 			log.Printf("POSTOVERFLOWS:")
-			doListing(cwhub.PARSERS_OVFLW, args)
+			ListItem(cwhub.PARSERS_OVFLW, args)
 		},
 	}
 	cmdList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
@@ -102,7 +62,7 @@ cscli list -a # List all local and remote configurations
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			doListing(cwhub.PARSERS, args)
+			ListItem(cwhub.PARSERS, args)
 		},
 	}
 	cmdList.AddCommand(cmdListParsers)
@@ -116,7 +76,7 @@ cscli list -a # List all local and remote configurations
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			doListing(cwhub.SCENARIOS, args)
+			ListItem(cwhub.SCENARIOS, args)
 		},
 	}
 	cmdList.AddCommand(cmdListScenarios)
@@ -130,7 +90,7 @@ cscli list -a # List all local and remote configurations
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			doListing(cwhub.COLLECTIONS, args)
+			ListItem(cwhub.COLLECTIONS, args)
 		},
 	}
 	cmdList.AddCommand(cmdListCollections)
@@ -144,7 +104,7 @@ cscli list -a # List all local and remote configurations
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
-			doListing(cwhub.PARSERS_OVFLW, args)
+			ListItem(cwhub.PARSERS_OVFLW, args)
 		},
 	}
 	cmdList.AddCommand(cmdListPostoverflows)
