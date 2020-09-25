@@ -57,7 +57,7 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read request answer for hub index")
 	}
-	file, err := os.OpenFile(cscli.IndexPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(cscli.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "while opening hub index file")
@@ -68,7 +68,7 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "while writting hub index file")
 	}
-	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.IndexPath)
+	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.HubIndexFile)
 	return body, nil
 }
 

@@ -62,7 +62,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 }
 
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
-	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsConfig) error {
+	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
 
 	var err error
 	ticker := time.NewTicker(1 * time.Second)
@@ -70,9 +70,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	apiclient.BaseURL, err = url.Parse(apiConfig.Url)
+	apiclient.BaseURL, err = url.Parse(apiConfig.URL)
 	if err != nil {
-		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.Url, err)
+		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
 	}
 
 	scenarStr, err := cwhub.GetUpstreamInstalledScenariosAsString()

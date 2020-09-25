@@ -4,105 +4,24 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
-//var GConfig *GlobalConfig
-
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
 type GlobalConfig struct {
 	//just a path to ourself :p
-	Self       *string             `yaml:"-"`
-	Daemon     *DaemonCfg          `yaml:"common,omitempty"`
-	Prometheus *PrometheusCfg      `yaml:"prometheus,omitempty"`
-	Crowdsec   *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
-	Cscli      *CscliCfg           `yaml:"cscli,omitempty"`
-	Lapi       *LapiServiceCfg     `yaml:"localapi_service,omitempty"`
-	LapiClient *LocalApiClientCfg  `yaml:"api_client,omitempty"`
-	DbConfig   *DatabaseCfg        `yaml:"db_config,omitempty"`
-	ApiClient  *OnlineApiClientCfg `yaml:"online_api_client,omitempty"`
-}
-
-type DatabaseCfg struct {
-	User     string `yaml:"user"`
-	Password string `yaml:"password"`
-	DbName   string `yaml:"db_name"`
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	DbPath   string `yaml:"db_path"`
-	Type     string `yaml:"type"`
-}
-
-/*daemonization/service related stuff*/
-type DaemonCfg struct {
-	Daemonize  bool
-	PidDir     string    `yaml:"pid_dir"`
-	LogMedia   string    `yaml:"log_media"`
-	LogDir     string    `yaml:"log_dir,omitempty"` //if LogMedia = file
-	LogLevel   log.Level `yaml:"log_level"`
-	WorkingDir string    `yaml:"working_dir,omitempty"` ///var/run
-}
-
-/**/
-type PrometheusCfg struct {
-	Enabled bool
-	Level   string //aggregated|full
-}
-
-/*Configurations needed for crowdsec to load parser/scenarios/... + acquisition*/
-type CrowdsecServiceCfg struct {
-	AcquisitionFilePath string            `yaml:"acquisition_path,omitempty"`
-	ParserRoutinesCount int               `yaml:"parser_routines"`
-	SimulationFilePath  string            `yaml:"simulation_path,omitempty"`
-	SimulationConfig    *SimulationConfig `yaml:"-"`
-	LintOnly            bool              `yaml:"-"` //if set to true, exit after loading configs
-	ConfigDir           string            `yaml:"config_dir"`
-	DataDir             string            `yaml:"data_dir,omitempty"`
-	BucketStateFile     string            `yaml:"state_input_file,omitempty"` //if we need to unserialize buckets at start
-	BucketStateDumpDir  string            `yaml:"state_output_dir,omitempty"` //if we need to unserialize buckets on shutdown
-	BucketsGCEnabled    bool              `yaml:"-"`                          //we need to garbage collect buckets when in forensic mode
-
-}
-
-type ApiCredentialsConfig struct {
-	Url      string `yaml:"url,omitempty"`
-	Login    string `yaml:"login,omitempty"`
-	Password string `yaml:"password,omitempty"`
-}
-
-/*global api config (for lapi->oapi)*/
-type OnlineApiClientCfg struct {
-	CredentialsFilePath string                `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
-	Credentials         *ApiCredentialsConfig `yaml:"-"`
-}
-
-/*local api config (for crowdsec/cscli->lapi)*/
-type LocalApiClientCfg struct {
-	CredentialsFilePath string                `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
-	Credentials         *ApiCredentialsConfig `yaml:"-"`
-}
-
-/*local api service configuration*/
-type LapiServiceCfg struct {
-	CertFilePath string       `yaml:"cert_path,omitempty"`
-	ListenUri    string       `yaml:"listen_uri,omitempty"` //127.0.0.1:4242
-	DbConfig     *DatabaseCfg `yaml:"-"`
-	LogDir       string       `yaml:"-"`
-}
-
-/*cscli specific config, such as hub directory*/
-type CscliCfg struct {
-	HubDir     string `yaml:"hub_dir,omitempty"`
-	Output     string `yaml:"output,omitempty"`
-	IndexPath  string `yaml:"index_path,omitempty"` //path the the .index.json
-	InstallDir string `yaml:"install_dir,omitempty"`
-	DataDir    string `yaml:"data_dir,omitempty"`
-	/*InstallDir and DataDir are used by both crowdsec and cscli, how to handle it ?*/
-
-	DbConfig *DatabaseCfg `yaml:"-"`
+	Self        *string             `yaml:"-"`
+	Common      *CommonCfg          `yaml:"common,omitempty"`
+	Prometheus  *PrometheusCfg      `yaml:"prometheus,omitempty"`
+	Crowdsec    *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
+	Cscli       *CscliCfg           `yaml:"cscli,omitempty"`
+	DbConfig    *DatabaseCfg        `yaml:"db_config,omitempty"`
+	API         *APICfg             `yaml:"api,omitempty"`
+	ConfigPaths *ConfigurationPaths `yaml:"config_paths,omitempty"`
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -129,57 +48,118 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 		return errors.Wrap(err, "failed to load absolute path")
 	}
 	c.Self = &path
-	if err := c.LoadSubConfigurations(); err != nil {
+	if err := c.LoadConfiguration(); err != nil {
 		return errors.Wrap(err, "failed to load sub configurations")
 	}
-	if err := c.CleanupPaths(); err != nil {
-		return errors.Wrap(err, "invalid config")
-	}
-	c.Cscli.DbConfig = c.DbConfig
-	c.Lapi.DbConfig = c.DbConfig
-	c.Lapi.LogDir = c.Daemon.LogDir
+
 	return nil
 }
 
-func (c *GlobalConfig) LoadSubConfigurations() error {
-	if c.LapiClient != nil && c.LapiClient.CredentialsFilePath != "" {
-		fcontent, err := ioutil.ReadFile(c.LapiClient.CredentialsFilePath)
+func (c *GlobalConfig) LoadConfiguration() error {
+	if c.ConfigPaths.ConfigDir == "" {
+		return fmt.Errorf("please provide a configuration directory with the 'config_dir' directive in the 'config_paths' section")
+	}
+
+	if c.ConfigPaths.DataDir == "" {
+		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
+	}
+
+	if c.ConfigPaths.HubDir == "" {
+		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
+	}
+
+	if c.ConfigPaths.HubIndexFile == "" {
+		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
+	}
+
+	if c.Crowdsec.AcquisitionFilePath == "" {
+		c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+	}
+
+	if err := c.CleanupPaths(); err != nil {
+		return errors.Wrap(err, "invalid config")
+	}
+
+	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
+	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
+	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
+	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	c.Cscli.DbConfig = c.DbConfig
+	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
+	c.Cscli.DataDir = c.ConfigPaths.DataDir
+	c.Cscli.HubDir = c.ConfigPaths.HubDir
+	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	c.API.Server.DbConfig = c.DbConfig
+	c.API.Server.LogDir = c.Common.LogDir
+
+	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" {
+		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)
 		if err != nil {
-			return errors.Wrap(err, "failed to read config file")
+			return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
 		}
-		err = yaml.UnmarshalStrict(fcontent, &c.LapiClient.Credentials)
+		err = yaml.UnmarshalStrict(fcontent, &c.API.Client.Credentials)
 		if err != nil {
-			return errors.Wrap(err, "failed unmarshaling config")
+			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
+		}
+		if c.API.Client.Credentials != nil && c.API.Client.Credentials.URL != "" {
+			if !strings.HasSuffix(c.API.Client.Credentials.URL, "/") {
+				c.API.Client.Credentials.URL = c.API.Client.Credentials.URL + "/"
+			}
 		}
 	}
-	if c.ApiClient != nil && c.ApiClient.CredentialsFilePath != "" {
-		fcontent, err := ioutil.ReadFile(c.ApiClient.CredentialsFilePath)
+	if c.API.Server != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+		fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
 		if err != nil {
-			return errors.Wrap(err, "failed to read config file")
+			return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 		}
-		err = yaml.UnmarshalStrict(fcontent, c.ApiClient.Credentials)
+		err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
 		if err != nil {
-			return errors.Wrap(err, "failed unmarshaling config")
+			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 		}
 	}
+
+	if err := c.LoadSimulation(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (c *GlobalConfig) LoadSimulation() error {
-
-	if c.Crowdsec == nil || c.Crowdsec.SimulationFilePath == "" {
+	if c.ConfigPaths == nil {
 		return nil
 	}
-	rcfg, err := ioutil.ReadFile(c.Crowdsec.SimulationFilePath)
-	if err != nil {
-		return fmt.Errorf("while reading '%s' : %s", c.Crowdsec.SimulationFilePath, err)
-	}
-	simCfg := SimulationConfig{}
-	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
-		return fmt.Errorf("while parsing '%s' : %s", c.Crowdsec.SimulationFilePath, err)
-	}
-	c.Crowdsec.SimulationConfig = &simCfg
 
+	simCfg := SimulationConfig{}
+
+	if c.ConfigPaths.SimulationFilePath == "" {
+		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
+	}
+
+	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
+	if err != nil {
+		log.Errorf("simulation file '%s' doesn't exist. creating it", c.ConfigPaths.SimulationFilePath)
+		simCfg.Simulation = new(bool)
+		*simCfg.Simulation = false
+		simCfg.Exclusions = []string{}
+		newConfigSim, err := yaml.Marshal(simCfg)
+		if err != nil {
+			return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
+		}
+		err = ioutil.WriteFile(c.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+		if err != nil {
+			return fmt.Errorf("unable to write new simulation config in '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		}
+	} else {
+		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		}
+	}
+
+	c.Crowdsec.SimulationConfig = &simCfg
+	c.Cscli.SimulationConfig = &simCfg
 	return nil
 }
 
@@ -189,7 +169,7 @@ func NewConfig() *GlobalConfig {
 }
 
 func NewDefaultConfig() *GlobalConfig {
-	daemonCfg := DaemonCfg{
+	CommonCfg := CommonCfg{
 		Daemonize: false,
 		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
@@ -197,53 +177,71 @@ func NewDefaultConfig() *GlobalConfig {
 		LogLevel:   log.InfoLevel,
 		WorkingDir: ".",
 	}
-	cscli := CscliCfg{
-		HubDir:    "/etc/crowdsec/config/cscli/hub/",
-		IndexPath: "/etc/crowdsec/config/cscli/.index.json",
-		Output:    "human",
-	}
 	prometheus := PrometheusCfg{
 		Enabled: true,
 		Level:   "full",
 	}
+	configPaths := ConfigurationPaths{
+		ConfigDir:          "/etc/crowdsec/",
+		DataDir:            "/var/lib/crowdsec/data/",
+		SimulationFilePath: "/etc/crowdsec/config/simulation.yaml",
+		HubDir:             "/etc/crowdsec/hub",
+		HubIndexFile:       "/etc/crowdsec/hub/.index.json",
+	}
 	crowdsecCfg := CrowdsecServiceCfg{
 		AcquisitionFilePath: "/etc/crowdsec/config/acquis.yaml",
 		ParserRoutinesCount: 1,
-		SimulationFilePath:  "/etc/crowdsec/config/simulation.yaml",
-		ConfigDir:           "/etc/crowdsec/",
 	}
-	lapiCfg := LapiServiceCfg{
-		CertFilePath: "", //no cert by default ?
-		ListenUri:    "http://127.0.0.1:4242/",
+
+	cscliCfg := CscliCfg{
+		Output: "human",
 	}
-	lapiClientCfg := LocalApiClientCfg{
-		CredentialsFilePath: "/etc/crowdsec/config/lapi-secrets.yaml",
+
+	apiCfg := APICfg{
+		Client: &LocalApiClientCfg{
+			CredentialsFilePath: "/etc/crowdsec/config/lapi-secrets.yaml",
+		},
+		Server: &LocalApiServerCfg{
+			CertFilePath: "", //no cert by default ?
+			ListenURI:    "http://127.0.0.1:4242/",
+			OnlineClient: &OnlineApiClientCfg{
+				CredentialsFilePath: "/etc/crowdsec/config/online-api-secrets.yaml",
+			},
+		},
 	}
-	oapiClientCfg := OnlineApiClientCfg{
-		CredentialsFilePath: "/etc/crowdsec/config/online-api-secrets.yaml",
+
+	dbConfig := DatabaseCfg{
+		Type:   "sqlite",
+		DbPath: "/var/lib/crowdsec/data/crowdsec.db",
 	}
+
 	globalCfg := GlobalConfig{
-		Daemon:     &daemonCfg,
-		Prometheus: &prometheus,
-		Crowdsec:   &crowdsecCfg,
-		Lapi:       &lapiCfg,
-		LapiClient: &lapiClientCfg,
-		ApiClient:  &oapiClientCfg,
-		Cscli:      &cscli,
+		Common:      &CommonCfg,
+		Prometheus:  &prometheus,
+		Crowdsec:    &crowdsecCfg,
+		Cscli:       &cscliCfg,
+		API:         &apiCfg,
+		ConfigPaths: &configPaths,
+		DbConfig:    &dbConfig,
 	}
+
+	if err := globalCfg.LoadConfiguration(); err != nil {
+		log.Fatalf("unable to load default configuration: %s", err)
+	}
+
 	return &globalCfg
 }
 
 func (c *GlobalConfig) CleanupPaths() error {
 	var err error
 
-	if c.Daemon != nil {
-		var daemon_cleanup = []*string{
-			&c.Daemon.PidDir,
-			&c.Daemon.LogDir,
-			&c.Daemon.WorkingDir,
+	if c.Common != nil {
+		var CommonCleanup = []*string{
+			&c.Common.PidDir,
+			&c.Common.LogDir,
+			&c.Common.WorkingDir,
 		}
-		for _, k := range daemon_cleanup {
+		for _, k := range CommonCleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -252,13 +250,10 @@ func (c *GlobalConfig) CleanupPaths() error {
 	}
 
 	if c.Crowdsec != nil {
-		var crowdsec_cleanup = []*string{
+		var crowdsecCleanup = []*string{
 			&c.Crowdsec.AcquisitionFilePath,
-			&c.Crowdsec.SimulationFilePath,
-			&c.Crowdsec.ConfigDir,
-			&c.Crowdsec.DataDir,
 		}
-		for _, k := range crowdsec_cleanup {
+		for _, k := range crowdsecCleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -266,14 +261,15 @@ func (c *GlobalConfig) CleanupPaths() error {
 		}
 	}
 
-	if c.Cscli != nil {
-		var cscli_cleanup = []*string{
-			&c.Cscli.HubDir,
-			&c.Cscli.IndexPath,
-			&c.Cscli.InstallDir,
-			&c.Cscli.DataDir,
+	if c.ConfigPaths != nil {
+		var configPathsCleanup = []*string{
+			&c.ConfigPaths.HubDir,
+			&c.ConfigPaths.HubIndexFile,
+			&c.ConfigPaths.ConfigDir,
+			&c.ConfigPaths.DataDir,
+			&c.ConfigPaths.SimulationFilePath,
 		}
-		for _, k := range cscli_cleanup {
+		for _, k := range configPathsCleanup {
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")

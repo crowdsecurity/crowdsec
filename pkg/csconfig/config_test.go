@@ -46,14 +46,14 @@ func TestCleanupPaths(t *testing.T) {
 		{
 			name: "daemon cleanup",
 			Input: &GlobalConfig{
-				Daemon: &DaemonCfg{
+				Common: &CommonCfg{
 					PidDir:     "////tmp//",
 					LogDir:     "/////tmp///",
 					WorkingDir: "/////tmp///",
 				},
 			},
 			expectedResult: &GlobalConfig{
-				Daemon: &DaemonCfg{
+				Common: &CommonCfg{
 					PidDir:     "/tmp",
 					LogDir:     "/tmp",
 					WorkingDir: "/tmp",
@@ -66,37 +66,33 @@ func TestCleanupPaths(t *testing.T) {
 			Input: &GlobalConfig{
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "////tmp//x.yaml",
-					SimulationFilePath:  "////tmp//x.yaml",
-					ConfigDir:           "////tmp//",
-					DataDir:             "////tmp//",
 				},
 			},
 			expectedResult: &GlobalConfig{
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "/tmp/x.yaml",
-					SimulationFilePath:  "/tmp/x.yaml",
-					ConfigDir:           "/tmp",
-					DataDir:             "/tmp",
 				},
 			},
 		},
 		//
 		{
-			name: "cscli cleanup",
+			name: "config paths cleanup",
 			Input: &GlobalConfig{
-				Cscli: &CscliCfg{
-					HubDir:     "////tmp//",
-					IndexPath:  "////tmp//x.yaml",
-					InstallDir: "////tmp//",
-					DataDir:    "////tmp//",
+				ConfigPaths: &ConfigurationPaths{
+					HubDir:             "////tmp//",
+					HubIndexFile:       "////tmp//x.yaml",
+					ConfigDir:          "////tmp//",
+					DataDir:            "////tmp//",
+					SimulationFilePath: "//tmp///toto.yaml",
 				},
 			},
 			expectedResult: &GlobalConfig{
-				Cscli: &CscliCfg{
-					HubDir:     "/tmp",
-					IndexPath:  "/tmp/x.yaml",
-					InstallDir: "/tmp",
-					DataDir:    "/tmp",
+				ConfigPaths: &ConfigurationPaths{
+					HubDir:             "/tmp",
+					HubIndexFile:       "/tmp/x.yaml",
+					ConfigDir:          "/tmp",
+					DataDir:            "/tmp",
+					SimulationFilePath: "/tmp/toto.yaml",
 				},
 			},
 		},

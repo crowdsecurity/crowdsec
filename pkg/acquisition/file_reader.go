@@ -102,7 +102,9 @@ func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, er
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
 		}
-		files = append(files, t)
+		if t.Filename != "" || len(t.Filenames) > 0 {
+			files = append(files, t)
+		}
 	}
 	return files, nil
 }

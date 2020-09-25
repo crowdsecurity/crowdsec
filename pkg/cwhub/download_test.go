@@ -26,7 +26,7 @@ func TestDownloadHubIdx(t *testing.T) {
 
 	//bad target path
 	RawFileURLTemplate = back
-	ret, err = DownloadHubIdx(&csconfig.CscliCfg{IndexPath: "/does/not/exist/index.json"})
+	ret, err = DownloadHubIdx(&csconfig.CscliCfg{HubIndexFile: "/does/not/exist/index.json"})
 	if err == nil || !strings.HasPrefix(fmt.Sprintf("%s", err), "while opening hub index file: open /does/not/exist/index.json:") {
 		log.Errorf("unexpected error %s", err)
 	}

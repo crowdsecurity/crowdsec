@@ -94,20 +94,13 @@ func getSHA256(filepath string) (string, error) {
 }
 
 func GetItemMap(itemType string) map[string]Item {
-	in := false
-	for _, itype := range ItemTypes {
-		if itype == itemType {
-			in = true
-		}
-	}
-	if !in {
+	var m map[string]Item
+	var ok bool
+
+	if m, ok = hubIdx[itemType]; !ok {
 		return nil
 	}
-	if m, ok := hubIdx[itemType]; !ok {
-		return nil
-	} else {
-		return m
-	}
+	return m
 }
 
 func GetItem(itemType string, itemName string) *Item {
@@ -198,22 +191,22 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 }
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
-func HubStatus(itype string, name string, list_all bool) []map[string]string {
-	if _, ok := hubIdx[itype]; !ok {
-		log.Errorf("type %s doesn't exist", itype)
+func HubStatus(itemType string, name string, listAll bool) []map[string]string {
+	if _, ok := hubIdx[itemType]; !ok {
+		log.Errorf("type %s doesn't exist", itemType)
 
 		return nil
 	}
 
 	var ret []map[string]string
 	/*remember, you do it for the user :)*/
-	for _, item := range hubIdx[itype] {
+	for _, item := range hubIdx[itemType] {
 		if name != "" && name != item.Name {
 			//user has required a specific name
 			continue
 		}
 		//Only enabled items ?
-		if !list_all && !item.Installed {
+		if !listAll && !item.Installed {
 			continue
 		}
 		//Check the item status

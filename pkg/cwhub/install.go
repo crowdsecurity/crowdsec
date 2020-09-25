@@ -12,7 +12,7 @@ import (
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
 func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error) {
-	var tdir = cscli.InstallDir
+	var tdir = cscli.ConfigDir
 	var hdir = cscli.HubDir
 
 	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
@@ -88,7 +88,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 }
 
 func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
-	var tdir = cscli.InstallDir
+	var tdir = cscli.ConfigDir
 	var hdir = cscli.HubDir
 	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")

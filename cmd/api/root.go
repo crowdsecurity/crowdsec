@@ -26,7 +26,7 @@ var (
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 
-			csAPI, err = apiserver.NewServer(config.Lapi)
+			csAPI, err = apiserver.NewServer(config.API.Server)
 			if err != nil {
 				return err
 			}
