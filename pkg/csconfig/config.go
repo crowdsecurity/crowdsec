@@ -63,8 +63,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		return fmt.Errorf("please provide a data directory with the 'data_dir' directive in the 'config_paths' section")
 	}
 
-	log.Printf("Config dir!!!!!!!!!! : %+v \n", c.ConfigPaths)
-
 	if c.ConfigPaths.HubDir == "" {
 		c.ConfigPaths.HubDir = filepath.Clean(c.ConfigPaths.ConfigDir + "/hub")
 	}
@@ -87,8 +85,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	c.Cscli.DataDir = c.ConfigPaths.DataDir
 	c.Cscli.HubDir = c.ConfigPaths.HubDir
 	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
-
-	log.Printf("CSCLI CONFiG : %+v \n", c.Cscli)
 
 	c.API.Server.DbConfig = c.DbConfig
 	c.API.Server.LogDir = c.Common.LogDir
