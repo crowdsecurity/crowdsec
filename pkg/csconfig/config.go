@@ -76,6 +76,10 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
 	}
 
+	if err := c.LoadSimulation(); err != nil {
+		return err
+	}
+
 	if err := c.CleanupPaths(); err != nil {
 		return errors.Wrap(err, "invalid config")
 	}
@@ -119,11 +123,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 		}
 	}
-
-	if err := c.LoadSimulation(); err != nil {
-		return err
-	}
-
 	return nil
 }
 

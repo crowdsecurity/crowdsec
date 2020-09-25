@@ -11,7 +11,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddres string) (*ent.Machine, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool) (*ent.Machine, error) {
 	machineExist, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(*machineID)).
@@ -32,8 +32,8 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Create().
 		SetMachineId(*machineID).
 		SetPassword(string(hashPassword)).
-		SetIpAddress(ipAddres).
-		SetIsValidated(true).
+		SetIpAddress(ipAddress).
+		SetIsValidated(isValidated).
 		Save(c.CTX)
 
 	if err != nil {

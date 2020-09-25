@@ -34,7 +34,6 @@ func NewClient(httpClient *http.Client) *ApiClient {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
-	BaseURL, _ := url.Parse("http://127.0.0.1:8080/")
 	UserAgent := "crowdsec-api"
 
 	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}

@@ -17,7 +17,7 @@ cscli:
   output: human
 db_config:
   type: sqlite
-  db_path: ./crowdsec.db
+  db_path: /tmp/crowdsec.db
   user: root
   password: crowdsec
   db_name: crowdsec
@@ -27,7 +27,7 @@ api:
   client:
     credentials_path: ./client_secrets.yaml
   server:
-    listen_uri: http://localhost
+    listen_uri: localhost:8080
     online_client: # Crowdsec API
       credentials_path: ./lapi-secrets.yaml
 prometheus:
