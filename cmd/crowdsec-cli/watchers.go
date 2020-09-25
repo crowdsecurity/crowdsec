@@ -151,12 +151,10 @@ The watcher will be validated automatically.
 		},
 		Run: func(cmd *cobra.Command, arg []string) {
 			if machineID == "" {
-				log.Errorf("please provide a machine id with --machine|-m ")
-				return
+				log.Fatalf("please provide a machine id with --machine|-m ")
 			}
 			if machinePassword == "" && !interactive {
-				log.Errorf("please provide a password with --password|-p or choose interactive mode to enter the password")
-				return
+				log.Fatalf("please provide a password with --password|-p or choose interactive mode to enter the password")
 			} else if machinePassword == "" && interactive {
 				qs := &survey.Password{
 					Message: "Please provide a password for the machine",
@@ -166,8 +164,7 @@ The watcher will be validated automatically.
 			password := strfmt.Password(machinePassword)
 			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true)
 			if err != nil {
-				log.Errorf("unable to create machine: %s", err)
-				return
+				log.Fatalf("unable to create machine: %s", err)
 			}
 			log.Infof("Machine '%s' created successfully", machineID)
 		},

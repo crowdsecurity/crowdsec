@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var BaseURL *url.URL
@@ -34,7 +36,7 @@ func NewClient(httpClient *http.Client) *ApiClient {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
-	UserAgent := "crowdsec-api"
+	UserAgent := fmt.Sprintf("crowdsec-%s", cwversion.VersionStr())
 
 	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}
 	c.common.client = c
