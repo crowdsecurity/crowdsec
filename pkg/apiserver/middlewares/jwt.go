@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"errors"
+
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -54,11 +55,12 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	response := []struct {
 		Password    string `json:"password"`
 		IsValidated bool   `json:"is_validated"`
+		IPAddress   string `json:"ip_address"`
 	}{}
 
 	err := j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(machineID)).
-		Select(machine.FieldPassword, machine.FieldIsValidated).Scan(j.DbClient.CTX, &response)
+		Select(machine.FieldPassword, machine.FieldIsValidated, machine.FieldIpAddress).Scan(j.DbClient.CTX, &response)
 	if err != nil {
 		log.Printf("Error machine login : %+v ", err)
 		return nil, err
@@ -69,8 +71,18 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
+	if response[0].IsValidated == false {
+		return nil, jwt.ErrFailedAuthentication
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(response[0].Password), []byte(password)); err != nil {
 		return nil, jwt.ErrFailedAuthentication
+	}
+
+	if response[0].IPAddress != "" {
+		if c.ClientIP() != response[0].IPAddress {
+			return nil, jwt.ErrFailedAuthentication
+		}
 	}
 
 	return &models.WatcherAuthRequest{

@@ -1,23 +1,66 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"math/rand"
+	"net/url"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/denisbrodbeck/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 var machineID string
 var machinePassword string
 var machineIP string
 var interactive bool
+var apiURL string
+var dumpCreds bool
+
+var (
+	passwordLength = 64
+	upper          = "ABCDEFGHIJKLMNOPQRSTUVWXY"
+	lower          = "abcdefghijklmnopqrstuvwxyz"
+	digits         = "0123456789"
+)
+
+const (
+	uuid = "/proc/sys/kernel/random/uuid"
+)
+
+func generatePassword() string {
+	rand.Seed(time.Now().UnixNano())
+	charset := upper + lower + digits
+
+	buf := make([]byte, passwordLength)
+	buf[0] = digits[rand.Intn(len(digits))]
+	buf[1] = upper[rand.Intn(len(upper))]
+	buf[2] = lower[rand.Intn(len(lower))]
+
+	for i := 3; i < passwordLength; i++ {
+		buf[i] = charset[rand.Intn(len(charset))]
+	}
+	rand.Shuffle(len(buf), func(i, j int) {
+		buf[i], buf[j] = buf[j], buf[i]
+	})
+
+	return string(buf)
+}
 
 func NewWatchersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
@@ -30,14 +73,6 @@ Watchers Management.
 To list/add/delete watchers
 `,
 		Example: `cscli watchers [action]`,
-		Args:    cobra.MinimumNArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var err error
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
-			}
-		},
 	}
 
 	var cmdWatchersList = &cobra.Command{
@@ -46,6 +81,13 @@ To list/add/delete watchers
 		Long:    `List `,
 		Example: `cscli watchers list`,
 		Args:    cobra.MaximumNArgs(1),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+		},
 		Run: func(cmd *cobra.Command, arg []string) {
 			watchers, err := dbClient.ListWatchers()
 			if err != nil {
@@ -93,19 +135,26 @@ To list/add/delete watchers
 	cmdWatchers.AddCommand(cmdWatchersList)
 
 	var cmdWatchersAdd = &cobra.Command{
-		Use:     "add",
-		Short:   "add watchers",
-		Long:    `add `,
+		Use:   "add",
+		Short: "add watchers directly to the database.",
+		Long: `add watchers directly to the database.
+The watcher will be validated automatically.
+/!\ This will add the watcher only in the local database. This can't be run from a remote server.`,
 		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
 		Args:    cobra.MaximumNArgs(1),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+		},
 		Run: func(cmd *cobra.Command, arg []string) {
 			if machineID == "" {
-				log.Errorf("please provide a machine id with --machine|-m ")
-				return
+				log.Fatalf("please provide a machine id with --machine|-m ")
 			}
 			if machinePassword == "" && !interactive {
-				log.Errorf("please provide a password with --password|-p or choose interactive mode to enter the password")
-				return
+				log.Fatalf("please provide a password with --password|-p or choose interactive mode to enter the password")
 			} else if machinePassword == "" && interactive {
 				qs := &survey.Password{
 					Message: "Please provide a password for the machine",
@@ -113,10 +162,9 @@ To list/add/delete watchers
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err := dbClient.CreateMachine(&machineID, &password, machineIP)
+			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true)
 			if err != nil {
-				log.Errorf("unable to create machine: %s", err)
-				return
+				log.Fatalf("unable to create machine: %s", err)
 			}
 			log.Infof("Machine '%s' created successfully", machineID)
 		},
@@ -132,7 +180,13 @@ To list/add/delete watchers
 		Short:   "delete watchers",
 		Long:    `delete `,
 		Example: `cscli watchers delete --machine test`,
-		Args:    cobra.MaximumNArgs(1),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+		},
 		Run: func(cmd *cobra.Command, arg []string) {
 			if machineID == "" {
 				log.Errorf("Please provide a name for the watcher you want to delete with --machine|-m")
@@ -147,6 +201,98 @@ To list/add/delete watchers
 	}
 	cmdWatchersDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
 	cmdWatchers.AddCommand(cmdWatchersDelete)
+
+	var cmdWatchersRegister = &cobra.Command{
+		Use:   "register",
+		Short: "register a watcher to a remote API",
+		Long: `register a watcher to a remote API.
+/!\ The watcher will not be validated. You have to connect on the remote API server and run 'cscli validate watcher <machine_id>'`,
+		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		Args:    cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, arg []string) {
+			id, err := machineid.ID()
+			if err != nil {
+				log.Debugf("failed to get machine-id with usual files : %s", err)
+			}
+			if id == "" || err != nil {
+				bID, err := ioutil.ReadFile(uuid)
+				if err != nil {
+					log.Fatalf("can'get a valid machine_id")
+				}
+				id = string(bID)
+				id = strings.ReplaceAll(id, "-", "")[:32]
+			}
+			password := strfmt.Password(generatePassword())
+			if apiURL != "" {
+				csConfig.API.Client.Credentials.URL = apiURL
+			}
+			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
+			if err != nil {
+				log.Fatalf("unable to parse API Client URL '%s' : %s", csConfig.API.Client.Credentials.URL, err)
+			}
+			Client = apiclient.NewClient(nil)
+			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &id, Password: &password})
+			if err != nil {
+				log.Fatalf("unable to register to API (%s) : %s", Client.BaseURL, err)
+			}
+
+			if !dumpCreds {
+				fmt.Printf("url: %s\n", csConfig.API.Client.Credentials.URL)
+				fmt.Printf("machine_id: %s\n", id)
+				fmt.Printf("password: %s\n", password.String())
+				return
+			}
+
+			var dumpFile string
+			if csConfig.API.Client.CredentialsFilePath == "" {
+				dumpFile = "./api_credentials.yaml"
+			} else {
+				dumpFile = csConfig.API.Client.CredentialsFilePath
+			}
+			apiCfg := csconfig.ApiCredentialsCfg{
+				Login:    id,
+				Password: password.String(),
+				URL:      apiURL,
+			}
+			apiConfigDump, err := yaml.Marshal(apiCfg)
+			if err != nil {
+				log.Fatalf("unable to marshal api credentials: %s", err)
+			}
+			err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+			if err != nil {
+				log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+			}
+			log.Printf("API credentials dumped to '%s'", dumpFile)
+		},
+	}
+	cmdWatchersDelete.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdWatchersDelete.Flags().BoolVarP(&dumpCreds, "dump", "d", false, "dump credentials to the file specified in configuration")
+	cmdWatchers.AddCommand(cmdWatchersRegister)
+
+	var cmdWatchersValidate = &cobra.Command{
+		Use:     "validate",
+		Short:   "validate a watcher to access the local API",
+		Long:    `validate a watcher to access the local API.`,
+		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			var err error
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+		},
+		Run: func(cmd *cobra.Command, arg []string) {
+			if machineID == "" {
+				log.Fatalf("please provide a machine to delete with --machine|-m")
+			}
+			if err := dbClient.ValidateMachine(machineID); err != nil {
+				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
+			}
+			log.Infof("machine '%s' validated successfuly", machineID)
+		},
+	}
+	cmdWatchersValidate.Flags().StringVarP(&machineID, "machine", "m", "", "machine to validate")
+	cmdWatchers.AddCommand(cmdWatchersValidate)
 
 	return cmdWatchers
 }

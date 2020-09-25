@@ -47,7 +47,7 @@ func dumpSimulationFile() error {
 	}
 	err = ioutil.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
-		return fmt.Errorf("write simulation config in '%s' : %s", csConfig.ConfigPaths.SimulationFilePath, err)
+		return fmt.Errorf("write simulation config in '%s' failed: %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
 
 	return nil
