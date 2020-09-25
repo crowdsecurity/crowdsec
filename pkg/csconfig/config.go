@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -71,6 +72,10 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
 	}
 
+	if c.Crowdsec.AcquisitionFilePath == "" {
+		c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+	}
+
 	if err := c.CleanupPaths(); err != nil {
 		return errors.Wrap(err, "invalid config")
 	}
@@ -98,6 +103,11 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
 		}
+		if c.API.Client.Credentials != nil && c.API.Client.Credentials.URL != "" {
+			if !strings.HasSuffix(c.API.Client.Credentials.URL, "/") {
+				c.API.Client.Credentials.URL = c.API.Client.Credentials.URL + "/"
+			}
+		}
 	}
 	if c.API.Server != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 		fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
@@ -109,6 +119,11 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 		}
 	}
+
+	if err := c.LoadSimulation(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -117,18 +132,32 @@ func (c *GlobalConfig) LoadSimulation() error {
 		return nil
 	}
 
+	simCfg := SimulationConfig{}
+
 	if c.ConfigPaths.SimulationFilePath == "" {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
 	}
 
 	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
 	if err != nil {
-		return fmt.Errorf("while reading '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		log.Errorf("simulation file '%s' doesn't exist. creating it", c.ConfigPaths.SimulationFilePath)
+		simCfg.Simulation = new(bool)
+		*simCfg.Simulation = false
+		simCfg.Exclusions = []string{}
+		newConfigSim, err := yaml.Marshal(simCfg)
+		if err != nil {
+			return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
+		}
+		err = ioutil.WriteFile(c.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
+		if err != nil {
+			return fmt.Errorf("unable to write new simulation config in '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		}
+	} else {
+		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
+		}
 	}
-	simCfg := SimulationConfig{}
-	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
-		return fmt.Errorf("while parsing '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
-	}
+
 	c.Crowdsec.SimulationConfig = &simCfg
 	c.Cscli.SimulationConfig = &simCfg
 	return nil

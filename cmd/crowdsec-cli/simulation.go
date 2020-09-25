@@ -27,9 +27,8 @@ func removeFromExclusion(name string) error {
 }
 
 func enableGlobalSimulation() error {
-	tmpBool := true
-
-	csConfig.Crowdsec.SimulationConfig.Simulation = &tmpBool
+	csConfig.Crowdsec.SimulationConfig.Simulation = new(bool)
+	*csConfig.Crowdsec.SimulationConfig.Simulation = true
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 
 	if err := dumpSimulationFile(); err != nil {
@@ -46,26 +45,26 @@ func dumpSimulationFile() error {
 	if err != nil {
 		return fmt.Errorf("unable to marshal simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
+	err = ioutil.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
-		return fmt.Errorf("write simulation config in '%s' : %s", csConfig.Crowdsec.SimulationFilePath, err)
+		return fmt.Errorf("write simulation config in '%s' : %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
 
 	return nil
 }
 
 func disableGlobalSimulation() error {
-	tmpBool := false
+	csConfig.Crowdsec.SimulationConfig.Simulation = new(bool)
+	*csConfig.Crowdsec.SimulationConfig.Simulation = false
 
-	csConfig.Crowdsec.SimulationConfig.Simulation = &tmpBool
 	csConfig.Crowdsec.SimulationConfig.Exclusions = []string{}
 	newConfigSim, err := yaml.Marshal(csConfig.Crowdsec.SimulationConfig)
 	if err != nil {
 		return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
 	}
-	err = ioutil.WriteFile(csConfig.Crowdsec.SimulationFilePath, newConfigSim, 0644)
+	err = ioutil.WriteFile(csConfig.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
 	if err != nil {
-		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csConfig.Crowdsec.SimulationFilePath, err)
+		return fmt.Errorf("unable to write new simulation config in '%s' : %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
 
 	log.Printf("global simulation: disabled")
@@ -109,7 +108,9 @@ func NewSimulationCmds() *cobra.Command {
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+			if cmd.Name() != "status" {
+				log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+			}
 		},
 	}
 	cmdSimulation.Flags().SortFlags = false
@@ -132,7 +133,8 @@ func NewSimulationCmds() *cobra.Command {
 					)
 					item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
-						log.Errorf("'%s' isn't present in hub index", scenario)
+						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
+						continue
 					}
 					if !item.Installed {
 						log.Warningf("'%s' isn't enabled", scenario)

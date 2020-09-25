@@ -31,6 +31,9 @@ To list/add/delete alerts
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
+			if csConfig.API.Client.Credentials == nil {
+				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
+			}
 			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
