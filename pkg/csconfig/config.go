@@ -203,7 +203,7 @@ func NewDefaultConfig() *GlobalConfig {
 		},
 		Server: &LocalApiServerCfg{
 			CertFilePath: "", //no cert by default ?
-			ListenURI:    "http://127.0.0.1:4242/",
+			ListenURI:    "http://127.0.0.1:8080/",
 			OnlineClient: &OnlineApiClientCfg{
 				CredentialsFilePath: "/etc/crowdsec/config/online-api-secrets.yaml",
 			},
