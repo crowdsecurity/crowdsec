@@ -98,9 +98,9 @@ func NewSource(evt types.Event, leaky *Leaky) models.Source {
 
 func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	var (
-		am      string
 		scope   string = types.Undefined
 		sources map[string]models.Source
+		source  string
 	)
 
 	leaky.logger.Debugf("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
@@ -184,15 +184,12 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	alert.Sources = sources
 	//Management of Alert.Message
 	if len(alert.Sources) > 1 {
-		am = fmt.Sprintf("%d Sources on scope.", len(alert.Sources))
+		source = fmt.Sprintf("%d Sources on scope.", len(sources))
 	} else if len(alert.Sources) == 1 {
-
+		scope, source = alert.GetSingleSource()
 	} else {
-		am = "UNKNOWN"
+		source = "UNKNOWN"
 	}
-	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
-	alert.Alert.Message = &am
-
-	//log.Printf("The event is : %s", spew.Sdump(alert))
+	*alert.Alert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", scope, source, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
 	return alert
 }
