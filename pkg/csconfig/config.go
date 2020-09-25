@@ -95,9 +95,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	c.Cscli.HubDir = c.ConfigPaths.HubDir
 	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
 
-	c.API.Server.DbConfig = c.DbConfig
-	c.API.Server.LogDir = c.Common.LogDir
-
 	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" {
 		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)
 		if err != nil {
@@ -113,16 +110,22 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			}
 		}
 	}
-	if c.API.Server != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-		fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
-		}
-		err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+
+	if c.API.Server != nil {
+		c.API.Server.DbConfig = c.DbConfig
+		c.API.Server.LogDir = c.Common.LogDir
+		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
+			err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
 		}
 	}
+
 	return nil
 }
 
