@@ -44,7 +44,6 @@ func Loadplugin(path string) ([]EnricherCtx, error) {
 	if err != nil {
 		log.Warningf("load (fake) plugin load : %v", err)
 		c.initiated = false
-		return nil, err
 	}
 	c.initiated = true
 	return []EnricherCtx{c}, nil
