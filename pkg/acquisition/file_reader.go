@@ -97,7 +97,7 @@ func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, er
 		err = dec.Decode(&t)
 		if err != nil {
 			if err == io.EOF {
-				log.Printf("End of yaml file")
+				log.Tracef("End of yaml file")
 				break
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
@@ -106,7 +106,6 @@ func LoadAcquisCtxConfigFile(config *csconfig.CrowdsecServiceCfg) ([]FileCtx, er
 			files = append(files, t)
 		}
 	}
-	log.Printf("Files : %+v \n", files)
 	return files, nil
 }
 
