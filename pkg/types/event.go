@@ -62,3 +62,14 @@ type RuntimeAlert struct {
 	//APIAlerts will be populated at the end when there is more than one source
 	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty" json:"APIAlerts,omitempty"`
 }
+
+func (r *RuntimeAlert) GetSingleSource() (string, string) {
+	srcScope := ""
+	srcVal := ""
+	for k, v := range r.Sources {
+		srcScope = *v.Scope
+		srcVal = k
+		break
+	}
+	return srcScope, srcVal
+}
