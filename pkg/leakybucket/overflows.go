@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-// for now return the struct directly in order to compare between returned struct
+//SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
 	src := models.Source{}
 
@@ -109,6 +109,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 	return events
 }
 
+//alertDefaultDecision generates a default (4h ban) decision for a given source
 func alertDefaultDecision(source models.Source) (*models.Decision, error) {
 	var decision models.Decision
 
@@ -160,7 +161,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
-//NewAlert will generate a RuntimeAlert from a bucket that overflowed. the RuntimeAlert as well includes the API Alert representation
+//NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 
 	var runtimeAlert types.RuntimeAlert
