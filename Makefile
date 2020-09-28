@@ -31,7 +31,7 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 all: clean test build
 
-build: clean goversion crowdsec cscli
+build: clean goversion crowdsec cscli api
 
 static: goversion crowdsec_static cscli_static
 
