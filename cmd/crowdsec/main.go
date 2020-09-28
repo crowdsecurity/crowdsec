@@ -358,7 +358,7 @@ func main() {
 	}
 
 	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
-		log.Fatalf("Missing Client API credentials, abort.")
+		log.Fatalf("Missing client local API credentials, abort.")
 	}
 
 	//Start the background routines that comunicate via chan
