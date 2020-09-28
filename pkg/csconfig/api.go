@@ -25,14 +25,9 @@ type LocalApiClientCfg struct {
 
 /*local api service configuration*/
 type LocalApiServerCfg struct {
-	ListenURI    string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
-	TLS          *TLSCfg             `yaml:"tls"`
+	CertFilePath string              `yaml:"cert_path,omitempty"`
+	ListenURI    string              `yaml:"listen_uri,omitempty"` //127.0.0.1:4242
 	DbConfig     *DatabaseCfg        `yaml:"-"`
 	LogDir       string              `yaml:"-"`
 	OnlineClient *OnlineApiClientCfg `yaml:"online_client"`
-}
-
-type TLSCfg struct {
-	CertFilePath string `yaml:"cert_file"`
-	KeyFilePath  string `yaml:"key_file"`
 }
