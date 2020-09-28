@@ -81,3 +81,11 @@ make build
 {{crowdsec.name}} bin will be located in `./cmd/crowdsec/crowdsec` and {{cli.name}} bin in `cmd/crowdsec-cli/{{cli.bin}}` 
 
 Now, you can install either with [interactive wizard](#using-the-interactive-wizard) or the [unattended mode](#using-unattended-mode).
+
+# Uninstalling
+
+You can uninstall crowdsec using the wizard : `sudo ./wizard.sh --uninstall`
+
+
+
+
