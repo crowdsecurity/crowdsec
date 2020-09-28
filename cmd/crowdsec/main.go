@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -25,6 +26,9 @@ import (
 )
 
 var (
+	disableAPI *bool
+	disableCS  *bool
+
 	/*tombs for the parser, buckets and outputs.*/
 	acquisTomb  tomb.Tomb
 	parsersTomb tomb.Tomb
@@ -247,6 +251,9 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	SingleFilePath = flag.String("file", "", "Process a single file in time-machine")
 	SingleFileType = flag.String("type", "", "Labels.type for file in time-machine")
 	testMode := flag.Bool("t", false, "only test configs")
+	disableCS = flag.Bool("no-cs", false, "disable crowdsec")
+	disableAPI = flag.Bool("no-api", false, "disable local API")
+
 	flag.Parse()
 	if *printVersion {
 		cwversion.Show()
@@ -375,17 +382,27 @@ func main() {
 		log.Fatalf("While starting to read : %s", err)
 	}
 
-	if cConfig.Common != nil {
-		if err = serveOneTimeRun(); err != nil {
-			log.Errorf(err.Error())
-		} else {
-			return
-		}
-	} else {
-		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-		err = daemon.ServeSignals()
+	if !*disableAPI || cConfig.API.Server == nil {
+		apiServer, err := apiserver.NewServer(cConfig.API.Server)
 		if err != nil {
-			log.Fatalf("serveDaemon error : %s", err.Error())
+			log.Fatalf("unable to run local API: %s", err)
+		}
+		go apiServer.Run()
+	}
+
+	if !*disableCS {
+		if cConfig.Common != nil {
+			if err = serveOneTimeRun(); err != nil {
+				log.Errorf(err.Error())
+			} else {
+				return
+			}
+		} else {
+			defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
+			err = daemon.ServeSignals()
+			if err != nil {
+				log.Fatalf("serveDaemon error : %s", err.Error())
+			}
 		}
 	}
 }
