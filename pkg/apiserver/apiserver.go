@@ -54,16 +54,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 }
 
-func (s *APIServer) Run() error {
-	defer s.controller.DBClient.Ent.Close()
+func (s *APIServer) Router() (*gin.Engine, error) {
+	//defer s.controller.DBClient.Ent.Close()
+	router := gin.New()
 
 	file, err := os.Create(s.logFile)
 	if err != nil {
-		return fmt.Errorf("unable to create log file '%s': %s", s.logFile, err.Error())
+		return router, fmt.Errorf("unable to create log file '%s': %s", s.logFile, err.Error())
 	}
 	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
-
-	router := gin.New()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d \"%s\" %s\"\n",
@@ -112,6 +111,14 @@ func (s *APIServer) Run() error {
 
 	go puller.Pull()
 	*/
+	return router, nil
+}
+
+func (s *APIServer) Run() error {
+	router, err := s.Router()
+	if err != nil {
+		return err
+	}
 	router.Run(s.url)
 	return nil
 }

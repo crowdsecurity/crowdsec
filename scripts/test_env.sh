@@ -38,6 +38,7 @@ PARSER_S01="$PARSER_DIR/s01-parse"
 PARSER_S02="$PARSER_DIR/s02-enrich"
 SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
+HUB_DIR="$CONFIG_DIR/hub"
 
 log_info() {
 	msg=$1
@@ -57,6 +58,7 @@ create_arbo() {
 	mkdir -p "$SCENARIOS_DIR"
 	mkdir -p "$POSTOVERFLOWS_DIR"
 	mkdir -p "$CSCLI_DIR"
+	mkdir -p "$HUB_DIR"
 }
 
 copy_files() {
@@ -66,12 +68,19 @@ copy_files() {
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"
+	cp "./config/acquis.yaml" "$CONFIG_DIR"
+	touch "$CONFIG_DIR"/client_secrets.yaml
+	touch "$CONFIG_DIR"/lapi-secrets.yaml
 }
 
 
 setup() {
 	$BASE/cscli -c "$CONFIG_FILE" hub update
 	$BASE/cscli -c "$CONFIG_FILE" collection install crowdsecurity/linux
+}
+
+setup_api() {
+	$BASE/cscli -c "$CONFIG_FILE" watchers add -m test -p testpassword -f ./client_secrets.yaml
 }
 
 
@@ -85,6 +94,7 @@ main() {
 	log_info "Setting up configurations"
 	CURRENT_PWD=$(pwd)
 	cd $BASE
+	setup_api
 	setup
 	cd $CURRENT_PWD
 	log_info "Environment is ready in $BASE"
