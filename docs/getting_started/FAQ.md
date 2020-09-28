@@ -89,7 +89,14 @@ Several initiatives have been taken to tackle the false positives approach as ea
 
 Feel free to ask for some help to the {{doc.community}}.
 
+## I don't see anything in the dashboard !
 
+Whenever in doubt with what is being processed or not, check [cscli metrics](/observability/command_line/). It should allow you to check :
+ - if the logs are properly read
+ - if the logs are properly parsed
+ - if the scenarios are being triggered
+ 
+If logs are being read, parsed and overflows are being triggered, but still nothing appears in the dashboard, ask for some help on discourse or gitter !
 
 <!-- 
 
