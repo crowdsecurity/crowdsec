@@ -239,12 +239,12 @@ Args :
 				EndIP:    endIP,
 			}
 			alert := models.Alert{
-				Capacity:        &capacity,
-				Decisions:       []*models.Decision{&decision},
-				Events:          []*models.Event{},
-				EventsCount:     &eventsCount,
-				Leakspeed:       &leakSpeed,
-				MachineID:       csConfig.API.Client.Credentials.Login,
+				Capacity:    &capacity,
+				Decisions:   []*models.Decision{&decision},
+				Events:      []*models.Event{},
+				EventsCount: &eventsCount,
+				Leakspeed:   &leakSpeed,
+				//				MachineID:       csConfig.API.Client.Credentials.Login,
 				Message:         &reason,
 				ScenarioHash:    &empty,
 				Scenario:        &empty,
