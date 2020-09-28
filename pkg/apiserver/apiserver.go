@@ -56,6 +56,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 }
 
 func (s *APIServer) Run() error {
+	var err error
 	defer s.controller.DBClient.Ent.Close()
 
 	file, err := os.Create(s.logFile)
@@ -114,9 +115,13 @@ func (s *APIServer) Run() error {
 	go puller.Pull()
 	*/
 	if s.TLS != nil {
-		router.RunTLS(s.URL, s.TLS.CertFilePath, s.TLS.KeyFilePath)
+		err = router.RunTLS(s.URL, s.TLS.CertFilePath, s.TLS.KeyFilePath)
 	} else {
-		router.Run(s.URL)
+		err = router.Run(s.URL)
 	}
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
