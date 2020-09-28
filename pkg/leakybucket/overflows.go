@@ -7,30 +7,19 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
-func metaFromEvent(evt types.Event) models.Meta {
-	var meta models.Meta
-
-	if evt.Meta == nil {
-		return nil
-	}
-	for k, v := range evt.Meta {
-		subMeta := models.MetaItems0{Key: k, Value: v}
-		meta = append(meta, &subMeta)
-	}
-	return meta
-}
-
-// for now return the struct directly in order to compare between returned struct
-func NewSource(evt types.Event, leaky *Leaky) models.Source {
+//SourceFromEvent extracts and formats a valid models.Source object from an Event
+func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
 	src := models.Source{}
 
-	//log.Printf("source type : %s", leaky.scopeType.Scope)
 	switch leaky.scopeType.Scope {
 	case types.Range, types.Ip:
 		source_ip := evt.Meta["source_ip"]
@@ -96,15 +85,91 @@ func NewSource(evt types.Event, leaky *Leaky) models.Source {
 	return src
 }
 
-func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
-	var (
-		am      string
-		scope   string = types.Undefined
-		sources map[string]models.Source
-	)
+//EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
+func EventsFromQueue(queue *Queue) []*models.Event {
 
-	leaky.logger.Debugf("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
+	events := []*models.Event{}
 
+	for _, evt := range queue.Queue {
+		if evt.Meta == nil {
+			continue
+		}
+		meta := models.Meta{}
+		for k, v := range evt.Meta {
+			subMeta := models.MetaItems0{Key: k, Value: v}
+			meta = append(meta, &subMeta)
+		}
+
+		ovflwEvent := models.Event{
+			Meta:      meta,
+			Timestamp: &evt.MarshaledTime,
+		}
+		events = append(events, &ovflwEvent)
+	}
+	return events
+}
+
+//alertDefaultDecision generates a default (4h ban) decision for a given source
+func alertDefaultDecision(source models.Source) (*models.Decision, error) {
+	var decision models.Decision
+
+	decision.Duration = new(string)
+	*decision.Duration = "4h"
+
+	if *source.Scope == types.Ip {
+		srcAddr := net.ParseIP(source.IP)
+		if srcAddr == nil {
+			return nil, fmt.Errorf("can't parse ip %s", source.IP)
+		}
+		decision.StartIP = int64(types.IP2Int(srcAddr))
+		decision.EndIP = decision.StartIP
+	} else if *source.Scope == types.Range {
+		srcAddr, srcRange, err := net.ParseCIDR(*source.Value)
+		if err != nil {
+			return nil, fmt.Errorf("can't parse range %s", *source.Value)
+		}
+		decision.StartIP = int64(types.IP2Int(srcAddr))
+		decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
+
+	}
+
+	decision.Scope = source.Scope
+	decision.Value = source.Value
+	decision.Origin = new(string)
+	*decision.Origin = "crowdsec"
+	decision.Type = new(string)
+	*decision.Type = "ban"
+	return &decision, nil
+}
+
+//alertFormatSource iterates over the queue to collect sources
+func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
+	var sources map[string]models.Source = make(map[string]models.Source)
+	var source_type string
+
+	for _, evt := range queue.Queue {
+		src := SourceFromEvent(evt, leaky)
+		if source_type == types.Undefined {
+			source_type = *src.Scope
+		}
+		if *src.Scope != source_type {
+			return nil, "",
+				fmt.Errorf("event has multiple source types : %s != %s", *src.Scope, source_type)
+		}
+		sources[*src.Value] = src
+	}
+	return sources, source_type, nil
+}
+
+//NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
+func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
+
+	var runtimeAlert types.RuntimeAlert
+
+	leaky.logger.Infof("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
+	/*
+		Craft the models.Alert that is going to be duplicated for each source
+	*/
 	start_at, err := leaky.First_ts.MarshalText()
 	if err != nil {
 		log.Warningf("failed to marshal ts %s : %s", leaky.First_ts.String(), err)
@@ -116,7 +181,6 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 	capacity := int32(leaky.Capacity)
 	EventsCount := int32(leaky.Total_count)
 	leakSpeed := leaky.Leakspeed.String()
-	message := "stuff happened"
 	startAt := string(start_at)
 	stopAt := string(stop_at)
 	apiAlert := models.Alert{
@@ -126,73 +190,61 @@ func NewAlert(leaky *Leaky, queue *Queue) types.RuntimeAlert {
 		Capacity:        &capacity,
 		EventsCount:     &EventsCount,
 		Leakspeed:       &leakSpeed,
-		Message:         &message, //TBD
+		Message:         new(string),
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
-
-		//TBD(m): Decisions
-		//TBD(m): Meta
-
-		//TBD: Labels
-	}
-	alert := types.RuntimeAlert{
-		Mapkey:    leaky.Mapkey,
-		BucketId:  leaky.Uuid,
-		Sources:   make(map[string]models.Source),
-		APIAlerts: []models.Alert{apiAlert},
-		Reprocess: leaky.Reprocess,
+		Simulated:       new(bool),
 	}
 
-	alert.Alert = &alert.APIAlerts[0]
+	if leaky.BucketConfig == nil {
+		return runtimeAlert, fmt.Errorf("leaky.BucketConfig is nil")
+	}
 
-	sources = make(map[string]models.Source)
-	/*we're going to iterate over the Queue of events for two things :
-	- collecting sources
-	- collecting meta-data
-	*/
-	for _, evt := range queue.Queue {
-		// check if the source is already known,
-		//If we don't know the source then add it to the known list of sources
-		//either it's a collection of logs, or a collection of past overflows being reprocessed.
-		//one overflow can have multiple sources for example
-		switch evt.Type {
-		case types.LOG:
-			src := NewSource(evt, leaky)
-			if scope == types.Undefined {
-				scope = *src.Scope
-			}
-			if *src.Scope != scope {
-				leaky.logger.Errorf("Event has multiple Sources with different Scopes: %s, %s %s != %s", *alert.Alert.Scenario, alert.BucketId, *src.Scope, scope)
-			}
-			sources[*src.Value] = src //this might overwrite an already existing source, but in that case, the source should be the same.
-			//Iterate over the meta of the Events to aggregate them
-			ovflwEvent := models.Event{
-				Meta:      metaFromEvent(evt),
-				Timestamp: &evt.MarshaledTime,
-			}
-			alert.Alert.Events = append(alert.Alert.Events, &ovflwEvent)
-		case types.OVFLW:
-			for k, v := range evt.Overflow.Sources {
-				sources[k] = v
-			}
-		default:
-			log.Fatalf("unknown event type : %d", evt.Type)
+	//Get the sources from Leaky/Queue
+	sources, source_scope, err := alertFormatSource(leaky, queue)
+	if err != nil {
+		return runtimeAlert, errors.Wrap(err, "unable to collect sources from bucket")
+	}
+	runtimeAlert.Sources = sources
+	//Include source info in format string
+	sourceStr := ""
+	if len(sources) > 1 {
+		sourceStr = fmt.Sprintf("%d Sources on scope.", len(sources))
+	} else if len(sources) == 1 {
+		for k, _ := range sources {
+			sourceStr = k
+			break
 		}
-
-	}
-
-	alert.Sources = sources
-	//Management of Alert.Message
-	if len(alert.Sources) > 1 {
-		am = fmt.Sprintf("%d Sources on scope.", len(alert.Sources))
-	} else if len(alert.Sources) == 1 {
-
 	} else {
-		am = "UNKNOWN"
+		sourceStr = "UNKNOWN"
 	}
-	am += fmt.Sprintf(" performed '%s' (%d events over %s) at %s", leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
-	alert.Alert.Message = &am
+	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
+	//Get the events from Leaky/Queue
+	apiAlert.Events = EventsFromQueue(queue)
 
-	//log.Printf("The event is : %s", spew.Sdump(alert))
-	return alert
+	//Loop over the Sources and generate appropriate number of ApiAlerts
+	for srcName, srcValue := range sources {
+		log.Infof("handling %s", srcName)
+		newApiAlert := apiAlert
+		srcCopy := srcValue
+		newApiAlert.Source = &srcCopy
+		decision, err := alertDefaultDecision(srcValue)
+		decision.Scenario = new(string)
+		*decision.Scenario = leaky.Name
+		if err != nil {
+			return runtimeAlert, errors.Wrap(err, "failed to build decision")
+		}
+		log.Printf("decision : %s", spew.Sdump(decision))
+		newApiAlert.Decisions = []*models.Decision{decision}
+		if err := newApiAlert.Validate(strfmt.Default); err != nil {
+			log.Errorf("Generated alerts isn't valid")
+			log.Errorf("->%s", spew.Sdump(newApiAlert))
+			log.Fatalf("error : %s", err)
+		}
+		runtimeAlert.APIAlerts = append(runtimeAlert.APIAlerts, newApiAlert)
+	}
+
+	runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
+	log.Printf("returning alert with %d api alerts", len(runtimeAlert.APIAlerts))
+	return runtimeAlert, nil
 }

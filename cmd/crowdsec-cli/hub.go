@@ -21,8 +21,8 @@ List/update parsers/scenarios/postoverflows/collections from [Crowdsec Hub](http
 Hub is manage by cscli, to get latest hub files from [Crowdsec Hub](https://hub.crowdsec.net), you need to update.
 		`,
 		Example: `
-cscli hub list  # List all local configurations
-cscli hub update # update from [Crowdsec Hub](https://hub.crowdsec.net)
+cscli hub list   # List all installed configurations
+cscli hub update # Download list of available configurations from the hub
 		`,
 		Args: cobra.ExactArgs(0),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -36,7 +36,7 @@ cscli hub update # update from [Crowdsec Hub](https://hub.crowdsec.net)
 
 	var cmdHubList = &cobra.Command{
 		Use:   "list",
-		Short: "List available configs",
+		Short: "List installed configs",
 		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {

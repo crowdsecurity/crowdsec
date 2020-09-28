@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
+func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	var decisions []*ent.Decision
 	var metas []*ent.Meta
 	var events []*ent.Event
@@ -26,7 +26,7 @@ func (c *Client) CreateAlertBulk(alertList []*models.Alert) ([]string, error) {
 
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	for i, alertItem := range alertList {
-		owner, err := c.QueryMachineByID(alertItem.MachineID)
+		owner, err := c.QueryMachineByID(machineId)
 		if err != nil {
 			if errors.Cause(err) != UserNotExists {
 				return []string{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", alertItem.MachineID, err))

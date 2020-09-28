@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -18,6 +14,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
@@ -138,9 +137,10 @@ LOOP:
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 
-			if *event.Overflow.Alert.Scenario == "" && event.Overflow.Mapkey != "" {
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
-			} else {
+			} else if event.Overflow.Alert != nil {
+				log.Printf("%s", *event.Overflow.Alert.Message)
 				cacheMutex.Lock()
 				cache = append(cache, event.Overflow)
 				cacheMutex.Unlock()

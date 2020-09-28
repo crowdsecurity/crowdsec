@@ -229,7 +229,10 @@ func LeakRoutine(leaky *Leaky) {
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			close(leaky.Signal)
-			alert := NewAlert(leaky, ofw)
+			alert, err := NewAlert(leaky, ofw)
+			if err != nil {
+				log.Errorf("%s", err)
+			}
 			leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
 			for _, f := range leaky.BucketConfig.processors {
 				alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
@@ -256,7 +259,10 @@ func LeakRoutine(leaky *Leaky) {
 			if leaky.timedOverflow {
 				BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
-				alert = NewAlert(leaky, ofw)
+				alert, err := NewAlert(leaky, ofw)
+				if err != nil {
+					log.Errorf("%s", err)
+				}
 				for _, f := range leaky.BucketConfig.processors {
 					alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
 					if ofw == nil {

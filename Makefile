@@ -6,6 +6,7 @@ DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
+API_FOLDER= "./cmd/api/"
 CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD="build"
@@ -30,7 +31,7 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 all: clean test build
 
-build: clean goversion crowdsec cscli
+build: clean goversion crowdsec cscli api
 
 static: goversion crowdsec_static cscli_static
 
@@ -64,6 +65,15 @@ else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
 endif
+
+api:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+	@make -C $(API_FOLDER) build --no-print-directory
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
+
 
 
 crowdsec:

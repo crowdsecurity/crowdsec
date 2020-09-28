@@ -226,7 +226,7 @@ func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (
 	outputsTomb.Go(func() error {
 		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
 		if err != nil {
-			log.Errorf("runPour error : %s", err)
+			log.Errorf("runOutput error : %s", err)
 			return err
 		}
 		return nil
@@ -357,18 +357,9 @@ func main() {
 		return
 	}
 
-	/*TBD : need to be cleaned up a bit*/
-	/*if the user is in "single file mode" (might be writting scenario or parsers),
-	allow loading **without** parsers or scenarios */
-	// if cConfig.SingleFile == "" {
-	// 	if len(parsers.nodes) == 0 {
-	// 		log.Fatalf("no parser(s) loaded, abort.")
-	// 	}
-
-	// 	if len(holders) == 0 {
-	// 		log.Fatalf("no bucket(s) loaded, abort.")
-	// 	}
-	// }
+	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
+		log.Fatalf("Missing client local API credentials, abort.")
+	}
 
 	//Start the background routines that comunicate via chan
 	log.Infof("Starting processing routines")
