@@ -28,9 +28,6 @@ api:
     credentials_path: ./client_secrets.yaml
   server:
     listen_uri: localhost:8080
-    tls:
-      #cert_file: ./cert.pem
-      #key_file: ./key.pem
     online_client: # Crowdsec API
       credentials_path: ./lapi-secrets.yaml
 prometheus:

@@ -21,8 +21,8 @@ var (
 )
 
 type APIServer struct {
-	URL         string
-	TLS         *csconfig.TLSCfg
+	url         string
+	certPath    string
 	dbClient    *database.Client
 	logFile     string
 	ctx         context.Context
@@ -43,10 +43,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	ctx := context.Background()
 
 	controller := controllers.New(ctx, dbClient, middleware.APIKey.HeaderName)
-
 	return &APIServer{
-		URL:         config.ListenURI,
-		TLS:         config.TLS,
+		url:         config.ListenURI,
+		certPath:    config.CertFilePath,
 		logFile:     fmt.Sprintf("%s/api.log", config.LogDir),
 		dbClient:    dbClient,
 		middlewares: middleware,
@@ -56,7 +55,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 }
 
 func (s *APIServer) Run() error {
-	var err error
 	defer s.controller.DBClient.Ent.Close()
 
 	file, err := os.Create(s.logFile)
@@ -114,14 +112,6 @@ func (s *APIServer) Run() error {
 
 	go puller.Pull()
 	*/
-	if s.TLS != nil {
-		err = router.RunTLS(s.URL, s.TLS.CertFilePath, s.TLS.KeyFilePath)
-	} else {
-		err = router.Run(s.URL)
-	}
-	if err != nil {
-		return err
-	}
-
+	router.Run(s.url)
 	return nil
 }
