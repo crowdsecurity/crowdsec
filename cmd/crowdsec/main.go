@@ -6,15 +6,14 @@ import (
 	"os"
 	"syscall"
 
+	"net/http"
 	_ "net/http/pprof"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -30,10 +29,15 @@ var (
 	disableCS  *bool
 
 	/*tombs for the parser, buckets and outputs.*/
-	acquisTomb  tomb.Tomb
-	parsersTomb tomb.Tomb
-	bucketsTomb tomb.Tomb
-	outputsTomb tomb.Tomb
+	acquisTomb   tomb.Tomb
+	parsersTomb  tomb.Tomb
+	bucketsTomb  tomb.Tomb
+	outputsTomb  tomb.Tomb
+	apiTomb      tomb.Tomb
+	crowdsecTomb tomb.Tomb
+
+	httpAPIServer http.Server
+
 	/*global crowdsec config*/
 	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
@@ -196,49 +200,6 @@ func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-func StartProcessingRoutines(cConfig *csconfig.GlobalConfig, parsers *parsers) (chan types.Event, error) {
-
-	acquisTomb = tomb.Tomb{}
-	parsersTomb = tomb.Tomb{}
-	bucketsTomb = tomb.Tomb{}
-	outputsTomb = tomb.Tomb{}
-
-	inputLineChan := make(chan types.Event)
-	inputEventChan := make(chan types.Event)
-
-	//start go-routines for parsing, buckets pour and ouputs.
-	for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
-		parsersTomb.Go(func() error {
-			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
-			if err != nil {
-				log.Errorf("runParse error : %s", err)
-				return err
-			}
-			return nil
-		})
-	}
-
-	bucketsTomb.Go(func() error {
-		err := runPour(inputEventChan, holders, buckets)
-		if err != nil {
-			log.Errorf("runPour error : %s", err)
-			return err
-		}
-		return nil
-	})
-
-	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
-		if err != nil {
-			log.Errorf("runOutput error : %s", err)
-			return err
-		}
-		return nil
-	})
-
-	return inputLineChan, nil
-}
-
 var SingleFilePath, SingleFileType *string
 
 // LoadConfig return configuration parsed from command line and configuration file
@@ -307,6 +268,17 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	log.Infof("Crowdsec %s", cwversion.VersionStr())
+
+	// Enable profiling early
+	if cConfig.Prometheus != nil {
+		go registerPrometheus(cConfig.Prometheus.Level)
+	}
+
+	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
+		log.Fatalf("Missing client local API credentials, abort.")
+	}
+
 	daemonCTX := &daemon.Context{
 		PidFileName: cConfig.Common.PidDir + "/crowdsec.pid",
 		PidFilePerm: 0644,
@@ -326,83 +298,5 @@ func main() {
 			return
 		}
 	}
-
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus.Level)
-	}
-	err = exprhelpers.Init()
-	if err != nil {
-		log.Fatalf("Failed to init expr helpers : %s", err)
-	}
-
-	// Populate cwhub package tools
-
-	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
-		log.Fatalf("Failed to load hub index : %s", err)
-	}
-
-	// Start loading configs
-	parsers := newParsers()
-	if parsers, err = LoadParsers(cConfig, parsers); err != nil {
-		log.Fatalf("Failed to load parsers: %s", err)
-	}
-
-	if err := LoadBuckets(cConfig); err != nil {
-		log.Fatalf("Failed to load scenarios: %s", err)
-	}
-
-	if err := LoadAcquisition(cConfig); err != nil {
-		log.Fatalf("Error while loading acquisition config : %s", err)
-	}
-
-	/* if it's just linting, we're done */
-	if cConfig.Crowdsec.LintOnly {
-		log.Infof("lint done")
-		return
-	}
-
-	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
-		log.Fatalf("Missing client local API credentials, abort.")
-	}
-
-	//Start the background routines that comunicate via chan
-	log.Infof("Starting processing routines")
-	inputLineChan, err := StartProcessingRoutines(cConfig, parsers)
-	if err != nil {
-		log.Fatalf("failed to start processing routines : %s", err)
-	}
-
-	//Fire!
-	log.Warningf("Starting processing data")
-
-	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
-		log.Fatalf("While starting to read : %s", err)
-	}
-
-	if !*disableAPI || cConfig.API.Server == nil {
-		apiServer, err := apiserver.NewServer(cConfig.API.Server)
-		if err != nil {
-			log.Fatalf("unable to run local API: %s", err)
-		}
-		go apiServer.Run()
-	}
-
-	if !*disableCS {
-		if cConfig.Common != nil {
-			if err = serveOneTimeRun(); err != nil {
-				log.Errorf(err.Error())
-			} else {
-				return
-			}
-		} else {
-			defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-			err = daemon.ServeSignals()
-			if err != nil {
-				log.Fatalf("serveDaemon error : %s", err.Error())
-			}
-		}
-	}
+	Serve(*daemonCTX)
 }
