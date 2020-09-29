@@ -181,11 +181,15 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
-			if hubItem != nil {
-				bucketFactory.ScenarioVersion = hubItem.LocalVersion
-				bucketFactory.hash = hubItem.LocalHash
-			} else {
+			if err != nil {
 				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+			} else {
+				if hubItem != nil {
+					bucketFactory.ScenarioVersion = hubItem.LocalVersion
+					bucketFactory.hash = hubItem.LocalHash
+				} else {
+					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+				}
 			}
 
 			err = LoadBucket(&bucketFactory)
