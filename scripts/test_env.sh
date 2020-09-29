@@ -50,6 +50,7 @@ create_arbo() {
 	mkdir -p "$DATA_DIR"
 	mkdir -p "$LOG_DIR"
 	mkdir -p "$CONFIG_DIR"
+	mkdir -p "$CONFIG_DIR/hub"
 	mkdir -p "$PARSER_DIR"
 	mkdir -p "$PARSER_S00"
 	mkdir -p "$PARSER_S01"
@@ -66,6 +67,9 @@ copy_files() {
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"
+	touch "$BASE/client_secrets.yaml"
+	touch "$BASE/lapi-secrets.yaml"
+
 }
 
 
