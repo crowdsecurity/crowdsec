@@ -270,16 +270,9 @@ func main() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus.Level)
-	}
-
 	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
 		log.Fatalf("Missing client local API credentials, abort.")
 	}
-
-	log.Printf("Preparing daemon")
 
 	daemonCTX := &daemon.Context{
 		PidFileName: cConfig.Common.PidDir + "/crowdsec.pid",
@@ -298,6 +291,10 @@ func main() {
 		if d != nil {
 			return
 		}
+	}
+	// Enable profiling early
+	if cConfig.Prometheus != nil {
+		go registerPrometheus(cConfig.Prometheus.Level)
 	}
 	Serve(*daemonCTX)
 }
