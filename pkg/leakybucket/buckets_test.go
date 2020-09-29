@@ -93,7 +93,7 @@ func testOneBucket(t *testing.T, dir string) error {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
 	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response) {
-		t.Fatalf("the test failed")
+		return fmt.Errorf("tests from %s failed", dir)
 	}
 	return nil
 }
@@ -289,7 +289,8 @@ POLL_AGAIN:
 			}
 		}
 		if !valid {
-			t.Fatalf("mismatching entries left")
+			log.Errorf("mismatching entries left")
+			return false
 		} else {
 			log.Warningf("entry valid at end of loop")
 		}

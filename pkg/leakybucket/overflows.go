@@ -17,17 +17,21 @@ import (
 )
 
 //SourceFromEvent extracts and formats a valid models.Source object from an Event
-func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
+func SourceFromEvent(evt types.Event, leaky *Leaky) (models.Source, error) {
 	src := models.Source{}
 
 	switch leaky.scopeType.Scope {
 	case types.Range, types.Ip:
-		source_ip := evt.Meta["source_ip"]
-		if net.ParseIP(source_ip) == nil {
-			log.Warningf("%s isn't a valid ip", source_ip)
+		if v, ok := evt.Meta["source_ip"]; ok {
+			if net.ParseIP(v) == nil {
+				return src, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
+			} else {
+				src.IP = v
+			}
 		} else {
-			src.IP = source_ip
+			return src, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.scopeType.Scope)
 		}
+
 		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
@@ -52,10 +56,10 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
 			}
 			src.Longitude = float32(l)
 		}
-		if v, ok := evt.Meta["SourceRange"]; ok {
+		if v, ok := evt.Meta["SourceRange"]; ok && v != "" {
 			_, ipNet, err := net.ParseCIDR(v)
 			if err != nil {
-				leaky.logger.Errorf("Declared range %s of %s can't be parsed", v, src.IP)
+				return src, fmt.Errorf("Declared range %s of %s can't be parsed", v, src.IP)
 			} else if ipNet != nil {
 				src.Range = ipNet.String()
 				leaky.logger.Tracef("Valid range from %s : %s", src.IP, src.Range)
@@ -70,7 +74,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
 		if leaky.scopeType.RunTimeFilter != nil {
 			retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
 			if err != nil {
-				leaky.logger.Errorf("Scope filter failed at runtime. Don't konw how to handle this: %s", err)
+				return src, errors.Wrapf(err, "while running scope filter")
 			}
 
 			value, ok := retValue.(string)
@@ -79,10 +83,10 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) models.Source {
 			}
 			src.Value = &value
 		} else {
-			log.Warningf("Empty scope information")
+			return src, fmt.Errorf("empty scope information")
 		}
 	}
-	return src
+	return src, nil
 }
 
 //EventsFromQueue iterates the queue to collect & prepare meta-datas from alert
@@ -148,7 +152,10 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	var source_type string
 
 	for _, evt := range queue.Queue {
-		src := SourceFromEvent(evt, leaky)
+		src, err := SourceFromEvent(evt, leaky)
+		if err != nil {
+			return nil, "", errors.Wrapf(err, "while extracting scope from bucket %s", leaky.Name)
+		}
 		if source_type == types.Undefined {
 			source_type = *src.Scope
 		}

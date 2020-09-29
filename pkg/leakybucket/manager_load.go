@@ -181,14 +181,11 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
 			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
-			if err != nil {
-				log.Fatalf("while getting item hub : %s", err)
-			}
 			if hubItem != nil {
 				bucketFactory.ScenarioVersion = hubItem.LocalVersion
 				bucketFactory.hash = hubItem.LocalHash
 			} else {
-				log.Errorf("cwhub error, the scenario couldn't be synce'd. This shouldn't happen unless we are doing unit tests: %s", bucketFactory.Name)
+				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			}
 
 			err = LoadBucket(&bucketFactory)
