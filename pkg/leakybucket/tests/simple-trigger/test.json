@@ -25,10 +25,9 @@
           }
         },
         "Alert" : {
-        "scenario": "test/simple-trigger",
-        "events_count": 1
+            "scenario": "test/simple-trigger",
+            "events_count": 1
         }
-        
       }
     }
   ]

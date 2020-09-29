@@ -37,7 +37,7 @@
           }
         },
         "Alert": { 
-          "scenario": "test/simple-trigger",
+          "scenario": "test/simple-counter",
           "events_count": 2
         }
       }

@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	jwt "github.com/appleboy/gin-jwt/v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -86,6 +88,10 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
 
+	claims := jwt.ExtractClaims(gctx)
+	/*TBD : use defines rather than hardcoded key to find back owner*/
+	machineId := claims["id"].(string)
+
 	if err := gctx.ShouldBindJSON(&input); err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
@@ -94,7 +100,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-	alerts, err := c.DBClient.CreateAlertBulk(input)
+
+	alerts, err := c.DBClient.CreateAlertBulk(machineId, input)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

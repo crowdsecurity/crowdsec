@@ -150,7 +150,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if err == io.EOF {
-					log.Errorf("End of yaml file")
+					log.Tracef("End of yaml file")
 					break
 				} else {
 					log.Errorf("Bad yaml in %s : %v", f, err)
@@ -180,12 +180,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			hubItem := cwhub.GetItem(cwhub.SCENARIOS, bucketFactory.Name)
-			if hubItem != nil {
-				bucketFactory.ScenarioVersion = hubItem.LocalVersion
-				bucketFactory.hash = hubItem.LocalHash
+			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
+			if err != nil {
+				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
-				log.Errorf("cwhub error, the scenario couldn't be synce'd. This shouldn't happen unless we are doing unit tests: %s", bucketFactory.Name)
+				if hubItem != nil {
+					bucketFactory.ScenarioVersion = hubItem.LocalVersion
+					bucketFactory.hash = hubItem.LocalHash
+				} else {
+					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+				}
 			}
 
 			err = LoadBucket(&bucketFactory)
