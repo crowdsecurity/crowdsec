@@ -31,7 +31,7 @@ var Client *apiclient.ApiClient
 
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration\n")
+		fmt.Printf("id,source,ip,reason,action,country,as,events_count,created_at\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
@@ -43,7 +43,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					*alertItem.EventsCount,
-					*decisionItem.Duration)
+					alertItem.CreatedAt)
 			}
 		}
 	} else if csConfig.Cscli.Output == "json" {
@@ -52,7 +52,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Source", "Scope/Value", "Reason", "Action", "Country", "AS", "Events", "Expiration"})
+		table.SetHeader([]string{"ID", "Source", "Scope/Value", "Reason", "Action", "Country", "AS", "Events", "created_at"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -70,7 +70,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					strconv.Itoa(int(*alertItem.EventsCount)),
-					*decisionItem.Duration,
+					alertItem.CreatedAt,
 				})
 			}
 		}

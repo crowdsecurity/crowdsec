@@ -23,8 +23,11 @@ type Alert struct {
 	// Required: true
 	Capacity *int32 `json:"capacity"`
 
+	// only relevant for GET, ignored in POST requests
+	// Read Only: true
+	CreatedAt string `json:"created_at,omitempty"`
+
 	// decisions
-	// Required: true
 	Decisions []*Decision `json:"decisions"`
 
 	// the Meta of the events leading to overflow
@@ -163,8 +166,8 @@ func (m *Alert) validateCapacity(formats strfmt.Registry) error {
 
 func (m *Alert) validateDecisions(formats strfmt.Registry) error {
 
-	if err := validate.Required("decisions", "body", m.Decisions); err != nil {
-		return err
+	if swag.IsZero(m.Decisions) { // not required
+		return nil
 	}
 
 	for i := 0; i < len(m.Decisions); i++ {

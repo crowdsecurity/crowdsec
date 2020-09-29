@@ -600,6 +600,10 @@ definitions:
         description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
         type: string
         readOnly: true
+      created_at:
+        description: 'only relevant for GET, ignored in POST requests'
+        type: string
+        readOnly: true
       scenario:
         type: string
       scenario_hash:
@@ -653,7 +657,6 @@ definitions:
       - leakspeed
       - simulated
       - events
-      - decisions
       - source
   Source:
     title: Source

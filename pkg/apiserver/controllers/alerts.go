@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// FormatAlerts : Format results from the database to be swagger model compliant
 func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	var data models.AddAlertsRequest
 	for _, alertItem := range result {
@@ -22,9 +23,10 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 		startAt := alertItem.StartedAt.String()
 		StopAt := alertItem.StoppedAt.String()
 		outputAlert = models.Alert{
-			MachineID:   alertItem.Edges.Owner.MachineId,
-			Scenario:    &alertItem.Scenario,
 			ID:          int64(alertItem.ID),
+			MachineID:   alertItem.Edges.Owner.MachineId,
+			CreatedAt:   alertItem.CreatedAt.Format(time.RFC3339),
+			Scenario:    &alertItem.Scenario,
 			Message:     &alertItem.Message,
 			EventsCount: &alertItem.EventsCount,
 			StartAt:     &startAt,
@@ -85,12 +87,13 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
+// CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
 	/*TBD : use defines rather than hardcoded key to find back owner*/
-	machineId := claims["id"].(string)
+	machineID := claims["id"].(string)
 
 	if err := gctx.ShouldBindJSON(&input); err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
@@ -101,7 +104,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 
-	alerts, err := c.DBClient.CreateAlertBulk(machineId, input)
+	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -110,6 +113,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	return
 }
 
+// FindAlerts : return alerts from database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 
@@ -123,6 +127,7 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 	return
 }
 
+// DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	var err error
 	deleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
