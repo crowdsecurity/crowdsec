@@ -7,25 +7,31 @@ common:
 prometheus:
   enabled: true
   level: full
-# hub:
-#   hub_dir: ./config/crowdsec-cli/hub
-#   hub_index_file: ./config/crowdsec-cli/hub/.index.json
-#   install_dir: ./config/
 crowdsec_service:
-  acquisition_path: ./config/acquis.yaml
+#  acquisition_path: ./config/acquis.yaml
   parser_routines: 1
-  simulation_path: ./config/simulation.yaml
-  config_dir: ./config
-  data_dir: ./data/
 cscli:
-  hub_dir: ./config/crowdsec-cli/hub
   output: human
-  index_path: ./config/crowdsec-cli/.index.json
-  install_dir: ./config/
-  data_dir: ./data/
-localapi_service:
-  listen_uri: http://127.0.0.1:4242/
-api_client:
-  credentials_path: ./tests/lapi-secrets.yaml
-online_api_client:
-  credentials_path: ./tests/online-api-secrets.yaml
+db_config:
+  user: ""
+  password: ""
+  db_name: ""
+  host: ""
+  port: 0
+  db_path: ./crowdsec.db
+  type: sqlite
+api:
+  client:
+    credentials_path: ./tests/lapi-secrets.yaml
+  server:
+    listen_uri: 127.0.0.1:8080
+    tls: null
+    online_client:
+      credentials_path: ./tests/online-api-secrets.yaml
+config_paths:
+  config_dir: ./tests
+  data_dir: .
+  simulation_path: ./tests/simulation.yaml
+  index_path: ./tests/hub/.index.json
+  hub_dir: ./tests/hub
+

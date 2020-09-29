@@ -131,7 +131,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 
 func (c *GlobalConfig) LoadSimulation() error {
 	if c.ConfigPaths == nil {
-		return nil
+		return fmt.Errorf("ConfigPaths is empty")
 	}
 
 	simCfg := SimulationConfig{}
@@ -142,26 +142,19 @@ func (c *GlobalConfig) LoadSimulation() error {
 
 	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
 	if err != nil {
-		log.Errorf("simulation file '%s' doesn't exist. creating it", c.ConfigPaths.SimulationFilePath)
-		simCfg.Simulation = new(bool)
-		*simCfg.Simulation = false
-		simCfg.Exclusions = []string{}
-		newConfigSim, err := yaml.Marshal(simCfg)
-		if err != nil {
-			return fmt.Errorf("unable to marshal new simulation configuration: %s", err)
-		}
-		err = ioutil.WriteFile(c.ConfigPaths.SimulationFilePath, newConfigSim, 0644)
-		if err != nil {
-			return fmt.Errorf("unable to write new simulation config in '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
-		}
+		return errors.Wrapf(err, "while reading '%s'", c.ConfigPaths.SimulationFilePath)
 	} else {
 		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
 			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
 		}
 	}
 
-	c.Crowdsec.SimulationConfig = &simCfg
-	c.Cscli.SimulationConfig = &simCfg
+	if c.Crowdsec != nil {
+		c.Crowdsec.SimulationConfig = &simCfg
+	}
+	if c.Cscli != nil {
+		c.Cscli.SimulationConfig = &simCfg
+	}
 	return nil
 }
 
@@ -224,10 +217,6 @@ func NewDefaultConfig() *GlobalConfig {
 		API:         &apiCfg,
 		ConfigPaths: &configPaths,
 		DbConfig:    &dbConfig,
-	}
-
-	if err := globalCfg.LoadConfiguration(); err != nil {
-		log.Fatalf("unable to load default configuration: %s", err)
 	}
 
 	return &globalCfg
