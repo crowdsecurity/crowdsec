@@ -279,6 +279,8 @@ func main() {
 		log.Fatalf("Missing client local API credentials, abort.")
 	}
 
+	log.Printf("Preparing daemon")
+
 	daemonCTX := &daemon.Context{
 		PidFileName: cConfig.Common.PidDir + "/crowdsec.pid",
 		PidFilePerm: 0644,
@@ -289,7 +291,7 @@ func main() {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-
+		log.Printf("Reborning daemon")
 		d, err := daemonCTX.Reborn()
 		if err != nil {
 			log.Fatalf("unable to run daemon: %s ", err.Error())
