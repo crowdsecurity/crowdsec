@@ -287,6 +287,7 @@ func main() {
 		WorkDir:     "./",
 		Umask:       027,
 	}
+	log.Printf("Daemonize : %+v ", cConfig.Common.Daemonize)
 	if cConfig.Common.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
