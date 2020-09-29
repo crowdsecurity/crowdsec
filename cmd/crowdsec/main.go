@@ -298,6 +298,7 @@ func main() {
 			return
 		}
 	}
+	log.Printf("serving crowdsec and api")
 	Serve(*daemonCTX)
-	log.Printf("finis !!h")
+	log.Infof("Process finish")
 }
