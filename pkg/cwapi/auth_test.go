@@ -8,7 +8,6 @@ import (
 	"github.com/dghubble/sling"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -267,7 +266,7 @@ func TestRegisterMachine(t *testing.T) {
 				ApiVersion:   "v1",
 				RegisterPath: "register",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
@@ -275,7 +274,7 @@ func TestRegisterMachine(t *testing.T) {
 				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 			expectedAPICreds: &ApiCreds{
-				User:     "machine_id",
+				User:     "machineid",
 				Password: "machine_password",
 				Profile:  "crowdsec/test1,crowdsec/test2",
 			},
@@ -287,28 +286,14 @@ func TestRegisterMachine(t *testing.T) {
 				ApiVersion:   "v1",
 				RegisterPath: "unknown_path",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
-					User:     "machine_id",
+					User:     "machineid",
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
 				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
-			},
-		},
-		{
-			name:        "api register malformed response",
-			expectedErr: true,
-			givenAPICtx: &ApiCtx{
-				ApiVersion:   "v1",
-				RegisterPath: "malformed_response",
-				BaseURL:      "https://my_testendpoint.com",
-				Creds: ApiCreds{
-					Profile: "crowdsec/test1,crowdsec/test2",
-				},
-				Http:       sling.New().Client(newMockClient()).Base(apiBaseURL),
-				PusherTomb: tomb.Tomb{},
 			},
 		},
 		{
@@ -318,7 +303,7 @@ func TestRegisterMachine(t *testing.T) {
 				ApiVersion:   "v1",
 				RegisterPath: "bad_response",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
@@ -329,6 +314,7 @@ func TestRegisterMachine(t *testing.T) {
 	}
 
 	for _, test := range tests {
+		log.Printf("test '%s'", test.name)
 		err := test.givenAPICtx.RegisterMachine(test.givenAPICtx.CfgUser, test.givenAPICtx.CfgPassword)
 		if !test.expectedErr && err != nil {
 			t.Fatalf("test '%s' failed : %s", test.name, err)
@@ -360,7 +346,7 @@ func TestResetPassword(t *testing.T) {
 				ApiVersion:   "v1",
 				ResetPwdPath: "resetpassword",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "new_machine_password",
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
@@ -368,7 +354,7 @@ func TestResetPassword(t *testing.T) {
 				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
 			},
 			expectedAPICreds: &ApiCreds{
-				User:     "machine_id",
+				User:     "machineid",
 				Password: "new_machine_password",
 				Profile:  "crowdsec/test1,crowdsec/test2",
 			},
@@ -380,28 +366,14 @@ func TestResetPassword(t *testing.T) {
 				ApiVersion:   "v1",
 				ResetPwdPath: "unknown_path",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
-					User:     "machine_id",
+					User:     "machineid",
 					Password: "machine_password",
 					Profile:  "crowdsec/test1,crowdsec/test2",
 				},
 				Http: sling.New().Client(newMockClient()).Base(apiBaseURL),
-			},
-		},
-		{
-			name:        "api reset password malformed response",
-			expectedErr: true,
-			givenAPICtx: &ApiCtx{
-				ApiVersion:   "v1",
-				ResetPwdPath: "malformed_response",
-				BaseURL:      "https://my_testendpoint.com",
-				Creds: ApiCreds{
-					Profile: "crowdsec/test1,crowdsec/test2",
-				},
-				Http:       sling.New().Client(newMockClient()).Base(apiBaseURL),
-				PusherTomb: tomb.Tomb{},
 			},
 		},
 		{
@@ -411,7 +383,7 @@ func TestResetPassword(t *testing.T) {
 				ApiVersion:   "v1",
 				ResetPwdPath: "bad_response",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
@@ -426,7 +398,7 @@ func TestResetPassword(t *testing.T) {
 				ApiVersion:   "v1",
 				ResetPwdPath: "resestpassword_unknown_user",
 				BaseURL:      "https://my_testendpoint.com",
-				CfgUser:      "machine_id",
+				CfgUser:      "machineid",
 				CfgPassword:  "machine_password",
 				Creds: ApiCreds{
 					Profile: "crowdsec/test1,crowdsec/test2",
