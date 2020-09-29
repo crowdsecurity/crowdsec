@@ -299,4 +299,5 @@ func main() {
 		}
 	}
 	Serve(*daemonCTX)
+	log.Printf("finis !!h")
 }
