@@ -260,11 +260,15 @@ The watcher will be validated automatically.
 			}
 			password := strfmt.Password(generatePassword())
 			if apiURL != "" {
-				csConfig.API.Client.Credentials.URL = apiURL
+				if csConfig.API.Client.Credentials != nil {
+					apiURL = csConfig.API.Client.Credentials.URL
+				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
+					apiURL = csConfig.API.Server.ListenURI
+				}
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
+			apiclient.BaseURL, err = url.Parse(apiURL)
 			if err != nil {
-				log.Fatalf("unable to parse API Client URL '%s' : %s", csConfig.API.Client.Credentials.URL, err)
+				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
 			}
 			Client = apiclient.NewClient(nil)
 			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &id, Password: &password})
