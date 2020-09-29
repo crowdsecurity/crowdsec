@@ -37,6 +37,7 @@ require (
 	github.com/sevlyar/go-daemon v0.1.5
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v0.0.7
+	github.com/stretchr/testify v1.5.1
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.2.0
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4
