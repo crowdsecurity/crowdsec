@@ -29,7 +29,7 @@ api:
   server:
     listen_uri: localhost:8080
     online_client: # Crowdsec API
-      credentials_path: ./etc/crowdsec/lapi-secrets.yaml
+      credentials_path: /etc/crowdsec/lapi-secrets.yaml
 prometheus:
   enabled: true
   level: full
