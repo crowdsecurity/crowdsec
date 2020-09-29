@@ -367,7 +367,7 @@ delete_bins() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
-    ${CSCLI_BIN} dashboard stop --remove
+    #${CSCLI_BIN} dashboard stop --remove
     delete_bins
     delete_plugins
 
