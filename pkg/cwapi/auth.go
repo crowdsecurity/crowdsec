@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -162,11 +163,14 @@ func (ctx *ApiCtx) Signin() error {
 }
 
 func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
+	if !validate(machineID) {
+		log.Fatalf("Machine ID %s is not compliant to '^[a-zA-Z0-9]+$'", machineID)
+	)
+
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
 	jsonResp := &ApiResp{}
 	errResp := &ApiResp{}
-
 	resp, err := ctx.Http.New().Post(ctx.RegisterPath).BodyJSON(ctx.Creds).Receive(jsonResp, errResp)
 	if err != nil {
 		return fmt.Errorf("api register machine: HTTP request creation failed: %s", err)
@@ -183,6 +187,10 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 }
 
 func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
+	if !validate(machineID) {
+		log.Fatalf("Machine ID %s is not compliant to '^[a-zA-Z0-9]+$'", machineID)
+	)
+
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
 	jsonResp := &ApiResp{}
@@ -202,4 +210,9 @@ func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 		return fmt.Errorf("api reset password failed")
 	}
 	return nil
+}
+
+func validate(machineID string) bool {
+	re := regexp.MustCompile("^[a-zA-Z0-9]+$")
+	return re.MatchString(machineID)
 }

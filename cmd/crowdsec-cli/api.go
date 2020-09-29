@@ -237,7 +237,7 @@ cscli api credentials   # Display your API credentials
 			}
 
 			password := generatePassword(64)
-			if err := outputCTX.API.ResetPassword(id, password); err != nil {
+			if err := outputCTX.API.ResetPassword(fmt.Sprintf("%s%s", id, generatePassword(16)), password); err != nil {
 				log.Fatalf(err.Error())
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
