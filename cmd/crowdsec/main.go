@@ -204,7 +204,7 @@ var SingleFilePath, SingleFileType *string
 
 // LoadConfig return configuration parsed from command line and configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
-	configFile := flag.String("c", "/etc/crowdsec/config/default.yaml", "configuration file")
+	configFile := flag.String("c", "/etc/crowdsec/config.yaml", "configuration file")
 	printTrace := flag.Bool("trace", false, "VERY verbose")
 	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
 	printInfo := flag.Bool("info", false, "print info-level on stdout")

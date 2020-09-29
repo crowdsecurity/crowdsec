@@ -115,7 +115,7 @@ API interaction:
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "../../config/dev.yaml", "path to crowdsec config file")
+	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config.yaml", "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
