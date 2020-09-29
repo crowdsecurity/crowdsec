@@ -287,12 +287,10 @@ func main() {
 		WorkDir:     "./",
 		Umask:       027,
 	}
-	log.Printf("Daemonize : %+v ", cConfig.Common.Daemonize)
 	if cConfig.Common.Daemonize {
 		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
 		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
 		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-		log.Printf("Reborning daemon")
 		d, err := daemonCTX.Reborn()
 		if err != nil {
 			log.Fatalf("unable to run daemon: %s ", err.Error())
@@ -301,7 +299,5 @@ func main() {
 			return
 		}
 	}
-	log.Printf("serving crowdsec and api")
 	Serve(*daemonCTX)
-	log.Infof("Process finish")
 }
