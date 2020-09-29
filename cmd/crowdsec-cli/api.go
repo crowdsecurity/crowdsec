@@ -20,10 +20,9 @@ import (
 )
 
 var (
-	passwordLength = 64
-	upper          = "ABCDEFGHIJKLMNOPQRSTUVWXY"
-	lower          = "abcdefghijklmnopqrstuvwxyz"
-	digits         = "0123456789"
+	upper  = "ABCDEFGHIJKLMNOPQRSTUVWXY"
+	lower  = "abcdefghijklmnopqrstuvwxyz"
+	digits = "0123456789"
 )
 
 var (
@@ -53,7 +52,7 @@ func dumpCredentials() error {
 	return nil
 }
 
-func generatePassword() string {
+func generatePassword(passwordLength int) string {
 	rand.Seed(time.Now().UnixNano())
 	charset := upper + lower + digits
 
@@ -191,9 +190,9 @@ cscli api credentials   # Display your API credentials
 				id = string(bID)
 				id = strings.ReplaceAll(id, "-", "")[:32]
 			}
-			password := generatePassword()
+			password := generatePassword(64)
 
-			if err := outputCTX.API.RegisterMachine(id, password); err != nil {
+			if err := outputCTX.API.RegisterMachine(fmt.Sprintf("%s%s", id, generatePassword(16)), password); err != nil {
 				log.Fatalf(err.Error())
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
@@ -237,7 +236,7 @@ cscli api credentials   # Display your API credentials
 				id = strings.ReplaceAll(id, "-", "")[:32]
 			}
 
-			password := generatePassword()
+			password := generatePassword(64)
 			if err := outputCTX.API.ResetPassword(id, password); err != nil {
 				log.Fatalf(err.Error())
 			}
