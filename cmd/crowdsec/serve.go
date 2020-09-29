@@ -220,6 +220,8 @@ func Serve(daemonCTX daemon.Context) error {
 		}
 	}
 
+	log.Printf("local api launched")
+
 	if !*disableCS {
 		csParsers, err := initCrowdsec()
 		if err != nil {
@@ -236,6 +238,10 @@ func Serve(daemonCTX daemon.Context) error {
 		}
 		serveCrowdsec(daemonCTX)
 	}
+
+	log.Printf("Crowdsec launched")
+
+	log.Printf("start waiting")
 
 	for {
 		select {
