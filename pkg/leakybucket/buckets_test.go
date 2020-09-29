@@ -217,54 +217,43 @@ POLL_AGAIN:
 				return false
 			}
 		}
-		var valid bool
 	checkresultsloop:
 		for eidx, out := range results {
 			for ridx, expected := range tf.Results {
 
 				log.Debugf("Checking next expected result.")
-				valid = true
-
-				x, err := json.MarshalIndent(out, "", " ")
-				if err != nil {
-					t.Fatalf("unable to marshal stuff : %s", err)
-				}
-				log.Printf("Got %s", x)
 
 				//empty overflow
 				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {
-					valid = true
 					//match stuff
 				} else {
 					if out.Overflow.Alert == nil || expected.Overflow.Alert == nil {
-						valid = false
+						log.Printf("Here ?")
 						continue
-						//Scenario
-
-						if out.Overflow.Alert.Scenario != expected.Overflow.Alert.Scenario {
-							log.Errorf("(scenario) %v != %v", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
-							valid = false
-							continue
-						} else {
-							log.Infof("(scenario) %v == %v", out.Overflow.Alert.Scenario, expected.Overflow.Alert.Scenario)
-						}
-						//EventsCount
-						if out.Overflow.Alert.EventsCount != expected.Overflow.Alert.EventsCount {
-							log.Errorf("(EventsCount) %d != %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
-							valid = false
-							continue
-						} else {
-							log.Infof("(EventsCount) %d == %d", out.Overflow.Alert.EventsCount, expected.Overflow.Alert.EventsCount)
-						}
-						//Sources
-						if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
-							log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
-							valid = false
-							continue
-						} else {
-							log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
-						}
 					}
+					//Scenario
+
+					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
+						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
+						continue
+					} else {
+						log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
+					}
+					//EventsCount
+					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
+						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
+						continue
+					} else {
+						log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
+					}
+					//Sources
+					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
+						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+						continue
+					} else {
+						log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
+					}
+
 				}
 				//Events
 				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
@@ -277,19 +266,19 @@ POLL_AGAIN:
 
 				//CheckFailed:
 
-				if valid {
-					log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
-					//don't do this at home : delete current element from list and redo
-					results[eidx] = results[len(results)-1]
-					results = results[:len(results)-1]
-					tf.Results[ridx] = tf.Results[len(tf.Results)-1]
-					tf.Results = tf.Results[:len(tf.Results)-1]
-					goto checkresultsloop
-				}
+				log.Warningf("The test is valid, remove entry %d from expects, and %d from t.Results", eidx, ridx)
+				//don't do this at home : delete current element from list and redo
+				results[eidx] = results[len(results)-1]
+				results = results[:len(results)-1]
+				tf.Results[ridx] = tf.Results[len(tf.Results)-1]
+				tf.Results = tf.Results[:len(tf.Results)-1]
+				goto checkresultsloop
 			}
 		}
-		if !valid {
+		if len(results) != 0 && len(tf.Results) != 0 {
 			log.Errorf("mismatching entries left")
+			log.Errorf("we got: %s", spew.Sdump(results))
+			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
 			return false
 		} else {
 			log.Warningf("entry valid at end of loop")

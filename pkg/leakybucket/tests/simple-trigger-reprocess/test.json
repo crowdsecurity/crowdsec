@@ -25,7 +25,7 @@
           }
         },
         "Alert" : {
-        "scenario": "test/simple-trigger",
+        "scenario": "test/simple-trigger-reprocess",
         "events_count": 1
         }
        
