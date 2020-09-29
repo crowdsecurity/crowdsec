@@ -194,7 +194,7 @@ in_array() {
 
 install_collection() {
     HMENU=()
-    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} list collections -o raw -a)
+    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collection list -o raw -a)
     COLLECTION_TO_INSTALL=()
     if [[ ${SILENT} == "false" ]]; then
         for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
