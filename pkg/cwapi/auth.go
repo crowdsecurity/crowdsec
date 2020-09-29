@@ -165,7 +165,7 @@ func (ctx *ApiCtx) Signin() error {
 func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 	if !validate(machineID) {
 		log.Fatalf("Machine ID %s is not compliant to '^[a-zA-Z0-9]+$'", machineID)
-	)
+	}
 
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
@@ -189,7 +189,7 @@ func (ctx *ApiCtx) RegisterMachine(machineID string, password string) error {
 func (ctx *ApiCtx) ResetPassword(machineID string, password string) error {
 	if !validate(machineID) {
 		log.Fatalf("Machine ID %s is not compliant to '^[a-zA-Z0-9]+$'", machineID)
-	)
+	}
 
 	ctx.Creds.User = machineID
 	ctx.Creds.Password = password
