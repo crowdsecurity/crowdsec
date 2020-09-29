@@ -123,3 +123,7 @@ func (s *APIServer) Run() error {
 	router.Run(s.URL)
 	return nil
 }
+
+func (s *APIServer) Close() {
+	s.dbClient.Ent.Close()
+}

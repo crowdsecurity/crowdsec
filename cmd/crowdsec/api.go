@@ -30,6 +30,7 @@ func runAPIServer(apiServer *apiserver.APIServer) (*http.Server, error) {
 		if err := httpAPIServer.ListenAndServe(); err != http.ErrServerClosed {
 			log.Fatalf(err.Error())
 		}
+		defer apiServer.Close()
 	}()
 	return &httpAPIServer, nil
 }
