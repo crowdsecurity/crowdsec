@@ -1,8 +1,9 @@
 common:
   daemonize: true
-  pid_dir: /tmp/
-  log_media: stdout
+  pid_dir: /var/run/
+  log_media: file
   log_level: info
+  log_dir: /var/log/
   working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/
