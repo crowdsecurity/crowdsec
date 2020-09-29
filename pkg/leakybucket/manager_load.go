@@ -180,7 +180,10 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.Filename = filepath.Clean(f)
 			bucketFactory.BucketName = seed.Generate()
 			bucketFactory.ret = response
-			hubItem := cwhub.GetItem(cwhub.SCENARIOS, bucketFactory.Name)
+			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
+			if err != nil {
+				log.Fatalf("while getting item hub : %s", err)
+			}
 			if hubItem != nil {
 				bucketFactory.ScenarioVersion = hubItem.LocalVersion
 				bucketFactory.hash = hubItem.LocalHash

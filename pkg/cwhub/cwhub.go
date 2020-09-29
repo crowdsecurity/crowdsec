@@ -2,6 +2,9 @@ package cwhub
 
 import (
 	"crypto/sha256"
+	"path/filepath"
+	"strings"
+
 	//"errors"
 	"fmt"
 	"io"
@@ -101,6 +104,46 @@ func GetItemMap(itemType string) map[string]Item {
 		return nil
 	}
 	return m
+}
+
+//GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
+func GetItemByPath(itemType string, itemPath string) (*Item, error) {
+	/*try to resolve symlink*/
+	finalName := ""
+	f, err := os.Lstat(itemPath)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while performing lstat on %s", itemPath)
+	}
+
+	if f.Mode()&os.ModeSymlink == 0 {
+		/*it's not a symlink, it should be the filename itsef the key*/
+		finalName = filepath.Base(itemPath)
+	} else {
+		/*resolve the symlink to hub file*/
+		pathInHub, err := os.Readlink(itemPath)
+		if err != nil {
+			return nil, errors.Wrapf(err, "while reading symlink of %s", itemPath)
+		}
+		//extract author from path
+		fname := filepath.Base(pathInHub)
+		author := filepath.Base(filepath.Dir(pathInHub))
+		//trim yaml suffix
+		fname = strings.TrimSuffix(fname, ".yaml")
+		fname = strings.TrimSuffix(fname, ".yml")
+		finalName = fmt.Sprintf("%s/%s", author, fname)
+	}
+
+	/*it's not a symlink, it should be the filename itsef the key*/
+	if m := GetItemMap(itemType); m != nil {
+		if v, ok := m[finalName]; ok {
+			return &v, nil
+		} else {
+			return nil, fmt.Errorf("%s not found in %s", finalName, itemType)
+		}
+	} else {
+		return nil, fmt.Errorf("item type %s doesn't exist", itemType)
+	}
+
 }
 
 func GetItem(itemType string, itemName string) *Item {
