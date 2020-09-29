@@ -1,5 +1,5 @@
 common:
-  daemonize: false
+  daemonize: true
   pid_dir: /tmp/
   log_media: stdout
   log_level: info
