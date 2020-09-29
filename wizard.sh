@@ -370,6 +370,11 @@ uninstall_crowdsec() {
     ${CSCLI_BIN} dashboard stop --remove
     delete_bins
     delete_plugins
+
+    # tmp
+    rm -rf /tmp/data/
+    ## end tmp
+
     rm -rf ${CROWDSEC_PATH} || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
