@@ -295,8 +295,9 @@ install_crowdsec() {
     #tmp
     mkdir -p /tmp/data
     mkdir -p /etc/crowdsec/hub/
-    touch /etc/crowdsec/client_secrets.yaml
-    touch /etc/crowdsec/lapi-secrets.yaml
+    install -v -m 644 -D ./config/client_secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/lapi-secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+
     ## end tmp
 
     install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
