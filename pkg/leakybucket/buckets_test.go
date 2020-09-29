@@ -169,7 +169,7 @@ POLL_AGAIN:
 			log.Warningf("got one result")
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
-				log.Infof("Overflow being reprocessed.")
+				log.Errorf("Overflow being reprocessed.")
 				ok, err := PourItemToHolders(ret, holders, buckets)
 				if err != nil {
 					t.Fatalf("Failed to pour : %s", err)
