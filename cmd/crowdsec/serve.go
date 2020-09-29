@@ -139,9 +139,13 @@ func shutdownCrowdsec() error {
 
 func termHandler(sig os.Signal) error {
 	log.Infof("Shutting down routines")
-	if err := ShutdownCrowdsecRoutines(); err != nil {
-		log.Errorf("Error encountered while shutting down routines : %s", err)
+	if err := shutdownCrowdsec(); err != nil {
+		log.Errorf("Error encountered while shutting down crowdsec: %s", err)
 	}
+	if err := shutdownAPI(); err != nil {
+		log.Errorf("Error encountered while shutting down api: %s", err)
+	}
+
 	log.Warningf("all routines are done, bye.")
 	return daemon.ErrStop
 }
