@@ -140,6 +140,7 @@ cscli collection list crowdsecurity/xxx`,
 			ListItem(cwhub.COLLECTIONS, args)
 		},
 	}
+	cmdCollectionList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
 	cmdCollection.AddCommand(cmdCollectionList)
 
 	return cmdCollection
