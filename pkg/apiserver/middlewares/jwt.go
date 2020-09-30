@@ -100,6 +100,9 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 	}
 	err = j.DbClient.UpdateMachineScenarios(scenarios, response[0].ID)
+	if err != nil {
+		log.Debugf("Failed to update scenarios: %s\n", err)
+	}
 
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,
