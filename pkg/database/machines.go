@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-openapi/strfmt"
 
@@ -91,6 +92,17 @@ func (c *Client) DeleteWatcher(name string) error {
 		Exec(c.CTX)
 	if err != nil {
 		return fmt.Errorf("unable to save api key in database: %s", err)
+	}
+	return nil
+}
+
+func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
+	_, err := c.Ent.Machine.UpdateOneID(ID).
+		SetUpdatedAt(time.Now()).
+		SetScenarios(scenarios).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update machine in database: %s", err)
 	}
 	return nil
 }

@@ -109,16 +109,10 @@ To list/add/delete decisions
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
-			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
-			if err != nil {
-				log.Fatalf("Failed to load the list of local scenarios : %s", err)
-			}
-
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			t := &apiclient.JWTTransport{
 				MachineID: &csConfig.API.Client.Credentials.Login,
 				Password:  &password,
-				Scenarios: scenarios,
 			}
 
 			Client = apiclient.NewClient(t.Client())

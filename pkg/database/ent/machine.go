@@ -26,6 +26,8 @@ type Machine struct {
 	Password string `json:"-"`
 	// IpAddress holds the value of the "ipAddress" field.
 	IpAddress string `json:"ipAddress,omitempty"`
+	// Scenarios holds the value of the "scenarios" field.
+	Scenarios string `json:"scenarios,omitempty"`
 	// IsValidated holds the value of the "isValidated" field.
 	IsValidated bool `json:"isValidated,omitempty"`
 	// Status holds the value of the "status" field.
@@ -62,6 +64,7 @@ func (*Machine) scanValues() []interface{} {
 		&sql.NullString{}, // machineId
 		&sql.NullString{}, // password
 		&sql.NullString{}, // ipAddress
+		&sql.NullString{}, // scenarios
 		&sql.NullBool{},   // isValidated
 		&sql.NullString{}, // status
 	}
@@ -104,13 +107,18 @@ func (m *Machine) assignValues(values ...interface{}) error {
 	} else if value.Valid {
 		m.IpAddress = value.String
 	}
-	if value, ok := values[5].(*sql.NullBool); !ok {
-		return fmt.Errorf("unexpected type %T for field isValidated", values[5])
+	if value, ok := values[5].(*sql.NullString); !ok {
+		return fmt.Errorf("unexpected type %T for field scenarios", values[5])
+	} else if value.Valid {
+		m.Scenarios = value.String
+	}
+	if value, ok := values[6].(*sql.NullBool); !ok {
+		return fmt.Errorf("unexpected type %T for field isValidated", values[6])
 	} else if value.Valid {
 		m.IsValidated = value.Bool
 	}
-	if value, ok := values[6].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field status", values[6])
+	if value, ok := values[7].(*sql.NullString); !ok {
+		return fmt.Errorf("unexpected type %T for field status", values[7])
 	} else if value.Valid {
 		m.Status = value.String
 	}
@@ -154,6 +162,8 @@ func (m *Machine) String() string {
 	builder.WriteString(", password=<sensitive>")
 	builder.WriteString(", ipAddress=")
 	builder.WriteString(m.IpAddress)
+	builder.WriteString(", scenarios=")
+	builder.WriteString(m.Scenarios)
 	builder.WriteString(", isValidated=")
 	builder.WriteString(fmt.Sprintf("%v", m.IsValidated))
 	builder.WriteString(", status=")

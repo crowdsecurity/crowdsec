@@ -128,6 +128,13 @@ func IpAddress(v string) predicate.Machine {
 	})
 }
 
+// Scenarios applies equality check predicate on the "scenarios" field. It's identical to ScenariosEQ.
+func Scenarios(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarios), v))
+	})
+}
+
 // IsValidated applies equality check predicate on the "isValidated" field. It's identical to IsValidatedEQ.
 func IsValidated(v bool) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
@@ -624,6 +631,131 @@ func IpAddressEqualFold(v string) predicate.Machine {
 func IpAddressContainsFold(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldIpAddress), v))
+	})
+}
+
+// ScenariosEQ applies the EQ predicate on the "scenarios" field.
+func ScenariosEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosNEQ applies the NEQ predicate on the "scenarios" field.
+func ScenariosNEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosIn applies the In predicate on the "scenarios" field.
+func ScenariosIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldScenarios), v...))
+	})
+}
+
+// ScenariosNotIn applies the NotIn predicate on the "scenarios" field.
+func ScenariosNotIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldScenarios), v...))
+	})
+}
+
+// ScenariosGT applies the GT predicate on the "scenarios" field.
+func ScenariosGT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosGTE applies the GTE predicate on the "scenarios" field.
+func ScenariosGTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosLT applies the LT predicate on the "scenarios" field.
+func ScenariosLT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosLTE applies the LTE predicate on the "scenarios" field.
+func ScenariosLTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosContains applies the Contains predicate on the "scenarios" field.
+func ScenariosContains(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosHasPrefix applies the HasPrefix predicate on the "scenarios" field.
+func ScenariosHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosHasSuffix applies the HasSuffix predicate on the "scenarios" field.
+func ScenariosHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosIsNil applies the IsNil predicate on the "scenarios" field.
+func ScenariosIsNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldScenarios)))
+	})
+}
+
+// ScenariosNotNil applies the NotNil predicate on the "scenarios" field.
+func ScenariosNotNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldScenarios)))
+	})
+}
+
+// ScenariosEqualFold applies the EqualFold predicate on the "scenarios" field.
+func ScenariosEqualFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldScenarios), v))
+	})
+}
+
+// ScenariosContainsFold applies the ContainsFold predicate on the "scenarios" field.
+func ScenariosContainsFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldScenarios), v))
 	})
 }
 

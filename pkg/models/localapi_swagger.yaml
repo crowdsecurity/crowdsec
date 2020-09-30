@@ -577,7 +577,6 @@ definitions:
     required:
       - machine_id
       - password
-      - scenarios
   WatcherAuthResponse:
     title: WatcherAuthResponse
     description: the response of a successful authentication

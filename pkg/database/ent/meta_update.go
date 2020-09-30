@@ -93,7 +93,7 @@ func (mu *MetaUpdate) Mutation() *MetaMutation {
 	return mu.mutation
 }
 
-// ClearOwner clears the owner edge to Alert.
+// ClearOwner clears the "owner" edge to type Alert.
 func (mu *MetaUpdate) ClearOwner() *MetaUpdate {
 	mu.mutation.ClearOwner()
 	return mu
@@ -101,7 +101,6 @@ func (mu *MetaUpdate) ClearOwner() *MetaUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
-
 	var (
 		err      error
 		affected int
@@ -314,7 +313,7 @@ func (muo *MetaUpdateOne) Mutation() *MetaMutation {
 	return muo.mutation
 }
 
-// ClearOwner clears the owner edge to Alert.
+// ClearOwner clears the "owner" edge to type Alert.
 func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
 	muo.mutation.ClearOwner()
 	return muo
@@ -322,7 +321,6 @@ func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
-
 	var (
 		err  error
 		node *Meta
@@ -352,11 +350,11 @@ func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (muo *MetaUpdateOne) SaveX(ctx context.Context) *Meta {
-	m, err := muo.Save(ctx)
+	node, err := muo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return node
 }
 
 // Exec executes the query on the entity.
@@ -372,7 +370,7 @@ func (muo *MetaUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (m *Meta, err error) {
+func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   meta.Table,
@@ -451,9 +449,9 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (m *Meta, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	m = &Meta{config: muo.config}
-	_spec.Assign = m.assignValues
-	_spec.ScanValues = m.scanValues()
+	_node = &Meta{config: muo.config}
+	_spec.Assign = _node.assignValues
+	_spec.ScanValues = _node.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
@@ -462,5 +460,5 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (m *Meta, err error) {
 		}
 		return nil, err
 	}
-	return m, nil
+	return _node, nil
 }

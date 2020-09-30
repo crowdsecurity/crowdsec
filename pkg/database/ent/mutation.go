@@ -70,10 +70,13 @@ type AlertMutation struct {
 	clearedowner       bool
 	decisions          map[int]struct{}
 	removeddecisions   map[int]struct{}
+	cleareddecisions   bool
 	events             map[int]struct{}
 	removedevents      map[int]struct{}
+	clearedevents      bool
 	metas              map[int]struct{}
 	removedmetas       map[int]struct{}
+	clearedmetas       bool
 	done               bool
 	oldValue           func(context.Context) (*Alert, error)
 }
@@ -1201,6 +1204,16 @@ func (m *AlertMutation) AddDecisionIDs(ids ...int) {
 	}
 }
 
+// ClearDecisions clears the decisions edge to Decision.
+func (m *AlertMutation) ClearDecisions() {
+	m.cleareddecisions = true
+}
+
+// DecisionsCleared returns if the edge decisions was cleared.
+func (m *AlertMutation) DecisionsCleared() bool {
+	return m.cleareddecisions
+}
+
 // RemoveDecisionIDs removes the decisions edge to Decision by ids.
 func (m *AlertMutation) RemoveDecisionIDs(ids ...int) {
 	if m.removeddecisions == nil {
@@ -1230,6 +1243,7 @@ func (m *AlertMutation) DecisionsIDs() (ids []int) {
 // ResetDecisions reset all changes of the "decisions" edge.
 func (m *AlertMutation) ResetDecisions() {
 	m.decisions = nil
+	m.cleareddecisions = false
 	m.removeddecisions = nil
 }
 
@@ -1241,6 +1255,16 @@ func (m *AlertMutation) AddEventIDs(ids ...int) {
 	for i := range ids {
 		m.events[ids[i]] = struct{}{}
 	}
+}
+
+// ClearEvents clears the events edge to Event.
+func (m *AlertMutation) ClearEvents() {
+	m.clearedevents = true
+}
+
+// EventsCleared returns if the edge events was cleared.
+func (m *AlertMutation) EventsCleared() bool {
+	return m.clearedevents
 }
 
 // RemoveEventIDs removes the events edge to Event by ids.
@@ -1272,6 +1296,7 @@ func (m *AlertMutation) EventsIDs() (ids []int) {
 // ResetEvents reset all changes of the "events" edge.
 func (m *AlertMutation) ResetEvents() {
 	m.events = nil
+	m.clearedevents = false
 	m.removedevents = nil
 }
 
@@ -1283,6 +1308,16 @@ func (m *AlertMutation) AddMetaIDs(ids ...int) {
 	for i := range ids {
 		m.metas[ids[i]] = struct{}{}
 	}
+}
+
+// ClearMetas clears the metas edge to Meta.
+func (m *AlertMutation) ClearMetas() {
+	m.clearedmetas = true
+}
+
+// MetasCleared returns if the edge metas was cleared.
+func (m *AlertMutation) MetasCleared() bool {
+	return m.clearedmetas
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -1314,6 +1349,7 @@ func (m *AlertMutation) MetasIDs() (ids []int) {
 // ResetMetas reset all changes of the "metas" edge.
 func (m *AlertMutation) ResetMetas() {
 	m.metas = nil
+	m.clearedmetas = false
 	m.removedmetas = nil
 }
 
@@ -1983,6 +2019,15 @@ func (m *AlertMutation) ClearedEdges() []string {
 	if m.clearedowner {
 		edges = append(edges, alert.EdgeOwner)
 	}
+	if m.cleareddecisions {
+		edges = append(edges, alert.EdgeDecisions)
+	}
+	if m.clearedevents {
+		edges = append(edges, alert.EdgeEvents)
+	}
+	if m.clearedmetas {
+		edges = append(edges, alert.EdgeMetas)
+	}
 	return edges
 }
 
@@ -1992,6 +2037,12 @@ func (m *AlertMutation) EdgeCleared(name string) bool {
 	switch name {
 	case alert.EdgeOwner:
 		return m.clearedowner
+	case alert.EdgeDecisions:
+		return m.cleareddecisions
+	case alert.EdgeEvents:
+		return m.clearedevents
+	case alert.EdgeMetas:
+		return m.clearedmetas
 	}
 	return false
 }
@@ -4329,11 +4380,13 @@ type MachineMutation struct {
 	machineId     *string
 	password      *string
 	ipAddress     *string
+	scenarios     *string
 	isValidated   *bool
 	status        *string
 	clearedFields map[string]struct{}
 	alerts        map[int]struct{}
 	removedalerts map[int]struct{}
+	clearedalerts bool
 	done          bool
 	oldValue      func(context.Context) (*Machine, error)
 }
@@ -4602,6 +4655,56 @@ func (m *MachineMutation) ResetIpAddress() {
 	m.ipAddress = nil
 }
 
+// SetScenarios sets the scenarios field.
+func (m *MachineMutation) SetScenarios(s string) {
+	m.scenarios = &s
+}
+
+// Scenarios returns the scenarios value in the mutation.
+func (m *MachineMutation) Scenarios() (r string, exists bool) {
+	v := m.scenarios
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScenarios returns the old scenarios value of the Machine.
+// If the Machine object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *MachineMutation) OldScenarios(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldScenarios is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldScenarios requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScenarios: %w", err)
+	}
+	return oldValue.Scenarios, nil
+}
+
+// ClearScenarios clears the value of scenarios.
+func (m *MachineMutation) ClearScenarios() {
+	m.scenarios = nil
+	m.clearedFields[machine.FieldScenarios] = struct{}{}
+}
+
+// ScenariosCleared returns if the field scenarios was cleared in this mutation.
+func (m *MachineMutation) ScenariosCleared() bool {
+	_, ok := m.clearedFields[machine.FieldScenarios]
+	return ok
+}
+
+// ResetScenarios reset all changes of the "scenarios" field.
+func (m *MachineMutation) ResetScenarios() {
+	m.scenarios = nil
+	delete(m.clearedFields, machine.FieldScenarios)
+}
+
 // SetIsValidated sets the isValidated field.
 func (m *MachineMutation) SetIsValidated(b bool) {
 	m.isValidated = &b
@@ -4699,6 +4802,16 @@ func (m *MachineMutation) AddAlertIDs(ids ...int) {
 	}
 }
 
+// ClearAlerts clears the alerts edge to Alert.
+func (m *MachineMutation) ClearAlerts() {
+	m.clearedalerts = true
+}
+
+// AlertsCleared returns if the edge alerts was cleared.
+func (m *MachineMutation) AlertsCleared() bool {
+	return m.clearedalerts
+}
+
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (m *MachineMutation) RemoveAlertIDs(ids ...int) {
 	if m.removedalerts == nil {
@@ -4728,6 +4841,7 @@ func (m *MachineMutation) AlertsIDs() (ids []int) {
 // ResetAlerts reset all changes of the "alerts" edge.
 func (m *MachineMutation) ResetAlerts() {
 	m.alerts = nil
+	m.clearedalerts = false
 	m.removedalerts = nil
 }
 
@@ -4745,7 +4859,7 @@ func (m *MachineMutation) Type() string {
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -4760,6 +4874,9 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.ipAddress != nil {
 		fields = append(fields, machine.FieldIpAddress)
+	}
+	if m.scenarios != nil {
+		fields = append(fields, machine.FieldScenarios)
 	}
 	if m.isValidated != nil {
 		fields = append(fields, machine.FieldIsValidated)
@@ -4785,6 +4902,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.Password()
 	case machine.FieldIpAddress:
 		return m.IpAddress()
+	case machine.FieldScenarios:
+		return m.Scenarios()
 	case machine.FieldIsValidated:
 		return m.IsValidated()
 	case machine.FieldStatus:
@@ -4808,6 +4927,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldPassword(ctx)
 	case machine.FieldIpAddress:
 		return m.OldIpAddress(ctx)
+	case machine.FieldScenarios:
+		return m.OldScenarios(ctx)
 	case machine.FieldIsValidated:
 		return m.OldIsValidated(ctx)
 	case machine.FieldStatus:
@@ -4856,6 +4977,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetIpAddress(v)
 		return nil
+	case machine.FieldScenarios:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScenarios(v)
+		return nil
 	case machine.FieldIsValidated:
 		v, ok := value.(bool)
 		if !ok {
@@ -4900,6 +5028,9 @@ func (m *MachineMutation) AddField(name string, value ent.Value) error {
 // during this mutation.
 func (m *MachineMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(machine.FieldScenarios) {
+		fields = append(fields, machine.FieldScenarios)
+	}
 	if m.FieldCleared(machine.FieldStatus) {
 		fields = append(fields, machine.FieldStatus)
 	}
@@ -4917,6 +5048,9 @@ func (m *MachineMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MachineMutation) ClearField(name string) error {
 	switch name {
+	case machine.FieldScenarios:
+		m.ClearScenarios()
+		return nil
 	case machine.FieldStatus:
 		m.ClearStatus()
 		return nil
@@ -4943,6 +5077,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldIpAddress:
 		m.ResetIpAddress()
+		return nil
+	case machine.FieldScenarios:
+		m.ResetScenarios()
 		return nil
 	case machine.FieldIsValidated:
 		m.ResetIsValidated()
@@ -5006,6 +5143,9 @@ func (m *MachineMutation) RemovedIDs(name string) []ent.Value {
 // mutation.
 func (m *MachineMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
+	if m.clearedalerts {
+		edges = append(edges, machine.EdgeAlerts)
+	}
 	return edges
 }
 
@@ -5013,6 +5153,8 @@ func (m *MachineMutation) ClearedEdges() []string {
 // cleared in this mutation.
 func (m *MachineMutation) EdgeCleared(name string) bool {
 	switch name {
+	case machine.EdgeAlerts:
+		return m.clearedalerts
 	}
 	return false
 }
