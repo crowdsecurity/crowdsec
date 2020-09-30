@@ -2,17 +2,74 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/url"
+	"os"
+	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var Scenario, AlertID, IP, Range, Since, Until, Source string
 var ActiveDecision bool
+
+func AlertsToTable(alerts *models.GetAlertsResponse) error {
+	if csConfig.Cscli.Output == "raw" {
+		fmt.Printf("id,Scope/Value,reason,version,message,country,as,events_count,created_at\n")
+		for _, alertItem := range *alerts {
+			fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+				alertItem.ID,
+				*alertItem.Source.Scope+":"+*alertItem.Source.Value,
+				*alertItem.Scenario,
+				*alertItem.ScenarioVersion,
+				*alertItem.Message,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
+				*alertItem.EventsCount,
+				alertItem.CreatedAt)
+		}
+	} else if csConfig.Cscli.Output == "json" {
+		x, _ := json.MarshalIndent(alerts, "", " ")
+		fmt.Printf("%s", string(x))
+	} else if csConfig.Cscli.Output == "human" {
+
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"ID", "Scope:Value", "reason", "version", "message", "country", "as", "events_count", "created_at"})
+
+		if len(*alerts) == 0 {
+			fmt.Println("No active decisions")
+			return nil
+		}
+
+		for _, alertItem := range *alerts {
+			var scenarioVersion string
+			if alertItem.ScenarioVersion == nil {
+				scenarioVersion = "N/A"
+			}
+
+			table.Append([]string{
+				strconv.Itoa(int(alertItem.ID)),
+				*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
+				*alertItem.Scenario,
+				scenarioVersion,
+				*alertItem.Message,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				strconv.Itoa(int(*alertItem.EventsCount)),
+				alertItem.CreatedAt,
+			})
+		}
+		table.Render() // Send output
+	}
+	return nil
+}
 
 func NewAlertsCmd() *cobra.Command {
 	/* ---- ALERTS COMMAND */

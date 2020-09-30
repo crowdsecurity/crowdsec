@@ -29,7 +29,7 @@ var (
 var DeleteAll bool
 var Client *apiclient.ApiClient
 
-func AlertsToTable(alerts *models.GetAlertsResponse) error {
+func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
 		fmt.Printf("id,source,ip,reason,action,country,as,events_count,created_at\n")
 		for _, alertItem := range *alerts {
@@ -52,7 +52,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Source", "Scope/Value", "Reason", "Action", "Country", "AS", "Events", "created_at"})
+		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "created_at"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -162,7 +162,7 @@ cscli decisions list --range 1.2.3.4/32
 				log.Fatalf("Unable to list decisions : %v", err.Error())
 			}
 
-			err = AlertsToTable(alerts)
+			err = DecisionsToTable(alerts)
 			if err != nil {
 				log.Fatalf("unable to list decisions : %v", err.Error())
 			}
