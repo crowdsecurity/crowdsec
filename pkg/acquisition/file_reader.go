@@ -208,7 +208,7 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 		}
 		log.Debugf("starting (%s) reader file %d/%d : %s", mode, idx, len(ctx.Files), fctx.Filename)
 	}
-	log.Printf("Started %d routines for polling/read", len(ctx.Files))
+	log.Debugf("Started %d routines for polling/read", len(ctx.Files))
 	return nil
 }
 
@@ -220,7 +220,7 @@ func TailFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error
 	if ctx.Type != FILETYPE {
 		return fmt.Errorf("can't tail %s type for %s", ctx.Type, ctx.Filename)
 	}
-	clog.Infof("Starting '%s'", ctx.Mode)
+	clog.Infof("Starting %s", ctx.Mode)
 	timeout := time.Tick(1 * time.Second)
 LOOP:
 	for {
