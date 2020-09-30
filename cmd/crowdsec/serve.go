@@ -210,14 +210,6 @@ func Serve(daemonCTX daemon.Context) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 
-	if cConfig.Common != nil && !cConfig.Common.Daemonize {
-		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-		err := daemon.ServeSignals()
-		if err != nil {
-			log.Errorf("serveDaemon error : %s", err.Error())
-		}
-	}
-
 	if !*disableAPI || cConfig.API.Server == nil {
 		apiServer, err := initAPIServer()
 		if err != nil {
@@ -231,8 +223,6 @@ func Serve(daemonCTX daemon.Context) error {
 			serveAPIServer(httpAPIServer)
 		}
 	}
-
-	log.Printf("local api launched")
 
 	if !*disableCS {
 		csParsers, err := initCrowdsec()
@@ -250,6 +240,14 @@ func Serve(daemonCTX daemon.Context) error {
 			}
 		} else {
 			serveCrowdsec(csParsers)
+		}
+	}
+
+	if cConfig.Common != nil && !cConfig.Common.Daemonize {
+		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
+		err := daemon.ServeSignals()
+		if err != nil {
+			log.Errorf("serveDaemon error : %s", err.Error())
 		}
 	}
 
