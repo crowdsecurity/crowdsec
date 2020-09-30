@@ -32,12 +32,12 @@ LOOP:
 			}
 			if !parsed.Process {
 				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
-				log.Infof("Discarding line %+v", parsed)
+				log.Debugf("Discarding line %+v", parsed)
 				continue
 			}
 			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 			if parsed.Whitelisted {
-				log.Infof("event whitelisted, discard")
+				log.Debugf("event whitelisted, discard")
 				continue
 			}
 			output <- parsed
