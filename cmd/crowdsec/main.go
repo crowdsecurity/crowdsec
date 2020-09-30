@@ -230,11 +230,11 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	}
 
 	if !*disableAPI && config.API.Server == nil {
-		log.Fatalf("can't run local API Server without configuration. Please edit '%s' to add the API Server configuration", config.Self)
+		log.Fatalf("can't run local API Server without configuration. Please edit '%s' to add the API Server configuration", *config.Self)
 	}
 
 	if !*disableCS && config.Crowdsec == nil {
-		log.Fatalf("can't run crowdsec without configuration. Please edit '%s' to add the crowdsec configuration", config.Self)
+		log.Fatalf("can't run crowdsec without configuration. Please edit '%s' to add the crowdsec configuration", *config.Self)
 	}
 
 	if *disableAPI && *disableCS {
