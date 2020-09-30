@@ -20,7 +20,7 @@ CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
 CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
-CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}/config"
+CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
@@ -194,7 +194,7 @@ in_array() {
 
 install_collection() {
     HMENU=()
-    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} list collections -o raw -a)
+    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collection list -o raw -a)
     COLLECTION_TO_INSTALL=()
     if [[ ${SILENT} == "false" ]]; then
         for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
@@ -225,12 +225,12 @@ install_collection() {
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
-        ${CSCLI_BIN_INSTALLED} install collection "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
+        ${CSCLI_BIN_INSTALLED} collection install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
 
 
-    ${CSCLI_BIN_INSTALLED} install parser "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
+    ${CSCLI_BIN_INSTALLED} parser install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
     fi
@@ -292,6 +292,15 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
     mkdir -p "${CSCLI_FOLDER}" || exit
 
+    #tmp
+    mkdir -p /tmp/data
+    mkdir -p /etc/crowdsec/hub/
+    install -v -m 644 -D ./config/client_secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/lapi-secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+
+    ## end tmp
+
+    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
@@ -359,9 +368,14 @@ delete_bins() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
-    ${CSCLI_BIN} dashboard stop --remove
+    #${CSCLI_BIN} dashboard stop --remove
     delete_bins
     delete_plugins
+
+    # tmp
+    rm -rf /tmp/data/
+    ## end tmp
+
     rm -rf ${CROWDSEC_PATH} || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
@@ -435,7 +449,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
          # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
+        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "tmp^Crowdsec^password0.3.2"
         log_info "Crowdsec api registered"
         return
     fi
@@ -452,7 +466,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
         log_info "configuring  ${CSCLI_BIN_INSTALLED}"
-        ${CSCLI_BIN_INSTALLED} update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+        ${CSCLI_BIN_INSTALLED} hub update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
 
         # detect running services
         detect_services
@@ -476,13 +490,10 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
+        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "tmp^Crowdsec^password0.3.2"
         log_info "Crowdsec api registered"
 
-        if [[ ${SILENT} == "false" ]]; then
-            (systemctl start crowdsec && log_info "crowdsec started") || log_err "unable to start crowdsec. exiting"
-            ${CSCLI_BIN_INSTALLED} api pull
-        fi;
+
         # Set the cscli api pull cronjob 
         setup_cron_pull
 

@@ -1,12 +1,13 @@
 common:
-  daemonize: false
-  pid_dir: /tmp/
-  log_media: stdout
+  daemonize: true
+  pid_dir: /var/run/
+  log_media: file
   log_level: info
+  log_dir: /var/log/
   working_dir: .
 config_paths:
-  config_dir: ./config
-  data_dir: ./data/
+  config_dir: /etc/crowdsec/
+  data_dir: /tmp/data/
   #simulation_path: /etc/crowdsec/config/simulation.yaml
   #hub_dir: /etc/crowdsec/hub/
   #index_path: ./config/hub/.index.json
@@ -17,7 +18,7 @@ cscli:
   output: human
 db_config:
   type: sqlite
-  db_path: ./crowdsec.db
+  db_path: /tmp/data/crowdsec.db
   user: root
   password: crowdsec
   db_name: crowdsec
@@ -25,14 +26,11 @@ db_config:
   port: 3306
 api:
   client:
-    credentials_path: ./config/client_secrets.yaml
+    credentials_path: /etc/crowdsec/client_secrets.yaml
   server:
     listen_uri: localhost:8080
-    tls:
-      #cert_file: ./cert.pem
-      #key_file: ./key.pem
     online_client: # Crowdsec API
-      credentials_path: ./config/lapi-secrets.yaml
+      credentials_path: /etc/crowdsec/lapi-secrets.yaml
 prometheus:
   enabled: true
   level: full

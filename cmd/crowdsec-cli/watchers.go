@@ -31,6 +31,7 @@ var machineIP string
 var interactive bool
 var apiURL string
 var dumpCreds bool
+var outputFile string
 
 var (
 	passwordLength = 64
@@ -167,11 +168,50 @@ The watcher will be validated automatically.
 				log.Fatalf("unable to create machine: %s", err)
 			}
 			log.Infof("Machine '%s' created successfully", machineID)
+
+			var dumpFile string
+			if outputFile != "" {
+				dumpFile = outputFile
+			} else if csConfig.API.Client.CredentialsFilePath != "" {
+				dumpFile = csConfig.API.Client.CredentialsFilePath
+			} else {
+				dumpFile = ""
+			}
+			if apiURL == "" {
+				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
+					apiURL = csConfig.API.Client.Credentials.URL
+				} else if csConfig.API.Server != nil {
+					apiURL = csConfig.API.Server.ListenURI
+				}
+				if apiURL == "" {
+					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
+				}
+			}
+			apiCfg := csconfig.ApiCredentialsCfg{
+				Login:    machineID,
+				Password: password.String(),
+				URL:      apiURL,
+			}
+			apiConfigDump, err := yaml.Marshal(apiCfg)
+			if err != nil {
+				log.Fatalf("unable to marshal api credentials: %s", err)
+			}
+			if dumpFile != "" {
+				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				if err != nil {
+					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+				}
+				log.Printf("API credentials dumped to '%s'", dumpFile)
+			} else {
+				fmt.Printf("%s\n", string(apiConfigDump))
+			}
 		},
 	}
 	cmdWatchersAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
 	cmdWatchersAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
 	cmdWatchersAdd.Flags().StringVar(&machineIP, "ip", "", "machine ip address")
+	cmdWatchersAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmdWatchersAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdWatchersAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
 	cmdWatchers.AddCommand(cmdWatchersAdd)
 
@@ -224,11 +264,15 @@ The watcher will be validated automatically.
 			}
 			password := strfmt.Password(generatePassword())
 			if apiURL != "" {
-				csConfig.API.Client.Credentials.URL = apiURL
+				if csConfig.API.Client.Credentials != nil {
+					apiURL = csConfig.API.Client.Credentials.URL
+				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
+					apiURL = csConfig.API.Server.ListenURI
+				}
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
+			apiclient.BaseURL, err = url.Parse(apiURL)
 			if err != nil {
-				log.Fatalf("unable to parse API Client URL '%s' : %s", csConfig.API.Client.Credentials.URL, err)
+				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
 			}
 			Client = apiclient.NewClient(nil)
 			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &id, Password: &password})

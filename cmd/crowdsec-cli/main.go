@@ -25,29 +25,11 @@ var forceUpgrade bool
 var removeAll bool
 var purgeRemove bool
 var upgradeAll bool
+var listAll bool
 
 var prometheusURL string
 
 func initConfig() {
-
-	csConfig = csconfig.NewConfig()
-
-	if ConfigFilePath == "" {
-		ConfigFilePath = "/etc/crowdsec/default.yaml"
-		log.Infof("Falling back to %s", ConfigFilePath)
-	}
-
-	log.Debugf("Config folder is : %s", ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
-		log.Fatalf(err.Error())
-	}
-
-	if OutputFormat != "" {
-		csConfig.Cscli.Output = OutputFormat
-	}
-	if csConfig.Cscli.Output == "" {
-		csConfig.Cscli.Output = "human"
-	}
 
 	if dbg_lvl {
 		log.SetLevel(log.DebugLevel)
@@ -57,6 +39,20 @@ func initConfig() {
 		log.SetLevel(log.WarnLevel)
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
+	}
+
+	csConfig = csconfig.NewConfig()
+
+	log.Debugf("Using %s as configuration file", ConfigFilePath)
+	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	if OutputFormat != "" {
+		csConfig.Cscli.Output = OutputFormat
+	}
+	if csConfig.Cscli.Output == "" {
+		csConfig.Cscli.Output = "human"
 	}
 
 	if csConfig.Cscli.Output == "json" {
@@ -115,7 +111,7 @@ API interaction:
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "../../config/dev.yaml", "path to crowdsec config file")
+	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config.yaml", "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
