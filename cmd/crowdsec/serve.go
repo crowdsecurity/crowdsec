@@ -250,10 +250,14 @@ func Serve(daemonCTX daemon.Context) error {
 	for {
 		select {
 		case <-apiTomb.Dead():
-			shutdownCrowdsec()
+			if err := shutdownCrowdsec(); err != nil {
+				log.Fatalf("unable to shutdown crowdsec: %s", err)
+			}
 			os.Exit(0)
 		case <-crowdsecTomb.Dead():
-			shutdownAPI()
+			if err := shutdownAPI(); err != nil {
+				log.Fatalf("unable to shutdown api: %s", err)
+			}
 			os.Exit(0)
 		}
 	}
