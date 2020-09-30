@@ -125,7 +125,7 @@ To list/add/delete watchers
 					} else {
 						validated = "false"
 					}
-					fmt.Printf("%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated)
+					fmt.Printf("%s,%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated)
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
