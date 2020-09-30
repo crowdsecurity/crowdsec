@@ -54,9 +54,11 @@ func reloadHandler(sig os.Signal) error {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
 		//restore bucket state
-		log.Warningf("Restoring buckets state from %s", tmpFile)
-		if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
-			log.Fatalf("unable to restore buckets : %s", err)
+		if tmpFile != "" {
+			log.Warningf("Restoring buckets state from %s", tmpFile)
+			if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
+				log.Fatalf("unable to restore buckets : %s", err)
+			}
 		}
 		//reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
