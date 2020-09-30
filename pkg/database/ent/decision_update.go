@@ -171,7 +171,7 @@ func (du *DecisionUpdate) Mutation() *DecisionMutation {
 	return du.mutation
 }
 
-// ClearOwner clears the owner edge to Alert.
+// ClearOwner clears the "owner" edge to type Alert.
 func (du *DecisionUpdate) ClearOwner() *DecisionUpdate {
 	du.mutation.ClearOwner()
 	return du
@@ -179,7 +179,6 @@ func (du *DecisionUpdate) ClearOwner() *DecisionUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
-
 	var (
 		err      error
 		affected int
@@ -538,7 +537,7 @@ func (duo *DecisionUpdateOne) Mutation() *DecisionMutation {
 	return duo.mutation
 }
 
-// ClearOwner clears the owner edge to Alert.
+// ClearOwner clears the "owner" edge to type Alert.
 func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 	duo.mutation.ClearOwner()
 	return duo
@@ -546,7 +545,6 @@ func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
-
 	var (
 		err  error
 		node *Decision
@@ -576,11 +574,11 @@ func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (duo *DecisionUpdateOne) SaveX(ctx context.Context) *Decision {
-	d, err := duo.Save(ctx)
+	node, err := duo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return d
+	return node
 }
 
 // Exec executes the query on the entity.
@@ -596,7 +594,7 @@ func (duo *DecisionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (d *Decision, err error) {
+func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   decision.Table,
@@ -743,9 +741,9 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (d *Decision, err err
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	d = &Decision{config: duo.config}
-	_spec.Assign = d.assignValues
-	_spec.ScanValues = d.scanValues()
+	_node = &Decision{config: duo.config}
+	_spec.Assign = _node.assignValues
+	_spec.ScanValues = _node.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, duo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}
@@ -754,5 +752,5 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (d *Decision, err err
 		}
 		return nil, err
 	}
-	return d, nil
+	return _node, nil
 }

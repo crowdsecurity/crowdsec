@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -73,16 +74,16 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
 	}
-
-	scenarStr, err := cwhub.GetUpstreamInstalledScenariosAsString()
+	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 	if err != nil {
-		return errors.Wrap(err, "while fetching relevant scenarios for JWT auth")
+		return fmt.Errorf("Failed to load the list of local scenarios : %s", err)
 	}
+
 	password := strfmt.Password(apiConfig.Password)
 	t := &apiclient.JWTTransport{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
-		Scenarios: scenarStr,
+		Scenarios: scenarios,
 	}
 	Client := apiclient.NewClient(t.Client())
 

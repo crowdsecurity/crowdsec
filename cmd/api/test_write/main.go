@@ -186,7 +186,6 @@ func (m *Machine) Run(apiURL string, nbRequest int, wg *sync.WaitGroup, metrics 
 	t := &apiclient.JWTTransport{
 		MachineID: m.ID,
 		Password:  m.password,
-		Scenarios: []string{"aaaaaa", "bbbbb"},
 	}
 	Client = apiclient.NewClient(t.Client())
 

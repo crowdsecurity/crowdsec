@@ -100,7 +100,7 @@ To list/add/delete watchers
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Status"})
+				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status"})
 				for _, w := range watchers {
 					var validated string
 					if w.IsValidated {
@@ -108,7 +108,7 @@ To list/add/delete watchers
 					} else {
 						validated = fmt.Sprintf("%s", emoji.Prohibited)
 					}
-					table.Append([]string{w.MachineId, w.IpAddress, validated})
+					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -125,7 +125,7 @@ To list/add/delete watchers
 					} else {
 						validated = "false"
 					}
-					fmt.Printf("%s,%s,%s\n", w.MachineId, w.IpAddress, validated)
+					fmt.Printf("%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated)
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)

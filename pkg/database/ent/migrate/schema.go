@@ -129,6 +129,7 @@ var (
 		{Name: "machine_id", Type: field.TypeString},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
+		{Name: "scenarios", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool},
 		{Name: "status", Type: field.TypeString, Nullable: true},
 	}

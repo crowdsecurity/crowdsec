@@ -129,20 +129,24 @@ func (bc *BlockerCreate) Mutation() *BlockerMutation {
 
 // Save creates the Blocker in the database.
 func (bc *BlockerCreate) Save(ctx context.Context) (*Blocker, error) {
-	if err := bc.preSave(); err != nil {
-		return nil, err
-	}
 	var (
 		err  error
 		node *Blocker
 	)
+	bc.defaults()
 	if len(bc.hooks) == 0 {
+		if err = bc.check(); err != nil {
+			return nil, err
+		}
 		node, err = bc.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*BlockerMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = bc.check(); err != nil {
+				return nil, err
 			}
 			bc.mutation = mutation
 			node, err = bc.sqlSave(ctx)
@@ -168,7 +172,8 @@ func (bc *BlockerCreate) SaveX(ctx context.Context) *Blocker {
 	return v
 }
 
-func (bc *BlockerCreate) preSave() error {
+// defaults sets the default values of the builder before save.
+func (bc *BlockerCreate) defaults() {
 	if _, ok := bc.mutation.CreatedAt(); !ok {
 		v := blocker.DefaultCreatedAt()
 		bc.mutation.SetCreatedAt(v)
@@ -176,15 +181,6 @@ func (bc *BlockerCreate) preSave() error {
 	if _, ok := bc.mutation.UpdatedAt(); !ok {
 		v := blocker.DefaultUpdatedAt()
 		bc.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := bc.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New("ent: missing required field \"name\"")}
-	}
-	if _, ok := bc.mutation.APIKey(); !ok {
-		return &ValidationError{Name: "api_key", err: errors.New("ent: missing required field \"api_key\"")}
-	}
-	if _, ok := bc.mutation.Revoked(); !ok {
-		return &ValidationError{Name: "revoked", err: errors.New("ent: missing required field \"revoked\"")}
 	}
 	if _, ok := bc.mutation.IPAddress(); !ok {
 		v := blocker.DefaultIPAddress
@@ -202,11 +198,33 @@ func (bc *BlockerCreate) preSave() error {
 		v := blocker.DefaultLastPull()
 		bc.mutation.SetLastPull(v)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (bc *BlockerCreate) check() error {
+	if _, ok := bc.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
+	}
+	if _, ok := bc.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
+	}
+	if _, ok := bc.mutation.Name(); !ok {
+		return &ValidationError{Name: "name", err: errors.New("ent: missing required field \"name\"")}
+	}
+	if _, ok := bc.mutation.APIKey(); !ok {
+		return &ValidationError{Name: "api_key", err: errors.New("ent: missing required field \"api_key\"")}
+	}
+	if _, ok := bc.mutation.Revoked(); !ok {
+		return &ValidationError{Name: "revoked", err: errors.New("ent: missing required field \"revoked\"")}
+	}
+	if _, ok := bc.mutation.LastPull(); !ok {
+		return &ValidationError{Name: "last_pull", err: errors.New("ent: missing required field \"last_pull\"")}
+	}
 	return nil
 }
 
 func (bc *BlockerCreate) sqlSave(ctx context.Context) (*Blocker, error) {
-	b, _spec := bc.createSpec()
+	_node, _spec := bc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, bc.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -214,13 +232,13 @@ func (bc *BlockerCreate) sqlSave(ctx context.Context) (*Blocker, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	b.ID = int(id)
-	return b, nil
+	_node.ID = int(id)
+	return _node, nil
 }
 
 func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 	var (
-		b     = &Blocker{config: bc.config}
+		_node = &Blocker{config: bc.config}
 		_spec = &sqlgraph.CreateSpec{
 			Table: blocker.Table,
 			ID: &sqlgraph.FieldSpec{
@@ -235,7 +253,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldCreatedAt,
 		})
-		b.CreatedAt = value
+		_node.CreatedAt = value
 	}
 	if value, ok := bc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -243,7 +261,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldUpdatedAt,
 		})
-		b.UpdatedAt = value
+		_node.UpdatedAt = value
 	}
 	if value, ok := bc.mutation.Name(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -251,7 +269,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldName,
 		})
-		b.Name = value
+		_node.Name = value
 	}
 	if value, ok := bc.mutation.APIKey(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -259,7 +277,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldAPIKey,
 		})
-		b.APIKey = value
+		_node.APIKey = value
 	}
 	if value, ok := bc.mutation.Revoked(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -267,7 +285,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldRevoked,
 		})
-		b.Revoked = value
+		_node.Revoked = value
 	}
 	if value, ok := bc.mutation.IPAddress(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -275,7 +293,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldIPAddress,
 		})
-		b.IPAddress = value
+		_node.IPAddress = value
 	}
 	if value, ok := bc.mutation.GetType(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -283,7 +301,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldType,
 		})
-		b.Type = value
+		_node.Type = value
 	}
 	if value, ok := bc.mutation.Until(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -291,7 +309,7 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldUntil,
 		})
-		b.Until = value
+		_node.Until = value
 	}
 	if value, ok := bc.mutation.LastPull(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -299,9 +317,9 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: blocker.FieldLastPull,
 		})
-		b.LastPull = value
+		_node.LastPull = value
 	}
-	return b, _spec
+	return _node, _spec
 }
 
 // BlockerCreateBulk is the builder for creating a bulk of Blocker entities.
@@ -318,13 +336,14 @@ func (bcb *BlockerCreateBulk) Save(ctx context.Context) ([]*Blocker, error) {
 	for i := range bcb.builders {
 		func(i int, root context.Context) {
 			builder := bcb.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-				if err := builder.preSave(); err != nil {
-					return nil, err
-				}
 				mutation, ok := m.(*BlockerMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
+				}
+				if err := builder.check(); err != nil {
+					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()

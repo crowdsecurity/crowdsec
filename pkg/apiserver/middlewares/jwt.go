@@ -43,6 +43,8 @@ func IdentityHandler(c *gin.Context) interface{} {
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var loginInput models.WatcherAuthRequest
+	var scenarios string
+	var err error
 	if err := c.ShouldBindJSON(&loginInput); err != nil {
 		return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
 	}
@@ -51,16 +53,18 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 	machineID := *loginInput.MachineID
 	password := *loginInput.Password
+	scenariosInput := loginInput.Scenarios
 
 	response := []struct {
+		ID          int    `json:"id"`
 		Password    string `json:"password"`
 		IsValidated bool   `json:"is_validated"`
 		IPAddress   string `json:"ip_address"`
 	}{}
 
-	err := j.DbClient.Ent.Machine.Query().
+	err = j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(machineID)).
-		Select(machine.FieldPassword, machine.FieldIsValidated, machine.FieldIpAddress).Scan(j.DbClient.CTX, &response)
+		Select(machine.FieldID, machine.FieldPassword, machine.FieldIsValidated, machine.FieldIpAddress).Scan(j.DbClient.CTX, &response)
 	if err != nil {
 		log.Printf("Error machine login : %+v ", err)
 		return nil, err
@@ -75,15 +79,27 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(response[0].Password), []byte(password)); err != nil {
+	if err = bcrypt.CompareHashAndPassword([]byte(response[0].Password), []byte(password)); err != nil {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
+	// TBD : assess relevance of this check
 	if response[0].IPAddress != "" {
 		if c.ClientIP() != response[0].IPAddress {
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
+
+	if len(scenariosInput) > 0 {
+		for _, scenario := range scenariosInput {
+			if scenarios == "" {
+				scenarios = scenario
+			} else {
+				scenarios += "," + scenario
+			}
+		}
+	}
+	err = j.DbClient.UpdateMachineScenarios(scenarios, response[0].ID)
 
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,

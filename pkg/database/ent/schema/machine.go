@@ -23,6 +23,7 @@ func (Machine) Fields() []ent.Field {
 		field.String("machineId"),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
+		field.String("scenarios").Optional(),
 		field.Bool("isValidated").
 			Default(false),
 		field.String("status").Optional(),

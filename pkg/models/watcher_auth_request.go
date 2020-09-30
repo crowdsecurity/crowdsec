@@ -27,7 +27,6 @@ type WatcherAuthRequest struct {
 	Password *strfmt.Password `json:"password"`
 
 	// the list of scenarios enabled on the watcher
-	// Required: true
 	Scenarios []string `json:"scenarios"`
 }
 
@@ -40,10 +39,6 @@ func (m *WatcherAuthRequest) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validatePassword(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateScenarios(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -69,15 +64,6 @@ func (m *WatcherAuthRequest) validatePassword(formats strfmt.Registry) error {
 	}
 
 	if err := validate.FormatOf("password", "body", "password", m.Password.String(), formats); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *WatcherAuthRequest) validateScenarios(formats strfmt.Registry) error {
-
-	if err := validate.Required("scenarios", "body", m.Scenarios); err != nil {
 		return err
 	}
 

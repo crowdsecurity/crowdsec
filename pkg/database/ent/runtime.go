@@ -105,7 +105,7 @@ func init() {
 	// machine.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	machine.DefaultUpdatedAt = machineDescUpdatedAt.Default.(func() time.Time)
 	// machineDescIsValidated is the schema descriptor for isValidated field.
-	machineDescIsValidated := machineFields[5].Descriptor()
+	machineDescIsValidated := machineFields[6].Descriptor()
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
 	machine.DefaultIsValidated = machineDescIsValidated.Default.(bool)
 	metaFields := schema.Meta{}.Fields()
