@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"strconv"
+
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/pkg/errors"
-	"strconv"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -157,4 +158,67 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		return "0", errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 	return strconv.Itoa(nbDeleted), nil
+}
+
+func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
+	var err error
+	var startIP, endIP int64
+
+	decisions := c.Ent.Decision.Update()
+
+	for param, value := range filter {
+		switch param {
+		case "scope":
+			decisions = decisions.Where(decision.ScopeEQ(value[0]))
+		case "value":
+			decisions = decisions.Where(decision.ValueEQ(value[0]))
+		case "type":
+			decisions = decisions.Where(decision.TypeEQ(value[0]))
+		case "ip":
+			isValidIP := IsIpv4(value[0])
+			if !isValidIP {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
+			}
+			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+			if err != nil {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
+		case "range":
+			startIP, endIP, err = GetIpsFromIpRange(value[0])
+			if err != nil {
+				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+			}
+		default:
+			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+		}
+
+		if startIP != 0 && endIP != 0 {
+			decisions = decisions.Where(decision.And(
+				decision.StartIPGTE(startIP),
+				decision.EndIPLTE(endIP),
+			))
+		}
+	}
+	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
+	if err != nil {
+		return "0", errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
+	}
+	return strconv.Itoa(nbDeleted), nil
+}
+
+func (c *Client) SoftDeleteAllDecisions() (string, error) {
+	nbDeleted, err := c.Ent.Decision.Update().SetUntil(time.Now()).Save(c.CTX)
+	if err != nil {
+		return "0", errors.Wrap(DeleteFail, "soft delete all decisions")
+	}
+	return strconv.Itoa(nbDeleted), nil
+
+}
+
+func (c *Client) SoftDeleteDecisionById(decisionId int) error {
+	_, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionId)).SetUntil(time.Now()).Save(c.CTX)
+	if err != nil {
+		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionId))
+	}
+	return nil
 }

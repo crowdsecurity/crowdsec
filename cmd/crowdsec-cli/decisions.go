@@ -300,20 +300,22 @@ cscli decisions delete --range 1.2.3.4/32
 			var decisions *models.DeleteDecisionResponse
 
 			filter := apiclient.DecisionsDeleteOpts{}
-			if Scope != "" {
-				filter.Scope_equals = &Scope
-			}
-			if Value != "" {
-				filter.Value_equals = &Value
-			}
-			if Type != "" {
-				filter.Type_equals = &Type
-			}
-			if IP != "" {
-				filter.IP_equals = &IP
-			}
-			if Range != "" {
-				filter.Range_equals = &Range
+			if !DeleteAll {
+				if Scope != "" {
+					filter.Scope_equals = &Scope
+				}
+				if Value != "" {
+					filter.Value_equals = &Value
+				}
+				if Type != "" {
+					filter.Type_equals = &Type
+				}
+				if IP != "" {
+					filter.IP_equals = &IP
+				}
+				if Range != "" {
+					filter.Range_equals = &Range
+				}
 			}
 
 			if DecisionID == "" {
