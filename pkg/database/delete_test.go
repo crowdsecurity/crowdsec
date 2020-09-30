@@ -20,7 +20,7 @@ func TestNoCleanUpParams(t *testing.T) {
 		t.Fatalf("failed to create simple sqlite")
 	}
 
-	if err := ctx.DeleteAll(); err != nil {
+	if err := ctx.HardDeleteAll(); err != nil {
 		t.Fatalf("failed to flush existing bans")
 	}
 
@@ -78,7 +78,7 @@ func TestNoCleanUp(t *testing.T) {
 		t.Fatalf("failed to create simple sqlite")
 	}
 
-	if err := ctx.DeleteAll(); err != nil {
+	if err := ctx.HardDeleteAll(); err != nil {
 		t.Fatalf("failed to flush existing bans")
 	}
 
@@ -143,7 +143,7 @@ func TestCleanUpByCount(t *testing.T) {
 		t.Fatalf("failed to create simple sqlite")
 	}
 
-	if err := ctx.DeleteAll(); err != nil {
+	if err := ctx.HardDeleteAll(); err != nil {
 		t.Fatalf("failed to flush existing bans")
 	}
 
@@ -255,7 +255,7 @@ func TestCleanUpByAge(t *testing.T) {
 		t.Fatalf("failed to create simple sqlite")
 	}
 
-	if err := ctx.DeleteAll(); err != nil {
+	if err := ctx.HardDeleteAll(); err != nil {
 		t.Fatalf("failed to flush existing bans")
 	}
 

@@ -33,6 +33,15 @@ func (c *Context) DeleteAll() error {
 	return nil
 }
 
+func (c *Context) HardDeleteAll() error {
+	allBa := types.BanApplication{}
+	records := c.Db.Unscoped().Delete(&allBa)
+	if records.Error != nil {
+		return records.Error
+	}
+	return nil
+}
+
 func (c *Context) DeleteExpired() (int, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
