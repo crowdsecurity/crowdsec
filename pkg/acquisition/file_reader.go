@@ -335,6 +335,5 @@ func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error 
 		clog.Warningf("unmarshaled %d events", count)
 
 	}
-	clog.Infof("force commit")
 	return nil
 }
