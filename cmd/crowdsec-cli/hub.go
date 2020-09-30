@@ -33,6 +33,7 @@ cscli hub update # Download list of available configurations from the hub
 			return nil
 		},
 	}
+	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdHubList = &cobra.Command{
 		Use:   "list",

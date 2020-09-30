@@ -45,6 +45,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
+	cmdPostOverflow.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdPostOverflowInstall = &cobra.Command{
 		Use:     "postoverflow [config]",

@@ -43,6 +43,7 @@ you should [update cscli](./cscli_update.md).
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
+	cmdCollection.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdCollectionInstall = &cobra.Command{
 		Use:     "install [config]",

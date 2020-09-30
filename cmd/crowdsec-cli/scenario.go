@@ -43,9 +43,10 @@ you should [update cscli](./cscli_update.md).
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
+	cmdScenario.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdScenarioInstall = &cobra.Command{
-		Use:     "scenario [config]",
+		Use:     "install [config]",
 		Short:   "Install given scenario",
 		Long:    `Fetch and install given scenario from hub`,
 		Example: `cscli scenario install crowdsec/xxx`,

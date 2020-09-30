@@ -41,6 +41,7 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 }
 
 func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
+	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to build request for hub index")
