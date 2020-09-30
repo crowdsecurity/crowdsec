@@ -210,6 +210,14 @@ func Serve(daemonCTX daemon.Context) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 
+	if cConfig.Common != nil && !cConfig.Common.Daemonize {
+		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
+		err := daemon.ServeSignals()
+		if err != nil {
+			log.Errorf("serveDaemon error : %s", err.Error())
+		}
+	}
+
 	if !*disableAPI || cConfig.API.Server == nil {
 		apiServer, err := initAPIServer()
 		if err != nil {
@@ -236,16 +244,14 @@ func Serve(daemonCTX daemon.Context) error {
 			log.Infof("lint done")
 			os.Exit(0)
 		}
-		err = runCrowdsec(csParsers)
-		if err != nil {
-			return fmt.Errorf("unable to start crowdsec: %s", err)
+		if cConfig.Common != nil && !cConfig.Common.Daemonize {
+			if err := serveOneTimeRun(); err != nil {
+				log.Errorf(err.Error())
+			}
+		} else {
+			serveCrowdsec(csParsers)
 		}
-		serveCrowdsec(daemonCTX)
 	}
-
-	log.Printf("Crowdsec launched")
-
-	log.Printf("start waiting")
 
 	for {
 		select {
