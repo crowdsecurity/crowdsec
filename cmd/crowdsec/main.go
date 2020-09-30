@@ -229,6 +229,18 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		log.Warningf("no configuration file provided")
 	}
 
+	if !*disableAPI && config.API.Server == nil {
+		log.Fatalf("can't run local API Server without configuration. Please edit '%s' to add the API Server configuration", config.Self)
+	}
+
+	if !*disableCS && config.Crowdsec == nil {
+		log.Fatalf("can't run crowdsec without configuration. Please edit '%s' to add the crowdsec configuration", config.Self)
+	}
+
+	if *disableAPI && *disableCS {
+		log.Fatalf("You must run at least the API Server or crowdsec")
+	}
+
 	if *SingleFilePath != "" {
 		if *SingleFileType == "" {
 			return fmt.Errorf("-file requires -type")
@@ -292,6 +304,7 @@ func main() {
 			return
 		}
 	}
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)

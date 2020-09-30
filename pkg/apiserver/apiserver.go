@@ -120,7 +120,7 @@ func (s *APIServer) Run() error {
 	if err != nil {
 		return err
 	}
-	if err := router.Run(s.URL); err ! nil {
+	if err := router.Run(s.URL); err != nil {
 		return err
 	}
 	return nil

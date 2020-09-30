@@ -7,7 +7,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/sevlyar/go-daemon"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -80,20 +79,10 @@ func runCrowdsec(parsers *parsers) error {
 	return nil
 }
 
-func serveCrowdsec(daemonCTX daemon.Context) {
+func serveCrowdsec(parsers *parsers) {
 	crowdsecTomb.Go(func() error {
 		go func() {
-			if cConfig.Common != nil && !cConfig.Common.Daemonize {
-				if err := serveOneTimeRun(); err != nil {
-					log.Errorf(err.Error())
-				}
-			} else {
-				defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-				err := daemon.ServeSignals()
-				if err != nil {
-					log.Errorf("serveDaemon error : %s", err.Error())
-				}
-			}
+			runCrowdsec(parsers)
 		}()
 
 		<-crowdsecTomb.Dying()
