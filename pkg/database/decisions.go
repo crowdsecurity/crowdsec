@@ -160,6 +160,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	return strconv.Itoa(nbDeleted), nil
 }
 
+// SoftDeleteDecisionsWithFilter udpate the expiration time to now() for the decisions matching the filter
 func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
 	var startIP, endIP int64
@@ -206,19 +207,11 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	return strconv.Itoa(nbDeleted), nil
 }
 
-func (c *Client) SoftDeleteAllDecisions() (string, error) {
-	nbDeleted, err := c.Ent.Decision.Update().SetUntil(time.Now()).Save(c.CTX)
+//SoftDeleteDecisionByID set the expiration of a decision to now()
+func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
+	_, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
 	if err != nil {
-		return "0", errors.Wrap(DeleteFail, "soft delete all decisions")
-	}
-	return strconv.Itoa(nbDeleted), nil
-
-}
-
-func (c *Client) SoftDeleteDecisionById(decisionId int) error {
-	_, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionId)).SetUntil(time.Now()).Save(c.CTX)
-	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionId))
+		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionID))
 	}
 	return nil
 }
