@@ -181,7 +181,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 
 	var runtimeAlert types.RuntimeAlert
 
-	leaky.logger.Infof("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
+	leaky.logger.Debugf("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
 	/*
 		Craft the models.Alert that is going to be duplicated for each source
 	*/
