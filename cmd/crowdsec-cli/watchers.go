@@ -170,10 +170,12 @@ The watcher will be validated automatically.
 			log.Infof("Machine '%s' created successfully", machineID)
 
 			var dumpFile string
-			if csConfig.API.Client.CredentialsFilePath == "" {
-				dumpFile = "./api_credentials.yaml"
-			} else {
+			if outputFile != "" {
+				dumpFile = outputFile
+			} else if csConfig.API.Client.CredentialsFilePath != "" {
 				dumpFile = csConfig.API.Client.CredentialsFilePath
+			} else {
+				dumpFile = ""
 			}
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
@@ -185,7 +187,6 @@ The watcher will be validated automatically.
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
-
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    machineID,
 				Password: password.String(),
@@ -195,12 +196,15 @@ The watcher will be validated automatically.
 			if err != nil {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
-			err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
-			if err != nil {
-				log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+			if dumpFile != "" {
+				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				if err != nil {
+					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+				}
+				log.Printf("API credentials dumped to '%s'", dumpFile)
+			} else {
+				fmt.Printf("%s\n", string(apiConfigDump))
 			}
-			log.Printf("API credentials dumped to '%s'", dumpFile)
-
 		},
 	}
 	cmdWatchersAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
