@@ -181,7 +181,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 
 	var runtimeAlert types.RuntimeAlert
 
-	leaky.logger.Infof("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
+	leaky.logger.Debugf("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
 	/*
 		Craft the models.Alert that is going to be duplicated for each source
 	*/
@@ -238,8 +238,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	apiAlert.Events = EventsFromQueue(queue)
 
 	//Loop over the Sources and generate appropriate number of ApiAlerts
-	for srcName, srcValue := range sources {
-		log.Infof("handling %s", srcName)
+	for _, srcValue := range sources {
 		newApiAlert := apiAlert
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
@@ -249,7 +248,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		if err != nil {
 			return runtimeAlert, errors.Wrap(err, "failed to build decision")
 		}
-		log.Printf("decision : %s", spew.Sdump(decision))
+		log.Debugf("'%s' will be '%s' for '%s'", decision.Value, decision.Type, decision.Duration)
 		newApiAlert.Decisions = []*models.Decision{decision}
 		if err := newApiAlert.Validate(strfmt.Default); err != nil {
 			log.Errorf("Generated alerts isn't valid")
@@ -260,7 +259,6 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	}
 
 	runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
-	log.Printf("returning alert with %d api alerts", len(runtimeAlert.APIAlerts))
 	if leaky.Reprocess {
 		runtimeAlert.Reprocess = true
 	}

@@ -51,12 +51,9 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	if err != nil {
 		return errors.Wrap(err, "failed to transform alerts for api")
 	}
-	resp, _, err := client.Alerts.Add(ctx, alertsToPush)
+	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
 		return errors.Wrap(err, "failed sending alert to apil")
-	}
-	for _, id := range *resp {
-		log.Infof("alert id %s", id)
 	}
 	return nil
 }
