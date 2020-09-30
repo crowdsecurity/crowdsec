@@ -31,14 +31,19 @@ var prometheusURL string
 
 func initConfig() {
 
-	csConfig = csconfig.NewConfig()
-
-	if ConfigFilePath == "" {
-		ConfigFilePath = "/etc/crowdsec/default.yaml"
-		log.Infof("Falling back to %s", ConfigFilePath)
+	if dbg_lvl {
+		log.SetLevel(log.DebugLevel)
+	} else if nfo_lvl {
+		log.SetLevel(log.InfoLevel)
+	} else if wrn_lvl {
+		log.SetLevel(log.WarnLevel)
+	} else if err_lvl {
+		log.SetLevel(log.ErrorLevel)
 	}
 
-	log.Debugf("Config folder is : %s", ConfigFilePath)
+	csConfig = csconfig.NewConfig()
+
+	log.Debugf("Using %s as configuration file", ConfigFilePath)
 	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -48,16 +53,6 @@ func initConfig() {
 	}
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
-	}
-
-	if dbg_lvl {
-		log.SetLevel(log.DebugLevel)
-	} else if nfo_lvl {
-		log.SetLevel(log.InfoLevel)
-	} else if wrn_lvl {
-		log.SetLevel(log.WarnLevel)
-	} else if err_lvl {
-		log.SetLevel(log.ErrorLevel)
 	}
 
 	if csConfig.Cscli.Output == "json" {
