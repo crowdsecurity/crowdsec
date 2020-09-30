@@ -6,10 +6,10 @@ import (
 	"time"
 
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/pkg/errors"
+	"github.com/sevlyar/go-daemon"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-
-	"github.com/sevlyar/go-daemon"
 )
 
 //debugHandler is kept as a dev convenience : it shuts down and serialize internal state
@@ -34,42 +34,73 @@ func debugHandler(sig os.Signal) error {
 func reloadHandler(sig os.Signal) error {
 	var tmpFile string
 	var err error
-	//stop go routines
+
+	log.Printf("reload handler")
+	//stop Crowdsec
 	if err := ShutdownCrowdsecRoutines(); err != nil {
-		log.Fatalf("Failed to shut down routines: %s", err)
+		log.Fatalf("failed to shut down routines: %s", err)
 	}
+
+	//Dump bucket state
 	if cConfig.Crowdsec != nil && cConfig.Crowdsec.BucketStateDumpDir != "" {
 		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-			log.Fatalf("Failed dumping bucket state : %s", err)
+			log.Fatalf("failed dumping bucket state : %s", err)
 		}
 	}
 
+	//Kill all left-over routines
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-		log.Fatalf("while shutting down routines : %s", err)
+		log.Fatalf("failed to shutting down bucket routines : %s", err)
 	}
 
+	//Shutdown API
+	if err := shutdownAPI(); err != nil {
+		log.Fatalf("failed to shutting down api : %s", err)
+	}
+
+	acquisTomb = tomb.Tomb{}
+	parsersTomb = tomb.Tomb{}
+	bucketsTomb = tomb.Tomb{}
+	outputsTomb = tomb.Tomb{}
+	apiTomb = tomb.Tomb{}
+	crowdsecTomb = tomb.Tomb{}
+
 	if !*disableAPI || cConfig.API.Server == nil {
+		log.Printf("load api")
+
 		apiServer, err := initAPIServer()
 		if err != nil {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
+		log.Printf("load:init api")
+
+		httpAPIServer, err := runAPIServer(apiServer)
+		if err != nil {
+			return fmt.Errorf("unable to run api server: %s", err)
+		}
+		log.Printf("load:run api")
+
+		serveAPIServer(httpAPIServer)
+		log.Printf("load:serve api")
+
+	}
+
+	if !*disableCS {
+		log.Printf("load crowdsec")
+
 		//restore bucket state
-		log.Warningf("Restoring buckets state from %s", tmpFile)
-		if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
-			log.Fatalf("unable to restore buckets : %s", err)
+		/*restore as well previous state if present*/
+		if tmpFile != "" {
+			log.Warningf("Restoring buckets state from %s", tmpFile)
+			if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
+				return fmt.Errorf("unable to restore buckets : %s", err)
+			}
 		}
 		//reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
 		}
 
-		_, err = runAPIServer(apiServer)
-		if err != nil {
-			return fmt.Errorf("unable to run api server: %s", err)
-		}
-	}
-
-	if !*disableCS {
 		csParsers, err := initCrowdsec()
 		if err != nil {
 			return fmt.Errorf("unable to init crowdsec: %s", err)
@@ -78,6 +109,7 @@ func reloadHandler(sig os.Signal) error {
 		if err != nil {
 			return fmt.Errorf("unable to start crowdsec: %s", err)
 		}
+		serveCrowdsec()
 	}
 
 	log.Printf("Reload is finished")
@@ -122,10 +154,12 @@ func ShutdownCrowdsecRoutines() error {
 }
 
 func shutdownAPI() error {
+	log.Infof("Shutting down api routine")
 	apiTomb.Kill(nil)
 	if err := apiTomb.Wait(); err != nil {
 		return err
 	}
+	log.Infof("Done")
 	return nil
 }
 
@@ -142,9 +176,11 @@ func termHandler(sig os.Signal) error {
 	if err := shutdownCrowdsec(); err != nil {
 		log.Errorf("Error encountered while shutting down crowdsec: %s", err)
 	}
+	log.Infof("Crowdsec shutdown")
 	if err := shutdownAPI(); err != nil {
 		log.Errorf("Error encountered while shutting down api: %s", err)
 	}
+	log.Infof("APIL shutdown")
 
 	log.Warningf("all routines are done, bye.")
 	return daemon.ErrStop
@@ -193,6 +229,7 @@ func serveOneTimeRun() error {
 
 	time.Sleep(5 * time.Second)
 
+	log.Printf("shutting down in serverOneTime runner")
 	// wait for the parser to parse all events
 	if err := ShutdownCrowdsecRoutines(); err != nil {
 		log.Errorf("failed shutting down routines : %s", err)
@@ -240,21 +277,19 @@ func Serve(daemonCTX daemon.Context) error {
 		if err != nil {
 			return fmt.Errorf("unable to start crowdsec: %s", err)
 		}
-		serveCrowdsec(daemonCTX)
+		serveCrowdsec()
 	}
 
 	log.Printf("Crowdsec launched")
 
 	log.Printf("start waiting")
 
-	for {
-		select {
-		case <-apiTomb.Dead():
-			shutdownCrowdsec()
-			os.Exit(0)
-		case <-crowdsecTomb.Dead():
-			shutdownAPI()
-			os.Exit(0)
-		}
+	defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
+	err := daemon.ServeSignals()
+	if err != nil {
+		return errors.Wrapf(err, "ServeSignals (endless loop) returned")
 	}
+	log.Errorf("FINITO")
+	return nil
+
 }

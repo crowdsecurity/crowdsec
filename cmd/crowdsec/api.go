@@ -37,7 +37,7 @@ func runAPIServer(apiServer *apiserver.APIServer) (*http.Server, error) {
 
 func serveAPIServer(httpAPIServer *http.Server) {
 	apiTomb.Go(func() error {
-		log.Info("local API server starting")
+		log.Info("local API starting")
 		<-apiTomb.Dying() // lock until go routine is dying
 		httpAPIServer.Shutdown(nil)
 		return nil
