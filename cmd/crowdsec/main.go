@@ -296,5 +296,7 @@ func main() {
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)
 	}
-	Serve(*daemonCTX)
+	if err := Serve(*daemonCTX); err != nil {
+		log.Fatalf(err.Error())
+	}
 }
