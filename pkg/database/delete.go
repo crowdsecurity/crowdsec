@@ -26,6 +26,15 @@ func (c *Context) DeleteBan(target string) (int, error) {
 
 func (c *Context) DeleteAll() error {
 	allBa := types.BanApplication{}
+	records := c.Db.Delete(&allBa)
+	if records.Error != nil {
+		return records.Error
+	}
+	return nil
+}
+
+func (c *Context) HardDeleteAll() error {
+	allBa := types.BanApplication{}
 	records := c.Db.Unscoped().Delete(&allBa)
 	if records.Error != nil {
 		return records.Error
