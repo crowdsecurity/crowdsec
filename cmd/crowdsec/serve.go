@@ -204,7 +204,7 @@ func HandleSignals() {
 	os.Exit(code)
 }
 
-func Serve( /*daemonCTX daemon.Context*/ ) error {
+func Serve() error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
