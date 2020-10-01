@@ -12,10 +12,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (*ent.Machine, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
-		return &ent.Machine{}, errors.Wrap(HashError, "")
+		0, errors.Wrap(HashError, "")
 	}
 
 	machineExist, err := c.Ent.Machine.
@@ -23,16 +23,17 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Where(machine.MachineIdEQ(*machineID)).
 		Select(machine.FieldMachineId).Strings(c.CTX)
 	if err != nil {
-		return &ent.Machine{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
+		0, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
 	}
 	if len(machineExist) > 0 {
 		if force {
-			_, err := c.Ent.Machine.Delete().Where(machine.MachineIdEQ(*machineID)).Exec(c.CTX)
+			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).Exec(c.CTX)
 			if err != nil {
-				return &ent.Machine{}, errors.Wrapf(DeleteFail, "machine '%s'", *machineID)
+				0, errors.Wrapf(DeleteFail, "machine '%s'", *machineID)
 			}
+			return 1, nil
 		} else {
-			return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
+			0, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
 		}
 	}
 
@@ -45,10 +46,10 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Save(c.CTX)
 
 	if err != nil {
-		return &ent.Machine{}, errors.Wrap(InsertFail, fmt.Sprintf("creating machine '%s'", *machineID))
+		0, errors.Wrap(InsertFail, fmt.Sprintf("creating machine '%s'", *machineID))
 	}
 
-	return machines, nil
+	return 1, nil
 }
 
 func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
