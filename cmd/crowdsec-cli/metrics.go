@@ -216,8 +216,6 @@ func ShowPrometheus(url string) {
 	}
 }
 
-var purl string
-
 func NewMetricsCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdMetrics = &cobra.Command{
@@ -226,7 +224,7 @@ func NewMetricsCmd() *cobra.Command {
 		Long:  `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			ShowPrometheus(purl)
+			ShowPrometheus(prometheusURL)
 		},
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
