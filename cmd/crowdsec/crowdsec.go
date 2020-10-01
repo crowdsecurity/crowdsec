@@ -92,11 +92,11 @@ func serveCrowdsec(parsers *parsers) {
 		- acquisTomb is dead, it means that we were in "cat" mode and files are done reading, quit
 		*/
 		waitOnTomb()
-		log.Warningf("Shutting down crowdsec routines")
+		log.Debugf("Shutting down crowdsec routines")
 		if err := ShutdownCrowdsecRoutines(); err != nil {
 			log.Fatalf("unable to shutdown crowdsec routines: %s", err)
 		}
-		log.Errorf("everything is dead, return crowdsecTomb")
+		log.Debugf("everything is dead, return crowdsecTomb")
 		return nil
 	})
 }
