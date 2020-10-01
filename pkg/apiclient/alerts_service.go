@@ -66,9 +66,9 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 		return nil, nil, err
 	}
 	if len(params) > 0 {
-		URI = fmt.Sprintf("alerts/?%s", params.Encode())
+		URI = fmt.Sprintf("alerts?%s", params.Encode())
 	} else {
-		URI = fmt.Sprintf("alerts/")
+		URI = fmt.Sprintf("alerts")
 	}
 
 	req, err := s.client.NewRequest("GET", URI, nil)
