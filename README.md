@@ -1,6 +1,6 @@
 
 
-<p align="center"><b>Crowdsec BETA </b></p>
+<p align="center"><b>Crowdsec is in BETA version. It shouldn't, and didn't crash any production so far we know, but some features might be missing or undergo evolutions. IP Blocklists are limited to very-safe-to-ban IPs only (~5% of the global database so far, will grow soon)</b></p>
 
 <p align="center">
 <img src="docs/assets/images/crowdsec_logo1.png" alt="CrowdSec" title="CrowdSec" />
