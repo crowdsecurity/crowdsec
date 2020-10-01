@@ -148,7 +148,8 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 	}
 
 	//log.Infof("Downloading %s to %s", target.Name, tdir)
-	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
+	uri := fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath)
+	req, err := http.NewRequest("GET", uri, nil)
 	if err != nil {
 		log.Errorf("%s : request creation failed : %s", target.Name, err)
 		return target, err
@@ -159,7 +160,7 @@ func DownloadItem(target Item, tdir string, overwrite bool, dataFolder string) (
 		return target, err
 	}
 	if resp.StatusCode != 200 {
-		log.Errorf("%s : non 200 response : %d", target.Name, resp.StatusCode)
+		log.Errorf("%s : We got an error reaching %s : %d", target.Name, uri, resp.StatusCode)
 		return target, fmt.Errorf("bad http code")
 	}
 	defer resp.Body.Close()
