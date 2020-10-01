@@ -178,19 +178,19 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		case "ip":
 			isValidIP := IsIpv4(value[0])
 			if !isValidIP {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
+				return "0", errors.Wrapf(InvalidIPOrRange, "unable to parse '%s': %s", value[0], err)
 			}
 			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
 			if err != nil {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
 			}
 		case "range":
 			startIP, endIP, err = GetIpsFromIpRange(value[0])
 			if err != nil {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
 			}
 		default:
-			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+			return "0", errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 
 		if startIP != 0 && endIP != 0 {
