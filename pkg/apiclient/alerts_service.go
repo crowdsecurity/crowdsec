@@ -60,13 +60,18 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 //to demo query arguments
 func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.GetAlertsResponse, *Response, error) {
 	var alerts models.GetAlertsResponse
+	var URI string
 	params, err := qs.Values(opts)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("alerts/?%s", params.Encode())
+	if len(params) > 0 {
+		URI = fmt.Sprintf("alerts/?%s", params.Encode())
+	} else {
+		URI = fmt.Sprintf("alerts/")
+	}
 
-	req, err := s.client.NewRequest("GET", u, nil)
+	req, err := s.client.NewRequest("GET", URI, nil)
 	if err != nil {
 		return nil, nil, err
 	}
