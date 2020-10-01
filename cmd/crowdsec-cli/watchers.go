@@ -32,6 +32,7 @@ var interactive bool
 var apiURL string
 var dumpCreds bool
 var outputFile string
+var forceAdd bool
 
 var (
 	passwordLength = 64
@@ -163,7 +164,7 @@ The watcher will be validated automatically.
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true)
+			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true, forceAdd)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
@@ -213,6 +214,7 @@ The watcher will be validated automatically.
 	cmdWatchersAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdWatchersAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdWatchersAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
+	cmdWatchersAdd.Flags().BoolVarP(&forceAdd, "force", "f", false, "will force if the machine was already added")
 	cmdWatchers.AddCommand(cmdWatchersAdd)
 
 	var cmdWatchersDelete = &cobra.Command{

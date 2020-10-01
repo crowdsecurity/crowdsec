@@ -12,21 +12,28 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool) (*ent.Machine, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (*ent.Machine, error) {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		return &ent.Machine{}, errors.Wrap(HashError, "")
+	}
+
 	machineExist, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(*machineID)).
 		Select(machine.FieldMachineId).Strings(c.CTX)
-	if len(machineExist) > 0 {
-		return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
-	}
 	if err != nil {
 		return &ent.Machine{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
 	}
-
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
-	if err != nil {
-		return &ent.Machine{}, errors.Wrap(HashError, "")
+	if len(machineExist) > 0 {
+		if force {
+			_, err := c.Ent.Machine.Delete().Where(machine.MachineIdEQ(*machineID)).Exec(c.CTX)
+			if err != nil {
+				return &ent.Machine{}, errors.Wrapf(DeleteFail, "machine '%s'", *machineID)
+			}
+		} else {
+			return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
+		}
 	}
 
 	machines, err := c.Ent.Machine.

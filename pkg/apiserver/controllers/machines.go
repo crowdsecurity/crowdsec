@@ -20,7 +20,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false)
+	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

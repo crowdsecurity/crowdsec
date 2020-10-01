@@ -449,7 +449,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
          # api register
-        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32};echo;)"
+        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c${1:-32};echo;)" -f
         log_info "Crowdsec api registered"
         return
     fi
