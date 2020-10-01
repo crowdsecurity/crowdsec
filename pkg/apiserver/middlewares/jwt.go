@@ -91,11 +91,19 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				scenarios += "," + scenario
 			}
 		}
+		err = j.DbClient.UpdateMachineScenarios(scenarios, response[0].ID)
+		if err != nil {
+			log.Errorf("Failed to update scenarios list for '%s': %s\n", machineID, err)
+			return nil, jwt.ErrFailedAuthentication
+		}
 	}
-	err = j.DbClient.UpdateMachineScenarios(scenarios, response[0].ID)
-	if err != nil {
-		log.Errorf("Failed to update scenarios list for '%s': %s\n", machineID, err)
-		return nil, jwt.ErrFailedAuthentication
+
+	if response[0].IPAddress == "" {
+		err = j.DbClient.UpdateMachineIP(c.ClientIP(), response[0].ID)
+		if err != nil {
+			log.Errorf("Failed to update ip address for '%s': %s\n", machineID, err)
+			return nil, jwt.ErrFailedAuthentication
+		}
 	}
 
 	return &models.WatcherAuthRequest{

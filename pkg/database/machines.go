@@ -106,3 +106,13 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	}
 	return nil
 }
+
+func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
+	_, err := c.Ent.Machine.UpdateOneID(ID).
+		SetIpAddress(ipAddr).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update machine in database: %s", err)
+	}
+	return nil
+}
