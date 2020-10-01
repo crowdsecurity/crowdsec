@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
@@ -36,8 +37,21 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("X-Api-Key", t.APIKey)
+	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpRequest(req, true)
+		log.Tracef("req-api: %s", string(dump))
+	}
 	// Make the HTTP request.
-	return t.transport().RoundTrip(req)
+	resp, err := t.transport().RoundTrip(req)
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpResponse(resp, true)
+		log.Tracef("resp-api: %s", string(dump))
+	}
+
+	log.Debugf("resp-api: %d", resp.StatusCode)
+
+	return resp, err
 }
 
 func (t *APIKeyTransport) Client() *http.Client {
@@ -89,9 +103,19 @@ func (t *JWTTransport) refreshJwtToken() error {
 	}
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpRequest(req, true)
+		log.Tracef("req-jwt(auth): %s", string(dump))
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not get jwt token")
+	}
+
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpResponse(resp, true)
+		log.Tracef("resp-api: %s", string(dump))
 	}
 
 	defer resp.Body.Close()
@@ -125,8 +149,19 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", t.token))
+	log.Debugf("req-jwt: %s %s", req.Method, req.URL.String())
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpRequest(req, true)
+		log.Tracef("req-jwt: %s", string(dump))
+	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpResponse(resp, true)
+		log.Tracef("resp-jwt: %s", string(dump))
+	}
+	log.Debugf("resp-jwt: %d", resp.StatusCode)
+
 	return resp, err
 }
 

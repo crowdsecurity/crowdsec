@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra/doc"
 )
 
-var dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
+var trace_lvl, dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
 var ConfigFilePath string
 var csConfig *csconfig.GlobalConfig
@@ -31,7 +31,9 @@ var prometheusURL string
 
 func initConfig() {
 
-	if dbg_lvl {
+	if trace_lvl {
+		log.SetLevel(log.TraceLevel)
+	} else if dbg_lvl {
 		log.SetLevel(log.DebugLevel)
 	} else if nfo_lvl {
 		log.SetLevel(log.InfoLevel)
@@ -117,6 +119,7 @@ API interaction:
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")
 	rootCmd.PersistentFlags().BoolVar(&wrn_lvl, "warning", false, "Set logging to warning.")
 	rootCmd.PersistentFlags().BoolVar(&err_lvl, "error", false, "Set logging to error.")
+	rootCmd.PersistentFlags().BoolVar(&trace_lvl, "trace", false, "Set logging to trace.")
 
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
