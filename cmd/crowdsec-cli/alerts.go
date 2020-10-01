@@ -22,14 +22,16 @@ var ActiveDecision bool
 
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,Scope/Value,reason,version,message,country,as,events_count,created_at\n")
+		fmt.Printf("id,Scope/Value,reason,version,country,as,events_count,created_at\n")
 		for _, alertItem := range *alerts {
-			fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+			var scenarioVersion string
+			if alertItem.ScenarioVersion == nil {
+				scenarioVersion = "N/A"
+			}
+			fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
 				alertItem.ID,
 				*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-				*alertItem.Scenario,
-				*alertItem.ScenarioVersion,
-				*alertItem.Message,
+				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 				*alertItem.EventsCount,
@@ -41,7 +43,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Scope:Value", "reason", "version", "message", "country", "as", "events_count", "created_at"})
+		table.SetHeader([]string{"ID", "Scope:Value", "reason", "country", "as", "events_count", "created_at"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -57,9 +59,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 			table.Append([]string{
 				strconv.Itoa(int(alertItem.ID)),
 				*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-				*alertItem.Scenario,
-				scenarioVersion,
-				*alertItem.Message,
+				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 				strconv.Itoa(int(*alertItem.EventsCount)),
