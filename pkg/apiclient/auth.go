@@ -115,7 +115,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-api: %s", string(dump))
+		log.Tracef("resp-jwt: %s", string(dump))
 	}
 
 	defer resp.Body.Close()
