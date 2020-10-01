@@ -246,17 +246,6 @@ func Serve( /*daemonCTX daemon.Context*/ ) error {
 		}
 		/*wait for signals*/
 		HandleSignals()
-		// daemon.SetSigHandler(termHandler, syscall.SIGTERM)
-		// daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
-		// daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-		// d, err := daemonCTX.Reborn()
-		// if err != nil {
-		// 	log.Fatalf("unable to run daemon: %s ", err.Error())
-		// }
-		// if d != nil {
-		// 	return
-		// }
-
 	} else {
 		for {
 			select {
