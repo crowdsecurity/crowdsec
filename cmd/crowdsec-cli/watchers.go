@@ -214,7 +214,7 @@ The watcher will be validated automatically.
 	cmdWatchersAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdWatchersAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdWatchersAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
-	cmdWatchersAdd.Flags().BoolVarP(&forceAdd, "force", "f", false, "will force if the machine was already added")
+	cmdWatchersAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
 	cmdWatchers.AddCommand(cmdWatchersAdd)
 
 	var cmdWatchersDelete = &cobra.Command{
