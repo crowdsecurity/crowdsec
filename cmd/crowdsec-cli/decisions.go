@@ -31,7 +31,7 @@ var Client *apiclient.ApiClient
 
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,created_at\n")
+		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
@@ -43,7 +43,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					*alertItem.EventsCount,
-					alertItem.CreatedAt)
+					*decisionItem.Duration)
 			}
 		}
 	} else if csConfig.Cscli.Output == "json" {
@@ -52,7 +52,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "created_at"})
+		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -70,7 +70,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					strconv.Itoa(int(*alertItem.EventsCount)),
-					alertItem.CreatedAt,
+					*decisionItem.Duration,
 				})
 			}
 		}
@@ -300,20 +300,22 @@ cscli decisions delete --range 1.2.3.4/32
 			var decisions *models.DeleteDecisionResponse
 
 			filter := apiclient.DecisionsDeleteOpts{}
-			if Scope != "" {
-				filter.Scope_equals = &Scope
-			}
-			if Value != "" {
-				filter.Value_equals = &Value
-			}
-			if Type != "" {
-				filter.Type_equals = &Type
-			}
-			if IP != "" {
-				filter.IP_equals = &IP
-			}
-			if Range != "" {
-				filter.Range_equals = &Range
+			if !DeleteAll {
+				if Scope != "" {
+					filter.Scope_equals = &Scope
+				}
+				if Value != "" {
+					filter.Value_equals = &Value
+				}
+				if Type != "" {
+					filter.Type_equals = &Type
+				}
+				if IP != "" {
+					filter.IP_equals = &IP
+				}
+				if Range != "" {
+					filter.Range_equals = &Range
+				}
 			}
 
 			if DecisionID == "" {

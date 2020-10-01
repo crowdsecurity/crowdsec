@@ -56,13 +56,13 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	var err error
 
-	decisionIdStr := gctx.Param("decision_id")
-	decisionId, err := strconv.Atoi(decisionIdStr)
+	decisionIDStr := gctx.Param("decision_id")
+	decisionID, err := strconv.Atoi(decisionIDStr)
 	if err != nil {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
 		return
 	}
-	err = c.DBClient.DeleteDecisionById(decisionId)
+	err = c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -79,7 +79,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	var err error
 
-	nbDeleted, err := c.DBClient.DeleteDecisionsWithFilter(gctx.Request.URL.Query())
+	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 	}
