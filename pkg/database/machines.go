@@ -36,7 +36,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		return 0, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
 	}
 
-	machines, err := c.Ent.Machine.
+	_, err := c.Ent.Machine.
 		Create().
 		SetMachineId(*machineID).
 		SetPassword(string(hashPassword)).
