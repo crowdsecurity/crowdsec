@@ -9,7 +9,6 @@ import (
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -94,11 +93,6 @@ To list/add/delete alerts
 			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
-			}
-
-			//initialize cwhub
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
