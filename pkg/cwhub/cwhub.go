@@ -27,7 +27,7 @@ var Cfgdir = "/etc/crowdsec/cscli/"
 
 var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
 var HubIndexFile = ".index.json"
-var HubBranch string
+var HubBranch = "master"
 
 type ItemVersion struct {
 	Digest     string
