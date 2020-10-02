@@ -249,7 +249,7 @@ The watcher will be validated automatically.
 		Short: "register a watcher to a remote API",
 		Long: `register a watcher to a remote API.
 /!\ The watcher will not be validated. You have to connect on the remote API server and run 'cscli validate watcher <machine_id>'`,
-		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		Example: `cscli watchers register`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			id, err := machineid.ID()
@@ -270,8 +270,11 @@ The watcher will be validated automatically.
 					apiURL = csConfig.API.Client.Credentials.URL
 				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
 					apiURL = csConfig.API.Server.ListenURI
+				} else {
+					log.Fatalf("no api URL to request. Please provide it in your configuration file or with the -u flag")
 				}
 			}
+
 			apiclient.BaseURL, err = url.Parse(apiURL)
 			if err != nil {
 				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
