@@ -25,14 +25,14 @@ db_config:
   port: 3306
 api:
   client:
-    credentials_path: ./config/client_secrets.yaml
+    credentials_path: ./config/local_api_credentials.yaml
   server:
     listen_uri: localhost:8080
     tls:
       #cert_file: ./cert.pem
       #key_file: ./key.pem
     online_client: # Crowdsec API
-      credentials_path: ./config/lapi-secrets.yaml
+      credentials_path: ./config/online_api_credentials.yaml
 prometheus:
   enabled: true
   level: full
