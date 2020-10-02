@@ -248,7 +248,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		if err != nil {
 			return runtimeAlert, errors.Wrap(err, "failed to build decision")
 		}
-		log.Tracef("'%s' will be '%s' for '%s'", decision.Value, decision.Type, decision.Duration)
+		log.Tracef("'%s' will be '%s' for '%s'", *decision.Value, *decision.Type, *decision.Duration)
 		newApiAlert.Decisions = []*models.Decision{decision}
 		if err := newApiAlert.Validate(strfmt.Default); err != nil {
 			log.Errorf("Generated alerts isn't valid")
