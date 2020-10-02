@@ -30,7 +30,6 @@ var machinePassword string
 var machineIP string
 var interactive bool
 var apiURL string
-var dumpCreds bool
 var outputFile string
 var forceAdd bool
 
@@ -313,8 +312,8 @@ The watcher will be validated automatically.
 			}
 		},
 	}
-	cmdWatchersDelete.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdWatchersDelete.Flags().BoolVarP(&dumpCreds, "dump", "d", false, "dump credentials to the file specified in configuration")
+	cmdWatchersRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdWatchersRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdWatchers.AddCommand(cmdWatchersRegister)
 
 	var cmdWatchersValidate = &cobra.Command{
