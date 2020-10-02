@@ -28,6 +28,10 @@ CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
+
+CLIENT_SECRETS="client_secrets.yaml"
+LAPI_SECRETS="lapi-secrets.yaml"
+
 CROWDSEC_BIN_INSTALLED="/usr/local/bin/crowdsec"
 CSCLI_BIN_INSTALLED="/usr/local/bin/cscli"
 
@@ -295,8 +299,8 @@ install_crowdsec() {
     #tmp
     mkdir -p /tmp/data
     mkdir -p /etc/crowdsec/hub/
-    install -v -m 644 -D ./config/client_secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/lapi-secrets.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
 
     ## end tmp
 
@@ -449,7 +453,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
          # api register
-        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "tmp^Crowdsec^password0.3.2"
+        ${CSCLI_BIN_INSTALLED} watchers add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
         return
     fi
@@ -490,7 +494,7 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} watchers add --machine "$(cat /etc/machine-id)" --password "tmp^Crowdsec^password0.3.2"
+        ${CSCLI_BIN_INSTALLED} watchers add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
 
 

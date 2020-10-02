@@ -12,24 +12,31 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool) (*ent.Machine, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+	if err != nil {
+		return 0, errors.Wrap(HashError, "")
+	}
+
 	machineExist, err := c.Ent.Machine.
 		Query().
 		Where(machine.MachineIdEQ(*machineID)).
 		Select(machine.FieldMachineId).Strings(c.CTX)
+	if err != nil {
+		return 0, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
+	}
 	if len(machineExist) > 0 {
-		return &ent.Machine{}, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
-	}
-	if err != nil {
-		return &ent.Machine{}, errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", *machineID, err))
+		if force {
+			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
+			if err != nil {
+				return 0, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
+			}
+			return 1, nil
+		}
+		return 0, errors.Wrap(UserExists, fmt.Sprintf("user '%s'", *machineID))
 	}
 
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
-	if err != nil {
-		return &ent.Machine{}, errors.Wrap(HashError, "")
-	}
-
-	machines, err := c.Ent.Machine.
+	_, err = c.Ent.Machine.
 		Create().
 		SetMachineId(*machineID).
 		SetPassword(string(hashPassword)).
@@ -38,10 +45,10 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Save(c.CTX)
 
 	if err != nil {
-		return &ent.Machine{}, errors.Wrap(InsertFail, fmt.Sprintf("creating machine '%s'", *machineID))
+		return 0, errors.Wrap(InsertFail, fmt.Sprintf("creating machine '%s'", *machineID))
 	}
 
-	return machines, nil
+	return 1, nil
 }
 
 func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
@@ -100,6 +107,16 @@ func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
 		SetUpdatedAt(time.Now()).
 		SetScenarios(scenarios).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update machine in database: %s", err)
+	}
+	return nil
+}
+
+func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
+	_, err := c.Ent.Machine.UpdateOneID(ID).
+		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
 		return fmt.Errorf("unable to update machine in database: %s", err)

@@ -78,7 +78,7 @@ func Latest() (string, error) {
 		return "", err
 	}
 	if _, ok := latest["name"]; !ok {
-		return "", fmt.Errorf("unable to find latest release name from github api")
+		return "", fmt.Errorf("unable to find latest release name from github api: %+v", latest)
 	}
 
 	return latest["name"].(string), nil

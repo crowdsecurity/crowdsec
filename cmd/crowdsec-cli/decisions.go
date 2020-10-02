@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
@@ -102,11 +101,6 @@ To list/add/delete decisions
 			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
-			}
-
-			//initialize cwhub
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
 			}
 
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
@@ -240,7 +234,7 @@ Args :
 				Leakspeed:       &leakSpeed,
 				Message:         &reason,
 				ScenarioHash:    &empty,
-				Scenario:        &empty,
+				Scenario:        &reason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
 				Source: &models.Source{

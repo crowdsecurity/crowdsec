@@ -32,6 +32,7 @@ var interactive bool
 var apiURL string
 var dumpCreds bool
 var outputFile string
+var forceAdd bool
 
 var (
 	passwordLength = 64
@@ -163,7 +164,7 @@ The watcher will be validated automatically.
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true)
+			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true, forceAdd)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
@@ -213,6 +214,7 @@ The watcher will be validated automatically.
 	cmdWatchersAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdWatchersAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdWatchersAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
+	cmdWatchersAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
 	cmdWatchers.AddCommand(cmdWatchersAdd)
 
 	var cmdWatchersDelete = &cobra.Command{
@@ -247,7 +249,7 @@ The watcher will be validated automatically.
 		Short: "register a watcher to a remote API",
 		Long: `register a watcher to a remote API.
 /!\ The watcher will not be validated. You have to connect on the remote API server and run 'cscli validate watcher <machine_id>'`,
-		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		Example: `cscli watchers register`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			id, err := machineid.ID()
@@ -268,8 +270,11 @@ The watcher will be validated automatically.
 					apiURL = csConfig.API.Client.Credentials.URL
 				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
 					apiURL = csConfig.API.Server.ListenURI
+				} else {
+					log.Fatalf("no api URL to request. Please provide it in your configuration file or with the -u flag")
 				}
 			}
+
 			apiclient.BaseURL, err = url.Parse(apiURL)
 			if err != nil {
 				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
