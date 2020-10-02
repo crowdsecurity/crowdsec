@@ -21,7 +21,7 @@ var ActiveDecision bool
 
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,Scope/Value,reason,version,country,as,events_count,created_at\n")
+		fmt.Printf("id,Scope/Value,reason,country,as,events_count,created_at\n")
 		for _, alertItem := range *alerts {
 			var scenarioVersion string
 			if alertItem.ScenarioVersion == nil {
