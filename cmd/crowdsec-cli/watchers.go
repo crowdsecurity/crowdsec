@@ -180,10 +180,7 @@ The watcher will be validated automatically.
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
-				} else if csConfig.API.Server != nil {
-					apiURL = csConfig.API.Server.ListenURI
-				}
-				if apiURL == "" {
+				} else {
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
@@ -265,12 +262,10 @@ The watcher will be validated automatically.
 			}
 			password := strfmt.Password(generatePassword())
 			if apiURL == "" {
-				if csConfig.API.Client.Credentials != nil {
+				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
-				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-					apiURL = csConfig.API.Server.ListenURI
 				} else {
-					log.Fatalf("no api URL to request. Please provide it in your configuration file or with the -u flag")
+					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
 
