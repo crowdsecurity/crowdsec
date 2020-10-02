@@ -27,7 +27,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 	}
 	if len(machineExist) > 0 {
 		if force {
-			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).Save(c.CTX)
+			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
 			if err != nil {
 				return 0, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
 			}
