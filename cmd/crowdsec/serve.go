@@ -174,15 +174,15 @@ func termHandler(sig os.Signal) error {
 }
 
 func HandleSignals() {
-	signal_chan := make(chan os.Signal, 1)
-	signal.Notify(signal_chan,
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan,
 		syscall.SIGHUP,
 		syscall.SIGTERM)
 
-	exit_chan := make(chan int)
+	exitChan := make(chan int)
 	go func() {
 		for {
-			s := <-signal_chan
+			s := <-signalChan
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
@@ -194,12 +194,12 @@ func HandleSignals() {
 				if err := termHandler(s); err != nil {
 					log.Fatalf("Term handler failure : %s", err)
 				}
-				exit_chan <- 0
+				exitChan <- 0
 			}
 		}
 	}()
 
-	code := <-exit_chan
+	code := <-exitChan
 	log.Warningf("Crowdsec service shutting down")
 	os.Exit(code)
 }
