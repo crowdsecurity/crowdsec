@@ -48,10 +48,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Debugf("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
-		//log.Debugf("in hub dir")
+		log.Tracef("in hub dir")
 		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
 		//.../hub/scenarios/crowdsec/ssh_bf.yaml
@@ -63,10 +63,8 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
-
 	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
-		log.Debugf("in install dir")
+		log.Tracef("in install dir")
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
@@ -78,7 +76,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
 		fauthor = ""
-		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
 		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
@@ -126,7 +123,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	//if it's not a symlink and not in hub, it's a local file, don't bother
 	if local && !inhub {
-		log.Debugf("%s is a local file, skip", path)
+		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
 		target.Name = fname
@@ -198,7 +195,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			} else {
 				/*we got an exact match, update struct*/
 				if !inhub {
-					log.Debugf("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
+					log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 					v.LocalPath = path
 					v.LocalVersion = version
 					v.Tainted = false
@@ -218,7 +215,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			}
 		}
 		if !match {
-			log.Debugf("got tainted match for %s : %s", v.Name, path)
+			log.Tracef("got tainted match for %s : %s", v.Name, path)
 			skippedTainted += 1
 			//the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
@@ -367,7 +364,7 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 	/*Iterate over the different types to complete struct */
 	for _, itemType := range ItemTypes {
 		/*complete struct*/
-		log.Debugf("%d item", len(RawIndex[itemType]))
+		log.Tracef("%d item", len(RawIndex[itemType]))
 		for idx, item := range RawIndex[itemType] {
 			item.Name = idx
 			item.Type = itemType

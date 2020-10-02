@@ -227,7 +227,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	/* the stage is undefined, probably line is freshly acquired, set to first stage !*/
 	if event.Stage == "" && len(ctx.Stages) > 0 {
 		event.Stage = ctx.Stages[0]
-		log.Debugf("no stage, set to : %s", event.Stage)
+		log.Tracef("no stage, set to : %s", event.Stage)
 	}
 	event.Process = false
 

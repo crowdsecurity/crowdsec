@@ -221,7 +221,7 @@ POLL_AGAIN:
 		for eidx, out := range results {
 			for ridx, expected := range tf.Results {
 
-				log.Debugf("Checking next expected result.")
+				log.Tracef("Checking next expected result.")
 
 				//empty overflow
 				if out.Overflow.Alert == nil && expected.Overflow.Alert == nil {

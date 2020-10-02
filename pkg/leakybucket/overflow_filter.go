@@ -56,7 +56,7 @@ func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, ty
 				Mapkey: l.Mapkey,
 			}, nil
 		} else {
-			l.logger.Debugf("Event is not discard by overflow filter (%s)", u.Filter)
+			l.logger.Tracef("Event is not discard by overflow filter (%s)", u.Filter)
 		}
 		return s, q
 	}

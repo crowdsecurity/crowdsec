@@ -113,7 +113,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	var NodeState bool
 	clog := n.logger
 
-	clog.Debugf("Event entering node")
+	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
 		output, err := expr.Run(n.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
@@ -139,7 +139,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		NodeState = true
 	} else {
-		clog.Debugf("Node has not filter, enter")
+		clog.Tracef("Node has not filter, enter")
 		NodeState = true
 	}
 
@@ -170,7 +170,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
 				isWhitelisted = true
 			} else {
-				clog.Debugf("whitelist: %s is not eq [%s]", src, v)
+				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
 			}
 			hasWhitelist = true
 		}
@@ -179,7 +179,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
 				isWhitelisted = true
 			} else {
-				clog.Debugf("whitelist: %s not in [%s]", src, v)
+				clog.Tracef("whitelist: %s not in [%s]", src, v)
 			}
 			hasWhitelist = true
 		}
@@ -360,7 +360,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	n.rn = seed.Generate()
 
 	n.EnrichFunctions = ectx
-	log.Debugf("compile, node is %s", n.Stage)
+	log.Tracef("compile, node is %s", n.Stage)
 	/* if the node has debugging enabled, create a specific logger with debug
 	that will be used only for processing this node ;) */
 	if n.Debug {
@@ -403,7 +403,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 
 	/* handle pattern_syntax and groks */
 	for node, pattern := range n.SubGroks {
-		n.logger.Debugf("Adding subpattern '%s' : '%s'", node, pattern)
+		n.logger.Tracef("Adding subpattern '%s' : '%s'", node, pattern)
 		if err := pctx.Grok.Add(node, pattern); err != nil {
 			n.logger.Errorf("Unable to compile subpattern %s : %v", node, err)
 			return err
@@ -411,7 +411,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	}
 	/* load grok by name or compile in-place */
 	if n.Grok.RegexpName != "" {
-		n.logger.Debugf("+ Regexp Compilation '%s'", n.Grok.RegexpName)
+		n.logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
 		if err != nil {
 			return fmt.Errorf("Unable to find grok '%s' : %v", n.Grok.RegexpName, err)
@@ -419,13 +419,12 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		if n.Grok.RunTimeRegexp == nil {
 			return fmt.Errorf("Empty grok '%s'", n.Grok.RegexpName)
 		}
-		n.logger.Debugf("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
+		n.logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	} else if n.Grok.RegexpValue != "" {
 		if strings.HasSuffix(n.Grok.RegexpValue, "\n") {
 			n.logger.Debugf("Beware, pattern ends with \\n : '%s'", n.Grok.RegexpValue)
 		}
-		//n.logger.Debugf("+ Regexp Compilation '%s'", n.Grok.RegexpValue)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
 		if err != nil {
 			return fmt.Errorf("Failed to compile grok '%s': %v\n", n.Grok.RegexpValue, err)
@@ -434,7 +433,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
 			return fmt.Errorf("Grok compilation failure: %s", n.Grok.RegexpValue)
 		}
-		n.logger.Debugf("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
+		n.logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	}
 	/* load grok statics */

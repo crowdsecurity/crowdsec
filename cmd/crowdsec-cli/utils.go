@@ -173,7 +173,7 @@ func UpgradeConfig(itemType string, name string) {
 			continue
 		}
 		if !v.Installed {
-			log.Debugf("skip %s, not installed", v.Name)
+			log.Tracef("skip %s, not installed", v.Name)
 			continue
 		}
 		if !v.Downloaded {
@@ -266,7 +266,7 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
-		log.Debugf("round %d", idx)
+		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
 			metric := m.(prom2json.Metric)
 			name, ok := metric.Labels["name"]
@@ -345,7 +345,7 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
-		log.Debugf("round %d", idx)
+		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
 			metric := m.(prom2json.Metric)
 			name, ok := metric.Labels["name"]

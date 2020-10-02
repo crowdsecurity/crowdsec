@@ -301,7 +301,7 @@ func CatFile(ctx FileCtx, output chan types.Event, AcquisTomb *tomb.Tomb) error 
 		scanner.Split(bufio.ScanLines)
 		count := 0
 		for scanner.Scan() {
-			log.Debugf("line %s", scanner.Text())
+			log.Tracef("line %s", scanner.Text())
 			count++
 			l := types.Line{}
 			l.Raw = scanner.Text()

@@ -204,7 +204,7 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 			return fmt.Errorf("invalid path '%s' in archive", f.Name)
 		}
 		tfname := fmt.Sprintf("%s/%s", metabaseDbPath, f.Name)
-		log.Debugf("%s -> %d", f.Name, f.UncompressedSize64)
+		log.Tracef("%s -> %d", f.Name, f.UncompressedSize64)
 		if f.UncompressedSize64 == 0 {
 			continue
 		}
@@ -262,7 +262,7 @@ func resetMetabasePassword(newpassword string) error {
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal metabase api response '%s': %s", string(body), err.Error())
 		}
-		log.Debugf("unmarshaled response : %v", jsonResp)
+		log.Tracef("unmarshaled response : %v", jsonResp)
 		httpctx = httpctx.Set("Cookie", fmt.Sprintf("metabase.SESSION=%s", jsonResp["id"]))
 		break
 	}

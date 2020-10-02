@@ -53,12 +53,12 @@ LOOP:
 			}
 			if len(parsed.MarshaledTime) != 0 {
 				if err := lastProcessedItem.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
-					log.Debugf("failed to unmarshal time from event : %s", err)
+					log.Warningf("failed to unmarshal time from event : %s", err)
 				}
 			}
 
 		}
 	}
-	log.Infof("Sending signal Bucketify")
+	log.Tracef("Sending signal Bucketify")
 	return nil
 }
