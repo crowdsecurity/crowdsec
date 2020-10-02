@@ -21,44 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	IPAddressTemplate = []string{
-		"192.168.0.%d",
-		"10.10.0.%d",
-		"172.16.0.%d",
-		"172.16.40.%d",
-		"192.168.30.%d",
-		"10.10.10.%d",
-	}
-	scenarioTemplate = []string{
-		"bf-ssh",
-		"crawl-non-statics",
-		"http-backdoors-attempts",
-		"http-bad-user-agent",
-		"http-bf-wordpress_bf",
-	}
-	AS = []string{
-		"Orange S.A",
-		"Level 3 Parent, LLC",
-		"Zayo Bandwith",
-		"Hurricane Electric LL",
-		"NTT America, Inc",
-		"Telia Company AB",
-	}
-	Countries = []string{
-		"FR",
-		"US",
-		"EN",
-		"IT",
-		"CH",
-		"RU",
-	}
-
-	machineIPAddrTemplate = "1.1.1.%d"
-	MachineIDTemplate     = "machine%d"
-	MachinePassword       = "%s"
-)
-
 type Machine struct {
 	IPAddress string
 	ID        string
