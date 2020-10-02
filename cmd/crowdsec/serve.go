@@ -3,14 +3,16 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
+	"github.com/coreos/go-systemd/daemon"
+
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
-
-	"github.com/sevlyar/go-daemon"
+	//"github.com/sevlyar/go-daemon"
 )
 
 //debugHandler is kept as a dev convenience : it shuts down and serialize internal state
@@ -112,33 +114,33 @@ func reloadHandler(sig os.Signal) error {
 func ShutdownCrowdsecRoutines() error {
 	var reterr error
 
+	log.Debugf("Shutting down crowdsec sub-routines")
 	acquisTomb.Kill(nil)
-	log.Infof("waiting for acquisition to finish")
+	log.Debugf("waiting for acquisition to finish")
 	if err := acquisTomb.Wait(); err != nil {
 		log.Warningf("Acquisition returned error : %s", err)
 		reterr = err
 	}
-	log.Infof("acquisition is finished, wait for parser/bucket/ouputs.")
+	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	parsersTomb.Kill(nil)
 	if err := parsersTomb.Wait(); err != nil {
 		log.Warningf("Parsers returned error : %s", err)
 		reterr = err
 	}
-	log.Infof("parsers is done")
+	log.Debugf("parsers is done")
 	bucketsTomb.Kill(nil)
 	if err := bucketsTomb.Wait(); err != nil {
 		log.Warningf("Buckets returned error : %s", err)
 		reterr = err
 	}
-	log.Infof("buckets is done")
+	log.Debugf("buckets is done")
 	outputsTomb.Kill(nil)
 	if err := outputsTomb.Wait(); err != nil {
 		log.Warningf("Ouputs returned error : %s", err)
 		reterr = err
 
 	}
-	log.Infof("outputs are done")
-
+	log.Debugf("outputs are done")
 	//everything is dead johny
 	crowdsecTomb.Kill(nil)
 
@@ -162,19 +164,47 @@ func shutdownCrowdsec() error {
 }
 
 func termHandler(sig os.Signal) error {
-	log.Infof("Shutting down routines")
 	if err := shutdownCrowdsec(); err != nil {
 		log.Errorf("Error encountered while shutting down crowdsec: %s", err)
 	}
 	if err := shutdownAPI(); err != nil {
 		log.Errorf("Error encountered while shutting down api: %s", err)
 	}
-
-	log.Warningf("all routines are done, bye.")
-	return daemon.ErrStop
+	return nil
 }
 
-func Serve(daemonCTX daemon.Context) error {
+func HandleSignals() {
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan,
+		syscall.SIGHUP,
+		syscall.SIGTERM)
+
+	exitChan := make(chan int)
+	go func() {
+		for {
+			s := <-signalChan
+			switch s {
+			// kill -SIGHUP XXXX
+			case syscall.SIGHUP:
+				if err := reloadHandler(s); err != nil {
+					log.Fatalf("Reload handler failure : %s", err)
+				}
+			// kill -SIGTERM XXXX
+			case syscall.SIGTERM:
+				if err := termHandler(s); err != nil {
+					log.Fatalf("Term handler failure : %s", err)
+				}
+				exitChan <- 0
+			}
+		}
+	}()
+
+	code := <-exitChan
+	log.Warningf("Crowdsec service shutting down")
+	os.Exit(code)
+}
+
+func Serve() error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -210,11 +240,12 @@ func Serve(daemonCTX daemon.Context) error {
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		defer daemonCTX.Release() //nolint:errcheck // won't bother checking this error in defer statement
-		err := daemon.ServeSignals()
-		if err != nil {
-			return errors.Wrap(err, "serveDaemon returned")
+		sent, err := daemon.SdNotify(false, "READY=1")
+		if !sent && err != nil {
+			log.Errorf("Failed to notify: %v", err)
 		}
+		/*wait for signals*/
+		HandleSignals()
 	} else {
 		for {
 			select {

@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"syscall"
 
 	"net/http"
 	_ "net/http/pprof"
@@ -17,7 +16,6 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/sevlyar/go-daemon"
 
 	log "github.com/sirupsen/logrus"
 
@@ -285,31 +283,11 @@ func main() {
 	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
 		log.Fatalf("Missing client local API credentials, abort.")
 	}
-
-	daemonCTX := &daemon.Context{
-		PidFileName: cConfig.Common.PidDir + "/crowdsec.pid",
-		PidFilePerm: 0644,
-		WorkDir:     "./",
-		Umask:       027,
-	}
-	if cConfig.Common.Daemonize {
-		daemon.SetSigHandler(termHandler, syscall.SIGTERM)
-		daemon.SetSigHandler(reloadHandler, syscall.SIGHUP)
-		daemon.SetSigHandler(debugHandler, syscall.SIGUSR1)
-		d, err := daemonCTX.Reborn()
-		if err != nil {
-			log.Fatalf("unable to run daemon: %s ", err.Error())
-		}
-		if d != nil {
-			return
-		}
-	}
-
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)
 	}
-	if err := Serve(*daemonCTX); err != nil {
+	if err := Serve(); err != nil {
 		log.Fatalf(err.Error())
 	}
 }
