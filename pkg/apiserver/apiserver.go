@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 )
@@ -61,7 +61,7 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
-		log.Fatalf("While creating bucket-specific logger : %s", err)
+		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
 
 	gin.DefaultErrorWriter = clog.Writer()
