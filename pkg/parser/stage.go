@@ -82,7 +82,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 			}
 			//check compat
 			if node.FormatVersion == "" {
-				log.Debugf("no version in %s, assuming '1.0'", stageFile.Filename)
+				log.Tracef("no version in %s, assuming '1.0'", node.Name)
 				node.FormatVersion = "1.0"
 			}
 			ok, err := cwversion.Statisfies(node.FormatVersion, cwversion.Constraint_parser)

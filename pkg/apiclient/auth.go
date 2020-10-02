@@ -108,10 +108,13 @@ func (t *JWTTransport) refreshJwtToken() error {
 		log.Tracef("req-jwt(auth): %s", string(dump))
 	}
 
+	log.Debugf("req-jwt(auth): %s %s", req.Method, req.URL.String())
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not get jwt token")
 	}
+	log.Debugf("resp-jwt(auth): %d", resp.StatusCode)
 
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
@@ -125,7 +128,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return err
+		return errors.Wrap(err, "unable to decode response")
 	}
 	if err := t.Expiration.UnmarshalText([]byte(response.Expire)); err != nil {
 		return errors.Wrap(err, "unable to parse jwt expiration")

@@ -44,18 +44,18 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 
 			if banRange != nil {
 				if banRange.Contains(filterBinIP) {
-					log.Debugf("[keep] ip filter is set, and range contains ip")
+					log.Tracef("[keep] ip filter is set, and range contains ip")
 					keep = true
 				} else {
-					log.Debugf("[discard] ip filter is set, and range doesn't contain ip")
+					log.Tracef("[discard] ip filter is set, and range doesn't contain ip")
 					keep = false
 				}
 			} else {
 				if ipFilter == ban["iptext"] {
-					log.Debugf("[keep] (ip) %s == %s", ipFilter, ban["iptext"])
+					log.Tracef("[keep] (ip) %s == %s", ipFilter, ban["iptext"])
 					keep = true
 				} else {
-					log.Debugf("[discard] (ip) %s == %s", ipFilter, ban["iptext"])
+					log.Tracef("[discard] (ip) %s == %s", ipFilter, ban["iptext"])
 					keep = false
 				}
 			}
@@ -66,39 +66,39 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 				return nil, fmt.Errorf("failed to parse range '%s' : %s", rangeFilter, err)
 			}
 			if filterBinRange.Contains(banIP) {
-				log.Debugf("[keep] range filter %s contains %s", rangeFilter, banIP.String())
+				log.Tracef("[keep] range filter %s contains %s", rangeFilter, banIP.String())
 				keep = true
 			} else {
-				log.Debugf("[discard] range filter %s doesn't contain %s", rangeFilter, banIP.String())
+				log.Tracef("[discard] range filter %s doesn't contain %s", rangeFilter, banIP.String())
 				keep = false
 			}
 		}
 		if reasonFilter != "" {
 			if strings.Contains(ban["reason"], reasonFilter) {
-				log.Debugf("[keep] reason filter %s matches %s", reasonFilter, ban["reason"])
+				log.Tracef("[keep] reason filter %s matches %s", reasonFilter, ban["reason"])
 				keep = true
 			} else {
-				log.Debugf("[discard] reason filter %s doesn't match %s", reasonFilter, ban["reason"])
+				log.Tracef("[discard] reason filter %s doesn't match %s", reasonFilter, ban["reason"])
 				keep = false
 			}
 		}
 
 		if countryFilter != "" {
 			if ban["cn"] == countryFilter {
-				log.Debugf("[keep] country filter %s matches %s", countryFilter, ban["cn"])
+				log.Tracef("[keep] country filter %s matches %s", countryFilter, ban["cn"])
 				keep = true
 			} else {
-				log.Debugf("[discard] country filter %s matches %s", countryFilter, ban["cn"])
+				log.Tracef("[discard] country filter %s matches %s", countryFilter, ban["cn"])
 				keep = false
 			}
 		}
 
 		if asFilter != "" {
 			if strings.Contains(ban["as"], asFilter) {
-				log.Debugf("[keep] AS filter %s matches %s", asFilter, ban["as"])
+				log.Tracef("[keep] AS filter %s matches %s", asFilter, ban["as"])
 				keep = true
 			} else {
-				log.Debugf("[discard] AS filter %s doesn't match %s", asFilter, ban["as"])
+				log.Tracef("[discard] AS filter %s doesn't match %s", asFilter, ban["as"])
 				keep = false
 			}
 		}
@@ -106,7 +106,7 @@ func filterBans(bans []map[string]string) ([]map[string]string, error) {
 		if keep {
 			retBans = append(retBans, ban)
 		} else {
-			log.Debugf("[discard] discard %v", ban)
+			log.Tracef("[discard] discard %v", ban)
 		}
 	}
 	return retBans, nil

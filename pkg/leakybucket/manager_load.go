@@ -165,7 +165,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			}
 			//check compat
 			if bucketFactory.FormatVersion == "" {
-				log.Debugf("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
+				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
 				bucketFactory.FormatVersion = "1.0"
 			}
 			ok, err := cwversion.Statisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
@@ -277,12 +277,12 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	}
 
 	if bucketFactory.Distinct != "" {
-		bucketFactory.logger.Debugf("Adding a non duplicate filter on %s.", bucketFactory.Name)
+		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
 	if bucketFactory.OverflowFilter != "" {
-		bucketFactory.logger.Debugf("Adding an overflow filter")
+		bucketFactory.logger.Tracef("Adding an overflow filter")
 		filovflw, err := NewOverflowFilter(bucketFactory)
 		if err != nil {
 			bucketFactory.logger.Errorf("Error creating overflow_filter : %s", err)
@@ -292,7 +292,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	}
 
 	if bucketFactory.Blackhole != "" {
-		bucketFactory.logger.Debugf("Adding blackhole.")
+		bucketFactory.logger.Tracef("Adding blackhole.")
 		blackhole, err := NewBlackhole(bucketFactory)
 		if err != nil {
 			bucketFactory.logger.Errorf("Error creating blackhole : %s", err)

@@ -84,7 +84,7 @@ func ShowPrometheus(url string) {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
-		log.Debugf("round %d", idx)
+		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
 			metric := m.(prom2json.Metric)
 			name, ok := metric.Labels["name"]

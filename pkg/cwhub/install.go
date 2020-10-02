@@ -102,7 +102,7 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 		}
 		/* if it's a collection, check sub-items even if the collection file itself is up-to-date */
 		if target.UpToDate && target.Type != COLLECTIONS {
-			log.Debugf("%s is installed and up-to-date, skip.", target.Name)
+			log.Tracef("%s is installed and up-to-date, skip.", target.Name)
 			return target, nil
 		}
 	}

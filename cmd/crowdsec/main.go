@@ -150,7 +150,7 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 		}
 	}
 
-	log.Infof("Loading %d scenarios", len(files))
+	log.Infof("Loading %d scenario files", len(files))
 	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files)
 
 	if err != nil {

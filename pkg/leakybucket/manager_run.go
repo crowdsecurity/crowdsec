@@ -52,7 +52,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			val.KillSwitch <- true
 			return true
 		} else {
-			val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		}
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
@@ -152,7 +152,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	for idx, holder := range holders {
 
 		if holder.RunTimeFilter != nil {
-			holder.logger.Debugf("event against holder %d/%d", idx, len(holders))
+			holder.logger.Tracef("event against holder %d/%d", idx, len(holders))
 			output, err := expr.Run(holder.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			if err != nil {
 				holder.logger.Errorf("failed parsing : %v", err)
@@ -246,11 +246,11 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					sigclosed += 1
 					continue
 				}
-				holder.logger.Debugf("Signal exists, try to pour :)")
+				holder.logger.Tracef("Signal exists, try to pour :)")
 
 			default:
 				/*nothing to read, but not closed, try to pour */
-				holder.logger.Debugf("Signal exists but empty, try to pour :)")
+				holder.logger.Tracef("Signal exists but empty, try to pour :)")
 
 			}
 			/*let's see if this time-bucket should have expired */
@@ -261,7 +261,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(bucket.Last_ts.Add(bucket.Duration)) {
-					bucket.logger.Debugf("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
+					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
 					continue
 				}
@@ -270,13 +270,13 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 			select {
 			case bucket.In <- parsed:
-				holder.logger.Debugf("Successfully sent !")
+				holder.logger.Tracef("Successfully sent !")
 				//sent was successful !
 				sent = true
 				continue
 			default:
 				failed_sent += 1
-				holder.logger.Debugf("Failed to send, try again")
+				holder.logger.Tracef("Failed to send, try again")
 				continue
 
 			}

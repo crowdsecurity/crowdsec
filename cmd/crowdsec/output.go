@@ -25,7 +25,7 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 	var dedupCache []*models.Alert
 
 	for idx, alert := range alerts {
-		log.Debugf("alert %d/%d", idx, len(alerts))
+		log.Tracef("alert %d/%d", idx, len(alerts))
 		/*if we have more than one source, we need to dedup */
 		if len(alert.Sources) == 0 || len(alert.Sources) == 1 {
 			dedupCache = append(dedupCache, alert.Alert)
@@ -33,13 +33,13 @@ func dedupAlerts(alerts []types.RuntimeAlert) ([]*models.Alert, error) {
 		}
 		for k, src := range alert.Sources {
 			refsrc := *alert.Alert //copy
-			log.Debugf("source[%s]", k)
+			log.Tracef("source[%s]", k)
 			refsrc.Source = &src
 			dedupCache = append(dedupCache, &refsrc)
 		}
 	}
 	if len(dedupCache) != len(alerts) {
-		log.Debugf("went from %d to %d alerts", len(alerts), len(dedupCache))
+		log.Tracef("went from %d to %d alerts", len(alerts), len(dedupCache))
 	}
 	return dedupCache, nil
 }
