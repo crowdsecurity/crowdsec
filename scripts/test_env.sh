@@ -69,8 +69,8 @@ copy_files() {
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
 	cp -r "./config/patterns" "$CONFIG_DIR"
 	cp "./config/acquis.yaml" "$CONFIG_DIR"
-	touch "$CONFIG_DIR"/client_secrets.yaml
-	touch "$CONFIG_DIR"/lapi-secrets.yaml
+	touch "$CONFIG_DIR"/local_api_credentials.yaml
+	touch "$CONFIG_DIR"/online_api_credentials.yaml
 }
 
 

@@ -29,8 +29,8 @@ CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
 
-CLIENT_SECRETS="client_secrets.yaml"
-LAPI_SECRETS="lapi-secrets.yaml"
+CLIENT_SECRETS="local_api_credentials.yaml"
+LAPI_SECRETS="online_api_credentials.yaml"
 
 CROWDSEC_BIN_INSTALLED="/usr/local/bin/crowdsec"
 CSCLI_BIN_INSTALLED="/usr/local/bin/cscli"
@@ -299,8 +299,8 @@ install_crowdsec() {
     #tmp
     mkdir -p /tmp/data
     mkdir -p /etc/crowdsec/hub/
-    install -v -m 644 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
 
     ## end tmp
 
