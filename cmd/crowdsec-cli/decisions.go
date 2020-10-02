@@ -234,7 +234,7 @@ Args :
 				Leakspeed:       &leakSpeed,
 				Message:         &reason,
 				ScenarioHash:    &empty,
-				Scenario:        &empty,
+				Scenario:        &reason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
 				Source: &models.Source{
