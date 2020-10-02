@@ -30,7 +30,6 @@ var machinePassword string
 var machineIP string
 var interactive bool
 var apiURL string
-var dumpCreds bool
 var outputFile string
 var forceAdd bool
 
@@ -181,10 +180,7 @@ The watcher will be validated automatically.
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
-				} else if csConfig.API.Server != nil {
-					apiURL = csConfig.API.Server.ListenURI
-				}
-				if apiURL == "" {
+				} else {
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
@@ -265,13 +261,11 @@ The watcher will be validated automatically.
 				id = strings.ReplaceAll(id, "-", "")[:32]
 			}
 			password := strfmt.Password(generatePassword())
-			if apiURL != "" {
-				if csConfig.API.Client.Credentials != nil {
+			if apiURL == "" {
+				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
-				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-					apiURL = csConfig.API.Server.ListenURI
 				} else {
-					log.Fatalf("no api URL to request. Please provide it in your configuration file or with the -u flag")
+					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
 
@@ -285,18 +279,13 @@ The watcher will be validated automatically.
 				log.Fatalf("unable to register to API (%s) : %s", Client.BaseURL, err)
 			}
 
-			if !dumpCreds {
-				fmt.Printf("url: %s\n", csConfig.API.Client.Credentials.URL)
-				fmt.Printf("machine_id: %s\n", id)
-				fmt.Printf("password: %s\n", password.String())
-				return
-			}
-
 			var dumpFile string
-			if csConfig.API.Client.CredentialsFilePath == "" {
-				dumpFile = "./api_credentials.yaml"
-			} else {
+			if outputFile != "" {
+				dumpFile = outputFile
+			} else if csConfig.API.Client.CredentialsFilePath != "" {
 				dumpFile = csConfig.API.Client.CredentialsFilePath
+			} else {
+				dumpFile = ""
 			}
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    id,
@@ -307,15 +296,19 @@ The watcher will be validated automatically.
 			if err != nil {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
-			err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
-			if err != nil {
-				log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+			if dumpFile != "" {
+				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				if err != nil {
+					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
+				}
+				log.Printf("API credentials dumped to '%s'", dumpFile)
+			} else {
+				fmt.Printf("%s\n", string(apiConfigDump))
 			}
-			log.Printf("API credentials dumped to '%s'", dumpFile)
 		},
 	}
-	cmdWatchersDelete.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdWatchersDelete.Flags().BoolVarP(&dumpCreds, "dump", "d", false, "dump credentials to the file specified in configuration")
+	cmdWatchersRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdWatchersRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdWatchers.AddCommand(cmdWatchersRegister)
 
 	var cmdWatchersValidate = &cobra.Command{
