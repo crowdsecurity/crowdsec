@@ -3,12 +3,14 @@ package database
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/pkg/errors"
 )
 
 type Client struct {
@@ -40,15 +42,25 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	return &Client{Ent: client, CTX: context.Background()}, nil
 }
 
-func (c *Client) IsMachineRegister(machineID string) (bool, error) {
-	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
-	if err != nil {
-		return false, err
-	}
-	if len(exist) > 0 {
-		return true, nil
+func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
+	maxAge := time.Duration(0)
+	maxItems := 0
+	if config.MaxItems != nil && *config.MaxItems <= 0 {
+		return nil, fmt.Errorf("max_items can't be negatif number")
 	}
 
-	return false, nil
+	maxItems = *config.MaxItems
+	if config.MaxItems != nil && *config.MaxAge != "" {
+		ageDuration, err := time.ParseDuration(*config.MaxAge)
+		if err != nil {
+			return nil, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", *config.MaxAge)
+		}
+		maxAge = ageDuration
+	}
+	// Init & Start cronjob every minute
+	scheduler := gocron.NewScheduler(time.UTC)
+	scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	scheduler.StartAsync()
 
+	return scheduler, nil
 }

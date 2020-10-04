@@ -123,3 +123,16 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 	}
 	return nil
 }
+
+func (c *Client) IsMachineRegister(machineID string) (bool, error) {
+	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
+	if err != nil {
+		return false, err
+	}
+	if len(exist) > 0 {
+		return true, nil
+	}
+
+	return false, nil
+
+}

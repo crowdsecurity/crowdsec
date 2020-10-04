@@ -23,6 +23,9 @@ db_config:
   db_name: crowdsec
   host: "172.17.0.2"
   port: 3306
+  flush:
+    max_items: 10
+    max_age: 5m
 api:
   client:
     credentials_path: ./config/local_api_credentials.yaml

@@ -9,9 +9,13 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+<<<<<<< 9686aea68cf3f00a598a0d849ca7906ba6497b1f
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+=======
+	"github.com/go-co-op/gocron"
+>>>>>>> add database auto flush (max_age not finished)
 
 	"github.com/gin-gonic/gin"
 )
@@ -21,13 +25,14 @@ var (
 )
 
 type APIServer struct {
-	URL         string
-	TLS         *csconfig.TLSCfg
-	dbClient    *database.Client
-	logFile     string
-	ctx         context.Context
-	middlewares *middlewares.Middlewares
-	controller  *controllers.Controller
+	URL            string
+	TLS            *csconfig.TLSCfg
+	dbClient       *database.Client
+	logFile        string
+	ctx            context.Context
+	middlewares    *middlewares.Middlewares
+	controller     *controllers.Controller
+	flushScheduler *gocron.Scheduler
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -44,13 +49,19 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	controller := controllers.New(ctx, dbClient, middleware.APIKey.HeaderName)
 
+	flushScheduler, err := dbClient.StartFlushScheduler(config.DbConfig.Flush)
+	if err != nil {
+		return &APIServer{}, err
+	}
+
 	return &APIServer{
-		URL:         config.ListenURI,
-		TLS:         config.TLS,
-		logFile:     fmt.Sprintf("%s/api.log", config.LogDir),
-		dbClient:    dbClient,
-		middlewares: middleware,
-		controller:  controller,
+		URL:            config.ListenURI,
+		TLS:            config.TLS,
+		logFile:        fmt.Sprintf("%s/api.log", config.LogDir),
+		dbClient:       dbClient,
+		middlewares:    middleware,
+		controller:     controller,
+		flushScheduler: flushScheduler,
 	}, nil
 
 }
@@ -116,4 +127,5 @@ func (s *APIServer) Run() error {
 
 func (s *APIServer) Close() {
 	s.dbClient.Ent.Close()
+	s.flushScheduler.Stop()
 }
