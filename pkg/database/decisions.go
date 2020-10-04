@@ -81,7 +81,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 }
 
 func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
-	data, err := c.Ent.Decision.Query().All(c.CTX)
+	data, err := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now())).All(c.CTX)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions")
 	}
@@ -96,12 +96,19 @@ func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 	return data, nil
 }
 
+func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, error) {
+	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since)).All(c.CTX)
+	if err != nil {
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
+	}
+	return data, nil
+}
+
 func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
 	if err != nil {
 		return []*ent.Decision{}, errors.Wrap(QueryFail, fmt.Sprintf("new decisions since '%s'", since.String()))
 	}
-
 	return data, nil
 }
 

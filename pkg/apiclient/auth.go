@@ -44,6 +44,10 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)
+	if resp == nil {
+		log.Errorf("resp-api: auth with api key failed return nil response, error: %s", err)
+		return resp, err
+	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Tracef("resp-api: %s", string(dump))
