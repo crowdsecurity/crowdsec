@@ -390,7 +390,6 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 
 	// Get all the alerts that match the filter
 	alertsToDelete, err := c.QueryAlertWithFilter(filter)
-	log.Infof("ALERTS : %+v", alertsToDelete)
 
 	for _, alertItem := range alertsToDelete {
 		err = c.DeleteAlertGraph(alertItem)
@@ -407,9 +406,8 @@ func (c *Client) FlushAlerts(MaxAge time.Duration, MaxItems int) error {
 
 	if MaxAge > 0 {
 		filter := map[string][]string{
-			"until": {until.String()},
+			"until": {until.Format(time.RFC3339)},
 		}
-		log.Infof("FILTER: %+v", filter)
 		deleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
 			return errors.Wrapf(err, "unable to flush alerts with filter %s", until.String())
