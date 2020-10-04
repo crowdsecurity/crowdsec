@@ -24,8 +24,8 @@ db_config:
   host: "172.17.0.2"
   port: 3306
   flush:
-    max_items: 10
-    max_age: 5m
+    #max_items: 10000
+    #max_age: 168h
 api:
   client:
     credentials_path: ./config/local_api_credentials.yaml
