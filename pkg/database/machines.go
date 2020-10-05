@@ -129,8 +129,11 @@ func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if len(exist) > 0 {
+	if len(exist) == 1 {
 		return true, nil
+	}
+	if len(exist) > 1 {
+		return false, fmt.Errorf("More than one item with the same machineID in database")
 	}
 
 	return false, nil

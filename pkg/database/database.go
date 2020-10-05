@@ -64,7 +64,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 			if err != nil {
 				return nil, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", *config.MaxAge)
 			}
-			durationStr = strconv.Itoa(daysInt * 24)
+			durationStr = strconv.Itoa(daysInt*24) + "h"
 		}
 		maxDuration, err := time.ParseDuration(durationStr)
 		if err != nil {
