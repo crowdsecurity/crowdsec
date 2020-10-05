@@ -359,27 +359,27 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	_, err := c.Ent.Event.Delete().
 		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("event with alert ID '%d'", alertItem.ID))
+		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
 	}
 
 	// delete the associated meta
 	_, err = c.Ent.Meta.Delete().
 		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("meta with alert ID '%d'", alertItem.ID))
+		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
 	}
 
 	// delete the associated decisions
 	_, err = c.Ent.Decision.Delete().
 		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with alert ID '%d'", alertItem.ID))
+		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
 	}
 
 	// delete the alert
 	err = c.Ent.Alert.DeleteOne(alertItem).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("alert with ID '%d'", alertItem.ID))
+		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
 	}
 
 	return nil

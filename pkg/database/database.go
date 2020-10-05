@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -43,19 +45,32 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
+	var durationStr string
 	maxAge := time.Duration(0)
 	maxItems := 0
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
-		return nil, fmt.Errorf("max_items can't be negatif number")
+		return nil, fmt.Errorf("max_items can't be zero or negative number")
 	}
 
 	maxItems = *config.MaxItems
-	if config.MaxItems != nil && *config.MaxAge != "" {
-		ageDuration, err := time.ParseDuration(*config.MaxAge)
+	if config.MaxAge != nil && *config.MaxAge != "" {
+		durationStr = *config.MaxAge
+		if strings.HasSuffix(*config.MaxAge, "d") {
+			days := strings.Split(*config.MaxAge, "d")[0]
+			if len(days) == 0 {
+				return nil, fmt.Errorf("max_age (%s) can't be parsed as duration", *config.MaxAge)
+			}
+			daysInt, err := strconv.Atoi(days)
+			if err != nil {
+				return nil, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", *config.MaxAge)
+			}
+			durationStr = strconv.Itoa(daysInt * 24)
+		}
+		maxDuration, err := time.ParseDuration(durationStr)
 		if err != nil {
 			return nil, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", *config.MaxAge)
 		}
-		maxAge = ageDuration
+		maxAge = maxDuration
 	}
 	// Init & Start cronjob every minute
 	scheduler := gocron.NewScheduler(time.UTC)
