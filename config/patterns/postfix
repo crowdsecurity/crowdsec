@@ -1,0 +1,13 @@
+POSTFIX_HOSTNAME (%{HOSTNAME}|unknown)
+POSTFIX_COMMAND (AUTH|STARTTLS|CONNECT|EHLO)
+
+#stolen from https://github.com/whyscream/postfix-grok-patterns/blob/master/postfix.grok
+POSTFIX_COMMAND_COUNTER_DATA (helo=(%{INT:postfix_cmd_helo_accepted}/)?%{INT:postfix_cmd_helo} )?(ehlo=(%{INT:postfix_cmd_ehlo_accepted}/)?%{INT:postfix_cmd_ehlo} )?(starttls=(%{INT:postfix_cmd_starttls_accepted}/)?%{INT:postfix_cmd_starttls} )?(auth=(%{INT:postfix_cmd_auth_accepted}/)?%{INT:postfix_cmd_auth} )?(mail=(%{INT:postfix_cmd_mail_accepted}/)?%{INT:postfix_cmd_mail} )?(rcpt=(%{INT:postfix_cmd_rcpt_accepted}/)?%{INT:postfix_cmd_rcpt} )?(data=(%{INT:postfix_cmd_data_accepted}/)?%{INT:postfix_cmd_data} )?(rset=(%{INT:postfix_cmd_rset_accepted}/)?%{INT:postfix_cmd_rset} )?(quit=(%{INT:postfix_cmd_quit_accepted}/)?%{INT:postfix_cmd_quit} )?(unknown=(%{INT:postfix_cmd_unknown_accepted}/)?%{INT:postfix_cmd_unknown} )?commands=(%{INT:postfix_cmd_count_accepted}/)?%{INT:postfix_cmd_count}
+
+POSTFIX_LOST_CONNECTION lost connection after %{POSTFIX_COMMAND:command} from %{POSTFIX_HOSTNAME:remote_host}\[%{IP:remote_addr}\]
+POSTFIX_FAIL_AUTH warning: unknown\[%{IP:remote_addr}\]: SASL ((?i)LOGIN|PLAIN|(?:CRAM|DIGEST)-MD5) authentication failed:%{GREEDYDATA:message_failure}
+POSTFIX_CONNECTION: connect from %{POSTFIX_HOSTNAME:remote_host}\[%{IP:remote_addr}\]
+POSTFIX_DISCONNECT disconnect from %{POSTFIX_HOSTNAME:remote_host}\[%{IP:remote_addr}\] %{POSTFIX_COMMAND_COUNTER_DATA}
+
+
+
