@@ -84,6 +84,15 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		return errors.Wrap(err, "invalid config")
 	}
 
+	if c.Crowdsec.ParserRoutinesCount <= 0 {
+		c.Crowdsec.ParserRoutinesCount = 1
+	}
+	if c.Crowdsec.BucketRoutinesCount <= 0 {
+		c.Crowdsec.BucketRoutinesCount = 1
+	}
+	if c.Crowdsec.OutputRoutinesCount <= 0 {
+		c.Crowdsec.OutputRoutinesCount = 1
+	}
 	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
