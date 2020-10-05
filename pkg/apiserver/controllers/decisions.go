@@ -112,6 +112,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 
 	if blockerInfo == nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": "not allowed"})
+		return
 	}
 
 	// if the blocker just start, return all decisions
@@ -124,22 +125,30 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				return
 			}
 			ret["new"], err = FormatDecisions(data)
+			if err != nil {
+				log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
+				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
 
 			// getting expired decisions
 			data, err = c.DBClient.QueryExpiredDecisions()
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", blockerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
 			}
 			ret["deleted"], err = FormatDecisions(data)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
 			}
 
 			if err := c.DBClient.UpdateBlockerLastPull(time.Now(), blockerInfo.ID); err != nil {
 				log.Errorf("unable to update blocker '%s' pull: %v", blockerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
 			}
 
 			gctx.JSON(http.StatusOK, ret)
@@ -152,11 +161,13 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 	ret["new"], err = FormatDecisions(data)
 	if err != nil {
 		log.Errorf("unable to format new decision for '%s' : %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 
 	// getting expired decisions
@@ -164,16 +175,19 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 	ret["deleted"], err = FormatDecisions(data)
 	if err != nil {
 		log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 
 	if err := c.DBClient.UpdateBlockerLastPull(time.Now(), blockerInfo.ID); err != nil {
 		log.Errorf("unable to update blocker '%s' pull: %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 
 	gctx.JSON(http.StatusOK, ret)
