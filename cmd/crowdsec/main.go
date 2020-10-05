@@ -243,7 +243,6 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		if *SingleFileType == "" {
 			return fmt.Errorf("-file requires -type")
 		}
-
 	}
 
 	if *printDebug {

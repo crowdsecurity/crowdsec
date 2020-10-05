@@ -123,3 +123,19 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 	}
 	return nil
 }
+
+func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
+	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
+	if err != nil {
+		return false, err
+	}
+	if len(exist) == 1 {
+		return true, nil
+	}
+	if len(exist) > 1 {
+		return false, fmt.Errorf("More than one item with the same machineID in database")
+	}
+
+	return false, nil
+
+}

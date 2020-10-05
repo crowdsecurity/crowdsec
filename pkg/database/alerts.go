@@ -354,6 +354,37 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	return result, nil
 }
 
+func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
+	// delete the associated events
+	_, err := c.Ent.Event.Delete().
+		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+	if err != nil {
+		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
+	}
+
+	// delete the associated meta
+	_, err = c.Ent.Meta.Delete().
+		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+	if err != nil {
+		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
+	}
+
+	// delete the associated decisions
+	_, err = c.Ent.Decision.Delete().
+		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+	if err != nil {
+		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
+	}
+
+	// delete the alert
+	err = c.Ent.Alert.DeleteOne(alertItem).Exec(c.CTX)
+	if err != nil {
+		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
+	}
+
+	return nil
+}
+
 func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
 	var err error
 
@@ -361,36 +392,57 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 	alertsToDelete, err := c.QueryAlertWithFilter(filter)
 
 	for _, alertItem := range alertsToDelete {
-		// delete the associated events
-		_, err = c.Ent.Event.Delete().
-			Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
+		err = c.DeleteAlertGraph(alertItem)
 		if err != nil {
-			log.Errorf("fail deleting event from alert '%d': %s", alertItem.ID, err)
 			return []*ent.Alert{}, errors.Wrap(DeleteFail, fmt.Sprintf("event with alert ID '%d'", alertItem.ID))
-		}
-
-		// delete the associated meta
-		_, err = c.Ent.Meta.Delete().
-			Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
-		if err != nil {
-			log.Errorf("fail deleting meta from alert '%d': %s", alertItem.ID, err)
-			return []*ent.Alert{}, errors.Wrap(DeleteFail, fmt.Sprintf("meta with alert ID '%d'", alertItem.ID))
-		}
-
-		// delete the associated decisions
-		_, err = c.Ent.Decision.Delete().
-			Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
-		if err != nil {
-			log.Errorf("fail deleting decision from alert '%d': %s", alertItem.ID, err)
-			return []*ent.Alert{}, errors.Wrap(DeleteFail, fmt.Sprintf("decision with alert ID '%d'", alertItem.ID))
-		}
-
-		// delete the alert
-		err = c.Ent.Alert.DeleteOne(alertItem).Exec(c.CTX)
-		if err != nil {
-			log.Errorf("fail deleting alert with ID '%d': %s", alertItem.ID, err)
-			return []*ent.Alert{}, errors.Wrap(DeleteFail, fmt.Sprintf("alert with ID '%d'", alertItem.ID))
 		}
 	}
 	return alertsToDelete, nil
+}
+
+func (c *Client) FlushAlerts(MaxAge time.Duration, MaxItems int) error {
+	var totalDeleted int
+	until := time.Now().Add(-MaxAge)
+
+	if MaxAge > 0 {
+		filter := map[string][]string{
+			"until": {until.Format(time.RFC3339)},
+		}
+		deleted, err := c.DeleteAlertWithFilter(filter)
+		if err != nil {
+			return errors.Wrapf(err, "unable to flush alerts with filter %s", until.String())
+		}
+		totalDeleted += len(deleted)
+	}
+	if MaxItems > 0 {
+		totalAlerts, err := c.Ent.Alert.Query().Count(c.CTX)
+		if err != nil {
+			return errors.Wrap(err, "unable to get alerts count")
+		}
+		if totalAlerts > MaxItems {
+			nbToDelete := totalAlerts - MaxItems
+			alerts, err := c.Ent.Alert.Query().
+				WithDecisions().
+				WithEvents().
+				WithMetas().
+				WithOwner().
+				Order(ent.Asc(alert.FieldCreatedAt)).
+				All(c.CTX)
+			if err != nil {
+				return errors.Wrap(err, "unable to get all alerts")
+			}
+			for itemNb, alert := range alerts {
+				if itemNb < nbToDelete {
+					err := c.DeleteAlertGraph(alert)
+					if err != nil {
+						return errors.Wrap(err, "unable to flush alert")
+					}
+				}
+			}
+			totalDeleted += nbToDelete
+		}
+	}
+	log.Debugf("%d alerts automatically flushed", totalDeleted)
+
+	return nil
 }

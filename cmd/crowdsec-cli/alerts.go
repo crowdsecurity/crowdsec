@@ -143,7 +143,7 @@ To list/add/delete alerts
 			}
 
 			if Until != "" {
-				filter.SinceEquals = &Until
+				filter.UntilEquals = &Until
 			}
 
 			if Source != "" {
