@@ -9,15 +9,11 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-<<<<<<< 9686aea68cf3f00a598a0d849ca7906ba6497b1f
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/gin-gonic/gin"
+	"github.com/go-co-op/gocron"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-=======
-	"github.com/go-co-op/gocron"
->>>>>>> add database auto flush (max_age not finished)
-
-	"github.com/gin-gonic/gin"
 )
 
 var (
