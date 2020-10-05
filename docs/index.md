@@ -2,7 +2,7 @@
 
 # What is {{crowdsec.Name}} ?
 
-[{{crowdsec.Name}}]({{crowdsec.url}}) is an open-source and lightweight software that allows you to detect peers with malevolent behaviors and block them from accessing your systems at various level (infrastructural, system, applicative).
+[{{crowdsec.Name}}]({{crowdsec.url}}) is an open-source and lightweight software that allows you to detect peers with malevolent behaviors and block them (using {{bouncers.Htmlname}}) from accessing your systems at various levels (infrastructural, system, applicative).
 
 To achieve this, {{crowdsec.Name}} reads logs from different sources (files, streams ...) to parse, normalize and enrich them before matching them to threats patterns called scenarios. 
 

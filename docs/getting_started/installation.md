@@ -82,6 +82,54 @@ make build
 
 Now, you can install either with [interactive wizard](#using-the-interactive-wizard) or the [unattended mode](#using-unattended-mode).
 
+
+# Upgrading
+
+The wizard itself comes with a `--upgrade` option, that will upgrade existing crowdsec version.
+
+If you have installed crowdsec `v0.1.0` and you downloaded `v0.1.1`, you can run `sudo ./wizard.sh --upgrade` from the extracted `v0.1.1` version. (_note_: the wizard doesn't *yet* download the latest version, you have to download it)
+
+
+The wizard takes care of backing up configurations on your behalf, and puts them into an archive :
+
+ - backup your parsers,scenarios,collections, either from hub or your local ones
+ - simulation configuration
+ - API credentials
+ - acquisition.yaml file
+ - plugin(s) configuration
+
+It will then install the new/current crowdsec version, and restore everything that has been backed up!
+
+
+```bash
+$ sudo ./wizard.sh --upgrade
+[10/05/2020:11:27:34 AM][INF] crowdsec_wizard: Backing up existing configuration
+WARN[0000] Starting configuration backup                
+INFO[0000] saving, version:0.1, up-to-date:true          file=crowdsecurity/syslog-logs type=parsers
+...
+INFO[0000] Wrote 7 entries for parsers to /tmp/tmp.z54P27aaW0/parsers//upstream-parsers.json  file=crowdsecurity/geoip-enrich type=parsers
+INFO[0000] Wrote 0 entries for postoverflows to /tmp/tmp.z54P27aaW0/postoverflows//upstream-postoverflows.json  file=crowdsecurity/seo-bots-whitelist type=postoverflows
+INFO[0000] Wrote 9 entries for scenarios to /tmp/tmp.z54P27aaW0/scenarios//upstream-scenarios.json  file=crowdsecurity/smb-bf type=scenarios
+INFO[0000] Wrote 4 entries for collections to /tmp/tmp.z54P27aaW0/collections//upstream-collections.json  file=crowdsecurity/vsftpd type=collections
+INFO[0000] Saved acquis to /tmp/tmp.z54P27aaW0/acquis.yaml 
+INFO[0000] Saved default yaml to /tmp/tmp.z54P27aaW0/default.yaml 
+INFO[0000] Saved configuration to /tmp/tmp.z54P27aaW0   
+INFO[0000] Stop docker metabase /crowdsec-metabase      
+[10/05/2020:11:27:36 AM][INF] crowdsec_wizard: Removing crowdsec binaries
+[10/05/2020:11:27:36 AM][INF] crowdsec_wizard: crowdsec successfully uninstalled
+[10/05/2020:11:27:36 AM][INF] crowdsec_wizard: Installing crowdsec
+...
+[10/05/2020:11:27:36 AM][INF] crowdsec_wizard: Restoring configuration
+...
+INFO[0004] Restore acquis to /etc/crowdsec/config/acquis.yaml 
+INFO[0004] Restoring  '/tmp/tmp.z54P27aaW0/plugins/backend/database.yaml' to '/etc/crowdsec/plugins/backend/database.yaml' 
+[10/05/2020:11:27:41 AM][INF] crowdsec_wizard: Restoring saved database
+[10/05/2020:11:27:41 AM][INF] crowdsec_wizard: Finished, restarting
+
+```
+
+As usual, if you experience any issues, let us know :)
+
 # Uninstalling
 
 You can uninstall crowdsec using the wizard : `sudo ./wizard.sh --uninstall`
