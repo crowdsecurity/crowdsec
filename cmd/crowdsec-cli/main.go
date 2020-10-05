@@ -138,7 +138,7 @@ API interaction:
 	rootCmd.AddCommand(NewAlertsCmd())
 	//	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
-	rootCmd.AddCommand(NewKeysCmd())
+	rootCmd.AddCommand(NewBouncersCmd())
 	rootCmd.AddCommand(NewMachinesCmd())
 	rootCmd.AddCommand(NewParsersCmd())
 	rootCmd.AddCommand(NewScenariosCmd())
