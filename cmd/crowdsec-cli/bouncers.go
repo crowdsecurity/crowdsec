@@ -18,17 +18,17 @@ var keyName string
 var keyIP string
 var keyLength int
 
-func NewKeysCmd() *cobra.Command {
+func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
-	var cmdKeys = &cobra.Command{
-		Use:   "keys [action]",
-		Short: "Manage local API keys",
+	var cmdBouncers = &cobra.Command{
+		Use:   "bouncers [action]",
+		Short: "Manage bouncers",
 		Long: `
-API keys Management.
+Bouncers Management.
 
-To list/add/delete api keys
+To list/add/delete bouncers
 `,
-		Example: `cscli keys [action]`,
+		Example: `cscli bouncers [action]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -39,11 +39,11 @@ To list/add/delete api keys
 		},
 	}
 
-	var cmdKeysList = &cobra.Command{
+	var cmdBouncersList = &cobra.Command{
 		Use:     "list",
-		Short:   "List api keys",
-		Long:    `List `,
-		Example: `cscli keys list`,
+		Short:   "List bouncers",
+		Long:    `List bouncers`,
+		Example: `cscli bouncers list`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			blockers, err := dbClient.ListBlockers()
@@ -91,13 +91,13 @@ To list/add/delete api keys
 
 		},
 	}
-	cmdKeys.AddCommand(cmdKeysList)
+	cmdBouncers.AddCommand(cmdBouncersList)
 
-	var cmdKeysAdd = &cobra.Command{
+	var cmdBouncersAdd = &cobra.Command{
 		Use:     "add",
-		Short:   "add api keys",
-		Long:    `add `,
-		Example: `cscli keys add --name test [--ip 1.2.3.4]`,
+		Short:   "add bouncer",
+		Long:    `add bouncer`,
+		Example: `cscli bouncers add --name test [--ip 1.2.3.4]`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			if keyName == "" {
@@ -119,16 +119,16 @@ To list/add/delete api keys
 			fmt.Print("Please keep this key since will not be able to retrive it!\n")
 		},
 	}
-	cmdKeysAdd.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
-	cmdKeysAdd.Flags().StringVarP(&keyIP, "ip", "i", "", "ip address of the blocker")
-	cmdKeysAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
-	cmdKeys.AddCommand(cmdKeysAdd)
+	cmdBouncersAdd.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
+	cmdBouncersAdd.Flags().StringVarP(&keyIP, "ip", "i", "", "ip address of the blocker")
+	cmdBouncersAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
+	cmdBouncers.AddCommand(cmdBouncersAdd)
 
-	var cmdKeysDelete = &cobra.Command{
+	var cmdBouncersDelete = &cobra.Command{
 		Use:     "delete",
-		Short:   "delete api keys",
-		Long:    `delete `,
-		Example: `cscli keys delete --name test [--ip 1.2.3.4]`,
+		Short:   "delete bouncer",
+		Long:    `delete bouncer`,
+		Example: `cscli bouncers delete --name test [--ip 1.2.3.4]`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			if keyName == "" {
@@ -142,8 +142,8 @@ To list/add/delete api keys
 			}
 		},
 	}
-	cmdKeysDelete.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
-	cmdKeys.AddCommand(cmdKeysDelete)
+	cmdBouncersDelete.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
+	cmdBouncers.AddCommand(cmdBouncersDelete)
 
-	return cmdKeys
+	return cmdBouncers
 }

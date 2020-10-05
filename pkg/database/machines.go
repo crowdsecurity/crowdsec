@@ -62,7 +62,7 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 	return machine, nil
 }
 
-func (c *Client) ListWatchers() ([]*ent.Machine, error) {
+func (c *Client) ListMachines() ([]*ent.Machine, error) {
 	var machines []*ent.Machine
 	var err error
 

@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewPostOverflowCmd() *cobra.Command {
-	var cmdPostOverflow = &cobra.Command{
-		Use:   "postoverflow [action] [config]",
+func NewPostOverflowsCmd() *cobra.Command {
+	var cmdPostOverflows = &cobra.Command{
+		Use:   "postoverflows [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect postoverflow(s) from hub",
 		Long: `
 		Install/Remove/Upgrade/Inspect postoverflow(s) from the CrowdSec Hub.
@@ -26,7 +26,7 @@ you should [update cscli](./cscli_update.md).
 
 As a reminder, postoverflows are parsing configuration that will occur after the overflow (before a decision is applied)
 `,
-		Example: `cscli postoverflow [action] [config_name]`,
+		Example: `cscli postoverflows [action] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
@@ -45,13 +45,13 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdPostOverflow.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
+	cmdPostOverflows.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
-	var cmdPostOverflowInstall = &cobra.Command{
-		Use:     "postoverflow [config]",
-		Short:   "Install given postoverflow",
-		Long:    `Fetch and install given postoverflow from hub`,
-		Example: `cscli postoverflow install crowdsec/xxx`,
+	var cmdPostOverflowsInstall = &cobra.Command{
+		Use:     "postoverflows [config]",
+		Short:   "Install given postoverflow(s)",
+		Long:    `Fetch and install given postoverflow(s) from hub`,
+		Example: `cscli postoverflows install crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -62,15 +62,15 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			}
 		},
 	}
-	cmdPostOverflowInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdPostOverflowInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdPostOverflow.AddCommand(cmdPostOverflowInstall)
+	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
 
-	var cmdPostOverflowRemove = &cobra.Command{
+	var cmdPostOverflowsRemove = &cobra.Command{
 		Use:     "remove [config]",
-		Short:   "Remove given postoverflow",
-		Long:    `remove given postoverflow`,
-		Example: `cscli postoverflow remove crowdsec/xxx`,
+		Short:   "Remove given postoverflow(s)",
+		Long:    `remove given postoverflow(s)`,
+		Example: `cscli postoverflows remove crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -86,15 +86,15 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			}
 		},
 	}
-	cmdPostOverflowRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdPostOverflowRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
-	cmdPostOverflow.AddCommand(cmdPostOverflowRemove)
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdPostOverflows.AddCommand(cmdPostOverflowsRemove)
 
-	var cmdPostOverflowUpgrade = &cobra.Command{
+	var cmdPostOverflowsUpgrade = &cobra.Command{
 		Use:     "upgrade [config]",
-		Short:   "Upgrade given postoverflow",
-		Long:    `Fetch and Upgrade given postoverflow from hub`,
-		Example: `cscli postoverflow upgrade crowdsec/xxx`,
+		Short:   "Upgrade given postoverflow(s)",
+		Long:    `Fetch and Upgrade given postoverflow(s) from hub`,
+		Example: `cscli postoverflows upgrade crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -109,15 +109,15 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			}
 		},
 	}
-	cmdPostOverflowUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdPostOverflowUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdPostOverflow.AddCommand(cmdPostOverflowUpgrade)
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflows.AddCommand(cmdPostOverflowsUpgrade)
 
-	var cmdPostOverflowInspect = &cobra.Command{
+	var cmdPostOverflowsInspect = &cobra.Command{
 		Use:     "inspect [config]",
 		Short:   "Inspect given postoverflow",
 		Long:    `Inspect given postoverflow`,
-		Example: `cscli postoverflow inspect crowdsec/xxx`,
+		Example: `cscli postoverflows inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -126,14 +126,14 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 			InspectItem(args[0], cwhub.PARSERS_OVFLW)
 		},
 	}
-	cmdPostOverflow.AddCommand(cmdPostOverflowInspect)
+	cmdPostOverflows.AddCommand(cmdPostOverflowsInspect)
 
-	var cmdPostOverflowList = &cobra.Command{
+	var cmdPostOverflowsList = &cobra.Command{
 		Use:   "list [config]",
-		Short: "List all postoverflow or given one",
-		Long:  `List all postoverflow or given one`,
-		Example: `cscli postoverflow list
-cscli postoverflow list crowdsecurity/xxx`,
+		Short: "List all postoverflows or given one",
+		Long:  `List all postoverflows or given one`,
+		Example: `cscli postoverflows list
+cscli postoverflows list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
@@ -141,8 +141,8 @@ cscli postoverflow list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS_OVFLW, args)
 		},
 	}
-	cmdPostOverflowList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
-	cmdPostOverflow.AddCommand(cmdPostOverflowList)
+	cmdPostOverflowsList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdPostOverflows.AddCommand(cmdPostOverflowsList)
 
-	return cmdPostOverflow
+	return cmdPostOverflows
 }

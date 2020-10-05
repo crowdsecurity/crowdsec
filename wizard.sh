@@ -229,12 +229,12 @@ install_collection() {
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
-        ${CSCLI_BIN_INSTALLED} collection install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
+        ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
 
 
-    ${CSCLI_BIN_INSTALLED} parser install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
+    ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
     fi
@@ -453,7 +453,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
          # api register
-        ${CSCLI_BIN_INSTALLED} watchers add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        ${CSCLI_BIN_INSTALLED} machine add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
         return
     fi
@@ -494,7 +494,7 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} watchers add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        ${CSCLI_BIN_INSTALLED} machine add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
 
 
