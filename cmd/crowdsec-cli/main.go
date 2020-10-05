@@ -139,11 +139,11 @@ API interaction:
 	//	rootCmd.AddCommand(NewInspectCmd())
 	rootCmd.AddCommand(NewSimulationCmds())
 	rootCmd.AddCommand(NewKeysCmd())
-	rootCmd.AddCommand(NewWatchersCmd())
-	rootCmd.AddCommand(NewParserCmd())
-	rootCmd.AddCommand(NewScenarioCmd())
-	rootCmd.AddCommand(NewCollectionCmd())
-	rootCmd.AddCommand(NewPostOverflowCmd())
+	rootCmd.AddCommand(NewMachinesCmd())
+	rootCmd.AddCommand(NewParsersCmd())
+	rootCmd.AddCommand(NewScenariosCmd())
+	rootCmd.AddCommand(NewCollectionsCmd())
+	rootCmd.AddCommand(NewPostOverflowsCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}

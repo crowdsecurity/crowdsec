@@ -63,24 +63,24 @@ func generatePassword() string {
 	return string(buf)
 }
 
-func NewWatchersCmd() *cobra.Command {
+func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
-	var cmdWatchers = &cobra.Command{
-		Use:   "watchers [action]",
-		Short: "Manage local API watchers",
+	var cmdMachines = &cobra.Command{
+		Use:   "machines [action]",
+		Short: "Manage local API machines",
 		Long: `
-Watchers Management.
+Machines Management.
 
-To list/add/delete watchers
+To list/add/delete machines
 `,
-		Example: `cscli watchers [action]`,
+		Example: `cscli machines [action]`,
 	}
 
-	var cmdWatchersList = &cobra.Command{
+	var cmdMachinesList = &cobra.Command{
 		Use:     "list",
-		Short:   "List watchers",
+		Short:   "List machines",
 		Long:    `List `,
-		Example: `cscli watchers list`,
+		Example: `cscli machines list`,
 		Args:    cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -90,7 +90,7 @@ To list/add/delete watchers
 			}
 		},
 		Run: func(cmd *cobra.Command, arg []string) {
-			watchers, err := dbClient.ListWatchers()
+			machines, err := dbClient.ListMachines()
 			if err != nil {
 				log.Errorf("unable to list blockers: %s", err)
 			}
@@ -102,7 +102,7 @@ To list/add/delete watchers
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
 				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status"})
-				for _, w := range watchers {
+				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
 						validated = fmt.Sprintf("%s", emoji.CheckMark)
@@ -113,13 +113,13 @@ To list/add/delete watchers
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
-				x, err := json.MarshalIndent(watchers, "", " ")
+				x, err := json.MarshalIndent(machines, "", " ")
 				if err != nil {
 					log.Fatalf("failed to unmarshal")
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
-				for _, w := range watchers {
+				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
 						validated = "true"
@@ -133,15 +133,15 @@ To list/add/delete watchers
 			}
 		},
 	}
-	cmdWatchers.AddCommand(cmdWatchersList)
+	cmdMachines.AddCommand(cmdMachinesList)
 
-	var cmdWatchersAdd = &cobra.Command{
+	var cmdMachinesAdd = &cobra.Command{
 		Use:   "add",
-		Short: "add watchers directly to the database.",
-		Long: `add watchers directly to the database.
+		Short: "add machines directly to the database.",
+		Long: `add machines directly to the database.
 The watcher will be validated automatically.
 /!\ This will add the watcher only in the local database. This can't be run from a remote server.`,
-		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		Example: `cscli machines add --machine test --password testpassword --ip 1.2.3.4`,
 		Args:    cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -180,6 +180,8 @@ The watcher will be validated automatically.
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
+				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
+					apiURL = csConfig.API.Server.ListenURI
 				} else {
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
@@ -204,20 +206,20 @@ The watcher will be validated automatically.
 			}
 		},
 	}
-	cmdWatchersAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
-	cmdWatchersAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
-	cmdWatchersAdd.Flags().StringVar(&machineIP, "ip", "", "machine ip address")
-	cmdWatchersAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdWatchersAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdWatchersAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
-	cmdWatchersAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
-	cmdWatchers.AddCommand(cmdWatchersAdd)
+	cmdMachinesAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
+	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
+	cmdMachinesAdd.Flags().StringVar(&machineIP, "ip", "", "machine ip address")
+	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
+	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
+	cmdMachines.AddCommand(cmdMachinesAdd)
 
-	var cmdWatchersDelete = &cobra.Command{
+	var cmdMachinesDelete = &cobra.Command{
 		Use:     "delete",
-		Short:   "delete watchers",
+		Short:   "delete machines",
 		Long:    `delete `,
-		Example: `cscli watchers delete --machine test`,
+		Example: `cscli machines delete --machine test`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -237,15 +239,15 @@ The watcher will be validated automatically.
 			}
 		},
 	}
-	cmdWatchersDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
-	cmdWatchers.AddCommand(cmdWatchersDelete)
+	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
+	cmdMachines.AddCommand(cmdMachinesDelete)
 
-	var cmdWatchersRegister = &cobra.Command{
+	var cmdMachinesRegister = &cobra.Command{
 		Use:   "register",
-		Short: "register a watcher to a remote API",
-		Long: `register a watcher to a remote API.
-/!\ The watcher will not be validated. You have to connect on the remote API server and run 'cscli validate watcher <machine_id>'`,
-		Example: `cscli watchers register`,
+		Short: "register a machine to a remote API",
+		Long: `register a machine to a remote API.
+/!\ The machine will not be validated. You have to connect on the remote API server and run 'cscli machine validate -m <machine_id>'`,
+		Example: `cscli machine register`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			id, err := machineid.ID()
@@ -307,15 +309,15 @@ The watcher will be validated automatically.
 			}
 		},
 	}
-	cmdWatchersRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdWatchersRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdWatchers.AddCommand(cmdWatchersRegister)
+	cmdMachinesRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdMachinesRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmdMachines.AddCommand(cmdMachinesRegister)
 
-	var cmdWatchersValidate = &cobra.Command{
+	var cmdMachinesValidate = &cobra.Command{
 		Use:     "validate",
-		Short:   "validate a watcher to access the local API",
-		Long:    `validate a watcher to access the local API.`,
-		Example: `cscli watchers add --machine test --password testpassword --ip 1.2.3.4`,
+		Short:   "validate a machine to access the local API",
+		Long:    `validate a machine to access the local API.`,
+		Example: `cscli machines validate --machine test`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -333,8 +335,8 @@ The watcher will be validated automatically.
 			log.Infof("machine '%s' validated successfuly", machineID)
 		},
 	}
-	cmdWatchersValidate.Flags().StringVarP(&machineID, "machine", "m", "", "machine to validate")
-	cmdWatchers.AddCommand(cmdWatchersValidate)
+	cmdMachinesValidate.Flags().StringVarP(&machineID, "machine", "m", "", "machine to validate")
+	cmdMachines.AddCommand(cmdMachinesValidate)
 
-	return cmdWatchers
+	return cmdMachines
 }

@@ -32,6 +32,7 @@ type APIServer struct {
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
+	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
 		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
@@ -45,9 +46,11 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	controller := controllers.New(ctx, dbClient, middleware.APIKey.HeaderName)
 
-	flushScheduler, err := dbClient.StartFlushScheduler(config.DbConfig.Flush)
-	if err != nil {
-		return &APIServer{}, err
+	if config.DbConfig.Flush != nil {
+		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
+		if err != nil {
+			return &APIServer{}, err
+		}
 	}
 
 	return &APIServer{
@@ -123,5 +126,7 @@ func (s *APIServer) Run() error {
 
 func (s *APIServer) Close() {
 	s.dbClient.Ent.Close()
-	s.flushScheduler.Stop()
+	if s.flushScheduler != nil {
+		s.flushScheduler.Stop()
+	}
 }

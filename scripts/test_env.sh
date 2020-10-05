@@ -76,11 +76,11 @@ copy_files() {
 
 setup() {
 	$BASE/cscli -c "$CONFIG_FILE" hub update
-	$BASE/cscli -c "$CONFIG_FILE" collection install crowdsecurity/linux
+	$BASE/cscli -c "$CONFIG_FILE" collections install crowdsecurity/linux
 }
 
 setup_api() {
-	$BASE/cscli -c "$CONFIG_FILE" watchers add -m test -p testpassword -f ./client_secrets.yaml
+	$BASE/cscli -c "$CONFIG_FILE" machines add -m test -p testpassword -f $CONFIG_DIR/local_api_credentials.yaml
 }
 
 

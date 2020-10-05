@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewParserCmd() *cobra.Command {
-	var cmdParser = &cobra.Command{
-		Use:   "parser [action] [config]",
+func NewParsersCmd() *cobra.Command {
+	var cmdParsers = &cobra.Command{
+		Use:   "parsers [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect parser(s) from hub",
 		Long: `
 		Install/Remove/Upgrade/Inspect parser(s) from the CrowdSec Hub.
@@ -43,13 +43,13 @@ you should [update cscli](./cscli_update.md).
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdParser.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
+	cmdParsers.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
-	var cmdParserInstall = &cobra.Command{
+	var cmdParsersInstall = &cobra.Command{
 		Use:     "install [config]",
-		Short:   "Install given parser",
-		Long:    `Fetch and install given parser from hub`,
-		Example: `cscli parser install crowdsec/xxx`,
+		Short:   "Install given parser(s)",
+		Long:    `Fetch and install given parser(s) from hub`,
+		Example: `cscli parsers install crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -60,15 +60,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdParserInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdParserInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdParser.AddCommand(cmdParserInstall)
+	cmdParsersInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
+	cmdParsersInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsers.AddCommand(cmdParsersInstall)
 
-	var cmdParserRemove = &cobra.Command{
+	var cmdParsersRemove = &cobra.Command{
 		Use:     "remove [config]",
-		Short:   "Remove given parser",
-		Long:    `Remove given parser from hub`,
-		Example: `cscli parser remove crowdsec/xxx`,
+		Short:   "Remove given parser(s)",
+		Long:    `Remove given parse(s) from hub`,
+		Example: `cscli parsers remove crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -84,15 +84,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdParserRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdParserRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
-	cmdParser.AddCommand(cmdParserRemove)
+	cmdParsersRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
+	cmdParsersRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdParsers.AddCommand(cmdParsersRemove)
 
-	var cmdParserUpgrade = &cobra.Command{
+	var cmdParsersUpgrade = &cobra.Command{
 		Use:     "upgrade [config]",
-		Short:   "Upgrade given parser",
-		Long:    `Fetch and upgrade given parser from hub`,
-		Example: `cscli parser upgrade crowdsec/xxx`,
+		Short:   "Upgrade given parser(s)",
+		Long:    `Fetch and upgrade given parser(s) from hub`,
+		Example: `cscli parsers upgrade crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -107,15 +107,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdParserUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdParserUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdParser.AddCommand(cmdParserUpgrade)
+	cmdParsersUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
+	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsers.AddCommand(cmdParsersUpgrade)
 
-	var cmdParserInspect = &cobra.Command{
+	var cmdParsersInspect = &cobra.Command{
 		Use:     "inspect [config]",
 		Short:   "Inspect given parser",
 		Long:    `Inspect given parser`,
-		Example: `cscli parser inspect crowdsec/xxx`,
+		Example: `cscli parsers inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -124,14 +124,14 @@ you should [update cscli](./cscli_update.md).
 			InspectItem(args[0], cwhub.PARSERS)
 		},
 	}
-	cmdParserInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
-	cmdParser.AddCommand(cmdParserInspect)
+	cmdParsersInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdParsers.AddCommand(cmdParsersInspect)
 
-	var cmdParserList = &cobra.Command{
+	var cmdParsersList = &cobra.Command{
 		Use:   "list [config]",
-		Short: "List all parser or given one",
-		Long:  `List all parser or given one`,
-		Example: `cscli parser list
+		Short: "List all parsers or given one",
+		Long:  `List all parsers or given one`,
+		Example: `cscli parsers list
 cscli parser list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -140,8 +140,8 @@ cscli parser list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS, args)
 		},
 	}
-	cmdParserList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
-	cmdParser.AddCommand(cmdParserList)
+	cmdParsersList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdParsers.AddCommand(cmdParsersList)
 
-	return cmdParser
+	return cmdParsers
 }

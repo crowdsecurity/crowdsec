@@ -10,9 +10,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewScenarioCmd() *cobra.Command {
-	var cmdScenario = &cobra.Command{
-		Use:   "scenario [action] [config]",
+func NewScenariosCmd() *cobra.Command {
+	var cmdScenarios = &cobra.Command{
+		Use:   "scenarios [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect scenario(s) from hub",
 		Long: `
 		Install/Remove/Upgrade/Inspect scenario(s) from the CrowdSec Hub.
@@ -24,7 +24,7 @@ you should [update cscli](./cscli_update.md).
 
 [config_name] must be a valid config name from [Crowdsec Hub](https://hub.crowdsec.net).
 `,
-		Example: `cscli scenario [action] [config_name]`,
+		Example: `cscli scenarios [action] [config_name]`,
 		Args:    cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
@@ -43,13 +43,13 @@ you should [update cscli](./cscli_update.md).
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdScenario.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
+	cmdScenarios.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
-	var cmdScenarioInstall = &cobra.Command{
+	var cmdScenariosInstall = &cobra.Command{
 		Use:     "install [config]",
-		Short:   "Install given scenario",
-		Long:    `Fetch and install given scenario from hub`,
-		Example: `cscli scenario install crowdsec/xxx`,
+		Short:   "Install given scenario(s)",
+		Long:    `Fetch and install given scenario(s) from hub`,
+		Example: `cscli scenarios install crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -60,15 +60,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdScenarioInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdScenarioInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdScenario.AddCommand(cmdScenarioInstall)
+	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
+	cmdScenariosInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenarios.AddCommand(cmdScenariosInstall)
 
-	var cmdScenarioRemove = &cobra.Command{
+	var cmdScenariosRemove = &cobra.Command{
 		Use:     "remove [config]",
-		Short:   "Remove given scenario",
-		Long:    `remove given scenario`,
-		Example: `cscli scenario remove crowdsec/xxx`,
+		Short:   "Remove given scenario(s)",
+		Long:    `remove given scenario(s)`,
+		Example: `cscli scenarios remove crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -84,15 +84,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdScenarioRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdScenarioRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
-	cmdScenario.AddCommand(cmdScenarioRemove)
+	cmdScenariosRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdScenarios.AddCommand(cmdScenariosRemove)
 
-	var cmdScenarioUpgrade = &cobra.Command{
+	var cmdScenariosUpgrade = &cobra.Command{
 		Use:     "upgrade [config]",
-		Short:   "Upgrade given scenario",
-		Long:    `Fetch and Upgrade given scenario from hub`,
-		Example: `cscli scenario upgrade crowdsec/xxx`,
+		Short:   "Upgrade given scenario(s)",
+		Long:    `Fetch and Upgrade given scenario(s) from hub`,
+		Example: `cscli scenarios upgrade crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -107,15 +107,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdScenarioUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdScenarioUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdScenario.AddCommand(cmdScenarioUpgrade)
+	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
+	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenarios.AddCommand(cmdScenariosUpgrade)
 
-	var cmdScenarioInspect = &cobra.Command{
+	var cmdScenariosInspect = &cobra.Command{
 		Use:     "inspect [config]",
 		Short:   "Inspect given scenario",
 		Long:    `Inspect given scenario`,
-		Example: `cscli scenario inspect crowdsec/xxx`,
+		Example: `cscli scenarios inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -124,15 +124,15 @@ you should [update cscli](./cscli_update.md).
 			InspectItem(args[0], cwhub.SCENARIOS)
 		},
 	}
-	cmdScenarioInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
-	cmdScenario.AddCommand(cmdScenarioInspect)
+	cmdScenariosInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdScenarios.AddCommand(cmdScenariosInspect)
 
-	var cmdScenarioList = &cobra.Command{
+	var cmdScenariosList = &cobra.Command{
 		Use:   "list [config]",
-		Short: "List all scenario or given one",
-		Long:  `List all scenario or given one`,
-		Example: `cscli scenario list
-cscli scenario list crowdsecurity/xxx`,
+		Short: "List all scenario(s) or given one",
+		Long:  `List all scenario(s) or given one`,
+		Example: `cscli scenarios list
+cscli scenarios list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
@@ -140,8 +140,8 @@ cscli scenario list crowdsecurity/xxx`,
 			ListItem(cwhub.SCENARIOS, args)
 		},
 	}
-	cmdScenarioList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
-	cmdScenario.AddCommand(cmdScenarioList)
+	cmdScenariosList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdScenarios.AddCommand(cmdScenariosList)
 
-	return cmdScenario
+	return cmdScenarios
 }
