@@ -85,9 +85,12 @@ Now, you can install either with [interactive wizard](#using-the-interactive-wiz
 
 # Upgrading
 
-The wizard itself comes with a `--upgrade` option, that will upgrade existing crowdsec installation to the current version.
+The wizard itself comes with a `--upgrade` option, that will upgrade existing crowdsec version.
 
-The wizard takes care of backuping configurations on your behalf, and puts them into an archive :
+If you have installed crowdsec `v0.1.0` and you downloaded `v0.1.1`, you can run `sudo ./wizard.sh --upgrade` from the extracted `v0.1.1` version. (_note_: the wizard doesn't *yet* download the latest version, you have to download it)
+
+
+The wizard takes care of backing up configurations on your behalf, and puts them into an archive :
 
  - backup your parsers,scenarios,collections, either from hub or your local ones
  - simulation configuration
