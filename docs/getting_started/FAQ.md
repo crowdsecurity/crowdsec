@@ -98,6 +98,14 @@ Whenever in doubt with what is being processed or not, check [cscli metrics](/ob
  
 If logs are being read, parsed and overflows are being triggered, but still nothing appears in the dashboard, ask for some help on discourse or gitter !
 
+
+## I have installed crowdsec and it detect attacks, but nothing is blocked !
+
+Keep in mind that {{crowdsec.Htmlname}} is only in charge of the detection. The decision/remediation is applied by {{bouncer.Htmlname}}.
+If you don't install any bouncer, you will detect attack, but not block them. Explore the [bouncers in the hub]({{bouncer.url}}) to find the relevant ones !
+
+
+
 <!-- 
 
 ## How to contribute ?
