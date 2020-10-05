@@ -110,10 +110,25 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			meta = append(meta, &subMeta)
 		}
 
+		/*check which date to use*/
 		ovflwEvent := models.Event{
-			Meta:      meta,
-			Timestamp: &evt.MarshaledTime,
+			Meta: meta,
 		}
+		//either MarshaledTime is present and is extracted from log
+		if evt.MarshaledTime != "" {
+			ovflwEvent.Timestamp = &evt.MarshaledTime
+		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now()
+			ovflwEvent.Timestamp = new(string)
+			raw, err := evt.Time.MarshalText()
+			if err != nil {
+				log.Warningf("while marshaling time '%s' : %s", evt.Time.String(), err)
+			} else {
+				*ovflwEvent.Timestamp = string(raw)
+			}
+		} else {
+			log.Warningf("Event has no parsed time, no runtime timestamp")
+		}
+
 		events = append(events, &ovflwEvent)
 	}
 	return events

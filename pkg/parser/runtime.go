@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -230,6 +231,9 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		log.Tracef("no stage, set to : %s", event.Stage)
 	}
 	event.Process = false
+	if event.Time.IsZero() {
+		event.Time = time.Now()
+	}
 
 	if event.Parsed == nil {
 		event.Parsed = make(map[string]string)
