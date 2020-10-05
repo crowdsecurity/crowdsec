@@ -198,7 +198,7 @@ in_array() {
 
 install_collection() {
     HMENU=()
-    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collection list -o raw -a)
+    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
     if [[ ${SILENT} == "false" ]]; then
         for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
@@ -453,7 +453,7 @@ main() {
         log_info "installing crowdsec"
         install_crowdsec
          # api register
-        ${CSCLI_BIN_INSTALLED} machine add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        ${CSCLI_BIN_INSTALLED} machines add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
         return
     fi
@@ -494,7 +494,7 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} machine add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        ${CSCLI_BIN_INSTALLED} machines add --force --machine "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -o "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         log_info "Crowdsec api registered"
 
 
