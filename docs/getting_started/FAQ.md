@@ -101,8 +101,8 @@ If logs are being read, parsed and overflows are being triggered, but still noth
 
 ## I have installed crowdsec and it detect attacks, but nothing is blocked !
 
-Keep in mind that {{crowdsec.Htmlname}} is only in charge of the detection. The decision/remediation is applied by {{bouncer.Htmlname}}.
-If you don't install any bouncer, you will detect attack, but not block them. Explore the [bouncers in the hub]({{bouncer.url}}) to find the relevant ones !
+Keep in mind that {{crowdsec.Htmlname}} is only in charge of the detection. The decision/remediation is applied by {{bouncers.Htmlname}}.
+If you don't install any bouncer, you will detect attack, but not block them. Explore the [bouncers in the hub]({{bouncers.url}}) to find the relevant ones !
 
 
 
