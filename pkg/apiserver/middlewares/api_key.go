@@ -82,7 +82,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, c.ClientIP(), bouncer.IPAddress)
 			err = a.DbClient.UpdateBlockerIP(c.ClientIP(), bouncer.ID)
 			if err != nil {
-				log.Errorf("Failed to update ip address for '%s': %s\n", bouncer.ID, err)
+				log.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return

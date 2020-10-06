@@ -68,7 +68,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if machine.IsValidated == false {
+	if !machine.IsValidated {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
@@ -103,7 +103,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", machine.MachineId, c.ClientIP(), machine.IpAddress)
 		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
 		if err != nil {
-			log.Errorf("Failed to update ip address for '%s': %s\n", machine.ID, err)
+			log.Errorf("Failed to update ip address for '%s': %s\n", machine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
