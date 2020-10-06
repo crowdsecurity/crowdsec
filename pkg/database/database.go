@@ -11,6 +11,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/mattn/go-sqlite3"
 	"gopkg.in/tomb.v2"
@@ -50,6 +51,22 @@ func checkConfig(cfg map[string]string) error {
 		if val, ok := cfg["db_name"]; !ok || val == "" {
 			return fmt.Errorf("please specify a 'db_name' to MySQL db in the configuration")
 		}
+	case "postgres":
+		if val, ok := cfg["db_host"]; !ok || val == "" {
+			return fmt.Errorf("please specify a 'db_host' to PostgreSQL db in the configuration")
+		}
+
+		if val, ok := cfg["db_username"]; !ok || val == "" {
+			return fmt.Errorf("please specify a 'db_username' to PostgreSQL db in the configuration")
+		}
+
+		if val, ok := cfg["db_password"]; !ok || val == "" {
+			return fmt.Errorf("please specify a 'db_password' to PostgreSQL db in the configuration")
+		}
+
+		if val, ok := cfg["db_name"]; !ok || val == "" {
+			return fmt.Errorf("please specify a 'db_name' to PostgreSQL db in the configuration")
+		}
 	default:
 		return fmt.Errorf("please specify a proper 'type' to the database configuration ")
 	}
@@ -79,6 +96,15 @@ func NewDatabase(cfg map[string]string) (*Context, error) {
 			return nil, fmt.Errorf("failed to open %s database : %s", cfg["db_name"], err)
 		}
 	}
+	
+	if cfg["type"] == "postgres" {
+		gormArg := fmt.Sprintf("host=%s user=%s dbname=%s sslmode=disable password=%s", cfg["db_host"], cfg["db_username"], cfg["db_name"], cfg["db_password"])
+		c.Db, err = gorm.Open("postgres", gormArg)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open %s database : %s", cfg["db_name"], err)
+		}
+	}
+
 
 	if v, ok := cfg["max_records"]; ok {
 		c.maxEventRetention, err = strconv.Atoi(v)
