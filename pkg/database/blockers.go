@@ -9,8 +9,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (c *Client) SelectBlocker(apiKey string) (*ent.Blocker, error) {
-	result, err := c.Ent.Blocker.Query().Where(blocker.APIKeyEQ(apiKey)).First(c.CTX)
+func (c *Client) SelectBlocker(apiKeyHash string) (*ent.Blocker, error) {
+	result, err := c.Ent.Blocker.Query().Where(blocker.APIKeyEQ(apiKeyHash)).First(c.CTX)
 	if err != nil {
 		return &ent.Blocker{}, errors.Wrap(QueryFail, "can't get last blocker pull")
 	}
@@ -56,6 +56,14 @@ func (c *Client) UpdateBlockerLastPull(lastPull time.Time, ID int) error {
 		Save(c.CTX)
 	if err != nil {
 		return fmt.Errorf("unable to update machine in database: %s", err)
+	}
+	return nil
+}
+
+func (c *Client) UpdateBlockerIP(ipAddr string, ID int) error {
+	_, err := c.Ent.Blocker.UpdateOneID(ID).SetIPAddress(ipAddr).Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update Blocker in database: %s", err)
 	}
 	return nil
 }

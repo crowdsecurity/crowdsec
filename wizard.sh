@@ -238,6 +238,12 @@ install_collection() {
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
     fi
+
+
+    if [[ ${SILENT} == "false" ]]; then
+        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block, you muse use a blocker. You can find them on https://hub.crowdsec.net/" 20 50
+    fi
+
 }
 
 

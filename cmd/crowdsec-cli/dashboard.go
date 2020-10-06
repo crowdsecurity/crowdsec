@@ -79,7 +79,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 				log.Fatalf("Failed to start metabase container : %s", err)
 			}
 			log.Infof("Started metabase")
-			newpassword := generatePassword()
+			newpassword := generatePassword(passwordLength)
 			if err := resetMetabasePassword(newpassword); err != nil {
 				log.Fatalf("Failed to reset password : %s", err)
 			}

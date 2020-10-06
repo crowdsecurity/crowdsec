@@ -55,31 +55,24 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	password := *loginInput.Password
 	scenariosInput := loginInput.Scenarios
 
-	response := []struct {
-		ID          int    `json:"id"`
-		Password    string `json:"password"`
-		IsValidated bool   `json:"is_validated"`
-		IPAddress   string `json:"ip_address"`
-	}{}
-
-	err = j.DbClient.Ent.Machine.Query().
+	machine, err := j.DbClient.Ent.Machine.Query().
 		Where(machine.MachineId(machineID)).
-		Select(machine.FieldID, machine.FieldPassword, machine.FieldIsValidated, machine.FieldIpAddress).Scan(j.DbClient.CTX, &response)
+		First(j.DbClient.CTX)
 	if err != nil {
 		log.Printf("Error machine login : %+v ", err)
 		return nil, err
 	}
 
-	if len(response) == 0 {
+	if machine == nil {
 		log.Errorf("Nothing for '%s'", machineID)
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if response[0].IsValidated == false {
+	if machine.IsValidated == false {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(response[0].Password), []byte(password)); err != nil {
+	if err = bcrypt.CompareHashAndPassword([]byte(machine.Password), []byte(password)); err != nil {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
@@ -91,17 +84,26 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				scenarios += "," + scenario
 			}
 		}
-		err = j.DbClient.UpdateMachineScenarios(scenarios, response[0].ID)
+		err = j.DbClient.UpdateMachineScenarios(scenarios, machine.ID)
 		if err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", machineID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
 
-	if response[0].IPAddress == "" {
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), response[0].ID)
+	if machine.IpAddress == "" {
+		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", machineID, err)
+			return nil, jwt.ErrFailedAuthentication
+		}
+	}
+
+	if machine.IpAddress != c.ClientIP() && machine.IpAddress != "" {
+		log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", machine.MachineId, c.ClientIP(), machine.IpAddress)
+		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
+		if err != nil {
+			log.Errorf("Failed to update ip address for '%s': %s\n", machine.ID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
