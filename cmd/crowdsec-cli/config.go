@@ -31,7 +31,7 @@ func NewConfigCmd() *cobra.Command {
 		Short: "Allows to view/edit cscli config",
 		Long: `Allow to configure database plugin path and installation directory.
 If no commands are specified, config is in interactive mode.`,
-		Example: ` - cscli config show
+		Example: `- cscli config show
 - cscli config prompt`,
 		Args: cobra.ExactArgs(1),
 	}
