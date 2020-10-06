@@ -68,6 +68,16 @@ func TestCreateDB(t *testing.T) {
 			"flush":       "true",
 		}, false},
 
+		//sqlite : bad bools
+		{map[string]string{
+			"type":            "sqlite",
+			"db_path":         "./test.db",
+			"max_records":     "1000",
+			"max_records_age": "72h",
+			"debug":           "false",
+			"flush":           "ratata",
+		}, false},
+		
 		//valid mysql, but won't be able to connect and thus fail
 		{map[string]string{
 			"type":        "mysql",
@@ -124,15 +134,62 @@ func TestCreateDB(t *testing.T) {
 			"flush":       "true",
 		}, false},
 
-		//sqlite : bad bools
+		//valid postgres, but won't be able to connect and thus fail
 		{map[string]string{
-			"type":            "sqlite",
-			"db_path":         "./test.db",
-			"max_records":     "1000",
-			"max_records_age": "72h",
-			"debug":           "false",
-			"flush":           "ratata",
+			"type":        "postgres",
+			"db_host":     "localhost",
+			"db_username": "crowdsec",
+			"db_password": "password",
+			"db_name":     "crowdsec",
+			"max_records": "1000",
+			"debug":       "false",
+			"flush":       "true",
 		}, false},
+
+		//postgres : missing host
+		{map[string]string{
+			"type":        "postgres",
+			"db_username": "crowdsec",
+			"db_password": "password",
+			"db_name":     "crowdsec",
+			"max_records": "1000",
+			"debug":       "false",
+			"flush":       "true",
+		}, false},
+
+		//postgres : missing username
+		{map[string]string{
+			"type":        "postgres",
+			"db_host":     "localhost",
+			"db_password": "password",
+			"db_name":     "crowdsec",
+			"max_records": "1000",
+			"debug":       "false",
+			"flush":       "true",
+		}, false},
+
+		//postgres : missing password
+		{map[string]string{
+			"type":        "postgres",
+			"db_host":     "localhost",
+			"db_username": "crowdsec",
+			"db_name":     "crowdsec",
+			"max_records": "1000",
+			"debug":       "false",
+			"flush":       "true",
+		}, false},
+
+		//postgres : missing db_name
+		{map[string]string{
+			"type":        "postgres",
+			"db_host":     "localhost",
+			"db_username": "crowdsec",
+			"db_password": "password",
+			"max_records": "1000",
+			"debug":       "false",
+			"flush":       "true",
+		}, false},
+
 	}
 
 	for idx, TestCase := range CfgTests {
