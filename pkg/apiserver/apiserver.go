@@ -86,7 +86,7 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d \"%s\" %s\"\n",
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
 			param.ClientIP,
 			param.TimeStamp.Format(time.RFC1123),
 			param.Method,
