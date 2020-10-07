@@ -30,6 +30,7 @@ api:
   client:
     credentials_path: ./config/local_api_credentials.yaml
   server:
+    #insecure_skip_verify: true
     listen_uri: localhost:8080
     tls:
       #cert_file: ./cert.pem
