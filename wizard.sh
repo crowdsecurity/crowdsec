@@ -241,7 +241,7 @@ install_collection() {
 
 
     if [[ ${SILENT} == "false" ]]; then
-        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a blocker. You can find them on https://hub.crowdsec.net/" 20 50
+        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/" 20 50
     fi
 
 }

@@ -100,7 +100,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	if machine.IpAddress != c.ClientIP() && machine.IpAddress != "" {
-		log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", machine.MachineId, c.ClientIP(), machine.IpAddress)
+		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", machine.MachineId, c.ClientIP(), machine.IpAddress)
 		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", machine.MachineId, err)
