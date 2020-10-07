@@ -77,17 +77,16 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
 	gin.DefaultErrorWriter = clog.Writer()
-	gin.DisableConsoleColor()
+
 	// Logging to a file.
-	f, err := os.Create("gin.log")
+	file, err := os.Create(s.logFile)
 	if err != nil {
 		return &gin.Engine{}, errors.Wrapf(err, "creating api access log file: %s", s.logFile)
 	}
-	gin.DefaultWriter = io.MultiWriter(f)
-	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 
-		// your custom format
-		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d \"%s\" %s\"\n",
 			param.ClientIP,
 			param.TimeStamp.Format(time.RFC1123),
 			param.Method,
@@ -99,7 +98,6 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 			param.ErrorMessage,
 		)
 	}))
-
 	router.Use(gin.Recovery())
 
 	router.POST("/watchers", s.controller.CreateMachine)
