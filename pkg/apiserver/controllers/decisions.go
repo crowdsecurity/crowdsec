@@ -171,7 +171,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSince(blockerInfo.LastPull) // do we want to give exactly lastPull time ?
+	data, err = c.DBClient.QueryExpiredDecisionsSince(blockerInfo.LastPull.Add((-2 * time.Second))) // do we want to give exactly lastPull time ?
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", blockerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
