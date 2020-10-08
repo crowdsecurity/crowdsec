@@ -84,16 +84,31 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		return errors.Wrap(err, "invalid config")
 	}
 
-	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
-	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
-	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
-	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
+	if c.Crowdsec != nil {
+		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
+		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
+		c.Crowdsec.HubDir = c.ConfigPaths.HubDir
+		c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
+		if c.Crowdsec.ParserRoutinesCount <= 0 {
+			c.Crowdsec.ParserRoutinesCount = 1
+		}
 
-	c.Cscli.DbConfig = c.DbConfig
-	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
-	c.Cscli.DataDir = c.ConfigPaths.DataDir
-	c.Cscli.HubDir = c.ConfigPaths.HubDir
-	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+		if c.Crowdsec.BucketsRoutinesCount <= 0 {
+			c.Crowdsec.BucketsRoutinesCount = 1
+		}
+
+		if c.Crowdsec.OutputRoutinesCount <= 0 {
+			c.Crowdsec.OutputRoutinesCount = 1
+		}
+	}
+
+	if c.Cscli != nil {
+		c.Cscli.DbConfig = c.DbConfig
+		c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
+		c.Cscli.DataDir = c.ConfigPaths.DataDir
+		c.Cscli.HubDir = c.ConfigPaths.HubDir
+		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+	}
 
 	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" {
 		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)

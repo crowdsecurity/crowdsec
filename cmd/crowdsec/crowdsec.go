@@ -55,23 +55,27 @@ func runCrowdsec(parsers *parsers) error {
 		})
 	}
 
-	bucketsTomb.Go(func() error {
-		err := runPour(inputEventChan, holders, buckets)
-		if err != nil {
-			log.Errorf("runPour error : %s", err)
-			return err
-		}
-		return nil
-	})
+	for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
+		bucketsTomb.Go(func() error {
+			err := runPour(inputEventChan, holders, buckets)
+			if err != nil {
+				log.Errorf("runPour error : %s", err)
+				return err
+			}
+			return nil
+		})
+	}
+	for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 
-	outputsTomb.Go(func() error {
-		err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
-		if err != nil {
-			log.Errorf("runOutput error : %s", err)
-			return err
-		}
-		return nil
-	})
+		outputsTomb.Go(func() error {
+			err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
+			if err != nil {
+				log.Errorf("runOutput error : %s", err)
+				return err
+			}
+			return nil
+		})
+	}
 	log.Warningf("Starting processing data")
 
 	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
