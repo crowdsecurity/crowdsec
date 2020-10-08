@@ -175,7 +175,10 @@ The watcher will be validated automatically.
 			// create machineID if doesn't specified by user
 			if machineID == "" {
 				if !autoAdd {
-					cmd.Help()
+					err = cmd.Help()
+					if err != nil {
+						log.Fatalf("unable to print help(): %s", err)
+					}
 					return
 				}
 				machineID, err = generateID()
@@ -187,7 +190,10 @@ The watcher will be validated automatically.
 			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
 				if !autoAdd {
-					cmd.Help()
+					err = cmd.Help()
+					if err != nil {
+						log.Fatalf("unable to print help(): %s", err)
+					}
 					return
 				}
 				machinePassword = generatePassword(passwordLength)
