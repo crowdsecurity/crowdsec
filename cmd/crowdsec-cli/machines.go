@@ -20,6 +20,7 @@ import (
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -72,7 +73,7 @@ func generateID() (string, error) {
 	if id == "" || err != nil {
 		bID, err := ioutil.ReadFile(uuid)
 		if err != nil {
-			return "", fmt.Errorf("can'get a valid machine_id")
+			return "", errors.Wrap(err, "generating machine id")
 		}
 		id = string(bID)
 		id = strings.ReplaceAll(id, "-", "")[:32]
