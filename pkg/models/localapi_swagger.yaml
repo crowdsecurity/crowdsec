@@ -41,23 +41,6 @@ paths:
         '400':
           description: Invalid filters
           schema: {}
-    delete:
-      description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
-      summary: stopDecisionsStream
-      tags:
-        - blockers
-      operationId: stopDecisionsStream
-      deprecated: false
-      produces:
-        - application/json
-      parameters: []
-      responses:
-        '200':
-          description: successful operation
-          headers: {}
-        '400':
-          description: Invalid filters
-          schema: {}
   /ping:
     get:
       description: Both blockers/watcher can/will use ping for healthcheck
@@ -197,7 +180,6 @@ paths:
       summary: RegisterWatcher
       tags:
         - watchers
-        - APIC
       operationId: RegisterWatcher
       deprecated: false
       produces:
@@ -223,7 +205,6 @@ paths:
       summary: DeleteWatcher
       tags:
         - watchers
-        - APIC
       operationId: DeleteWatcher
       deprecated: false
       produces:
@@ -242,7 +223,6 @@ paths:
       summary: AuthenticateWatcher
       tags:
         - watchers
-        - APIC
       operationId: AuthenticateWatcher
       deprecated: false
       produces:
@@ -270,7 +250,6 @@ paths:
       summary: pushAlerts
       tags:
         - watchers
-        - APIC
       operationId: pushAlerts
       deprecated: false
       produces:
@@ -424,128 +403,6 @@ paths:
           headers: {}
         '400':
           description: Invalid filters
-          schema: {}
-  /topx:
-    get:
-      description: This method will pull the list of decisions from central API into APIL local db
-      summary: getApicNewTopX
-      tags:
-        - APIC
-      operationId: getApicNewTopX
-      deprecated: false
-      produces:
-        - application/json
-      parameters: []
-      responses:
-        '200':
-          description: successful operation
-          schema:
-            $ref: '#/definitions/TopxResponse'
-          headers: {}
-        '404':
-          description: No available topX
-          schema: {}
-  /apic/watchers:
-    post:
-      description: Report watcher from APIL to APIC
-      summary: ApicReportWatchers
-      tags:
-        - APIC
-      operationId: ApicReportWatchers
-      deprecated: false
-      produces:
-        - application/json
-      consumes:
-        - application/json
-      parameters:
-        - name: body
-          in: body
-          required: true
-          description: Report watcher from APIL to APIC
-          schema:
-            type: array
-            items:
-              type: string
-      responses:
-        '200':
-          description: Successful operation
-          headers: {}
-        '400':
-          description: Invalid watchers
-          schema: {}
-  '/apic/watchers/{watcher_machine_id}':
-    delete:
-      description: Report deletion of watchers from APIL to APIC
-      summary: ApicDeleteWatchers
-      tags:
-        - APIC
-      operationId: ApicDeleteWatchers
-      deprecated: false
-      produces:
-        - application/json
-      parameters:
-        - name: watcher_machine_id
-          in: path
-          required: true
-          type: string
-          description: ''
-      responses:
-        '200':
-          description: Successful operation
-          headers: {}
-        '400':
-          description: Invalid watchers
-          schema: {}
-  /apic/blockers:
-    post:
-      description: Report blockers from APIL to APIC
-      summary: ApicReportBlockers
-      tags:
-        - APIC
-      operationId: ApicReportBlockers
-      deprecated: false
-      produces:
-        - application/json
-      consumes:
-        - application/json
-      parameters:
-        - name: body
-          in: body
-          required: true
-          description: Report blockers from APIL to APIC
-          schema:
-            type: array
-            items:
-              type: string
-      responses:
-        '200':
-          description: Successful operation
-          headers: {}
-        '400':
-          description: Invalid blockers
-          schema: {}
-  '/apic/blockers/{blocker_machine_id}':
-    delete:
-      description: Report deletion of blockers from APIL to APIC
-      summary: ApicDeleteBlockers
-      tags:
-        - APIC
-      operationId: ApicDeleteBlockers
-      deprecated: false
-      produces:
-        - application/json
-      parameters:
-        - name: blocker_machine_id
-          in: path
-          required: true
-          type: string
-          description: ''
-      responses:
-        '200':
-          description: Successful operation
-          headers: {}
-        '400':
-          description: Invalid watchers
           schema: {}
 definitions:
   WatcherRegistrationRequest:
@@ -735,12 +592,6 @@ definitions:
       nbDeleted:
         type: string
         description: "number of deleted decisions"
-  FlushDecisionResponse:
-    title: FlushDecisionResponse
-    type: object
-    properties:
-      decision_id:
-        type: string
   AddAlertsRequest:
     title: AddAlertsRequest
     type: array
@@ -798,30 +649,11 @@ definitions:
           type: string
         value:
           type: string
-  TopxResponse:
-    title: TopxResponse
-    type: object
-    properties:
-      new:
-        type: array
-        items:
-          type: array
-          items:
-            $ref: '#/definitions/GetDecisionsResponse'
-      deleted:
-        description: 'We keep the deleted array for the duration of the initial decision. So that when the initial decision is expired, it won''t be present in deleted array anymore.'
-        type: array
-        items:
-          type: array
-          items:
-            $ref: '#/definitions/GetDecisionsResponse'
 tags:
   - name: blockers
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
   - name: watchers
     description: 'Operations about watchers : cscli & crowdsec'
-  - name: APIC
-    description: Operations relevant only for central API
 externalDocs:
   url: 'https://github.com/crowdsecurity/crowdsec'
   description: Find out more about CrowdSec
