@@ -32,6 +32,7 @@ var interactive bool
 var apiURL string
 var outputFile string
 var forceAdd bool
+var autoAdd bool
 
 var (
 	passwordLength = 64
@@ -172,7 +173,10 @@ The watcher will be validated automatically.
 
 			// create machineID if doesn't specified by user
 			if machineID == "" {
-				log.Infof("no machine ID provided, going to generate one")
+				if !autoAdd {
+					cmd.Help()
+					return
+				}
 				machineID, err = generateID()
 				if err != nil {
 					log.Fatalf("unable to generate machine id : %s", err)
@@ -181,7 +185,10 @@ The watcher will be validated automatically.
 
 			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
-				log.Infof("no password provided, going to generate one")
+				if !autoAdd {
+					cmd.Help()
+					return
+				}
 				machinePassword = generatePassword(passwordLength)
 			} else if machinePassword == "" && interactive {
 				qs := &survey.Password{
@@ -239,6 +246,7 @@ The watcher will be validated automatically.
 	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
+	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "add the machine automatically (generate the machine ID and the password)")
 	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
