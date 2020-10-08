@@ -23,13 +23,20 @@ func runAPIServer(apiServer *apiserver.APIServer) (*http.Server, error) {
 		return nil, fmt.Errorf("unable to get gin router: %s", err)
 	}
 	httpAPIServer = http.Server{
-		Addr:    cConfig.API.Server.ListenURI,
+		Addr:    apiServer.URL,
 		Handler: handler,
 	}
 	go func() {
-		if err := httpAPIServer.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf(err.Error())
+		if apiServer.TLS != nil && apiServer.TLS.CertFilePath != "" && apiServer.TLS.KeyFilePath != "" {
+			if err := httpAPIServer.ListenAndServeTLS(apiServer.TLS.CertFilePath, apiServer.TLS.KeyFilePath); err != nil {
+				log.Fatalf(err.Error())
+			}
+		} else {
+			if err := httpAPIServer.ListenAndServe(); err != http.ErrServerClosed {
+				log.Fatalf(err.Error())
+			}
 		}
+
 		defer apiServer.Close()
 	}()
 	return &httpAPIServer, nil

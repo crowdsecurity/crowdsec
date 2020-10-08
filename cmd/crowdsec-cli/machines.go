@@ -20,6 +20,7 @@ import (
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -32,6 +33,7 @@ var interactive bool
 var apiURL string
 var outputFile string
 var forceAdd bool
+var autoAdd bool
 
 var (
 	passwordLength = 64
@@ -44,16 +46,16 @@ const (
 	uuid = "/proc/sys/kernel/random/uuid"
 )
 
-func generatePassword() string {
+func generatePassword(length int) string {
 	rand.Seed(time.Now().UnixNano())
 	charset := upper + lower + digits
 
-	buf := make([]byte, passwordLength)
+	buf := make([]byte, length)
 	buf[0] = digits[rand.Intn(len(digits))]
 	buf[1] = upper[rand.Intn(len(upper))]
 	buf[2] = lower[rand.Intn(len(lower))]
 
-	for i := 3; i < passwordLength; i++ {
+	for i := 3; i < length; i++ {
 		buf[i] = charset[rand.Intn(len(charset))]
 	}
 	rand.Shuffle(len(buf), func(i, j int) {
@@ -61,6 +63,23 @@ func generatePassword() string {
 	})
 
 	return string(buf)
+}
+
+func generateID() (string, error) {
+	id, err := machineid.ID()
+	if err != nil {
+		log.Debugf("failed to get machine-id with usual files : %s", err)
+	}
+	if id == "" || err != nil {
+		bID, err := ioutil.ReadFile(uuid)
+		if err != nil {
+			return "", errors.Wrap(err, "generating machine id")
+		}
+		id = string(bID)
+		id = strings.ReplaceAll(id, "-", "")[:32]
+	}
+	id = fmt.Sprintf("%s%s", id, generatePassword(16))
+	return id, nil
 }
 
 func NewMachinesCmd() *cobra.Command {
@@ -151,11 +170,33 @@ The watcher will be validated automatically.
 			}
 		},
 		Run: func(cmd *cobra.Command, arg []string) {
+			var err error
+
+			// create machineID if doesn't specified by user
 			if machineID == "" {
-				log.Fatalf("please provide a machine id with --machine|-m ")
+				if !autoAdd {
+					err = cmd.Help()
+					if err != nil {
+						log.Fatalf("unable to print help(): %s", err)
+					}
+					return
+				}
+				machineID, err = generateID()
+				if err != nil {
+					log.Fatalf("unable to generate machine id : %s", err)
+				}
 			}
+
+			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
-				log.Fatalf("please provide a password with --password|-p or choose interactive mode to enter the password")
+				if !autoAdd {
+					err = cmd.Help()
+					if err != nil {
+						log.Fatalf("unable to print help(): %s", err)
+					}
+					return
+				}
+				machinePassword = generatePassword(passwordLength)
 			} else if machinePassword == "" && interactive {
 				qs := &survey.Password{
 					Message: "Please provide a password for the machine",
@@ -163,7 +204,7 @@ The watcher will be validated automatically.
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err := dbClient.CreateMachine(&machineID, &password, machineIP, true, forceAdd)
+			_, err = dbClient.CreateMachine(&machineID, &password, machineIP, true, forceAdd)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
@@ -212,6 +253,7 @@ The watcher will be validated automatically.
 	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
+	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "add the machine automatically (generate the machine ID and the password)")
 	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
@@ -250,19 +292,12 @@ The watcher will be validated automatically.
 		Example: `cscli machine register`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
-			id, err := machineid.ID()
+			var err error
+			id, err := generateID()
 			if err != nil {
-				log.Debugf("failed to get machine-id with usual files : %s", err)
+				log.Fatalf("unable to generate machine id: %s", err)
 			}
-			if id == "" || err != nil {
-				bID, err := ioutil.ReadFile(uuid)
-				if err != nil {
-					log.Fatalf("can'get a valid machine_id")
-				}
-				id = string(bID)
-				id = strings.ReplaceAll(id, "-", "")[:32]
-			}
-			password := strfmt.Password(generatePassword())
+			password := strfmt.Password(generatePassword(passwordLength))
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL

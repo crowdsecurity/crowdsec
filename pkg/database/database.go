@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
 )
@@ -33,6 +34,11 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
+		}
+	case "postgres":
+		client, err = ent.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s", config.Host, config.Port, config.User, config.DbName, config.Password))
+		if err != nil {
+			return &Client{}, fmt.Errorf("failed opening connection to postgres: %v", err)
 		}
 	default:
 		return &Client{}, fmt.Errorf("unknown database type")

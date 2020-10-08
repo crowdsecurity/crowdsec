@@ -3,7 +3,10 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
@@ -56,7 +59,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
-		logFile:        fmt.Sprintf("%s/api.log", config.LogDir),
+		logFile:        fmt.Sprintf("%s/crowdsec_api.log", config.LogDir),
 		dbClient:       dbClient,
 		middlewares:    middleware,
 		controller:     controller,
@@ -73,8 +76,28 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
-
 	gin.DefaultErrorWriter = clog.Writer()
+
+	// Logging to a file.
+	file, err := os.Create(s.logFile)
+	if err != nil {
+		return &gin.Engine{}, errors.Wrapf(err, "creating api access log file: %s", s.logFile)
+	}
+	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
+
+	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	}))
 	router.Use(gin.Recovery())
 
 	router.POST("/watchers", s.controller.CreateMachine)

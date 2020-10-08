@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -56,21 +55,40 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		}
 
 		hashStr := HashSHA512(val[0])
-		exist, err := a.DbClient.Ent.Blocker.Query().
-			Where(blocker.APIKeyEQ(hashStr)).
-			Select(blocker.FieldAPIKey).
-			Strings(a.DbClient.CTX)
+		bouncer, err := a.DbClient.SelectBlocker(hashStr)
 		if err != nil {
-			log.Errorf("unable to get current api key: %s", err)
-			c.Abort()
-			return
-		}
-
-		if len(exist) == 0 {
+			log.Errorf("auth api key error: %s", err)
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 			return
 		}
+
+		if bouncer == nil {
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			c.Abort()
+			return
+		}
+
+		if bouncer.IPAddress == "" {
+			err = a.DbClient.UpdateBlockerIP(c.ClientIP(), bouncer.ID)
+			if err != nil {
+				log.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
+		}
+		if bouncer.IPAddress != c.ClientIP() && bouncer.IPAddress != "" {
+			log.Warningf("new IP address detected for bouncer '%s': %s (old: %s)", bouncer.Name, c.ClientIP(), bouncer.IPAddress)
+			err = a.DbClient.UpdateBlockerIP(c.ClientIP(), bouncer.ID)
+			if err != nil {
+				log.Errorf("Failed to update ip address for '%s': %s\n", bouncer.Name, err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
+		}
+
 		c.Next()
 	}
 }

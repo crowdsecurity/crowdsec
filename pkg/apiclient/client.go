@@ -1,6 +1,7 @@
 package apiclient
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -12,6 +13,9 @@ import (
 
 var BaseURL *url.URL
 var UserAgent string
+var (
+	InsecureSkipVerify = true
+)
 
 type ApiClient struct {
 	/*The http client used to make requests*/
@@ -37,6 +41,7 @@ func NewClient(httpClient *http.Client) *ApiClient {
 		httpClient = &http.Client{}
 	}
 	UserAgent := fmt.Sprintf("crowdsec-%s", cwversion.VersionStr())
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 
 	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}
 	c.common.client = c

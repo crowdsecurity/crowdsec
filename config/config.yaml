@@ -26,6 +26,7 @@ db_config:
   port: 3306
 api:
   client:
+    insecure_skip_verify: true # default true
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     listen_uri: localhost:8080

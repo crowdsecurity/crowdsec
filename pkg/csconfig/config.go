@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -123,6 +124,11 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			if !strings.HasSuffix(c.API.Client.Credentials.URL, "/") {
 				c.API.Client.Credentials.URL = c.API.Client.Credentials.URL + "/"
 			}
+		}
+		if c.API.Client.InsecureSkipVerify == nil {
+			apiclient.InsecureSkipVerify = true
+		} else {
+			apiclient.InsecureSkipVerify = *c.API.Client.InsecureSkipVerify
 		}
 	}
 
