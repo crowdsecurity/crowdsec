@@ -14,6 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
+	"github.com/prometheus/common/log"
 )
 
 type Client struct {
@@ -24,6 +25,9 @@ type Client struct {
 func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	var client *ent.Client
 	var err error
+	if config == nil {
+		return &Client{}, fmt.Errorf("DB config is empty")
+	}
 	switch config.Type {
 	case "sqlite":
 		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
@@ -54,11 +58,14 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	var durationStr string
 	maxAge := time.Duration(0)
 	maxItems := 0
+	log.Infof("FLUSHCONFIG : %+v", config)
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
 		return nil, fmt.Errorf("max_items can't be zero or negative number")
 	}
+	if config.MaxItems != nil {
+		maxItems = *config.MaxItems
+	}
 
-	maxItems = *config.MaxItems
 	if config.MaxAge != nil && *config.MaxAge != "" {
 		durationStr = *config.MaxAge
 		if strings.HasSuffix(*config.MaxAge, "d") {

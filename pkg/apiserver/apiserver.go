@@ -69,7 +69,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
-	log.Printf("starting router, logging to %s", s.logFile)
+	log.Debugf("starting router, logging to %s", s.logFile)
 	router := gin.New()
 
 	clog := log.New()

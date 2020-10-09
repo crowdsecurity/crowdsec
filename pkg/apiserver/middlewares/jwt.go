@@ -140,7 +140,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		Key:             []byte(secret),
 		Timeout:         time.Hour,
 		MaxRefresh:      time.Hour,
-		IdentityKey:     "id",
+		IdentityKey:     identityKey,
 		PayloadFunc:     PayloadFunc,
 		IdentityHandler: IdentityHandler,
 		Authenticator:   jwtMiddleware.Authenticator,
