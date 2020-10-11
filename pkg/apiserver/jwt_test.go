@@ -27,7 +27,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, "{\"code\":401,\"message\":\"not valid user\"}", w.Body.String())
+	assert.Equal(t, "{\"code\":401,\"message\":\"machine test not validated\"}", w.Body.String())
 
 	// Login with machine not exist
 	w = httptest.NewRecorder()
@@ -35,7 +35,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, "{\"code\":401,\"message\":\"incorrect Username or Password\"}", w.Body.String())
+	assert.Equal(t, "{\"code\":401,\"message\":\"ent: machine not found\"}", w.Body.String())
 
 	// Login with invalid body
 	w = httptest.NewRecorder()

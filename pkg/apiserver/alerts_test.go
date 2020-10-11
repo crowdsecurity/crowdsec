@@ -44,6 +44,9 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 
 func TestCreateAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// Create Alert with invalid format
 	w := httptest.NewRecorder()

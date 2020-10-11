@@ -69,7 +69,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	}
 
 	if !machine.IsValidated {
-		return nil, jwt.ErrFailedAuthentication
+		return nil, fmt.Errorf("machine %s not validated", machineID)
 	}
 
 	if err = bcrypt.CompareHashAndPassword([]byte(machine.Password), []byte(password)); err != nil {
