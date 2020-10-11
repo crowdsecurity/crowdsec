@@ -14,7 +14,6 @@ import (
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 )
 
 type Client struct {
@@ -58,7 +57,6 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	var durationStr string
 	maxAge := time.Duration(0)
 	maxItems := 0
-	log.Infof("FLUSHCONFIG : %+v", config)
 	if config.MaxItems != nil && *config.MaxItems <= 0 {
 		return nil, fmt.Errorf("max_items can't be zero or negative number")
 	}

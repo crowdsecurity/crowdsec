@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func InitTest() (*gin.Engine, models.WatcherAuthResponse, error) {
+func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 	router, err := NewAPITest()
 	if err != nil {
 		return nil, models.WatcherAuthResponse{}, fmt.Errorf("unable to run local API: %s", err)
@@ -43,9 +43,9 @@ func InitTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 }
 
 func TestCreateAlert(t *testing.T) {
-	router, loginResp, err := InitTest()
+	router, loginResp, err := InitMachineTest()
 
-	// Create Alert with invalid body
+	// Create Alert with invalid format
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader("test"))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
@@ -54,7 +54,7 @@ func TestCreateAlert(t *testing.T) {
 	assert.Equal(t, 400, w.Code)
 	assert.Equal(t, "{\"message\":\"invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
 
-	// Create Alert with incomplete body
+	// Create Alert with invalid input
 	alertContentBytes, err := ioutil.ReadFile("./tests/invalidAlert_sample.json")
 	if err != nil {
 		log.Fatal(err)
@@ -88,7 +88,7 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestListAlert(t *testing.T) {
-	router, loginResp, err := InitTest()
+	router, loginResp, err := InitMachineTest()
 
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
 	if err != nil {
@@ -100,6 +100,15 @@ func TestListAlert(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
+
+	// List Alert with invalid filter
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/alerts?test=test", strings.NewReader(alertContent))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 500, w.Code)
+	assert.Equal(t, "{\"message\":\"'test' is unknown: %!s(\\u003cnil\\u003e): invalid filter\"}", w.Body.String())
 
 	// List Alert
 	w = httptest.NewRecorder()
@@ -114,7 +123,7 @@ func TestListAlert(t *testing.T) {
 }
 
 func TestDeleteAlert(t *testing.T) {
-	router, loginResp, err := InitTest()
+	router, loginResp, err := InitMachineTest()
 
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
 	if err != nil {
@@ -134,7 +143,7 @@ func TestDeleteAlert(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, w.Body.String(), "{\"message\":\"1 deleted alerts\"}")
+	assert.Equal(t, "{\"message\":\"1 deleted alerts\"}", w.Body.String())
 
 	CleanDB()
 }
