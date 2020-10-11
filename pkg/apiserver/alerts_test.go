@@ -38,6 +38,9 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 
 	loginResp := models.WatcherAuthResponse{}
 	err = json.NewDecoder(w.Body).Decode(&loginResp)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	return router, loginResp, nil
 }
@@ -92,6 +95,9 @@ func TestCreateAlert(t *testing.T) {
 
 func TestListAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
 	if err != nil {
@@ -127,6 +133,9 @@ func TestListAlert(t *testing.T) {
 
 func TestDeleteAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
 	if err != nil {

@@ -14,6 +14,9 @@ import (
 
 func TestGetDecision(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// Create Valid Alert
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
@@ -55,6 +58,9 @@ func TestGetDecision(t *testing.T) {
 
 func TestDeleteDecisionByID(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// Create Valid Alert
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
@@ -100,6 +106,9 @@ func TestDeleteDecisionByID(t *testing.T) {
 
 func TestDeleteDecision(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// Create Valid Alert
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
@@ -136,6 +145,9 @@ func TestDeleteDecision(t *testing.T) {
 
 func TestStreamDecision(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
 
 	// Create Valid Alert
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
