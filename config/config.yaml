@@ -7,7 +7,7 @@ common:
   working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/
-  data_dir: /tmp/data/
+  data_dir: /var/cache/crowdsec/
   #simulation_path: /etc/crowdsec/config/simulation.yaml
   #hub_dir: /etc/crowdsec/hub/
   #index_path: ./config/hub/.index.json
@@ -18,7 +18,7 @@ cscli:
   output: human
 db_config:
   type: sqlite
-  db_path: /tmp/data/crowdsec.db
+  db_path: /var/cache/crowdsec.db
   user: root
   password: crowdsec
   db_name: crowdsec

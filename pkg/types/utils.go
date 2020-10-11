@@ -5,8 +5,11 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"runtime/debug"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -107,4 +110,30 @@ func Clone(a, b interface{}) error {
 		return fmt.Errorf("failed cloning %T", b)
 	}
 	return nil
+}
+
+//CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
+func CatchPanic(component string) {
+
+	if r := recover(); r != nil {
+		tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
+			tmpfile.Close()
+			log.Fatal(err)
+		}
+		if _, err := tmpfile.Write(debug.Stack()); err != nil {
+			tmpfile.Close()
+			log.Fatal(err)
+		}
+		if err := tmpfile.Close(); err != nil {
+			log.Fatal(err)
+		}
+		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
+		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
+		log.Errorf("stacktrace/report is written to %s : please join it to your issue", tmpfile.Name())
+		log.Fatalf("crowdsec stopped")
+	}
 }

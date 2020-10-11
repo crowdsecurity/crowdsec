@@ -11,6 +11,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
 	dto "github.com/prometheus/client_model/go"
@@ -394,6 +395,7 @@ func GetPrometheusMetric(url string) []*prom2json.Family {
 	transport.ResponseHeaderTimeout = time.Minute
 
 	go func() {
+		defer types.CatchPanic("crowdsec/GetPrometheusMetric")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)

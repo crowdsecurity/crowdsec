@@ -196,11 +196,13 @@ func AcquisStartReading(ctx *FileAcquisCtx, output chan types.Event, AcquisTomb 
 		case TAILMODE:
 			mode = "tail"
 			AcquisTomb.Go(func() error {
+				defer types.CatchPanic("crowdsec/TailFile")
 				return TailFile(fctx, output, AcquisTomb)
 			})
 		case CATMODE:
 			mode = "cat"
 			AcquisTomb.Go(func() error {
+				defer types.CatchPanic("crowdsec/CatFile")
 				return CatFile(fctx, output, AcquisTomb)
 			})
 		default:

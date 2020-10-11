@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -27,6 +28,7 @@ func runAPIServer(apiServer *apiserver.APIServer) (*http.Server, error) {
 		Handler: handler,
 	}
 	go func() {
+		defer types.CatchPanic("crowdsec/runAPIServer")
 		if apiServer.TLS != nil && apiServer.TLS.CertFilePath != "" && apiServer.TLS.KeyFilePath != "" {
 			if err := httpAPIServer.ListenAndServeTLS(apiServer.TLS.CertFilePath, apiServer.TLS.KeyFilePath); err != nil {
 				log.Fatalf(err.Error())
@@ -44,6 +46,7 @@ func runAPIServer(apiServer *apiserver.APIServer) (*http.Server, error) {
 
 func serveAPIServer(httpAPIServer *http.Server) {
 	apiTomb.Go(func() error {
+		defer types.CatchPanic("serveAPIServer")
 		log.Info("local API server starting")
 		<-apiTomb.Dying() // lock until go routine is dying
 		if err := httpAPIServer.Shutdown(nil); err != nil {

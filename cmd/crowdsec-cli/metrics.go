@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -65,6 +66,7 @@ func ShowPrometheus(url string) {
 	transport.ResponseHeaderTimeout = time.Minute
 
 	go func() {
+		defer types.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)
