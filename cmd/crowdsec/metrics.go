@@ -7,6 +7,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -74,6 +75,7 @@ func dumpMetrics() {
 }
 
 func registerPrometheus(mode string) {
+	defer types.CatchPanic("crowdsec/registerPrometheus")
 	/*Registering prometheus*/
 	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
 	if mode == "aggregated" {

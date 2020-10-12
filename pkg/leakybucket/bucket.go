@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -176,6 +177,8 @@ func LeakRoutine(leaky *Leaky) {
 	var (
 		durationTicker <-chan time.Time = make(<-chan time.Time)
 	)
+
+	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
 
 	BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Inc()
 	defer BucketsCurrentCount.With(prometheus.Labels{"name": leaky.Name}).Dec()

@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/go-systemd/daemon"
 
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	//"github.com/sevlyar/go-daemon"
@@ -181,6 +182,7 @@ func HandleSignals() {
 
 	exitChan := make(chan int)
 	go func() {
+		defer types.CatchPanic("crowdsec/HandleSignals")
 		for {
 			s := <-signalChan
 			switch s {

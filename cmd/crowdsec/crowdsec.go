@@ -46,6 +46,7 @@ func runCrowdsec(parsers *parsers) error {
 	//start go-routines for parsing, buckets pour and ouputs.
 	for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 		parsersTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/runParse")
 			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
 			if err != nil {
 				log.Errorf("runParse error : %s", err)
@@ -57,6 +58,7 @@ func runCrowdsec(parsers *parsers) error {
 
 	for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
 		bucketsTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/runPour")
 			err := runPour(inputEventChan, holders, buckets)
 			if err != nil {
 				log.Errorf("runPour error : %s", err)
@@ -68,6 +70,7 @@ func runCrowdsec(parsers *parsers) error {
 	for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 
 		outputsTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/runOutput")
 			err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
 			if err != nil {
 				log.Errorf("runOutput error : %s", err)
@@ -87,7 +90,9 @@ func runCrowdsec(parsers *parsers) error {
 
 func serveCrowdsec(parsers *parsers) {
 	crowdsecTomb.Go(func() error {
+		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
+			defer types.CatchPanic("crowdsec/runCrowdsec")
 			runCrowdsec(parsers)
 		}()
 

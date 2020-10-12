@@ -33,6 +33,15 @@ var (
 	Constraint_acquis   = ">= 1.0, < 2.0"
 )
 
+func ShowStr() string {
+	ret := ""
+	ret += fmt.Sprintf("version: %s-%s\n", Version, Tag)
+	ret += fmt.Sprintf("Codename: %s\n", Codename)
+	ret += fmt.Sprintf("BuildDate: %s\n", BuildDate)
+	ret += fmt.Sprintf("GoVersion: %s\n", GoVersion)
+	return ret
+}
+
 func Show() {
 	log.Printf("version: %s-%s", Version, Tag)
 	log.Printf("Codename: %s", Codename)

@@ -267,6 +267,8 @@ func main() {
 		err error
 	)
 
+	defer types.CatchPanic("crowdsec/main")
+
 	cConfig = csconfig.NewConfig()
 	// Handle command line arguments
 	if err := LoadConfig(cConfig); err != nil {
@@ -286,6 +288,7 @@ func main() {
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)
 	}
+
 	if err := Serve(); err != nil {
 		log.Fatalf(err.Error())
 	}

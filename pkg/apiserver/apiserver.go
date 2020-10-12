@@ -126,13 +126,6 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 		apiKeyAuth.GET("/decisions/stream", s.controller.StreamDecision)
 	}
 
-	/*puller, err := NewPuller(s.dbClient)
-	if err != nil {
-		return err
-	}
-
-	go puller.Pull()
-	*/
 	return router, nil
 }
 
