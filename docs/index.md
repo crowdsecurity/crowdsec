@@ -63,7 +63,7 @@ Don't hesitate to reach out if you're facing issues :
  - [suggest an improvement](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=Improvment%2F)
  - [ask for help on the forums](https://discourse.crowdsec.net)
 
-## Known issues
+## Known issue
 
 For now, on 32bit architecture there's a alignment bug in
 https://github.com/jamiealquiza/tachymeter library that prevents
