@@ -63,3 +63,10 @@ Don't hesitate to reach out if you're facing issues :
  - [suggest an improvement](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=Improvment%2F)
  - [ask for help on the forums](https://discourse.crowdsec.net)
 
+## Known issues
+
+For now, on 32bit architecture there's a alignment bug in
+https://github.com/jamiealquiza/tachymeter library that prevents
+crowdsec from running properly with prometheus gathering metrics.
+The workaround is to disable prometheus until the bug is fixed.
+(We'll get rid of this library in the near future)
