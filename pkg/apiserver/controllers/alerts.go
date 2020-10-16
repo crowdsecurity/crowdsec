@@ -33,6 +33,7 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 			StopAt:      &StopAt,
 			Capacity:    &alertItem.Capacity,
 			Leakspeed:   &alertItem.LeakSpeed,
+			Simulated:   &alertItem.Simulated,
 			Source: &models.Source{
 				Scope:     &alertItem.SourceScope,
 				Value:     &alertItem.SourceValue,
@@ -70,15 +71,16 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 			var outputDecisions []*models.Decision
 			duration := decisionItem.Until.Sub(time.Now()).String()
 			outputDecisions = append(outputDecisions, &models.Decision{
-				Duration: &duration, // transform into time.Time ?
-				Scenario: &decisionItem.Scenario,
-				Type:     &decisionItem.Type,
-				StartIP:  decisionItem.StartIP,
-				EndIP:    decisionItem.EndIP,
-				Scope:    &decisionItem.Scope,
-				Value:    &decisionItem.Value,
-				Origin:   &decisionItem.Origin,
-				ID:       int64(decisionItem.ID),
+				Duration:  &duration, // transform into time.Time ?
+				Scenario:  &decisionItem.Scenario,
+				Type:      &decisionItem.Type,
+				StartIP:   decisionItem.StartIP,
+				EndIP:     decisionItem.EndIP,
+				Scope:     &decisionItem.Scope,
+				Value:     &decisionItem.Value,
+				Origin:    &decisionItem.Origin,
+				Simulated: outputAlert.Simulated,
+				ID:        int64(decisionItem.ID),
 			})
 			outputAlert.Decisions = outputDecisions
 		}
