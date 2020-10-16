@@ -65,6 +65,7 @@ type BucketFactory struct {
 	output          bool                      //??
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
+	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -184,6 +185,9 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			if err != nil {
 				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
 			} else {
+				if cscfg.SimulationConfig != nil {
+					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
+				}
 				if hubItem != nil {
 					bucketFactory.ScenarioVersion = hubItem.LocalVersion
 					bucketFactory.hash = hubItem.LocalHash
