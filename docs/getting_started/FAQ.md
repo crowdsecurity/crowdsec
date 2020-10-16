@@ -86,6 +86,20 @@ Several initiatives have been taken to tackle the false positives approach as ea
 
 Feel free to ask for some help to the {{doc.community}}.
 
+## How to use crowdsec on raspberry pi OS (formerly known as rasbian) 
+
+Please keep in mind that raspberry pi OS is designed to work on all
+raspberry pi versions. Even if the port target is known as armhf, it's
+not exactly the same target as the debian named armhf port.
+
+The best way to have a crowdsec version for such an architecture is to
+do:
+1. install golang (all versions from 1.13 will do)
+2. `export GOARCH=arm`
+3. `export CGO=1`
+4. Update the GOARCH variable in the Makefile to `arm`
+5. install the arm gcc cross compilator (On debian the package is gcc-arm-linux-gnueabihf)
+6. Compile crowdsec using the usual `make` command
 
 
 <!-- 
