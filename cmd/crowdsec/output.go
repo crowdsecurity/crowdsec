@@ -116,19 +116,6 @@ LOOP:
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
 				break
 			}
-
-			if cConfig.Crowdsec.SimulationConfig != nil {
-				if *cConfig.Crowdsec.SimulationConfig.Simulation {
-					*event.Overflow.Alert.Simulated = true
-				}
-				for _, scenarioName := range cConfig.Crowdsec.SimulationConfig.Exclusions {
-					if *event.Overflow.Alert.Scenario == scenarioName {
-						result := *event.Overflow.Alert.Simulated
-						*event.Overflow.Alert.Simulated = !result
-					}
-				}
-			}
-
 			if event.Overflow.Reprocess {
 				log.Debugf("Overflow being reprocessed.")
 				input <- event
