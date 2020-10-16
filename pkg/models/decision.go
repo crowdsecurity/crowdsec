@@ -40,6 +40,10 @@ type Decision struct {
 	// Required: true
 	Scope *string `json:"scope"`
 
+	// true if the decision result from a scenario in simulation mode
+	// Read Only: true
+	Simulated *bool `json:"simulated,omitempty"`
+
 	// (only relevant for GET ops) when the value is an IP or range, its numeric representation
 	StartIP int64 `json:"start_ip,omitempty"`
 

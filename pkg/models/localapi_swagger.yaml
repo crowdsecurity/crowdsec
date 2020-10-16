@@ -721,6 +721,10 @@ definitions:
         type: string
       scenario:
         type: string
+      simulated:
+        type: boolean
+        description: 'true if the decision result from a scenario in simulation mode'
+        readOnly: true
     required:
       - origin
       - type
