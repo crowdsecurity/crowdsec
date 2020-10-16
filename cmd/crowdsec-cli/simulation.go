@@ -49,6 +49,7 @@ func dumpSimulationFile() error {
 	if err != nil {
 		return fmt.Errorf("write simulation config in '%s' failed: %s", csConfig.ConfigPaths.SimulationFilePath, err)
 	}
+	log.Debugf("updated simulation file %s", csConfig.ConfigPaths.SimulationFilePath)
 
 	return nil
 }
@@ -99,7 +100,7 @@ func simulationStatus() error {
 func NewSimulationCmds() *cobra.Command {
 	var cmdSimulation = &cobra.Command{
 		Use:   "simulation enable|disable [scenario_name]",
-		Short: "",
+		Short: "Manage simulation status of scenarios",
 		Long:  ``,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
