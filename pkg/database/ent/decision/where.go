@@ -163,6 +163,13 @@ func Origin(v string) predicate.Decision {
 	})
 }
 
+// Simulated applies equality check predicate on the "simulated" field. It's identical to SimulatedEQ.
+func Simulated(v bool) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSimulated), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
@@ -1123,6 +1130,20 @@ func OriginEqualFold(v string) predicate.Decision {
 func OriginContainsFold(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldOrigin), v))
+	})
+}
+
+// SimulatedEQ applies the EQ predicate on the "simulated" field.
+func SimulatedEQ(v bool) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSimulated), v))
+	})
+}
+
+// SimulatedNEQ applies the NEQ predicate on the "simulated" field.
+func SimulatedNEQ(v bool) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldSimulated), v))
 	})
 }
 

@@ -31,6 +31,8 @@ const (
 	FieldValue = "value"
 	// FieldOrigin holds the string denoting the origin field in the database.
 	FieldOrigin = "origin"
+	// FieldSimulated holds the string denoting the simulated field in the database.
+	FieldSimulated = "simulated"
 
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
@@ -59,6 +61,7 @@ var Columns = []string{
 	FieldScope,
 	FieldValue,
 	FieldOrigin,
+	FieldSimulated,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the Decision type.
@@ -86,4 +89,6 @@ var (
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	DefaultUpdatedAt func() time.Time
+	// DefaultSimulated holds the default value on creation for the simulated field.
+	DefaultSimulated bool
 )

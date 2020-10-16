@@ -80,6 +80,7 @@ var (
 		{Name: "scope", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
+		{Name: "simulated", Type: field.TypeBool},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -90,7 +91,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[11]},
+				Columns: []*schema.Column{DecisionsColumns[12]},
 
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,

@@ -147,6 +147,20 @@ func (du *DecisionUpdate) SetOrigin(s string) *DecisionUpdate {
 	return du
 }
 
+// SetSimulated sets the simulated field.
+func (du *DecisionUpdate) SetSimulated(b bool) *DecisionUpdate {
+	du.mutation.SetSimulated(b)
+	return du
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableSimulated(b *bool) *DecisionUpdate {
+	if b != nil {
+		du.SetSimulated(*b)
+	}
+	return du
+}
+
 // SetOwnerID sets the owner edge to Alert by id.
 func (du *DecisionUpdate) SetOwnerID(id int) *DecisionUpdate {
 	du.mutation.SetOwnerID(id)
@@ -342,6 +356,13 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldOrigin,
 		})
 	}
+	if value, ok := du.mutation.Simulated(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: decision.FieldSimulated,
+		})
+	}
 	if du.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -510,6 +531,20 @@ func (duo *DecisionUpdateOne) SetValue(s string) *DecisionUpdateOne {
 // SetOrigin sets the origin field.
 func (duo *DecisionUpdateOne) SetOrigin(s string) *DecisionUpdateOne {
 	duo.mutation.SetOrigin(s)
+	return duo
+}
+
+// SetSimulated sets the simulated field.
+func (duo *DecisionUpdateOne) SetSimulated(b bool) *DecisionUpdateOne {
+	duo.mutation.SetSimulated(b)
+	return duo
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableSimulated(b *bool) *DecisionUpdateOne {
+	if b != nil {
+		duo.SetSimulated(*b)
+	}
 	return duo
 }
 
@@ -704,6 +739,13 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Type:   field.TypeString,
 			Value:  value,
 			Column: decision.FieldOrigin,
+		})
+	}
+	if value, ok := duo.mutation.Simulated(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: decision.FieldSimulated,
 		})
 	}
 	if duo.mutation.OwnerCleared() {
