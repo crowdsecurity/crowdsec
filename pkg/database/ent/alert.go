@@ -55,6 +55,8 @@ type Alert struct {
 	Capacity int32 `json:"capacity,omitempty"`
 	// LeakSpeed holds the value of the "leakSpeed" field.
 	LeakSpeed string `json:"leakSpeed,omitempty"`
+	// Simulated holds the value of the "simulated" field.
+	Simulated bool `json:"simulated,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
@@ -140,6 +142,7 @@ func (*Alert) scanValues() []interface{} {
 		&sql.NullString{},  // sourceValue
 		&sql.NullInt64{},   // capacity
 		&sql.NullString{},  // leakSpeed
+		&sql.NullBool{},    // simulated
 	}
 }
 
@@ -257,7 +260,12 @@ func (a *Alert) assignValues(values ...interface{}) error {
 	} else if value.Valid {
 		a.LeakSpeed = value.String
 	}
-	values = values[19:]
+	if value, ok := values[19].(*sql.NullBool); !ok {
+		return fmt.Errorf("unexpected type %T for field simulated", values[19])
+	} else if value.Valid {
+		a.Simulated = value.Bool
+	}
+	values = values[20:]
 	if len(values) == len(alert.ForeignKeys) {
 		if value, ok := values[0].(*sql.NullInt64); !ok {
 			return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
@@ -350,6 +358,8 @@ func (a *Alert) String() string {
 	builder.WriteString(fmt.Sprintf("%v", a.Capacity))
 	builder.WriteString(", leakSpeed=")
 	builder.WriteString(a.LeakSpeed)
+	builder.WriteString(", simulated=")
+	builder.WriteString(fmt.Sprintf("%v", a.Simulated))
 	builder.WriteByte(')')
 	return builder.String()
 }

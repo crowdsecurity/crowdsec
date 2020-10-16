@@ -226,6 +226,13 @@ func LeakSpeed(v string) predicate.Alert {
 	})
 }
 
+// Simulated applies equality check predicate on the "simulated" field. It's identical to SimulatedEQ.
+func Simulated(v bool) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSimulated), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
@@ -2276,6 +2283,20 @@ func LeakSpeedEqualFold(v string) predicate.Alert {
 func LeakSpeedContainsFold(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldLeakSpeed), v))
+	})
+}
+
+// SimulatedEQ applies the EQ predicate on the "simulated" field.
+func SimulatedEQ(v bool) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSimulated), v))
+	})
+}
+
+// SimulatedNEQ applies the NEQ predicate on the "simulated" field.
+func SimulatedNEQ(v bool) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldSimulated), v))
 	})
 }
 

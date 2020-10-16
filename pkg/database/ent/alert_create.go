@@ -282,6 +282,20 @@ func (ac *AlertCreate) SetNillableLeakSpeed(s *string) *AlertCreate {
 	return ac
 }
 
+// SetSimulated sets the simulated field.
+func (ac *AlertCreate) SetSimulated(b bool) *AlertCreate {
+	ac.mutation.SetSimulated(b)
+	return ac
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
+	if b != nil {
+		ac.SetSimulated(*b)
+	}
+	return ac
+}
+
 // SetOwnerID sets the owner edge to Machine by id.
 func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
 	ac.mutation.SetOwnerID(id)
@@ -426,6 +440,10 @@ func (ac *AlertCreate) defaults() {
 		v := alert.DefaultStoppedAt()
 		ac.mutation.SetStoppedAt(v)
 	}
+	if _, ok := ac.mutation.Simulated(); !ok {
+		v := alert.DefaultSimulated
+		ac.mutation.SetSimulated(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -438,6 +456,9 @@ func (ac *AlertCreate) check() error {
 	}
 	if _, ok := ac.mutation.Scenario(); !ok {
 		return &ValidationError{Name: "scenario", err: errors.New("ent: missing required field \"scenario\"")}
+	}
+	if _, ok := ac.mutation.Simulated(); !ok {
+		return &ValidationError{Name: "simulated", err: errors.New("ent: missing required field \"simulated\"")}
 	}
 	return nil
 }
@@ -617,6 +638,14 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Column: alert.FieldLeakSpeed,
 		})
 		_node.LeakSpeed = value
+	}
+	if value, ok := ac.mutation.Simulated(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: alert.FieldSimulated,
+		})
+		_node.Simulated = value
 	}
 	if nodes := ac.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

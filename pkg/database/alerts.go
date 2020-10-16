@@ -93,7 +93,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetEndIP(decisionItem.EndIP).
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
-					SetOrigin(*decisionItem.Origin)
+					SetOrigin(*decisionItem.Origin).
+					SetSimulated(*alertItem.Simulated)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -120,6 +121,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSourceLongitude(alertItem.Source.Longitude).
 			SetCapacity(*alertItem.Capacity).
 			SetLeakSpeed(*alertItem.Leakspeed).
+			SetSimulated(*alertItem.Simulated).
 			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
