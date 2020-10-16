@@ -56,10 +56,10 @@ To learn more about {{crowdsec.name}} and give it a try, please see :
  - [Understand {{crowdsec.name}} configuration](/getting_started/concepts/)
  - [Deploy {{bouncers.name}} to stop malevolent peers](/bouncers/)
  - [FAQ](getting_started/FAQ/)
+ - [Known bugs and limitations](/getting_started/known_issues)
 
 Don't hesitate to reach out if you're facing issues :
 
  - [report a bug](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=bug&template=bug_report.md&title=Bug%2F)
  - [suggest an improvement](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=Improvment%2F)
  - [ask for help on the forums](https://discourse.crowdsec.net)
-
