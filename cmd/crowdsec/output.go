@@ -7,10 +7,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -111,8 +110,14 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-			//if global simulation -> everything is simulation unless told otherwise
-			if cConfig.Crowdsec.SimulationConfig != nil { //&&
+
+			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
+			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
+				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
+				break
+			}
+
+			if cConfig.Crowdsec.SimulationConfig != nil {
 				if *cConfig.Crowdsec.SimulationConfig.Simulation {
 					*event.Overflow.Alert.Simulated = true
 				}
@@ -128,21 +133,16 @@ LOOP:
 				log.Debugf("Overflow being reprocessed.")
 				input <- event
 			}
-
 			/* process post overflow parser nodes */
 			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
 			if err != nil {
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
+			log.Printf("%s", *event.Overflow.Alert.Message)
+			cacheMutex.Lock()
+			cache = append(cache, event.Overflow)
+			cacheMutex.Unlock()
 
-			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
-				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
-			} else if event.Overflow.Alert != nil {
-				log.Printf("%s", *event.Overflow.Alert.Message)
-				cacheMutex.Lock()
-				cache = append(cache, event.Overflow)
-				cacheMutex.Unlock()
-			}
 		}
 	}
 
