@@ -30,7 +30,7 @@ var Client *apiclient.ApiClient
 
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration\n")
+		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
@@ -42,7 +42,8 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					*alertItem.EventsCount,
-					*decisionItem.Duration)
+					*decisionItem.Duration,
+					*decisionItem.Simulated)
 			}
 		}
 	} else if csConfig.Cscli.Output == "json" {
@@ -60,6 +61,9 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
+				if alertItem.Simulated != nil && *alertItem.Simulated == true {
+					*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
+				}
 				table.Append([]string{
 					strconv.Itoa(int(decisionItem.ID)),
 					*decisionItem.Origin,
