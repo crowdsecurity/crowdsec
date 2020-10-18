@@ -48,9 +48,11 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	results, err = FormatDecisions(data)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
 	}
 
 	gctx.JSON(http.StatusOK, results)
+	return
 }
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
@@ -82,12 +84,14 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
+		return
 	}
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
+	return
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {

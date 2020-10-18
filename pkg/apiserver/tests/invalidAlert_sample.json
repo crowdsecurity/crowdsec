@@ -1,0 +1,45 @@
+[
+    {
+        "id": 1,
+        "machine_id": "test",
+        "capacity": 1,
+        "decisions": [
+            {
+                "id": 1,
+                "duration": "1h",
+                "start_ip": 2130706433,
+                "end_ip": 2130706433,
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "ip",
+                "value": "127.0.0.1",
+                "type": "ban"
+            }
+        ],
+        "Events": [
+            {
+                "meta": [
+                    {
+                        "key": "test",
+                        "value": "test"
+                    }
+                ],
+                "timestamp": "2020-10-09T10:00:01Z"
+            }
+        ],
+        "events_count": 1,
+        "labels": [
+            "test"
+        ],
+        "leakspeed": "0.5s",
+        "message": "test",
+        "meta": [
+            {
+                "key": "test",
+                "value": "test"
+            }
+        ],
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    }
+]

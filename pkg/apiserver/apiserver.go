@@ -56,10 +56,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 	}
 
+	logFile := ""
+	if config.LogDir != "" {
+		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
+	}
+
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
-		logFile:        fmt.Sprintf("%s/crowdsec_api.log", config.LogDir),
+		logFile:        logFile,
 		dbClient:       dbClient,
 		middlewares:    middleware,
 		controller:     controller,
@@ -69,7 +74,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
-	log.Printf("starting router, logging to %s", s.logFile)
+	log.Debugf("starting router, logging to %s", s.logFile)
 	router := gin.New()
 
 	clog := log.New()
@@ -79,11 +84,13 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	gin.DefaultErrorWriter = clog.Writer()
 
 	// Logging to a file.
-	file, err := os.Create(s.logFile)
-	if err != nil {
-		return &gin.Engine{}, errors.Wrapf(err, "creating api access log file: %s", s.logFile)
+	if s.logFile != "" {
+		file, err := os.Create(s.logFile)
+		if err != nil {
+			return &gin.Engine{}, errors.Wrapf(err, "creating api access log file: %s", s.logFile)
+		}
+		gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 	}
-	gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",

@@ -74,7 +74,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldOrigin,
 	).Scan(c.CTX, &data)
 	if err != nil {
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "creating decision failed")
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
 	}
 
 	return data, nil
@@ -216,8 +216,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 //SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
-	_, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
-	if err != nil {
+	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
+	if err != nil || nbUpdated == 0 {
 		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionID))
 	}
 	return nil
