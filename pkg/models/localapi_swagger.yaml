@@ -340,6 +340,11 @@ paths:
           type: string
           format: date-time
           description: 'search alerts added before YYYY-mm-DD-HH:MM:SS'
+        - name: simulated
+          in: query
+          required: false
+          type: boolean
+          description: if set to true, decisions in simulation mode will be returned as well
         - name: has_active_decision
           in: query
           required: false
