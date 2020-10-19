@@ -32,6 +32,7 @@ type APIServer struct {
 	middlewares    *middlewares.Middlewares
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
+	gcfg           *csconfig.LocalApiServerCfg
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -64,8 +65,19 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		middlewares:    middleware,
 		controller:     controller,
 		flushScheduler: flushScheduler,
+		gcfg:           config,
 	}, nil
 
+}
+
+// ApiMiddleware will add the db connection to the context
+func GlobalMidleware(LocalApiServerCfg *csconfig.LocalApiServerCfg) gin.HandlerFunc {
+	log.Printf("global midleware called")
+	return func(c *gin.Context) {
+		c.Set("LocalApiServerCfg", LocalApiServerCfg)
+		//LocalApiServerCfg
+		c.Next()
+	}
 }
 
 func (s *APIServer) Router() (*gin.Engine, error) {
@@ -110,8 +122,15 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 
 	jwtAuth := router.Group("/")
 	jwtAuth.GET("/refresh_token", s.middlewares.JWT.Middleware.RefreshHandler)
+	/*for now I don't know how the controler can access the global config ?*/
+	jwtAuth.Use(GlobalMidleware(s.gcfg))
+
 	jwtAuth.Use(s.middlewares.JWT.Middleware.MiddlewareFunc())
 	{
+		// jwtAuth.POST("/alerts", func(c *gin.Context) {
+
+		// 	// do your thing here...
+		// })
 		jwtAuth.POST("/alerts", s.controller.CreateAlert)
 		jwtAuth.GET("/alerts", s.controller.FindAlerts)
 		jwtAuth.DELETE("/alerts", s.controller.DeleteAlerts)

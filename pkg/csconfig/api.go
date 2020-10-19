@@ -2,7 +2,8 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
+	"os"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -57,23 +58,45 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	if c.ProfilesPath == "" {
 		return fmt.Errorf("empty profiles path")
 	}
-	rcfg, err := ioutil.ReadFile(c.ProfilesPath)
+
+	yamlFile, err := os.Open(c.ProfilesPath)
 	if err != nil {
-		return errors.Wrapf(err, "while reading '%s'", c.ProfilesPath)
-	} else {
-		if err := yaml.UnmarshalStrict(rcfg, &c.Profiles); err != nil {
-			return errors.Wrapf(err, "while unmarshaling profiles file '%s'", c.ProfilesPath)
+		return errors.Wrapf(err, "while opening %s", c.ProfilesPath)
+	}
+
+	//process the yaml
+	dec := yaml.NewDecoder(yamlFile)
+	dec.SetStrict(true)
+	for {
+		t := ProfileCfg{}
+		err = dec.Decode(&t)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return errors.Wrapf(err, "while decoding %s", c.ProfilesPath)
 		}
+		c.Profiles = append(c.Profiles, &t)
 	}
 
 	for pIdx, profile := range c.Profiles {
 		var runtimeFilter *vm.Program
-		c.Profiles[pIdx].RuntimeFilters = make([]*vm.Program, 0, len(profile.Filters))
+		var debugFilter *exprhelpers.ExprDebugger
+
+		c.Profiles[pIdx].RuntimeFilters = make([]*vm.Program, len(profile.Filters))
+		c.Profiles[pIdx].DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
+
 		for fIdx, filter := range profile.Filters {
-			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"alert": &models.Alert{}}))); err != nil {
+			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
 				return fmt.Errorf("Error compiling the scope filter: %s", err)
 			}
 			c.Profiles[pIdx].RuntimeFilters[fIdx] = runtimeFilter
+			//
+			if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				return fmt.Errorf("Error compiling the debug scope filter: %s", err)
+			}
+			c.Profiles[pIdx].DebugFilters[fIdx] = debugFilter
+
 		}
 
 	}

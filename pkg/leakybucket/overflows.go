@@ -134,38 +134,38 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 	return events
 }
 
-//alertDefaultDecision generates a default (4h ban) decision for a given source
-func alertDefaultDecision(source models.Source) (*models.Decision, error) {
-	var decision models.Decision
+// //alertDefaultDecision generates a default (4h ban) decision for a given source
+// func AlertDefaultDecision(source models.Source) (*models.Decision, error) {
+// 	var decision models.Decision
 
-	decision.Duration = new(string)
-	*decision.Duration = "4h"
+// 	decision.Duration = new(string)
+// 	*decision.Duration = "4h"
 
-	if *source.Scope == types.Ip {
-		srcAddr := net.ParseIP(source.IP)
-		if srcAddr == nil {
-			return nil, fmt.Errorf("can't parse ip %s", source.IP)
-		}
-		decision.StartIP = int64(types.IP2Int(srcAddr))
-		decision.EndIP = decision.StartIP
-	} else if *source.Scope == types.Range {
-		srcAddr, srcRange, err := net.ParseCIDR(*source.Value)
-		if err != nil {
-			return nil, fmt.Errorf("can't parse range %s", *source.Value)
-		}
-		decision.StartIP = int64(types.IP2Int(srcAddr))
-		decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
+// 	if *source.Scope == types.Ip {
+// 		srcAddr := net.ParseIP(source.IP)
+// 		if srcAddr == nil {
+// 			return nil, fmt.Errorf("can't parse ip %s", source.IP)
+// 		}
+// 		decision.StartIP = int64(types.IP2Int(srcAddr))
+// 		decision.EndIP = decision.StartIP
+// 	} else if *source.Scope == types.Range {
+// 		srcAddr, srcRange, err := net.ParseCIDR(*source.Value)
+// 		if err != nil {
+// 			return nil, fmt.Errorf("can't parse range %s", *source.Value)
+// 		}
+// 		decision.StartIP = int64(types.IP2Int(srcAddr))
+// 		decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
 
-	}
+// 	}
 
-	decision.Scope = source.Scope
-	decision.Value = source.Value
-	decision.Origin = new(string)
-	*decision.Origin = "crowdsec"
-	decision.Type = new(string)
-	*decision.Type = "ban"
-	return &decision, nil
-}
+// 	decision.Scope = source.Scope
+// 	decision.Value = source.Value
+// 	decision.Origin = new(string)
+// 	*decision.Origin = "crowdsec"
+// 	decision.Type = new(string)
+// 	*decision.Type = "ban"
+// 	return &decision, nil
+// }
 
 //alertFormatSource iterates over the queue to collect sources
 func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, string, error) {
@@ -258,14 +258,16 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
 		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == "true" {
-			decision, err := alertDefaultDecision(srcValue)
-			decision.Scenario = new(string)
-			*decision.Scenario = leaky.Name
-			if err != nil {
-				return runtimeAlert, errors.Wrap(err, "failed to build decision")
-			}
-			log.Tracef("'%s' will be '%s' for '%s'", *decision.Value, *decision.Type, *decision.Duration)
-			newApiAlert.Decisions = []*models.Decision{decision}
+			log.Printf("alert has remediation enabled!!!")
+			newApiAlert.Remediation = true
+			// decision, err := alertDefaultDecision(srcValue)
+			// decision.Scenario = new(string)
+			// *decision.Scenario = leaky.Name
+			// if err != nil {
+			// 	return runtimeAlert, errors.Wrap(err, "failed to build decision")
+			// }
+			// log.Tracef("'%s' will be '%s' for '%s'", *decision.Value, *decision.Type, *decision.Duration)
+			// newApiAlert.Decisions = []*models.Decision{decision}
 		}
 
 		if err := newApiAlert.Validate(strfmt.Default); err != nil {

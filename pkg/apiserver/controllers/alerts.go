@@ -8,8 +8,11 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	xprof "github.com/crowdsecurity/crowdsec/pkg/profiles"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -102,6 +105,24 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	if err := input.Validate(strfmt.Default); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
+	}
+
+	// Don't forget type assertion when getting the connection from context.
+	profiles, ok := gctx.MustGet("LocalApiServerCfg").(*csconfig.LocalApiServerCfg)
+	if !ok {
+		// handle error here...
+		log.Fatalf("oh damn")
+	}
+	if profiles == nil {
+		log.Fatalf("oh damn1!!")
+	}
+
+	for _, alert := range input {
+		decisions, err := xprof.EvaluateProfiles(profiles.Profiles, alert)
+		if err != nil {
+			log.Fatalf("oh damn2!!!")
+		}
+		alert.Decisions = decisions
 	}
 
 	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)
