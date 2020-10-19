@@ -641,6 +641,8 @@ definitions:
       meta:
         description: the Meta data of the Alert itself
         $ref: '#/definitions/Meta'
+      remediation:
+        type: boolean
       labels:
         type: array
         items:

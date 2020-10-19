@@ -60,6 +60,9 @@ type Alert struct {
 	// the Meta data of the Alert itself
 	Meta Meta `json:"meta,omitempty"`
 
+	// remediation
+	Remediation bool `json:"remediation,omitempty"`
+
 	// scenario
 	// Required: true
 	Scenario *string `json:"scenario"`
