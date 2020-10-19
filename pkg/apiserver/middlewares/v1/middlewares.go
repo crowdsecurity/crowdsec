@@ -1,4 +1,4 @@
-package middlewares
+package v1
 
 import "github.com/crowdsecurity/crowdsec/pkg/database"
 

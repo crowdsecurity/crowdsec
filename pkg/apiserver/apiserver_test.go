@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
+	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 

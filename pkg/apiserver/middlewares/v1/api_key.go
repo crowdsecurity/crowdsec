@@ -1,4 +1,4 @@
-package middlewares
+package v1
 
 import (
 	"crypto/rand"
@@ -45,7 +45,7 @@ func HashSHA512(str string) string {
 	return hashStr
 }
 
-func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
+func (a *APIKey) MiddlewareFuncV1() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		val, ok := c.Request.Header[APIKeyHeader]
 		if !ok {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -29,9 +28,10 @@ type APIServer struct {
 	dbClient       *database.Client
 	logFile        string
 	ctx            context.Context
-	middlewares    *middlewares.Middlewares
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
+	router         *gin.Engine
+	httpServer     *http.Server
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -40,14 +40,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if err != nil {
 		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
 	}
-
-	middleware, err := middlewares.NewMiddlewares(dbClient)
-	if err != nil {
-		return &APIServer{}, err
-	}
-	ctx := context.Background()
-
-	controller := controllers.New(ctx, dbClient, middleware.APIKey.HeaderName)
 
 	if config.DbConfig.Flush != nil {
 		flushScheduler, err = dbClient.StartFlushScheduler(config.DbConfig.Flush)
@@ -61,20 +53,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
 	}
 
-	return &APIServer{
-		URL:            config.ListenURI,
-		TLS:            config.TLS,
-		logFile:        logFile,
-		dbClient:       dbClient,
-		middlewares:    middleware,
-		controller:     controller,
-		flushScheduler: flushScheduler,
-	}, nil
-
-}
-
-func (s *APIServer) Router() (*gin.Engine, error) {
-	log.Debugf("starting router, logging to %s", s.logFile)
+	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
 
 	clog := log.New()
@@ -84,10 +63,10 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	gin.DefaultErrorWriter = clog.Writer()
 
 	// Logging to a file.
-	if s.logFile != "" {
-		file, err := os.Create(s.logFile)
+	if logFile != "" {
+		file, err := os.Create(logFile)
 		if err != nil {
-			return &gin.Engine{}, errors.Wrapf(err, "creating api access log file: %s", s.logFile)
+			return &APIServer{}, errors.Wrapf(err, "creating api access log file: %s", logFile)
 		}
 		gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
 	}
@@ -105,45 +84,55 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 			param.ErrorMessage,
 		)
 	}))
-	router.Use(gin.Recovery())
 
-	router.POST("/watchers", s.controller.CreateMachine)
-
-	router.POST("/watchers/login", s.middlewares.JWT.Middleware.LoginHandler)
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 		return
 	})
+	router.Use(gin.Recovery())
 
-	jwtAuth := router.Group("/")
-	jwtAuth.GET("/refresh_token", s.middlewares.JWT.Middleware.RefreshHandler)
-	jwtAuth.Use(s.middlewares.JWT.Middleware.MiddlewareFunc())
-	{
-		jwtAuth.POST("/alerts", s.controller.CreateAlert)
-		jwtAuth.GET("/alerts", s.controller.FindAlerts)
-		jwtAuth.DELETE("/alerts", s.controller.DeleteAlerts)
-		jwtAuth.DELETE("/decisions", s.controller.DeleteDecisions)
-		jwtAuth.DELETE("/decisions/:decision_id", s.controller.DeleteDecisionById)
+	controller := &controllers.Controller{
+		DBClient: dbClient,
+		Ectx:     context.Background(),
+		Router:   router,
 	}
 
-	apiKeyAuth := router.Group("/")
-	apiKeyAuth.Use(s.middlewares.APIKey.MiddlewareFunc())
-	{
-		apiKeyAuth.GET("/decisions", s.controller.GetDecision)
-		apiKeyAuth.GET("/decisions/stream", s.controller.StreamDecision)
+	if err := controller.Init(); err != nil {
+		return &APIServer{}, nil
 	}
 
-	return router, nil
+	return &APIServer{
+		URL:            config.ListenURI,
+		TLS:            config.TLS,
+		logFile:        logFile,
+		dbClient:       dbClient,
+		controller:     controller,
+		flushScheduler: flushScheduler,
+		router:         router,
+	}, nil
+
+}
+
+func (s *APIServer) Router() (*gin.Engine, error) {
+	return s.router, nil
 }
 
 func (s *APIServer) Run() error {
-	router, err := s.Router()
-	if err != nil {
-		return err
+	s.httpServer = &http.Server{
+		Addr:    s.URL,
+		Handler: s.router,
 	}
-	if err := router.Run(s.URL); err != nil {
-		return err
+
+	if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
+		if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
+			log.Fatalf(err.Error())
+		}
+	} else {
+		if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+			log.Fatalf(err.Error())
+		}
 	}
+
 	return nil
 }
 
@@ -152,4 +141,12 @@ func (s *APIServer) Close() {
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()
 	}
+}
+
+func (s *APIServer) Shutdown() error {
+	s.Close()
+	if err := s.httpServer.Shutdown(nil); err != nil {
+		return err
+	}
+	return nil
 }
