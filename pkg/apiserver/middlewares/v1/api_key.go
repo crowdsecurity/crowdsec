@@ -45,7 +45,7 @@ func HashSHA512(str string) string {
 	return hashStr
 }
 
-func (a *APIKey) MiddlewareFuncV1() gin.HandlerFunc {
+func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		val, ok := c.Request.Header[APIKeyHeader]
 		if !ok {

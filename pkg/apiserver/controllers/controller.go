@@ -52,7 +52,7 @@ func (c *Controller) NewV1() error {
 	}
 
 	apiKeyAuth := v1.Group("")
-	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFuncV1())
+	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFunc())
 	{
 		apiKeyAuth.GET("/decisions", handlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", handlerV1.StreamDecision)
