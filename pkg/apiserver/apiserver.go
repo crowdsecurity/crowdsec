@@ -98,7 +98,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	if err := controller.Init(); err != nil {
-		return &APIServer{}, nil
+		return &APIServer{}, err
 	}
 
 	return &APIServer{
