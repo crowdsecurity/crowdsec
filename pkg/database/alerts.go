@@ -277,6 +277,17 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	var err error
 	var startIP, endIP int64
 	var hasActiveDecision bool
+
+	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
+	if v, ok := filter["simulated"]; ok {
+		if v[0] == "false" {
+			alerts = alerts.Where(alert.SimulatedEQ(false))
+		}
+		delete(filter, "simulated")
+	} else {
+		alerts = alerts.Where(alert.SimulatedEQ(false))
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "source_scope":

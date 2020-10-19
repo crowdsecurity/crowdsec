@@ -14,6 +14,17 @@ import (
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var err error
 	var startIP, endIP int64
+
+	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
+	if v, ok := filter["simulated"]; ok {
+		if v[0] == "false" {
+			query = query.Where(decision.SimulatedEQ(false))
+		}
+		delete(filter, "simulated")
+	} else {
+		query = query.Where(decision.SimulatedEQ(false))
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "scope":

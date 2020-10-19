@@ -24,6 +24,7 @@ var (
 	Value      string
 	Type       string
 	DecisionID string
+	NoSimu     bool
 )
 var DeleteAll bool
 var Client *apiclient.ApiClient
@@ -61,7 +62,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				if alertItem.Simulated != nil && *alertItem.Simulated == true {
+				if *alertItem.Simulated {
 					*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
 				}
 				table.Append([]string{
@@ -133,6 +134,8 @@ cscli decisions list --range 1.2.3.4/32
 
 			filter := apiclient.AlertsListOpts{}
 			filter.ActiveDecisionEquals = &activeDecision
+			NoSimu = !NoSimu //revert the flag before setting it
+			filter.IncludeSimulated = &NoSimu
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
 			}
@@ -165,6 +168,7 @@ cscli decisions list --range 1.2.3.4/32
 	cmdDecisionsList.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
 	cmdDecisionsList.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
 	cmdDecisionsList.Flags().StringVar(&Type, "type", "", "type of decision")
+	cmdDecisionsList.Flags().BoolVar(&NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
 	var cmdDecisionsAdd = &cobra.Command{

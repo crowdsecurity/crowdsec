@@ -114,6 +114,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
+        - name: simulated
+          in: query
+          required: false
+          type: boolean
+          description: if set to true, decisions in simulation mode will be returned as well
       responses:
         '200':
           description: "successful operation"

@@ -8,7 +8,7 @@ type SimulationConfig struct {
 func (s *SimulationConfig) IsSimulated(scenario string) bool {
 	var simulated bool
 
-	if *s.Simulation == true {
+	if *s.Simulation {
 		simulated = true
 	}
 	for _, excluded := range s.Exclusions {
