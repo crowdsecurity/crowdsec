@@ -48,7 +48,7 @@ By detecting, blocking and sharing the threat they faced, all clients are reinfo
 
 CrowdSec is not a SIEM, storing your logs (neither locally nor remotely).
 
-Your data stay in your premices and are only analyzed and forgotten.
+Your data stay in your premises and are only analyzed and forgotten.
 
 Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attemps.
 
