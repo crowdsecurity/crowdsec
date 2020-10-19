@@ -23,6 +23,7 @@ type AlertsListOpts struct {
 	UntilEquals          *string `url:"until,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	SourceEquals         *string `url:"alert_source,omitempty"`
+	IncludeSimulated     *bool   `url:"simulated,omitempty"`
 	ListOpts
 }
 

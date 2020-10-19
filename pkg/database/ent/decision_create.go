@@ -113,6 +113,20 @@ func (dc *DecisionCreate) SetOrigin(s string) *DecisionCreate {
 	return dc
 }
 
+// SetSimulated sets the simulated field.
+func (dc *DecisionCreate) SetSimulated(b bool) *DecisionCreate {
+	dc.mutation.SetSimulated(b)
+	return dc
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableSimulated(b *bool) *DecisionCreate {
+	if b != nil {
+		dc.SetSimulated(*b)
+	}
+	return dc
+}
+
 // SetOwnerID sets the owner edge to Alert by id.
 func (dc *DecisionCreate) SetOwnerID(id int) *DecisionCreate {
 	dc.mutation.SetOwnerID(id)
@@ -192,6 +206,10 @@ func (dc *DecisionCreate) defaults() {
 		v := decision.DefaultUpdatedAt()
 		dc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := dc.mutation.Simulated(); !ok {
+		v := decision.DefaultSimulated
+		dc.mutation.SetSimulated(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -219,6 +237,9 @@ func (dc *DecisionCreate) check() error {
 	}
 	if _, ok := dc.mutation.Origin(); !ok {
 		return &ValidationError{Name: "origin", err: errors.New("ent: missing required field \"origin\"")}
+	}
+	if _, ok := dc.mutation.Simulated(); !ok {
+		return &ValidationError{Name: "simulated", err: errors.New("ent: missing required field \"simulated\"")}
 	}
 	return nil
 }
@@ -326,6 +347,14 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Column: decision.FieldOrigin,
 		})
 		_node.Origin = value
+	}
+	if value, ok := dc.mutation.Simulated(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: decision.FieldSimulated,
+		})
+		_node.Simulated = value
 	}
 	if nodes := dc.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

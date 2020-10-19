@@ -49,6 +49,8 @@ const (
 	FieldCapacity = "capacity"
 	// FieldLeakSpeed holds the string denoting the leakspeed field in the database.
 	FieldLeakSpeed = "leak_speed"
+	// FieldSimulated holds the string denoting the simulated field in the database.
+	FieldSimulated = "simulated"
 
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
@@ -113,6 +115,7 @@ var Columns = []string{
 	FieldSourceValue,
 	FieldCapacity,
 	FieldLeakSpeed,
+	FieldSimulated,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the Alert type.
@@ -150,4 +153,6 @@ var (
 	DefaultStartedAt func() time.Time
 	// DefaultStoppedAt holds the default value on creation for the stoppedAt field.
 	DefaultStoppedAt func() time.Time
+	// DefaultSimulated holds the default value on creation for the simulated field.
+	DefaultSimulated bool
 )

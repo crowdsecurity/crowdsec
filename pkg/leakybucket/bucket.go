@@ -48,6 +48,7 @@ type Leaky struct {
 	// chan for signaling
 	Signal       chan bool `json:"-"`
 	Reprocess    bool
+	Simulated    bool
 	Uuid         string
 	First_ts     time.Time
 	Last_ts      time.Time
@@ -158,6 +159,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		scopeType:       bucketFactory.ScopeType,
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
+		Simulated:       bucketFactory.Simulated,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed

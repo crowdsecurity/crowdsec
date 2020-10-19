@@ -28,6 +28,7 @@ func (Decision) Fields() []ent.Field {
 		field.String("scope"),
 		field.String("value"),
 		field.String("origin"),
+		field.Bool("simulated").Default(false),
 	}
 }
 

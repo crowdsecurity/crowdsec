@@ -414,6 +414,20 @@ func (au *AlertUpdate) ClearLeakSpeed() *AlertUpdate {
 	return au
 }
 
+// SetSimulated sets the simulated field.
+func (au *AlertUpdate) SetSimulated(b bool) *AlertUpdate {
+	au.mutation.SetSimulated(b)
+	return au
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
+	if b != nil {
+		au.SetSimulated(*b)
+	}
+	return au
+}
+
 // SetOwnerID sets the owner edge to Machine by id.
 func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
 	au.mutation.SetOwnerID(id)
@@ -876,6 +890,13 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Column: alert.FieldLeakSpeed,
+		})
+	}
+	if value, ok := au.mutation.Simulated(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: alert.FieldSimulated,
 		})
 	}
 	if au.mutation.OwnerCleared() {
@@ -1475,6 +1496,20 @@ func (auo *AlertUpdateOne) ClearLeakSpeed() *AlertUpdateOne {
 	return auo
 }
 
+// SetSimulated sets the simulated field.
+func (auo *AlertUpdateOne) SetSimulated(b bool) *AlertUpdateOne {
+	auo.mutation.SetSimulated(b)
+	return auo
+}
+
+// SetNillableSimulated sets the simulated field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
+	if b != nil {
+		auo.SetSimulated(*b)
+	}
+	return auo
+}
+
 // SetOwnerID sets the owner edge to Machine by id.
 func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
 	auo.mutation.SetOwnerID(id)
@@ -1935,6 +1970,13 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Column: alert.FieldLeakSpeed,
+		})
+	}
+	if value, ok := auo.mutation.Simulated(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeBool,
+			Value:  value,
+			Column: alert.FieldSimulated,
 		})
 	}
 	if auo.mutation.OwnerCleared() {

@@ -93,7 +93,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetEndIP(decisionItem.EndIP).
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
-					SetOrigin(*decisionItem.Origin)
+					SetOrigin(*decisionItem.Origin).
+					SetSimulated(*alertItem.Simulated)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -120,6 +121,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSourceLongitude(alertItem.Source.Longitude).
 			SetCapacity(*alertItem.Capacity).
 			SetLeakSpeed(*alertItem.Leakspeed).
+			SetSimulated(*alertItem.Simulated).
 			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
@@ -275,6 +277,17 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	var err error
 	var startIP, endIP int64
 	var hasActiveDecision bool
+
+	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
+	if v, ok := filter["simulated"]; ok {
+		if v[0] == "false" {
+			alerts = alerts.Where(alert.SimulatedEQ(false))
+		}
+		delete(filter, "simulated")
+	} else {
+		alerts = alerts.Where(alert.SimulatedEQ(false))
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "source_scope":

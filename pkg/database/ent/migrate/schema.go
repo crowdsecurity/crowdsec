@@ -30,6 +30,7 @@ var (
 		{Name: "source_value", Type: field.TypeString, Nullable: true},
 		{Name: "capacity", Type: field.TypeInt32, Nullable: true},
 		{Name: "leak_speed", Type: field.TypeString, Nullable: true},
+		{Name: "simulated", Type: field.TypeBool},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -40,7 +41,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "alerts_machines_alerts",
-				Columns: []*schema.Column{AlertsColumns[20]},
+				Columns: []*schema.Column{AlertsColumns[21]},
 
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
@@ -80,6 +81,7 @@ var (
 		{Name: "scope", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
+		{Name: "simulated", Type: field.TypeBool},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -90,7 +92,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[11]},
+				Columns: []*schema.Column{DecisionsColumns[12]},
 
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,

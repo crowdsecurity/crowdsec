@@ -65,6 +65,7 @@ type AlertMutation struct {
 	capacity           *int32
 	addcapacity        *int32
 	leakSpeed          *string
+	simulated          *bool
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
@@ -1155,6 +1156,43 @@ func (m *AlertMutation) ResetLeakSpeed() {
 	delete(m.clearedFields, alert.FieldLeakSpeed)
 }
 
+// SetSimulated sets the simulated field.
+func (m *AlertMutation) SetSimulated(b bool) {
+	m.simulated = &b
+}
+
+// Simulated returns the simulated value in the mutation.
+func (m *AlertMutation) Simulated() (r bool, exists bool) {
+	v := m.simulated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSimulated returns the old simulated value of the Alert.
+// If the Alert object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *AlertMutation) OldSimulated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldSimulated is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldSimulated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSimulated: %w", err)
+	}
+	return oldValue.Simulated, nil
+}
+
+// ResetSimulated reset all changes of the "simulated" field.
+func (m *AlertMutation) ResetSimulated() {
+	m.simulated = nil
+}
+
 // SetOwnerID sets the owner edge to Machine by id.
 func (m *AlertMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -1367,7 +1405,7 @@ func (m *AlertMutation) Type() string {
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
 func (m *AlertMutation) Fields() []string {
-	fields := make([]string, 0, 19)
+	fields := make([]string, 0, 20)
 	if m.created_at != nil {
 		fields = append(fields, alert.FieldCreatedAt)
 	}
@@ -1425,6 +1463,9 @@ func (m *AlertMutation) Fields() []string {
 	if m.leakSpeed != nil {
 		fields = append(fields, alert.FieldLeakSpeed)
 	}
+	if m.simulated != nil {
+		fields = append(fields, alert.FieldSimulated)
+	}
 	return fields
 }
 
@@ -1471,6 +1512,8 @@ func (m *AlertMutation) Field(name string) (ent.Value, bool) {
 		return m.Capacity()
 	case alert.FieldLeakSpeed:
 		return m.LeakSpeed()
+	case alert.FieldSimulated:
+		return m.Simulated()
 	}
 	return nil, false
 }
@@ -1518,6 +1561,8 @@ func (m *AlertMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldCapacity(ctx)
 	case alert.FieldLeakSpeed:
 		return m.OldLeakSpeed(ctx)
+	case alert.FieldSimulated:
+		return m.OldSimulated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Alert field %s", name)
 }
@@ -1659,6 +1704,13 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLeakSpeed(v)
+		return nil
+	case alert.FieldSimulated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSimulated(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
@@ -1916,6 +1968,9 @@ func (m *AlertMutation) ResetField(name string) error {
 		return nil
 	case alert.FieldLeakSpeed:
 		m.ResetLeakSpeed()
+		return nil
+	case alert.FieldSimulated:
+		m.ResetSimulated()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
@@ -2891,6 +2946,7 @@ type DecisionMutation struct {
 	scope         *string
 	value         *string
 	origin        *string
+	simulated     *bool
 	clearedFields map[string]struct{}
 	owner         *int
 	clearedowner  bool
@@ -3415,6 +3471,43 @@ func (m *DecisionMutation) ResetOrigin() {
 	m.origin = nil
 }
 
+// SetSimulated sets the simulated field.
+func (m *DecisionMutation) SetSimulated(b bool) {
+	m.simulated = &b
+}
+
+// Simulated returns the simulated value in the mutation.
+func (m *DecisionMutation) Simulated() (r bool, exists bool) {
+	v := m.simulated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSimulated returns the old simulated value of the Decision.
+// If the Decision object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *DecisionMutation) OldSimulated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldSimulated is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldSimulated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSimulated: %w", err)
+	}
+	return oldValue.Simulated, nil
+}
+
+// ResetSimulated reset all changes of the "simulated" field.
+func (m *DecisionMutation) ResetSimulated() {
+	m.simulated = nil
+}
+
 // SetOwnerID sets the owner edge to Alert by id.
 func (m *DecisionMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -3468,7 +3561,7 @@ func (m *DecisionMutation) Type() string {
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
 func (m *DecisionMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, decision.FieldCreatedAt)
 	}
@@ -3499,6 +3592,9 @@ func (m *DecisionMutation) Fields() []string {
 	if m.origin != nil {
 		fields = append(fields, decision.FieldOrigin)
 	}
+	if m.simulated != nil {
+		fields = append(fields, decision.FieldSimulated)
+	}
 	return fields
 }
 
@@ -3527,6 +3623,8 @@ func (m *DecisionMutation) Field(name string) (ent.Value, bool) {
 		return m.Value()
 	case decision.FieldOrigin:
 		return m.Origin()
+	case decision.FieldSimulated:
+		return m.Simulated()
 	}
 	return nil, false
 }
@@ -3556,6 +3654,8 @@ func (m *DecisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldValue(ctx)
 	case decision.FieldOrigin:
 		return m.OldOrigin(ctx)
+	case decision.FieldSimulated:
+		return m.OldSimulated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Decision field %s", name)
 }
@@ -3634,6 +3734,13 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetOrigin(v)
+		return nil
+	case decision.FieldSimulated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSimulated(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)
@@ -3756,6 +3863,9 @@ func (m *DecisionMutation) ResetField(name string) error {
 		return nil
 	case decision.FieldOrigin:
 		m.ResetOrigin()
+		return nil
+	case decision.FieldSimulated:
+		m.ResetSimulated()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)

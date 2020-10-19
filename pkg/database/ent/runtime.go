@@ -48,6 +48,10 @@ func init() {
 	alertDescStoppedAt := alertFields[7].Descriptor()
 	// alert.DefaultStoppedAt holds the default value on creation for the stoppedAt field.
 	alert.DefaultStoppedAt = alertDescStoppedAt.Default.(func() time.Time)
+	// alertDescSimulated is the schema descriptor for simulated field.
+	alertDescSimulated := alertFields[19].Descriptor()
+	// alert.DefaultSimulated holds the default value on creation for the simulated field.
+	alert.DefaultSimulated = alertDescSimulated.Default.(bool)
 	blockerFields := schema.Blocker{}.Fields()
 	_ = blockerFields
 	// blockerDescCreatedAt is the schema descriptor for created_at field.
@@ -84,6 +88,10 @@ func init() {
 	decisionDescUpdatedAt := decisionFields[1].Descriptor()
 	// decision.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	decision.DefaultUpdatedAt = decisionDescUpdatedAt.Default.(func() time.Time)
+	// decisionDescSimulated is the schema descriptor for simulated field.
+	decisionDescSimulated := decisionFields[10].Descriptor()
+	// decision.DefaultSimulated holds the default value on creation for the simulated field.
+	decision.DefaultSimulated = decisionDescSimulated.Default.(bool)
 	eventFields := schema.Event{}.Fields()
 	_ = eventFields
 	// eventDescCreatedAt is the schema descriptor for created_at field.

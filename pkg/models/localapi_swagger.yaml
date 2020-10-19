@@ -114,6 +114,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
+        - name: simulated
+          in: query
+          required: false
+          type: boolean
+          description: if set to true, decisions in simulation mode will be returned as well
       responses:
         '200':
           description: "successful operation"
@@ -340,6 +345,11 @@ paths:
           type: string
           format: date-time
           description: 'search alerts added before YYYY-mm-DD-HH:MM:SS'
+        - name: simulated
+          in: query
+          required: false
+          type: boolean
+          description: if set to true, decisions in simulation mode will be returned as well
         - name: has_active_decision
           in: query
           required: false
@@ -721,6 +731,10 @@ definitions:
         type: string
       scenario:
         type: string
+      simulated:
+        type: boolean
+        description: 'true if the decision result from a scenario in simulation mode'
+        readOnly: true
     required:
       - origin
       - type
