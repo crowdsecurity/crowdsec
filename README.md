@@ -66,13 +66,15 @@ apt-get install bash gettext whiptail curl wget
 ```
 </details>
 
-<details>
+<details open>
   <summary>for RedHat based distributions</summary>
 
 ```bash
 yum install bash gettext newt curl wget
  ```
 </details>
+
+Then :
 
 ```bash
 curl -s https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest | grep browser_download_url| cut -d '"' -f 4  | wget -i -
