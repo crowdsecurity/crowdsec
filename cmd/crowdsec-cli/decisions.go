@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
@@ -107,6 +108,7 @@ To list/add/delete decisions
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
 			}
+			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
 
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			t := &apiclient.JWTTransport{

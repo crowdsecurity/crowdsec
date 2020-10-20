@@ -14,6 +14,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/denisbrodbeck/machineid"
@@ -310,6 +311,8 @@ The watcher will be validated automatically.
 			if err != nil {
 				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
 			}
+			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
+
 			Client = apiclient.NewClient(nil)
 			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &id, Password: &password})
 			if err != nil {

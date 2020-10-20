@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -70,6 +71,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
 	}
+	apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
 	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 	if err != nil {
 		return fmt.Errorf("Failed to load the list of local scenarios : %s", err)

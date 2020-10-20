@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 )
 
 var BaseURL *url.URL
@@ -41,9 +39,7 @@ func NewClient(httpClient *http.Client) *ApiClient {
 	if httpClient == nil {
 		httpClient = &http.Client{}
 	}
-	UserAgent := fmt.Sprintf("crowdsec-%s", cwversion.VersionStr())
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-
 	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)

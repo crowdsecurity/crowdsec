@@ -41,9 +41,7 @@ func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Requ
 		req.Header.Set("Content-Type", "application/json")
 	}
 	//req.Header.Set("Accept", mediaTypeV3)
-	if c.UserAgent != "" {
-		req.Header.Set("User-Agent", c.UserAgent)
-	}
+
 	return req, nil
 }
 
@@ -55,8 +53,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 	// Check rate limit
 
-	//
-
+	if c.UserAgent != "" {
+		req.Header.Add("User-Agent", c.UserAgent)
+	}
 	resp, err := c.client.Do(req)
 	if err != nil {
 		// If we got an error, and the context has been canceled,
