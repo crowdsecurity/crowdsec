@@ -8,86 +8,86 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/facebook/ent/dialect/sql"
 	"github.com/facebook/ent/dialect/sql/sqlgraph"
 	"github.com/facebook/ent/schema/field"
 )
 
-// BlockerQuery is the builder for querying Blocker entities.
-type BlockerQuery struct {
+// BouncerQuery is the builder for querying Bouncer entities.
+type BouncerQuery struct {
 	config
 	limit      *int
 	offset     *int
 	order      []OrderFunc
 	unique     []string
-	predicates []predicate.Blocker
+	predicates []predicate.Bouncer
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
 // Where adds a new predicate for the builder.
-func (bq *BlockerQuery) Where(ps ...predicate.Blocker) *BlockerQuery {
+func (bq *BouncerQuery) Where(ps ...predicate.Bouncer) *BouncerQuery {
 	bq.predicates = append(bq.predicates, ps...)
 	return bq
 }
 
 // Limit adds a limit step to the query.
-func (bq *BlockerQuery) Limit(limit int) *BlockerQuery {
+func (bq *BouncerQuery) Limit(limit int) *BouncerQuery {
 	bq.limit = &limit
 	return bq
 }
 
 // Offset adds an offset step to the query.
-func (bq *BlockerQuery) Offset(offset int) *BlockerQuery {
+func (bq *BouncerQuery) Offset(offset int) *BouncerQuery {
 	bq.offset = &offset
 	return bq
 }
 
 // Order adds an order step to the query.
-func (bq *BlockerQuery) Order(o ...OrderFunc) *BlockerQuery {
+func (bq *BouncerQuery) Order(o ...OrderFunc) *BouncerQuery {
 	bq.order = append(bq.order, o...)
 	return bq
 }
 
-// First returns the first Blocker entity in the query. Returns *NotFoundError when no blocker was found.
-func (bq *BlockerQuery) First(ctx context.Context) (*Blocker, error) {
-	nodes, err := bq.Limit(1).All(ctx)
+// First returns the first Bouncer entity in the query. Returns *NotFoundError when no bouncer was found.
+func (bq *BouncerQuery) First(ctx context.Context) (*Bouncer, error) {
+	bs, err := bq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(nodes) == 0 {
-		return nil, &NotFoundError{blocker.Label}
+	if len(bs) == 0 {
+		return nil, &NotFoundError{bouncer.Label}
 	}
-	return nodes[0], nil
+	return bs[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (bq *BlockerQuery) FirstX(ctx context.Context) *Blocker {
-	node, err := bq.First(ctx)
+func (bq *BouncerQuery) FirstX(ctx context.Context) *Bouncer {
+	b, err := bq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return node
+	return b
 }
 
-// FirstID returns the first Blocker id in the query. Returns *NotFoundError when no id was found.
-func (bq *BlockerQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first Bouncer id in the query. Returns *NotFoundError when no id was found.
+func (bq *BouncerQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = bq.Limit(1).IDs(ctx); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstXID is like FirstID, but panics if an error occurs.
-func (bq *BlockerQuery) FirstXID(ctx context.Context) int {
+func (bq *BouncerQuery) FirstXID(ctx context.Context) int {
 	id, err := bq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -95,33 +95,33 @@ func (bq *BlockerQuery) FirstXID(ctx context.Context) int {
 	return id
 }
 
-// Only returns the only Blocker entity in the query, returns an error if not exactly one entity was returned.
-func (bq *BlockerQuery) Only(ctx context.Context) (*Blocker, error) {
-	nodes, err := bq.Limit(2).All(ctx)
+// Only returns the only Bouncer entity in the query, returns an error if not exactly one entity was returned.
+func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
+	bs, err := bq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(nodes) {
+	switch len(bs) {
 	case 1:
-		return nodes[0], nil
+		return bs[0], nil
 	case 0:
-		return nil, &NotFoundError{blocker.Label}
+		return nil, &NotFoundError{bouncer.Label}
 	default:
-		return nil, &NotSingularError{blocker.Label}
+		return nil, &NotSingularError{bouncer.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (bq *BlockerQuery) OnlyX(ctx context.Context) *Blocker {
-	node, err := bq.Only(ctx)
+func (bq *BouncerQuery) OnlyX(ctx context.Context) *Bouncer {
+	b, err := bq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return b
 }
 
-// OnlyID returns the only Blocker id in the query, returns an error if not exactly one id was returned.
-func (bq *BlockerQuery) OnlyID(ctx context.Context) (id int, err error) {
+// OnlyID returns the only Bouncer id in the query, returns an error if not exactly one id was returned.
+func (bq *BouncerQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = bq.Limit(2).IDs(ctx); err != nil {
 		return
@@ -130,15 +130,15 @@ func (bq *BlockerQuery) OnlyID(ctx context.Context) (id int, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = &NotSingularError{blocker.Label}
+		err = &NotSingularError{bouncer.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (bq *BlockerQuery) OnlyIDX(ctx context.Context) int {
+func (bq *BouncerQuery) OnlyIDX(ctx context.Context) int {
 	id, err := bq.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -146,8 +146,8 @@ func (bq *BlockerQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of Blockers.
-func (bq *BlockerQuery) All(ctx context.Context) ([]*Blocker, error) {
+// All executes the query and returns a list of Bouncers.
+func (bq *BouncerQuery) All(ctx context.Context) ([]*Bouncer, error) {
 	if err := bq.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
@@ -155,25 +155,25 @@ func (bq *BlockerQuery) All(ctx context.Context) ([]*Blocker, error) {
 }
 
 // AllX is like All, but panics if an error occurs.
-func (bq *BlockerQuery) AllX(ctx context.Context) []*Blocker {
-	nodes, err := bq.All(ctx)
+func (bq *BouncerQuery) AllX(ctx context.Context) []*Bouncer {
+	bs, err := bq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return nodes
+	return bs
 }
 
-// IDs executes the query and returns a list of Blocker ids.
-func (bq *BlockerQuery) IDs(ctx context.Context) ([]int, error) {
+// IDs executes the query and returns a list of Bouncer ids.
+func (bq *BouncerQuery) IDs(ctx context.Context) ([]int, error) {
 	var ids []int
-	if err := bq.Select(blocker.FieldID).Scan(ctx, &ids); err != nil {
+	if err := bq.Select(bouncer.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (bq *BlockerQuery) IDsX(ctx context.Context) []int {
+func (bq *BouncerQuery) IDsX(ctx context.Context) []int {
 	ids, err := bq.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -182,7 +182,7 @@ func (bq *BlockerQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (bq *BlockerQuery) Count(ctx context.Context) (int, error) {
+func (bq *BouncerQuery) Count(ctx context.Context) (int, error) {
 	if err := bq.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
@@ -190,7 +190,7 @@ func (bq *BlockerQuery) Count(ctx context.Context) (int, error) {
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (bq *BlockerQuery) CountX(ctx context.Context) int {
+func (bq *BouncerQuery) CountX(ctx context.Context) int {
 	count, err := bq.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -199,7 +199,7 @@ func (bq *BlockerQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (bq *BlockerQuery) Exist(ctx context.Context) (bool, error) {
+func (bq *BouncerQuery) Exist(ctx context.Context) (bool, error) {
 	if err := bq.prepareQuery(ctx); err != nil {
 		return false, err
 	}
@@ -207,7 +207,7 @@ func (bq *BlockerQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (bq *BlockerQuery) ExistX(ctx context.Context) bool {
+func (bq *BouncerQuery) ExistX(ctx context.Context) bool {
 	exist, err := bq.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -217,14 +217,14 @@ func (bq *BlockerQuery) ExistX(ctx context.Context) bool {
 
 // Clone returns a duplicate of the query builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (bq *BlockerQuery) Clone() *BlockerQuery {
-	return &BlockerQuery{
+func (bq *BouncerQuery) Clone() *BouncerQuery {
+	return &BouncerQuery{
 		config:     bq.config,
 		limit:      bq.limit,
 		offset:     bq.offset,
 		order:      append([]OrderFunc{}, bq.order...),
 		unique:     append([]string{}, bq.unique...),
-		predicates: append([]predicate.Blocker{}, bq.predicates...),
+		predicates: append([]predicate.Bouncer{}, bq.predicates...),
 		// clone intermediate query.
 		sql:  bq.sql.Clone(),
 		path: bq.path,
@@ -241,13 +241,13 @@ func (bq *BlockerQuery) Clone() *BlockerQuery {
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Blocker.Query().
-//		GroupBy(blocker.FieldCreatedAt).
+//	client.Bouncer.Query().
+//		GroupBy(bouncer.FieldCreatedAt).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 //
-func (bq *BlockerQuery) GroupBy(field string, fields ...string) *BlockerGroupBy {
-	group := &BlockerGroupBy{config: bq.config}
+func (bq *BouncerQuery) GroupBy(field string, fields ...string) *BouncerGroupBy {
+	group := &BouncerGroupBy{config: bq.config}
 	group.fields = append([]string{field}, fields...)
 	group.path = func(ctx context.Context) (prev *sql.Selector, err error) {
 		if err := bq.prepareQuery(ctx); err != nil {
@@ -266,12 +266,12 @@ func (bq *BlockerQuery) GroupBy(field string, fields ...string) *BlockerGroupBy 
 //		CreatedAt time.Time `json:"created_at,omitempty"`
 //	}
 //
-//	client.Blocker.Query().
-//		Select(blocker.FieldCreatedAt).
+//	client.Bouncer.Query().
+//		Select(bouncer.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (bq *BlockerQuery) Select(field string, fields ...string) *BlockerSelect {
-	selector := &BlockerSelect{config: bq.config}
+func (bq *BouncerQuery) Select(field string, fields ...string) *BouncerSelect {
+	selector := &BouncerSelect{config: bq.config}
 	selector.fields = append([]string{field}, fields...)
 	selector.path = func(ctx context.Context) (prev *sql.Selector, err error) {
 		if err := bq.prepareQuery(ctx); err != nil {
@@ -282,7 +282,7 @@ func (bq *BlockerQuery) Select(field string, fields ...string) *BlockerSelect {
 	return selector
 }
 
-func (bq *BlockerQuery) prepareQuery(ctx context.Context) error {
+func (bq *BouncerQuery) prepareQuery(ctx context.Context) error {
 	if bq.path != nil {
 		prev, err := bq.path(ctx)
 		if err != nil {
@@ -293,13 +293,13 @@ func (bq *BlockerQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (bq *BlockerQuery) sqlAll(ctx context.Context) ([]*Blocker, error) {
+func (bq *BouncerQuery) sqlAll(ctx context.Context) ([]*Bouncer, error) {
 	var (
-		nodes = []*Blocker{}
+		nodes = []*Bouncer{}
 		_spec = bq.querySpec()
 	)
 	_spec.ScanValues = func() []interface{} {
-		node := &Blocker{config: bq.config}
+		node := &Bouncer{config: bq.config}
 		nodes = append(nodes, node)
 		values := node.scanValues()
 		return values
@@ -320,12 +320,12 @@ func (bq *BlockerQuery) sqlAll(ctx context.Context) ([]*Blocker, error) {
 	return nodes, nil
 }
 
-func (bq *BlockerQuery) sqlCount(ctx context.Context) (int, error) {
+func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := bq.querySpec()
 	return sqlgraph.CountNodes(ctx, bq.driver, _spec)
 }
 
-func (bq *BlockerQuery) sqlExist(ctx context.Context) (bool, error) {
+func (bq *BouncerQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := bq.sqlCount(ctx)
 	if err != nil {
 		return false, fmt.Errorf("ent: check existence: %v", err)
@@ -333,14 +333,14 @@ func (bq *BlockerQuery) sqlExist(ctx context.Context) (bool, error) {
 	return n > 0, nil
 }
 
-func (bq *BlockerQuery) querySpec() *sqlgraph.QuerySpec {
+func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 	_spec := &sqlgraph.QuerySpec{
 		Node: &sqlgraph.NodeSpec{
-			Table:   blocker.Table,
-			Columns: blocker.Columns,
+			Table:   bouncer.Table,
+			Columns: bouncer.Columns,
 			ID: &sqlgraph.FieldSpec{
 				Type:   field.TypeInt,
-				Column: blocker.FieldID,
+				Column: bouncer.FieldID,
 			},
 		},
 		From:   bq.sql,
@@ -362,26 +362,26 @@ func (bq *BlockerQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := bq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, blocker.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
 	return _spec
 }
 
-func (bq *BlockerQuery) sqlQuery() *sql.Selector {
+func (bq *BouncerQuery) sqlQuery() *sql.Selector {
 	builder := sql.Dialect(bq.driver.Dialect())
-	t1 := builder.Table(blocker.Table)
-	selector := builder.Select(t1.Columns(blocker.Columns...)...).From(t1)
+	t1 := builder.Table(bouncer.Table)
+	selector := builder.Select(t1.Columns(bouncer.Columns...)...).From(t1)
 	if bq.sql != nil {
 		selector = bq.sql
-		selector.Select(selector.Columns(blocker.Columns...)...)
+		selector.Select(selector.Columns(bouncer.Columns...)...)
 	}
 	for _, p := range bq.predicates {
 		p(selector)
 	}
 	for _, p := range bq.order {
-		p(selector, blocker.ValidColumn)
+		p(selector)
 	}
 	if offset := bq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -394,8 +394,8 @@ func (bq *BlockerQuery) sqlQuery() *sql.Selector {
 	return selector
 }
 
-// BlockerGroupBy is the builder for group-by Blocker entities.
-type BlockerGroupBy struct {
+// BouncerGroupBy is the builder for group-by Bouncer entities.
+type BouncerGroupBy struct {
 	config
 	fields []string
 	fns    []AggregateFunc
@@ -405,13 +405,13 @@ type BlockerGroupBy struct {
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (bgb *BlockerGroupBy) Aggregate(fns ...AggregateFunc) *BlockerGroupBy {
+func (bgb *BouncerGroupBy) Aggregate(fns ...AggregateFunc) *BouncerGroupBy {
 	bgb.fns = append(bgb.fns, fns...)
 	return bgb
 }
 
 // Scan applies the group-by query and scan the result into the given value.
-func (bgb *BlockerGroupBy) Scan(ctx context.Context, v interface{}) error {
+func (bgb *BouncerGroupBy) Scan(ctx context.Context, v interface{}) error {
 	query, err := bgb.path(ctx)
 	if err != nil {
 		return err
@@ -421,16 +421,16 @@ func (bgb *BlockerGroupBy) Scan(ctx context.Context, v interface{}) error {
 }
 
 // ScanX is like Scan, but panics if an error occurs.
-func (bgb *BlockerGroupBy) ScanX(ctx context.Context, v interface{}) {
+func (bgb *BouncerGroupBy) ScanX(ctx context.Context, v interface{}) {
 	if err := bgb.Scan(ctx, v); err != nil {
 		panic(err)
 	}
 }
 
 // Strings returns list of strings from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Strings(ctx context.Context) ([]string, error) {
+func (bgb *BouncerGroupBy) Strings(ctx context.Context) ([]string, error) {
 	if len(bgb.fields) > 1 {
-		return nil, errors.New("ent: BlockerGroupBy.Strings is not achievable when grouping more than 1 field")
+		return nil, errors.New("ent: BouncerGroupBy.Strings is not achievable when grouping more than 1 field")
 	}
 	var v []string
 	if err := bgb.Scan(ctx, &v); err != nil {
@@ -440,7 +440,7 @@ func (bgb *BlockerGroupBy) Strings(ctx context.Context) ([]string, error) {
 }
 
 // StringsX is like Strings, but panics if an error occurs.
-func (bgb *BlockerGroupBy) StringsX(ctx context.Context) []string {
+func (bgb *BouncerGroupBy) StringsX(ctx context.Context) []string {
 	v, err := bgb.Strings(ctx)
 	if err != nil {
 		panic(err)
@@ -449,7 +449,7 @@ func (bgb *BlockerGroupBy) StringsX(ctx context.Context) []string {
 }
 
 // String returns a single string from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) String(ctx context.Context) (_ string, err error) {
+func (bgb *BouncerGroupBy) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = bgb.Strings(ctx); err != nil {
 		return
@@ -458,15 +458,15 @@ func (bgb *BlockerGroupBy) String(ctx context.Context) (_ string, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerGroupBy.Strings returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerGroupBy.Strings returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // StringX is like String, but panics if an error occurs.
-func (bgb *BlockerGroupBy) StringX(ctx context.Context) string {
+func (bgb *BouncerGroupBy) StringX(ctx context.Context) string {
 	v, err := bgb.String(ctx)
 	if err != nil {
 		panic(err)
@@ -475,9 +475,9 @@ func (bgb *BlockerGroupBy) StringX(ctx context.Context) string {
 }
 
 // Ints returns list of ints from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Ints(ctx context.Context) ([]int, error) {
+func (bgb *BouncerGroupBy) Ints(ctx context.Context) ([]int, error) {
 	if len(bgb.fields) > 1 {
-		return nil, errors.New("ent: BlockerGroupBy.Ints is not achievable when grouping more than 1 field")
+		return nil, errors.New("ent: BouncerGroupBy.Ints is not achievable when grouping more than 1 field")
 	}
 	var v []int
 	if err := bgb.Scan(ctx, &v); err != nil {
@@ -487,7 +487,7 @@ func (bgb *BlockerGroupBy) Ints(ctx context.Context) ([]int, error) {
 }
 
 // IntsX is like Ints, but panics if an error occurs.
-func (bgb *BlockerGroupBy) IntsX(ctx context.Context) []int {
+func (bgb *BouncerGroupBy) IntsX(ctx context.Context) []int {
 	v, err := bgb.Ints(ctx)
 	if err != nil {
 		panic(err)
@@ -496,7 +496,7 @@ func (bgb *BlockerGroupBy) IntsX(ctx context.Context) []int {
 }
 
 // Int returns a single int from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Int(ctx context.Context) (_ int, err error) {
+func (bgb *BouncerGroupBy) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = bgb.Ints(ctx); err != nil {
 		return
@@ -505,15 +505,15 @@ func (bgb *BlockerGroupBy) Int(ctx context.Context) (_ int, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerGroupBy.Ints returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerGroupBy.Ints returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // IntX is like Int, but panics if an error occurs.
-func (bgb *BlockerGroupBy) IntX(ctx context.Context) int {
+func (bgb *BouncerGroupBy) IntX(ctx context.Context) int {
 	v, err := bgb.Int(ctx)
 	if err != nil {
 		panic(err)
@@ -522,9 +522,9 @@ func (bgb *BlockerGroupBy) IntX(ctx context.Context) int {
 }
 
 // Float64s returns list of float64s from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Float64s(ctx context.Context) ([]float64, error) {
+func (bgb *BouncerGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 	if len(bgb.fields) > 1 {
-		return nil, errors.New("ent: BlockerGroupBy.Float64s is not achievable when grouping more than 1 field")
+		return nil, errors.New("ent: BouncerGroupBy.Float64s is not achievable when grouping more than 1 field")
 	}
 	var v []float64
 	if err := bgb.Scan(ctx, &v); err != nil {
@@ -534,7 +534,7 @@ func (bgb *BlockerGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 }
 
 // Float64sX is like Float64s, but panics if an error occurs.
-func (bgb *BlockerGroupBy) Float64sX(ctx context.Context) []float64 {
+func (bgb *BouncerGroupBy) Float64sX(ctx context.Context) []float64 {
 	v, err := bgb.Float64s(ctx)
 	if err != nil {
 		panic(err)
@@ -543,7 +543,7 @@ func (bgb *BlockerGroupBy) Float64sX(ctx context.Context) []float64 {
 }
 
 // Float64 returns a single float64 from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Float64(ctx context.Context) (_ float64, err error) {
+func (bgb *BouncerGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = bgb.Float64s(ctx); err != nil {
 		return
@@ -552,15 +552,15 @@ func (bgb *BlockerGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerGroupBy.Float64s returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerGroupBy.Float64s returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // Float64X is like Float64, but panics if an error occurs.
-func (bgb *BlockerGroupBy) Float64X(ctx context.Context) float64 {
+func (bgb *BouncerGroupBy) Float64X(ctx context.Context) float64 {
 	v, err := bgb.Float64(ctx)
 	if err != nil {
 		panic(err)
@@ -569,9 +569,9 @@ func (bgb *BlockerGroupBy) Float64X(ctx context.Context) float64 {
 }
 
 // Bools returns list of bools from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Bools(ctx context.Context) ([]bool, error) {
+func (bgb *BouncerGroupBy) Bools(ctx context.Context) ([]bool, error) {
 	if len(bgb.fields) > 1 {
-		return nil, errors.New("ent: BlockerGroupBy.Bools is not achievable when grouping more than 1 field")
+		return nil, errors.New("ent: BouncerGroupBy.Bools is not achievable when grouping more than 1 field")
 	}
 	var v []bool
 	if err := bgb.Scan(ctx, &v); err != nil {
@@ -581,7 +581,7 @@ func (bgb *BlockerGroupBy) Bools(ctx context.Context) ([]bool, error) {
 }
 
 // BoolsX is like Bools, but panics if an error occurs.
-func (bgb *BlockerGroupBy) BoolsX(ctx context.Context) []bool {
+func (bgb *BouncerGroupBy) BoolsX(ctx context.Context) []bool {
 	v, err := bgb.Bools(ctx)
 	if err != nil {
 		panic(err)
@@ -590,7 +590,7 @@ func (bgb *BlockerGroupBy) BoolsX(ctx context.Context) []bool {
 }
 
 // Bool returns a single bool from group-by. It is only allowed when querying group-by with one field.
-func (bgb *BlockerGroupBy) Bool(ctx context.Context) (_ bool, err error) {
+func (bgb *BouncerGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = bgb.Bools(ctx); err != nil {
 		return
@@ -599,15 +599,15 @@ func (bgb *BlockerGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerGroupBy.Bools returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerGroupBy.Bools returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // BoolX is like Bool, but panics if an error occurs.
-func (bgb *BlockerGroupBy) BoolX(ctx context.Context) bool {
+func (bgb *BouncerGroupBy) BoolX(ctx context.Context) bool {
 	v, err := bgb.Bool(ctx)
 	if err != nil {
 		panic(err)
@@ -615,18 +615,9 @@ func (bgb *BlockerGroupBy) BoolX(ctx context.Context) bool {
 	return v
 }
 
-func (bgb *BlockerGroupBy) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range bgb.fields {
-		if !blocker.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
-	}
-	selector := bgb.sqlQuery()
-	if err := selector.Err(); err != nil {
-		return err
-	}
+func (bgb *BouncerGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := selector.Query()
+	query, args := bgb.sqlQuery().Query()
 	if err := bgb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -634,18 +625,18 @@ func (bgb *BlockerGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 	return sql.ScanSlice(rows, v)
 }
 
-func (bgb *BlockerGroupBy) sqlQuery() *sql.Selector {
+func (bgb *BouncerGroupBy) sqlQuery() *sql.Selector {
 	selector := bgb.sql
 	columns := make([]string, 0, len(bgb.fields)+len(bgb.fns))
 	columns = append(columns, bgb.fields...)
 	for _, fn := range bgb.fns {
-		columns = append(columns, fn(selector, blocker.ValidColumn))
+		columns = append(columns, fn(selector))
 	}
 	return selector.Select(columns...).GroupBy(bgb.fields...)
 }
 
-// BlockerSelect is the builder for select fields of Blocker entities.
-type BlockerSelect struct {
+// BouncerSelect is the builder for select fields of Bouncer entities.
+type BouncerSelect struct {
 	config
 	fields []string
 	// intermediate query (i.e. traversal path).
@@ -654,7 +645,7 @@ type BlockerSelect struct {
 }
 
 // Scan applies the selector query and scan the result into the given value.
-func (bs *BlockerSelect) Scan(ctx context.Context, v interface{}) error {
+func (bs *BouncerSelect) Scan(ctx context.Context, v interface{}) error {
 	query, err := bs.path(ctx)
 	if err != nil {
 		return err
@@ -664,16 +655,16 @@ func (bs *BlockerSelect) Scan(ctx context.Context, v interface{}) error {
 }
 
 // ScanX is like Scan, but panics if an error occurs.
-func (bs *BlockerSelect) ScanX(ctx context.Context, v interface{}) {
+func (bs *BouncerSelect) ScanX(ctx context.Context, v interface{}) {
 	if err := bs.Scan(ctx, v); err != nil {
 		panic(err)
 	}
 }
 
 // Strings returns list of strings from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Strings(ctx context.Context) ([]string, error) {
+func (bs *BouncerSelect) Strings(ctx context.Context) ([]string, error) {
 	if len(bs.fields) > 1 {
-		return nil, errors.New("ent: BlockerSelect.Strings is not achievable when selecting more than 1 field")
+		return nil, errors.New("ent: BouncerSelect.Strings is not achievable when selecting more than 1 field")
 	}
 	var v []string
 	if err := bs.Scan(ctx, &v); err != nil {
@@ -683,7 +674,7 @@ func (bs *BlockerSelect) Strings(ctx context.Context) ([]string, error) {
 }
 
 // StringsX is like Strings, but panics if an error occurs.
-func (bs *BlockerSelect) StringsX(ctx context.Context) []string {
+func (bs *BouncerSelect) StringsX(ctx context.Context) []string {
 	v, err := bs.Strings(ctx)
 	if err != nil {
 		panic(err)
@@ -692,7 +683,7 @@ func (bs *BlockerSelect) StringsX(ctx context.Context) []string {
 }
 
 // String returns a single string from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) String(ctx context.Context) (_ string, err error) {
+func (bs *BouncerSelect) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = bs.Strings(ctx); err != nil {
 		return
@@ -701,15 +692,15 @@ func (bs *BlockerSelect) String(ctx context.Context) (_ string, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerSelect.Strings returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerSelect.Strings returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // StringX is like String, but panics if an error occurs.
-func (bs *BlockerSelect) StringX(ctx context.Context) string {
+func (bs *BouncerSelect) StringX(ctx context.Context) string {
 	v, err := bs.String(ctx)
 	if err != nil {
 		panic(err)
@@ -718,9 +709,9 @@ func (bs *BlockerSelect) StringX(ctx context.Context) string {
 }
 
 // Ints returns list of ints from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Ints(ctx context.Context) ([]int, error) {
+func (bs *BouncerSelect) Ints(ctx context.Context) ([]int, error) {
 	if len(bs.fields) > 1 {
-		return nil, errors.New("ent: BlockerSelect.Ints is not achievable when selecting more than 1 field")
+		return nil, errors.New("ent: BouncerSelect.Ints is not achievable when selecting more than 1 field")
 	}
 	var v []int
 	if err := bs.Scan(ctx, &v); err != nil {
@@ -730,7 +721,7 @@ func (bs *BlockerSelect) Ints(ctx context.Context) ([]int, error) {
 }
 
 // IntsX is like Ints, but panics if an error occurs.
-func (bs *BlockerSelect) IntsX(ctx context.Context) []int {
+func (bs *BouncerSelect) IntsX(ctx context.Context) []int {
 	v, err := bs.Ints(ctx)
 	if err != nil {
 		panic(err)
@@ -739,7 +730,7 @@ func (bs *BlockerSelect) IntsX(ctx context.Context) []int {
 }
 
 // Int returns a single int from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Int(ctx context.Context) (_ int, err error) {
+func (bs *BouncerSelect) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = bs.Ints(ctx); err != nil {
 		return
@@ -748,15 +739,15 @@ func (bs *BlockerSelect) Int(ctx context.Context) (_ int, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerSelect.Ints returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerSelect.Ints returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // IntX is like Int, but panics if an error occurs.
-func (bs *BlockerSelect) IntX(ctx context.Context) int {
+func (bs *BouncerSelect) IntX(ctx context.Context) int {
 	v, err := bs.Int(ctx)
 	if err != nil {
 		panic(err)
@@ -765,9 +756,9 @@ func (bs *BlockerSelect) IntX(ctx context.Context) int {
 }
 
 // Float64s returns list of float64s from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Float64s(ctx context.Context) ([]float64, error) {
+func (bs *BouncerSelect) Float64s(ctx context.Context) ([]float64, error) {
 	if len(bs.fields) > 1 {
-		return nil, errors.New("ent: BlockerSelect.Float64s is not achievable when selecting more than 1 field")
+		return nil, errors.New("ent: BouncerSelect.Float64s is not achievable when selecting more than 1 field")
 	}
 	var v []float64
 	if err := bs.Scan(ctx, &v); err != nil {
@@ -777,7 +768,7 @@ func (bs *BlockerSelect) Float64s(ctx context.Context) ([]float64, error) {
 }
 
 // Float64sX is like Float64s, but panics if an error occurs.
-func (bs *BlockerSelect) Float64sX(ctx context.Context) []float64 {
+func (bs *BouncerSelect) Float64sX(ctx context.Context) []float64 {
 	v, err := bs.Float64s(ctx)
 	if err != nil {
 		panic(err)
@@ -786,7 +777,7 @@ func (bs *BlockerSelect) Float64sX(ctx context.Context) []float64 {
 }
 
 // Float64 returns a single float64 from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Float64(ctx context.Context) (_ float64, err error) {
+func (bs *BouncerSelect) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = bs.Float64s(ctx); err != nil {
 		return
@@ -795,15 +786,15 @@ func (bs *BlockerSelect) Float64(ctx context.Context) (_ float64, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerSelect.Float64s returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerSelect.Float64s returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // Float64X is like Float64, but panics if an error occurs.
-func (bs *BlockerSelect) Float64X(ctx context.Context) float64 {
+func (bs *BouncerSelect) Float64X(ctx context.Context) float64 {
 	v, err := bs.Float64(ctx)
 	if err != nil {
 		panic(err)
@@ -812,9 +803,9 @@ func (bs *BlockerSelect) Float64X(ctx context.Context) float64 {
 }
 
 // Bools returns list of bools from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Bools(ctx context.Context) ([]bool, error) {
+func (bs *BouncerSelect) Bools(ctx context.Context) ([]bool, error) {
 	if len(bs.fields) > 1 {
-		return nil, errors.New("ent: BlockerSelect.Bools is not achievable when selecting more than 1 field")
+		return nil, errors.New("ent: BouncerSelect.Bools is not achievable when selecting more than 1 field")
 	}
 	var v []bool
 	if err := bs.Scan(ctx, &v); err != nil {
@@ -824,7 +815,7 @@ func (bs *BlockerSelect) Bools(ctx context.Context) ([]bool, error) {
 }
 
 // BoolsX is like Bools, but panics if an error occurs.
-func (bs *BlockerSelect) BoolsX(ctx context.Context) []bool {
+func (bs *BouncerSelect) BoolsX(ctx context.Context) []bool {
 	v, err := bs.Bools(ctx)
 	if err != nil {
 		panic(err)
@@ -833,7 +824,7 @@ func (bs *BlockerSelect) BoolsX(ctx context.Context) []bool {
 }
 
 // Bool returns a single bool from selector. It is only allowed when selecting one field.
-func (bs *BlockerSelect) Bool(ctx context.Context) (_ bool, err error) {
+func (bs *BouncerSelect) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = bs.Bools(ctx); err != nil {
 		return
@@ -842,15 +833,15 @@ func (bs *BlockerSelect) Bool(ctx context.Context) (_ bool, err error) {
 	case 1:
 		return v[0], nil
 	case 0:
-		err = &NotFoundError{blocker.Label}
+		err = &NotFoundError{bouncer.Label}
 	default:
-		err = fmt.Errorf("ent: BlockerSelect.Bools returned %d results when one was expected", len(v))
+		err = fmt.Errorf("ent: BouncerSelect.Bools returned %d results when one was expected", len(v))
 	}
 	return
 }
 
 // BoolX is like Bool, but panics if an error occurs.
-func (bs *BlockerSelect) BoolX(ctx context.Context) bool {
+func (bs *BouncerSelect) BoolX(ctx context.Context) bool {
 	v, err := bs.Bool(ctx)
 	if err != nil {
 		panic(err)
@@ -858,12 +849,7 @@ func (bs *BlockerSelect) BoolX(ctx context.Context) bool {
 	return v
 }
 
-func (bs *BlockerSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range bs.fields {
-		if !blocker.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
+func (bs *BouncerSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
 	query, args := bs.sqlQuery().Query()
 	if err := bs.driver.Query(ctx, query, args, rows); err != nil {
@@ -873,7 +859,7 @@ func (bs *BlockerSelect) sqlScan(ctx context.Context, v interface{}) error {
 	return sql.ScanSlice(rows, v)
 }
 
-func (bs *BlockerSelect) sqlQuery() sql.Querier {
+func (bs *BouncerSelect) sqlQuery() sql.Querier {
 	selector := bs.sql
 	selector.Select(selector.Columns(bs.fields...)...)
 	return selector

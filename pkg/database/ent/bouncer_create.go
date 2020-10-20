@@ -8,26 +8,26 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/facebook/ent/dialect/sql/sqlgraph"
 	"github.com/facebook/ent/schema/field"
 )
 
-// BlockerCreate is the builder for creating a Blocker entity.
-type BlockerCreate struct {
+// BouncerCreate is the builder for creating a Bouncer entity.
+type BouncerCreate struct {
 	config
-	mutation *BlockerMutation
+	mutation *BouncerMutation
 	hooks    []Hook
 }
 
 // SetCreatedAt sets the created_at field.
-func (bc *BlockerCreate) SetCreatedAt(t time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetCreatedAt(t time.Time) *BouncerCreate {
 	bc.mutation.SetCreatedAt(t)
 	return bc
 }
 
 // SetNillableCreatedAt sets the created_at field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableCreatedAt(t *time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableCreatedAt(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetCreatedAt(*t)
 	}
@@ -35,13 +35,13 @@ func (bc *BlockerCreate) SetNillableCreatedAt(t *time.Time) *BlockerCreate {
 }
 
 // SetUpdatedAt sets the updated_at field.
-func (bc *BlockerCreate) SetUpdatedAt(t time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetUpdatedAt(t time.Time) *BouncerCreate {
 	bc.mutation.SetUpdatedAt(t)
 	return bc
 }
 
 // SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableUpdatedAt(t *time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableUpdatedAt(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetUpdatedAt(*t)
 	}
@@ -49,31 +49,31 @@ func (bc *BlockerCreate) SetNillableUpdatedAt(t *time.Time) *BlockerCreate {
 }
 
 // SetName sets the name field.
-func (bc *BlockerCreate) SetName(s string) *BlockerCreate {
+func (bc *BouncerCreate) SetName(s string) *BouncerCreate {
 	bc.mutation.SetName(s)
 	return bc
 }
 
 // SetAPIKey sets the api_key field.
-func (bc *BlockerCreate) SetAPIKey(s string) *BlockerCreate {
+func (bc *BouncerCreate) SetAPIKey(s string) *BouncerCreate {
 	bc.mutation.SetAPIKey(s)
 	return bc
 }
 
 // SetRevoked sets the revoked field.
-func (bc *BlockerCreate) SetRevoked(b bool) *BlockerCreate {
+func (bc *BouncerCreate) SetRevoked(b bool) *BouncerCreate {
 	bc.mutation.SetRevoked(b)
 	return bc
 }
 
 // SetIPAddress sets the ip_address field.
-func (bc *BlockerCreate) SetIPAddress(s string) *BlockerCreate {
+func (bc *BouncerCreate) SetIPAddress(s string) *BouncerCreate {
 	bc.mutation.SetIPAddress(s)
 	return bc
 }
 
 // SetNillableIPAddress sets the ip_address field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableIPAddress(s *string) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableIPAddress(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetIPAddress(*s)
 	}
@@ -81,27 +81,41 @@ func (bc *BlockerCreate) SetNillableIPAddress(s *string) *BlockerCreate {
 }
 
 // SetType sets the type field.
-func (bc *BlockerCreate) SetType(s string) *BlockerCreate {
+func (bc *BouncerCreate) SetType(s string) *BouncerCreate {
 	bc.mutation.SetType(s)
 	return bc
 }
 
 // SetNillableType sets the type field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableType(s *string) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableType(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetType(*s)
 	}
 	return bc
 }
 
+// SetVersion sets the version field.
+func (bc *BouncerCreate) SetVersion(s string) *BouncerCreate {
+	bc.mutation.SetVersion(s)
+	return bc
+}
+
+// SetNillableVersion sets the version field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetVersion(*s)
+	}
+	return bc
+}
+
 // SetUntil sets the until field.
-func (bc *BlockerCreate) SetUntil(t time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetUntil(t time.Time) *BouncerCreate {
 	bc.mutation.SetUntil(t)
 	return bc
 }
 
 // SetNillableUntil sets the until field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableUntil(t *time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableUntil(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetUntil(*t)
 	}
@@ -109,44 +123,40 @@ func (bc *BlockerCreate) SetNillableUntil(t *time.Time) *BlockerCreate {
 }
 
 // SetLastPull sets the last_pull field.
-func (bc *BlockerCreate) SetLastPull(t time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetLastPull(t time.Time) *BouncerCreate {
 	bc.mutation.SetLastPull(t)
 	return bc
 }
 
 // SetNillableLastPull sets the last_pull field if the given value is not nil.
-func (bc *BlockerCreate) SetNillableLastPull(t *time.Time) *BlockerCreate {
+func (bc *BouncerCreate) SetNillableLastPull(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetLastPull(*t)
 	}
 	return bc
 }
 
-// Mutation returns the BlockerMutation object of the builder.
-func (bc *BlockerCreate) Mutation() *BlockerMutation {
+// Mutation returns the BouncerMutation object of the builder.
+func (bc *BouncerCreate) Mutation() *BouncerMutation {
 	return bc.mutation
 }
 
-// Save creates the Blocker in the database.
-func (bc *BlockerCreate) Save(ctx context.Context) (*Blocker, error) {
+// Save creates the Bouncer in the database.
+func (bc *BouncerCreate) Save(ctx context.Context) (*Bouncer, error) {
+	if err := bc.preSave(); err != nil {
+		return nil, err
+	}
 	var (
 		err  error
-		node *Blocker
+		node *Bouncer
 	)
-	bc.defaults()
 	if len(bc.hooks) == 0 {
-		if err = bc.check(); err != nil {
-			return nil, err
-		}
 		node, err = bc.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BlockerMutation)
+			mutation, ok := m.(*BouncerMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = bc.check(); err != nil {
-				return nil, err
 			}
 			bc.mutation = mutation
 			node, err = bc.sqlSave(ctx)
@@ -164,7 +174,7 @@ func (bc *BlockerCreate) Save(ctx context.Context) (*Blocker, error) {
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (bc *BlockerCreate) SaveX(ctx context.Context) *Blocker {
+func (bc *BouncerCreate) SaveX(ctx context.Context) *Bouncer {
 	v, err := bc.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -172,41 +182,14 @@ func (bc *BlockerCreate) SaveX(ctx context.Context) *Blocker {
 	return v
 }
 
-// defaults sets the default values of the builder before save.
-func (bc *BlockerCreate) defaults() {
+func (bc *BouncerCreate) preSave() error {
 	if _, ok := bc.mutation.CreatedAt(); !ok {
-		v := blocker.DefaultCreatedAt()
+		v := bouncer.DefaultCreatedAt()
 		bc.mutation.SetCreatedAt(v)
 	}
 	if _, ok := bc.mutation.UpdatedAt(); !ok {
-		v := blocker.DefaultUpdatedAt()
+		v := bouncer.DefaultUpdatedAt()
 		bc.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := bc.mutation.IPAddress(); !ok {
-		v := blocker.DefaultIPAddress
-		bc.mutation.SetIPAddress(v)
-	}
-	if _, ok := bc.mutation.GetType(); !ok {
-		v := blocker.DefaultType
-		bc.mutation.SetType(v)
-	}
-	if _, ok := bc.mutation.Until(); !ok {
-		v := blocker.DefaultUntil()
-		bc.mutation.SetUntil(v)
-	}
-	if _, ok := bc.mutation.LastPull(); !ok {
-		v := blocker.DefaultLastPull()
-		bc.mutation.SetLastPull(v)
-	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (bc *BlockerCreate) check() error {
-	if _, ok := bc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := bc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
 	}
 	if _, ok := bc.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New("ent: missing required field \"name\"")}
@@ -217,14 +200,23 @@ func (bc *BlockerCreate) check() error {
 	if _, ok := bc.mutation.Revoked(); !ok {
 		return &ValidationError{Name: "revoked", err: errors.New("ent: missing required field \"revoked\"")}
 	}
+	if _, ok := bc.mutation.IPAddress(); !ok {
+		v := bouncer.DefaultIPAddress
+		bc.mutation.SetIPAddress(v)
+	}
+	if _, ok := bc.mutation.Until(); !ok {
+		v := bouncer.DefaultUntil()
+		bc.mutation.SetUntil(v)
+	}
 	if _, ok := bc.mutation.LastPull(); !ok {
-		return &ValidationError{Name: "last_pull", err: errors.New("ent: missing required field \"last_pull\"")}
+		v := bouncer.DefaultLastPull()
+		bc.mutation.SetLastPull(v)
 	}
 	return nil
 }
 
-func (bc *BlockerCreate) sqlSave(ctx context.Context) (*Blocker, error) {
-	_node, _spec := bc.createSpec()
+func (bc *BouncerCreate) sqlSave(ctx context.Context) (*Bouncer, error) {
+	b, _spec := bc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, bc.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -232,18 +224,18 @@ func (bc *BlockerCreate) sqlSave(ctx context.Context) (*Blocker, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
-	return _node, nil
+	b.ID = int(id)
+	return b, nil
 }
 
-func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
+func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Blocker{config: bc.config}
+		b     = &Bouncer{config: bc.config}
 		_spec = &sqlgraph.CreateSpec{
-			Table: blocker.Table,
+			Table: bouncer.Table,
 			ID: &sqlgraph.FieldSpec{
 				Type:   field.TypeInt,
-				Column: blocker.FieldID,
+				Column: bouncer.FieldID,
 			},
 		}
 	)
@@ -251,99 +243,106 @@ func (bc *BlockerCreate) createSpec() (*Blocker, *sqlgraph.CreateSpec) {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldCreatedAt,
+			Column: bouncer.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		b.CreatedAt = value
 	}
 	if value, ok := bc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUpdatedAt,
+			Column: bouncer.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		b.UpdatedAt = value
 	}
 	if value, ok := bc.mutation.Name(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldName,
+			Column: bouncer.FieldName,
 		})
-		_node.Name = value
+		b.Name = value
 	}
 	if value, ok := bc.mutation.APIKey(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldAPIKey,
+			Column: bouncer.FieldAPIKey,
 		})
-		_node.APIKey = value
+		b.APIKey = value
 	}
 	if value, ok := bc.mutation.Revoked(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
 			Value:  value,
-			Column: blocker.FieldRevoked,
+			Column: bouncer.FieldRevoked,
 		})
-		_node.Revoked = value
+		b.Revoked = value
 	}
 	if value, ok := bc.mutation.IPAddress(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldIPAddress,
+			Column: bouncer.FieldIPAddress,
 		})
-		_node.IPAddress = value
+		b.IPAddress = value
 	}
 	if value, ok := bc.mutation.GetType(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldType,
+			Column: bouncer.FieldType,
 		})
-		_node.Type = value
+		b.Type = value
+	}
+	if value, ok := bc.mutation.Version(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldVersion,
+		})
+		b.Version = value
 	}
 	if value, ok := bc.mutation.Until(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUntil,
+			Column: bouncer.FieldUntil,
 		})
-		_node.Until = value
+		b.Until = value
 	}
 	if value, ok := bc.mutation.LastPull(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldLastPull,
+			Column: bouncer.FieldLastPull,
 		})
-		_node.LastPull = value
+		b.LastPull = value
 	}
-	return _node, _spec
+	return b, _spec
 }
 
-// BlockerCreateBulk is the builder for creating a bulk of Blocker entities.
-type BlockerCreateBulk struct {
+// BouncerCreateBulk is the builder for creating a bulk of Bouncer entities.
+type BouncerCreateBulk struct {
 	config
-	builders []*BlockerCreate
+	builders []*BouncerCreate
 }
 
-// Save creates the Blocker entities in the database.
-func (bcb *BlockerCreateBulk) Save(ctx context.Context) ([]*Blocker, error) {
+// Save creates the Bouncer entities in the database.
+func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 	specs := make([]*sqlgraph.CreateSpec, len(bcb.builders))
-	nodes := make([]*Blocker, len(bcb.builders))
+	nodes := make([]*Bouncer, len(bcb.builders))
 	mutators := make([]Mutator, len(bcb.builders))
 	for i := range bcb.builders {
 		func(i int, root context.Context) {
 			builder := bcb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-				mutation, ok := m.(*BlockerMutation)
+				if err := builder.preSave(); err != nil {
+					return nil, err
+				}
+				mutation, ok := m.(*BouncerMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
-				}
-				if err := builder.check(); err != nil {
-					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()
@@ -381,7 +380,7 @@ func (bcb *BlockerCreateBulk) Save(ctx context.Context) ([]*Blocker, error) {
 }
 
 // SaveX calls Save and panics if Save returns an error.
-func (bcb *BlockerCreateBulk) SaveX(ctx context.Context) []*Blocker {
+func (bcb *BouncerCreateBulk) SaveX(ctx context.Context) []*Bouncer {
 	v, err := bcb.Save(ctx)
 	if err != nil {
 		panic(err)

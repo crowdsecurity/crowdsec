@@ -87,24 +87,20 @@ func (ec *EventCreate) Mutation() *EventMutation {
 
 // Save creates the Event in the database.
 func (ec *EventCreate) Save(ctx context.Context) (*Event, error) {
+	if err := ec.preSave(); err != nil {
+		return nil, err
+	}
 	var (
 		err  error
 		node *Event
 	)
-	ec.defaults()
 	if len(ec.hooks) == 0 {
-		if err = ec.check(); err != nil {
-			return nil, err
-		}
 		node, err = ec.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*EventMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = ec.check(); err != nil {
-				return nil, err
 			}
 			ec.mutation = mutation
 			node, err = ec.sqlSave(ctx)
@@ -130,8 +126,7 @@ func (ec *EventCreate) SaveX(ctx context.Context) *Event {
 	return v
 }
 
-// defaults sets the default values of the builder before save.
-func (ec *EventCreate) defaults() {
+func (ec *EventCreate) preSave() error {
 	if _, ok := ec.mutation.CreatedAt(); !ok {
 		v := event.DefaultCreatedAt()
 		ec.mutation.SetCreatedAt(v)
@@ -139,16 +134,6 @@ func (ec *EventCreate) defaults() {
 	if _, ok := ec.mutation.UpdatedAt(); !ok {
 		v := event.DefaultUpdatedAt()
 		ec.mutation.SetUpdatedAt(v)
-	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (ec *EventCreate) check() error {
-	if _, ok := ec.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := ec.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
 	}
 	if _, ok := ec.mutation.Time(); !ok {
 		return &ValidationError{Name: "time", err: errors.New("ent: missing required field \"time\"")}
@@ -160,7 +145,7 @@ func (ec *EventCreate) check() error {
 }
 
 func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
-	_node, _spec := ec.createSpec()
+	e, _spec := ec.createSpec()
 	if err := sqlgraph.CreateNode(ctx, ec.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -168,13 +153,13 @@ func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
-	return _node, nil
+	e.ID = int(id)
+	return e, nil
 }
 
 func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Event{config: ec.config}
+		e     = &Event{config: ec.config}
 		_spec = &sqlgraph.CreateSpec{
 			Table: event.Table,
 			ID: &sqlgraph.FieldSpec{
@@ -189,7 +174,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		e.CreatedAt = value
 	}
 	if value, ok := ec.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -197,7 +182,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		e.UpdatedAt = value
 	}
 	if value, ok := ec.mutation.Time(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -205,7 +190,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldTime,
 		})
-		_node.Time = value
+		e.Time = value
 	}
 	if value, ok := ec.mutation.Serialized(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -213,7 +198,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldSerialized,
 		})
-		_node.Serialized = value
+		e.Serialized = value
 	}
 	if nodes := ec.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -234,7 +219,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return e, _spec
 }
 
 // EventCreateBulk is the builder for creating a bulk of Event entities.
@@ -251,14 +236,13 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 	for i := range ecb.builders {
 		func(i int, root context.Context) {
 			builder := ecb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
+				if err := builder.preSave(); err != nil {
+					return nil, err
+				}
 				mutation, ok := m.(*EventMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
-				}
-				if err := builder.check(); err != nil {
-					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()

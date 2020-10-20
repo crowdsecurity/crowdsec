@@ -48,8 +48,8 @@ var (
 			},
 		},
 	}
-	// BlockersColumns holds the columns for the "blockers" table.
-	BlockersColumns = []*schema.Column{
+	// BouncersColumns holds the columns for the "bouncers" table.
+	BouncersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -57,15 +57,16 @@ var (
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "revoked", Type: field.TypeBool},
 		{Name: "ip_address", Type: field.TypeString, Nullable: true, Default: ""},
-		{Name: "type", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "type", Type: field.TypeString, Nullable: true},
+		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "until", Type: field.TypeTime, Nullable: true},
 		{Name: "last_pull", Type: field.TypeTime},
 	}
-	// BlockersTable holds the schema information for the "blockers" table.
-	BlockersTable = &schema.Table{
-		Name:        "blockers",
-		Columns:     BlockersColumns,
-		PrimaryKey:  []*schema.Column{BlockersColumns[0]},
+	// BouncersTable holds the schema information for the "bouncers" table.
+	BouncersTable = &schema.Table{
+		Name:        "bouncers",
+		Columns:     BouncersColumns,
+		PrimaryKey:  []*schema.Column{BouncersColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{},
 	}
 	// DecisionsColumns holds the columns for the "decisions" table.
@@ -132,6 +133,7 @@ var (
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
 		{Name: "scenarios", Type: field.TypeString, Nullable: true},
+		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool},
 		{Name: "status", Type: field.TypeString, Nullable: true},
 	}
@@ -169,7 +171,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AlertsTable,
-		BlockersTable,
+		BouncersTable,
 		DecisionsTable,
 		EventsTable,
 		MachinesTable,

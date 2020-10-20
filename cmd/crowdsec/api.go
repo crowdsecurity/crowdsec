@@ -25,7 +25,6 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 			if err := apiServer.Run(); err != nil {
 				log.Fatalf(err.Error())
 			}
-			defer apiServer.Close()
 		}()
 		<-apiTomb.Dying() // lock until go routine is dying
 		if err := apiServer.Shutdown(); err != nil {

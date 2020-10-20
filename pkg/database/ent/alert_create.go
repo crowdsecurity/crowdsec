@@ -367,24 +367,20 @@ func (ac *AlertCreate) Mutation() *AlertMutation {
 
 // Save creates the Alert in the database.
 func (ac *AlertCreate) Save(ctx context.Context) (*Alert, error) {
+	if err := ac.preSave(); err != nil {
+		return nil, err
+	}
 	var (
 		err  error
 		node *Alert
 	)
-	ac.defaults()
 	if len(ac.hooks) == 0 {
-		if err = ac.check(); err != nil {
-			return nil, err
-		}
 		node, err = ac.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*AlertMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = ac.check(); err != nil {
-				return nil, err
 			}
 			ac.mutation = mutation
 			node, err = ac.sqlSave(ctx)
@@ -410,8 +406,7 @@ func (ac *AlertCreate) SaveX(ctx context.Context) *Alert {
 	return v
 }
 
-// defaults sets the default values of the builder before save.
-func (ac *AlertCreate) defaults() {
+func (ac *AlertCreate) preSave() error {
 	if _, ok := ac.mutation.CreatedAt(); !ok {
 		v := alert.DefaultCreatedAt()
 		ac.mutation.SetCreatedAt(v)
@@ -419,6 +414,9 @@ func (ac *AlertCreate) defaults() {
 	if _, ok := ac.mutation.UpdatedAt(); !ok {
 		v := alert.DefaultUpdatedAt()
 		ac.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := ac.mutation.Scenario(); !ok {
+		return &ValidationError{Name: "scenario", err: errors.New("ent: missing required field \"scenario\"")}
 	}
 	if _, ok := ac.mutation.BucketId(); !ok {
 		v := alert.DefaultBucketId
@@ -444,27 +442,11 @@ func (ac *AlertCreate) defaults() {
 		v := alert.DefaultSimulated
 		ac.mutation.SetSimulated(v)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (ac *AlertCreate) check() error {
-	if _, ok := ac.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := ac.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
-	}
-	if _, ok := ac.mutation.Scenario(); !ok {
-		return &ValidationError{Name: "scenario", err: errors.New("ent: missing required field \"scenario\"")}
-	}
-	if _, ok := ac.mutation.Simulated(); !ok {
-		return &ValidationError{Name: "simulated", err: errors.New("ent: missing required field \"simulated\"")}
-	}
 	return nil
 }
 
 func (ac *AlertCreate) sqlSave(ctx context.Context) (*Alert, error) {
-	_node, _spec := ac.createSpec()
+	a, _spec := ac.createSpec()
 	if err := sqlgraph.CreateNode(ctx, ac.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -472,13 +454,13 @@ func (ac *AlertCreate) sqlSave(ctx context.Context) (*Alert, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
-	return _node, nil
+	a.ID = int(id)
+	return a, nil
 }
 
 func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Alert{config: ac.config}
+		a     = &Alert{config: ac.config}
 		_spec = &sqlgraph.CreateSpec{
 			Table: alert.Table,
 			ID: &sqlgraph.FieldSpec{
@@ -493,7 +475,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		a.CreatedAt = value
 	}
 	if value, ok := ac.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -501,7 +483,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		a.UpdatedAt = value
 	}
 	if value, ok := ac.mutation.Scenario(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -509,7 +491,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldScenario,
 		})
-		_node.Scenario = value
+		a.Scenario = value
 	}
 	if value, ok := ac.mutation.BucketId(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -517,7 +499,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldBucketId,
 		})
-		_node.BucketId = value
+		a.BucketId = value
 	}
 	if value, ok := ac.mutation.Message(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -525,7 +507,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldMessage,
 		})
-		_node.Message = value
+		a.Message = value
 	}
 	if value, ok := ac.mutation.EventsCount(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -533,7 +515,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldEventsCount,
 		})
-		_node.EventsCount = value
+		a.EventsCount = value
 	}
 	if value, ok := ac.mutation.StartedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -541,7 +523,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldStartedAt,
 		})
-		_node.StartedAt = value
+		a.StartedAt = value
 	}
 	if value, ok := ac.mutation.StoppedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -549,7 +531,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldStoppedAt,
 		})
-		_node.StoppedAt = value
+		a.StoppedAt = value
 	}
 	if value, ok := ac.mutation.SourceIp(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -557,7 +539,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceIp,
 		})
-		_node.SourceIp = value
+		a.SourceIp = value
 	}
 	if value, ok := ac.mutation.SourceRange(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -565,7 +547,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceRange,
 		})
-		_node.SourceRange = value
+		a.SourceRange = value
 	}
 	if value, ok := ac.mutation.SourceAsNumber(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -573,7 +555,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceAsNumber,
 		})
-		_node.SourceAsNumber = value
+		a.SourceAsNumber = value
 	}
 	if value, ok := ac.mutation.SourceAsName(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -581,7 +563,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceAsName,
 		})
-		_node.SourceAsName = value
+		a.SourceAsName = value
 	}
 	if value, ok := ac.mutation.SourceCountry(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -589,7 +571,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceCountry,
 		})
-		_node.SourceCountry = value
+		a.SourceCountry = value
 	}
 	if value, ok := ac.mutation.SourceLatitude(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -597,7 +579,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceLatitude,
 		})
-		_node.SourceLatitude = value
+		a.SourceLatitude = value
 	}
 	if value, ok := ac.mutation.SourceLongitude(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -605,7 +587,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceLongitude,
 		})
-		_node.SourceLongitude = value
+		a.SourceLongitude = value
 	}
 	if value, ok := ac.mutation.SourceScope(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -613,7 +595,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceScope,
 		})
-		_node.SourceScope = value
+		a.SourceScope = value
 	}
 	if value, ok := ac.mutation.SourceValue(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -621,7 +603,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSourceValue,
 		})
-		_node.SourceValue = value
+		a.SourceValue = value
 	}
 	if value, ok := ac.mutation.Capacity(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -629,7 +611,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldCapacity,
 		})
-		_node.Capacity = value
+		a.Capacity = value
 	}
 	if value, ok := ac.mutation.LeakSpeed(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -637,7 +619,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldLeakSpeed,
 		})
-		_node.LeakSpeed = value
+		a.LeakSpeed = value
 	}
 	if value, ok := ac.mutation.Simulated(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -645,7 +627,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldSimulated,
 		})
-		_node.Simulated = value
+		a.Simulated = value
 	}
 	if nodes := ac.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -723,7 +705,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return a, _spec
 }
 
 // AlertCreateBulk is the builder for creating a bulk of Alert entities.
@@ -740,14 +722,13 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 	for i := range acb.builders {
 		func(i int, root context.Context) {
 			builder := acb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
+				if err := builder.preSave(); err != nil {
+					return nil, err
+				}
 				mutation, ok := m.(*AlertMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
-				}
-				if err := builder.check(); err != nil {
-					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()

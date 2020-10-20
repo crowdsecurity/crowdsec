@@ -46,7 +46,7 @@ To list/add/delete bouncers
 		Example: `cscli bouncers list`,
 		Args:    cobra.MaximumNArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
-			blockers, err := dbClient.ListBlockers()
+			blockers, err := dbClient.ListBouncers()
 			if err != nil {
 				log.Errorf("unable to list blockers: %s", err)
 			}
@@ -109,7 +109,7 @@ To list/add/delete bouncers
 				log.Errorf("unable to generate api key: %s", err)
 				return
 			}
-			err = dbClient.CreateBlocker(keyName, keyIP, middlewares.HashSHA512(apiKey))
+			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
 			if err != nil {
 				log.Errorf("unable to create blocker: %s", err)
 				return
@@ -135,7 +135,7 @@ To list/add/delete bouncers
 				log.Errorf("Please provide a name for the api key with the --name|-n parameter")
 				return
 			}
-			err := dbClient.DeleteBlocker(keyName)
+			err := dbClient.DeleteBouncer(keyName)
 			if err != nil {
 				log.Errorf("unable to create blocker: %s", err)
 				return

@@ -124,6 +124,16 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 	return nil
 }
 
+func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
+	_, err := c.Ent.Machine.UpdateOneID(ID).
+		SetVersion(ipAddr).
+		Save(c.CTX)
+	if err != nil {
+		return fmt.Errorf("unable to update machine in database: %s", err)
+	}
+	return nil
+}
+
 func (c *Client) IsMachineRegistered(machineID string) (bool, error) {
 	exist, err := c.Ent.Machine.Query().Where().Select(machine.FieldMachineId).Strings(c.CTX)
 	if err != nil {

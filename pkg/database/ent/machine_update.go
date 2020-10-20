@@ -95,6 +95,26 @@ func (mu *MachineUpdate) ClearScenarios() *MachineUpdate {
 	return mu
 }
 
+// SetVersion sets the version field.
+func (mu *MachineUpdate) SetVersion(s string) *MachineUpdate {
+	mu.mutation.SetVersion(s)
+	return mu
+}
+
+// SetNillableVersion sets the version field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableVersion(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetVersion(*s)
+	}
+	return mu
+}
+
+// ClearVersion clears the value of version.
+func (mu *MachineUpdate) ClearVersion() *MachineUpdate {
+	mu.mutation.ClearVersion()
+	return mu
+}
+
 // SetIsValidated sets the isValidated field.
 func (mu *MachineUpdate) SetIsValidated(b bool) *MachineUpdate {
 	mu.mutation.SetIsValidated(b)
@@ -149,12 +169,6 @@ func (mu *MachineUpdate) Mutation() *MachineMutation {
 	return mu.mutation
 }
 
-// ClearAlerts clears all "alerts" edges to type Alert.
-func (mu *MachineUpdate) ClearAlerts() *MachineUpdate {
-	mu.mutation.ClearAlerts()
-	return mu
-}
-
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (mu *MachineUpdate) RemoveAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.RemoveAlertIDs(ids...)
@@ -172,6 +186,7 @@ func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
+
 	var (
 		err      error
 		affected int
@@ -287,6 +302,19 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldScenarios,
 		})
 	}
+	if value, ok := mu.mutation.Version(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldVersion,
+		})
+	}
+	if mu.mutation.VersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: machine.FieldVersion,
+		})
+	}
 	if value, ok := mu.mutation.IsValidated(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
@@ -307,23 +335,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldStatus,
 		})
 	}
-	if mu.mutation.AlertsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   machine.AlertsTable,
-			Columns: []string{machine.AlertsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := mu.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !mu.mutation.AlertsCleared() {
+	if nodes := mu.mutation.RemovedAlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -445,6 +457,26 @@ func (muo *MachineUpdateOne) ClearScenarios() *MachineUpdateOne {
 	return muo
 }
 
+// SetVersion sets the version field.
+func (muo *MachineUpdateOne) SetVersion(s string) *MachineUpdateOne {
+	muo.mutation.SetVersion(s)
+	return muo
+}
+
+// SetNillableVersion sets the version field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableVersion(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetVersion(*s)
+	}
+	return muo
+}
+
+// ClearVersion clears the value of version.
+func (muo *MachineUpdateOne) ClearVersion() *MachineUpdateOne {
+	muo.mutation.ClearVersion()
+	return muo
+}
+
 // SetIsValidated sets the isValidated field.
 func (muo *MachineUpdateOne) SetIsValidated(b bool) *MachineUpdateOne {
 	muo.mutation.SetIsValidated(b)
@@ -499,12 +531,6 @@ func (muo *MachineUpdateOne) Mutation() *MachineMutation {
 	return muo.mutation
 }
 
-// ClearAlerts clears all "alerts" edges to type Alert.
-func (muo *MachineUpdateOne) ClearAlerts() *MachineUpdateOne {
-	muo.mutation.ClearAlerts()
-	return muo
-}
-
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (muo *MachineUpdateOne) RemoveAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.RemoveAlertIDs(ids...)
@@ -522,6 +548,7 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
+
 	var (
 		err  error
 		node *Machine
@@ -551,11 +578,11 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (muo *MachineUpdateOne) SaveX(ctx context.Context) *Machine {
-	node, err := muo.Save(ctx)
+	m, err := muo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return m
 }
 
 // Exec executes the query on the entity.
@@ -571,7 +598,7 @@ func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
+func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (m *Machine, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   machine.Table,
@@ -635,6 +662,19 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Column: machine.FieldScenarios,
 		})
 	}
+	if value, ok := muo.mutation.Version(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldVersion,
+		})
+	}
+	if muo.mutation.VersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: machine.FieldVersion,
+		})
+	}
 	if value, ok := muo.mutation.IsValidated(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
@@ -655,23 +695,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Column: machine.FieldStatus,
 		})
 	}
-	if muo.mutation.AlertsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   machine.AlertsTable,
-			Columns: []string{machine.AlertsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: alert.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := muo.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !muo.mutation.AlertsCleared() {
+	if nodes := muo.mutation.RemovedAlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -709,9 +733,9 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Machine{config: muo.config}
-	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	m = &Machine{config: muo.config}
+	_spec.Assign = m.assignValues
+	_spec.ScanValues = m.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
@@ -720,5 +744,5 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		}
 		return nil, err
 	}
-	return _node, nil
+	return m, nil
 }

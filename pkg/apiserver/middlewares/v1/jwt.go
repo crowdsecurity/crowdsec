@@ -108,6 +108,8 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		}
 	}
 
+	//useragent := c.Request.UserAgent()
+
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,
 	}, nil

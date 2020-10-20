@@ -497,15 +497,9 @@ func (au *AlertUpdate) Mutation() *AlertMutation {
 	return au.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Machine.
+// ClearOwner clears the owner edge to Machine.
 func (au *AlertUpdate) ClearOwner() *AlertUpdate {
 	au.mutation.ClearOwner()
-	return au
-}
-
-// ClearDecisions clears all "decisions" edges to type Decision.
-func (au *AlertUpdate) ClearDecisions() *AlertUpdate {
-	au.mutation.ClearDecisions()
 	return au
 }
 
@@ -524,12 +518,6 @@ func (au *AlertUpdate) RemoveDecisions(d ...*Decision) *AlertUpdate {
 	return au.RemoveDecisionIDs(ids...)
 }
 
-// ClearEvents clears all "events" edges to type Event.
-func (au *AlertUpdate) ClearEvents() *AlertUpdate {
-	au.mutation.ClearEvents()
-	return au
-}
-
 // RemoveEventIDs removes the events edge to Event by ids.
 func (au *AlertUpdate) RemoveEventIDs(ids ...int) *AlertUpdate {
 	au.mutation.RemoveEventIDs(ids...)
@@ -543,12 +531,6 @@ func (au *AlertUpdate) RemoveEvents(e ...*Event) *AlertUpdate {
 		ids[i] = e[i].ID
 	}
 	return au.RemoveEventIDs(ids...)
-}
-
-// ClearMetas clears all "metas" edges to type Meta.
-func (au *AlertUpdate) ClearMetas() *AlertUpdate {
-	au.mutation.ClearMetas()
-	return au
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -568,6 +550,7 @@ func (au *AlertUpdate) RemoveMetas(m ...*Meta) *AlertUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (au *AlertUpdate) Save(ctx context.Context) (int, error) {
+
 	var (
 		err      error
 		affected int
@@ -934,23 +917,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.DecisionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.DecisionsTable,
-			Columns: []string{alert.DecisionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decision.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := au.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !au.mutation.DecisionsCleared() {
+	if nodes := au.mutation.RemovedDecisionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -988,23 +955,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.EventsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.EventsTable,
-			Columns: []string{alert.EventsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: event.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := au.mutation.RemovedEventsIDs(); len(nodes) > 0 && !au.mutation.EventsCleared() {
+	if nodes := au.mutation.RemovedEventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -1042,23 +993,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if au.mutation.MetasCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.MetasTable,
-			Columns: []string{alert.MetasColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: meta.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := au.mutation.RemovedMetasIDs(); len(nodes) > 0 && !au.mutation.MetasCleared() {
+	if nodes := au.mutation.RemovedMetasIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -1579,15 +1514,9 @@ func (auo *AlertUpdateOne) Mutation() *AlertMutation {
 	return auo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Machine.
+// ClearOwner clears the owner edge to Machine.
 func (auo *AlertUpdateOne) ClearOwner() *AlertUpdateOne {
 	auo.mutation.ClearOwner()
-	return auo
-}
-
-// ClearDecisions clears all "decisions" edges to type Decision.
-func (auo *AlertUpdateOne) ClearDecisions() *AlertUpdateOne {
-	auo.mutation.ClearDecisions()
 	return auo
 }
 
@@ -1606,12 +1535,6 @@ func (auo *AlertUpdateOne) RemoveDecisions(d ...*Decision) *AlertUpdateOne {
 	return auo.RemoveDecisionIDs(ids...)
 }
 
-// ClearEvents clears all "events" edges to type Event.
-func (auo *AlertUpdateOne) ClearEvents() *AlertUpdateOne {
-	auo.mutation.ClearEvents()
-	return auo
-}
-
 // RemoveEventIDs removes the events edge to Event by ids.
 func (auo *AlertUpdateOne) RemoveEventIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.RemoveEventIDs(ids...)
@@ -1625,12 +1548,6 @@ func (auo *AlertUpdateOne) RemoveEvents(e ...*Event) *AlertUpdateOne {
 		ids[i] = e[i].ID
 	}
 	return auo.RemoveEventIDs(ids...)
-}
-
-// ClearMetas clears all "metas" edges to type Meta.
-func (auo *AlertUpdateOne) ClearMetas() *AlertUpdateOne {
-	auo.mutation.ClearMetas()
-	return auo
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -1650,6 +1567,7 @@ func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
+
 	var (
 		err  error
 		node *Alert
@@ -1679,11 +1597,11 @@ func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (auo *AlertUpdateOne) SaveX(ctx context.Context) *Alert {
-	node, err := auo.Save(ctx)
+	a, err := auo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return a
 }
 
 // Exec executes the query on the entity.
@@ -1699,7 +1617,7 @@ func (auo *AlertUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error) {
+func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   alert.Table,
@@ -2014,23 +1932,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.DecisionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.DecisionsTable,
-			Columns: []string{alert.DecisionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: decision.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := auo.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !auo.mutation.DecisionsCleared() {
+	if nodes := auo.mutation.RemovedDecisionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -2068,23 +1970,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.EventsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.EventsTable,
-			Columns: []string{alert.EventsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: event.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := auo.mutation.RemovedEventsIDs(); len(nodes) > 0 && !auo.mutation.EventsCleared() {
+	if nodes := auo.mutation.RemovedEventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -2122,23 +2008,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if auo.mutation.MetasCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   alert.MetasTable,
-			Columns: []string{alert.MetasColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: &sqlgraph.FieldSpec{
-					Type:   field.TypeInt,
-					Column: meta.FieldID,
-				},
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := auo.mutation.RemovedMetasIDs(); len(nodes) > 0 && !auo.mutation.MetasCleared() {
+	if nodes := auo.mutation.RemovedMetasIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -2176,9 +2046,9 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Alert{config: auo.config}
-	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	a = &Alert{config: auo.config}
+	_spec.Assign = a.assignValues
+	_spec.ScanValues = a.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, auo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
@@ -2187,5 +2057,5 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		}
 		return nil, err
 	}
-	return _node, nil
+	return a, nil
 }

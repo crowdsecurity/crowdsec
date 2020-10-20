@@ -63,12 +63,8 @@ func (mq *MachineQuery) QueryAlerts() *AlertQuery {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := mq.sqlQuery()
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(machine.Table, machine.FieldID, selector),
+			sqlgraph.From(machine.Table, machine.FieldID, mq.sqlQuery()),
 			sqlgraph.To(alert.Table, alert.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, machine.AlertsTable, machine.AlertsColumn),
 		)
@@ -80,23 +76,23 @@ func (mq *MachineQuery) QueryAlerts() *AlertQuery {
 
 // First returns the first Machine entity in the query. Returns *NotFoundError when no machine was found.
 func (mq *MachineQuery) First(ctx context.Context) (*Machine, error) {
-	nodes, err := mq.Limit(1).All(ctx)
+	ms, err := mq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(nodes) == 0 {
+	if len(ms) == 0 {
 		return nil, &NotFoundError{machine.Label}
 	}
-	return nodes[0], nil
+	return ms[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (mq *MachineQuery) FirstX(ctx context.Context) *Machine {
-	node, err := mq.First(ctx)
+	m, err := mq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return node
+	return m
 }
 
 // FirstID returns the first Machine id in the query. Returns *NotFoundError when no id was found.
@@ -123,13 +119,13 @@ func (mq *MachineQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Machine entity in the query, returns an error if not exactly one entity was returned.
 func (mq *MachineQuery) Only(ctx context.Context) (*Machine, error) {
-	nodes, err := mq.Limit(2).All(ctx)
+	ms, err := mq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(nodes) {
+	switch len(ms) {
 	case 1:
-		return nodes[0], nil
+		return ms[0], nil
 	case 0:
 		return nil, &NotFoundError{machine.Label}
 	default:
@@ -139,11 +135,11 @@ func (mq *MachineQuery) Only(ctx context.Context) (*Machine, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (mq *MachineQuery) OnlyX(ctx context.Context) *Machine {
-	node, err := mq.Only(ctx)
+	m, err := mq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return m
 }
 
 // OnlyID returns the only Machine id in the query, returns an error if not exactly one id was returned.
@@ -182,11 +178,11 @@ func (mq *MachineQuery) All(ctx context.Context) ([]*Machine, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (mq *MachineQuery) AllX(ctx context.Context) []*Machine {
-	nodes, err := mq.All(ctx)
+	ms, err := mq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return nodes
+	return ms
 }
 
 // IDs executes the query and returns a list of Machine ids.
@@ -432,7 +428,7 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := mq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, machine.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -451,7 +447,7 @@ func (mq *MachineQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range mq.order {
-		p(selector, machine.ValidColumn)
+		p(selector)
 	}
 	if offset := mq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -686,17 +682,8 @@ func (mgb *MachineGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (mgb *MachineGroupBy) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range mgb.fields {
-		if !machine.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
-	}
-	selector := mgb.sqlQuery()
-	if err := selector.Err(); err != nil {
-		return err
-	}
 	rows := &sql.Rows{}
-	query, args := selector.Query()
+	query, args := mgb.sqlQuery().Query()
 	if err := mgb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -709,7 +696,7 @@ func (mgb *MachineGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
 	columns = append(columns, mgb.fields...)
 	for _, fn := range mgb.fns {
-		columns = append(columns, fn(selector, machine.ValidColumn))
+		columns = append(columns, fn(selector))
 	}
 	return selector.Select(columns...).GroupBy(mgb.fields...)
 }
@@ -929,11 +916,6 @@ func (ms *MachineSelect) BoolX(ctx context.Context) bool {
 }
 
 func (ms *MachineSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range ms.fields {
-		if !machine.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := ms.sqlQuery().Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {

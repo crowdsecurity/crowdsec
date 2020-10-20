@@ -234,28 +234,28 @@ func (f AlertMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation)
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.AlertMutation", m)
 }
 
-// The BlockerQueryRuleFunc type is an adapter to allow the use of ordinary
+// The BouncerQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
-type BlockerQueryRuleFunc func(context.Context, *ent.BlockerQuery) error
+type BouncerQueryRuleFunc func(context.Context, *ent.BouncerQuery) error
 
 // EvalQuery return f(ctx, q).
-func (f BlockerQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
-	if q, ok := q.(*ent.BlockerQuery); ok {
+func (f BouncerQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.BouncerQuery); ok {
 		return f(ctx, q)
 	}
-	return Denyf("ent/privacy: unexpected query type %T, expect *ent.BlockerQuery", q)
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.BouncerQuery", q)
 }
 
-// The BlockerMutationRuleFunc type is an adapter to allow the use of ordinary
+// The BouncerMutationRuleFunc type is an adapter to allow the use of ordinary
 // functions as a mutation rule.
-type BlockerMutationRuleFunc func(context.Context, *ent.BlockerMutation) error
+type BouncerMutationRuleFunc func(context.Context, *ent.BouncerMutation) error
 
 // EvalMutation calls f(ctx, m).
-func (f BlockerMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
-	if m, ok := m.(*ent.BlockerMutation); ok {
+func (f BouncerMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.BouncerMutation); ok {
 		return f(ctx, m)
 	}
-	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.BlockerMutation", m)
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.BouncerMutation", m)
 }
 
 // The DecisionQueryRuleFunc type is an adapter to allow the use of ordinary

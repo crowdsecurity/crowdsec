@@ -9,6 +9,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -211,17 +212,35 @@ func (a *apic) SendMetrics() error {
 	for {
 		select {
 		case <-ticker.C:
-			/*machines, err := a.dbClient.ListMachines()
+			metric := &models.Metrics{}
+			machines, err := a.dbClient.ListMachines()
 			if err != nil {
 				return err
 			}
-			bouncers, err := a.dbClient.ListBlockers()
+			bouncers, err := a.dbClient.ListBouncers()
 			if err != nil {
 				return err
 			}
 			// models.metric structure : len(machines), len(bouncers), a.credentials.Login
 			// _, _, err := a.apiClient.Metrics.Add(//*models.Metrics)
-			*/
+
+			*metric.ApilVersion = cwversion.VersionStr()
+			for _, machine := range machines {
+				m := &models.MetricsSoftInfo{
+					Version: machine.Version,
+					Name:    machine.MachineId,
+				}
+				metric.Machines = append(*&metric.Machines, m)
+			}
+
+			for _, bouncer := range bouncers {
+				m := &models.MetricsSoftInfo{
+					Version: bouncer.Version,
+					Name:    bouncer.Type,
+				}
+				metric.Machines = append(*&metric.Bouncers, m)
+			}
+
 			return nil
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)

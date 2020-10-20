@@ -87,24 +87,20 @@ func (mc *MetaCreate) Mutation() *MetaMutation {
 
 // Save creates the Meta in the database.
 func (mc *MetaCreate) Save(ctx context.Context) (*Meta, error) {
+	if err := mc.preSave(); err != nil {
+		return nil, err
+	}
 	var (
 		err  error
 		node *Meta
 	)
-	mc.defaults()
 	if len(mc.hooks) == 0 {
-		if err = mc.check(); err != nil {
-			return nil, err
-		}
 		node, err = mc.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*MetaMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = mc.check(); err != nil {
-				return nil, err
 			}
 			mc.mutation = mutation
 			node, err = mc.sqlSave(ctx)
@@ -130,8 +126,7 @@ func (mc *MetaCreate) SaveX(ctx context.Context) *Meta {
 	return v
 }
 
-// defaults sets the default values of the builder before save.
-func (mc *MetaCreate) defaults() {
+func (mc *MetaCreate) preSave() error {
 	if _, ok := mc.mutation.CreatedAt(); !ok {
 		v := meta.DefaultCreatedAt()
 		mc.mutation.SetCreatedAt(v)
@@ -139,16 +134,6 @@ func (mc *MetaCreate) defaults() {
 	if _, ok := mc.mutation.UpdatedAt(); !ok {
 		v := meta.DefaultUpdatedAt()
 		mc.mutation.SetUpdatedAt(v)
-	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (mc *MetaCreate) check() error {
-	if _, ok := mc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := mc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
 	}
 	if _, ok := mc.mutation.Key(); !ok {
 		return &ValidationError{Name: "key", err: errors.New("ent: missing required field \"key\"")}
@@ -160,7 +145,7 @@ func (mc *MetaCreate) check() error {
 }
 
 func (mc *MetaCreate) sqlSave(ctx context.Context) (*Meta, error) {
-	_node, _spec := mc.createSpec()
+	m, _spec := mc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -168,13 +153,13 @@ func (mc *MetaCreate) sqlSave(ctx context.Context) (*Meta, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
-	return _node, nil
+	m.ID = int(id)
+	return m, nil
 }
 
 func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Meta{config: mc.config}
+		m     = &Meta{config: mc.config}
 		_spec = &sqlgraph.CreateSpec{
 			Table: meta.Table,
 			ID: &sqlgraph.FieldSpec{
@@ -189,7 +174,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		m.CreatedAt = value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -197,7 +182,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		m.UpdatedAt = value
 	}
 	if value, ok := mc.mutation.Key(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -205,7 +190,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldKey,
 		})
-		_node.Key = value
+		m.Key = value
 	}
 	if value, ok := mc.mutation.Value(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -213,7 +198,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldValue,
 		})
-		_node.Value = value
+		m.Value = value
 	}
 	if nodes := mc.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -234,7 +219,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return m, _spec
 }
 
 // MetaCreateBulk is the builder for creating a bulk of Meta entities.
@@ -251,14 +236,13 @@ func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
 	for i := range mcb.builders {
 		func(i int, root context.Context) {
 			builder := mcb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
+				if err := builder.preSave(); err != nil {
+					return nil, err
+				}
 				mutation, ok := m.(*MetaMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
-				}
-				if err := builder.check(); err != nil {
-					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()

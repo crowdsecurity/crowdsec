@@ -1,10 +1,15 @@
 package apiclient
 
+import (
+	"context"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+)
+
 type MetricsService service
 
-/*func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (*models.AddMetricsResponse, *Response, error) {
-
-	var metricsResponse models.AddMetricsResponse
+func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (interface{}, *Response, error) {
+	var response interface{}
 
 	u := "v1/metrics/"
 	req, err := s.client.NewRequest("POST", u, &metrics)
@@ -12,10 +17,9 @@ type MetricsService service
 		return nil, nil, err
 	}
 
-	resp, err := s.client.Do(ctx, req, &metricsResponse)
+	resp, err := s.client.Do(ctx, req, &response)
 	if err != nil {
 		return nil, resp, err
 	}
-	return &metricsResponse, resp, nil
+	return &response, resp, nil
 }
-*/

@@ -93,7 +93,7 @@ func (eu *EventUpdate) Mutation() *EventMutation {
 	return eu.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the owner edge to Alert.
 func (eu *EventUpdate) ClearOwner() *EventUpdate {
 	eu.mutation.ClearOwner()
 	return eu
@@ -101,6 +101,7 @@ func (eu *EventUpdate) ClearOwner() *EventUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
+
 	var (
 		err      error
 		affected int
@@ -313,7 +314,7 @@ func (euo *EventUpdateOne) Mutation() *EventMutation {
 	return euo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the owner edge to Alert.
 func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
 	euo.mutation.ClearOwner()
 	return euo
@@ -321,6 +322,7 @@ func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
+
 	var (
 		err  error
 		node *Event
@@ -350,11 +352,11 @@ func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (euo *EventUpdateOne) SaveX(ctx context.Context) *Event {
-	node, err := euo.Save(ctx)
+	e, err := euo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return e
 }
 
 // Exec executes the query on the entity.
@@ -370,7 +372,7 @@ func (euo *EventUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {
+func (euo *EventUpdateOne) sqlSave(ctx context.Context) (e *Event, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   event.Table,
@@ -449,9 +451,9 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	_node = &Event{config: euo.config}
-	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	e = &Event{config: euo.config}
+	_spec.Assign = e.assignValues
+	_spec.ScanValues = e.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, euo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}
@@ -460,5 +462,5 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		}
 		return nil, err
 	}
-	return _node, nil
+	return e, nil
 }
