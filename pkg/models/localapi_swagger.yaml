@@ -642,6 +642,8 @@ definitions:
         type: array
         items:
           $ref: '#/definitions/Event'
+      remediation:
+        type: boolean      
       decisions:
         type: array
         items:

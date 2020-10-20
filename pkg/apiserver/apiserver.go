@@ -95,6 +95,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		DBClient: dbClient,
 		Ectx:     context.Background(),
 		Router:   router,
+		Profiles: config.Profiles,
 	}
 
 	if err := controller.Init(); err != nil {
