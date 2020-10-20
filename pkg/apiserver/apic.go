@@ -92,6 +92,8 @@ func (a *apic) Push() error {
 	for {
 		select {
 		case <-a.pushTomb.Dying():
+			a.pullTomb.Kill(nil)
+			a.metricsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			err := a.Send(cache)
 			return err
@@ -188,7 +190,8 @@ func (a *apic) Pull() error {
 				log.Printf("pull top: deleted %d entries", nbDeleted)
 			}
 		case <-a.pullTomb.Dying():
-			return nil
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
 		}
 
 	}
@@ -213,8 +216,9 @@ func (a *apic) SendMetrics() error {
 			// _, _, err := a.apiClient.Metrics.Add(//*models.Metrics)
 			*/
 			return nil
-		case <-a.metricsTomb.Dying():
-			return nil
+		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
+			a.pullTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
 		}
 	}
 	return nil

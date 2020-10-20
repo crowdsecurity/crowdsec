@@ -162,17 +162,22 @@ func (s *APIServer) Run() error {
 	}
 
 	s.httpServerTomb.Go(func() error {
-		if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
-			if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-				log.Fatalf(err.Error())
+		go func() {
+			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
+				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
+					log.Fatalf(err.Error())
+				}
+			} else {
+				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					log.Fatalf(err.Error())
+				}
 			}
-		} else {
-			if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-				log.Fatalf(err.Error())
-			}
-		}
+		}()
+		<-s.httpServerTomb.Dying()
+		s.Shutdown()
 		return nil
 	})
+
 	return nil
 }
 
