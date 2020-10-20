@@ -76,11 +76,12 @@ func reloadHandler(sig os.Signal) error {
 		if err != nil {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
-		httpServer, err := runAPIServer(apiServer)
+
+		err = runAPIServer(apiServer)
 		if err != nil {
 			return fmt.Errorf("unable to run api server: %s", err)
 		}
-		serveAPIServer(httpServer)
+		serveAPIServer(apiServer)
 	}
 
 	if !*disableCS {
@@ -220,11 +221,11 @@ func Serve() error {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
 		if !cConfig.Crowdsec.LintOnly {
-			httpAPIServer, err := runAPIServer(apiServer)
+			err := runAPIServer(apiServer)
 			if err != nil {
 				return fmt.Errorf("unable to run api server: %s", err)
 			}
-			serveAPIServer(httpAPIServer)
+			serveAPIServer(apiServer)
 		}
 	}
 

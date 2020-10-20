@@ -1,4 +1,4 @@
-package middlewares
+package v1
 
 import (
 	"crypto/rand"

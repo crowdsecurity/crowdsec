@@ -12,7 +12,7 @@ type AuthService service
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
 
-	u := "watchers"
+	u := "v1/watchers"
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return nil, err
@@ -27,7 +27,7 @@ func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) 
 
 func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.WatcherRegistrationRequest) (*Response, error) {
 
-	u := "watchers"
+	u := "v1/watchers"
 	req, err := s.client.NewRequest("POST", u, &registration)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 
 func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (*Response, error) {
 
-	u := "watchers/login"
+	u := "v1/watchers/login"
 	req, err := s.client.NewRequest("POST", u, &auth)
 	if err != nil {
 		return nil, err

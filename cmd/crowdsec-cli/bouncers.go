@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares"
+	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"

@@ -1,12 +1,11 @@
-package controllers
+package v1
 
 import (
 	"crypto/sha512"
 	"fmt"
 	"net/http"
-	"time"
-
 	"strconv"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
