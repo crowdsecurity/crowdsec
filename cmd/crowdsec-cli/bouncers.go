@@ -66,7 +66,7 @@ To list/add/delete bouncers
 					} else {
 						revoked = fmt.Sprintf("%s", emoji.Prohibited)
 					}
-					table.Append([]string{b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)), b.Type, b.Version})
+					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -83,7 +83,7 @@ To list/add/delete bouncers
 					} else {
 						revoked = "pending"
 					}
-					fmt.Printf("%s,%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)), b.Version)
+					fmt.Printf("%s,%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Version)
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)

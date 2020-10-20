@@ -104,7 +104,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if err := controller.Init(); err != nil {
 		return &APIServer{}, err
 	}
-	apiClient := &apic{}
+	var apiClient *apic
 	if config.OnlineClient != nil {
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
 		if err != nil {
@@ -174,7 +174,9 @@ func (s *APIServer) Run() error {
 			}
 		}()
 		<-s.httpServerTomb.Dying()
-		s.Shutdown()
+		if err := s.Shutdown(); err != nil {
+			return err
+		}
 		return nil
 	})
 

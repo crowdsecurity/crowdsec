@@ -155,7 +155,7 @@ func (a *apic) Pull() error {
 					return err
 				}
 
-				log.Printf("pull top: deleted %d entries", nbDeleted)
+				log.Printf("pull top: deleted %s entries", nbDeleted)
 			}
 
 			// process new decisions
@@ -230,7 +230,7 @@ func (a *apic) SendMetrics() error {
 					Version: machine.Version,
 					Name:    machine.MachineId,
 				}
-				metric.Machines = append(*&metric.Machines, m)
+				metric.Machines = append(metric.Machines, m)
 			}
 
 			for _, bouncer := range bouncers {
@@ -238,7 +238,7 @@ func (a *apic) SendMetrics() error {
 					Version: bouncer.Version,
 					Name:    bouncer.Type,
 				}
-				metric.Machines = append(*&metric.Bouncers, m)
+				metric.Machines = append(metric.Bouncers, m)
 			}
 
 			return nil
@@ -247,7 +247,6 @@ func (a *apic) SendMetrics() error {
 			a.pushTomb.Kill(nil)
 		}
 	}
-	return nil
 }
 
 func (a *apic) Shutdown() {
