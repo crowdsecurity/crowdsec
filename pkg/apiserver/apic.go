@@ -100,12 +100,14 @@ func (a *apic) Push() error {
 		case <-ticker.C:
 			// flush
 			a.mu.Lock()
-			err := a.Send(cache)
+			cacheCopy := cache
+			cache = make([]*models.Alert, 0)
+			a.mu.Unlock()
+
+			err := a.Send(cacheCopy)
 			if err != nil {
 				return err
 			}
-			cache = make([]*models.Alert, 0)
-			a.mu.Unlock()
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
 			cache = append(cache, alerts...)
@@ -133,6 +135,29 @@ func (a *apic) Pull() error {
 			if a.startup {
 				a.startup = false
 			}
+
+			// process deleted decisions
+			var filter map[string][]string
+			for _, decision := range data.Deleted {
+				if *decision.Scope == "ip" {
+					filter = make(map[string][]string, 1)
+					filter["value"] = []string{*decision.Value}
+				} else {
+					filter = make(map[string][]string, 3)
+					filter["value"] = []string{*decision.Value}
+					filter["type"] = []string{*decision.Type}
+					filter["value"] = []string{*decision.Scope}
+				}
+
+				nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+				if err != nil {
+					return err
+				}
+
+				log.Printf("pull top: deleted %d entries", nbDeleted)
+			}
+
+			// process new decisions
 			for _, decision := range data.New {
 				alertCreated, err := a.dbClient.Ent.Alert.
 					Create().
@@ -163,6 +188,7 @@ func (a *apic) Pull() error {
 					SetEndIP(endIP).
 					SetValue(*decision.Value).
 					SetScope(*decision.Scope).
+					SetOrigin("crowdsec-api").
 					SetOwner(alertCreated).Save(a.dbClient.CTX)
 				if err != nil {
 					log.Fatalf("failed creating decision from top: %v", err)
@@ -170,25 +196,6 @@ func (a *apic) Pull() error {
 			}
 			log.Printf("pull top: added %d entries", len(data.New))
 
-			var filter map[string][]string
-			for _, decision := range data.Deleted {
-				if *decision.Scope == "ip" {
-					filter = make(map[string][]string, 1)
-					filter["value"] = []string{*decision.Value}
-				} else {
-					filter = make(map[string][]string, 3)
-					filter["value"] = []string{*decision.Value}
-					filter["type"] = []string{*decision.Type}
-					filter["value"] = []string{*decision.Scope}
-				}
-
-				nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
-				if err != nil {
-					return err
-				}
-
-				log.Printf("pull top: deleted %d entries", nbDeleted)
-			}
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)

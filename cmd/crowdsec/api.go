@@ -17,7 +17,7 @@ func initAPIServer() (*apiserver.APIServer, error) {
 	return apiServer, nil
 }
 
-func serveAPIServer(apiServer *apiserver.APIServer) error {
+func serveAPIServer(apiServer *apiserver.APIServer) {
 	apiTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
@@ -27,12 +27,10 @@ func serveAPIServer(apiServer *apiserver.APIServer) error {
 			}
 			defer apiServer.Close()
 		}()
-
+		<-apiTomb.Dying() // lock until go routine is dying
+		if err := apiServer.Shutdown(); err != nil {
+			return err
+		}
 		return nil
 	})
-	<-apiTomb.Dying() // lock until go routine is dying
-	if err := apiServer.Shutdown(); err != nil {
-		return err
-	}
-	return nil
 }
