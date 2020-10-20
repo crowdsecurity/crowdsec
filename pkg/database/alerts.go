@@ -83,7 +83,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		log.Printf("HOW MANY DECISIONS = %d", len(alertItem.Decisions))
 		log.Printf("->%s", spew.Sdump(alertItem.Decisions))
 		if len(alertItem.Decisions) > 0 {
-
 			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
 				duration, err := time.ParseDuration(*decisionItem.Duration)

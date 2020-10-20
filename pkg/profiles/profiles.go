@@ -9,7 +9,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -53,6 +52,7 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		}
 		decision.Scenario = new(string)
 		*decision.Scenario = *Alert.Scenario
+		log.Printf("%s %s decision : %s %s", *decision.Scope, *decision.Value, *decision.Duration, *decision.Type)
 		decisions = append(decisions, &decision)
 	}
 	return decisions, nil
@@ -75,54 +75,43 @@ func EvaluateProfiles(Profiles []*csconfig.ProfileCfg, Alert *models.Alert) ([]*
 		})
 	}
 
-	log.Printf("EvaluateProfiles GO")
-	if Alert.Remediation == false {
+	if !Alert.Remediation {
 		return nil, nil
 	}
 PROFILE_LOOP:
-	for pIdx, profile := range Profiles {
-		log.Printf("profile %d/%d : %s", pIdx, len(Profiles), profile.Name)
+	for _, profile := range Profiles {
 		for eIdx, expression := range profile.RuntimeFilters {
 			output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 			if err != nil {
 				log.Warningf("failed to run whitelist expr : %v", err)
-				log.Debugf("Event leaving node : ko")
 				return nil, errors.Wrapf(err, "while running expression %s", profile.Filters[eIdx])
 			}
 			switch out := output.(type) {
 			case bool:
 				if out {
 					/*the expression matched, create the associated decision*/
-					log.Printf("!!!Filter is successful %s", profile.Filters[eIdx])
 					subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
 					if err != nil {
 						return nil, errors.Wrapf(err, "while generating decision from profile %s", profile.Name)
 					}
 					decisions = append(decisions, subdecisions...)
 				} else {
-
 					if profile.Debug != nil && *profile.Debug {
-						log.Printf("HERE GOES THE DEBUG")
-						clog.Debug("lololooll")
-						clog.Trace("laaaalalalal")
-
 						profile.DebugFilters[eIdx].Run(clog, false, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 					}
-
-					log.Printf("Filter is UNsuccessful %s", profile.Filters[eIdx])
-					log.Printf("Alert : %+v", Alert)
-					log.Printf("Alert.Source = %s", spew.Sdump(Alert.Source))
-					log.Printf("Alert.Remediation : %t", Alert.Remediation)
+					log.Debugf("Profile %s filter is unsuccessful", profile.Name)
+					if profile.OnFailure == "break" {
+						break PROFILE_LOOP
+					}
 				}
 			default:
-				log.Errorf("unexpected type %t (%v) while running '%s'", output, output, profile.Filters[eIdx])
+				return nil, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, profile.Filters[eIdx])
+
 			}
-			log.Printf("profile success rule is %s", profile.OnSuccess)
 			if profile.OnSuccess == "break" {
 				break PROFILE_LOOP
 			}
 		}
 	}
-	log.Printf("END OF PROFILE LOOP")
 	return decisions, nil
 }

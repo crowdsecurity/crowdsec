@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 
@@ -88,17 +90,16 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 
 		for fIdx, filter := range profile.Filters {
 			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
-				return fmt.Errorf("Error compiling the scope filter: %s", err)
+				return errors.Wrapf(err, "Error compiling filter of %s", profile.Name)
 			}
 			c.Profiles[pIdx].RuntimeFilters[fIdx] = runtimeFilter
-			//
 			if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
-				return fmt.Errorf("Error compiling the debug scope filter: %s", err)
+				log.Warningf("Error compiling debug filter of %s : %s", profile.Name, err)
+				// Don't fail if we can't compile the filter - for now
+				//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
 			}
 			c.Profiles[pIdx].DebugFilters[fIdx] = debugFilter
-
 		}
-
 	}
 	return nil
 }
