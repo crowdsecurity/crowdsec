@@ -8,6 +8,7 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -104,6 +105,15 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	if err := input.Validate(strfmt.Default); err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
+	}
+
+	for _, alert := range input {
+		decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
+		if err != nil {
+			gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+		alert.Decisions = decisions
 	}
 
 	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)

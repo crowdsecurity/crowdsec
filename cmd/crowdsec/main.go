@@ -221,7 +221,7 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 
 	if configFile != nil {
 		if err := config.LoadConfigurationFile(*configFile); err != nil {
-			return fmt.Errorf("Error while loading configuration : %s", err)
+			return fmt.Errorf("while loading configuration : %s", err)
 		}
 	} else {
 		log.Warningf("no configuration file provided")

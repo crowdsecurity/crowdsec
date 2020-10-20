@@ -4,6 +4,7 @@ import (
 	"context"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/gin-gonic/gin"
 )
@@ -12,6 +13,7 @@ type Controller struct {
 	Ectx     context.Context
 	DBClient *database.Client
 	Router   *gin.Engine
+	Profiles []*csconfig.ProfileCfg
 }
 
 func (c *Controller) Init() error {
@@ -31,7 +33,7 @@ func (c *Controller) Init() error {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx)
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles)
 	if err != nil {
 		return err
 	}

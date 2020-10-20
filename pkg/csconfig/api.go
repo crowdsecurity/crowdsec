@@ -31,6 +31,8 @@ type LocalApiServerCfg struct {
 	DbConfig     *DatabaseCfg        `yaml:"-"`
 	LogDir       string              `yaml:"-"`
 	OnlineClient *OnlineApiClientCfg `yaml:"online_client"`
+	ProfilesPath string              `yaml:"profiles_path,omitempty"`
+	Profiles     []*ProfileCfg       `yaml:"-"`
 }
 
 type TLSCfg struct {
