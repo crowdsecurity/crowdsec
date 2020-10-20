@@ -5,8 +5,8 @@ info:
   description: CrowdSec local API
   contact:
     email: contact@crowdsec.net
-host: api.crowdsec.net
-basePath: /v2
+host: localhost
+basePath: /v1
 securityDefinitions: {}
 schemes:
   - https
@@ -703,6 +703,36 @@ definitions:
     required:
       - scope
       - value
+  Metrics:
+    title: Metrics
+    type: object
+    properties:
+      apil_version:
+        description: the local version of crowdsec/apil
+        type: string
+      bouncers:
+        type: array
+        items:
+            $ref: '#/definitions/MetricsSoftInfo'
+      machines:
+        type: array
+        items:
+            $ref: '#/definitions/MetricsSoftInfo'
+    required:
+      - apil_version
+      - bouncers
+      - machines
+  MetricsSoftInfo:
+    title: MetricsSoftInfo
+    description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
+    type: object
+    properties:
+      name:
+        type: string
+        description: name of the component
+      version:
+        type: string
+        description: software version
   Decision:
     title: Decision
     type: object
