@@ -29,6 +29,7 @@ type ApiClient struct {
 	Decisions *DecisionsService
 	Alerts    *AlertsService
 	Auth      *AuthService
+	Metrics   *MetricsService
 	// Consensus *ApiConsensus
 }
 
