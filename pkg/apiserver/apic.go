@@ -91,7 +91,7 @@ func (a *apic) Push() error {
 
 	for {
 		select {
-		case <-a.pushTomb.Dying():
+		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
@@ -189,7 +189,7 @@ func (a *apic) Pull() error {
 
 				log.Printf("pull top: deleted %d entries", nbDeleted)
 			}
-		case <-a.pullTomb.Dying():
+		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
 		}
