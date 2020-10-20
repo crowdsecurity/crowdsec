@@ -114,9 +114,14 @@ To list/add/delete bouncers
 				log.Errorf("unable to create blocker: %s", err)
 				return
 			}
-			fmt.Printf("Api key for '%s':\n\n", keyName)
-			fmt.Printf("   %s\n\n", apiKey)
-			fmt.Print("Please keep this key since will not be able to retrive it!\n")
+
+			if csConfig.Cscli.Output == "human" {
+				fmt.Printf("Api key for '%s':\n\n", keyName)
+				fmt.Printf("   %s\n\n", apiKey)
+				fmt.Print("Please keep this key since will not be able to retrive it!\n")
+			} else if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+				fmt.Printf("%s", apiKey)
+			}
 		},
 	}
 	cmdBouncersAdd.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
