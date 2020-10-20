@@ -17,7 +17,9 @@ import (
 )
 
 func parser_visit(path string, f os.FileInfo, err error) error {
-
+	if err != nil {
+		return err
+	}
 	var target Item
 	var local bool
 	var hubpath string
