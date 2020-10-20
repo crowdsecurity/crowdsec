@@ -121,7 +121,7 @@ To list/add/delete machines
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status"})
+				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version"})
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -129,7 +129,7 @@ To list/add/delete machines
 					} else {
 						validated = fmt.Sprintf("%s", emoji.Prohibited)
 					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated})
+					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -146,7 +146,7 @@ To list/add/delete machines
 					} else {
 						validated = "false"
 					}
-					fmt.Printf("%s,%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated)
+					fmt.Printf("%s,%s,%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version)
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)

@@ -58,7 +58,7 @@ To list/add/delete bouncers
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull"})
+				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version"})
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
@@ -66,7 +66,7 @@ To list/add/delete bouncers
 					} else {
 						revoked = fmt.Sprintf("%s", emoji.Prohibited)
 					}
-					table.Append([]string{b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339))})
+					table.Append([]string{b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)), b.Type, b.Version})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -83,7 +83,7 @@ To list/add/delete bouncers
 					} else {
 						revoked = "pending"
 					}
-					fmt.Printf("%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)))
+					fmt.Printf("%s,%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, fmt.Sprintf("%s", b.LastPull.Format(time.RFC3339)), b.Version)
 				}
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)

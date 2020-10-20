@@ -94,7 +94,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		useragent := strings.Split(c.Request.UserAgent(), "/")
 
 		if len(useragent) != 2 {
-			log.Errorf("bad user agent from : %s", c.ClientIP())
+			log.Errorf("bad user agent from ('%s') : %s", useragent, c.ClientIP())
 			c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
 			c.Abort()
 			return
