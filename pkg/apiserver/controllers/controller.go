@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"log"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -34,8 +33,6 @@ func (c *Controller) Init() error {
 }
 
 func (c *Controller) NewV1() error {
-
-	log.Printf("%d profiles -> %+v", len(c.Profiles), c.Profiles)
 	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles)
 	if err != nil {
 		return err

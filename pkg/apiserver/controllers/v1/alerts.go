@@ -108,7 +108,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
-		log.Printf("alert is %+v vs %d profiles", alert, len(c.Profiles))
 		decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
 		if err != nil {
 			gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

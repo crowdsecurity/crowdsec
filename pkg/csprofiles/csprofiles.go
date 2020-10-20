@@ -17,7 +17,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 	var decisions []*models.Decision
 
 	for _, refDecision := range Profile.Decisions {
-		log.Infof("Applying decision from %s", Profile.Name)
 		decision := models.Decision{}
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
@@ -90,7 +89,6 @@ PROFILE_LOOP:
 			switch out := output.(type) {
 			case bool:
 				if out {
-					log.Printf("THE FILTER MATCHED FOR %s", profile.Name)
 					/*the expression matched, create the associated decision*/
 					subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
 					if err != nil {
@@ -98,7 +96,6 @@ PROFILE_LOOP:
 					}
 					decisions = append(decisions, subdecisions...)
 				} else {
-					log.Printf("THE FILTER DIDN'T MATCH FOR %s", profile.Name)
 					if profile.Debug != nil && *profile.Debug {
 						profile.DebugFilters[eIdx].Run(clog, false, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 					}

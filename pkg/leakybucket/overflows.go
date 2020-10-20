@@ -90,7 +90,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			src.Scope = new(string)
 			*src.Scope = leaky.scopeType.Scope
 			srcs[*src.Value] = src
-			log.Printf("source[%s] - %s = %s", leaky.Name, leaky.scopeType.Scope, *src.Value)
+			log.Debugf("source[%s] - %s = %s", leaky.Name, leaky.scopeType.Scope, *src.Value)
 		} else {
 			return srcs, fmt.Errorf("empty scope information")
 		}
@@ -142,7 +142,7 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	var sources map[string]models.Source = make(map[string]models.Source)
 	var source_type string
 
-	log.Printf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
+	log.Debugf("Formatting (%s) - scope Info : scope_type:%s / scope_filter:%s", leaky.Name, leaky.scopeType.Scope, leaky.scopeType.Filter)
 
 	for _, evt := range queue.Queue {
 		srcs, err := SourceFromEvent(evt, leaky)

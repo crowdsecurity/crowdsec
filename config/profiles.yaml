@@ -1,6 +1,6 @@
 
 name: enforce_mfa
-debug: true
+#debug: true
 filters:
  - 'Alert.Remediation == true && Alert.GetScenario() == "crowdsecurity/ssh-enforce-mfa" && Alert.GetScope() == "username"'
 decisions: #remediation vs decision
@@ -10,7 +10,7 @@ decisions: #remediation vs decision
 on_success: continue
 ---
 name: default_ip_remediation
-debug: true
+#debug: true
 filters:
 #  try types.Ip here :)
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
@@ -22,7 +22,7 @@ on_success: break
 ---
 #this one won't be reached ^^
 name: default_ip_remediation_2
-debug: true
+#debug: true
 filters:
 #  try types.Ip here :)
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
