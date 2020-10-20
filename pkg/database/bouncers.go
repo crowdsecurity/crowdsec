@@ -68,7 +68,7 @@ func (c *Client) UpdateBouncerIP(ipAddr string, ID int) error {
 	return nil
 }
 
-func (c *Client) UpdateBouncerVersionAndType(version string, bType string, ID int) error {
+func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, ID int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(ID).SetVersion(version).SetType(bType).Save(c.CTX)
 	if err != nil {
 		return fmt.Errorf("unable to update bouncer in database: %s", err)
