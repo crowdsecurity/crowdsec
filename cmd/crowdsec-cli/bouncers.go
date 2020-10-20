@@ -119,8 +119,14 @@ To list/add/delete bouncers
 				fmt.Printf("Api key for '%s':\n\n", keyName)
 				fmt.Printf("   %s\n\n", apiKey)
 				fmt.Print("Please keep this key since will not be able to retrive it!\n")
-			} else if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+			} else if csConfig.Cscli.Output == "raw" {
 				fmt.Printf("%s", apiKey)
+			} else if csConfig.Cscli.Output == "json" {
+				j, err := json.Marshal(apiKey)
+				if err != nil {
+					log.Fatalf("unable to marshal api key")
+				}
+				fmt.Printf("%s", string(j))
 			}
 		},
 	}

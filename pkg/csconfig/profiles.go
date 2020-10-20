@@ -64,7 +64,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 			}
 			c.Profiles[pIdx].RuntimeFilters[fIdx] = runtimeFilter
 			if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
-				log.Warningf("Error compiling debug filter of %s : %s", profile.Name, err)
+				log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
 				// Don't fail if we can't compile the filter - for now
 				//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
 			}
