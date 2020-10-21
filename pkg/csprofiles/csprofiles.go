@@ -18,11 +18,17 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 
 	for _, refDecision := range Profile.Decisions {
 		decision := models.Decision{}
+		/*If the profile specifies a scope, this will prevail.
+		If not, we're going to get the scope from the source itself*/
+		decision.Scope = new(string)
+		if refDecision.Scope != nil && *refDecision.Scope != "" {
+			*decision.Scope = *refDecision.Scope
+		} else {
+			*decision.Scope = *Alert.Source.Scope
+		}
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
 		*decision.Duration = *refDecision.Duration
-		decision.Scope = new(string)
-		*decision.Scope = *refDecision.Scope
 		decision.Type = new(string)
 		*decision.Type = *refDecision.Type
 
@@ -37,13 +43,27 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 			}
 			decision.StartIP = int64(types.IP2Int(srcAddr))
 			decision.EndIP = decision.StartIP
-		} else if *Alert.Source.Scope == types.Range {
-			srcAddr, srcRange, err := net.ParseCIDR(*Alert.Source.Value)
-			if err != nil {
-				return nil, fmt.Errorf("can't parse range %s", *Alert.Source.Value)
+		} else if *decision.Scope == types.Range {
+			/*here we're asked to ban a full range. let's keep in mind that it's not always possible :
+			- the alert is about an IP, but the geolite enrichment failed
+			- the alert is about an IP, but the geolite enrichment isn't present
+			- the alert is about a range, in this case it should succeed
+			*/
+			if Alert.Source.Range != "" {
+				srcAddr, srcRange, err := net.ParseCIDR(Alert.Source.Range)
+				if err != nil {
+					log.Warningf("Profile [%s] requires IP decision, but can't parse '%s' from '%s'",
+						Profile.Name, *Alert.Source.Value, *Alert.Scenario)
+					continue
+				}
+				decision.StartIP = int64(types.IP2Int(srcAddr))
+				decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
+				decision.Value = new(string)
+				*decision.Value = Alert.Source.Range
+			} else {
+				log.Warningf("Profile [%s] requires scope decision, but information is missing from %s", Profile.Name, *Alert.Scenario)
+				continue
 			}
-			decision.StartIP = int64(types.IP2Int(srcAddr))
-			decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
 		}
 		decision.Origin = new(string)
 		*decision.Origin = "crowdsec"
