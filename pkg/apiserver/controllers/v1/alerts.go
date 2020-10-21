@@ -108,12 +108,16 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
-		decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
-		if err != nil {
-			gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-			return
+		if len(alert.Decisions) > 0 {
+			log.Debugf("alert %s already has decisions, don't apply profiles", alert.Message)
+		} else {
+			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
+			if err != nil {
+				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+				return
+			}
+			alert.Decisions = decisions
 		}
-		alert.Decisions = decisions
 	}
 
 	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)
