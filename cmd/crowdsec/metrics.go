@@ -11,6 +11,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
@@ -83,14 +85,15 @@ func registerPrometheus(mode string) {
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
 			leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow,
-			leaky.BucketsCurrentCount)
+			leaky.BucketsCurrentCount,
+			v1.ApilRouteHits)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
+			v1.ApilRouteHits,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
-
 	}
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(":6060", nil)

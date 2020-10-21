@@ -10,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -37,6 +38,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	var err error
 	var results []*models.Decision
 	var data []*ent.Decision
+	ApilRouteHits.With(prometheus.Labels{"route": "/decisions", "method": "GET"}).Inc()
 
 	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
 	if err != nil {
@@ -56,6 +58,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	var err error
+	ApilRouteHits.With(prometheus.Labels{"route": "/decisions", "method": "DELETE"}).Inc()
 
 	decisionIDStr := gctx.Param("decision_id")
 	decisionID, err := strconv.Atoi(decisionIDStr)
@@ -79,6 +82,7 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	var err error
+	ApilRouteHits.With(prometheus.Labels{"route": "/decisions", "method": "DELETE"}).Inc()
 
 	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
@@ -98,6 +102,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
+	ApilRouteHits.With(prometheus.Labels{"route": "/decisions", "method": "GET"}).Inc()
 
 	val := gctx.Request.Header.Get(c.APIKeyHeader)
 	hashedKey := sha512.New()

@@ -14,6 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // FormatAlerts : Format results from the database to be swagger model compliant
@@ -90,9 +92,19 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
+/*prometheus*/
+var ApilRouteHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_apil_route_calls",
+		Help: "Number of calls to each route.",
+	},
+	[]string{"route", "method"},
+)
+
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 	var input models.AddAlertsRequest
+	ApilRouteHits.With(prometheus.Labels{"route": "/alerts", "method": "POST"}).Inc()
 
 	claims := jwt.ExtractClaims(gctx)
 	/*TBD : use defines rather than hardcoded key to find back owner*/
@@ -131,6 +143,8 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 // FindAlerts : return alerts from database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
+	ApilRouteHits.With(prometheus.Labels{"route": "/alerts", "method": "GET"}).Inc()
+
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 
 	if err != nil {
@@ -146,6 +160,8 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	var err error
+	ApilRouteHits.With(prometheus.Labels{"route": "/alerts", "method": "DELETE"}).Inc()
+
 	deleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
