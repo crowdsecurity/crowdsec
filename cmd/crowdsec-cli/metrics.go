@@ -82,6 +82,7 @@ func ShowPrometheus(url string) {
 	acquis_stats := map[string]map[string]int{}
 	parsers_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
+	apil_stats := map[string]map[string]int{}
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
@@ -89,6 +90,9 @@ func ShowPrometheus(url string) {
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
 			metric := m.(prom2json.Metric)
+			route, _ := metric.Labels["route"]
+			method, _ := metric.Labels["method"]
+
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -165,6 +169,11 @@ func ShowPrometheus(url string) {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["unparsed"] += ival
+			case "cs_apil_route_calls":
+				if _, ok := apil_stats[route]; !ok {
+					apil_stats[route] = make(map[string]int)
+				}
+				apil_stats[route][method] += ival
 			default:
 				continue
 			}
@@ -193,12 +202,40 @@ func ShowPrometheus(url string) {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 
+		apilTable := tablewriter.NewWriter(os.Stdout)
+		apilTable.SetHeader([]string{"Route", "Method", "Hits"})
+
+		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
+		sortedKeys := []string{}
+		for akey := range apil_stats {
+			sortedKeys = append(sortedKeys, akey)
+		}
+		sort.Strings(sortedKeys)
+		for _, alabel := range sortedKeys {
+			astats := apil_stats[alabel]
+			subKeys := []string{}
+			for skey := range astats {
+				subKeys = append(subKeys, skey)
+			}
+			sort.Strings(subKeys)
+			for _, sl := range subKeys {
+				row := []string{}
+				row = append(row, alabel)
+				row = append(row, sl)
+				row = append(row, fmt.Sprintf("%d", astats[sl]))
+				apilTable.Append(row)
+			}
+		}
+
 		log.Printf("Buckets Metrics:")
 		bucketsTable.Render()
 		log.Printf("Acquisition Metrics:")
 		acquisTable.Render()
 		log.Printf("Parser Metrics:")
 		parsersTable.Render()
+		log.Printf("APIL Metrics:")
+		apilTable.Render()
+
 	} else if csConfig.Cscli.Output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
