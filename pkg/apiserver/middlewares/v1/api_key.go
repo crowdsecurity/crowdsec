@@ -94,10 +94,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		useragent := strings.Split(c.Request.UserAgent(), "/")
 
 		if len(useragent) != 2 {
-			log.Errorf("bad user agent from ('%s') : %s", useragent, c.ClientIP())
-			c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
-			c.Abort()
-			return
+			log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), c.ClientIP())
+			useragent = []string{c.Request.UserAgent(), "N/A"}
 		}
 
 		if err := a.DbClient.UpdateBouncerTypeAndVersion(useragent[0], useragent[1], bouncer.ID); err != nil {

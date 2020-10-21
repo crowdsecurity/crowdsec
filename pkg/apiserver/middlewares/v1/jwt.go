@@ -111,7 +111,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 
 	useragent := strings.Split(c.Request.UserAgent(), "/")
 	if len(useragent) != 2 {
-		log.Errorf("bad user agent from : %s", c.ClientIP())
+		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), c.ClientIP())
 		return nil, jwt.ErrFailedAuthentication
 	}
 
