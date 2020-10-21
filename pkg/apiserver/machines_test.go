@@ -19,7 +19,8 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid format
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/watchers", strings.NewReader("test"))
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader("test"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 400, w.Code)
@@ -27,7 +28,8 @@ func TestCreateMachine(t *testing.T) {
 
 	// Create machine with invalid input
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers", strings.NewReader("{\"test\": \"test\"}"))
+	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader("{\"test\": \"test\"}"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
@@ -41,7 +43,8 @@ func TestCreateMachine(t *testing.T) {
 	body := string(b)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -62,11 +65,13 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers", strings.NewReader(body))
+	req, _ = http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 403, w.Code)

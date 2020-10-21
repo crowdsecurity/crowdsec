@@ -23,7 +23,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with machine not validated yet
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/watchers/login", strings.NewReader(body))
+	req, _ := http.NewRequest("POST", "/v1/watchers/login", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
@@ -31,7 +32,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with machine not exist
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader("{\"machine_id\": \"test1\", \"password\": \"test1\"}"))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader("{\"machine_id\": \"test1\", \"password\": \"test1\"}"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
@@ -39,7 +41,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid body
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader("test"))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader("test"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
@@ -47,7 +50,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid format
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader("{\"machine_id\": \"test1\"}"))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader("{\"machine_id\": \"test1\"}"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
@@ -61,7 +65,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with invalid password
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader("{\"machine_id\": \"test\", \"password\": \"test1\"}"))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader("{\"machine_id\": \"test\", \"password\": \"test1\"}"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
@@ -69,7 +74,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with valid machine
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader(body))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -78,7 +84,8 @@ func TestLogin(t *testing.T) {
 
 	// Login with valid machine + scenarios
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/watchers/login", strings.NewReader("{\"machine_id\": \"test\", \"password\": \"test\", \"scenarios\": [\"crowdsecurity/test\", \"crowdsecurity/test2\"]}"))
+	req, _ = http.NewRequest("POST", "/v1/watchers/login", strings.NewReader("{\"machine_id\": \"test\", \"password\": \"test\", \"scenarios\": [\"crowdsecurity/test\", \"crowdsecurity/test2\"]}"))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)

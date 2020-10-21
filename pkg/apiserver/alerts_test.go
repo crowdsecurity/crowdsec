@@ -33,7 +33,8 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/watchers/login", strings.NewReader(body))
+	req, _ := http.NewRequest("POST", "/v1/watchers/login", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	loginResp := models.WatcherAuthResponse{}
@@ -53,7 +54,8 @@ func TestCreateAlert(t *testing.T) {
 
 	// Create Alert with invalid format
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader("test"))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader("test"))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -68,7 +70,8 @@ func TestCreateAlert(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -83,7 +86,8 @@ func TestCreateAlert(t *testing.T) {
 	alertContent = string(alertContentBytes)
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -106,13 +110,15 @@ func TestListAlert(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
 	// List Alert with invalid filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/alerts?test=test", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -121,7 +127,8 @@ func TestListAlert(t *testing.T) {
 
 	// List Alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/alerts", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("GET", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -144,13 +151,15 @@ func TestDeleteAlert(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
 	// Delete Alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/alerts", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 

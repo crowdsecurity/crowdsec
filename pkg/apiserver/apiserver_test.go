@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 
@@ -27,6 +28,8 @@ var MachineTest = models.WatcherAuthRequest{
 	MachineID: &testMachineID,
 	Password:  &testPassword,
 }
+
+var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
 
 func CleanDB() {
 	err := os.Remove("./crowdsec.db")
@@ -91,7 +94,8 @@ func CreateTestMachine(router *gin.Engine) (string, error) {
 	body := string(b)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/watchers", strings.NewReader(body))
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 	return body, nil
 }
@@ -142,6 +146,7 @@ func TestUnknownPath(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/test", nil)
+	req.Header.Set("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 404, w.Code)

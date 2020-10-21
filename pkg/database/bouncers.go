@@ -12,7 +12,7 @@ import (
 func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().Where(bouncer.APIKeyEQ(apiKeyHash)).First(c.CTX)
 	if err != nil {
-		return &ent.Bouncer{}, errors.Wrap(QueryFail, "can't get last bouncer pull")
+		return &ent.Bouncer{}, errors.Wrapf(QueryFail, "select bouncer: %s", err)
 	}
 
 	return result, nil
@@ -21,7 +21,7 @@ func (c *Client) SelectBouncer(apiKeyHash string) (*ent.Bouncer, error) {
 func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	result, err := c.Ent.Bouncer.Query().All(c.CTX)
 	if err != nil {
-		return []*ent.Bouncer{}, errors.Wrap(QueryFail, "can't get last bouncer pull")
+		return []*ent.Bouncer{}, errors.Wrapf(QueryFail, "listing bouncer: %s", err)
 	}
 	return result, nil
 }
@@ -63,7 +63,7 @@ func (c *Client) UpdateBouncerLastPull(lastPull time.Time, ID int) error {
 func (c *Client) UpdateBouncerIP(ipAddr string, ID int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(ID).SetIPAddress(ipAddr).Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update bouncer in database: %s", err)
+		return fmt.Errorf("unable to update bouncer ip address in database: %s", err)
 	}
 	return nil
 }
@@ -71,7 +71,7 @@ func (c *Client) UpdateBouncerIP(ipAddr string, ID int) error {
 func (c *Client) UpdateBouncerTypeAndVersion(bType string, version string, ID int) error {
 	_, err := c.Ent.Bouncer.UpdateOneID(ID).SetVersion(version).SetType(bType).Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update bouncer in database: %s", err)
+		return fmt.Errorf("unable to update bouncer type and version in database: %s", err)
 	}
 	return nil
 }

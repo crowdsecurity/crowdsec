@@ -26,7 +26,8 @@ func TestGetDecision(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -37,7 +38,8 @@ func TestGetDecision(t *testing.T) {
 
 	// Get Decision with invalid filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/decisions?test=test", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?test=test", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
@@ -46,7 +48,8 @@ func TestGetDecision(t *testing.T) {
 
 	// Get Decision
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
@@ -70,13 +73,15 @@ func TestDeleteDecisionByID(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
 	// Delete alert with Invalid ID
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/decisions/test", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions/test", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -85,7 +90,8 @@ func TestDeleteDecisionByID(t *testing.T) {
 
 	// Delete alert with ID that not exist
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/decisions/100", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions/100", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -94,7 +100,8 @@ func TestDeleteDecisionByID(t *testing.T) {
 
 	// Delete alert with valid ID
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/decisions/1", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions/1", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -118,13 +125,15 @@ func TestDeleteDecision(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
 	// Delete alert with Invalid filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/decisions?test=test", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?test=test", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -133,7 +142,8 @@ func TestDeleteDecision(t *testing.T) {
 
 	// Delete alert
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -157,7 +167,7 @@ func TestStreamDecision(t *testing.T) {
 	alertContent := string(alertContentBytes)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
@@ -168,7 +178,7 @@ func TestStreamDecision(t *testing.T) {
 
 	// Get Stream
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/decisions/stream", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
@@ -177,7 +187,7 @@ func TestStreamDecision(t *testing.T) {
 
 	// Get Stream just startup
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/decisions/stream?startup=true", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
