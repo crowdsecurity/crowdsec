@@ -25,37 +25,29 @@ type (
 	MutateFunc = ent.MutateFunc
 )
 
-// OrderFunc applies an ordering on the sql selector.
-type OrderFunc func(*sql.Selector, func(string) bool)
+// OrderFunc applies an ordering on either graph traversal or sql selector.
+type OrderFunc func(*sql.Selector)
 
 // Asc applies the given fields in ASC order.
 func Asc(fields ...string) OrderFunc {
-	return func(s *sql.Selector, check func(string) bool) {
+	return func(s *sql.Selector) {
 		for _, f := range fields {
-			if check(f) {
-				s.OrderBy(sql.Asc(f))
-			} else {
-				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("invalid field %q for ordering", f)})
-			}
+			s.OrderBy(sql.Asc(f))
 		}
 	}
 }
 
 // Desc applies the given fields in DESC order.
 func Desc(fields ...string) OrderFunc {
-	return func(s *sql.Selector, check func(string) bool) {
+	return func(s *sql.Selector) {
 		for _, f := range fields {
-			if check(f) {
-				s.OrderBy(sql.Desc(f))
-			} else {
-				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("invalid field %q for ordering", f)})
-			}
+			s.OrderBy(sql.Desc(f))
 		}
 	}
 }
 
 // AggregateFunc applies an aggregation step on the group-by traversal/selector.
-type AggregateFunc func(*sql.Selector, func(string) bool) string
+type AggregateFunc func(*sql.Selector) string
 
 // As is a pseudo aggregation function for renaming another other functions with custom names. For example:
 //
@@ -64,58 +56,42 @@ type AggregateFunc func(*sql.Selector, func(string) bool) string
 //	Scan(ctx, &v)
 //
 func As(fn AggregateFunc, end string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		return sql.As(fn(s, check), end)
+	return func(s *sql.Selector) string {
+		return sql.As(fn(s), end)
 	}
 }
 
 // Count applies the "count" aggregation function on each group.
 func Count() AggregateFunc {
-	return func(s *sql.Selector, _ func(string) bool) string {
+	return func(s *sql.Selector) string {
 		return sql.Count("*")
 	}
 }
 
 // Max applies the "max" aggregation function on the given field of each group.
 func Max(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
-			return ""
-		}
+	return func(s *sql.Selector) string {
 		return sql.Max(s.C(field))
 	}
 }
 
 // Mean applies the "mean" aggregation function on the given field of each group.
 func Mean(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
-			return ""
-		}
+	return func(s *sql.Selector) string {
 		return sql.Avg(s.C(field))
 	}
 }
 
 // Min applies the "min" aggregation function on the given field of each group.
 func Min(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
-			return ""
-		}
+	return func(s *sql.Selector) string {
 		return sql.Min(s.C(field))
 	}
 }
 
 // Sum applies the "sum" aggregation function on the given field of each group.
 func Sum(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
-			return ""
-		}
+	return func(s *sql.Selector) string {
 		return sql.Sum(s.C(field))
 	}
 }
@@ -133,7 +109,7 @@ func (e *ValidationError) Error() string {
 
 // Unwrap implements the errors.Wrapper interface.
 func (e *ValidationError) Unwrap() error {
-	return e.err
+	return errors.Unwrap(e.err)
 }
 
 // IsValidationError returns a boolean indicating whether the error is a validaton error.

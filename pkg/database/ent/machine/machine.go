@@ -23,6 +23,8 @@ const (
 	FieldIpAddress = "ip_address"
 	// FieldScenarios holds the string denoting the scenarios field in the database.
 	FieldScenarios = "scenarios"
+	// FieldVersion holds the string denoting the version field in the database.
+	FieldVersion = "version"
 	// FieldIsValidated holds the string denoting the isvalidated field in the database.
 	FieldIsValidated = "is_validated"
 	// FieldStatus holds the string denoting the status field in the database.
@@ -51,18 +53,9 @@ var Columns = []string{
 	FieldPassword,
 	FieldIpAddress,
 	FieldScenarios,
+	FieldVersion,
 	FieldIsValidated,
 	FieldStatus,
-}
-
-// ValidColumn reports if the column name is valid (part of the table columns).
-func ValidColumn(column string) bool {
-	for i := range Columns {
-		if column == Columns[i] {
-			return true
-		}
-	}
-	return false
 }
 
 var (

@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/facebook/ent/dialect/sql"
 )
 
-// Blocker is the model entity for the Blocker schema.
-type Blocker struct {
+// Bouncer is the model entity for the Bouncer schema.
+type Bouncer struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
@@ -30,6 +30,8 @@ type Blocker struct {
 	IPAddress string `json:"ip_address,omitempty"`
 	// Type holds the value of the "type" field.
 	Type string `json:"type,omitempty"`
+	// Version holds the value of the "version" field.
+	Version string `json:"version,omitempty"`
 	// Until holds the value of the "until" field.
 	Until time.Time `json:"until,omitempty"`
 	// LastPull holds the value of the "last_pull" field.
@@ -37,7 +39,7 @@ type Blocker struct {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Blocker) scanValues() []interface{} {
+func (*Bouncer) scanValues() []interface{} {
 	return []interface{}{
 		&sql.NullInt64{},  // id
 		&sql.NullTime{},   // created_at
@@ -47,15 +49,16 @@ func (*Blocker) scanValues() []interface{} {
 		&sql.NullBool{},   // revoked
 		&sql.NullString{}, // ip_address
 		&sql.NullString{}, // type
+		&sql.NullString{}, // version
 		&sql.NullTime{},   // until
 		&sql.NullTime{},   // last_pull
 	}
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the Blocker fields.
-func (b *Blocker) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(blocker.Columns); m < n {
+// to the Bouncer fields.
+func (b *Bouncer) assignValues(values ...interface{}) error {
+	if m, n := len(values), len(bouncer.Columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	value, ok := values[0].(*sql.NullInt64)
@@ -99,41 +102,46 @@ func (b *Blocker) assignValues(values ...interface{}) error {
 	} else if value.Valid {
 		b.Type = value.String
 	}
-	if value, ok := values[7].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field until", values[7])
+	if value, ok := values[7].(*sql.NullString); !ok {
+		return fmt.Errorf("unexpected type %T for field version", values[7])
+	} else if value.Valid {
+		b.Version = value.String
+	}
+	if value, ok := values[8].(*sql.NullTime); !ok {
+		return fmt.Errorf("unexpected type %T for field until", values[8])
 	} else if value.Valid {
 		b.Until = value.Time
 	}
-	if value, ok := values[8].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field last_pull", values[8])
+	if value, ok := values[9].(*sql.NullTime); !ok {
+		return fmt.Errorf("unexpected type %T for field last_pull", values[9])
 	} else if value.Valid {
 		b.LastPull = value.Time
 	}
 	return nil
 }
 
-// Update returns a builder for updating this Blocker.
-// Note that, you need to call Blocker.Unwrap() before calling this method, if this Blocker
+// Update returns a builder for updating this Bouncer.
+// Note that, you need to call Bouncer.Unwrap() before calling this method, if this Bouncer
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (b *Blocker) Update() *BlockerUpdateOne {
-	return (&BlockerClient{config: b.config}).UpdateOne(b)
+func (b *Bouncer) Update() *BouncerUpdateOne {
+	return (&BouncerClient{config: b.config}).UpdateOne(b)
 }
 
 // Unwrap unwraps the entity that was returned from a transaction after it was closed,
 // so that all next queries will be executed through the driver which created the transaction.
-func (b *Blocker) Unwrap() *Blocker {
+func (b *Bouncer) Unwrap() *Bouncer {
 	tx, ok := b.config.driver.(*txDriver)
 	if !ok {
-		panic("ent: Blocker is not a transactional entity")
+		panic("ent: Bouncer is not a transactional entity")
 	}
 	b.config.driver = tx.drv
 	return b
 }
 
 // String implements the fmt.Stringer.
-func (b *Blocker) String() string {
+func (b *Bouncer) String() string {
 	var builder strings.Builder
-	builder.WriteString("Blocker(")
+	builder.WriteString("Bouncer(")
 	builder.WriteString(fmt.Sprintf("id=%v", b.ID))
 	builder.WriteString(", created_at=")
 	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
@@ -149,6 +157,8 @@ func (b *Blocker) String() string {
 	builder.WriteString(b.IPAddress)
 	builder.WriteString(", type=")
 	builder.WriteString(b.Type)
+	builder.WriteString(", version=")
+	builder.WriteString(b.Version)
 	builder.WriteString(", until=")
 	builder.WriteString(b.Until.Format(time.ANSIC))
 	builder.WriteString(", last_pull=")
@@ -157,10 +167,10 @@ func (b *Blocker) String() string {
 	return builder.String()
 }
 
-// Blockers is a parsable slice of Blocker.
-type Blockers []*Blocker
+// Bouncers is a parsable slice of Bouncer.
+type Bouncers []*Bouncer
 
-func (b Blockers) config(cfg config) {
+func (b Bouncers) config(cfg config) {
 	for _i := range b {
 		b[_i].config = cfg
 	}

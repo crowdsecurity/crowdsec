@@ -63,12 +63,8 @@ func (eq *EventQuery) QueryOwner() *AlertQuery {
 		if err := eq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := eq.sqlQuery()
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(event.Table, event.FieldID, selector),
+			sqlgraph.From(event.Table, event.FieldID, eq.sqlQuery()),
 			sqlgraph.To(alert.Table, alert.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, event.OwnerTable, event.OwnerColumn),
 		)
@@ -80,23 +76,23 @@ func (eq *EventQuery) QueryOwner() *AlertQuery {
 
 // First returns the first Event entity in the query. Returns *NotFoundError when no event was found.
 func (eq *EventQuery) First(ctx context.Context) (*Event, error) {
-	nodes, err := eq.Limit(1).All(ctx)
+	es, err := eq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(nodes) == 0 {
+	if len(es) == 0 {
 		return nil, &NotFoundError{event.Label}
 	}
-	return nodes[0], nil
+	return es[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (eq *EventQuery) FirstX(ctx context.Context) *Event {
-	node, err := eq.First(ctx)
+	e, err := eq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return node
+	return e
 }
 
 // FirstID returns the first Event id in the query. Returns *NotFoundError when no id was found.
@@ -123,13 +119,13 @@ func (eq *EventQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Event entity in the query, returns an error if not exactly one entity was returned.
 func (eq *EventQuery) Only(ctx context.Context) (*Event, error) {
-	nodes, err := eq.Limit(2).All(ctx)
+	es, err := eq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(nodes) {
+	switch len(es) {
 	case 1:
-		return nodes[0], nil
+		return es[0], nil
 	case 0:
 		return nil, &NotFoundError{event.Label}
 	default:
@@ -139,11 +135,11 @@ func (eq *EventQuery) Only(ctx context.Context) (*Event, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (eq *EventQuery) OnlyX(ctx context.Context) *Event {
-	node, err := eq.Only(ctx)
+	e, err := eq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return e
 }
 
 // OnlyID returns the only Event id in the query, returns an error if not exactly one id was returned.
@@ -182,11 +178,11 @@ func (eq *EventQuery) All(ctx context.Context) ([]*Event, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (eq *EventQuery) AllX(ctx context.Context) []*Event {
-	nodes, err := eq.All(ctx)
+	es, err := eq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return nodes
+	return es
 }
 
 // IDs executes the query and returns a list of Event ids.
@@ -439,7 +435,7 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := eq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, event.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -458,7 +454,7 @@ func (eq *EventQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range eq.order {
-		p(selector, event.ValidColumn)
+		p(selector)
 	}
 	if offset := eq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -693,17 +689,8 @@ func (egb *EventGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (egb *EventGroupBy) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range egb.fields {
-		if !event.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
-	}
-	selector := egb.sqlQuery()
-	if err := selector.Err(); err != nil {
-		return err
-	}
 	rows := &sql.Rows{}
-	query, args := selector.Query()
+	query, args := egb.sqlQuery().Query()
 	if err := egb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -716,7 +703,7 @@ func (egb *EventGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(egb.fields)+len(egb.fns))
 	columns = append(columns, egb.fields...)
 	for _, fn := range egb.fns {
-		columns = append(columns, fn(selector, event.ValidColumn))
+		columns = append(columns, fn(selector))
 	}
 	return selector.Select(columns...).GroupBy(egb.fields...)
 }
@@ -936,11 +923,6 @@ func (es *EventSelect) BoolX(ctx context.Context) bool {
 }
 
 func (es *EventSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range es.fields {
-		if !event.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := es.sqlQuery().Query()
 	if err := es.driver.Query(ctx, query, args, rows); err != nil {

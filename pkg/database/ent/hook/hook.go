@@ -22,15 +22,15 @@ func (f AlertFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 	return f(ctx, mv)
 }
 
-// The BlockerFunc type is an adapter to allow the use of ordinary
-// function as Blocker mutator.
-type BlockerFunc func(context.Context, *ent.BlockerMutation) (ent.Value, error)
+// The BouncerFunc type is an adapter to allow the use of ordinary
+// function as Bouncer mutator.
+type BouncerFunc func(context.Context, *ent.BouncerMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f BlockerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	mv, ok := m.(*ent.BlockerMutation)
+func (f BouncerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.BouncerMutation)
 	if !ok {
-		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BlockerMutation", m)
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.BouncerMutation", m)
 	}
 	return f(ctx, mv)
 }
@@ -181,7 +181,7 @@ func HasFields(field string, fields ...string) Condition {
 
 // If executes the given hook under condition.
 //
-//	hook.If(ComputeAverage, And(HasFields(...), HasAddedFields(...)))
+//	Hook.If(ComputeAverage, And(HasFields(...), HasAddedFields(...)))
 //
 func If(hk ent.Hook, cond Condition) ent.Hook {
 	return func(next ent.Mutator) ent.Mutator {

@@ -6,29 +6,29 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/facebook/ent/dialect/sql"
 	"github.com/facebook/ent/dialect/sql/sqlgraph"
 	"github.com/facebook/ent/schema/field"
 )
 
-// BlockerDelete is the builder for deleting a Blocker entity.
-type BlockerDelete struct {
+// BouncerDelete is the builder for deleting a Bouncer entity.
+type BouncerDelete struct {
 	config
 	hooks      []Hook
-	mutation   *BlockerMutation
-	predicates []predicate.Blocker
+	mutation   *BouncerMutation
+	predicates []predicate.Bouncer
 }
 
 // Where adds a new predicate to the delete builder.
-func (bd *BlockerDelete) Where(ps ...predicate.Blocker) *BlockerDelete {
+func (bd *BouncerDelete) Where(ps ...predicate.Bouncer) *BouncerDelete {
 	bd.predicates = append(bd.predicates, ps...)
 	return bd
 }
 
 // Exec executes the deletion query and returns how many vertices were deleted.
-func (bd *BlockerDelete) Exec(ctx context.Context) (int, error) {
+func (bd *BouncerDelete) Exec(ctx context.Context) (int, error) {
 	var (
 		err      error
 		affected int
@@ -37,7 +37,7 @@ func (bd *BlockerDelete) Exec(ctx context.Context) (int, error) {
 		affected, err = bd.sqlExec(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BlockerMutation)
+			mutation, ok := m.(*BouncerMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
 			}
@@ -57,7 +57,7 @@ func (bd *BlockerDelete) Exec(ctx context.Context) (int, error) {
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bd *BlockerDelete) ExecX(ctx context.Context) int {
+func (bd *BouncerDelete) ExecX(ctx context.Context) int {
 	n, err := bd.Exec(ctx)
 	if err != nil {
 		panic(err)
@@ -65,13 +65,13 @@ func (bd *BlockerDelete) ExecX(ctx context.Context) int {
 	return n
 }
 
-func (bd *BlockerDelete) sqlExec(ctx context.Context) (int, error) {
+func (bd *BouncerDelete) sqlExec(ctx context.Context) (int, error) {
 	_spec := &sqlgraph.DeleteSpec{
 		Node: &sqlgraph.NodeSpec{
-			Table: blocker.Table,
+			Table: bouncer.Table,
 			ID: &sqlgraph.FieldSpec{
 				Type:   field.TypeInt,
-				Column: blocker.FieldID,
+				Column: bouncer.FieldID,
 			},
 		},
 	}
@@ -85,25 +85,25 @@ func (bd *BlockerDelete) sqlExec(ctx context.Context) (int, error) {
 	return sqlgraph.DeleteNodes(ctx, bd.driver, _spec)
 }
 
-// BlockerDeleteOne is the builder for deleting a single Blocker entity.
-type BlockerDeleteOne struct {
-	bd *BlockerDelete
+// BouncerDeleteOne is the builder for deleting a single Bouncer entity.
+type BouncerDeleteOne struct {
+	bd *BouncerDelete
 }
 
 // Exec executes the deletion query.
-func (bdo *BlockerDeleteOne) Exec(ctx context.Context) error {
+func (bdo *BouncerDeleteOne) Exec(ctx context.Context) error {
 	n, err := bdo.bd.Exec(ctx)
 	switch {
 	case err != nil:
 		return err
 	case n == 0:
-		return &NotFoundError{blocker.Label}
+		return &NotFoundError{bouncer.Label}
 	default:
 		return nil
 	}
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bdo *BlockerDeleteOne) ExecX(ctx context.Context) {
+func (bdo *BouncerDeleteOne) ExecX(ctx context.Context) {
 	bdo.bd.ExecX(ctx)
 }

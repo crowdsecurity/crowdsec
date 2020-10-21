@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -28,7 +28,7 @@ const (
 
 	// Node types.
 	TypeAlert    = "Alert"
-	TypeBlocker  = "Blocker"
+	TypeBouncer  = "Bouncer"
 	TypeDecision = "Decision"
 	TypeEvent    = "Event"
 	TypeMachine  = "Machine"
@@ -71,13 +71,10 @@ type AlertMutation struct {
 	clearedowner       bool
 	decisions          map[int]struct{}
 	removeddecisions   map[int]struct{}
-	cleareddecisions   bool
 	events             map[int]struct{}
 	removedevents      map[int]struct{}
-	clearedevents      bool
 	metas              map[int]struct{}
 	removedmetas       map[int]struct{}
-	clearedmetas       bool
 	done               bool
 	oldValue           func(context.Context) (*Alert, error)
 }
@@ -1242,16 +1239,6 @@ func (m *AlertMutation) AddDecisionIDs(ids ...int) {
 	}
 }
 
-// ClearDecisions clears the decisions edge to Decision.
-func (m *AlertMutation) ClearDecisions() {
-	m.cleareddecisions = true
-}
-
-// DecisionsCleared returns if the edge decisions was cleared.
-func (m *AlertMutation) DecisionsCleared() bool {
-	return m.cleareddecisions
-}
-
 // RemoveDecisionIDs removes the decisions edge to Decision by ids.
 func (m *AlertMutation) RemoveDecisionIDs(ids ...int) {
 	if m.removeddecisions == nil {
@@ -1281,7 +1268,6 @@ func (m *AlertMutation) DecisionsIDs() (ids []int) {
 // ResetDecisions reset all changes of the "decisions" edge.
 func (m *AlertMutation) ResetDecisions() {
 	m.decisions = nil
-	m.cleareddecisions = false
 	m.removeddecisions = nil
 }
 
@@ -1293,16 +1279,6 @@ func (m *AlertMutation) AddEventIDs(ids ...int) {
 	for i := range ids {
 		m.events[ids[i]] = struct{}{}
 	}
-}
-
-// ClearEvents clears the events edge to Event.
-func (m *AlertMutation) ClearEvents() {
-	m.clearedevents = true
-}
-
-// EventsCleared returns if the edge events was cleared.
-func (m *AlertMutation) EventsCleared() bool {
-	return m.clearedevents
 }
 
 // RemoveEventIDs removes the events edge to Event by ids.
@@ -1334,7 +1310,6 @@ func (m *AlertMutation) EventsIDs() (ids []int) {
 // ResetEvents reset all changes of the "events" edge.
 func (m *AlertMutation) ResetEvents() {
 	m.events = nil
-	m.clearedevents = false
 	m.removedevents = nil
 }
 
@@ -1346,16 +1321,6 @@ func (m *AlertMutation) AddMetaIDs(ids ...int) {
 	for i := range ids {
 		m.metas[ids[i]] = struct{}{}
 	}
-}
-
-// ClearMetas clears the metas edge to Meta.
-func (m *AlertMutation) ClearMetas() {
-	m.clearedmetas = true
-}
-
-// MetasCleared returns if the edge metas was cleared.
-func (m *AlertMutation) MetasCleared() bool {
-	return m.clearedmetas
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -1387,7 +1352,6 @@ func (m *AlertMutation) MetasIDs() (ids []int) {
 // ResetMetas reset all changes of the "metas" edge.
 func (m *AlertMutation) ResetMetas() {
 	m.metas = nil
-	m.clearedmetas = false
 	m.removedmetas = nil
 }
 
@@ -2074,15 +2038,6 @@ func (m *AlertMutation) ClearedEdges() []string {
 	if m.clearedowner {
 		edges = append(edges, alert.EdgeOwner)
 	}
-	if m.cleareddecisions {
-		edges = append(edges, alert.EdgeDecisions)
-	}
-	if m.clearedevents {
-		edges = append(edges, alert.EdgeEvents)
-	}
-	if m.clearedmetas {
-		edges = append(edges, alert.EdgeMetas)
-	}
 	return edges
 }
 
@@ -2092,12 +2047,6 @@ func (m *AlertMutation) EdgeCleared(name string) bool {
 	switch name {
 	case alert.EdgeOwner:
 		return m.clearedowner
-	case alert.EdgeDecisions:
-		return m.cleareddecisions
-	case alert.EdgeEvents:
-		return m.clearedevents
-	case alert.EdgeMetas:
-		return m.clearedmetas
 	}
 	return false
 }
@@ -2134,9 +2083,9 @@ func (m *AlertMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown Alert edge %s", name)
 }
 
-// BlockerMutation represents an operation that mutate the Blockers
+// BouncerMutation represents an operation that mutate the Bouncers
 // nodes in the graph.
-type BlockerMutation struct {
+type BouncerMutation struct {
 	config
 	op            Op
 	typ           string
@@ -2148,24 +2097,25 @@ type BlockerMutation struct {
 	revoked       *bool
 	ip_address    *string
 	_type         *string
+	version       *string
 	until         *time.Time
 	last_pull     *time.Time
 	clearedFields map[string]struct{}
 	done          bool
-	oldValue      func(context.Context) (*Blocker, error)
+	oldValue      func(context.Context) (*Bouncer, error)
 }
 
-var _ ent.Mutation = (*BlockerMutation)(nil)
+var _ ent.Mutation = (*BouncerMutation)(nil)
 
-// blockerOption allows to manage the mutation configuration using functional options.
-type blockerOption func(*BlockerMutation)
+// bouncerOption allows to manage the mutation configuration using functional options.
+type bouncerOption func(*BouncerMutation)
 
-// newBlockerMutation creates new mutation for $n.Name.
-func newBlockerMutation(c config, op Op, opts ...blockerOption) *BlockerMutation {
-	m := &BlockerMutation{
+// newBouncerMutation creates new mutation for $n.Name.
+func newBouncerMutation(c config, op Op, opts ...bouncerOption) *BouncerMutation {
+	m := &BouncerMutation{
 		config:        c,
 		op:            op,
-		typ:           TypeBlocker,
+		typ:           TypeBouncer,
 		clearedFields: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
@@ -2174,20 +2124,20 @@ func newBlockerMutation(c config, op Op, opts ...blockerOption) *BlockerMutation
 	return m
 }
 
-// withBlockerID sets the id field of the mutation.
-func withBlockerID(id int) blockerOption {
-	return func(m *BlockerMutation) {
+// withBouncerID sets the id field of the mutation.
+func withBouncerID(id int) bouncerOption {
+	return func(m *BouncerMutation) {
 		var (
 			err   error
 			once  sync.Once
-			value *Blocker
+			value *Bouncer
 		)
-		m.oldValue = func(ctx context.Context) (*Blocker, error) {
+		m.oldValue = func(ctx context.Context) (*Bouncer, error) {
 			once.Do(func() {
 				if m.done {
 					err = fmt.Errorf("querying old values post mutation is not allowed")
 				} else {
-					value, err = m.Client().Blocker.Get(ctx, id)
+					value, err = m.Client().Bouncer.Get(ctx, id)
 				}
 			})
 			return value, err
@@ -2196,10 +2146,10 @@ func withBlockerID(id int) blockerOption {
 	}
 }
 
-// withBlocker sets the old Blocker of the mutation.
-func withBlocker(node *Blocker) blockerOption {
-	return func(m *BlockerMutation) {
-		m.oldValue = func(context.Context) (*Blocker, error) {
+// withBouncer sets the old Bouncer of the mutation.
+func withBouncer(node *Bouncer) bouncerOption {
+	return func(m *BouncerMutation) {
+		m.oldValue = func(context.Context) (*Bouncer, error) {
 			return node, nil
 		}
 		m.id = &node.ID
@@ -2208,7 +2158,7 @@ func withBlocker(node *Blocker) blockerOption {
 
 // Client returns a new `ent.Client` from the mutation. If the mutation was
 // executed in a transaction (ent.Tx), a transactional client is returned.
-func (m BlockerMutation) Client() *Client {
+func (m BouncerMutation) Client() *Client {
 	client := &Client{config: m.config}
 	client.init()
 	return client
@@ -2216,7 +2166,7 @@ func (m BlockerMutation) Client() *Client {
 
 // Tx returns an `ent.Tx` for mutations that were executed in transactions;
 // it returns an error otherwise.
-func (m BlockerMutation) Tx() (*Tx, error) {
+func (m BouncerMutation) Tx() (*Tx, error) {
 	if _, ok := m.driver.(*txDriver); !ok {
 		return nil, fmt.Errorf("ent: mutation is not running in a transaction")
 	}
@@ -2227,7 +2177,7 @@ func (m BlockerMutation) Tx() (*Tx, error) {
 
 // ID returns the id value in the mutation. Note that, the id
 // is available only if it was provided to the builder.
-func (m *BlockerMutation) ID() (id int, exists bool) {
+func (m *BouncerMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -2235,12 +2185,12 @@ func (m *BlockerMutation) ID() (id int, exists bool) {
 }
 
 // SetCreatedAt sets the created_at field.
-func (m *BlockerMutation) SetCreatedAt(t time.Time) {
+func (m *BouncerMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
 }
 
 // CreatedAt returns the created_at value in the mutation.
-func (m *BlockerMutation) CreatedAt() (r time.Time, exists bool) {
+func (m *BouncerMutation) CreatedAt() (r time.Time, exists bool) {
 	v := m.created_at
 	if v == nil {
 		return
@@ -2248,11 +2198,11 @@ func (m *BlockerMutation) CreatedAt() (r time.Time, exists bool) {
 	return *v, true
 }
 
-// OldCreatedAt returns the old created_at value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldCreatedAt returns the old created_at value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+func (m *BouncerMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldCreatedAt is allowed only on UpdateOne operations")
 	}
@@ -2267,17 +2217,17 @@ func (m *BlockerMutation) OldCreatedAt(ctx context.Context) (v time.Time, err er
 }
 
 // ResetCreatedAt reset all changes of the "created_at" field.
-func (m *BlockerMutation) ResetCreatedAt() {
+func (m *BouncerMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
 // SetUpdatedAt sets the updated_at field.
-func (m *BlockerMutation) SetUpdatedAt(t time.Time) {
+func (m *BouncerMutation) SetUpdatedAt(t time.Time) {
 	m.updated_at = &t
 }
 
 // UpdatedAt returns the updated_at value in the mutation.
-func (m *BlockerMutation) UpdatedAt() (r time.Time, exists bool) {
+func (m *BouncerMutation) UpdatedAt() (r time.Time, exists bool) {
 	v := m.updated_at
 	if v == nil {
 		return
@@ -2285,11 +2235,11 @@ func (m *BlockerMutation) UpdatedAt() (r time.Time, exists bool) {
 	return *v, true
 }
 
-// OldUpdatedAt returns the old updated_at value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldUpdatedAt returns the old updated_at value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+func (m *BouncerMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldUpdatedAt is allowed only on UpdateOne operations")
 	}
@@ -2304,17 +2254,17 @@ func (m *BlockerMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err er
 }
 
 // ResetUpdatedAt reset all changes of the "updated_at" field.
-func (m *BlockerMutation) ResetUpdatedAt() {
+func (m *BouncerMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
 // SetName sets the name field.
-func (m *BlockerMutation) SetName(s string) {
+func (m *BouncerMutation) SetName(s string) {
 	m.name = &s
 }
 
 // Name returns the name value in the mutation.
-func (m *BlockerMutation) Name() (r string, exists bool) {
+func (m *BouncerMutation) Name() (r string, exists bool) {
 	v := m.name
 	if v == nil {
 		return
@@ -2322,11 +2272,11 @@ func (m *BlockerMutation) Name() (r string, exists bool) {
 	return *v, true
 }
 
-// OldName returns the old name value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldName returns the old name value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldName(ctx context.Context) (v string, err error) {
+func (m *BouncerMutation) OldName(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldName is allowed only on UpdateOne operations")
 	}
@@ -2341,17 +2291,17 @@ func (m *BlockerMutation) OldName(ctx context.Context) (v string, err error) {
 }
 
 // ResetName reset all changes of the "name" field.
-func (m *BlockerMutation) ResetName() {
+func (m *BouncerMutation) ResetName() {
 	m.name = nil
 }
 
 // SetAPIKey sets the api_key field.
-func (m *BlockerMutation) SetAPIKey(s string) {
+func (m *BouncerMutation) SetAPIKey(s string) {
 	m.api_key = &s
 }
 
 // APIKey returns the api_key value in the mutation.
-func (m *BlockerMutation) APIKey() (r string, exists bool) {
+func (m *BouncerMutation) APIKey() (r string, exists bool) {
 	v := m.api_key
 	if v == nil {
 		return
@@ -2359,11 +2309,11 @@ func (m *BlockerMutation) APIKey() (r string, exists bool) {
 	return *v, true
 }
 
-// OldAPIKey returns the old api_key value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldAPIKey returns the old api_key value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldAPIKey(ctx context.Context) (v string, err error) {
+func (m *BouncerMutation) OldAPIKey(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldAPIKey is allowed only on UpdateOne operations")
 	}
@@ -2378,17 +2328,17 @@ func (m *BlockerMutation) OldAPIKey(ctx context.Context) (v string, err error) {
 }
 
 // ResetAPIKey reset all changes of the "api_key" field.
-func (m *BlockerMutation) ResetAPIKey() {
+func (m *BouncerMutation) ResetAPIKey() {
 	m.api_key = nil
 }
 
 // SetRevoked sets the revoked field.
-func (m *BlockerMutation) SetRevoked(b bool) {
+func (m *BouncerMutation) SetRevoked(b bool) {
 	m.revoked = &b
 }
 
 // Revoked returns the revoked value in the mutation.
-func (m *BlockerMutation) Revoked() (r bool, exists bool) {
+func (m *BouncerMutation) Revoked() (r bool, exists bool) {
 	v := m.revoked
 	if v == nil {
 		return
@@ -2396,11 +2346,11 @@ func (m *BlockerMutation) Revoked() (r bool, exists bool) {
 	return *v, true
 }
 
-// OldRevoked returns the old revoked value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldRevoked returns the old revoked value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldRevoked(ctx context.Context) (v bool, err error) {
+func (m *BouncerMutation) OldRevoked(ctx context.Context) (v bool, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldRevoked is allowed only on UpdateOne operations")
 	}
@@ -2415,17 +2365,17 @@ func (m *BlockerMutation) OldRevoked(ctx context.Context) (v bool, err error) {
 }
 
 // ResetRevoked reset all changes of the "revoked" field.
-func (m *BlockerMutation) ResetRevoked() {
+func (m *BouncerMutation) ResetRevoked() {
 	m.revoked = nil
 }
 
 // SetIPAddress sets the ip_address field.
-func (m *BlockerMutation) SetIPAddress(s string) {
+func (m *BouncerMutation) SetIPAddress(s string) {
 	m.ip_address = &s
 }
 
 // IPAddress returns the ip_address value in the mutation.
-func (m *BlockerMutation) IPAddress() (r string, exists bool) {
+func (m *BouncerMutation) IPAddress() (r string, exists bool) {
 	v := m.ip_address
 	if v == nil {
 		return
@@ -2433,11 +2383,11 @@ func (m *BlockerMutation) IPAddress() (r string, exists bool) {
 	return *v, true
 }
 
-// OldIPAddress returns the old ip_address value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldIPAddress returns the old ip_address value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldIPAddress(ctx context.Context) (v string, err error) {
+func (m *BouncerMutation) OldIPAddress(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldIPAddress is allowed only on UpdateOne operations")
 	}
@@ -2452,30 +2402,30 @@ func (m *BlockerMutation) OldIPAddress(ctx context.Context) (v string, err error
 }
 
 // ClearIPAddress clears the value of ip_address.
-func (m *BlockerMutation) ClearIPAddress() {
+func (m *BouncerMutation) ClearIPAddress() {
 	m.ip_address = nil
-	m.clearedFields[blocker.FieldIPAddress] = struct{}{}
+	m.clearedFields[bouncer.FieldIPAddress] = struct{}{}
 }
 
 // IPAddressCleared returns if the field ip_address was cleared in this mutation.
-func (m *BlockerMutation) IPAddressCleared() bool {
-	_, ok := m.clearedFields[blocker.FieldIPAddress]
+func (m *BouncerMutation) IPAddressCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldIPAddress]
 	return ok
 }
 
 // ResetIPAddress reset all changes of the "ip_address" field.
-func (m *BlockerMutation) ResetIPAddress() {
+func (m *BouncerMutation) ResetIPAddress() {
 	m.ip_address = nil
-	delete(m.clearedFields, blocker.FieldIPAddress)
+	delete(m.clearedFields, bouncer.FieldIPAddress)
 }
 
 // SetType sets the type field.
-func (m *BlockerMutation) SetType(s string) {
+func (m *BouncerMutation) SetType(s string) {
 	m._type = &s
 }
 
 // GetType returns the type value in the mutation.
-func (m *BlockerMutation) GetType() (r string, exists bool) {
+func (m *BouncerMutation) GetType() (r string, exists bool) {
 	v := m._type
 	if v == nil {
 		return
@@ -2483,11 +2433,11 @@ func (m *BlockerMutation) GetType() (r string, exists bool) {
 	return *v, true
 }
 
-// OldType returns the old type value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldType returns the old type value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldType(ctx context.Context) (v string, err error) {
+func (m *BouncerMutation) OldType(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldType is allowed only on UpdateOne operations")
 	}
@@ -2502,30 +2452,80 @@ func (m *BlockerMutation) OldType(ctx context.Context) (v string, err error) {
 }
 
 // ClearType clears the value of type.
-func (m *BlockerMutation) ClearType() {
+func (m *BouncerMutation) ClearType() {
 	m._type = nil
-	m.clearedFields[blocker.FieldType] = struct{}{}
+	m.clearedFields[bouncer.FieldType] = struct{}{}
 }
 
 // TypeCleared returns if the field type was cleared in this mutation.
-func (m *BlockerMutation) TypeCleared() bool {
-	_, ok := m.clearedFields[blocker.FieldType]
+func (m *BouncerMutation) TypeCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldType]
 	return ok
 }
 
 // ResetType reset all changes of the "type" field.
-func (m *BlockerMutation) ResetType() {
+func (m *BouncerMutation) ResetType() {
 	m._type = nil
-	delete(m.clearedFields, blocker.FieldType)
+	delete(m.clearedFields, bouncer.FieldType)
+}
+
+// SetVersion sets the version field.
+func (m *BouncerMutation) SetVersion(s string) {
+	m.version = &s
+}
+
+// Version returns the version value in the mutation.
+func (m *BouncerMutation) Version() (r string, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old version value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *BouncerMutation) OldVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldVersion is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// ClearVersion clears the value of version.
+func (m *BouncerMutation) ClearVersion() {
+	m.version = nil
+	m.clearedFields[bouncer.FieldVersion] = struct{}{}
+}
+
+// VersionCleared returns if the field version was cleared in this mutation.
+func (m *BouncerMutation) VersionCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldVersion]
+	return ok
+}
+
+// ResetVersion reset all changes of the "version" field.
+func (m *BouncerMutation) ResetVersion() {
+	m.version = nil
+	delete(m.clearedFields, bouncer.FieldVersion)
 }
 
 // SetUntil sets the until field.
-func (m *BlockerMutation) SetUntil(t time.Time) {
+func (m *BouncerMutation) SetUntil(t time.Time) {
 	m.until = &t
 }
 
 // Until returns the until value in the mutation.
-func (m *BlockerMutation) Until() (r time.Time, exists bool) {
+func (m *BouncerMutation) Until() (r time.Time, exists bool) {
 	v := m.until
 	if v == nil {
 		return
@@ -2533,11 +2533,11 @@ func (m *BlockerMutation) Until() (r time.Time, exists bool) {
 	return *v, true
 }
 
-// OldUntil returns the old until value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldUntil returns the old until value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldUntil(ctx context.Context) (v time.Time, err error) {
+func (m *BouncerMutation) OldUntil(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldUntil is allowed only on UpdateOne operations")
 	}
@@ -2552,30 +2552,30 @@ func (m *BlockerMutation) OldUntil(ctx context.Context) (v time.Time, err error)
 }
 
 // ClearUntil clears the value of until.
-func (m *BlockerMutation) ClearUntil() {
+func (m *BouncerMutation) ClearUntil() {
 	m.until = nil
-	m.clearedFields[blocker.FieldUntil] = struct{}{}
+	m.clearedFields[bouncer.FieldUntil] = struct{}{}
 }
 
 // UntilCleared returns if the field until was cleared in this mutation.
-func (m *BlockerMutation) UntilCleared() bool {
-	_, ok := m.clearedFields[blocker.FieldUntil]
+func (m *BouncerMutation) UntilCleared() bool {
+	_, ok := m.clearedFields[bouncer.FieldUntil]
 	return ok
 }
 
 // ResetUntil reset all changes of the "until" field.
-func (m *BlockerMutation) ResetUntil() {
+func (m *BouncerMutation) ResetUntil() {
 	m.until = nil
-	delete(m.clearedFields, blocker.FieldUntil)
+	delete(m.clearedFields, bouncer.FieldUntil)
 }
 
 // SetLastPull sets the last_pull field.
-func (m *BlockerMutation) SetLastPull(t time.Time) {
+func (m *BouncerMutation) SetLastPull(t time.Time) {
 	m.last_pull = &t
 }
 
 // LastPull returns the last_pull value in the mutation.
-func (m *BlockerMutation) LastPull() (r time.Time, exists bool) {
+func (m *BouncerMutation) LastPull() (r time.Time, exists bool) {
 	v := m.last_pull
 	if v == nil {
 		return
@@ -2583,11 +2583,11 @@ func (m *BlockerMutation) LastPull() (r time.Time, exists bool) {
 	return *v, true
 }
 
-// OldLastPull returns the old last_pull value of the Blocker.
-// If the Blocker object wasn't provided to the builder, the object is fetched
+// OldLastPull returns the old last_pull value of the Bouncer.
+// If the Bouncer object wasn't provided to the builder, the object is fetched
 // from the database.
 // An error is returned if the mutation operation is not UpdateOne, or database query fails.
-func (m *BlockerMutation) OldLastPull(ctx context.Context) (v time.Time, err error) {
+func (m *BouncerMutation) OldLastPull(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldLastPull is allowed only on UpdateOne operations")
 	}
@@ -2602,51 +2602,54 @@ func (m *BlockerMutation) OldLastPull(ctx context.Context) (v time.Time, err err
 }
 
 // ResetLastPull reset all changes of the "last_pull" field.
-func (m *BlockerMutation) ResetLastPull() {
+func (m *BouncerMutation) ResetLastPull() {
 	m.last_pull = nil
 }
 
 // Op returns the operation name.
-func (m *BlockerMutation) Op() Op {
+func (m *BouncerMutation) Op() Op {
 	return m.op
 }
 
-// Type returns the node type of this mutation (Blocker).
-func (m *BlockerMutation) Type() string {
+// Type returns the node type of this mutation (Bouncer).
+func (m *BouncerMutation) Type() string {
 	return m.typ
 }
 
 // Fields returns all fields that were changed during
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
-func (m *BlockerMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+func (m *BouncerMutation) Fields() []string {
+	fields := make([]string, 0, 10)
 	if m.created_at != nil {
-		fields = append(fields, blocker.FieldCreatedAt)
+		fields = append(fields, bouncer.FieldCreatedAt)
 	}
 	if m.updated_at != nil {
-		fields = append(fields, blocker.FieldUpdatedAt)
+		fields = append(fields, bouncer.FieldUpdatedAt)
 	}
 	if m.name != nil {
-		fields = append(fields, blocker.FieldName)
+		fields = append(fields, bouncer.FieldName)
 	}
 	if m.api_key != nil {
-		fields = append(fields, blocker.FieldAPIKey)
+		fields = append(fields, bouncer.FieldAPIKey)
 	}
 	if m.revoked != nil {
-		fields = append(fields, blocker.FieldRevoked)
+		fields = append(fields, bouncer.FieldRevoked)
 	}
 	if m.ip_address != nil {
-		fields = append(fields, blocker.FieldIPAddress)
+		fields = append(fields, bouncer.FieldIPAddress)
 	}
 	if m._type != nil {
-		fields = append(fields, blocker.FieldType)
+		fields = append(fields, bouncer.FieldType)
+	}
+	if m.version != nil {
+		fields = append(fields, bouncer.FieldVersion)
 	}
 	if m.until != nil {
-		fields = append(fields, blocker.FieldUntil)
+		fields = append(fields, bouncer.FieldUntil)
 	}
 	if m.last_pull != nil {
-		fields = append(fields, blocker.FieldLastPull)
+		fields = append(fields, bouncer.FieldLastPull)
 	}
 	return fields
 }
@@ -2654,25 +2657,27 @@ func (m *BlockerMutation) Fields() []string {
 // Field returns the value of a field with the given name.
 // The second boolean value indicates that this field was
 // not set, or was not define in the schema.
-func (m *BlockerMutation) Field(name string) (ent.Value, bool) {
+func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case blocker.FieldCreatedAt:
+	case bouncer.FieldCreatedAt:
 		return m.CreatedAt()
-	case blocker.FieldUpdatedAt:
+	case bouncer.FieldUpdatedAt:
 		return m.UpdatedAt()
-	case blocker.FieldName:
+	case bouncer.FieldName:
 		return m.Name()
-	case blocker.FieldAPIKey:
+	case bouncer.FieldAPIKey:
 		return m.APIKey()
-	case blocker.FieldRevoked:
+	case bouncer.FieldRevoked:
 		return m.Revoked()
-	case blocker.FieldIPAddress:
+	case bouncer.FieldIPAddress:
 		return m.IPAddress()
-	case blocker.FieldType:
+	case bouncer.FieldType:
 		return m.GetType()
-	case blocker.FieldUntil:
+	case bouncer.FieldVersion:
+		return m.Version()
+	case bouncer.FieldUntil:
 		return m.Until()
-	case blocker.FieldLastPull:
+	case bouncer.FieldLastPull:
 		return m.LastPull()
 	}
 	return nil, false
@@ -2681,92 +2686,101 @@ func (m *BlockerMutation) Field(name string) (ent.Value, bool) {
 // OldField returns the old value of the field from the database.
 // An error is returned if the mutation operation is not UpdateOne,
 // or the query to the database was failed.
-func (m *BlockerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case blocker.FieldCreatedAt:
+	case bouncer.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
-	case blocker.FieldUpdatedAt:
+	case bouncer.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
-	case blocker.FieldName:
+	case bouncer.FieldName:
 		return m.OldName(ctx)
-	case blocker.FieldAPIKey:
+	case bouncer.FieldAPIKey:
 		return m.OldAPIKey(ctx)
-	case blocker.FieldRevoked:
+	case bouncer.FieldRevoked:
 		return m.OldRevoked(ctx)
-	case blocker.FieldIPAddress:
+	case bouncer.FieldIPAddress:
 		return m.OldIPAddress(ctx)
-	case blocker.FieldType:
+	case bouncer.FieldType:
 		return m.OldType(ctx)
-	case blocker.FieldUntil:
+	case bouncer.FieldVersion:
+		return m.OldVersion(ctx)
+	case bouncer.FieldUntil:
 		return m.OldUntil(ctx)
-	case blocker.FieldLastPull:
+	case bouncer.FieldLastPull:
 		return m.OldLastPull(ctx)
 	}
-	return nil, fmt.Errorf("unknown Blocker field %s", name)
+	return nil, fmt.Errorf("unknown Bouncer field %s", name)
 }
 
 // SetField sets the value for the given name. It returns an
 // error if the field is not defined in the schema, or if the
 // type mismatch the field type.
-func (m *BlockerMutation) SetField(name string, value ent.Value) error {
+func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case blocker.FieldCreatedAt:
+	case bouncer.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedAt(v)
 		return nil
-	case blocker.FieldUpdatedAt:
+	case bouncer.FieldUpdatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
 		return nil
-	case blocker.FieldName:
+	case bouncer.FieldName:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
 		return nil
-	case blocker.FieldAPIKey:
+	case bouncer.FieldAPIKey:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetAPIKey(v)
 		return nil
-	case blocker.FieldRevoked:
+	case bouncer.FieldRevoked:
 		v, ok := value.(bool)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRevoked(v)
 		return nil
-	case blocker.FieldIPAddress:
+	case bouncer.FieldIPAddress:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetIPAddress(v)
 		return nil
-	case blocker.FieldType:
+	case bouncer.FieldType:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetType(v)
 		return nil
-	case blocker.FieldUntil:
+	case bouncer.FieldVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
+	case bouncer.FieldUntil:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUntil(v)
 		return nil
-	case blocker.FieldLastPull:
+	case bouncer.FieldLastPull:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
@@ -2774,157 +2788,166 @@ func (m *BlockerMutation) SetField(name string, value ent.Value) error {
 		m.SetLastPull(v)
 		return nil
 	}
-	return fmt.Errorf("unknown Blocker field %s", name)
+	return fmt.Errorf("unknown Bouncer field %s", name)
 }
 
 // AddedFields returns all numeric fields that were incremented
 // or decremented during this mutation.
-func (m *BlockerMutation) AddedFields() []string {
+func (m *BouncerMutation) AddedFields() []string {
 	return nil
 }
 
 // AddedField returns the numeric value that was in/decremented
 // from a field with the given name. The second value indicates
 // that this field was not set, or was not define in the schema.
-func (m *BlockerMutation) AddedField(name string) (ent.Value, bool) {
+func (m *BouncerMutation) AddedField(name string) (ent.Value, bool) {
 	return nil, false
 }
 
 // AddField adds the value for the given name. It returns an
 // error if the field is not defined in the schema, or if the
 // type mismatch the field type.
-func (m *BlockerMutation) AddField(name string, value ent.Value) error {
+func (m *BouncerMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	}
-	return fmt.Errorf("unknown Blocker numeric field %s", name)
+	return fmt.Errorf("unknown Bouncer numeric field %s", name)
 }
 
 // ClearedFields returns all nullable fields that were cleared
 // during this mutation.
-func (m *BlockerMutation) ClearedFields() []string {
+func (m *BouncerMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(blocker.FieldIPAddress) {
-		fields = append(fields, blocker.FieldIPAddress)
+	if m.FieldCleared(bouncer.FieldIPAddress) {
+		fields = append(fields, bouncer.FieldIPAddress)
 	}
-	if m.FieldCleared(blocker.FieldType) {
-		fields = append(fields, blocker.FieldType)
+	if m.FieldCleared(bouncer.FieldType) {
+		fields = append(fields, bouncer.FieldType)
 	}
-	if m.FieldCleared(blocker.FieldUntil) {
-		fields = append(fields, blocker.FieldUntil)
+	if m.FieldCleared(bouncer.FieldVersion) {
+		fields = append(fields, bouncer.FieldVersion)
+	}
+	if m.FieldCleared(bouncer.FieldUntil) {
+		fields = append(fields, bouncer.FieldUntil)
 	}
 	return fields
 }
 
 // FieldCleared returns a boolean indicates if this field was
 // cleared in this mutation.
-func (m *BlockerMutation) FieldCleared(name string) bool {
+func (m *BouncerMutation) FieldCleared(name string) bool {
 	_, ok := m.clearedFields[name]
 	return ok
 }
 
 // ClearField clears the value for the given name. It returns an
 // error if the field is not defined in the schema.
-func (m *BlockerMutation) ClearField(name string) error {
+func (m *BouncerMutation) ClearField(name string) error {
 	switch name {
-	case blocker.FieldIPAddress:
+	case bouncer.FieldIPAddress:
 		m.ClearIPAddress()
 		return nil
-	case blocker.FieldType:
+	case bouncer.FieldType:
 		m.ClearType()
 		return nil
-	case blocker.FieldUntil:
+	case bouncer.FieldVersion:
+		m.ClearVersion()
+		return nil
+	case bouncer.FieldUntil:
 		m.ClearUntil()
 		return nil
 	}
-	return fmt.Errorf("unknown Blocker nullable field %s", name)
+	return fmt.Errorf("unknown Bouncer nullable field %s", name)
 }
 
 // ResetField resets all changes in the mutation regarding the
 // given field name. It returns an error if the field is not
 // defined in the schema.
-func (m *BlockerMutation) ResetField(name string) error {
+func (m *BouncerMutation) ResetField(name string) error {
 	switch name {
-	case blocker.FieldCreatedAt:
+	case bouncer.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
-	case blocker.FieldUpdatedAt:
+	case bouncer.FieldUpdatedAt:
 		m.ResetUpdatedAt()
 		return nil
-	case blocker.FieldName:
+	case bouncer.FieldName:
 		m.ResetName()
 		return nil
-	case blocker.FieldAPIKey:
+	case bouncer.FieldAPIKey:
 		m.ResetAPIKey()
 		return nil
-	case blocker.FieldRevoked:
+	case bouncer.FieldRevoked:
 		m.ResetRevoked()
 		return nil
-	case blocker.FieldIPAddress:
+	case bouncer.FieldIPAddress:
 		m.ResetIPAddress()
 		return nil
-	case blocker.FieldType:
+	case bouncer.FieldType:
 		m.ResetType()
 		return nil
-	case blocker.FieldUntil:
+	case bouncer.FieldVersion:
+		m.ResetVersion()
+		return nil
+	case bouncer.FieldUntil:
 		m.ResetUntil()
 		return nil
-	case blocker.FieldLastPull:
+	case bouncer.FieldLastPull:
 		m.ResetLastPull()
 		return nil
 	}
-	return fmt.Errorf("unknown Blocker field %s", name)
+	return fmt.Errorf("unknown Bouncer field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this
 // mutation.
-func (m *BlockerMutation) AddedEdges() []string {
+func (m *BouncerMutation) AddedEdges() []string {
 	edges := make([]string, 0, 0)
 	return edges
 }
 
 // AddedIDs returns all ids (to other nodes) that were added for
 // the given edge name.
-func (m *BlockerMutation) AddedIDs(name string) []ent.Value {
+func (m *BouncerMutation) AddedIDs(name string) []ent.Value {
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this
 // mutation.
-func (m *BlockerMutation) RemovedEdges() []string {
+func (m *BouncerMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 0)
 	return edges
 }
 
 // RemovedIDs returns all ids (to other nodes) that were removed for
 // the given edge name.
-func (m *BlockerMutation) RemovedIDs(name string) []ent.Value {
+func (m *BouncerMutation) RemovedIDs(name string) []ent.Value {
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this
 // mutation.
-func (m *BlockerMutation) ClearedEdges() []string {
+func (m *BouncerMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 0)
 	return edges
 }
 
 // EdgeCleared returns a boolean indicates if this edge was
 // cleared in this mutation.
-func (m *BlockerMutation) EdgeCleared(name string) bool {
+func (m *BouncerMutation) EdgeCleared(name string) bool {
 	return false
 }
 
 // ClearEdge clears the value for the given name. It returns an
 // error if the edge name is not defined in the schema.
-func (m *BlockerMutation) ClearEdge(name string) error {
-	return fmt.Errorf("unknown Blocker unique edge %s", name)
+func (m *BouncerMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown Bouncer unique edge %s", name)
 }
 
 // ResetEdge resets all changes in the mutation regarding the
 // given edge name. It returns an error if the edge is not
 // defined in the schema.
-func (m *BlockerMutation) ResetEdge(name string) error {
-	return fmt.Errorf("unknown Blocker edge %s", name)
+func (m *BouncerMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown Bouncer edge %s", name)
 }
 
 // DecisionMutation represents an operation that mutate the Decisions
@@ -4491,12 +4514,12 @@ type MachineMutation struct {
 	password      *string
 	ipAddress     *string
 	scenarios     *string
+	version       *string
 	isValidated   *bool
 	status        *string
 	clearedFields map[string]struct{}
 	alerts        map[int]struct{}
 	removedalerts map[int]struct{}
-	clearedalerts bool
 	done          bool
 	oldValue      func(context.Context) (*Machine, error)
 }
@@ -4815,6 +4838,56 @@ func (m *MachineMutation) ResetScenarios() {
 	delete(m.clearedFields, machine.FieldScenarios)
 }
 
+// SetVersion sets the version field.
+func (m *MachineMutation) SetVersion(s string) {
+	m.version = &s
+}
+
+// Version returns the version value in the mutation.
+func (m *MachineMutation) Version() (r string, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old version value of the Machine.
+// If the Machine object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *MachineMutation) OldVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldVersion is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// ClearVersion clears the value of version.
+func (m *MachineMutation) ClearVersion() {
+	m.version = nil
+	m.clearedFields[machine.FieldVersion] = struct{}{}
+}
+
+// VersionCleared returns if the field version was cleared in this mutation.
+func (m *MachineMutation) VersionCleared() bool {
+	_, ok := m.clearedFields[machine.FieldVersion]
+	return ok
+}
+
+// ResetVersion reset all changes of the "version" field.
+func (m *MachineMutation) ResetVersion() {
+	m.version = nil
+	delete(m.clearedFields, machine.FieldVersion)
+}
+
 // SetIsValidated sets the isValidated field.
 func (m *MachineMutation) SetIsValidated(b bool) {
 	m.isValidated = &b
@@ -4912,16 +4985,6 @@ func (m *MachineMutation) AddAlertIDs(ids ...int) {
 	}
 }
 
-// ClearAlerts clears the alerts edge to Alert.
-func (m *MachineMutation) ClearAlerts() {
-	m.clearedalerts = true
-}
-
-// AlertsCleared returns if the edge alerts was cleared.
-func (m *MachineMutation) AlertsCleared() bool {
-	return m.clearedalerts
-}
-
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (m *MachineMutation) RemoveAlertIDs(ids ...int) {
 	if m.removedalerts == nil {
@@ -4951,7 +5014,6 @@ func (m *MachineMutation) AlertsIDs() (ids []int) {
 // ResetAlerts reset all changes of the "alerts" edge.
 func (m *MachineMutation) ResetAlerts() {
 	m.alerts = nil
-	m.clearedalerts = false
 	m.removedalerts = nil
 }
 
@@ -4969,7 +5031,7 @@ func (m *MachineMutation) Type() string {
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -4987,6 +5049,9 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.scenarios != nil {
 		fields = append(fields, machine.FieldScenarios)
+	}
+	if m.version != nil {
+		fields = append(fields, machine.FieldVersion)
 	}
 	if m.isValidated != nil {
 		fields = append(fields, machine.FieldIsValidated)
@@ -5014,6 +5079,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.IpAddress()
 	case machine.FieldScenarios:
 		return m.Scenarios()
+	case machine.FieldVersion:
+		return m.Version()
 	case machine.FieldIsValidated:
 		return m.IsValidated()
 	case machine.FieldStatus:
@@ -5039,6 +5106,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldIpAddress(ctx)
 	case machine.FieldScenarios:
 		return m.OldScenarios(ctx)
+	case machine.FieldVersion:
+		return m.OldVersion(ctx)
 	case machine.FieldIsValidated:
 		return m.OldIsValidated(ctx)
 	case machine.FieldStatus:
@@ -5094,6 +5163,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetScenarios(v)
 		return nil
+	case machine.FieldVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
 	case machine.FieldIsValidated:
 		v, ok := value.(bool)
 		if !ok {
@@ -5141,6 +5217,9 @@ func (m *MachineMutation) ClearedFields() []string {
 	if m.FieldCleared(machine.FieldScenarios) {
 		fields = append(fields, machine.FieldScenarios)
 	}
+	if m.FieldCleared(machine.FieldVersion) {
+		fields = append(fields, machine.FieldVersion)
+	}
 	if m.FieldCleared(machine.FieldStatus) {
 		fields = append(fields, machine.FieldStatus)
 	}
@@ -5160,6 +5239,9 @@ func (m *MachineMutation) ClearField(name string) error {
 	switch name {
 	case machine.FieldScenarios:
 		m.ClearScenarios()
+		return nil
+	case machine.FieldVersion:
+		m.ClearVersion()
 		return nil
 	case machine.FieldStatus:
 		m.ClearStatus()
@@ -5190,6 +5272,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldScenarios:
 		m.ResetScenarios()
+		return nil
+	case machine.FieldVersion:
+		m.ResetVersion()
 		return nil
 	case machine.FieldIsValidated:
 		m.ResetIsValidated()
@@ -5253,9 +5338,6 @@ func (m *MachineMutation) RemovedIDs(name string) []ent.Value {
 // mutation.
 func (m *MachineMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedalerts {
-		edges = append(edges, machine.EdgeAlerts)
-	}
 	return edges
 }
 
@@ -5263,8 +5345,6 @@ func (m *MachineMutation) ClearedEdges() []string {
 // cleared in this mutation.
 func (m *MachineMutation) EdgeCleared(name string) bool {
 	switch name {
-	case machine.EdgeAlerts:
-		return m.clearedalerts
 	}
 	return false
 }

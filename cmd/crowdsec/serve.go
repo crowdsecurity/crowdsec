@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-systemd/daemon"
+	"github.com/pkg/errors"
 
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -77,10 +78,6 @@ func reloadHandler(sig os.Signal) error {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
 
-		err = runAPIServer(apiServer)
-		if err != nil {
-			return fmt.Errorf("unable to run api server: %s", err)
-		}
 		serveAPIServer(apiServer)
 	}
 
@@ -218,13 +215,9 @@ func Serve() error {
 	if !*disableAPI || cConfig.API.Server == nil {
 		apiServer, err := initAPIServer()
 		if err != nil {
-			return fmt.Errorf("unable to init api server: %s", err)
+			return errors.Wrap(err, "api server init")
 		}
 		if !cConfig.Crowdsec.LintOnly {
-			err := runAPIServer(apiServer)
-			if err != nil {
-				return fmt.Errorf("unable to run api server: %s", err)
-			}
 			serveAPIServer(apiServer)
 		}
 	}
@@ -232,7 +225,7 @@ func Serve() error {
 	if !*disableCS {
 		csParsers, err := initCrowdsec()
 		if err != nil {
-			return fmt.Errorf("unable to init crowdsec: %s", err)
+			return errors.Wrap(err, "crowdsec init")
 		}
 		/* if it's just linting, we're done */
 		if cConfig.Crowdsec.LintOnly {

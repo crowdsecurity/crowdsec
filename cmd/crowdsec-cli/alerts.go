@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -94,6 +95,7 @@ To list/add/delete alerts
 			if err != nil {
 				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
 			}
+			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
 
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			t := &apiclient.JWTTransport{

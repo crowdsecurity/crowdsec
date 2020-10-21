@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -52,32 +52,28 @@ func init() {
 	alertDescSimulated := alertFields[19].Descriptor()
 	// alert.DefaultSimulated holds the default value on creation for the simulated field.
 	alert.DefaultSimulated = alertDescSimulated.Default.(bool)
-	blockerFields := schema.Blocker{}.Fields()
-	_ = blockerFields
-	// blockerDescCreatedAt is the schema descriptor for created_at field.
-	blockerDescCreatedAt := blockerFields[0].Descriptor()
-	// blocker.DefaultCreatedAt holds the default value on creation for the created_at field.
-	blocker.DefaultCreatedAt = blockerDescCreatedAt.Default.(func() time.Time)
-	// blockerDescUpdatedAt is the schema descriptor for updated_at field.
-	blockerDescUpdatedAt := blockerFields[1].Descriptor()
-	// blocker.DefaultUpdatedAt holds the default value on creation for the updated_at field.
-	blocker.DefaultUpdatedAt = blockerDescUpdatedAt.Default.(func() time.Time)
-	// blockerDescIPAddress is the schema descriptor for ip_address field.
-	blockerDescIPAddress := blockerFields[5].Descriptor()
-	// blocker.DefaultIPAddress holds the default value on creation for the ip_address field.
-	blocker.DefaultIPAddress = blockerDescIPAddress.Default.(string)
-	// blockerDescType is the schema descriptor for type field.
-	blockerDescType := blockerFields[6].Descriptor()
-	// blocker.DefaultType holds the default value on creation for the type field.
-	blocker.DefaultType = blockerDescType.Default.(string)
-	// blockerDescUntil is the schema descriptor for until field.
-	blockerDescUntil := blockerFields[7].Descriptor()
-	// blocker.DefaultUntil holds the default value on creation for the until field.
-	blocker.DefaultUntil = blockerDescUntil.Default.(func() time.Time)
-	// blockerDescLastPull is the schema descriptor for last_pull field.
-	blockerDescLastPull := blockerFields[8].Descriptor()
-	// blocker.DefaultLastPull holds the default value on creation for the last_pull field.
-	blocker.DefaultLastPull = blockerDescLastPull.Default.(func() time.Time)
+	bouncerFields := schema.Bouncer{}.Fields()
+	_ = bouncerFields
+	// bouncerDescCreatedAt is the schema descriptor for created_at field.
+	bouncerDescCreatedAt := bouncerFields[0].Descriptor()
+	// bouncer.DefaultCreatedAt holds the default value on creation for the created_at field.
+	bouncer.DefaultCreatedAt = bouncerDescCreatedAt.Default.(func() time.Time)
+	// bouncerDescUpdatedAt is the schema descriptor for updated_at field.
+	bouncerDescUpdatedAt := bouncerFields[1].Descriptor()
+	// bouncer.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	bouncer.DefaultUpdatedAt = bouncerDescUpdatedAt.Default.(func() time.Time)
+	// bouncerDescIPAddress is the schema descriptor for ip_address field.
+	bouncerDescIPAddress := bouncerFields[5].Descriptor()
+	// bouncer.DefaultIPAddress holds the default value on creation for the ip_address field.
+	bouncer.DefaultIPAddress = bouncerDescIPAddress.Default.(string)
+	// bouncerDescUntil is the schema descriptor for until field.
+	bouncerDescUntil := bouncerFields[8].Descriptor()
+	// bouncer.DefaultUntil holds the default value on creation for the until field.
+	bouncer.DefaultUntil = bouncerDescUntil.Default.(func() time.Time)
+	// bouncerDescLastPull is the schema descriptor for last_pull field.
+	bouncerDescLastPull := bouncerFields[9].Descriptor()
+	// bouncer.DefaultLastPull holds the default value on creation for the last_pull field.
+	bouncer.DefaultLastPull = bouncerDescLastPull.Default.(func() time.Time)
 	decisionFields := schema.Decision{}.Fields()
 	_ = decisionFields
 	// decisionDescCreatedAt is the schema descriptor for created_at field.
@@ -113,7 +109,7 @@ func init() {
 	// machine.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	machine.DefaultUpdatedAt = machineDescUpdatedAt.Default.(func() time.Time)
 	// machineDescIsValidated is the schema descriptor for isValidated field.
-	machineDescIsValidated := machineFields[6].Descriptor()
+	machineDescIsValidated := machineFields[7].Descriptor()
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
 	machine.DefaultIsValidated = machineDescIsValidated.Default.(bool)
 	metaFields := schema.Meta{}.Fields()

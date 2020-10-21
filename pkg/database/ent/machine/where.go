@@ -135,6 +135,13 @@ func Scenarios(v string) predicate.Machine {
 	})
 }
 
+// Version applies equality check predicate on the "version" field. It's identical to VersionEQ.
+func Version(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldVersion), v))
+	})
+}
+
 // IsValidated applies equality check predicate on the "isValidated" field. It's identical to IsValidatedEQ.
 func IsValidated(v bool) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
@@ -756,6 +763,131 @@ func ScenariosEqualFold(v string) predicate.Machine {
 func ScenariosContainsFold(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldScenarios), v))
+	})
+}
+
+// VersionEQ applies the EQ predicate on the "version" field.
+func VersionEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldVersion), v))
+	})
+}
+
+// VersionNEQ applies the NEQ predicate on the "version" field.
+func VersionNEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldVersion), v))
+	})
+}
+
+// VersionIn applies the In predicate on the "version" field.
+func VersionIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldVersion), v...))
+	})
+}
+
+// VersionNotIn applies the NotIn predicate on the "version" field.
+func VersionNotIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldVersion), v...))
+	})
+}
+
+// VersionGT applies the GT predicate on the "version" field.
+func VersionGT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldVersion), v))
+	})
+}
+
+// VersionGTE applies the GTE predicate on the "version" field.
+func VersionGTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldVersion), v))
+	})
+}
+
+// VersionLT applies the LT predicate on the "version" field.
+func VersionLT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldVersion), v))
+	})
+}
+
+// VersionLTE applies the LTE predicate on the "version" field.
+func VersionLTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldVersion), v))
+	})
+}
+
+// VersionContains applies the Contains predicate on the "version" field.
+func VersionContains(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldVersion), v))
+	})
+}
+
+// VersionHasPrefix applies the HasPrefix predicate on the "version" field.
+func VersionHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldVersion), v))
+	})
+}
+
+// VersionHasSuffix applies the HasSuffix predicate on the "version" field.
+func VersionHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldVersion), v))
+	})
+}
+
+// VersionIsNil applies the IsNil predicate on the "version" field.
+func VersionIsNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldVersion)))
+	})
+}
+
+// VersionNotNil applies the NotNil predicate on the "version" field.
+func VersionNotNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldVersion)))
+	})
+}
+
+// VersionEqualFold applies the EqualFold predicate on the "version" field.
+func VersionEqualFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldVersion), v))
+	})
+}
+
+// VersionContainsFold applies the ContainsFold predicate on the "version" field.
+func VersionContainsFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldVersion), v))
 	})
 }
 

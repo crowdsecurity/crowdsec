@@ -20,7 +20,6 @@ import (
 
 type APIKeyTransport struct {
 	APIKey string
-
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
 	Transport http.RoundTripper
@@ -37,6 +36,9 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("X-Api-Key", t.APIKey)
+	if UserAgent != "" {
+		req.Header.Add("User-Agent", UserAgent)
+	}
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
@@ -107,6 +109,9 @@ func (t *JWTTransport) refreshJwtToken() error {
 	}
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
+	if UserAgent != "" {
+		req.Header.Add("User-Agent", UserAgent)
+	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("req-jwt(auth): %s", string(dump))
@@ -160,6 +165,9 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("req-jwt: %s", string(dump))
+	}
+	if UserAgent != "" {
+		req.Header.Add("User-Agent", UserAgent)
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)

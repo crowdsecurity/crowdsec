@@ -7,35 +7,35 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/blocker"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/facebook/ent/dialect/sql"
 	"github.com/facebook/ent/dialect/sql/sqlgraph"
 	"github.com/facebook/ent/schema/field"
 )
 
-// BlockerUpdate is the builder for updating Blocker entities.
-type BlockerUpdate struct {
+// BouncerUpdate is the builder for updating Bouncer entities.
+type BouncerUpdate struct {
 	config
 	hooks      []Hook
-	mutation   *BlockerMutation
-	predicates []predicate.Blocker
+	mutation   *BouncerMutation
+	predicates []predicate.Bouncer
 }
 
 // Where adds a new predicate for the builder.
-func (bu *BlockerUpdate) Where(ps ...predicate.Blocker) *BlockerUpdate {
+func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
 	bu.predicates = append(bu.predicates, ps...)
 	return bu
 }
 
 // SetCreatedAt sets the created_at field.
-func (bu *BlockerUpdate) SetCreatedAt(t time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetCreatedAt(t)
 	return bu
 }
 
 // SetNillableCreatedAt sets the created_at field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableCreatedAt(t *time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetCreatedAt(*t)
 	}
@@ -43,13 +43,13 @@ func (bu *BlockerUpdate) SetNillableCreatedAt(t *time.Time) *BlockerUpdate {
 }
 
 // SetUpdatedAt sets the updated_at field.
-func (bu *BlockerUpdate) SetUpdatedAt(t time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUpdatedAt(t)
 	return bu
 }
 
 // SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableUpdatedAt(t *time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableUpdatedAt(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetUpdatedAt(*t)
 	}
@@ -57,31 +57,31 @@ func (bu *BlockerUpdate) SetNillableUpdatedAt(t *time.Time) *BlockerUpdate {
 }
 
 // SetName sets the name field.
-func (bu *BlockerUpdate) SetName(s string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetName(s string) *BouncerUpdate {
 	bu.mutation.SetName(s)
 	return bu
 }
 
 // SetAPIKey sets the api_key field.
-func (bu *BlockerUpdate) SetAPIKey(s string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetAPIKey(s string) *BouncerUpdate {
 	bu.mutation.SetAPIKey(s)
 	return bu
 }
 
 // SetRevoked sets the revoked field.
-func (bu *BlockerUpdate) SetRevoked(b bool) *BlockerUpdate {
+func (bu *BouncerUpdate) SetRevoked(b bool) *BouncerUpdate {
 	bu.mutation.SetRevoked(b)
 	return bu
 }
 
 // SetIPAddress sets the ip_address field.
-func (bu *BlockerUpdate) SetIPAddress(s string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetIPAddress(s string) *BouncerUpdate {
 	bu.mutation.SetIPAddress(s)
 	return bu
 }
 
 // SetNillableIPAddress sets the ip_address field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableIPAddress(s *string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableIPAddress(s *string) *BouncerUpdate {
 	if s != nil {
 		bu.SetIPAddress(*s)
 	}
@@ -89,19 +89,19 @@ func (bu *BlockerUpdate) SetNillableIPAddress(s *string) *BlockerUpdate {
 }
 
 // ClearIPAddress clears the value of ip_address.
-func (bu *BlockerUpdate) ClearIPAddress() *BlockerUpdate {
+func (bu *BouncerUpdate) ClearIPAddress() *BouncerUpdate {
 	bu.mutation.ClearIPAddress()
 	return bu
 }
 
 // SetType sets the type field.
-func (bu *BlockerUpdate) SetType(s string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetType(s string) *BouncerUpdate {
 	bu.mutation.SetType(s)
 	return bu
 }
 
 // SetNillableType sets the type field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableType(s *string) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableType(s *string) *BouncerUpdate {
 	if s != nil {
 		bu.SetType(*s)
 	}
@@ -109,19 +109,39 @@ func (bu *BlockerUpdate) SetNillableType(s *string) *BlockerUpdate {
 }
 
 // ClearType clears the value of type.
-func (bu *BlockerUpdate) ClearType() *BlockerUpdate {
+func (bu *BouncerUpdate) ClearType() *BouncerUpdate {
 	bu.mutation.ClearType()
 	return bu
 }
 
+// SetVersion sets the version field.
+func (bu *BouncerUpdate) SetVersion(s string) *BouncerUpdate {
+	bu.mutation.SetVersion(s)
+	return bu
+}
+
+// SetNillableVersion sets the version field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableVersion(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetVersion(*s)
+	}
+	return bu
+}
+
+// ClearVersion clears the value of version.
+func (bu *BouncerUpdate) ClearVersion() *BouncerUpdate {
+	bu.mutation.ClearVersion()
+	return bu
+}
+
 // SetUntil sets the until field.
-func (bu *BlockerUpdate) SetUntil(t time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetUntil(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUntil(t)
 	return bu
 }
 
 // SetNillableUntil sets the until field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableUntil(t *time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableUntil(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetUntil(*t)
 	}
@@ -129,32 +149,32 @@ func (bu *BlockerUpdate) SetNillableUntil(t *time.Time) *BlockerUpdate {
 }
 
 // ClearUntil clears the value of until.
-func (bu *BlockerUpdate) ClearUntil() *BlockerUpdate {
+func (bu *BouncerUpdate) ClearUntil() *BouncerUpdate {
 	bu.mutation.ClearUntil()
 	return bu
 }
 
 // SetLastPull sets the last_pull field.
-func (bu *BlockerUpdate) SetLastPull(t time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetLastPull(t time.Time) *BouncerUpdate {
 	bu.mutation.SetLastPull(t)
 	return bu
 }
 
 // SetNillableLastPull sets the last_pull field if the given value is not nil.
-func (bu *BlockerUpdate) SetNillableLastPull(t *time.Time) *BlockerUpdate {
+func (bu *BouncerUpdate) SetNillableLastPull(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetLastPull(*t)
 	}
 	return bu
 }
 
-// Mutation returns the BlockerMutation object of the builder.
-func (bu *BlockerUpdate) Mutation() *BlockerMutation {
+// Mutation returns the BouncerMutation object of the builder.
+func (bu *BouncerUpdate) Mutation() *BouncerMutation {
 	return bu.mutation
 }
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
-func (bu *BlockerUpdate) Save(ctx context.Context) (int, error) {
+func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
 		affected int
@@ -163,7 +183,7 @@ func (bu *BlockerUpdate) Save(ctx context.Context) (int, error) {
 		affected, err = bu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BlockerMutation)
+			mutation, ok := m.(*BouncerMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
 			}
@@ -183,7 +203,7 @@ func (bu *BlockerUpdate) Save(ctx context.Context) (int, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (bu *BlockerUpdate) SaveX(ctx context.Context) int {
+func (bu *BouncerUpdate) SaveX(ctx context.Context) int {
 	affected, err := bu.Save(ctx)
 	if err != nil {
 		panic(err)
@@ -192,26 +212,26 @@ func (bu *BlockerUpdate) SaveX(ctx context.Context) int {
 }
 
 // Exec executes the query.
-func (bu *BlockerUpdate) Exec(ctx context.Context) error {
+func (bu *BouncerUpdate) Exec(ctx context.Context) error {
 	_, err := bu.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (bu *BlockerUpdate) ExecX(ctx context.Context) {
+func (bu *BouncerUpdate) ExecX(ctx context.Context) {
 	if err := bu.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
-func (bu *BlockerUpdate) sqlSave(ctx context.Context) (n int, err error) {
+func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
-			Table:   blocker.Table,
-			Columns: blocker.Columns,
+			Table:   bouncer.Table,
+			Columns: bouncer.Columns,
 			ID: &sqlgraph.FieldSpec{
 				Type:   field.TypeInt,
-				Column: blocker.FieldID,
+				Column: bouncer.FieldID,
 			},
 		},
 	}
@@ -226,86 +246,99 @@ func (bu *BlockerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldCreatedAt,
+			Column: bouncer.FieldCreatedAt,
 		})
 	}
 	if value, ok := bu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUpdatedAt,
+			Column: bouncer.FieldUpdatedAt,
 		})
 	}
 	if value, ok := bu.mutation.Name(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldName,
+			Column: bouncer.FieldName,
 		})
 	}
 	if value, ok := bu.mutation.APIKey(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldAPIKey,
+			Column: bouncer.FieldAPIKey,
 		})
 	}
 	if value, ok := bu.mutation.Revoked(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
 			Value:  value,
-			Column: blocker.FieldRevoked,
+			Column: bouncer.FieldRevoked,
 		})
 	}
 	if value, ok := bu.mutation.IPAddress(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldIPAddress,
+			Column: bouncer.FieldIPAddress,
 		})
 	}
 	if bu.mutation.IPAddressCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Column: blocker.FieldIPAddress,
+			Column: bouncer.FieldIPAddress,
 		})
 	}
 	if value, ok := bu.mutation.GetType(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldType,
+			Column: bouncer.FieldType,
 		})
 	}
 	if bu.mutation.TypeCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Column: blocker.FieldType,
+			Column: bouncer.FieldType,
+		})
+	}
+	if value, ok := bu.mutation.Version(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldVersion,
+		})
+	}
+	if bu.mutation.VersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: bouncer.FieldVersion,
 		})
 	}
 	if value, ok := bu.mutation.Until(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUntil,
+			Column: bouncer.FieldUntil,
 		})
 	}
 	if bu.mutation.UntilCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
-			Column: blocker.FieldUntil,
+			Column: bouncer.FieldUntil,
 		})
 	}
 	if value, ok := bu.mutation.LastPull(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldLastPull,
+			Column: bouncer.FieldLastPull,
 		})
 	}
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
-			err = &NotFoundError{blocker.Label}
+			err = &NotFoundError{bouncer.Label}
 		} else if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
 		}
@@ -314,21 +347,21 @@ func (bu *BlockerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	return n, nil
 }
 
-// BlockerUpdateOne is the builder for updating a single Blocker entity.
-type BlockerUpdateOne struct {
+// BouncerUpdateOne is the builder for updating a single Bouncer entity.
+type BouncerUpdateOne struct {
 	config
 	hooks    []Hook
-	mutation *BlockerMutation
+	mutation *BouncerMutation
 }
 
 // SetCreatedAt sets the created_at field.
-func (buo *BlockerUpdateOne) SetCreatedAt(t time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetCreatedAt(t)
 	return buo
 }
 
 // SetNillableCreatedAt sets the created_at field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableCreatedAt(t *time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetCreatedAt(*t)
 	}
@@ -336,13 +369,13 @@ func (buo *BlockerUpdateOne) SetNillableCreatedAt(t *time.Time) *BlockerUpdateOn
 }
 
 // SetUpdatedAt sets the updated_at field.
-func (buo *BlockerUpdateOne) SetUpdatedAt(t time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUpdatedAt(t)
 	return buo
 }
 
 // SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetUpdatedAt(*t)
 	}
@@ -350,31 +383,31 @@ func (buo *BlockerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BlockerUpdateOn
 }
 
 // SetName sets the name field.
-func (buo *BlockerUpdateOne) SetName(s string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetName(s string) *BouncerUpdateOne {
 	buo.mutation.SetName(s)
 	return buo
 }
 
 // SetAPIKey sets the api_key field.
-func (buo *BlockerUpdateOne) SetAPIKey(s string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetAPIKey(s string) *BouncerUpdateOne {
 	buo.mutation.SetAPIKey(s)
 	return buo
 }
 
 // SetRevoked sets the revoked field.
-func (buo *BlockerUpdateOne) SetRevoked(b bool) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetRevoked(b bool) *BouncerUpdateOne {
 	buo.mutation.SetRevoked(b)
 	return buo
 }
 
 // SetIPAddress sets the ip_address field.
-func (buo *BlockerUpdateOne) SetIPAddress(s string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetIPAddress(s string) *BouncerUpdateOne {
 	buo.mutation.SetIPAddress(s)
 	return buo
 }
 
 // SetNillableIPAddress sets the ip_address field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableIPAddress(s *string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableIPAddress(s *string) *BouncerUpdateOne {
 	if s != nil {
 		buo.SetIPAddress(*s)
 	}
@@ -382,19 +415,19 @@ func (buo *BlockerUpdateOne) SetNillableIPAddress(s *string) *BlockerUpdateOne {
 }
 
 // ClearIPAddress clears the value of ip_address.
-func (buo *BlockerUpdateOne) ClearIPAddress() *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) ClearIPAddress() *BouncerUpdateOne {
 	buo.mutation.ClearIPAddress()
 	return buo
 }
 
 // SetType sets the type field.
-func (buo *BlockerUpdateOne) SetType(s string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetType(s string) *BouncerUpdateOne {
 	buo.mutation.SetType(s)
 	return buo
 }
 
 // SetNillableType sets the type field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableType(s *string) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableType(s *string) *BouncerUpdateOne {
 	if s != nil {
 		buo.SetType(*s)
 	}
@@ -402,19 +435,39 @@ func (buo *BlockerUpdateOne) SetNillableType(s *string) *BlockerUpdateOne {
 }
 
 // ClearType clears the value of type.
-func (buo *BlockerUpdateOne) ClearType() *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) ClearType() *BouncerUpdateOne {
 	buo.mutation.ClearType()
 	return buo
 }
 
+// SetVersion sets the version field.
+func (buo *BouncerUpdateOne) SetVersion(s string) *BouncerUpdateOne {
+	buo.mutation.SetVersion(s)
+	return buo
+}
+
+// SetNillableVersion sets the version field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableVersion(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetVersion(*s)
+	}
+	return buo
+}
+
+// ClearVersion clears the value of version.
+func (buo *BouncerUpdateOne) ClearVersion() *BouncerUpdateOne {
+	buo.mutation.ClearVersion()
+	return buo
+}
+
 // SetUntil sets the until field.
-func (buo *BlockerUpdateOne) SetUntil(t time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetUntil(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUntil(t)
 	return buo
 }
 
 // SetNillableUntil sets the until field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableUntil(t *time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableUntil(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetUntil(*t)
 	}
@@ -422,41 +475,41 @@ func (buo *BlockerUpdateOne) SetNillableUntil(t *time.Time) *BlockerUpdateOne {
 }
 
 // ClearUntil clears the value of until.
-func (buo *BlockerUpdateOne) ClearUntil() *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) ClearUntil() *BouncerUpdateOne {
 	buo.mutation.ClearUntil()
 	return buo
 }
 
 // SetLastPull sets the last_pull field.
-func (buo *BlockerUpdateOne) SetLastPull(t time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetLastPull(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetLastPull(t)
 	return buo
 }
 
 // SetNillableLastPull sets the last_pull field if the given value is not nil.
-func (buo *BlockerUpdateOne) SetNillableLastPull(t *time.Time) *BlockerUpdateOne {
+func (buo *BouncerUpdateOne) SetNillableLastPull(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetLastPull(*t)
 	}
 	return buo
 }
 
-// Mutation returns the BlockerMutation object of the builder.
-func (buo *BlockerUpdateOne) Mutation() *BlockerMutation {
+// Mutation returns the BouncerMutation object of the builder.
+func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
 }
 
 // Save executes the query and returns the updated entity.
-func (buo *BlockerUpdateOne) Save(ctx context.Context) (*Blocker, error) {
+func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 	var (
 		err  error
-		node *Blocker
+		node *Bouncer
 	)
 	if len(buo.hooks) == 0 {
 		node, err = buo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
-			mutation, ok := m.(*BlockerMutation)
+			mutation, ok := m.(*BouncerMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
 			}
@@ -476,134 +529,147 @@ func (buo *BlockerUpdateOne) Save(ctx context.Context) (*Blocker, error) {
 }
 
 // SaveX is like Save, but panics if an error occurs.
-func (buo *BlockerUpdateOne) SaveX(ctx context.Context) *Blocker {
-	node, err := buo.Save(ctx)
+func (buo *BouncerUpdateOne) SaveX(ctx context.Context) *Bouncer {
+	b, err := buo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return b
 }
 
 // Exec executes the query on the entity.
-func (buo *BlockerUpdateOne) Exec(ctx context.Context) error {
+func (buo *BouncerUpdateOne) Exec(ctx context.Context) error {
 	_, err := buo.Save(ctx)
 	return err
 }
 
 // ExecX is like Exec, but panics if an error occurs.
-func (buo *BlockerUpdateOne) ExecX(ctx context.Context) {
+func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
 	if err := buo.Exec(ctx); err != nil {
 		panic(err)
 	}
 }
 
-func (buo *BlockerUpdateOne) sqlSave(ctx context.Context) (_node *Blocker, err error) {
+func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (b *Bouncer, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
-			Table:   blocker.Table,
-			Columns: blocker.Columns,
+			Table:   bouncer.Table,
+			Columns: bouncer.Columns,
 			ID: &sqlgraph.FieldSpec{
 				Type:   field.TypeInt,
-				Column: blocker.FieldID,
+				Column: bouncer.FieldID,
 			},
 		},
 	}
 	id, ok := buo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Blocker.ID for update")}
+		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Bouncer.ID for update")}
 	}
 	_spec.Node.ID.Value = id
 	if value, ok := buo.mutation.CreatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldCreatedAt,
+			Column: bouncer.FieldCreatedAt,
 		})
 	}
 	if value, ok := buo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUpdatedAt,
+			Column: bouncer.FieldUpdatedAt,
 		})
 	}
 	if value, ok := buo.mutation.Name(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldName,
+			Column: bouncer.FieldName,
 		})
 	}
 	if value, ok := buo.mutation.APIKey(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldAPIKey,
+			Column: bouncer.FieldAPIKey,
 		})
 	}
 	if value, ok := buo.mutation.Revoked(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
 			Value:  value,
-			Column: blocker.FieldRevoked,
+			Column: bouncer.FieldRevoked,
 		})
 	}
 	if value, ok := buo.mutation.IPAddress(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldIPAddress,
+			Column: bouncer.FieldIPAddress,
 		})
 	}
 	if buo.mutation.IPAddressCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Column: blocker.FieldIPAddress,
+			Column: bouncer.FieldIPAddress,
 		})
 	}
 	if value, ok := buo.mutation.GetType(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Value:  value,
-			Column: blocker.FieldType,
+			Column: bouncer.FieldType,
 		})
 	}
 	if buo.mutation.TypeCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
-			Column: blocker.FieldType,
+			Column: bouncer.FieldType,
+		})
+	}
+	if value, ok := buo.mutation.Version(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldVersion,
+		})
+	}
+	if buo.mutation.VersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: bouncer.FieldVersion,
 		})
 	}
 	if value, ok := buo.mutation.Until(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldUntil,
+			Column: bouncer.FieldUntil,
 		})
 	}
 	if buo.mutation.UntilCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
-			Column: blocker.FieldUntil,
+			Column: bouncer.FieldUntil,
 		})
 	}
 	if value, ok := buo.mutation.LastPull(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
-			Column: blocker.FieldLastPull,
+			Column: bouncer.FieldLastPull,
 		})
 	}
-	_node = &Blocker{config: buo.config}
-	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	b = &Bouncer{config: buo.config}
+	_spec.Assign = b.assignValues
+	_spec.ScanValues = b.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
-			err = &NotFoundError{blocker.Label}
+			err = &NotFoundError{bouncer.Label}
 		} else if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
 		}
 		return nil, err
 	}
-	return _node, nil
+	return b, nil
 }

@@ -103,7 +103,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	hashedKey := sha512.New()
 	hashedKey.Write([]byte(val))
 	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
-	blockerInfo, err := c.DBClient.SelectBlocker(hashStr)
+	bouncerInfo, err := c.DBClient.SelectBouncer(hashStr)
 	if err != nil {
 		if _, ok := err.(*ent.NotFoundError); ok {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
@@ -113,7 +113,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
-	if blockerInfo == nil {
+	if bouncerInfo == nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": "not allowed"})
 		return
 	}
@@ -129,7 +129,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 			}
 			ret["new"], err = FormatDecisions(data)
 			if err != nil {
-				log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
+				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
@@ -137,19 +137,19 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 			// getting expired decisions
 			data, err = c.DBClient.QueryExpiredDecisions()
 			if err != nil {
-				log.Errorf("unable to query expired decision for '%s' : %v", blockerInfo.Name, err)
+				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
 			ret["deleted"], err = FormatDecisions(data)
 			if err != nil {
-				log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
+				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
 
-			if err := c.DBClient.UpdateBlockerLastPull(time.Now(), blockerInfo.ID); err != nil {
-				log.Errorf("unable to update blocker '%s' pull: %v", blockerInfo.Name, err)
+			if err := c.DBClient.UpdateBouncerLastPull(time.Now(), bouncerInfo.ID); err != nil {
+				log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
@@ -160,35 +160,35 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSince(blockerInfo.LastPull)
+	data, err = c.DBClient.QueryNewDecisionsSince(bouncerInfo.LastPull)
 	if err != nil {
-		log.Errorf("unable to query new decision for '%s' : %v", blockerInfo.Name, err)
+		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	ret["new"], err = FormatDecisions(data)
 	if err != nil {
-		log.Errorf("unable to format new decision for '%s' : %v", blockerInfo.Name, err)
+		log.Errorf("unable to format new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
 	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSince(blockerInfo.LastPull.Add((-2 * time.Second))) // do we want to give exactly lastPull time ?
+	data, err = c.DBClient.QueryExpiredDecisionsSince(bouncerInfo.LastPull.Add((-2 * time.Second))) // do we want to give exactly lastPull time ?
 	if err != nil {
-		log.Errorf("unable to query expired decision for '%s' : %v", blockerInfo.Name, err)
+		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	ret["deleted"], err = FormatDecisions(data)
 	if err != nil {
-		log.Errorf("unable to format expired decision for '%s' : %v", blockerInfo.Name, err)
+		log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	if err := c.DBClient.UpdateBlockerLastPull(time.Now(), blockerInfo.ID); err != nil {
-		log.Errorf("unable to update blocker '%s' pull: %v", blockerInfo.Name, err)
+	if err := c.DBClient.UpdateBouncerLastPull(time.Now(), bouncerInfo.ID); err != nil {
+		log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}

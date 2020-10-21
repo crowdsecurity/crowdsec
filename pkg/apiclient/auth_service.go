@@ -41,7 +41,6 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 }
 
 func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (*Response, error) {
-
 	u := "v1/watchers/login"
 	req, err := s.client.NewRequest("POST", u, &auth)
 	if err != nil {

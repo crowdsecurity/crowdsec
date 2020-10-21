@@ -63,12 +63,8 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 		if err := dq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := dq.sqlQuery()
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(decision.Table, decision.FieldID, selector),
+			sqlgraph.From(decision.Table, decision.FieldID, dq.sqlQuery()),
 			sqlgraph.To(alert.Table, alert.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, decision.OwnerTable, decision.OwnerColumn),
 		)
@@ -80,23 +76,23 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 
 // First returns the first Decision entity in the query. Returns *NotFoundError when no decision was found.
 func (dq *DecisionQuery) First(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(1).All(ctx)
+	ds, err := dq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(nodes) == 0 {
+	if len(ds) == 0 {
 		return nil, &NotFoundError{decision.Label}
 	}
-	return nodes[0], nil
+	return ds[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (dq *DecisionQuery) FirstX(ctx context.Context) *Decision {
-	node, err := dq.First(ctx)
+	d, err := dq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return node
+	return d
 }
 
 // FirstID returns the first Decision id in the query. Returns *NotFoundError when no id was found.
@@ -123,13 +119,13 @@ func (dq *DecisionQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Decision entity in the query, returns an error if not exactly one entity was returned.
 func (dq *DecisionQuery) Only(ctx context.Context) (*Decision, error) {
-	nodes, err := dq.Limit(2).All(ctx)
+	ds, err := dq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(nodes) {
+	switch len(ds) {
 	case 1:
-		return nodes[0], nil
+		return ds[0], nil
 	case 0:
 		return nil, &NotFoundError{decision.Label}
 	default:
@@ -139,11 +135,11 @@ func (dq *DecisionQuery) Only(ctx context.Context) (*Decision, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (dq *DecisionQuery) OnlyX(ctx context.Context) *Decision {
-	node, err := dq.Only(ctx)
+	d, err := dq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return node
+	return d
 }
 
 // OnlyID returns the only Decision id in the query, returns an error if not exactly one id was returned.
@@ -182,11 +178,11 @@ func (dq *DecisionQuery) All(ctx context.Context) ([]*Decision, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (dq *DecisionQuery) AllX(ctx context.Context) []*Decision {
-	nodes, err := dq.All(ctx)
+	ds, err := dq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return nodes
+	return ds
 }
 
 // IDs executes the query and returns a list of Decision ids.
@@ -439,7 +435,7 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := dq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, decision.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -458,7 +454,7 @@ func (dq *DecisionQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range dq.order {
-		p(selector, decision.ValidColumn)
+		p(selector)
 	}
 	if offset := dq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -693,17 +689,8 @@ func (dgb *DecisionGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (dgb *DecisionGroupBy) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range dgb.fields {
-		if !decision.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
-		}
-	}
-	selector := dgb.sqlQuery()
-	if err := selector.Err(); err != nil {
-		return err
-	}
 	rows := &sql.Rows{}
-	query, args := selector.Query()
+	query, args := dgb.sqlQuery().Query()
 	if err := dgb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -716,7 +703,7 @@ func (dgb *DecisionGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(dgb.fields)+len(dgb.fns))
 	columns = append(columns, dgb.fields...)
 	for _, fn := range dgb.fns {
-		columns = append(columns, fn(selector, decision.ValidColumn))
+		columns = append(columns, fn(selector))
 	}
 	return selector.Select(columns...).GroupBy(dgb.fields...)
 }
@@ -936,11 +923,6 @@ func (ds *DecisionSelect) BoolX(ctx context.Context) bool {
 }
 
 func (ds *DecisionSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range ds.fields {
-		if !decision.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := ds.sqlQuery().Query()
 	if err := ds.driver.Query(ctx, query, args, rows); err != nil {

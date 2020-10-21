@@ -147,6 +147,10 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 			}
+			if c.API.Server.OnlineClient.Credentials == nil {
+				log.Warningf("online credentials not found in '%s', will not use crowdsec api", c.API.Server.OnlineClient.CredentialsFilePath)
+				c.API.Server.OnlineClient = nil
+			}
 		}
 	}
 

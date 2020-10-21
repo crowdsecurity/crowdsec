@@ -16,6 +16,7 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 )
 
 var (
@@ -32,6 +33,8 @@ type APIServer struct {
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
 	httpServer     *http.Server
+	apic           *apic
+	httpServerTomb tomb.Tomb
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -101,6 +104,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if err := controller.Init(); err != nil {
 		return &APIServer{}, err
 	}
+	var apiClient *apic
+	if config.OnlineClient != nil {
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
+		if err != nil {
+			return &APIServer{}, err
+		}
+	} else {
+		apiClient = nil
+	}
 
 	return &APIServer{
 		URL:            config.ListenURI,
@@ -110,6 +122,8 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller:     controller,
 		flushScheduler: flushScheduler,
 		router:         router,
+		apic:           apiClient,
+		httpServerTomb: tomb.Tomb{},
 	}, nil
 
 }
@@ -119,25 +133,60 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 }
 
 func (s *APIServer) Run() error {
+	defer types.CatchPanic("apil/runServer")
+
 	s.httpServer = &http.Server{
 		Addr:    s.URL,
 		Handler: s.router,
 	}
 
-	if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
-		if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-			log.Fatalf(err.Error())
-		}
-	} else {
-		if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatalf(err.Error())
-		}
+	if s.apic != nil {
+		s.apic.pushTomb.Go(func() error {
+			if err := s.apic.Push(); err != nil {
+				return err
+			}
+			return nil
+		})
+		s.apic.pullTomb.Go(func() error {
+			if err := s.apic.Pull(); err != nil {
+				return err
+			}
+			return nil
+		})
+		s.apic.metricsTomb.Go(func() error {
+			if err := s.apic.SendMetrics(); err != nil {
+				return err
+			}
+			return nil
+		})
 	}
+
+	s.httpServerTomb.Go(func() error {
+		go func() {
+			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
+				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
+					log.Fatalf(err.Error())
+				}
+			} else {
+				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+					log.Fatalf(err.Error())
+				}
+			}
+		}()
+		<-s.httpServerTomb.Dying()
+		if err := s.Shutdown(); err != nil {
+			return err
+		}
+		return nil
+	})
 
 	return nil
 }
 
 func (s *APIServer) Close() {
+	if s.apic != nil {
+		s.apic.Shutdown() // stop apic first since it use dbClient
+	}
 	s.dbClient.Ent.Close()
 	if s.flushScheduler != nil {
 		s.flushScheduler.Stop()

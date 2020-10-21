@@ -9,8 +9,8 @@ import (
 // Alert is the predicate function for alert builders.
 type Alert func(*sql.Selector)
 
-// Blocker is the predicate function for blocker builders.
-type Blocker func(*sql.Selector)
+// Bouncer is the predicate function for bouncer builders.
+type Bouncer func(*sql.Selector)
 
 // Decision is the predicate function for decision builders.
 type Decision func(*sql.Selector)

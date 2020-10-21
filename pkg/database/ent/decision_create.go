@@ -153,24 +153,20 @@ func (dc *DecisionCreate) Mutation() *DecisionMutation {
 
 // Save creates the Decision in the database.
 func (dc *DecisionCreate) Save(ctx context.Context) (*Decision, error) {
+	if err := dc.preSave(); err != nil {
+		return nil, err
+	}
 	var (
 		err  error
 		node *Decision
 	)
-	dc.defaults()
 	if len(dc.hooks) == 0 {
-		if err = dc.check(); err != nil {
-			return nil, err
-		}
 		node, err = dc.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*DecisionMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = dc.check(); err != nil {
-				return nil, err
 			}
 			dc.mutation = mutation
 			node, err = dc.sqlSave(ctx)
@@ -196,8 +192,7 @@ func (dc *DecisionCreate) SaveX(ctx context.Context) *Decision {
 	return v
 }
 
-// defaults sets the default values of the builder before save.
-func (dc *DecisionCreate) defaults() {
+func (dc *DecisionCreate) preSave() error {
 	if _, ok := dc.mutation.CreatedAt(); !ok {
 		v := decision.DefaultCreatedAt()
 		dc.mutation.SetCreatedAt(v)
@@ -205,20 +200,6 @@ func (dc *DecisionCreate) defaults() {
 	if _, ok := dc.mutation.UpdatedAt(); !ok {
 		v := decision.DefaultUpdatedAt()
 		dc.mutation.SetUpdatedAt(v)
-	}
-	if _, ok := dc.mutation.Simulated(); !ok {
-		v := decision.DefaultSimulated
-		dc.mutation.SetSimulated(v)
-	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (dc *DecisionCreate) check() error {
-	if _, ok := dc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := dc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
 	}
 	if _, ok := dc.mutation.Until(); !ok {
 		return &ValidationError{Name: "until", err: errors.New("ent: missing required field \"until\"")}
@@ -239,13 +220,14 @@ func (dc *DecisionCreate) check() error {
 		return &ValidationError{Name: "origin", err: errors.New("ent: missing required field \"origin\"")}
 	}
 	if _, ok := dc.mutation.Simulated(); !ok {
-		return &ValidationError{Name: "simulated", err: errors.New("ent: missing required field \"simulated\"")}
+		v := decision.DefaultSimulated
+		dc.mutation.SetSimulated(v)
 	}
 	return nil
 }
 
 func (dc *DecisionCreate) sqlSave(ctx context.Context) (*Decision, error) {
-	_node, _spec := dc.createSpec()
+	d, _spec := dc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, dc.driver, _spec); err != nil {
 		if cerr, ok := isSQLConstraintError(err); ok {
 			err = cerr
@@ -253,13 +235,13 @@ func (dc *DecisionCreate) sqlSave(ctx context.Context) (*Decision, error) {
 		return nil, err
 	}
 	id := _spec.ID.Value.(int64)
-	_node.ID = int(id)
-	return _node, nil
+	d.ID = int(id)
+	return d, nil
 }
 
 func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	var (
-		_node = &Decision{config: dc.config}
+		d     = &Decision{config: dc.config}
 		_spec = &sqlgraph.CreateSpec{
 			Table: decision.Table,
 			ID: &sqlgraph.FieldSpec{
@@ -274,7 +256,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		d.CreatedAt = value
 	}
 	if value, ok := dc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -282,7 +264,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		d.UpdatedAt = value
 	}
 	if value, ok := dc.mutation.Until(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -290,7 +272,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldUntil,
 		})
-		_node.Until = value
+		d.Until = value
 	}
 	if value, ok := dc.mutation.Scenario(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -298,7 +280,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldScenario,
 		})
-		_node.Scenario = value
+		d.Scenario = value
 	}
 	if value, ok := dc.mutation.GetType(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -306,7 +288,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldType,
 		})
-		_node.Type = value
+		d.Type = value
 	}
 	if value, ok := dc.mutation.StartIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -314,7 +296,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
-		_node.StartIP = value
+		d.StartIP = value
 	}
 	if value, ok := dc.mutation.EndIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -322,7 +304,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
-		_node.EndIP = value
+		d.EndIP = value
 	}
 	if value, ok := dc.mutation.Scope(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -330,7 +312,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldScope,
 		})
-		_node.Scope = value
+		d.Scope = value
 	}
 	if value, ok := dc.mutation.Value(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -338,7 +320,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldValue,
 		})
-		_node.Value = value
+		d.Value = value
 	}
 	if value, ok := dc.mutation.Origin(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -346,7 +328,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldOrigin,
 		})
-		_node.Origin = value
+		d.Origin = value
 	}
 	if value, ok := dc.mutation.Simulated(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -354,7 +336,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldSimulated,
 		})
-		_node.Simulated = value
+		d.Simulated = value
 	}
 	if nodes := dc.mutation.OwnerIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -375,7 +357,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
-	return _node, _spec
+	return d, _spec
 }
 
 // DecisionCreateBulk is the builder for creating a bulk of Decision entities.
@@ -392,14 +374,13 @@ func (dcb *DecisionCreateBulk) Save(ctx context.Context) ([]*Decision, error) {
 	for i := range dcb.builders {
 		func(i int, root context.Context) {
 			builder := dcb.builders[i]
-			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
+				if err := builder.preSave(); err != nil {
+					return nil, err
+				}
 				mutation, ok := m.(*DecisionMutation)
 				if !ok {
 					return nil, fmt.Errorf("unexpected mutation type %T", m)
-				}
-				if err := builder.check(); err != nil {
-					return nil, err
 				}
 				builder.mutation = mutation
 				nodes[i], specs[i] = builder.createSpec()

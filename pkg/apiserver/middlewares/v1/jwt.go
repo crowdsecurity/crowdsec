@@ -3,6 +3,7 @@ package v1
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"errors"
@@ -106,6 +107,18 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			log.Errorf("Failed to update ip address for '%s': %s\n", machine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
+	}
+
+	useragent := strings.Split(c.Request.UserAgent(), "/")
+	if len(useragent) != 2 {
+		log.Warningf("bad user agent '%s' from '%s'", c.Request.UserAgent(), c.ClientIP())
+		return nil, jwt.ErrFailedAuthentication
+	}
+
+	if err := j.DbClient.UpdateMachineVersion(useragent[1], machine.ID); err != nil {
+		log.Errorf("unable to update machine '%s' version '%s': %s", machine.MachineId, useragent[1], err)
+		log.Errorf("bad user agent from : %s", c.ClientIP())
+		return nil, jwt.ErrFailedAuthentication
 	}
 
 	return &models.WatcherAuthRequest{
