@@ -169,16 +169,16 @@ func (a *apic) Pull() error {
 					//SetSourceCountry(alert["country"]).
 					Save(a.dbClient.CTX)
 				if err != nil {
-					log.Fatalf("unable to create alors from topX: %s", err)
+					return errors.Wrap(err, "create alert from crowdsec-api")
 				}
 
 				duration, err := time.ParseDuration(*decision.Duration)
 				if err != nil {
-					log.Fatalf("unable to parse decision duration '%s': %s", *decision.Duration, err)
+					return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
 				}
 				startIP, endIP, err := controllers.GetIpsFromIpRange(*decision.Value)
 				if err != nil {
-					log.Fatalf("failed querying alerts: Range %v is not valid", *decision.Value)
+					return errors.Wrapf(err, "ip to int '%s':", *decision.Value)
 				}
 
 				_, err = a.dbClient.Ent.Decision.Create().
@@ -192,7 +192,7 @@ func (a *apic) Pull() error {
 					SetOrigin("crowdsec-api").
 					SetOwner(alertCreated).Save(a.dbClient.CTX)
 				if err != nil {
-					log.Fatalf("failed creating decision from top: %v", err)
+					return errors.Wrap(err, "decision creation from crowdsec-api:")
 				}
 			}
 			log.Printf("pull top: added %d entries", len(data.New))
