@@ -16,7 +16,6 @@ filters:
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
 decisions:
  - type: ban
-   scope: ip
    duration: 1h
 on_success: break
 ---
@@ -28,6 +27,5 @@ filters:
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
 decisions:
  - type: ratatatata
-   scope: ip
    duration: 1h
 on_success: break
