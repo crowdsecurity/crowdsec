@@ -7,14 +7,17 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
+	qs "github.com/google/go-querystring/query"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -24,6 +27,8 @@ var (
 	Scope      string
 	Value      string
 	Type       string
+	Duration   string
+	Reason     string
 	DecisionID string
 	NoSimu     bool
 )
@@ -87,15 +92,12 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 func NewDecisionsCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdDecisions = &cobra.Command{
-		Use:   "decisions [action]",
-		Short: "Manage decisions",
-		Long: `
-Decisions Management.
-
-To list/add/delete decisions
-`,
+		Use:     "decisions [action]",
+		Short:   "Manage decisions",
+		Long:    `Add/List/Delete decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
-		Args:    cobra.MinimumNArgs(1),
+		/*TBD example*/
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Client == nil {
@@ -117,19 +119,34 @@ To list/add/delete decisions
 			}
 
 			Client = apiclient.NewClient(t.Client())
+			/*take care of shorthand options*/
+			if err := manageCliDecisionAlerts(&IP, &Range, &Scope, &Value); err != nil {
+				log.Fatalf("%s", err)
+			}
+
 		},
 	}
 
+	/*main filters : THESE FLAGS MUST REMAIN CONSISTENT WITH ALERTS FLAGS*/
+	cmdDecisions.PersistentFlags().StringVarP(&Scope, "scope", "s", "ip", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
+	cmdDecisions.PersistentFlags().StringVarP(&Value, "value", "v", "", "the value to match for in the specified scope")
+	cmdDecisions.PersistentFlags().StringVarP(&Type, "type", "t", "", "type of decision")
+	cmdDecisions.PersistentFlags().StringVar(&Scenario, "scenario", "", "Scenario")
+	/*shorthand*/
+	cmdDecisions.PersistentFlags().StringVarP(&IP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdDecisions.PersistentFlags().StringVarP(&Range, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	/*secondary filters*/
+	cmdDecisions.PersistentFlags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdDecisions.PersistentFlags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdDecisions.PersistentFlags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
+	/*for decisions only, not present from alerts*/
+	cmdDecisions.PersistentFlags().BoolVar(&NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+
 	var cmdDecisionsList = &cobra.Command{
-		Use:   "list --ip [ip] --range [range] --scope [scope] --value [value] --type [type]",
-		Short: "List decisions",
-		Long:  `List decisions from database`,
-		Example: `
-cscli decisions list --scope ip --value 1.2.3.4 --type ban
-cscli decisions list --ip 1.2.3.4
-cscli decisions list --range 1.2.3.4/32
-		`,
-		Args: cobra.MaximumNArgs(1),
+		Use:   "list [--ip ip] [--range range] [--scope scope] [--value value] [--type type]",
+		Short: "List decisions from LAPI",
+		/*TBD : redo Long + Example*/
+		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			activeDecision := true
@@ -156,50 +173,32 @@ cscli decisions list --range 1.2.3.4/32
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
+				log.Printf("filter was : %s", spew.Sdump(filter))
+				params, _ := qs.Values(filter)
+				log.Printf("filter as : %s", params.Encode())
 				log.Fatalf("Unable to list decisions : %v", err.Error())
 			}
 
 			err = DecisionsToTable(alerts)
 			if err != nil {
+				log.Printf("filter was : %s", spew.Sdump(filter))
 				log.Fatalf("unable to list decisions : %v", err.Error())
 			}
 		},
 	}
-	cmdDecisionsList.Flags().StringVar(&IP, "ip", "", "IP address")
-	cmdDecisionsList.Flags().StringVar(&Range, "range", "", "IP Range")
-	cmdDecisionsList.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
-	cmdDecisionsList.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
-	cmdDecisionsList.Flags().StringVar(&Type, "type", "", "type of decision")
-	cmdDecisionsList.Flags().BoolVar(&NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
 	var cmdDecisionsAdd = &cobra.Command{
-		Use:   "add <type> <scope> <value> <duration> <reason>",
-		Short: "Add decision",
-		Long: `
-Add decision to the LAPI
-Args :
-<ip>			 : with ip 
-<range>		 : included in range
-<type>     : type of the decision (ban, captcha, or something custom)
-<scope>    : scope of the decision (ip, range, username, group etc..)
-<value>    : value of the decision scope
-<duration> : must be [time.ParseDuration](https://golang.org/pkg/time/#ParseDuration), expressed in s/m/h.
-<reason>   : reason of the decision
-`,
-		Example: `cscli decisions add ban ip 1.2.3.4 12h "is manually blacklisted"`,
-		Args:    cobra.MinimumNArgs(5),
+		Use:   "add [--ip ip] [--range range] [--scope scope] [--value value] [--type type]",
+		Short: "Add decision to LAPI",
+		/*TBD : fix long and example*/
+		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var startIP, endIP int64
 			var err error
 			var ip, ipRange string
 			alerts := models.AddAlertsRequest{}
 			origin := "cscli"
-			ttype := args[0]
-			scope := args[1]
-			value := args[2]
-			duration := args[3]
-			reason := strings.Join(args[4:], " ")
 			capacity := int32(0)
 			leakSpeed := "0"
 			eventsCount := int32(1)
@@ -208,30 +207,29 @@ Args :
 			startAt := time.Now().Format(time.RFC3339)
 			stopAt := time.Now().Format(time.RFC3339)
 
-			if scope == "ip" {
-				isValidIP := database.IsIpv4(value)
-				if !isValidIP {
-					log.Fatalf("unable to parse IP or Range : '%s'", value)
-				}
-				startIP, endIP, err = database.GetIpsFromIpRange(value + "/32")
-				if err != nil {
-					log.Fatalf("unable to parse IP or Range : '%s'", value)
-				}
-				ip = value
+			if Value == "" {
+				log.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
+				return
 			}
-			if scope == "range" {
-				startIP, endIP, err = database.GetIpsFromIpRange(value)
+			if Scope == types.Ip {
+				startIP, endIP, err = database.GetIpsFromIpRange(Value + "/32")
 				if err != nil {
-					log.Fatalf("unable to parse IP or Range : '%s'", value)
+					log.Fatalf("unable to parse IP or Range : '%s'", Value)
 				}
-				ipRange = value
+			}
+			if Scope == types.Range {
+				startIP, endIP, err = database.GetIpsFromIpRange(Value)
+				if err != nil {
+					log.Fatalf("unable to parse IP or Range : '%s'", Value)
+				}
+				ipRange = Value
 			}
 			decision := models.Decision{
-				Duration: &duration,
-				Scope:    &scope,
-				Value:    &value,
-				Type:     &ttype,
-				Scenario: &reason,
+				Duration: &Duration,
+				Scope:    &Scope,
+				Value:    &Value,
+				Type:     &Type,
+				Scenario: &Reason,
 				Origin:   &origin,
 				StartIP:  startIP,
 				EndIP:    endIP,
@@ -242,9 +240,9 @@ Args :
 				Events:          []*models.Event{},
 				EventsCount:     &eventsCount,
 				Leakspeed:       &leakSpeed,
-				Message:         &reason,
+				Message:         &Reason,
 				ScenarioHash:    &empty,
-				Scenario:        &reason,
+				Scenario:        &Reason,
 				ScenarioVersion: &empty,
 				Simulated:       &simulated,
 				Source: &models.Source{
@@ -253,8 +251,8 @@ Args :
 					Cn:       empty,
 					IP:       ip,
 					Range:    ipRange,
-					Scope:    &scope,
-					Value:    &value,
+					Scope:    &Scope,
+					Value:    &Value,
 				},
 				StartAt: &startAt,
 				StopAt:  &stopAt,
@@ -269,22 +267,17 @@ Args :
 			log.Info("Decision successfully added")
 		},
 	}
+	cmdDecisionsAdd.Flags().StringVarP(&Duration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
+	cmdDecisionsAdd.Flags().StringVarP(&Scope, "scope", "s", types.Ip, "Decision scope (ie. ip,range,username)")
+	cmdDecisionsAdd.Flags().StringVarP(&Reason, "reason", "R", "", "Decision reason (ie. spam)")
+	cmdDecisionsAdd.Flags().StringVarP(&Type, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+
 	cmdDecisions.AddCommand(cmdDecisionsAdd)
 
 	var cmdDecisionsDelete = &cobra.Command{
-		Use:   "delete (--ip [ip] --range [range] --scope [scope] --value [value] --type [type] | --id [decision_id] | --all)",
+		Use:   "delete [--ip ip] [--range range] [--scope scope] [--value value] [--type type] [--id [decision_id] [--all]",
 		Short: "Delete decisions",
-		Long: `
-Delete decisions from the LAPI
-You can delete uniq decision by id (--id), with other filters (--ip/--range/--scope/--value/--type) or all decisions with --all
-/!\ You can't use filters (--ip/--range/--scope/--value/--type) with --id or --all
-`,
-		Example: `
-cscli decisions delete --scope ip --value 1.2.3.4 --type ban
-cscli decisions delete --id 1
-cscli decisions delete --ip 1.2.3.4
-cscli decisions delete --range 1.2.3.4/32
-		`,
+		/*TBD : refaire le Long/Example*/
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if DecisionID != "" && (Scope != "" || Value != "" || Type != "" || IP != "" || Range != "" || DeleteAll == true) {
 				cmd.Usage()
@@ -328,6 +321,7 @@ cscli decisions delete --range 1.2.3.4/32
 					log.Fatalf("Unable to delete decisions : %v", err.Error())
 				}
 			} else {
+
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), DecisionID)
 				if err != nil {
 					log.Fatalf("Unable to delete decision : %v", err.Error())
@@ -337,11 +331,6 @@ cscli decisions delete --range 1.2.3.4/32
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)
 		},
 	}
-	cmdDecisionsDelete.Flags().StringVar(&IP, "ip", "", "IP address")
-	cmdDecisionsDelete.Flags().StringVar(&Range, "range", "", "IP Range")
-	cmdDecisionsDelete.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
-	cmdDecisionsDelete.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
-	cmdDecisionsDelete.Flags().StringVar(&Type, "type", "", "type of decision")
 	cmdDecisionsDelete.Flags().StringVar(&DecisionID, "id", "", "decision id")
 	cmdDecisionsDelete.Flags().BoolVar(&DeleteAll, "all", false, "delete all decisions")
 	cmdDecisions.AddCommand(cmdDecisionsDelete)

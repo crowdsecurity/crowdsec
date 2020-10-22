@@ -104,8 +104,24 @@ To list/add/delete alerts
 			}
 
 			Client = apiclient.NewClient(t.Client())
+			if err := manageCliDecisionAlerts(&IP, &Range, &Scope, &Value); err != nil {
+				log.Fatalf("%s", err)
+			}
+
 		},
 	}
+	/*main filters*/
+	cmdAlerts.PersistentFlags().StringVarP(&Scope, "scope", "s", "ip", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
+	cmdAlerts.PersistentFlags().StringVarP(&Value, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlerts.PersistentFlags().StringVarP(&Type, "type", "t", "", "type of decision")
+	cmdAlerts.PersistentFlags().StringVar(&Scenario, "scenario", "", "Scenario")
+	/*shorthand*/
+	cmdAlerts.PersistentFlags().StringVarP(&IP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdAlerts.PersistentFlags().StringVarP(&Range, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	/*secondary filters*/
+	cmdAlerts.PersistentFlags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlerts.PersistentFlags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
+	cmdAlerts.PersistentFlags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 
 	var cmdAlertsList = &cobra.Command{
 		Use:     "list [filter]",
@@ -117,7 +133,6 @@ To list/add/delete alerts
 			var err error
 
 			filter := apiclient.AlertsListOpts{}
-			//			filter.ActiveDecisionEquals = &ActiveDecision
 
 			if Scope != "" {
 				filter.ScopeEquals = &Scope
@@ -163,15 +178,6 @@ To list/add/delete alerts
 			}
 		},
 	}
-	cmdAlertsList.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
-	cmdAlertsList.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
-	cmdAlertsList.Flags().StringVar(&Type, "type", "", "type of decision")
-	cmdAlertsList.Flags().StringVar(&Scenario, "scenario", "", "Scenario")
-	cmdAlertsList.Flags().StringVar(&IP, "ip", "", "Source ip")
-	cmdAlertsList.Flags().StringVar(&Range, "range", "", "Range source ip")
-	cmdAlertsList.Flags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlertsList.Flags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlertsList.Flags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var cmdAlertsDelete = &cobra.Command{
@@ -232,15 +238,6 @@ To list/add/delete alerts
 
 		},
 	}
-	cmdAlertsDelete.Flags().StringVar(&Scope, "scope", "", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
-	cmdAlertsDelete.Flags().StringVar(&Value, "value", "", "the value to match for in the specified scope")
-	cmdAlertsDelete.Flags().StringVar(&Type, "type", "", "type of decision")
-	cmdAlertsDelete.Flags().StringVar(&Scenario, "scenario", "", "Scenario")
-	cmdAlertsDelete.Flags().StringVar(&IP, "ip", "", "Source ip")
-	cmdAlertsDelete.Flags().StringVar(&Range, "range", "", "Range source ip")
-	cmdAlertsDelete.Flags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlertsDelete.Flags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlertsDelete.Flags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 	cmdAlerts.AddCommand(cmdAlertsDelete)
 
 	return cmdAlerts
