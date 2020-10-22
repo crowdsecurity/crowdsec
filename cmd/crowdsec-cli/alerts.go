@@ -17,9 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var Scenario, AlertID, IP, Range, Since, Until, Source string
-var ActiveDecision bool
-
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
 		fmt.Printf("id,Scope/Value,reason,country,as,events_count,created_at\n")
@@ -104,25 +101,16 @@ To list/add/delete alerts
 			}
 
 			Client = apiclient.NewClient(t.Client())
-			if err := manageCliDecisionAlerts(&IP, &Range, &Scope, &Value); err != nil {
-				log.Fatalf("%s", err)
-			}
-
 		},
 	}
-	/*main filters*/
-	cmdAlerts.PersistentFlags().StringVarP(&Scope, "scope", "s", "ip", "scope to which the decision applies (ie. IP/Range/Username/Session/...)")
-	cmdAlerts.PersistentFlags().StringVarP(&Value, "value", "v", "", "the value to match for in the specified scope")
-	cmdAlerts.PersistentFlags().StringVarP(&Type, "type", "t", "", "type of decision")
-	cmdAlerts.PersistentFlags().StringVar(&Scenario, "scenario", "", "Scenario")
-	/*shorthand*/
-	cmdAlerts.PersistentFlags().StringVarP(&IP, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmdAlerts.PersistentFlags().StringVarP(&Range, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	/*secondary filters*/
-	cmdAlerts.PersistentFlags().StringVar(&Since, "since", "", "since date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlerts.PersistentFlags().StringVar(&Until, "until", "", "until date (format is RFC3339: '2006-01-02T15:04:05+07:00'")
-	cmdAlerts.PersistentFlags().StringVar(&Source, "source", "", "matches the source (crowdsec)")
 
+	var alertListFilter = apiclient.AlertsListOpts{
+		ScopeEquals:    new(string),
+		ValueEquals:    new(string),
+		ScenarioEquals: new(string),
+		IPEquals:       new(string),
+		RangeEquals:    new(string),
+	}
 	var cmdAlertsList = &cobra.Command{
 		Use:     "list [filter]",
 		Short:   "List alerts",
@@ -131,43 +119,27 @@ To list/add/delete alerts
 		Args:    cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-
-			filter := apiclient.AlertsListOpts{}
-
-			if Scope != "" {
-				filter.ScopeEquals = &Scope
+			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
+				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
+				cmd.Help()
+				log.Fatalf("%s", err)
 			}
-			if Value != "" {
-				filter.ValueEquals = &Value
+			if *alertListFilter.ScopeEquals == "" {
+				alertListFilter.ScopeEquals = nil
 			}
-			if Type != "" {
-				filter.TypeEquals = &Type
+			if *alertListFilter.ValueEquals == "" {
+				alertListFilter.ValueEquals = nil
 			}
-			if Scenario != "" {
-				filter.ScenarioEquals = &Scenario
+			if *alertListFilter.ScenarioEquals == "" {
+				alertListFilter.ScenarioEquals = nil
 			}
-
-			if IP != "" {
-				filter.IPEquals = &IP
+			if *alertListFilter.IPEquals == "" {
+				alertListFilter.IPEquals = nil
 			}
-
-			if Range != "" {
-				filter.RangeEquals = &Range
+			if *alertListFilter.RangeEquals == "" {
+				alertListFilter.RangeEquals = nil
 			}
-
-			if Since != "" {
-				filter.SinceEquals = &Since
-			}
-
-			if Until != "" {
-				filter.UntilEquals = &Until
-			}
-
-			if Source != "" {
-				filter.SourceEquals = &Source
-			}
-
-			alerts, _, err := Client.Alerts.List(context.Background(), filter)
+			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
 				log.Fatalf("Unable to list alerts : %v", err.Error())
 			}
@@ -178,59 +150,66 @@ To list/add/delete alerts
 			}
 		},
 	}
+	cmdAlertsList.Flags().SortFlags = false
+	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
+	var ActiveDecision bool
+	var AlertDeleteAll bool
+	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
+		ScopeEquals:    new(string),
+		ValueEquals:    new(string),
+		ScenarioEquals: new(string),
+		IPEquals:       new(string),
+		RangeEquals:    new(string),
+	}
 	var cmdAlertsDelete = &cobra.Command{
 		Use:     "delete [filter]",
 		Short:   "Delete alerts",
 		Long:    `Delete alerts from the LAPI`,
 		Example: `cscli alerts delete --scope ip --value 1.2.3.4 --type ban --active_decision"`,
-		Args:    cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-
-			filter := apiclient.AlertsDeleteOpts{}
-			filter.ActiveDecisionEquals = &ActiveDecision
-
-			if Scope != "" {
-				filter.ScopeEquals = &Scope
-			}
-			if Value != "" {
-				filter.ValueEquals = &Value
-			}
-			if Type != "" {
-				filter.TypeEquals = &Type
-			}
-			if Scenario != "" {
-				filter.ScenarioEquals = &Scenario
-			}
-
-			if IP != "" {
-				filter.IPEquals = &IP
-			}
-
-			if Range != "" {
-				filter.RangeEquals = &Range
-			}
-
-			if Since != "" {
-				filter.SinceEquals = &Since
-			}
-
-			if Until != "" {
-				filter.SinceEquals = &Until
-			}
-
-			if Source != "" {
-				filter.SourceEquals = &Source
-			}
-
-			if Scope == "" && Value == "" && Type == "" && Scenario == "" && IP == "" && Range == "" && Until == "" && Source == "" {
-				log.Infof("No alert deleted")
+		Args:    cobra.ExactArgs(0),
+		PreRun: func(cmd *cobra.Command, args []string) {
+			if AlertDeleteAll {
 				return
 			}
+			if *alertDeleteFilter.ScopeEquals == "" && *alertDeleteFilter.ValueEquals == "" &&
+				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
+				*alertDeleteFilter.RangeEquals == "" {
+				cmd.Usage()
+				log.Fatalln("At least one filter or --all must be specified")
+			}
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
+				alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
+				cmd.Help()
+				log.Fatalf("%s", err)
+			}
+			alertDeleteFilter.ActiveDecisionEquals = &ActiveDecision
 
-			alerts, _, err := Client.Alerts.Delete(context.Background(), filter)
+			if *alertDeleteFilter.ScopeEquals == "" {
+				alertDeleteFilter.ScopeEquals = nil
+			}
+			if *alertDeleteFilter.ValueEquals == "" {
+				alertDeleteFilter.ValueEquals = nil
+			}
+			if *alertDeleteFilter.ScenarioEquals == "" {
+				alertDeleteFilter.ScenarioEquals = nil
+			}
+			if *alertDeleteFilter.IPEquals == "" {
+				alertDeleteFilter.IPEquals = nil
+			}
+			if *alertDeleteFilter.RangeEquals == "" {
+				alertDeleteFilter.RangeEquals = nil
+			}
+
+			alerts, _, err := Client.Alerts.Delete(context.Background(), alertDeleteFilter)
 			if err != nil {
 				log.Fatalf("Unable to delete alerts : %v", err.Error())
 			}
@@ -238,6 +217,12 @@ To list/add/delete alerts
 
 		},
 	}
+	cmdAlertsDelete.Flags().SortFlags = false
+	cmdAlertsDelete.Flags().StringVar(alertDeleteFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
+	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
+	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlerts.AddCommand(cmdAlertsDelete)
 
 	return cmdAlerts
