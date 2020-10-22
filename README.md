@@ -55,6 +55,12 @@ Signals sent to the curation platform are extremely limited (IP, Scenario, Times
 
 ## Install it !
 
+In order to install it on an `amd64` platform, you can use the available prebuilt release package. 
+Just follow the steps below. However, if you want crowdsec for a different architecture
+(e.g. ARM) then you must build it yourself from source. You can find the build instructions 
+[here](https://doc.crowdsec.net/getting_started/installation/#from-source) in 
+our [documentation](https://doc.crowdsec.net).
+
 Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/latest)
 
 Ensure you have dependencies :
@@ -83,7 +89,19 @@ cd crowdsec-v*
 sudo ./wizard.sh -i
 ```
 
+## Build it !
 
+If you want to build crowdsec yourself follow these steps:
+
+```bash
+git clone https://github.com/crowdsecurity/crowdsec
+cd crowdsec
+make build
+```
+
+For more details read the chapter 
+[Installation from source](https://doc.crowdsec.net/getting_started/installation/#from-source) in 
+our [documentation](https://doc.crowdsec.net).
 
 ## Key points
 
