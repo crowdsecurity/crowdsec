@@ -46,9 +46,9 @@ var (
 func NewDashboardCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdDashboard = &cobra.Command{
-		Use:   "dashboard",
-		Short: "Start a dashboard (metabase) container.",
-		Long:  `Start a metabase container exposing dashboard and metrics.`,
+		Use:   "dashboard [command]",
+		Short: "Manage your metabase dashboard container",
+		Long:  `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.`,
 		Args:  cobra.ExactArgs(1),
 		Example: `
 cscli dashboard setup

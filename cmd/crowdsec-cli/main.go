@@ -52,6 +52,9 @@ func initConfig() {
 
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
+		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
+			log.Fatalf("output format %s unknown", OutputFormat)
+		}
 	}
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
@@ -73,22 +76,8 @@ func main() {
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
-		Example: `View/Add/Remove bans:  
- - cscli ban list  
- - cscli ban add ip 1.2.3.4 24h 'go away'  
- - cscli ban del 1.2.3.4  
-		
-View/Add/Upgrade/Remove scenarios and parsers:  
- - cscli list  
- - cscli install collection crowdsec/linux-web  
- - cscli remove scenario crowdsec/ssh_enum  
- - cscli upgrade --all  
-
-API interaction:
- - cscli api pull
- - cscli api register
- `}
-	/*TODO : add a remediation type*/
+		/*TBD examples*/
+	}
 	var cmdDocGen = &cobra.Command{
 		Use:    "doc",
 		Short:  "Generate the documentation in `./doc/`. Directory must exist.",

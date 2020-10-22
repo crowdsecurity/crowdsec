@@ -85,10 +85,7 @@ To list/add/delete bouncers
 					}
 					fmt.Printf("%s,%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Version)
 				}
-			} else {
-				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 			}
-
 		},
 	}
 	cmdBouncers.AddCommand(cmdBouncersList)
@@ -97,11 +94,12 @@ To list/add/delete bouncers
 		Use:     "add",
 		Short:   "add bouncer",
 		Long:    `add bouncer`,
-		Example: `cscli bouncers add --name test [--ip 1.2.3.4]`,
-		Args:    cobra.MaximumNArgs(1),
+		Example: `cscli bouncers add MyBouncerName [--ip 1.2.3.4]`,
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
+			keyName := arg[0]
 			if keyName == "" {
-				log.Errorf("Please provide a name for the api key with the --name|-n parameter")
+				log.Errorf("Please provide a name for the api key")
 				return
 			}
 			apiKey, err := middlewares.GenerateAPIKey(keyLength)
@@ -130,7 +128,6 @@ To list/add/delete bouncers
 			}
 		},
 	}
-	cmdBouncersAdd.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
 	cmdBouncersAdd.Flags().StringVarP(&keyIP, "ip", "i", "", "ip address of the blocker")
 	cmdBouncersAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
 	cmdBouncers.AddCommand(cmdBouncersAdd)
@@ -138,12 +135,13 @@ To list/add/delete bouncers
 	var cmdBouncersDelete = &cobra.Command{
 		Use:     "delete",
 		Short:   "delete bouncer",
-		Long:    `delete bouncer`,
-		Example: `cscli bouncers delete --name test [--ip 1.2.3.4]`,
-		Args:    cobra.MaximumNArgs(1),
+		Long:    `delete bouncer with the given name`,
+		Example: `cscli bouncers delete MyTestBouncer`,
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
+			keyName := arg[0]
 			if keyName == "" {
-				log.Errorf("Please provide a name for the api key with the --name|-n parameter")
+				log.Errorf("Please provide a bouncer name")
 				return
 			}
 			err := dbClient.DeleteBouncer(keyName)
@@ -153,7 +151,6 @@ To list/add/delete bouncers
 			}
 		},
 	}
-	cmdBouncersDelete.Flags().StringVarP(&keyName, "name", "n", "", "name to assigned for the api key")
 	cmdBouncers.AddCommand(cmdBouncersDelete)
 
 	return cmdBouncers

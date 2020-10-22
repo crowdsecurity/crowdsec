@@ -13,19 +13,12 @@ import (
 func NewCollectionsCmd() *cobra.Command {
 	var cmdCollections = &cobra.Command{
 		Use:   "collections [action] [config]",
-		Short: "Install/Remove/Upgrade/Inspect collections from hub",
+		Short: "Manage collections from hub",
 		Long: `
-		Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.
-
-In order to download latest versions of configuration, 
-you should [update cscli](./cscli_update.md).
-
-[action] must be install/upgrade or remove.
-
-[config_name] must be a valid config name from [Crowdsec Hub](https://hub.crowdsec.net).
-`,
+		Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
 		Example: `cscli collections install [config_name]`,
-		Args:    cobra.MinimumNArgs(1),
+		/*TBD fix help*/
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -49,7 +42,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "install [config]",
 		Short:   "Install given collection(s)",
 		Long:    `Fetch and install given collection(s) from hub`,
-		Example: `cscli collections install crowdsec/xxx`,
+		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -68,7 +61,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "remove [config]",
 		Short:   "Remove given collection(s)",
 		Long:    `Remove given collection(s) from hub`,
-		Example: `cscli collections remove crowdsec/xxx`,
+		Example: `cscli collections remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -84,7 +77,7 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdCollectionsRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
+	cmdCollectionsRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file too")
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
@@ -92,7 +85,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "upgrade [config]",
 		Short:   "Upgrade given collection(s)",
 		Long:    `Fetch and upgrade given collection(s) from hub`,
-		Example: `cscli collections upgrade crowdsec/xxx`,
+		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -115,24 +108,26 @@ you should [update cscli](./cscli_update.md).
 		Use:     "inspect [config]",
 		Short:   "Inspect given collection",
 		Long:    `Inspect given collection`,
-		Example: `cscli collections inspect crowdsec/xxx`,
+		Example: `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
-			InspectItem(args[0], cwhub.COLLECTIONS)
+			for _, name := range args {
+				InspectItem(name, cwhub.COLLECTIONS)
+			}
 		},
 	}
 	cmdCollectionsInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{
-		Use:   "list [config]",
-		Short: "List all collections or given one",
-		Long:  `List all collections or given one`,
-		Example: `cscli collections list
-cscli collections list crowdsecurity/xxx`,
+		Use:     "list [config]",
+		Short:   "List all collections or given one",
+		Long:    `List all collections or given one`,
+		Example: `cscli collections list`,
+		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("failed to get Hub index : %v", err)

@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -140,7 +141,7 @@ func (a *apic) Pull() error {
 			// process deleted decisions
 			var filter map[string][]string
 			for _, decision := range data.Deleted {
-				if *decision.Scope == "ip" {
+				if strings.ToLower(*decision.Scope) == "ip" {
 					filter = make(map[string][]string, 1)
 					filter["value"] = []string{*decision.Value}
 				} else {

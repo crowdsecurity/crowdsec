@@ -290,9 +290,9 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 
 	for param, value := range filter {
 		switch param {
-		case "source_scope":
+		case "scope":
 			alerts = alerts.Where(alert.SourceScopeEQ(value[0]))
-		case "source_value":
+		case "value":
 			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
 		case "scenario":
 			alerts = alerts.Where(alert.ScenarioEQ(value[0]))
@@ -316,6 +316,14 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, errors.Wrap(ParseTimeFail, fmt.Sprintf("since time '%s': %s", value[0], err))
 			}
 			alerts = alerts.Where(alert.CreatedAtGTE(since))
+		case "simulated":
+			var simulated bool
+			if simulated, err = strconv.ParseBool(value[0]); err != nil {
+				return nil, errors.Wrap(ParseType, fmt.Sprintf("'%s' is not a boolean: %s", value[0], err))
+			}
+			if simulated {
+				alerts = alerts.Where(alert.SimulatedEQ(simulated))
+			}
 		case "until":
 			until, err := time.Parse(time.RFC3339, value[0])
 			if err != nil {
@@ -331,8 +339,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				alerts = alerts.Where(alert.HasDecisionsWith(decision.UntilGTE(time.Now())))
 			}
 		default:
-			return nil, errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' is unknown: %s", value[0], err))
-
+			return nil, errors.Wrap(InvalidFilter, fmt.Sprintf("Filter parameter '%s' is unknown (=%s)", param, value[0]))
 		}
 	}
 	if startIP != 0 && endIP != 0 {

@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -37,6 +38,36 @@ func indexOf(s string, slice []string) int {
 		}
 	}
 	return -1
+}
+
+func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
+	log.Printf("checking stuff : ip:%s range:%s scope:%s value:%s", *ip, *ipRange, *scope, *value)
+	switch strings.ToLower(*scope) {
+	case "ip":
+		*scope = types.Ip
+		if *ip != "" {
+			*value = *ip
+		}
+		if *value != "" {
+			ipRepr := net.ParseIP(*value)
+			if ipRepr == nil {
+				return fmt.Errorf("%s isn't a valid ip", *value)
+			}
+		}
+	case "range":
+		*scope = types.Range
+		if *ipRange != "" {
+			*value = *ipRange
+		}
+		if *value != "" {
+			_, _, err := net.ParseCIDR(*value)
+			if err != nil {
+				return fmt.Errorf("%s isn't a valid range", *value)
+			}
+		}
+		/*it's a custom scope, we don't care*/
+	}
+	return nil
 }
 
 func setHubBranch() error {
