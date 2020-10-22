@@ -52,11 +52,10 @@ func NewDashboardCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Example: `
 cscli dashboard setup
-cscli dashboard setup --force
 cscli dashboard start
 cscli dashboard stop
 cscli dashboard remove
-cscli dashboard remove --force`,
+`,
 	}
 
 	var force bool
@@ -67,7 +66,7 @@ cscli dashboard remove --force`,
 		Args:  cobra.ExactArgs(0),
 		Example: `
 cscli dashboard setup
-cscli dashboard setup --force
+cscli dashboard setup --listen 0.0.0.0
 cscli dashboard setup -l 0.0.0.0 -p 443
  `,
 		Run: func(cmd *cobra.Command, args []string) {

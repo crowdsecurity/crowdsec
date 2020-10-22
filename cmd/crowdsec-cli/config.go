@@ -11,7 +11,7 @@ import (
 func NewConfigCmd() *cobra.Command {
 
 	var cmdConfig = &cobra.Command{
-		Use:   "config [command] <value>",
+		Use:   "config [command]",
 		Short: "Allows to view current config",
 		Args:  cobra.ExactArgs(0),
 	}

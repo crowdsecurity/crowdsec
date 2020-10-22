@@ -14,18 +14,13 @@ func NewScenariosCmd() *cobra.Command {
 	var cmdScenarios = &cobra.Command{
 		Use:   "scenarios [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect scenario(s) from hub",
-		Long: `
-		Install/Remove/Upgrade/Inspect scenario(s) from the CrowdSec Hub.
-
-In order to download latest versions of configuration, 
-you should [update cscli](./cscli_update.md).
-
-[action] must be install/upgrade or remove.
-
-[config_name] must be a valid config name from [Crowdsec Hub](https://hub.crowdsec.net).
+		Example: `cscli scenarios list [-a]
+cscli scenarios install crowdsecurity/ssh-bf
+cscli scenarios inspect crowdsecurity/ssh-bf
+cscli scenarios upgrade crowdsecurity/ssh-bf
+cscli scenarios remove crowdsecurity/ssh-bf
 `,
-		Example: `cscli scenarios [action] [config_name]`,
-		Args:    cobra.MinimumNArgs(1),
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -49,7 +44,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "install [config]",
 		Short:   "Install given scenario(s)",
 		Long:    `Fetch and install given scenario(s) from hub`,
-		Example: `cscli scenarios install crowdsec/xxx`,
+		Example: `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -68,7 +63,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "remove [config]",
 		Short:   "Remove given scenario(s)",
 		Long:    `remove given scenario(s)`,
-		Example: `cscli scenarios remove crowdsec/xxx`,
+		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -92,7 +87,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "upgrade [config]",
 		Short:   "Upgrade given scenario(s)",
 		Long:    `Fetch and Upgrade given scenario(s) from hub`,
-		Example: `cscli scenarios upgrade crowdsec/xxx`,
+		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {

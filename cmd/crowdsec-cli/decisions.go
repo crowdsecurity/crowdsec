@@ -121,13 +121,10 @@ func NewDecisionsCmd() *cobra.Command {
 	var cmdDecisionsList = &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
-		/*TBD : redo Long + Example*/
-		/*
-					TBD:
-					./cscli -c dev.yaml decisions list  -t ban
-			FATA[0000] Unable to list decisions : API error (Filter parameter 'type' is unknown (=ban): invalid filter) : []
-
-		*/
+		Example: `cscli decisions list -i 1.2.3.4
+		cscli decisions list -r 1.2.3.0/24
+		cscli decisions list -s crowdsecurity/ssh-bf
+`,
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -188,6 +185,11 @@ func NewDecisionsCmd() *cobra.Command {
 	var cmdDecisionsAdd = &cobra.Command{
 		Use:   "add [options]",
 		Short: "Add decision to LAPI",
+		Example: `cscli decisions add --ip 1.2.3.4
+cscli decisions add --range 1.2.3.0/24
+cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
+cscli decisions add --scope username --value foobar
+`,
 		/*TBD : fix long and example*/
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -300,6 +302,12 @@ func NewDecisionsCmd() *cobra.Command {
 	var cmdDecisionsDelete = &cobra.Command{
 		Use:   "delete [options]",
 		Short: "Delete decisions",
+		Example: `cscli decisions delete -r 1.2.3.0/24
+		cscli decisions delete -i 1.2.3.4
+		cscli decisions delete -s crowdsecurity/ssh-bf
+		cscli decisions delete --id 42
+		cscli decisions delete --type captcha
+		`,
 		/*TBD : refaire le Long/Example*/
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if delDecisionAll {

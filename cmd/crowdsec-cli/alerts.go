@@ -73,13 +73,7 @@ func NewAlertsCmd() *cobra.Command {
 	var cmdAlerts = &cobra.Command{
 		Use:   "alerts [action]",
 		Short: "Manage alerts",
-		Long: `
-Alerts Management.
-
-To list/add/delete alerts
-`,
-		Example: `cscli alerts [action] [filter]`,
-		Args:    cobra.MinimumNArgs(1),
+		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Client == nil {
@@ -112,11 +106,13 @@ To list/add/delete alerts
 		RangeEquals:    new(string),
 	}
 	var cmdAlertsList = &cobra.Command{
-		Use:     "list [filter]",
-		Short:   "List alerts",
-		Long:    `List alerts from the LAPI`,
-		Example: `cscli alerts list --scope ip --value 1.2.3.4 --type ban"`,
-		Args:    cobra.MinimumNArgs(0),
+		Use:   "list [filters]",
+		Short: "List alerts",
+		Example: `cscli alerts list
+		cscli alerts list --ip 1.2.3.4
+		cscli alerts list --range 1.2.3.0/24
+		cscli alerts list -s crowdsecurity/ssh-bf`,
+		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
@@ -151,11 +147,11 @@ To list/add/delete alerts
 		},
 	}
 	cmdAlertsList.Flags().SortFlags = false
+	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	cmdAlertsList.Flags().StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
-	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var ActiveDecision bool
@@ -168,11 +164,12 @@ To list/add/delete alerts
 		RangeEquals:    new(string),
 	}
 	var cmdAlertsDelete = &cobra.Command{
-		Use:     "delete [filter]",
-		Short:   "Delete alerts",
-		Long:    `Delete alerts from the LAPI`,
-		Example: `cscli alerts delete --scope ip --value 1.2.3.4 --type ban --active_decision"`,
-		Args:    cobra.ExactArgs(0),
+		Use:   "delete [filters] [--all]",
+		Short: "Delete alerts",
+		Example: `cscli alerts delete --ip 1.2.3.4
+		cscli alerts delete --range 1.2.3.0/24
+		cscli alerts delete -s crowdsecurity/ssh-bf"`,
+		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {
 				return
@@ -224,6 +221,5 @@ To list/add/delete alerts
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlerts.AddCommand(cmdAlertsDelete)
-
 	return cmdAlerts
 }

@@ -12,11 +12,9 @@ import (
 
 func NewCollectionsCmd() *cobra.Command {
 	var cmdCollections = &cobra.Command{
-		Use:   "collections action collection",
+		Use:   "collections [action]",
 		Short: "Manage collections from hub",
-		Long: `
-		Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
-		Example: `cscli collections install collection`,
+		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
 		/*TBD fix help*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -123,7 +121,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{
-		Use:     "list collection",
+		Use:     "list collection [-a]",
 		Short:   "List all collections or given one",
 		Long:    `List all collections or given one`,
 		Example: `cscli collections list`,

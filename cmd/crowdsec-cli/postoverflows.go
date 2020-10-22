@@ -14,20 +14,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 	var cmdPostOverflows = &cobra.Command{
 		Use:   "postoverflows [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect postoverflow(s) from hub",
-		Long: `
-		Install/Remove/Upgrade/Inspect postoverflow(s) from the CrowdSec Hub.
-
-In order to download latest versions of configuration, 
-you should [update cscli](./cscli_update.md).
-
-[action] must be install/upgrade or remove.
-
-[config_name] must be a valid config name from [Crowdsec Hub](https://hub.crowdsec.net).
-
-As a reminder, postoverflows are parsing configuration that will occur after the overflow (before a decision is applied)
-`,
-		Example: `cscli postoverflows [action] [config_name]`,
-		Args:    cobra.MinimumNArgs(1),
+		Example: `cscli postoverflows install crowdsecurity/cdn-whitelist
+		cscli postoverflows inspect crowdsecurity/cdn-whitelist
+		cscli postoverflows upgrade crowdsecurity/cdn-whitelist
+		cscli postoverflows list
+		cscli postoverflows remove crowdsecurity/cdn-whitelist`,
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -51,7 +43,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		Use:     "postoverflows [config]",
 		Short:   "Install given postoverflow(s)",
 		Long:    `Fetch and install given postoverflow(s) from hub`,
-		Example: `cscli postoverflows install crowdsec/xxx`,
+		Example: `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -70,7 +62,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		Use:     "remove [config]",
 		Short:   "Remove given postoverflow(s)",
 		Long:    `remove given postoverflow(s)`,
-		Example: `cscli postoverflows remove crowdsec/xxx`,
+		Example: `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -94,7 +86,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		Use:     "upgrade [config]",
 		Short:   "Upgrade given postoverflow(s)",
 		Long:    `Fetch and Upgrade given postoverflow(s) from hub`,
-		Example: `cscli postoverflows upgrade crowdsec/xxx`,
+		Example: `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -117,7 +109,7 @@ As a reminder, postoverflows are parsing configuration that will occur after the
 		Use:     "inspect [config]",
 		Short:   "Inspect given postoverflow",
 		Long:    `Inspect given postoverflow`,
-		Example: `cscli postoverflows inspect crowdsec/xxx`,
+		Example: `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {

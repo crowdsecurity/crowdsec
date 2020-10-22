@@ -28,8 +28,7 @@ Bouncers Management.
 
 To list/add/delete bouncers
 `,
-		Example: `cscli bouncers [action]`,
-		Args:    cobra.MinimumNArgs(1),
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -91,11 +90,12 @@ To list/add/delete bouncers
 	cmdBouncers.AddCommand(cmdBouncersList)
 
 	var cmdBouncersAdd = &cobra.Command{
-		Use:     "add",
-		Short:   "add bouncer",
-		Long:    `add bouncer`,
-		Example: `cscli bouncers add MyBouncerName [--length 16]`,
-		Args:    cobra.ExactArgs(1),
+		Use:   "add MyBouncerName [--length 16]",
+		Short: "add bouncer",
+		Long:  `add bouncer`,
+		Example: `cscli bouncers add MyBouncerName
+		cscli bouncers add MyBouncerName -l 24`,
+		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
 			if keyName == "" {
@@ -132,11 +132,9 @@ To list/add/delete bouncers
 	cmdBouncers.AddCommand(cmdBouncersAdd)
 
 	var cmdBouncersDelete = &cobra.Command{
-		Use:     "delete",
-		Short:   "delete bouncer",
-		Long:    `delete bouncer with the given name`,
-		Example: `cscli bouncers delete MyBouncerName`,
-		Args:    cobra.ExactArgs(1),
+		Use:   "delete MyBouncerName",
+		Short: "delete bouncer",
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
 			if keyName == "" {
