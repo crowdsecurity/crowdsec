@@ -44,7 +44,7 @@ To list/add/delete bouncers
 		Short:   "List bouncers",
 		Long:    `List bouncers`,
 		Example: `cscli bouncers list`,
-		Args:    cobra.MaximumNArgs(1),
+		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, arg []string) {
 			blockers, err := dbClient.ListBouncers()
 			if err != nil {
@@ -94,8 +94,8 @@ To list/add/delete bouncers
 		Use:     "add",
 		Short:   "add bouncer",
 		Long:    `add bouncer`,
-		Example: `cscli bouncers add MyBouncerName [--ip 1.2.3.4]`,
-		Args:    cobra.ExactArgs(1),
+		Example: `cscli bouncers add MyBouncerName [--length 16]`,
+		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
 			if keyName == "" {
@@ -128,7 +128,6 @@ To list/add/delete bouncers
 			}
 		},
 	}
-	cmdBouncersAdd.Flags().StringVarP(&keyIP, "ip", "i", "", "ip address of the blocker")
 	cmdBouncersAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
 	cmdBouncers.AddCommand(cmdBouncersAdd)
 
@@ -136,7 +135,7 @@ To list/add/delete bouncers
 		Use:     "delete",
 		Short:   "delete bouncer",
 		Long:    `delete bouncer with the given name`,
-		Example: `cscli bouncers delete MyTestBouncer`,
+		Example: `cscli bouncers delete MyBouncerName`,
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
@@ -152,6 +151,5 @@ To list/add/delete bouncers
 		},
 	}
 	cmdBouncers.AddCommand(cmdBouncersDelete)
-
 	return cmdBouncers
 }
