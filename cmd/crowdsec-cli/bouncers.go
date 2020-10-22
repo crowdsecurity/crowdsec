@@ -95,7 +95,7 @@ To list/add/delete bouncers
 		Short:   "add bouncer",
 		Long:    `add bouncer`,
 		Example: `cscli bouncers add MyBouncerName [--length 16]`,
-		Args:    cobra.ExactArgs(0),
+		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
 			if keyName == "" {
