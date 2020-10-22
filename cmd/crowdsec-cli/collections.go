@@ -12,11 +12,11 @@ import (
 
 func NewCollectionsCmd() *cobra.Command {
 	var cmdCollections = &cobra.Command{
-		Use:   "collections [action] [config]",
+		Use:   "collections action collection",
 		Short: "Manage collections from hub",
 		Long: `
 		Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
-		Example: `cscli collections install [config_name]`,
+		Example: `cscli collections install collection`,
 		/*TBD fix help*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -39,7 +39,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdCollectionsInstall = &cobra.Command{
-		Use:     "install [config]",
+		Use:     "install collection",
 		Short:   "Install given collection(s)",
 		Long:    `Fetch and install given collection(s) from hub`,
 		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
@@ -58,7 +58,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInstall)
 
 	var cmdCollectionsRemove = &cobra.Command{
-		Use:     "remove [config]",
+		Use:     "remove collection",
 		Short:   "Remove given collection(s)",
 		Long:    `Remove given collection(s) from hub`,
 		Example: `cscli collections remove crowdsec/xxx crowdsec/xyz`,
@@ -82,7 +82,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
 	var cmdCollectionsUpgrade = &cobra.Command{
-		Use:     "upgrade [config]",
+		Use:     "upgrade collection",
 		Short:   "Upgrade given collection(s)",
 		Long:    `Fetch and upgrade given collection(s) from hub`,
 		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
@@ -105,7 +105,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 
 	var cmdCollectionsInspect = &cobra.Command{
-		Use:     "inspect [config]",
+		Use:     "inspect collection",
 		Short:   "Inspect given collection",
 		Long:    `Inspect given collection`,
 		Example: `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
@@ -123,7 +123,7 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{
-		Use:     "list [config]",
+		Use:     "list collection",
 		Short:   "List all collections or given one",
 		Long:    `List all collections or given one`,
 		Example: `cscli collections list`,
