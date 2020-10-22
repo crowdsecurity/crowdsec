@@ -109,9 +109,10 @@ func NewAlertsCmd() *cobra.Command {
 		Use:   "list [filters]",
 		Short: "List alerts",
 		Example: `cscli alerts list
-		cscli alerts list --ip 1.2.3.4
-		cscli alerts list --range 1.2.3.0/24
-		cscli alerts list -s crowdsecurity/ssh-bf`,
+cscli alerts list --ip 1.2.3.4
+cscli alerts list --range 1.2.3.0/24
+cscli alerts list -s crowdsecurity/ssh-bf
+`,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -167,8 +168,8 @@ func NewAlertsCmd() *cobra.Command {
 		Use:   "delete [filters] [--all]",
 		Short: "Delete alerts",
 		Example: `cscli alerts delete --ip 1.2.3.4
-		cscli alerts delete --range 1.2.3.0/24
-		cscli alerts delete -s crowdsecurity/ssh-bf"`,
+cscli alerts delete --range 1.2.3.0/24
+cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {

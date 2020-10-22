@@ -159,8 +159,8 @@ To list/add/delete machines
 		Short: "add machine to the database.",
 		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `cscli machines add -m MyTestMachine
-		cscli machines add --machine TestMachine --password password
-		`,
+cscli machines add --machine TestMachine --password password
+`,
 		Args: cobra.ExactArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error

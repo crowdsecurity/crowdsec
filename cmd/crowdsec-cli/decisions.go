@@ -122,8 +122,8 @@ func NewDecisionsCmd() *cobra.Command {
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
 		Example: `cscli decisions list -i 1.2.3.4
-		cscli decisions list -r 1.2.3.0/24
-		cscli decisions list -s crowdsecurity/ssh-bf
+cscli decisions list -r 1.2.3.0/24
+cscli decisions list -s crowdsecurity/ssh-bf
 `,
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -303,11 +303,11 @@ cscli decisions add --scope username --value foobar
 		Use:   "delete [options]",
 		Short: "Delete decisions",
 		Example: `cscli decisions delete -r 1.2.3.0/24
-		cscli decisions delete -i 1.2.3.4
-		cscli decisions delete -s crowdsecurity/ssh-bf
-		cscli decisions delete --id 42
-		cscli decisions delete --type captcha
-		`,
+cscli decisions delete -i 1.2.3.4
+cscli decisions delete -s crowdsecurity/ssh-bf
+cscli decisions delete --id 42
+cscli decisions delete --type captcha
+`,
 		/*TBD : refaire le Long/Example*/
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if delDecisionAll {
