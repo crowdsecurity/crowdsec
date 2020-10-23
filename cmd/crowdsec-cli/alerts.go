@@ -165,8 +165,9 @@ cscli alerts list -s crowdsecurity/ssh-bf
 		RangeEquals:    new(string),
 	}
 	var cmdAlertsDelete = &cobra.Command{
-		Use:   "delete [filters] [--all]",
-		Short: "Delete alerts",
+		Use: "delete [filters] [--all]",
+		Short: `Delete alerts
+/!\ This command can be use only on the same machine than the local API.`,
 		Example: `cscli alerts delete --ip 1.2.3.4
 cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
