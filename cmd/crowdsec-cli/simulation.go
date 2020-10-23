@@ -99,9 +99,11 @@ func simulationStatus() error {
 
 func NewSimulationCmds() *cobra.Command {
 	var cmdSimulation = &cobra.Command{
-		Use:   "simulation enable|disable [scenario_name]",
+		Use:   "simulation [command]",
 		Short: "Manage simulation status of scenarios",
-		Long:  ``,
+		Example: `cscli simulation status
+cscli simulation enable crowdsecurity/ssh-bf
+cscli simulation disable crowdsecurity/ssh-bf`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before using simulation")
@@ -118,9 +120,8 @@ func NewSimulationCmds() *cobra.Command {
 	cmdSimulation.PersistentFlags().SortFlags = false
 
 	var cmdSimulationEnable = &cobra.Command{
-		Use:     "enable [scenario_name]",
+		Use:     "enable [scenario]",
 		Short:   "Enable the simulation, globally or on specified scenarios",
-		Long:    ``,
 		Example: `cscli simulation enable`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -174,9 +175,8 @@ func NewSimulationCmds() *cobra.Command {
 	cmdSimulation.AddCommand(cmdSimulationEnable)
 
 	var cmdSimulationDisable = &cobra.Command{
-		Use:     "disable [scenario_name]",
+		Use:     "disable [scenario]",
 		Short:   "Disable the simulation mode. Disable only specified scenarios",
-		Long:    ``,
 		Example: `cscli simulation disable`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
@@ -217,7 +217,6 @@ func NewSimulationCmds() *cobra.Command {
 	var cmdSimulationStatus = &cobra.Command{
 		Use:     "status",
 		Short:   "Show simulation mode status",
-		Long:    ``,
 		Example: `cscli simulation status`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := simulationStatus(); err != nil {

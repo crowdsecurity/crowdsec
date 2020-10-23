@@ -11,13 +11,9 @@ import (
 func NewConfigCmd() *cobra.Command {
 
 	var cmdConfig = &cobra.Command{
-		Use:   "config [command] <value>",
-		Short: "Allows to view/edit cscli config",
-		Long: `Allow to configure database plugin path and installation directory.
-If no commands are specified, config is in interactive mode.`,
-		Example: ` - cscli config show
-- cscli config prompt`,
-		Args: cobra.ExactArgs(1),
+		Use:   "config [command]",
+		Short: "Allows to view current config",
+		Args:  cobra.ExactArgs(0),
 	}
 	var cmdConfigShow = &cobra.Command{
 		Use:   "show",
@@ -25,13 +21,18 @@ If no commands are specified, config is in interactive mode.`,
 		Long:  `Displays the current cli configuration.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if csConfig.Cscli.Output == "json" {
+			if OutputFormat == "json" {
 				log.WithFields(log.Fields{
 					"crowdsec_configuration_file": csConfig.Self,
 					"data_folder":                 csConfig.Crowdsec.DataDir,
 				}).Warning("Current config")
 			} else {
-				x, err := yaml.Marshal(csConfig.Cscli)
+				x, err := yaml.Marshal(csConfig.ConfigPaths)
+				if err != nil {
+					log.Fatalf("failed to marshal current configuration : %v", err)
+				}
+				fmt.Printf("%s", x)
+				x, err = yaml.Marshal(csConfig.API.Client)
 				if err != nil {
 					log.Fatalf("failed to marshal current configuration : %v", err)
 				}

@@ -355,11 +355,6 @@ paths:
           required: false
           type: boolean
           description: 'only return alerts with decisions not expired yet'
-        - name: alert_source
-          in: query
-          required: false
-          type: string
-          description: only return alerts with matching source (ie. cscli/crowdsec)
       responses:
         '200':
           description: successful operation

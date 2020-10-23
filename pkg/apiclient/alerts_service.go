@@ -15,22 +15,19 @@ type AlertsService service
 type AlertsListOpts struct {
 	ScopeEquals          *string `url:"scope,omitempty"`
 	ValueEquals          *string `url:"value,omitempty"`
-	TypeEquals           *string `url:"type,omitempty"`
 	ScenarioEquals       *string `url:"scenario,omitempty"`
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
 	SinceEquals          *string `url:"since,omitempty"`
 	UntilEquals          *string `url:"until,omitempty"`
-	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
-	SourceEquals         *string `url:"alert_source,omitempty"`
 	IncludeSimulated     *bool   `url:"simulated,omitempty"`
+	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	ListOpts
 }
 
 type AlertsDeleteOpts struct {
 	ScopeEquals          *string `url:"scope,omitempty"`
 	ValueEquals          *string `url:"value,omitempty"`
-	TypeEquals           *string `url:"type,omitempty"`
 	ScenarioEquals       *string `url:"scenario,omitempty"`
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
@@ -69,7 +66,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	if len(params) > 0 {
 		URI = fmt.Sprintf("v1/alerts?%s", params.Encode())
 	} else {
-		URI = fmt.Sprintf("v1/alerts")
+		URI = "v1/alerts"
 	}
 
 	req, err := s.client.NewRequest("GET", URI, nil)

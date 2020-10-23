@@ -11,20 +11,20 @@ import (
 type DecisionsService service
 
 type DecisionsListOpts struct {
-	Scope_equals *string `url:"scope,omitempty"`
-	Value_equals *string `url:"value,omitempty"`
-	Type_equals  *string `url:"type,omitempty"`
-	IP_equals    *string `url:"ip,omitempty"`
-	Range_equals *string `url:"range,omitempty"`
+	ScopeEquals *string `url:"scope,omitempty"`
+	ValueEquals *string `url:"value,omitempty"`
+	TypeEquals  *string `url:"type,omitempty"`
+	IPEquals    *string `url:"ip,omitempty"`
+	RangeEquals *string `url:"range,omitempty"`
 	ListOpts
 }
 
 type DecisionsDeleteOpts struct {
-	Scope_equals *string `url:"scope,omitempty"`
-	Value_equals *string `url:"value,omitempty"`
-	Type_equals  *string `url:"type,omitempty"`
-	IP_equals    *string `url:"ip,omitempty"`
-	Range_equals *string `url:"range,omitempty"`
+	ScopeEquals *string `url:"scope,omitempty"`
+	ValueEquals *string `url:"value,omitempty"`
+	TypeEquals  *string `url:"type,omitempty"`
+	IPEquals    *string `url:"ip,omitempty"`
+	RangeEquals *string `url:"range,omitempty"`
 	ListOpts
 }
 

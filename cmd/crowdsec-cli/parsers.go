@@ -14,18 +14,13 @@ func NewParsersCmd() *cobra.Command {
 	var cmdParsers = &cobra.Command{
 		Use:   "parsers [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect parser(s) from hub",
-		Long: `
-		Install/Remove/Upgrade/Inspect parser(s) from the CrowdSec Hub.
-
-In order to download latest versions of configuration, 
-you should [update cscli](./cscli_update.md).
-
-[action] must be install/upgrade or remove.
-
-[config_name] must be a valid config name from [Crowdsec Hub](https://hub.crowdsec.net).
+		Example: `cscli parsers install crowdsecurity/sshd-logs
+cscli parsers inspect crowdsecurity/sshd-logs
+cscli parsers upgrade crowdsecurity/sshd-logs
+cscli parsers list
+cscli parsers remove crowdsecurity/sshd-logs
 `,
-		Example: `cscli install [type] [config_name]`,
-		Args:    cobra.MinimumNArgs(1),
+		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -49,7 +44,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "install [config]",
 		Short:   "Install given parser(s)",
 		Long:    `Fetch and install given parser(s) from hub`,
-		Example: `cscli parsers install crowdsec/xxx`,
+		Example: `cscli parsers install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -68,7 +63,7 @@ you should [update cscli](./cscli_update.md).
 		Use:     "remove [config]",
 		Short:   "Remove given parser(s)",
 		Long:    `Remove given parse(s) from hub`,
-		Example: `cscli parsers remove crowdsec/xxx`,
+		Example: `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -84,15 +79,15 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdParsersRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdParsersRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdParsersRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file too")
+	cmdParsersRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the parsers")
 	cmdParsers.AddCommand(cmdParsersRemove)
 
 	var cmdParsersUpgrade = &cobra.Command{
 		Use:     "upgrade [config]",
 		Short:   "Upgrade given parser(s)",
 		Long:    `Fetch and upgrade given parser(s) from hub`,
-		Example: `cscli parsers upgrade crowdsec/xxx`,
+		Example: `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
@@ -107,12 +102,12 @@ you should [update cscli](./cscli_update.md).
 			}
 		},
 	}
-	cmdParsersUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
+	cmdParsersUpgrade.PersistentFlags().BoolVar(&upgradeAll, "all", false, "Upgrade all the parsers")
 	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdParsers.AddCommand(cmdParsersUpgrade)
 
 	var cmdParsersInspect = &cobra.Command{
-		Use:     "inspect [config]",
+		Use:     "inspect [name]",
 		Short:   "Inspect given parser",
 		Long:    `Inspect given parser`,
 		Example: `cscli parsers inspect crowdsec/xxx`,
@@ -128,7 +123,7 @@ you should [update cscli](./cscli_update.md).
 	cmdParsers.AddCommand(cmdParsersInspect)
 
 	var cmdParsersList = &cobra.Command{
-		Use:   "list [config]",
+		Use:   "list [name]",
 		Short: "List all parsers or given one",
 		Long:  `List all parsers or given one`,
 		Example: `cscli parsers list

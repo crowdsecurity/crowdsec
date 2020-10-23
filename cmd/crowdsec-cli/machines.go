@@ -29,7 +29,6 @@ import (
 
 var machineID string
 var machinePassword string
-var machineIP string
 var interactive bool
 var apiURL string
 var outputFile string
@@ -157,12 +156,12 @@ To list/add/delete machines
 
 	var cmdMachinesAdd = &cobra.Command{
 		Use:   "add",
-		Short: "add machines directly to the database.",
-		Long: `add machines directly to the database.
-The watcher will be validated automatically.
-/!\ This will add the watcher only in the local database. This can't be run from a remote server.`,
-		Example: `cscli machines add --machine test --password testpassword --ip 1.2.3.4`,
-		Args:    cobra.MaximumNArgs(1),
+		Short: "add machine to the database.",
+		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
+		Example: `cscli machines add -m MyTestMachine
+cscli machines add --machine TestMachine --password password
+`,
+		Args: cobra.ExactArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -205,7 +204,7 @@ The watcher will be validated automatically.
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, machineIP, true, forceAdd)
+			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
@@ -250,7 +249,6 @@ The watcher will be validated automatically.
 	}
 	cmdMachinesAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
 	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
-	cmdMachinesAdd.Flags().StringVar(&machineIP, "ip", "", "machine ip address")
 	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
 	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
@@ -259,9 +257,8 @@ The watcher will be validated automatically.
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
 	var cmdMachinesDelete = &cobra.Command{
-		Use:     "delete",
+		Use:     "delete --machine MyTestMachine",
 		Short:   "delete machines",
-		Long:    `delete `,
 		Example: `cscli machines delete --machine test`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -286,7 +283,7 @@ The watcher will be validated automatically.
 	cmdMachines.AddCommand(cmdMachinesDelete)
 
 	var cmdMachinesRegister = &cobra.Command{
-		Use:   "register",
+		Use:   "register -u http://127.0.0.1:8080/",
 		Short: "register a machine to a remote API",
 		Long: `register a machine to a remote API.
 /!\ The machine will not be validated. You have to connect on the remote API server and run 'cscli machine validate -m <machine_id>'`,

@@ -36,9 +36,8 @@ cscli hub update # Download list of available configurations from the hub
 	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdHubList = &cobra.Command{
-		Use:   "list",
+		Use:   "list [-a]",
 		Short: "List installed configs",
-		Long:  ``,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
