@@ -38,6 +38,7 @@ func (c *Controller) NewV1() error {
 		return err
 	}
 
+	c.Router.Use(v1.PrometheusMiddleware())
 	v1 := c.Router.Group("/v1")
 	v1.POST("/watchers", handlerV1.CreateMachine)
 	v1.POST("/watchers/login", handlerV1.Middlewares.JWT.Middleware.LoginHandler)

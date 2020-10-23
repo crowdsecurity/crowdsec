@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -83,12 +84,14 @@ func registerPrometheus(mode string) {
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
 			leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow,
+			v1.ApilRouteHits,
 			leaky.BucketsCurrentCount)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
+			v1.ApilRouteHits,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 
 	}
