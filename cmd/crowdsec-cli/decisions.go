@@ -51,7 +51,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					decisionItem.ID,
 					*decisionItem.Origin,
 					*decisionItem.Scope+":"+*decisionItem.Value,
