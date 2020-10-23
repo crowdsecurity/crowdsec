@@ -18,8 +18,9 @@ type AlertsListOpts struct {
 	ScenarioEquals       *string `url:"scenario,omitempty"`
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
-	SinceEquals          *string `url:"since,omitempty"`
-	UntilEquals          *string `url:"until,omitempty"`
+	Since                *string `url:"since,omitempty"`
+	TypeEquals           *string `url:"decision_type,omitempty"`
+	Until                *string `url:"until,omitempty"`
 	IncludeSimulated     *bool   `url:"simulated,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	ListOpts
@@ -31,8 +32,8 @@ type AlertsDeleteOpts struct {
 	ScenarioEquals       *string `url:"scenario,omitempty"`
 	IPEquals             *string `url:"ip,omitempty"`
 	RangeEquals          *string `url:"range,omitempty"`
-	SinceEquals          *string `url:"since,omitempty"`
-	UntilEquals          *string `url:"until,omitempty"`
+	Since                *string `url:"since,omitempty"`
+	Until                *string `url:"until,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	SourceEquals         *string `url:"alert_source,omitempty"`
 	ListOpts

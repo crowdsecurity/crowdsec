@@ -311,9 +311,13 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
 			}
 		case "since":
-			since, err := time.Parse(time.RFC3339, value[0])
+			duration, err := time.ParseDuration(value[0])
 			if err != nil {
-				return nil, errors.Wrap(ParseTimeFail, fmt.Sprintf("since time '%s': %s", value[0], err))
+				return nil, errors.Wrap(err, "while parsing duration")
+			}
+			since := time.Now().Add(-duration)
+			if since.IsZero() {
+				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
 			alerts = alerts.Where(alert.CreatedAtGTE(since))
 		case "simulated":
@@ -325,12 +329,17 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				alerts = alerts.Where(alert.SimulatedEQ(simulated))
 			}
 		case "until":
-			until, err := time.Parse(time.RFC3339, value[0])
+			duration, err := time.ParseDuration(value[0])
 			if err != nil {
-				return nil, errors.Wrap(ParseTimeFail, fmt.Sprintf("until time '%s': %s", value[0], err))
-
+				return nil, errors.Wrap(err, "while parsing duration")
 			}
-			alerts = alerts.Where(alert.CreatedAtLTE(until))
+			since := time.Now().Add(-duration)
+			if since.IsZero() {
+				return nil, fmt.Errorf("Empty time now() - %s", since.String())
+			}
+			alerts = alerts.Where(alert.CreatedAtLTE(since))
+		case "decision_type":
+			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "has_active_decision":
 			if hasActiveDecision, err = strconv.ParseBool(value[0]); err != nil {
 				return nil, errors.Wrap(ParseType, fmt.Sprintf("'%s' is not a boolean: %s", value[0], err))

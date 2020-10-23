@@ -333,18 +333,18 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
-        - name: since
+        - name: since #shouldn't "since" be a golang-duration format ?
           in: query
           required: false
           type: string
           format: date-time
-          description: 'search alerts added after YYYY-mm-DD-HH:MM:SS'
-        - name: until
+          description: 'search alerts newer than delay (format must be compatible with time.ParseDuration)'
+        - name: until #same as for "since"
           in: query
+          description: 'search alerts older than delay (format must be compatible with time.ParseDuration)'
           required: false
           type: string
           format: date-time
-          description: 'search alerts added before YYYY-mm-DD-HH:MM:SS'
         - name: simulated
           in: query
           required: false
@@ -354,7 +354,12 @@ paths:
           in: query
           required: false
           type: boolean
-          description: 'only return alerts with decisions not expired yet'
+          description: 'only return alerts with decisions not expired yet'    
+        - name: decision_type
+          in: query
+          required: false
+          type: string
+          description: 'restrict results to alerts with decisions matching given type'   
       responses:
         '200':
           description: successful operation
