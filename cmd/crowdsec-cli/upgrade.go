@@ -31,7 +31,7 @@ func UpgradeConfig(ttype string, name string) {
 			continue
 		}
 		found = true
-		if v.UpToDate {
+		if v.UpToDate && !force_upgrade {
 			log.Infof("%s : up-to-date", v.Name)
 			continue
 		}
@@ -40,10 +40,12 @@ func UpgradeConfig(ttype string, name string) {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
 		if !v.UpToDate {
-			if v.Tainted {
+			if v.Tainted && !force_upgrade {
 				log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, v.Name)
+				continue
 			} else if v.Local {
 				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
+				continue
 			}
 		} else {
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
