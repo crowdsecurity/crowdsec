@@ -33,17 +33,15 @@ var Client *apiclient.ApiClient
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
-	//var realAlerts []*models.Alert = alerts.([]*models.Alert)
 
-	for _, alertItem := range *alerts {
+	/*process in reverse order to keep the latest item only*/
+	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
+		alertItem := (*alerts)[aIdx]
 		for _, decisionItem := range alertItem.Decisions {
-
 			spamKey := fmt.Sprintf("%s:%s:%s", *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
-				log.Printf("discard '%s' -> already exists", spamKey)
 				alertItem.Decisions = nil
 			} else {
-				log.Printf("create '%s' -> new", spamKey)
 				spamLimit[spamKey] = true
 			}
 		}
