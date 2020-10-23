@@ -118,7 +118,7 @@ cscli alerts list -s crowdsecurity/ssh-bf
 			var err error
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
-				cmd.Help()
+				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
 			if *alertListFilter.ScopeEquals == "" {
@@ -178,7 +178,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if *alertDeleteFilter.ScopeEquals == "" && *alertDeleteFilter.ValueEquals == "" &&
 				*alertDeleteFilter.ScenarioEquals == "" && *alertDeleteFilter.IPEquals == "" &&
 				*alertDeleteFilter.RangeEquals == "" {
-				cmd.Usage()
+				_ = cmd.Usage()
 				log.Fatalln("At least one filter or --all must be specified")
 			}
 		},
@@ -186,7 +186,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			var err error
 			if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
 				alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-				cmd.Help()
+				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
 			alertDeleteFilter.ActiveDecisionEquals = &ActiveDecision
