@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -104,6 +105,8 @@ func NewAlertsCmd() *cobra.Command {
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
+		Since:          new(string),
+		Until:          new(string),
 	}
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
@@ -121,6 +124,35 @@ cscli alerts list -s crowdsecurity/ssh-bf
 				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
+			if *alertListFilter.Until == "" {
+				alertListFilter.Until = nil
+			} else {
+				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+				if strings.HasSuffix(*alertListFilter.Until, "d") {
+					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
+					days, err := strconv.Atoi(realDuration)
+					if err != nil {
+						cmd.Help()
+						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
+					}
+					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				}
+			}
+			if *alertListFilter.Since == "" {
+				alertListFilter.Since = nil
+			} else {
+				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+				if strings.HasSuffix(*alertListFilter.Since, "d") {
+					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
+					days, err := strconv.Atoi(realDuration)
+					if err != nil {
+						cmd.Help()
+						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
+					}
+					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				}
+			}
+
 			if *alertListFilter.ScopeEquals == "" {
 				alertListFilter.ScopeEquals = nil
 			}
@@ -148,10 +180,12 @@ cscli alerts list -s crowdsecurity/ssh-bf
 		},
 	}
 	cmdAlertsList.Flags().SortFlags = false
-	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
+	cmdAlertsList.Flags().StringVar(alertListFilter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
+	cmdAlertsList.Flags().StringVar(alertListFilter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
-	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
-	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "the scope (ie. ip,range)")
+	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")
+	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlerts.AddCommand(cmdAlertsList)
 

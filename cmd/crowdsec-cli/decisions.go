@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -132,6 +133,9 @@ func NewDecisionsCmd() *cobra.Command {
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
+		Since:          new(string),
+		Until:          new(string),
+		TypeEquals:     new(string),
 	}
 	var NoSimu bool
 	var cmdDecisionsList = &cobra.Command{
@@ -140,6 +144,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Example: `cscli decisions list -i 1.2.3.4
 cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
+cscli decisions list -t ban
 `,
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -148,11 +153,43 @@ cscli decisions list -s crowdsecurity/ssh-bf
 			if err := manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
 				log.Fatalf("%s", err)
 			}
+
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
 			NoSimu = !NoSimu //revert the flag before setting it
 			filter.IncludeSimulated = &NoSimu
 			/*nulify the empty entries to avoid bad filter*/
+			if *filter.Until == "" {
+				filter.Until = nil
+			} else {
+				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+				if strings.HasSuffix(*filter.Until, "d") {
+					realDuration := strings.TrimSuffix(*filter.Until, "d")
+					days, err := strconv.Atoi(realDuration)
+					if err != nil {
+						cmd.Help()
+						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					}
+					*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
+				}
+			}
+			if *filter.Since == "" {
+				filter.Since = nil
+			} else {
+				/*time.ParseDuration support hours 'h' as bigger unit, let's make the user's life easier*/
+				if strings.HasSuffix(*filter.Since, "d") {
+					realDuration := strings.TrimSuffix(*filter.Since, "d")
+					days, err := strconv.Atoi(realDuration)
+					if err != nil {
+						cmd.Help()
+						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
+					}
+					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
+				}
+			}
+			if *filter.TypeEquals == "" {
+				filter.TypeEquals = nil
+			}
 			if *filter.ValueEquals == "" {
 				filter.ValueEquals = nil
 			}
@@ -180,11 +217,14 @@ cscli decisions list -s crowdsecurity/ssh-bf
 		},
 	}
 	cmdDecisionsList.Flags().SortFlags = false
-	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "scope to which the decision applies (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
-	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
-	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
-	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmdDecisionsList.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
+	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts newer than until (ie. 4h, 30d)")
+	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
+	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
+	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
+	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
+	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	cmdDecisionsList.Flags().BoolVar(&NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
