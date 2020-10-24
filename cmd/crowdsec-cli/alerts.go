@@ -18,9 +18,26 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func DecisionsFromAlert(alert *models.Alert) string {
+	ret := ""
+	var decMap = make(map[string]int)
+	for _, decision := range alert.Decisions {
+		v := decMap[*decision.Type]
+		decMap[*decision.Type] = v + 1
+	}
+	for k, v := range decMap {
+		if len(ret) > 0 {
+			ret += " "
+		}
+		ret += fmt.Sprintf("%s:%d", k, v)
+	}
+	return ret
+}
+
 func AlertsToTable(alerts *models.GetAlertsResponse) error {
+
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,Scope/Value,reason,country,as,events_count,created_at\n")
+		fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
 		for _, alertItem := range *alerts {
 			var scenarioVersion string
 			if alertItem.ScenarioVersion == nil {
@@ -32,7 +49,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-				*alertItem.EventsCount,
+				DecisionsFromAlert(alertItem),
 				alertItem.CreatedAt)
 		}
 	} else if csConfig.Cscli.Output == "json" {
@@ -41,7 +58,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Scope:Value", "reason", "country", "as", "events_count", "created_at"})
+		table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -60,7 +77,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-				strconv.Itoa(int(*alertItem.EventsCount)),
+				DecisionsFromAlert(alertItem),
 				alertItem.CreatedAt,
 			})
 		}
