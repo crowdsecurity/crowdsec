@@ -124,6 +124,7 @@ func NewAlertsCmd() *cobra.Command {
 		RangeEquals:    new(string),
 		Since:          new(string),
 		Until:          new(string),
+		TypeEquals:     new(string),
 	}
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
@@ -169,7 +170,9 @@ cscli alerts list -s crowdsecurity/ssh-bf
 					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
 				}
 			}
-
+			if *alertListFilter.TypeEquals == "" {
+				alertListFilter.TypeEquals = nil
+			}
 			if *alertListFilter.ScopeEquals == "" {
 				alertListFilter.ScopeEquals = nil
 			}
@@ -202,6 +205,7 @@ cscli alerts list -s crowdsecurity/ssh-bf
 	cmdAlertsList.Flags().StringVarP(alertListFilter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.RangeEquals, "range", "r", "", "restrict to alerts from this range (shorthand for --scope range --value <RANGE/X>)")
+	cmdAlertsList.Flags().StringVar(alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlerts.AddCommand(cmdAlertsList)
