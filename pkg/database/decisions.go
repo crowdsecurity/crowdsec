@@ -183,7 +183,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	var err error
 	var startIP, endIP int64
 
-	decisions := c.Ent.Decision.Update()
+	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now()))
 
 	for param, value := range filter {
 		switch param {
