@@ -351,6 +351,34 @@ func TestAlertListFilters(t *testing.T) {
 
 }
 
+func TestAlertBulkInsert(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_bulk.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	//assert.Equal(t, "null", w.Body.String())
+
+}
+
 func TestListAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
 	if err != nil {
@@ -389,6 +417,34 @@ func TestListAlert(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "crowdsecurity/test")
 }
 
+func TestCreateAlertErrors(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", "ratata"))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 401, w.Code)
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token+"s"))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 401, w.Code)
+
+}
+
 func TestDeleteAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
 	if err != nil {
@@ -407,13 +463,24 @@ func TestDeleteAlert(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
+	// Fail Delete Alert
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	req.RemoteAddr = "127.0.0.2:4242"
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 403, w.Code)
+	assert.Equal(t, `{"message":"access forbidden from this IP (127.0.0.2)"}`, w.Body.String())
+
 	// Delete Alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 403, w.Code)
-	assert.Equal(t, "{\"message\":\"access forbidden from this IP ()\"}", w.Body.String())
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"message":"1 deleted alerts"}`, w.Body.String())
 }
