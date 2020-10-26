@@ -27,6 +27,11 @@ import (
 )
 
 var (
+	metabasePassword string
+	metabaseURL      string
+
+	metabaseUsername = "crowdsec@crowdsec.net"
+
 	metabaseImage  = "metabase/metabase"
 	metabaseDbURI  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
 	metabaseDbPath = "/var/lib/crowdsec/data"
@@ -70,7 +75,7 @@ cscli dashboard setup --listen 0.0.0.0
 cscli dashboard setup -l 0.0.0.0 -p 443
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := downloadMetabaseDB(force); err != nil {
+			/*if err := downloadMetabaseDB(force); err != nil {
 				log.Fatalf("Failed to download metabase DB : %s", err)
 			}
 			log.Infof("Downloaded metabase DB")
@@ -86,12 +91,34 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 			log.Infof("url : http://%s:%s", metabaseListenAddress, metabaseListenPort)
 			log.Infof("username: %s", defaultEmail)
 			log.Infof("password: %s", newpassword)
+			*/
+
+			if err := createMetabase(); err != nil {
+				log.Fatalf("failed to start metabase container : %s", err)
+			}
+
+			if metabasePassword == "" {
+				metabasePassword = generatePassword(16)
+			}
+
+			metabaseURL = fmt.Sprintf("http://%s:%s/", metabaseListenAddress, metabaseListenPort)
+
+			mb, err := newMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := mb.Init(); err != nil {
+				log.Fatalf(err.Error())
+			}
 		},
 	}
 	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", metabaseDbPath, "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	cmdDashSetup.Flags().StringVarP(&metabaseUsername, "username", "u", metabaseUsername, "metabase username")
+	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
 	cmdDashboard.AddCommand(cmdDashSetup)
 
 	var cmdDashStart = &cobra.Command{
@@ -100,11 +127,12 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 		Long:  `Stats the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := startMetabase(); err != nil {
+			/*if err := startMetabase(); err != nil {
 				log.Fatalf("Failed to start metabase container : %s", err)
 			}
 			log.Infof("Started metabase")
 			log.Infof("url : http://%s:%s", metabaseListenAddress, metabaseListenPort)
+			*/
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashStart)
@@ -115,9 +143,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 		Long:  `Stops the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := stopMetabase(); err != nil {
+			/*if err := stopMetabase(); err != nil {
 				log.Fatalf("Failed to stop metabase container : %s", err)
-			}
+			}*/
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashStop)
@@ -132,7 +160,7 @@ cscli dashboard remove
 cscli dashboard remove --force
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			if force {
+			/*if force {
 				if err := stopMetabase(); err != nil {
 					log.Fatalf("Failed to stop metabase container : %s", err)
 				}
@@ -144,7 +172,7 @@ cscli dashboard remove --force
 				if err := removeMetabaseImage(); err != nil {
 					log.Fatalf("Failed to stop metabase container : %s", err)
 				}
-			}
+			}*/
 		},
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
