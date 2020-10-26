@@ -160,119 +160,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	return ret, nil
 }
 
-func (c *Client) CreateAlert(alertItem *models.Alert) (string, error) {
-	owner, err := c.QueryMachineByID(alertItem.MachineID)
-	if err != nil {
-		if errors.Cause(err) != UserNotExists {
-			return "", errors.Wrap(QueryFail, fmt.Sprintf("machine '%s': %s", alertItem.MachineID, err))
-		}
-		owner = nil
-	}
-
-	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
-	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("start_at field time '%v': %s", alertItem.StartAt, err))
-	}
-
-	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
-	if err != nil {
-		return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("stop_at field time '%v': %s", alertItem.StopAt, err))
-	}
-
-	alert := c.Ent.Alert.
-		Create().
-		SetScenario(*alertItem.Scenario).
-		SetMessage(*alertItem.Message).
-		SetEventsCount(*alertItem.EventsCount).
-		SetStartedAt(startAtTime).
-		SetStoppedAt(stopAtTime).
-		SetSourceScope(*alertItem.Source.Scope).
-		SetSourceValue(*alertItem.Source.Value).
-		SetSourceIp(alertItem.Source.IP).
-		SetSourceRange(alertItem.Source.Range).
-		SetSourceAsNumber(alertItem.Source.AsNumber).
-		SetSourceAsName(alertItem.Source.AsName).
-		SetSourceCountry(alertItem.Source.Cn).
-		SetSourceLatitude(alertItem.Source.Latitude).
-		SetSourceLongitude(alertItem.Source.Longitude).
-		SetCapacity(*alertItem.Capacity).
-		SetLeakSpeed(*alertItem.Leakspeed)
-
-	if owner != nil {
-		alert.SetOwner(owner)
-	}
-
-	alertCreated, err := alert.Save(c.CTX)
-	if err != nil {
-		return "", errors.Wrap(InsertFail, fmt.Sprintf("creating alert : %s", err))
-	}
-
-	if len(alertItem.Events) > 0 {
-		bulk := make([]*ent.EventCreate, len(alertItem.Events))
-		for i, eventItem := range alertItem.Events {
-			ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
-			if err != nil {
-				return "", errors.Wrap(ParseTimeFail, fmt.Sprintf("event timestamp '%v' : %s", eventItem.Timestamp, err))
-			}
-			marshallMetas, err := json.Marshal(eventItem.Meta)
-			if err != nil {
-				return "", errors.Wrap(MarshalFail, fmt.Sprintf("event meta '%v' : %s", eventItem.Meta, err))
-			}
-
-			bulk[i] = c.Ent.Event.Create().
-				SetTime(ts).
-				SetSerialized(string(marshallMetas)).
-				SetOwner(alertCreated)
-		}
-		_, err := c.Ent.Event.CreateBulk(bulk...).Save(c.CTX)
-		if err != nil {
-			return "", errors.Wrap(BulkError, fmt.Sprintf("creating alert events: %s", err))
-		}
-	}
-
-	if len(alertItem.Meta) > 0 {
-		bulk := make([]*ent.MetaCreate, len(alertItem.Meta))
-		for i, metaItem := range alertItem.Meta {
-			bulk[i] = c.Ent.Meta.Create().
-				SetKey(metaItem.Key).
-				SetValue(metaItem.Value).
-				SetOwner(alertCreated)
-		}
-		_, err := c.Ent.Meta.CreateBulk(bulk...).Save(c.CTX)
-		if err != nil {
-			return "", errors.Wrap(BulkError, fmt.Sprintf("creating alert meta: %s", err))
-
-		}
-	}
-
-	if len(alertItem.Decisions) > 0 {
-		bulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
-		for i, decisionItem := range alertItem.Decisions {
-			duration, err := time.ParseDuration(*decisionItem.Duration)
-			if err != nil {
-				return "", errors.Wrap(ParseDurationFail, fmt.Sprintf("decision duration '%v' : %s", decisionItem.Duration, err))
-			}
-			bulk[i] = c.Ent.Decision.Create().
-				SetUntil(time.Now().Add(duration)).
-				SetScenario(*decisionItem.Scenario).
-				SetType(*decisionItem.Type).
-				SetStartIP(decisionItem.StartIP).
-				SetEndIP(decisionItem.EndIP).
-				SetValue(*decisionItem.Value).
-				SetScope(*decisionItem.Scope).
-				SetOrigin(*decisionItem.Origin).
-				SetOwner(alertCreated)
-		}
-		_, err := c.Ent.Decision.CreateBulk(bulk...).Save(c.CTX)
-		if err != nil {
-			return "", errors.Wrap(BulkError, fmt.Sprintf("creating alert decisions: %s", err))
-
-		}
-	}
-
-	return strconv.Itoa(alertCreated.ID), nil
-}
-
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	var err error
 	var startIP, endIP int64
@@ -320,14 +207,6 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
 			alerts = alerts.Where(alert.CreatedAtGTE(since))
-		case "simulated":
-			var simulated bool
-			if simulated, err = strconv.ParseBool(value[0]); err != nil {
-				return nil, errors.Wrap(ParseType, fmt.Sprintf("'%s' is not a boolean: %s", value[0], err))
-			}
-			if simulated {
-				alerts = alerts.Where(alert.SimulatedEQ(simulated))
-			}
 		case "until":
 			duration, err := time.ParseDuration(value[0])
 			if err != nil {
@@ -346,6 +225,8 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			}
 			if hasActiveDecision {
 				alerts = alerts.Where(alert.HasDecisionsWith(decision.UntilGTE(time.Now())))
+			} else {
+				alerts = alerts.Where(alert.Not(alert.HasDecisions()))
 			}
 		default:
 			return nil, errors.Wrap(InvalidFilter, fmt.Sprintf("Filter parameter '%s' is unknown (=%s)", param, value[0]))
