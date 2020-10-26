@@ -147,7 +147,7 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-	if gctx.ClientIP() != "127.0.0.1" || gctx.ClientIP() != "::1" {
+	if gctx.ClientIP() != "127.0.0.1" && gctx.ClientIP() != "::1" {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
 		return
 	}
