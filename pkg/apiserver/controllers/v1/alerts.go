@@ -92,6 +92,8 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
+
+	log.Printf("Controller.CreateAlert!")
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
@@ -109,7 +111,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	for _, alert := range input {
 		if len(alert.Decisions) > 0 {
-			log.Debugf("alert %s already has decisions, don't apply profiles", alert.Message)
+			log.Debugf("alert %s already has decisions, don't apply profiles", *alert.Message)
 		} else {
 			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
 			if err != nil {
@@ -146,10 +148,10 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	if gctx.ClientIP() != "127.0.0.1" || gctx.ClientIP() != "::1" {
-		gctx.JSON(http.StatusForbidden, gin.H{"message" : "access forbidden from this IP"})
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
 		return
 	}
-	var err error 
+	var err error
 	deleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
