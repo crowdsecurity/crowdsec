@@ -56,7 +56,6 @@ func TestGetDecision(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
-	CleanDB()
 }
 
 func TestDeleteDecisionByID(t *testing.T) {
@@ -108,7 +107,6 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "{\"nbDeleted\":\"1\"}", w.Body.String())
 
-	CleanDB()
 }
 
 func TestDeleteDecision(t *testing.T) {
@@ -150,7 +148,6 @@ func TestDeleteDecision(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "{\"nbDeleted\":\"1\"}", w.Body.String())
 
-	CleanDB()
 }
 
 func TestStreamDecision(t *testing.T) {
@@ -193,6 +190,4 @@ func TestStreamDecision(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-
-	CleanDB()
 }
