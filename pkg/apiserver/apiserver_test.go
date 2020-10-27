@@ -31,13 +31,6 @@ var MachineTest = models.WatcherAuthRequest{
 
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
 
-func CleanDB() {
-	err := os.Remove("./crowdsec.db")
-	if err != nil {
-		log.Fatalf("unable to delete DB : %s", err)
-	}
-}
-
 func LoadTestConfig() csconfig.GlobalConfig {
 	config := csconfig.GlobalConfig{}
 	maxAge := "1h"
@@ -46,26 +39,33 @@ func LoadTestConfig() csconfig.GlobalConfig {
 	}
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: "./crowdsec.db",
+		DbPath: "./ent",
 		Flush:  &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
-		ListenURI: "http://127.0.0.1:8080",
-		DbConfig:  &dbconfig,
+		ListenURI:    "http://127.0.0.1:8080",
+		DbConfig:     &dbconfig,
+		ProfilesPath: "./tests/profiles.yaml",
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
 	}
 	config.API = &apiConfig
+	if err := config.API.Server.LoadProfiles(); err != nil {
+		log.Fatalf("failed to load profiles: %s", err)
+	}
 	return config
 }
 
 func NewAPITest() (*gin.Engine, error) {
 	config := LoadTestConfig()
+
+	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
+	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
 	router, err := apiServer.Router()
 	if err != nil {
@@ -152,5 +152,4 @@ func TestUnknownPath(t *testing.T) {
 	assert.Equal(t, 404, w.Code)
 	assert.Equal(t, "{\"message\":\"Page or Method not found\"}", w.Body.String())
 
-	CleanDB()
 }

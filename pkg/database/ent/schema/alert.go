@@ -44,6 +44,8 @@ func (Alert) Fields() []ent.Field {
 		field.String("sourceValue").Optional(),
 		field.Int32("capacity").Optional(),
 		field.String("leakSpeed").Optional(),
+		field.String("scenarioVersion").Optional(),
+		field.String("scenarioHash").Optional(),
 		field.Bool("simulated").Default(false),
 	}
 }

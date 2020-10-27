@@ -24,6 +24,7 @@ api:
   client:
     credentials_path: ./tests/lapi-secrets.yaml
   server:
+    profiles_path: ./tests/profiles.yaml
     listen_uri: 127.0.0.1:8080
     tls: null
     online_client:

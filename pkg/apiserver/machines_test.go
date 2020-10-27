@@ -50,7 +50,6 @@ func TestCreateMachine(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	CleanDB()
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
@@ -77,5 +76,4 @@ func TestCreateMachineAlreadyExist(t *testing.T) {
 	assert.Equal(t, 403, w.Code)
 	assert.Equal(t, "{\"message\":\"user 'test': user already exist\"}", w.Body.String())
 
-	CleanDB()
 }

@@ -228,11 +228,11 @@ func (c *AlertClient) Get(ctx context.Context, id int) (*Alert, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *AlertClient) GetX(ctx context.Context, id int) *Alert {
-	a, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return a
+	return obj
 }
 
 // QueryOwner queries the owner edge of a Alert.
@@ -380,11 +380,11 @@ func (c *BouncerClient) Get(ctx context.Context, id int) (*Bouncer, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *BouncerClient) GetX(ctx context.Context, id int) *Bouncer {
-	b, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return b
+	return obj
 }
 
 // Hooks returns the client hooks.
@@ -468,11 +468,11 @@ func (c *DecisionClient) Get(ctx context.Context, id int) (*Decision, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *DecisionClient) GetX(ctx context.Context, id int) *Decision {
-	d, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return d
+	return obj
 }
 
 // QueryOwner queries the owner edge of a Decision.
@@ -572,11 +572,11 @@ func (c *EventClient) Get(ctx context.Context, id int) (*Event, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *EventClient) GetX(ctx context.Context, id int) *Event {
-	e, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return e
+	return obj
 }
 
 // QueryOwner queries the owner edge of a Event.
@@ -676,11 +676,11 @@ func (c *MachineClient) Get(ctx context.Context, id int) (*Machine, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *MachineClient) GetX(ctx context.Context, id int) *Machine {
-	m, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return obj
 }
 
 // QueryAlerts queries the alerts edge of a Machine.
@@ -780,11 +780,11 @@ func (c *MetaClient) Get(ctx context.Context, id int) (*Meta, error) {
 
 // GetX is like Get, but panics if an error occurs.
 func (c *MetaClient) GetX(ctx context.Context, id int) *Meta {
-	m, err := c.Get(ctx, id)
+	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return obj
 }
 
 // QueryOwner queries the owner edge of a Meta.

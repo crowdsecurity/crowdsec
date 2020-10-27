@@ -414,6 +414,46 @@ func (au *AlertUpdate) ClearLeakSpeed() *AlertUpdate {
 	return au
 }
 
+// SetScenarioVersion sets the scenarioVersion field.
+func (au *AlertUpdate) SetScenarioVersion(s string) *AlertUpdate {
+	au.mutation.SetScenarioVersion(s)
+	return au
+}
+
+// SetNillableScenarioVersion sets the scenarioVersion field if the given value is not nil.
+func (au *AlertUpdate) SetNillableScenarioVersion(s *string) *AlertUpdate {
+	if s != nil {
+		au.SetScenarioVersion(*s)
+	}
+	return au
+}
+
+// ClearScenarioVersion clears the value of scenarioVersion.
+func (au *AlertUpdate) ClearScenarioVersion() *AlertUpdate {
+	au.mutation.ClearScenarioVersion()
+	return au
+}
+
+// SetScenarioHash sets the scenarioHash field.
+func (au *AlertUpdate) SetScenarioHash(s string) *AlertUpdate {
+	au.mutation.SetScenarioHash(s)
+	return au
+}
+
+// SetNillableScenarioHash sets the scenarioHash field if the given value is not nil.
+func (au *AlertUpdate) SetNillableScenarioHash(s *string) *AlertUpdate {
+	if s != nil {
+		au.SetScenarioHash(*s)
+	}
+	return au
+}
+
+// ClearScenarioHash clears the value of scenarioHash.
+func (au *AlertUpdate) ClearScenarioHash() *AlertUpdate {
+	au.mutation.ClearScenarioHash()
+	return au
+}
+
 // SetSimulated sets the simulated field.
 func (au *AlertUpdate) SetSimulated(b bool) *AlertUpdate {
 	au.mutation.SetSimulated(b)
@@ -497,9 +537,15 @@ func (au *AlertUpdate) Mutation() *AlertMutation {
 	return au.mutation
 }
 
-// ClearOwner clears the owner edge to Machine.
+// ClearOwner clears the "owner" edge to type Machine.
 func (au *AlertUpdate) ClearOwner() *AlertUpdate {
 	au.mutation.ClearOwner()
+	return au
+}
+
+// ClearDecisions clears all "decisions" edges to type Decision.
+func (au *AlertUpdate) ClearDecisions() *AlertUpdate {
+	au.mutation.ClearDecisions()
 	return au
 }
 
@@ -518,6 +564,12 @@ func (au *AlertUpdate) RemoveDecisions(d ...*Decision) *AlertUpdate {
 	return au.RemoveDecisionIDs(ids...)
 }
 
+// ClearEvents clears all "events" edges to type Event.
+func (au *AlertUpdate) ClearEvents() *AlertUpdate {
+	au.mutation.ClearEvents()
+	return au
+}
+
 // RemoveEventIDs removes the events edge to Event by ids.
 func (au *AlertUpdate) RemoveEventIDs(ids ...int) *AlertUpdate {
 	au.mutation.RemoveEventIDs(ids...)
@@ -531,6 +583,12 @@ func (au *AlertUpdate) RemoveEvents(e ...*Event) *AlertUpdate {
 		ids[i] = e[i].ID
 	}
 	return au.RemoveEventIDs(ids...)
+}
+
+// ClearMetas clears all "metas" edges to type Meta.
+func (au *AlertUpdate) ClearMetas() *AlertUpdate {
+	au.mutation.ClearMetas()
+	return au
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -550,7 +608,6 @@ func (au *AlertUpdate) RemoveMetas(m ...*Meta) *AlertUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (au *AlertUpdate) Save(ctx context.Context) (int, error) {
-
 	var (
 		err      error
 		affected int
@@ -875,6 +932,32 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: alert.FieldLeakSpeed,
 		})
 	}
+	if value, ok := au.mutation.ScenarioVersion(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldScenarioVersion,
+		})
+	}
+	if au.mutation.ScenarioVersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldScenarioVersion,
+		})
+	}
+	if value, ok := au.mutation.ScenarioHash(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldScenarioHash,
+		})
+	}
+	if au.mutation.ScenarioHashCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldScenarioHash,
+		})
+	}
 	if value, ok := au.mutation.Simulated(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
@@ -917,7 +1000,23 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := au.mutation.RemovedDecisionsIDs(); len(nodes) > 0 {
+	if au.mutation.DecisionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.DecisionsTable,
+			Columns: []string{alert.DecisionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: decision.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := au.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !au.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -955,7 +1054,23 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := au.mutation.RemovedEventsIDs(); len(nodes) > 0 {
+	if au.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.EventsTable,
+			Columns: []string{alert.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: event.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := au.mutation.RemovedEventsIDs(); len(nodes) > 0 && !au.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -993,7 +1108,23 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := au.mutation.RemovedMetasIDs(); len(nodes) > 0 {
+	if au.mutation.MetasCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.MetasTable,
+			Columns: []string{alert.MetasColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: meta.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := au.mutation.RemovedMetasIDs(); len(nodes) > 0 && !au.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -1431,6 +1562,46 @@ func (auo *AlertUpdateOne) ClearLeakSpeed() *AlertUpdateOne {
 	return auo
 }
 
+// SetScenarioVersion sets the scenarioVersion field.
+func (auo *AlertUpdateOne) SetScenarioVersion(s string) *AlertUpdateOne {
+	auo.mutation.SetScenarioVersion(s)
+	return auo
+}
+
+// SetNillableScenarioVersion sets the scenarioVersion field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableScenarioVersion(s *string) *AlertUpdateOne {
+	if s != nil {
+		auo.SetScenarioVersion(*s)
+	}
+	return auo
+}
+
+// ClearScenarioVersion clears the value of scenarioVersion.
+func (auo *AlertUpdateOne) ClearScenarioVersion() *AlertUpdateOne {
+	auo.mutation.ClearScenarioVersion()
+	return auo
+}
+
+// SetScenarioHash sets the scenarioHash field.
+func (auo *AlertUpdateOne) SetScenarioHash(s string) *AlertUpdateOne {
+	auo.mutation.SetScenarioHash(s)
+	return auo
+}
+
+// SetNillableScenarioHash sets the scenarioHash field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableScenarioHash(s *string) *AlertUpdateOne {
+	if s != nil {
+		auo.SetScenarioHash(*s)
+	}
+	return auo
+}
+
+// ClearScenarioHash clears the value of scenarioHash.
+func (auo *AlertUpdateOne) ClearScenarioHash() *AlertUpdateOne {
+	auo.mutation.ClearScenarioHash()
+	return auo
+}
+
 // SetSimulated sets the simulated field.
 func (auo *AlertUpdateOne) SetSimulated(b bool) *AlertUpdateOne {
 	auo.mutation.SetSimulated(b)
@@ -1514,9 +1685,15 @@ func (auo *AlertUpdateOne) Mutation() *AlertMutation {
 	return auo.mutation
 }
 
-// ClearOwner clears the owner edge to Machine.
+// ClearOwner clears the "owner" edge to type Machine.
 func (auo *AlertUpdateOne) ClearOwner() *AlertUpdateOne {
 	auo.mutation.ClearOwner()
+	return auo
+}
+
+// ClearDecisions clears all "decisions" edges to type Decision.
+func (auo *AlertUpdateOne) ClearDecisions() *AlertUpdateOne {
+	auo.mutation.ClearDecisions()
 	return auo
 }
 
@@ -1535,6 +1712,12 @@ func (auo *AlertUpdateOne) RemoveDecisions(d ...*Decision) *AlertUpdateOne {
 	return auo.RemoveDecisionIDs(ids...)
 }
 
+// ClearEvents clears all "events" edges to type Event.
+func (auo *AlertUpdateOne) ClearEvents() *AlertUpdateOne {
+	auo.mutation.ClearEvents()
+	return auo
+}
+
 // RemoveEventIDs removes the events edge to Event by ids.
 func (auo *AlertUpdateOne) RemoveEventIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.RemoveEventIDs(ids...)
@@ -1548,6 +1731,12 @@ func (auo *AlertUpdateOne) RemoveEvents(e ...*Event) *AlertUpdateOne {
 		ids[i] = e[i].ID
 	}
 	return auo.RemoveEventIDs(ids...)
+}
+
+// ClearMetas clears all "metas" edges to type Meta.
+func (auo *AlertUpdateOne) ClearMetas() *AlertUpdateOne {
+	auo.mutation.ClearMetas()
+	return auo
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -1567,7 +1756,6 @@ func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
-
 	var (
 		err  error
 		node *Alert
@@ -1597,11 +1785,11 @@ func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (auo *AlertUpdateOne) SaveX(ctx context.Context) *Alert {
-	a, err := auo.Save(ctx)
+	node, err := auo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return a
+	return node
 }
 
 // Exec executes the query on the entity.
@@ -1617,7 +1805,7 @@ func (auo *AlertUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
+func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   alert.Table,
@@ -1890,6 +2078,32 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 			Column: alert.FieldLeakSpeed,
 		})
 	}
+	if value, ok := auo.mutation.ScenarioVersion(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldScenarioVersion,
+		})
+	}
+	if auo.mutation.ScenarioVersionCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldScenarioVersion,
+		})
+	}
+	if value, ok := auo.mutation.ScenarioHash(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: alert.FieldScenarioHash,
+		})
+	}
+	if auo.mutation.ScenarioHashCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Column: alert.FieldScenarioHash,
+		})
+	}
 	if value, ok := auo.mutation.Simulated(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeBool,
@@ -1932,7 +2146,23 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := auo.mutation.RemovedDecisionsIDs(); len(nodes) > 0 {
+	if auo.mutation.DecisionsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.DecisionsTable,
+			Columns: []string{alert.DecisionsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: decision.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := auo.mutation.RemovedDecisionsIDs(); len(nodes) > 0 && !auo.mutation.DecisionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -1970,7 +2200,23 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := auo.mutation.RemovedEventsIDs(); len(nodes) > 0 {
+	if auo.mutation.EventsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.EventsTable,
+			Columns: []string{alert.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: event.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := auo.mutation.RemovedEventsIDs(); len(nodes) > 0 && !auo.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -2008,7 +2254,23 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if nodes := auo.mutation.RemovedMetasIDs(); len(nodes) > 0 {
+	if auo.mutation.MetasCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   alert.MetasTable,
+			Columns: []string{alert.MetasColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: meta.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := auo.mutation.RemovedMetasIDs(); len(nodes) > 0 && !auo.mutation.MetasCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -2046,9 +2308,9 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	a = &Alert{config: auo.config}
-	_spec.Assign = a.assignValues
-	_spec.ScanValues = a.scanValues()
+	_node = &Alert{config: auo.config}
+	_spec.Assign = _node.assignValues
+	_spec.ScanValues = _node.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, auo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
@@ -2057,5 +2319,5 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (a *Alert, err error) {
 		}
 		return nil, err
 	}
-	return a, nil
+	return _node, nil
 }

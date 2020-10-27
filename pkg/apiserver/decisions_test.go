@@ -12,6 +12,175 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDeleteDecisionRange(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Create Valid Alert
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	// delete by ip wrong
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=1.2.3.0/24", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+
+	// delete by range
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
+
+	// delete by range : ensure it was already deleted
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+}
+
+func TestDeleteDecisionFilter(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Create Valid Alert
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	// delete by ip wrong
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=1.2.3.4", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
+
+	// delete by ip good
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=91.121.79.179", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+
+	// delete by scope/value
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?scope=Ip&value=91.121.79.178", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+}
+
+func TestGetDecisionFilters(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Create Valid Alert
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	APIKey, err := CreateTestBouncer()
+	if err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+
+	// Get Decision
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+
+	// Get Decision : type filter
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions?type=ban", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+
+	// Get Decision : scope/value
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions?scope=Ip&value=91.121.79.179", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+
+	// Get Decision : ip filter
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions?ip=91.121.79.179", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+
+	// Get decision : by range
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+}
+
 func TestGetDecision(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
 	if err != nil {
@@ -56,7 +225,6 @@ func TestGetDecision(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
-	CleanDB()
 }
 
 func TestDeleteDecisionByID(t *testing.T) {
@@ -108,7 +276,6 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "{\"nbDeleted\":\"1\"}", w.Body.String())
 
-	CleanDB()
 }
 
 func TestDeleteDecision(t *testing.T) {
@@ -150,7 +317,6 @@ func TestDeleteDecision(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "{\"nbDeleted\":\"1\"}", w.Body.String())
 
-	CleanDB()
 }
 
 func TestStreamDecision(t *testing.T) {
@@ -193,6 +359,4 @@ func TestStreamDecision(t *testing.T) {
 
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-
-	CleanDB()
 }

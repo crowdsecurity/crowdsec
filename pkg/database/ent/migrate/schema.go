@@ -30,6 +30,8 @@ var (
 		{Name: "source_value", Type: field.TypeString, Nullable: true},
 		{Name: "capacity", Type: field.TypeInt32, Nullable: true},
 		{Name: "leak_speed", Type: field.TypeString, Nullable: true},
+		{Name: "scenario_version", Type: field.TypeString, Nullable: true},
+		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
@@ -41,7 +43,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "alerts_machines_alerts",
-				Columns: []*schema.Column{AlertsColumns[21]},
+				Columns: []*schema.Column{AlertsColumns[23]},
 
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
@@ -53,7 +55,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "name", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "revoked", Type: field.TypeBool},
 		{Name: "ip_address", Type: field.TypeString, Nullable: true, Default: ""},
@@ -129,7 +131,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "machine_id", Type: field.TypeString},
+		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
 		{Name: "scenarios", Type: field.TypeString, Nullable: true},

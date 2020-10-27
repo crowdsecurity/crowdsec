@@ -92,5 +92,4 @@ func TestLogin(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "\"token\"")
 	assert.Contains(t, w.Body.String(), "\"expire\"")
 
-	CleanDB()
 }

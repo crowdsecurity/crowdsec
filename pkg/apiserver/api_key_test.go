@@ -20,7 +20,6 @@ func TestAPIKey(t *testing.T) {
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
-
 	// Login with empty token
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
@@ -50,5 +49,4 @@ func TestAPIKey(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	CleanDB()
 }

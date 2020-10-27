@@ -49,7 +49,7 @@ func init() {
 	// alert.DefaultStoppedAt holds the default value on creation for the stoppedAt field.
 	alert.DefaultStoppedAt = alertDescStoppedAt.Default.(func() time.Time)
 	// alertDescSimulated is the schema descriptor for simulated field.
-	alertDescSimulated := alertFields[19].Descriptor()
+	alertDescSimulated := alertFields[21].Descriptor()
 	// alert.DefaultSimulated holds the default value on creation for the simulated field.
 	alert.DefaultSimulated = alertDescSimulated.Default.(bool)
 	bouncerFields := schema.Bouncer{}.Fields()
