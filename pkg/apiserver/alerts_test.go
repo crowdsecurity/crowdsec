@@ -46,6 +46,44 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 	return router, loginResp, nil
 }
 
+func TestSimulatedAlert(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk+simul.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	//exclude decision in simulation mode
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=false", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
+	assert.NotContains(t, w.Body.String(), `"message":"Ip 91.121.79.179 performed crowdsecurity/ssh-bf (6 events over `)
+	//include decision in simulation mode
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", strings.NewReader(alertContent))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
+	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.179 performed crowdsecurity/ssh-bf (6 events over `)
+}
+
 func TestCreateAlert(t *testing.T) {
 	router, loginResp, err := InitMachineTest()
 	if err != nil {
