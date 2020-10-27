@@ -122,6 +122,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetCapacity(*alertItem.Capacity).
 			SetLeakSpeed(*alertItem.Leakspeed).
 			SetSimulated(*alertItem.Simulated).
+			SetScenarioVersion(*alertItem.ScenarioVersion).
+			SetScenarioHash(*alertItem.ScenarioHash).
 			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
