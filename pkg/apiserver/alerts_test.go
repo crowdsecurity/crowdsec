@@ -145,12 +145,14 @@ func TestAlertListFilters(t *testing.T) {
 	}
 	alertContent := string(alertContentBytes)
 
+	//create one alert
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
+	//bad filter
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(alertContent))
 	req.Header.Add("User-Agent", UserAgent)
@@ -159,7 +161,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, "{\"message\":\"Filter parameter 'test' is unknown (=test): invalid filter\"}", w.Body.String())
 
-	//base
+	//get without filters
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -170,7 +172,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test decision_type filter
+	//test decision_type filter (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?decision_type=ban", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -180,7 +182,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test decision_type filter
+	//test decision_type filter (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?decision_type=ratata", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -189,7 +191,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test scope
+	//test scope (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scope=Ip", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -199,7 +201,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test scope
+	//test scope (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scope=rarara", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -208,7 +210,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test scenario
+	//test scenario (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scenario=crowdsecurity/ssh-bf", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -218,7 +220,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test scenario
+	//test scenario (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scenario=crowdsecurity/nope", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -227,7 +229,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test ip
+	//test ip (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=91.121.79.195", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -237,7 +239,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test ip
+	//test ip (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=99.122.77.195", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -246,7 +248,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test ip
+	//test ip (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=gruueq", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -255,7 +257,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, w.Body.String(), `{"message":"unable to parse 'gruueq': %!s(\u003cnil\u003e): invalid ip address / range"}`)
 
-	//test range
+	//test range (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?range=91.121.79.0/24", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -274,7 +276,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test range
+	//test range (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?range=ratata", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -283,7 +285,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, w.Body.String(), `{"message":"unable to convert 'ratata' to int interval: 'ratata' is not a valid CIDR: invalid ip address / range"}`)
 
-	//test since
+	//test since (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1h", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -293,7 +295,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test since
+	//test since (ok but yelds no results)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1ns", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -302,7 +304,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test since
+	//test since (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1zuzu", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -311,7 +313,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit zuzu in duration 1zuzu"}`)
 
-	//test until
+	//test until (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1ns", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -321,7 +323,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test until
+	//test until (ok but no return)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1m", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -330,7 +332,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test until
+	//test until (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1zuzu", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -339,7 +341,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit zuzu in duration 1zuzu"}`)
 
-	//test simulated
+	//test simulated (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -349,7 +351,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
-	//test simulated
+	//test simulated (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=false", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -378,7 +380,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
 
-	//test has active decision
+	//test has active decision (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?has_active_decision=ratatqata", nil)
 	req.Header.Add("User-Agent", UserAgent)
@@ -395,6 +397,7 @@ func TestAlertBulkInsert(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
+	//insert a bulk of 20 alerts to trigger bulk insert
 	alertContentBytes, err := ioutil.ReadFile("./tests/alert_bulk.json")
 	if err != nil {
 		log.Fatal(err)
@@ -413,8 +416,6 @@ func TestAlertBulkInsert(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	//assert.Equal(t, "null", w.Body.String())
-
 }
 
 func TestListAlert(t *testing.T) {
@@ -467,6 +468,7 @@ func TestCreateAlertErrors(t *testing.T) {
 	}
 	alertContent := string(alertContentBytes)
 
+	//test invalid bearer
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 	req.Header.Add("User-Agent", UserAgent)
@@ -474,6 +476,7 @@ func TestCreateAlertErrors(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 401, w.Code)
 
+	//test invalid bearer
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 	req.Header.Add("User-Agent", UserAgent)
