@@ -63,8 +63,12 @@ func (mq *MetaQuery) QueryOwner() *AlertQuery {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
+		selector := mq.sqlQuery()
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(meta.Table, meta.FieldID, mq.sqlQuery()),
+			sqlgraph.From(meta.Table, meta.FieldID, selector),
 			sqlgraph.To(alert.Table, alert.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, meta.OwnerTable, meta.OwnerColumn),
 		)
@@ -76,23 +80,23 @@ func (mq *MetaQuery) QueryOwner() *AlertQuery {
 
 // First returns the first Meta entity in the query. Returns *NotFoundError when no meta was found.
 func (mq *MetaQuery) First(ctx context.Context) (*Meta, error) {
-	ms, err := mq.Limit(1).All(ctx)
+	nodes, err := mq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(ms) == 0 {
+	if len(nodes) == 0 {
 		return nil, &NotFoundError{meta.Label}
 	}
-	return ms[0], nil
+	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (mq *MetaQuery) FirstX(ctx context.Context) *Meta {
-	m, err := mq.First(ctx)
+	node, err := mq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return m
+	return node
 }
 
 // FirstID returns the first Meta id in the query. Returns *NotFoundError when no id was found.
@@ -119,13 +123,13 @@ func (mq *MetaQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Meta entity in the query, returns an error if not exactly one entity was returned.
 func (mq *MetaQuery) Only(ctx context.Context) (*Meta, error) {
-	ms, err := mq.Limit(2).All(ctx)
+	nodes, err := mq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(ms) {
+	switch len(nodes) {
 	case 1:
-		return ms[0], nil
+		return nodes[0], nil
 	case 0:
 		return nil, &NotFoundError{meta.Label}
 	default:
@@ -135,11 +139,11 @@ func (mq *MetaQuery) Only(ctx context.Context) (*Meta, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (mq *MetaQuery) OnlyX(ctx context.Context) *Meta {
-	m, err := mq.Only(ctx)
+	node, err := mq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return node
 }
 
 // OnlyID returns the only Meta id in the query, returns an error if not exactly one id was returned.
@@ -178,11 +182,11 @@ func (mq *MetaQuery) All(ctx context.Context) ([]*Meta, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (mq *MetaQuery) AllX(ctx context.Context) []*Meta {
-	ms, err := mq.All(ctx)
+	nodes, err := mq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return ms
+	return nodes
 }
 
 // IDs executes the query and returns a list of Meta ids.
@@ -435,7 +439,7 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := mq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector)
+				ps[i](selector, meta.ValidColumn)
 			}
 		}
 	}
@@ -454,7 +458,7 @@ func (mq *MetaQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range mq.order {
-		p(selector)
+		p(selector, meta.ValidColumn)
 	}
 	if offset := mq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -689,8 +693,17 @@ func (mgb *MetaGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (mgb *MetaGroupBy) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range mgb.fields {
+		if !meta.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
+		}
+	}
+	selector := mgb.sqlQuery()
+	if err := selector.Err(); err != nil {
+		return err
+	}
 	rows := &sql.Rows{}
-	query, args := mgb.sqlQuery().Query()
+	query, args := selector.Query()
 	if err := mgb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -703,7 +716,7 @@ func (mgb *MetaGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
 	columns = append(columns, mgb.fields...)
 	for _, fn := range mgb.fns {
-		columns = append(columns, fn(selector))
+		columns = append(columns, fn(selector, meta.ValidColumn))
 	}
 	return selector.Select(columns...).GroupBy(mgb.fields...)
 }
@@ -923,6 +936,11 @@ func (ms *MetaSelect) BoolX(ctx context.Context) bool {
 }
 
 func (ms *MetaSelect) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range ms.fields {
+		if !meta.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
+		}
+	}
 	rows := &sql.Rows{}
 	query, args := ms.sqlQuery().Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {

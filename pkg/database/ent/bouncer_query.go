@@ -54,23 +54,23 @@ func (bq *BouncerQuery) Order(o ...OrderFunc) *BouncerQuery {
 
 // First returns the first Bouncer entity in the query. Returns *NotFoundError when no bouncer was found.
 func (bq *BouncerQuery) First(ctx context.Context) (*Bouncer, error) {
-	bs, err := bq.Limit(1).All(ctx)
+	nodes, err := bq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(bs) == 0 {
+	if len(nodes) == 0 {
 		return nil, &NotFoundError{bouncer.Label}
 	}
-	return bs[0], nil
+	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (bq *BouncerQuery) FirstX(ctx context.Context) *Bouncer {
-	b, err := bq.First(ctx)
+	node, err := bq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return b
+	return node
 }
 
 // FirstID returns the first Bouncer id in the query. Returns *NotFoundError when no id was found.
@@ -97,13 +97,13 @@ func (bq *BouncerQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Bouncer entity in the query, returns an error if not exactly one entity was returned.
 func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
-	bs, err := bq.Limit(2).All(ctx)
+	nodes, err := bq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(bs) {
+	switch len(nodes) {
 	case 1:
-		return bs[0], nil
+		return nodes[0], nil
 	case 0:
 		return nil, &NotFoundError{bouncer.Label}
 	default:
@@ -113,11 +113,11 @@ func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (bq *BouncerQuery) OnlyX(ctx context.Context) *Bouncer {
-	b, err := bq.Only(ctx)
+	node, err := bq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return b
+	return node
 }
 
 // OnlyID returns the only Bouncer id in the query, returns an error if not exactly one id was returned.
@@ -156,11 +156,11 @@ func (bq *BouncerQuery) All(ctx context.Context) ([]*Bouncer, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (bq *BouncerQuery) AllX(ctx context.Context) []*Bouncer {
-	bs, err := bq.All(ctx)
+	nodes, err := bq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return bs
+	return nodes
 }
 
 // IDs executes the query and returns a list of Bouncer ids.
@@ -362,7 +362,7 @@ func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := bq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector)
+				ps[i](selector, bouncer.ValidColumn)
 			}
 		}
 	}
@@ -381,7 +381,7 @@ func (bq *BouncerQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range bq.order {
-		p(selector)
+		p(selector, bouncer.ValidColumn)
 	}
 	if offset := bq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -616,8 +616,17 @@ func (bgb *BouncerGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (bgb *BouncerGroupBy) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range bgb.fields {
+		if !bouncer.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
+		}
+	}
+	selector := bgb.sqlQuery()
+	if err := selector.Err(); err != nil {
+		return err
+	}
 	rows := &sql.Rows{}
-	query, args := bgb.sqlQuery().Query()
+	query, args := selector.Query()
 	if err := bgb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -630,7 +639,7 @@ func (bgb *BouncerGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(bgb.fields)+len(bgb.fns))
 	columns = append(columns, bgb.fields...)
 	for _, fn := range bgb.fns {
-		columns = append(columns, fn(selector))
+		columns = append(columns, fn(selector, bouncer.ValidColumn))
 	}
 	return selector.Select(columns...).GroupBy(bgb.fields...)
 }
@@ -850,6 +859,11 @@ func (bs *BouncerSelect) BoolX(ctx context.Context) bool {
 }
 
 func (bs *BouncerSelect) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range bs.fields {
+		if !bouncer.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
+		}
+	}
 	rows := &sql.Rows{}
 	query, args := bs.sqlQuery().Query()
 	if err := bs.driver.Query(ctx, query, args, rows); err != nil {

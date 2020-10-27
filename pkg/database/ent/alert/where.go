@@ -226,6 +226,20 @@ func LeakSpeed(v string) predicate.Alert {
 	})
 }
 
+// ScenarioVersion applies equality check predicate on the "scenarioVersion" field. It's identical to ScenarioVersionEQ.
+func ScenarioVersion(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioHash applies equality check predicate on the "scenarioHash" field. It's identical to ScenarioHashEQ.
+func ScenarioHash(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarioHash), v))
+	})
+}
+
 // Simulated applies equality check predicate on the "simulated" field. It's identical to SimulatedEQ.
 func Simulated(v bool) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
@@ -2283,6 +2297,256 @@ func LeakSpeedEqualFold(v string) predicate.Alert {
 func LeakSpeedContainsFold(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldLeakSpeed), v))
+	})
+}
+
+// ScenarioVersionEQ applies the EQ predicate on the "scenarioVersion" field.
+func ScenarioVersionEQ(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionNEQ applies the NEQ predicate on the "scenarioVersion" field.
+func ScenarioVersionNEQ(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionIn applies the In predicate on the "scenarioVersion" field.
+func ScenarioVersionIn(vs ...string) predicate.Alert {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Alert(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldScenarioVersion), v...))
+	})
+}
+
+// ScenarioVersionNotIn applies the NotIn predicate on the "scenarioVersion" field.
+func ScenarioVersionNotIn(vs ...string) predicate.Alert {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Alert(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldScenarioVersion), v...))
+	})
+}
+
+// ScenarioVersionGT applies the GT predicate on the "scenarioVersion" field.
+func ScenarioVersionGT(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionGTE applies the GTE predicate on the "scenarioVersion" field.
+func ScenarioVersionGTE(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionLT applies the LT predicate on the "scenarioVersion" field.
+func ScenarioVersionLT(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionLTE applies the LTE predicate on the "scenarioVersion" field.
+func ScenarioVersionLTE(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionContains applies the Contains predicate on the "scenarioVersion" field.
+func ScenarioVersionContains(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionHasPrefix applies the HasPrefix predicate on the "scenarioVersion" field.
+func ScenarioVersionHasPrefix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionHasSuffix applies the HasSuffix predicate on the "scenarioVersion" field.
+func ScenarioVersionHasSuffix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionIsNil applies the IsNil predicate on the "scenarioVersion" field.
+func ScenarioVersionIsNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldScenarioVersion)))
+	})
+}
+
+// ScenarioVersionNotNil applies the NotNil predicate on the "scenarioVersion" field.
+func ScenarioVersionNotNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldScenarioVersion)))
+	})
+}
+
+// ScenarioVersionEqualFold applies the EqualFold predicate on the "scenarioVersion" field.
+func ScenarioVersionEqualFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioVersionContainsFold applies the ContainsFold predicate on the "scenarioVersion" field.
+func ScenarioVersionContainsFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldScenarioVersion), v))
+	})
+}
+
+// ScenarioHashEQ applies the EQ predicate on the "scenarioHash" field.
+func ScenarioHashEQ(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashNEQ applies the NEQ predicate on the "scenarioHash" field.
+func ScenarioHashNEQ(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashIn applies the In predicate on the "scenarioHash" field.
+func ScenarioHashIn(vs ...string) predicate.Alert {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Alert(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldScenarioHash), v...))
+	})
+}
+
+// ScenarioHashNotIn applies the NotIn predicate on the "scenarioHash" field.
+func ScenarioHashNotIn(vs ...string) predicate.Alert {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Alert(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldScenarioHash), v...))
+	})
+}
+
+// ScenarioHashGT applies the GT predicate on the "scenarioHash" field.
+func ScenarioHashGT(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashGTE applies the GTE predicate on the "scenarioHash" field.
+func ScenarioHashGTE(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashLT applies the LT predicate on the "scenarioHash" field.
+func ScenarioHashLT(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashLTE applies the LTE predicate on the "scenarioHash" field.
+func ScenarioHashLTE(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashContains applies the Contains predicate on the "scenarioHash" field.
+func ScenarioHashContains(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashHasPrefix applies the HasPrefix predicate on the "scenarioHash" field.
+func ScenarioHashHasPrefix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashHasSuffix applies the HasSuffix predicate on the "scenarioHash" field.
+func ScenarioHashHasSuffix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashIsNil applies the IsNil predicate on the "scenarioHash" field.
+func ScenarioHashIsNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldScenarioHash)))
+	})
+}
+
+// ScenarioHashNotNil applies the NotNil predicate on the "scenarioHash" field.
+func ScenarioHashNotNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldScenarioHash)))
+	})
+}
+
+// ScenarioHashEqualFold applies the EqualFold predicate on the "scenarioHash" field.
+func ScenarioHashEqualFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldScenarioHash), v))
+	})
+}
+
+// ScenarioHashContainsFold applies the ContainsFold predicate on the "scenarioHash" field.
+func ScenarioHashContainsFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldScenarioHash), v))
 	})
 }
 

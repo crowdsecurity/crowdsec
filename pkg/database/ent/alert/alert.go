@@ -49,6 +49,10 @@ const (
 	FieldCapacity = "capacity"
 	// FieldLeakSpeed holds the string denoting the leakspeed field in the database.
 	FieldLeakSpeed = "leak_speed"
+	// FieldScenarioVersion holds the string denoting the scenarioversion field in the database.
+	FieldScenarioVersion = "scenario_version"
+	// FieldScenarioHash holds the string denoting the scenariohash field in the database.
+	FieldScenarioHash = "scenario_hash"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
 
@@ -115,12 +119,29 @@ var Columns = []string{
 	FieldSourceValue,
 	FieldCapacity,
 	FieldLeakSpeed,
+	FieldScenarioVersion,
+	FieldScenarioHash,
 	FieldSimulated,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the Alert type.
 var ForeignKeys = []string{
 	"machine_alerts",
+}
+
+// ValidColumn reports if the column name is valid (part of the table columns).
+func ValidColumn(column string) bool {
+	for i := range Columns {
+		if column == Columns[i] {
+			return true
+		}
+	}
+	for i := range ForeignKeys {
+		if column == ForeignKeys[i] {
+			return true
+		}
+	}
+	return false
 }
 
 var (

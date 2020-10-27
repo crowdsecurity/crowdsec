@@ -169,6 +169,12 @@ func (mu *MachineUpdate) Mutation() *MachineMutation {
 	return mu.mutation
 }
 
+// ClearAlerts clears all "alerts" edges to type Alert.
+func (mu *MachineUpdate) ClearAlerts() *MachineUpdate {
+	mu.mutation.ClearAlerts()
+	return mu
+}
+
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (mu *MachineUpdate) RemoveAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.RemoveAlertIDs(ids...)
@@ -186,7 +192,6 @@ func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
 
 // Save executes the query and returns the number of rows/vertices matched by this operation.
 func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
-
 	var (
 		err      error
 		affected int
@@ -335,7 +340,23 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldStatus,
 		})
 	}
-	if nodes := mu.mutation.RemovedAlertsIDs(); len(nodes) > 0 {
+	if mu.mutation.AlertsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   machine.AlertsTable,
+			Columns: []string{machine.AlertsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: alert.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := mu.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !mu.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -531,6 +552,12 @@ func (muo *MachineUpdateOne) Mutation() *MachineMutation {
 	return muo.mutation
 }
 
+// ClearAlerts clears all "alerts" edges to type Alert.
+func (muo *MachineUpdateOne) ClearAlerts() *MachineUpdateOne {
+	muo.mutation.ClearAlerts()
+	return muo
+}
+
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (muo *MachineUpdateOne) RemoveAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.RemoveAlertIDs(ids...)
@@ -548,7 +575,6 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 
 // Save executes the query and returns the updated entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
-
 	var (
 		err  error
 		node *Machine
@@ -578,11 +604,11 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (muo *MachineUpdateOne) SaveX(ctx context.Context) *Machine {
-	m, err := muo.Save(ctx)
+	node, err := muo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return m
+	return node
 }
 
 // Exec executes the query on the entity.
@@ -598,7 +624,7 @@ func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (m *Machine, err error) {
+func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   machine.Table,
@@ -695,7 +721,23 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (m *Machine, err error
 			Column: machine.FieldStatus,
 		})
 	}
-	if nodes := muo.mutation.RemovedAlertsIDs(); len(nodes) > 0 {
+	if muo.mutation.AlertsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   machine.AlertsTable,
+			Columns: []string{machine.AlertsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: &sqlgraph.FieldSpec{
+					Type:   field.TypeInt,
+					Column: alert.FieldID,
+				},
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := muo.mutation.RemovedAlertsIDs(); len(nodes) > 0 && !muo.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
 			Inverse: false,
@@ -733,9 +775,9 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (m *Machine, err error
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	m = &Machine{config: muo.config}
-	_spec.Assign = m.assignValues
-	_spec.ScanValues = m.scanValues()
+	_node = &Machine{config: muo.config}
+	_spec.Assign = _node.assignValues
+	_spec.ScanValues = _node.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
@@ -744,5 +786,5 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (m *Machine, err error
 		}
 		return nil, err
 	}
-	return m, nil
+	return _node, nil
 }

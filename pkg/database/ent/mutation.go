@@ -65,16 +65,21 @@ type AlertMutation struct {
 	capacity           *int32
 	addcapacity        *int32
 	leakSpeed          *string
+	scenarioVersion    *string
+	scenarioHash       *string
 	simulated          *bool
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
 	decisions          map[int]struct{}
 	removeddecisions   map[int]struct{}
+	cleareddecisions   bool
 	events             map[int]struct{}
 	removedevents      map[int]struct{}
+	clearedevents      bool
 	metas              map[int]struct{}
 	removedmetas       map[int]struct{}
+	clearedmetas       bool
 	done               bool
 	oldValue           func(context.Context) (*Alert, error)
 }
@@ -1153,6 +1158,106 @@ func (m *AlertMutation) ResetLeakSpeed() {
 	delete(m.clearedFields, alert.FieldLeakSpeed)
 }
 
+// SetScenarioVersion sets the scenarioVersion field.
+func (m *AlertMutation) SetScenarioVersion(s string) {
+	m.scenarioVersion = &s
+}
+
+// ScenarioVersion returns the scenarioVersion value in the mutation.
+func (m *AlertMutation) ScenarioVersion() (r string, exists bool) {
+	v := m.scenarioVersion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScenarioVersion returns the old scenarioVersion value of the Alert.
+// If the Alert object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *AlertMutation) OldScenarioVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldScenarioVersion is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldScenarioVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScenarioVersion: %w", err)
+	}
+	return oldValue.ScenarioVersion, nil
+}
+
+// ClearScenarioVersion clears the value of scenarioVersion.
+func (m *AlertMutation) ClearScenarioVersion() {
+	m.scenarioVersion = nil
+	m.clearedFields[alert.FieldScenarioVersion] = struct{}{}
+}
+
+// ScenarioVersionCleared returns if the field scenarioVersion was cleared in this mutation.
+func (m *AlertMutation) ScenarioVersionCleared() bool {
+	_, ok := m.clearedFields[alert.FieldScenarioVersion]
+	return ok
+}
+
+// ResetScenarioVersion reset all changes of the "scenarioVersion" field.
+func (m *AlertMutation) ResetScenarioVersion() {
+	m.scenarioVersion = nil
+	delete(m.clearedFields, alert.FieldScenarioVersion)
+}
+
+// SetScenarioHash sets the scenarioHash field.
+func (m *AlertMutation) SetScenarioHash(s string) {
+	m.scenarioHash = &s
+}
+
+// ScenarioHash returns the scenarioHash value in the mutation.
+func (m *AlertMutation) ScenarioHash() (r string, exists bool) {
+	v := m.scenarioHash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldScenarioHash returns the old scenarioHash value of the Alert.
+// If the Alert object wasn't provided to the builder, the object is fetched
+// from the database.
+// An error is returned if the mutation operation is not UpdateOne, or database query fails.
+func (m *AlertMutation) OldScenarioHash(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, fmt.Errorf("OldScenarioHash is allowed only on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, fmt.Errorf("OldScenarioHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldScenarioHash: %w", err)
+	}
+	return oldValue.ScenarioHash, nil
+}
+
+// ClearScenarioHash clears the value of scenarioHash.
+func (m *AlertMutation) ClearScenarioHash() {
+	m.scenarioHash = nil
+	m.clearedFields[alert.FieldScenarioHash] = struct{}{}
+}
+
+// ScenarioHashCleared returns if the field scenarioHash was cleared in this mutation.
+func (m *AlertMutation) ScenarioHashCleared() bool {
+	_, ok := m.clearedFields[alert.FieldScenarioHash]
+	return ok
+}
+
+// ResetScenarioHash reset all changes of the "scenarioHash" field.
+func (m *AlertMutation) ResetScenarioHash() {
+	m.scenarioHash = nil
+	delete(m.clearedFields, alert.FieldScenarioHash)
+}
+
 // SetSimulated sets the simulated field.
 func (m *AlertMutation) SetSimulated(b bool) {
 	m.simulated = &b
@@ -1239,6 +1344,16 @@ func (m *AlertMutation) AddDecisionIDs(ids ...int) {
 	}
 }
 
+// ClearDecisions clears the decisions edge to Decision.
+func (m *AlertMutation) ClearDecisions() {
+	m.cleareddecisions = true
+}
+
+// DecisionsCleared returns if the edge decisions was cleared.
+func (m *AlertMutation) DecisionsCleared() bool {
+	return m.cleareddecisions
+}
+
 // RemoveDecisionIDs removes the decisions edge to Decision by ids.
 func (m *AlertMutation) RemoveDecisionIDs(ids ...int) {
 	if m.removeddecisions == nil {
@@ -1268,6 +1383,7 @@ func (m *AlertMutation) DecisionsIDs() (ids []int) {
 // ResetDecisions reset all changes of the "decisions" edge.
 func (m *AlertMutation) ResetDecisions() {
 	m.decisions = nil
+	m.cleareddecisions = false
 	m.removeddecisions = nil
 }
 
@@ -1279,6 +1395,16 @@ func (m *AlertMutation) AddEventIDs(ids ...int) {
 	for i := range ids {
 		m.events[ids[i]] = struct{}{}
 	}
+}
+
+// ClearEvents clears the events edge to Event.
+func (m *AlertMutation) ClearEvents() {
+	m.clearedevents = true
+}
+
+// EventsCleared returns if the edge events was cleared.
+func (m *AlertMutation) EventsCleared() bool {
+	return m.clearedevents
 }
 
 // RemoveEventIDs removes the events edge to Event by ids.
@@ -1310,6 +1436,7 @@ func (m *AlertMutation) EventsIDs() (ids []int) {
 // ResetEvents reset all changes of the "events" edge.
 func (m *AlertMutation) ResetEvents() {
 	m.events = nil
+	m.clearedevents = false
 	m.removedevents = nil
 }
 
@@ -1321,6 +1448,16 @@ func (m *AlertMutation) AddMetaIDs(ids ...int) {
 	for i := range ids {
 		m.metas[ids[i]] = struct{}{}
 	}
+}
+
+// ClearMetas clears the metas edge to Meta.
+func (m *AlertMutation) ClearMetas() {
+	m.clearedmetas = true
+}
+
+// MetasCleared returns if the edge metas was cleared.
+func (m *AlertMutation) MetasCleared() bool {
+	return m.clearedmetas
 }
 
 // RemoveMetaIDs removes the metas edge to Meta by ids.
@@ -1352,6 +1489,7 @@ func (m *AlertMutation) MetasIDs() (ids []int) {
 // ResetMetas reset all changes of the "metas" edge.
 func (m *AlertMutation) ResetMetas() {
 	m.metas = nil
+	m.clearedmetas = false
 	m.removedmetas = nil
 }
 
@@ -1369,7 +1507,7 @@ func (m *AlertMutation) Type() string {
 // this mutation. Note that, in order to get all numeric
 // fields that were in/decremented, call AddedFields().
 func (m *AlertMutation) Fields() []string {
-	fields := make([]string, 0, 20)
+	fields := make([]string, 0, 22)
 	if m.created_at != nil {
 		fields = append(fields, alert.FieldCreatedAt)
 	}
@@ -1427,6 +1565,12 @@ func (m *AlertMutation) Fields() []string {
 	if m.leakSpeed != nil {
 		fields = append(fields, alert.FieldLeakSpeed)
 	}
+	if m.scenarioVersion != nil {
+		fields = append(fields, alert.FieldScenarioVersion)
+	}
+	if m.scenarioHash != nil {
+		fields = append(fields, alert.FieldScenarioHash)
+	}
 	if m.simulated != nil {
 		fields = append(fields, alert.FieldSimulated)
 	}
@@ -1476,6 +1620,10 @@ func (m *AlertMutation) Field(name string) (ent.Value, bool) {
 		return m.Capacity()
 	case alert.FieldLeakSpeed:
 		return m.LeakSpeed()
+	case alert.FieldScenarioVersion:
+		return m.ScenarioVersion()
+	case alert.FieldScenarioHash:
+		return m.ScenarioHash()
 	case alert.FieldSimulated:
 		return m.Simulated()
 	}
@@ -1525,6 +1673,10 @@ func (m *AlertMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldCapacity(ctx)
 	case alert.FieldLeakSpeed:
 		return m.OldLeakSpeed(ctx)
+	case alert.FieldScenarioVersion:
+		return m.OldScenarioVersion(ctx)
+	case alert.FieldScenarioHash:
+		return m.OldScenarioHash(ctx)
 	case alert.FieldSimulated:
 		return m.OldSimulated(ctx)
 	}
@@ -1669,6 +1821,20 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLeakSpeed(v)
 		return nil
+	case alert.FieldScenarioVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScenarioVersion(v)
+		return nil
+	case alert.FieldScenarioHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetScenarioHash(v)
+		return nil
 	case alert.FieldSimulated:
 		v, ok := value.(bool)
 		if !ok {
@@ -1805,6 +1971,12 @@ func (m *AlertMutation) ClearedFields() []string {
 	if m.FieldCleared(alert.FieldLeakSpeed) {
 		fields = append(fields, alert.FieldLeakSpeed)
 	}
+	if m.FieldCleared(alert.FieldScenarioVersion) {
+		fields = append(fields, alert.FieldScenarioVersion)
+	}
+	if m.FieldCleared(alert.FieldScenarioHash) {
+		fields = append(fields, alert.FieldScenarioHash)
+	}
 	return fields
 }
 
@@ -1866,6 +2038,12 @@ func (m *AlertMutation) ClearField(name string) error {
 		return nil
 	case alert.FieldLeakSpeed:
 		m.ClearLeakSpeed()
+		return nil
+	case alert.FieldScenarioVersion:
+		m.ClearScenarioVersion()
+		return nil
+	case alert.FieldScenarioHash:
+		m.ClearScenarioHash()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert nullable field %s", name)
@@ -1932,6 +2110,12 @@ func (m *AlertMutation) ResetField(name string) error {
 		return nil
 	case alert.FieldLeakSpeed:
 		m.ResetLeakSpeed()
+		return nil
+	case alert.FieldScenarioVersion:
+		m.ResetScenarioVersion()
+		return nil
+	case alert.FieldScenarioHash:
+		m.ResetScenarioHash()
 		return nil
 	case alert.FieldSimulated:
 		m.ResetSimulated()
@@ -2038,6 +2222,15 @@ func (m *AlertMutation) ClearedEdges() []string {
 	if m.clearedowner {
 		edges = append(edges, alert.EdgeOwner)
 	}
+	if m.cleareddecisions {
+		edges = append(edges, alert.EdgeDecisions)
+	}
+	if m.clearedevents {
+		edges = append(edges, alert.EdgeEvents)
+	}
+	if m.clearedmetas {
+		edges = append(edges, alert.EdgeMetas)
+	}
 	return edges
 }
 
@@ -2047,6 +2240,12 @@ func (m *AlertMutation) EdgeCleared(name string) bool {
 	switch name {
 	case alert.EdgeOwner:
 		return m.clearedowner
+	case alert.EdgeDecisions:
+		return m.cleareddecisions
+	case alert.EdgeEvents:
+		return m.clearedevents
+	case alert.EdgeMetas:
+		return m.clearedmetas
 	}
 	return false
 }
@@ -4520,6 +4719,7 @@ type MachineMutation struct {
 	clearedFields map[string]struct{}
 	alerts        map[int]struct{}
 	removedalerts map[int]struct{}
+	clearedalerts bool
 	done          bool
 	oldValue      func(context.Context) (*Machine, error)
 }
@@ -4985,6 +5185,16 @@ func (m *MachineMutation) AddAlertIDs(ids ...int) {
 	}
 }
 
+// ClearAlerts clears the alerts edge to Alert.
+func (m *MachineMutation) ClearAlerts() {
+	m.clearedalerts = true
+}
+
+// AlertsCleared returns if the edge alerts was cleared.
+func (m *MachineMutation) AlertsCleared() bool {
+	return m.clearedalerts
+}
+
 // RemoveAlertIDs removes the alerts edge to Alert by ids.
 func (m *MachineMutation) RemoveAlertIDs(ids ...int) {
 	if m.removedalerts == nil {
@@ -5014,6 +5224,7 @@ func (m *MachineMutation) AlertsIDs() (ids []int) {
 // ResetAlerts reset all changes of the "alerts" edge.
 func (m *MachineMutation) ResetAlerts() {
 	m.alerts = nil
+	m.clearedalerts = false
 	m.removedalerts = nil
 }
 
@@ -5338,6 +5549,9 @@ func (m *MachineMutation) RemovedIDs(name string) []ent.Value {
 // mutation.
 func (m *MachineMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
+	if m.clearedalerts {
+		edges = append(edges, machine.EdgeAlerts)
+	}
 	return edges
 }
 
@@ -5345,6 +5559,8 @@ func (m *MachineMutation) ClearedEdges() []string {
 // cleared in this mutation.
 func (m *MachineMutation) EdgeCleared(name string) bool {
 	switch name {
+	case machine.EdgeAlerts:
+		return m.clearedalerts
 	}
 	return false
 }

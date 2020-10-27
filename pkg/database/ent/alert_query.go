@@ -70,8 +70,12 @@ func (aq *AlertQuery) QueryOwner() *MachineQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
+		selector := aq.sqlQuery()
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(alert.Table, alert.FieldID, aq.sqlQuery()),
+			sqlgraph.From(alert.Table, alert.FieldID, selector),
 			sqlgraph.To(machine.Table, machine.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, alert.OwnerTable, alert.OwnerColumn),
 		)
@@ -88,8 +92,12 @@ func (aq *AlertQuery) QueryDecisions() *DecisionQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
+		selector := aq.sqlQuery()
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(alert.Table, alert.FieldID, aq.sqlQuery()),
+			sqlgraph.From(alert.Table, alert.FieldID, selector),
 			sqlgraph.To(decision.Table, decision.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, alert.DecisionsTable, alert.DecisionsColumn),
 		)
@@ -106,8 +114,12 @@ func (aq *AlertQuery) QueryEvents() *EventQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
+		selector := aq.sqlQuery()
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(alert.Table, alert.FieldID, aq.sqlQuery()),
+			sqlgraph.From(alert.Table, alert.FieldID, selector),
 			sqlgraph.To(event.Table, event.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, alert.EventsTable, alert.EventsColumn),
 		)
@@ -124,8 +136,12 @@ func (aq *AlertQuery) QueryMetas() *MetaQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
+		selector := aq.sqlQuery()
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(alert.Table, alert.FieldID, aq.sqlQuery()),
+			sqlgraph.From(alert.Table, alert.FieldID, selector),
 			sqlgraph.To(meta.Table, meta.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, alert.MetasTable, alert.MetasColumn),
 		)
@@ -137,23 +153,23 @@ func (aq *AlertQuery) QueryMetas() *MetaQuery {
 
 // First returns the first Alert entity in the query. Returns *NotFoundError when no alert was found.
 func (aq *AlertQuery) First(ctx context.Context) (*Alert, error) {
-	as, err := aq.Limit(1).All(ctx)
+	nodes, err := aq.Limit(1).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if len(as) == 0 {
+	if len(nodes) == 0 {
 		return nil, &NotFoundError{alert.Label}
 	}
-	return as[0], nil
+	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
 func (aq *AlertQuery) FirstX(ctx context.Context) *Alert {
-	a, err := aq.First(ctx)
+	node, err := aq.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
 	}
-	return a
+	return node
 }
 
 // FirstID returns the first Alert id in the query. Returns *NotFoundError when no id was found.
@@ -180,13 +196,13 @@ func (aq *AlertQuery) FirstXID(ctx context.Context) int {
 
 // Only returns the only Alert entity in the query, returns an error if not exactly one entity was returned.
 func (aq *AlertQuery) Only(ctx context.Context) (*Alert, error) {
-	as, err := aq.Limit(2).All(ctx)
+	nodes, err := aq.Limit(2).All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	switch len(as) {
+	switch len(nodes) {
 	case 1:
-		return as[0], nil
+		return nodes[0], nil
 	case 0:
 		return nil, &NotFoundError{alert.Label}
 	default:
@@ -196,11 +212,11 @@ func (aq *AlertQuery) Only(ctx context.Context) (*Alert, error) {
 
 // OnlyX is like Only, but panics if an error occurs.
 func (aq *AlertQuery) OnlyX(ctx context.Context) *Alert {
-	a, err := aq.Only(ctx)
+	node, err := aq.Only(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return a
+	return node
 }
 
 // OnlyID returns the only Alert id in the query, returns an error if not exactly one id was returned.
@@ -239,11 +255,11 @@ func (aq *AlertQuery) All(ctx context.Context) ([]*Alert, error) {
 
 // AllX is like All, but panics if an error occurs.
 func (aq *AlertQuery) AllX(ctx context.Context) []*Alert {
-	as, err := aq.All(ctx)
+	nodes, err := aq.All(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return as
+	return nodes
 }
 
 // IDs executes the query and returns a list of Alert ids.
@@ -616,7 +632,7 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := aq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector)
+				ps[i](selector, alert.ValidColumn)
 			}
 		}
 	}
@@ -635,7 +651,7 @@ func (aq *AlertQuery) sqlQuery() *sql.Selector {
 		p(selector)
 	}
 	for _, p := range aq.order {
-		p(selector)
+		p(selector, alert.ValidColumn)
 	}
 	if offset := aq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -870,8 +886,17 @@ func (agb *AlertGroupBy) BoolX(ctx context.Context) bool {
 }
 
 func (agb *AlertGroupBy) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range agb.fields {
+		if !alert.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for group-by", f)}
+		}
+	}
+	selector := agb.sqlQuery()
+	if err := selector.Err(); err != nil {
+		return err
+	}
 	rows := &sql.Rows{}
-	query, args := agb.sqlQuery().Query()
+	query, args := selector.Query()
 	if err := agb.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
@@ -884,7 +909,7 @@ func (agb *AlertGroupBy) sqlQuery() *sql.Selector {
 	columns := make([]string, 0, len(agb.fields)+len(agb.fns))
 	columns = append(columns, agb.fields...)
 	for _, fn := range agb.fns {
-		columns = append(columns, fn(selector))
+		columns = append(columns, fn(selector, alert.ValidColumn))
 	}
 	return selector.Select(columns...).GroupBy(agb.fields...)
 }
@@ -1104,6 +1129,11 @@ func (as *AlertSelect) BoolX(ctx context.Context) bool {
 }
 
 func (as *AlertSelect) sqlScan(ctx context.Context, v interface{}) error {
+	for _, f := range as.fields {
+		if !alert.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
+		}
+	}
 	rows := &sql.Rows{}
 	query, args := as.sqlQuery().Query()
 	if err := as.driver.Query(ctx, query, args, rows); err != nil {

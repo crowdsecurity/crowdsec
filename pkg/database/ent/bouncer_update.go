@@ -530,11 +530,11 @@ func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 
 // SaveX is like Save, but panics if an error occurs.
 func (buo *BouncerUpdateOne) SaveX(ctx context.Context) *Bouncer {
-	b, err := buo.Save(ctx)
+	node, err := buo.Save(ctx)
 	if err != nil {
 		panic(err)
 	}
-	return b
+	return node
 }
 
 // Exec executes the query on the entity.
@@ -550,7 +550,7 @@ func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (b *Bouncer, err error) {
+func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
 			Table:   bouncer.Table,
@@ -660,9 +660,9 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (b *Bouncer, err error
 			Column: bouncer.FieldLastPull,
 		})
 	}
-	b = &Bouncer{config: buo.config}
-	_spec.Assign = b.assignValues
-	_spec.ScanValues = b.scanValues()
+	_node = &Bouncer{config: buo.config}
+	_spec.Assign = _node.assignValues
+	_spec.ScanValues = _node.scanValues()
 	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
@@ -671,5 +671,5 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (b *Bouncer, err error
 		}
 		return nil, err
 	}
-	return b, nil
+	return _node, nil
 }
