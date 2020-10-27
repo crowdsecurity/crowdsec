@@ -39,14 +39,14 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	if csConfig.Cscli.Output == "raw" {
 		fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
 		for _, alertItem := range *alerts {
-			var scenarioVersion string
 			if alertItem.ScenarioVersion == nil {
-				scenarioVersion = "N/A"
+				alertItem.ScenarioVersion = new(string)
+				*alertItem.ScenarioVersion = "N/A"
 			}
 			fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
 				alertItem.ID,
 				*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
+				fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 				DecisionsFromAlert(alertItem),
@@ -66,15 +66,14 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 		}
 
 		for _, alertItem := range *alerts {
-			var scenarioVersion string
 			if alertItem.ScenarioVersion == nil {
-				scenarioVersion = "N/A"
+				alertItem.ScenarioVersion = new(string)
+				*alertItem.ScenarioVersion = "N/A"
 			}
-
 			table.Append([]string{
 				strconv.Itoa(int(alertItem.ID)),
 				*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-				fmt.Sprintf("%s (%s)", *alertItem.Scenario, scenarioVersion),
+				fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
 				alertItem.Source.Cn,
 				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 				DecisionsFromAlert(alertItem),
@@ -133,7 +132,7 @@ func NewAlertsCmd() *cobra.Command {
 cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
-`,
+cscli alerts list --type ban`,
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
