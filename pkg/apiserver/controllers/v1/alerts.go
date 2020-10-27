@@ -24,17 +24,19 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 		startAt := alertItem.StartedAt.String()
 		StopAt := alertItem.StoppedAt.String()
 		outputAlert = models.Alert{
-			ID:          int64(alertItem.ID),
-			MachineID:   alertItem.Edges.Owner.MachineId,
-			CreatedAt:   alertItem.CreatedAt.Format(time.RFC3339),
-			Scenario:    &alertItem.Scenario,
-			Message:     &alertItem.Message,
-			EventsCount: &alertItem.EventsCount,
-			StartAt:     &startAt,
-			StopAt:      &StopAt,
-			Capacity:    &alertItem.Capacity,
-			Leakspeed:   &alertItem.LeakSpeed,
-			Simulated:   &alertItem.Simulated,
+			ID:              int64(alertItem.ID),
+			MachineID:       alertItem.Edges.Owner.MachineId,
+			CreatedAt:       alertItem.CreatedAt.Format(time.RFC3339),
+			Scenario:        &alertItem.Scenario,
+			ScenarioVersion: &alertItem.ScenarioVersion,
+			ScenarioHash:    &alertItem.ScenarioHash,
+			Message:         &alertItem.Message,
+			EventsCount:     &alertItem.EventsCount,
+			StartAt:         &startAt,
+			StopAt:          &StopAt,
+			Capacity:        &alertItem.Capacity,
+			Leakspeed:       &alertItem.LeakSpeed,
+			Simulated:       &alertItem.Simulated,
 			Source: &models.Source{
 				Scope:     &alertItem.SourceScope,
 				Value:     &alertItem.SourceValue,
@@ -93,7 +95,6 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
-	log.Printf("Controller.CreateAlert!")
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
