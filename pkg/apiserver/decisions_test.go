@@ -40,7 +40,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
-	// delete by ip
+	// delete by range
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
@@ -49,7 +49,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
 
-	// delete by scope/value
+	// delete by range : ensure it was already deleted
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
@@ -87,7 +87,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
-	// delete by ip
+	// delete by ip good
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=91.121.79.179", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
@@ -130,7 +130,6 @@ func TestGetDecisionFilters(t *testing.T) {
 		log.Fatalf("%s", err.Error())
 	}
 
-	log.Printf("---> %s", APIKey)
 	// Get Decision
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
@@ -171,7 +170,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
 	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
 
-	// Get Decision : scope/value
+	// Get decision : by range
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
