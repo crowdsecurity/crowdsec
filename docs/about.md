@@ -1,3 +1,0 @@
-# Crowdsec
-
-{{ macros_info() }}
