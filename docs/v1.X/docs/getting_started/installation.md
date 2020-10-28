@@ -6,7 +6,7 @@ Fetch {{v1X.crowdsec.name}}'s latest version [here]({{v1X.crowdsec.download_url}
 tar xvzf crowdsec-release.tgz
 ```
 ```bash
-cd crowdsec-v0.X.X
+cd crowdsec-v1.X.X
 ```
 
 A {{v1X.wizard.name}} is provided to help you deploy {{v1X.crowdsec.name}} and {{v1X.cli.name}}.
@@ -29,6 +29,9 @@ The {{v1X.wizard.name}} is going to guide you through the following steps :
 The process should take less than a minute, [please report if there are any issues]({{v1X.wizard.bugreport}}).
 
 You are then ready to [take a tour](/Crowdsec/v1/getting_started/crowdsec-tour/) of your freshly deployed {{v1X.crowdsec.name}} !
+
+!!! info
+        Keep in mind the {{v1X.crowdsec.name}} is only in charge of the "detection", and won't block anything on its own. You need to deploy a {{v1X.bouncers.Htmlname}} to "apply" decisions.
 
 ## Binary installation
 
