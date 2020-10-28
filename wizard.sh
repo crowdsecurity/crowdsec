@@ -288,6 +288,14 @@ install_plugins_bin() {
 
 #install crowdsec and cscli
 install_crowdsec() {
+
+    if [[ ! -f "$CROWDSEC_BIN" ]]; then
+        log_err "Crowdsec binary '$CROWDSEC_BIN' not found, you have likely clone the repository."
+        log_err "If you are trying to install crowdsec, please download a release :"
+        log_err "https://github.com/crowdsecurity/crowdsec/releases/latest"
+        exit
+    fi
+  
     mkdir -p "${CROWDSEC_DATA_DIR}"
     (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
@@ -325,10 +333,10 @@ update_bins() {
 update_full() {
 
     if [[ ! -f "$CROWDSEC_BIN" ]]; then
-        log_err "Crowdwatch binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
+        log_err "Crowdsec binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
     fi
     if [[ ! -f "$CSCLI_BIN" ]]; then
-        log_err "Cwcli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
+        log_err "Cscli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
     fi
 
     log_info "Backing up existing configuration"
