@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/metabase"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/dghubble/sling"
 	"github.com/docker/docker/api/types"
@@ -27,14 +29,18 @@ import (
 )
 
 var (
-	metabasePassword string
-	metabaseURL      string
+	metabasePassword   string
+	metabaseURL        string
+	metabaseImportPath string
+	metabaseExportPath string
+
+	tmpMetabaseSetupArchive = "/home/kkado/tmp/crowdsec_metabase_2020-10-28.tar"
 
 	metabaseUsername = "crowdsec@crowdsec.net"
-
-	metabaseImage  = "metabase/metabase"
-	metabaseDbURI  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
-	metabaseDbPath = "/var/lib/crowdsec/data"
+	metabaseFolder   = "/etc/crowdsec/metabase/"
+	metabaseImage    = "metabase/metabase"
+	metabaseDbURI    = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
+	metabaseDbPath   = "/var/lib/crowdsec/data"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
@@ -62,6 +68,8 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 	}
+
+	cmdDashboard.Flags().StringVar(&metabaseFolder, "metabase-folder", metabaseFolder, "metabase folder to store dashboards/datasources ..")
 
 	var force bool
 	var cmdDashSetup = &cobra.Command{
@@ -103,12 +111,12 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 
 			metabaseURL = fmt.Sprintf("http://%s:%s/", metabaseListenAddress, metabaseListenPort)
 
-			mb, err := newMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword)
+			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
 
-			if err := mb.Init(); err != nil {
+			if err := mb.Setup(tmpMetabaseSetupArchive); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
@@ -119,6 +127,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseUsername, "username", "u", metabaseUsername, "metabase username")
 	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
+
 	cmdDashboard.AddCommand(cmdDashSetup)
 
 	var cmdDashStart = &cobra.Command{
@@ -177,6 +186,59 @@ cscli dashboard remove --force
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
 	cmdDashboard.AddCommand(cmdDashRemove)
+
+	var cmdDashExport = &cobra.Command{
+		Use:   "export",
+		Short: "export the metabase container.",
+		Long:  `export the metabase container using docker.`,
+		Args:  cobra.ExactArgs(0),
+		Example: `
+cscli dashboard export
+ `,
+		Run: func(cmd *cobra.Command, args []string) {
+			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if _, _, err := mb.Login(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := mb.Export(metabaseExportPath); err != nil {
+				log.Fatalf(err.Error())
+			}
+		},
+	}
+	cmdDashExport.Flags().StringVarP(&metabaseExportPath, "archive", "a", "./", "Export metabase to provided path")
+	cmdDashboard.AddCommand(cmdDashExport)
+
+	var cmdDashImport = &cobra.Command{
+		Use:   "import",
+		Short: "import the metabase container.",
+		Long:  `import the metabase container using docker.`,
+		Args:  cobra.ExactArgs(0),
+		Example: `
+cscli dashboard import
+cscli dashboard import --force
+ `,
+		Run: func(cmd *cobra.Command, args []string) {
+			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if _, _, err := mb.Login(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := mb.Import(metabaseImportPath); err != nil {
+				log.Fatalf(err.Error())
+			}
+		},
+	}
+	cmdDashImport.Flags().StringVarP(&metabaseImportPath, "archive", "a", "", "import metabase from provided path")
+	cmdDashboard.AddCommand(cmdDashImport)
 
 	return cmdDashboard
 }

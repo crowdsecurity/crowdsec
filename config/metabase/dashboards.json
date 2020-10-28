@@ -1,0 +1,10 @@
+[
+    {
+        "name" : "Mono-Machines",
+        "description" : "Crowdsec mono-machine dashboard"
+    },
+    {
+        "name" : "Multi-Machines",
+        "description" : "Crowdsec multi-machines setup dashboard"
+    }
+]

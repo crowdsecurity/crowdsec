@@ -23,6 +23,7 @@ CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
+CROWDSEC_METABASE_FOLDER="/etc/crowdsec/metabase/"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
@@ -300,6 +301,7 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
+    mkdir -p "${CROWDSEC_METABASE_FOLDER}" || exit
     mkdir -p "${CSCLI_FOLDER}" || exit
 
     #tmp
@@ -307,9 +309,9 @@ install_crowdsec() {
     mkdir -p /etc/crowdsec/hub/
     install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
-
     ## end tmp
 
+    cp -r "./config/metabase/*" "${CROWDSEC_METABASE_FOLDER}" || exit
     install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
