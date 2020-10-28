@@ -72,7 +72,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 		}
 	}
 	if len(c.Profiles) == 0 {
-		return fmt.Errorf("zero profiles loaded for APIL")
+		return fmt.Errorf("zero profiles loaded for LAPI")
 	}
 	return nil
 }
