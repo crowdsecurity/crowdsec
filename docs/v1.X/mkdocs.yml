@@ -1,0 +1,56 @@
+site_name: Crowdsec/v1
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation : getting_started/installation.md
+    - Crowdsec Tour: getting_started/crowdsec-tour.md
+    - Concepts & Glossary : getting_started/concepts.md
+    - FAQ: getting_started/FAQ.md
+  - Guide:
+    - Overview: guide/crowdsec/overview.md
+    - Acquisition: guide/crowdsec/acquisition.md
+    - Parsers: guide/crowdsec/parsers.md
+    - Enrichers: guide/crowdsec/enrichers.md
+    - Scenarios: guide/crowdsec/scenarios.md
+    - Cscli: guide/cscli.md
+    - Simulation Mode: guide/crowdsec/simulation.md
+  - Cheat Sheets:
+    - Ban Management: cheat_sheets/ban-mgmt.md
+    - Configuration Management: cheat_sheets/config-mgmt.md
+    - Debugging Parsers & Scenarios: cheat_sheets/debugging_configs.md
+  - Observability:
+    - Overview: observability/overview.md
+    - Logs: observability/logs.md
+    - Metrics: 
+        - Prometheus: observability/prometheus.md
+        - Command line: observability/command_line.md
+    - Dashboard: observability/dashboard.md
+  - References:
+    - Parsers format: references/parsers.md
+    - Scenarios format: references/scenarios.md
+    - Outputs format: references/output.md
+  - Write Configurations:
+    - Requirements: write_configurations/requirements.md
+    - Acquisition: write_configurations/acquisition.md
+    - Parsers: write_configurations/parsers.md
+    - Scenarios: write_configurations/scenarios.md
+    - Whitelists: write_configurations/whitelist.md
+    - Expressions: write_configurations/expressions.md
+  - Blockers: blockers/index.md
+  - Contributing: 
+    - General: contributing.md
+    - Writing Output Plugins: references/plugins_api.md
+  - Cscli commands:
+    - API: cscli/cscli_api.md
+    - Backup: cscli/cscli_backup.md
+    - Bans: cscli/cscli_ban.md
+    - Metrics: cscli/cscli_metrics.md
+    - Update: cscli/cscli_update.md
+    - Install configurations: cscli/cscli_install.md
+    - Remove configurations: cscli/cscli_remove.md
+    - Upgrade configurations: cscli/cscli_upgrade.md
+    - List configurations: cscli/cscli_list.md
+    - Inspect configurations: cscli/cscli_inspect.md
+    - Manage simulation: cscli/cscli_simulation.md
+    - Dashboard: cscli/cscli_dashboard.md
+  - About: about.md
