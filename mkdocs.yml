@@ -208,15 +208,15 @@ extra:
           name: Crowdsec Hub
           htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
           url: "https://hub.crowdsec.net/"
-          plugins_url: "https://hub.crowdsec.net/browse/#blockers"
+          plugins_url: "https://hub.crowdsec.net/browse/#bouncers"
           scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
           parsers_url: "https://hub.crowdsec.net/browse/#configurations"
           collections_url: "https://hub.crowdsec.net/browse/#collections"
       crowdsec:
-          name: Crowdsec
-          Name: Crowdsec
-          bin: crowdsec-agent
-          path: /usr/bin/crowdsec-agent
+          name: crowdsec-agent
+          Name: Crowdsec-agent
+          bin: crowdsec
+          path: /usr/local/bin/crowdsec
           url: https://github.com/crowdsecurity/crowdsec
           bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
           main_log: "/var/log/crowdsec.log"
@@ -243,12 +243,12 @@ extra:
           cli_dir: /etc/crowdsec/cscli/
           crowdsec_dir: "/etc/crowdsec/config/"
           acquis_path: "/etc/crowdsec/config/acquis.yaml"
-      blockers:
-          name: blockers
-          Name: Blockers
-          url: "https://hub.crowdsec.net/browse/#blockers"
-          htmlname: "[blockers](/Crowdsec/v1/blockers/)"
-          Htmlname: "[blockers](/Crowdsec/v1/blockers/)"
+      bouncers:
+          name: bouncers
+          Name: Bouncers
+          url: "https://hub.crowdsec.net/browse/#bouncers"
+          htmlname: "[bouncers](/Crowdsec/v1/bouncers/)"
+          Htmlname: "[bouncers](/Crowdsec/v1/bouncers/)"
       plugins:
           name: backend plugins
           configpath: "/etc/crowdsec/plugins/backend/"

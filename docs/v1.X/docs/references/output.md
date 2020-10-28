@@ -1,6 +1,6 @@
 # Output
 
-The output mechanism is composed of plugins. In order to store the bans for {{v1X.blockers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
+The output mechanism is composed of plugins. In order to store the bans for {{v1X.bouncers.htmlname}}, at least one backend plugin must be loaded. Else, bans will not be stored and decisions cannot be applied. 
 
 
 Currently the supported backends are SQLite (default) and MySQL.

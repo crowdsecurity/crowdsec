@@ -36,7 +36,7 @@ nav:
     - Scenarios: write_configurations/scenarios.md
     - Whitelists: write_configurations/whitelist.md
     - Expressions: write_configurations/expressions.md
-  - Blockers: blockers/index.md
+  - Bouncers: bouncers/index.md
   - Contributing: 
     - General: contributing.md
     - Writing Output Plugins: references/plugins_api.md
