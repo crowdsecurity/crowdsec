@@ -1,5 +1,11 @@
 <center>[[Hub]]({{v0X.hub.url}}) [[Releases]]({{v0X.crowdsec.download_url}})</center>
 
+
+!!! warning
+        For crowdsec versions `<= 1.0` please refer to [v0.3.X](/Crowdsec/v0/)
+
+        For crowdsec versions `>= 1.0` please refer to [v1.X](/Crowdsec/v1/)
+
 # What is {{v0X.crowdsec.Name}} ?
 
 [{{v0X.crowdsec.Name}}]({{v0X.crowdsec.url}}) is an open-source and lightweight software that allows you to detect peers with malevolent behaviors and block them from accessing your systems at various level (infrastructural, system, applicative).
@@ -13,7 +19,6 @@ Detected malevolent peers can then be prevented from accessing your resources by
 One of the advantages of Crowdsec when compared to other solutions is its crowd-sourced aspect : Meta information about detected attacks (source IP, time and triggered scenario) are sent to a central API and then shared amongst all users.
 
 Thanks to this, besides detecting and stopping attacks in real time based on your logs, it allows you to preemptively block known bad actors from accessing your information system.
-
 
 ## Components
 
