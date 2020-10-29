@@ -197,6 +197,7 @@ cscli api credentials   # Display your API credentials
 			}
 			fmt.Printf("machine_id: %s\n", outputCTX.API.Creds.User)
 			fmt.Printf("password: %s\n", outputCTX.API.Creds.Password)
+			fmt.Printf("#You need to append these credentials in /etc/crowdsec/config/api.yaml")
 		},
 	}
 
