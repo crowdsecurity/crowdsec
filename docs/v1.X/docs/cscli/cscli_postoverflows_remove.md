@@ -1,30 +1,33 @@
-## cscli simulation enable
+## cscli postoverflows remove
 
-Enable the simulation, globally or on specified scenarios
+Remove given postoverflow(s)
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+remove given postoverflow(s)
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli postoverflows remove [config] [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli postoverflows remove crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+      --all     Delete all the files in selected scope
+  -h, --help    help for remove
+      --purge   Delete source file in ~/.cscli/hub/ too
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +39,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli postoverflows](cscli_postoverflows.md)	 - Install/Remove/Upgrade/Inspect postoverflow(s) from hub
 
 

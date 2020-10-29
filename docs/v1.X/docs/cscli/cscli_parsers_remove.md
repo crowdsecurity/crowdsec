@@ -1,30 +1,33 @@
-## cscli simulation enable
+## cscli parsers remove
 
-Enable the simulation, globally or on specified scenarios
+Remove given parser(s)
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+Remove given parse(s) from hub
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli parsers remove [config] [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli parsers remove crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+      --all     Delete all the parsers
+  -h, --help    help for remove
+      --purge   Delete source file too
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +39,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli parsers](cscli_parsers.md)	 - Install/Remove/Upgrade/Inspect parser(s) from hub
 
 

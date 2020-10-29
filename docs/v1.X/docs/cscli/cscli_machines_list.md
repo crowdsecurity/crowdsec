@@ -1,25 +1,25 @@
-## cscli simulation enable
+## cscli machines list
 
-Enable the simulation, globally or on specified scenarios
+List machines
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+List 
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli machines list [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli machines list
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +36,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli machines](cscli_machines.md)	 - Manage local API machines
 
 

@@ -1,30 +1,32 @@
-## cscli simulation enable
+## cscli collections inspect
 
-Enable the simulation, globally or on specified scenarios
+Inspect given collection
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+Inspect given collection
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli collections inspect collection [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli collections inspect crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help         help for inspect
+  -u, --url string   Prometheus url (default "http://127.0.0.1:6060/metrics")
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +38,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli collections](cscli_collections.md)	 - Manage collections from hub
 
 

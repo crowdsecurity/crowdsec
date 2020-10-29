@@ -1,25 +1,25 @@
-## cscli simulation enable
+## cscli bouncers list
 
-Enable the simulation, globally or on specified scenarios
+List bouncers
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+List bouncers
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli bouncers list [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli bouncers list
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +36,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
 
 

@@ -1,25 +1,26 @@
-## cscli simulation enable
+## cscli machines validate
 
-Enable the simulation, globally or on specified scenarios
+validate a machine to access the local API
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+validate a machine to access the local API.
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli machines validate [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli machines validate --machine test
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help             help for validate
+  -m, --machine string   machine to validate
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +37,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli machines](cscli_machines.md)	 - Manage local API machines
 
 

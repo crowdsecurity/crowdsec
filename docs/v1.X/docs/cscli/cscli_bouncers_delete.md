@@ -1,25 +1,19 @@
-## cscli simulation enable
+## cscli bouncers delete
 
-Enable the simulation, globally or on specified scenarios
+delete bouncer
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+delete bouncer
 
 ```
-cscli simulation enable [scenario] [flags]
-```
-
-### Examples
-
-```
-cscli simulation enable
+cscli bouncers delete MyBouncerName [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for delete
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +30,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
 
 

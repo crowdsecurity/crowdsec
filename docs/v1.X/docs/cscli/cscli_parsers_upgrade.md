@@ -1,30 +1,33 @@
-## cscli simulation enable
+## cscli parsers upgrade
 
-Enable the simulation, globally or on specified scenarios
+Upgrade given parser(s)
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+Fetch and upgrade given parser(s) from hub
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli parsers upgrade [config] [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli parsers upgrade crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+      --all     Upgrade all the parsers
+      --force   Force install : Overwrite tainted and outdated files
+  -h, --help    help for upgrade
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +39,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli parsers](cscli_parsers.md)	 - Install/Remove/Upgrade/Inspect parser(s) from hub
 
 

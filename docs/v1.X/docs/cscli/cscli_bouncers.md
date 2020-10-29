@@ -1,25 +1,19 @@
-## cscli simulation enable
+## cscli bouncers
 
-Enable the simulation, globally or on specified scenarios
+Manage bouncers
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
 
-```
-cscli simulation enable [scenario] [flags]
-```
+Bouncers Management.
 
-### Examples
+To list/add/delete bouncers
 
-```
-cscli simulation enable
-```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for bouncers
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +30,9 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli](cscli.md)	 - cscli allows you to manage crowdsec
+* [cscli bouncers add](cscli_bouncers_add.md)	 - add bouncer
+* [cscli bouncers delete](cscli_bouncers_delete.md)	 - delete bouncer
+* [cscli bouncers list](cscli_bouncers_list.md)	 - List bouncers
 
 
