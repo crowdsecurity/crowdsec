@@ -13,10 +13,15 @@ BUILD_CMD="build"
 
 GOARCH=amd64
 GOOS=linux
-REQUIRE_GOVERSION="1.13"
 
 
 #Current versioning information from env
+GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
+GO_MINOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
+MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
+MINIMUM_SUPPORTED_GO_MINOR_VERSION = 13
+GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+
 BUILD_VERSION?="$(shell git describe --tags `git rev-list --tags --max-count=1`)"
 BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
 BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
@@ -36,9 +41,15 @@ build: clean goversion crowdsec cscli
 static: goversion crowdsec_static cscli_static
 
 goversion:
-	CURRENT_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
-	RESPECT_VERSION="$(shell echo "$(CURRENT_GOVERSION),$(REQUIRE_GOVERSION)" | tr ',' '\n' | sort -V)"
-
+	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
+		exit 0 ;\
+	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
+		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+		exit 1; \
+	fi
 
 hubci:
 	@rm -rf crowdsec-xxx hub-tests
@@ -58,51 +69,26 @@ clean:
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
 
-cscli:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+cscli: goversion
 	@make -C $(CSCLI_FOLDER) build --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
 
-crowdsec:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+
+crowdsec: goversion
 	@make -C $(CROWDSEC_FOLDER) build --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 	@bash ./scripts/build_plugins.sh
 
 
-cscli_static:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+cscli_static: goversion
 	@make -C $(CSCLI_FOLDER) static --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
 
-crowdsec_static:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+crowdsec_static: goversion
 	@make -C $(CROWDSEC_FOLDER) static --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
-
 
 #.PHONY: test
 test:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CROWDSEC_FOLDER) test --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
 .PHONY: uninstall
 uninstall:
