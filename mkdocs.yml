@@ -1,8 +1,8 @@
 site_name: Crowdsec
 nav:
   - Home: index.md
-  - v0.3.*: '!include ./docs/v0.3.X/mkdocs.yml'
-  - v1.* : '!include ./docs/v1.X/mkdocs.yml'
+  - v0: '!include ./docs/v0.3.X/mkdocs.yml'
+  - v1 : '!include ./docs/v1.X/mkdocs.yml'
   - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
 
 markdown_extensions:
