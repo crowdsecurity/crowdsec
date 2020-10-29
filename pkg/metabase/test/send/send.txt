@@ -1,0 +1,25 @@
+POST /api/dataset
+
+{"type":"query","query":{"source-table":8,"aggregation":[["count"]],"breakout":[["field-id",69]],"order-by":[["desc",["aggregation",0]]]},"database":2,"parameters":[]}
+
+
+POST /api/card
+
+{"id":null,"name":"Top IPs","dataset_query":{"type":"query","query":{"source-table":8,"aggregation":[["count"]],"breakout":[["field-id",69]],"order-by":[["desc",["aggregation",0]]]},"database":2},"display":"pie","description":null,"visualization_settings":{},"collection_id":null,"result_metadata":[{"base_type":"type/Text","display_name":"Source Value","name":"source_value","special_type":"type/Source","fingerprint":{"global":{"distinct-count":41,"nil%":0},"type":{"type/Text":{"percent-json":0,"percent-url":0,"percent-email":0,"percent-state":0,"average-length":12.609756097560975}}}},{"base_type":"type/Integer","display_name":"Nombre de lignes","name":"count","special_type":"type/Quantity","fingerprint":{"global":{"distinct-count":9,"nil%":0},"type":{"type/Number":{"min":1,"q1":1.1055631973245612,"q3":4.08452405257735,"max":58,"sd":10.420605759275412,"avg":4.7560975609756095}}}}],"metadata_checksum":"ILXOB99w4T/hDfBA83tvlg=="}
+
+
+POST /api/dashboard/3/cards
+
+{"cardId":5}
+
+PUT /api/dashboard/3/cards
+
+{"cards":[{"id":3,"card_id":4,"row":0,"col":0,"sizeX":6,"sizeY":4,"series":[],"visualization_settings":{},"parameter_mappings":[]},{"id":4,"card_id":5,"row":0,"col":6,"sizeX":5,"sizeY":4,"series":[],"visualization_settings":{},"parameter_mappings":[]}]}
+
+
+
+PUT /api/dashboard/3
+
+{"description":"Crowdsec mono machine dashboard","archived":false,"collection_position":null,"ordered_cards":[{"sizeX":6,"series":[],"card":{"description":null,"archived":false,"collection_position":null,"table_id":8,"result_metadata":[{"base_type":"type/Text","display_name":"Source Country","name":"source_country","special_type":"type/Country","fingerprint":{"global":{"distinct-count":11,"nil%":0},"type":{"type/Text":{"percent-json":0,"percent-url":0,"percent-email":0,"percent-state":0.09090909090909091,"average-length":1.8181818181818181}}}},{"base_type":"type/Integer","display_name":"Nombre de lignes","name":"count","special_type":"type/Quantity","fingerprint":{"global":{"distinct-count":7,"nil%":0},"type":{"type/Number":{"min":1,"q1":3.625,"q3":6.775255128608411,"max":117,"sd":34.58060412743222,"avg":17.727272727272727}}}}],"database_id":2,"enable_embedding":false,"collection_id":null,"query_type":"query","name":"Top Country","query_average_duration":17,"creator_id":1,"updated_at":"2020-10-28T23:40:19.458","made_public_by_id":null,"embedding_params":null,"cache_ttl":null,"dataset_query":{"type":"query","query":{"source-table":8,"aggregation":[["count"]],"breakout":[["field-id",74]],"order-by":[["desc",["aggregation",0]]]},"database":2},"id":4,"display":"pie","visualization_settings":{},"created_at":"2020-10-28T23:40:16.402","public_uuid":null},"updated_at":"2020-10-28T23:40:25.077","col":0,"id":3,"parameter_mappings":[],"card_id":4,"visualization_settings":{},"dashboard_id":3,"created_at":"2020-10-28T23:40:25.042","sizeY":4,"row":0},{"id":0.7392013704694566,"dashboard_id":"3","card_id":5,"card":{"description":null,"archived":false,"collection_position":null,"table_id":8,"result_metadata":[{"base_type":"type/Text","display_name":"Source Value","name":"source_value","special_type":"type/Source","fingerprint":{"global":{"distinct-count":41,"nil%":0},"type":{"type/Text":{"percent-json":0,"percent-url":0,"percent-email":0,"percent-state":0,"average-length":12.609756097560975}}}},{"base_type":"type/Integer","display_name":"Nombre de lignes","name":"count","special_type":"type/Quantity","fingerprint":{"global":{"distinct-count":9,"nil%":0},"type":{"type/Number":{"min":1,"q1":1.1055631973245612,"q3":4.08452405257735,"max":58,"sd":10.420605759275412,"avg":4.7560975609756095}}}}],"creator":{"email":"crowdsec@crowdsec.net","first_name":"crowdsec","last_login":"2020-10-28T23:37:00.989","is_qbnewb":true,"is_superuser":true,"id":1,"last_name":"crowdsec","date_joined":"2020-10-28T16:33:16.256","common_name":"crowdsec crowdsec"},"can_write":true,"database_id":2,"enable_embedding":false,"collection_id":null,"query_type":"query","name":"Top IPs","dashboard_count":0,"creator_id":1,"updated_at":"2020-10-28T23:40:47.763","made_public_by_id":null,"embedding_params":null,"cache_ttl":null,"dataset_query":{"type":"query","query":{"source-table":8,"aggregation":[["count"]],"breakout":[["field-id",69]],"order-by":[["desc",["aggregation",0]]]},"database":2},"id":5,"display":"pie","visualization_settings":{},"collection":null,"created_at":"2020-10-28T23:40:47.763","public_uuid":null},"series":[],"col":6,"row":0,"sizeX":5,"sizeY":4,"parameter_mappings":[],"visualization_settings":{},"isAdded":true,"justAdded":false,"isDirty":true}],"param_values":null,"can_write":true,"enable_embedding":false,"collection_id":null,"show_in_getting_started":false,"name":"Mono-machines","caveats":null,"creator_id":1,"updated_at":"2020-10-28T23:40:25.103","made_public_by_id":null,"embedding_params":null,"position":null,"param_fields":null,"parameters":[],"created_at":"2020-10-28T23:39:00.064","public_uuid":null,"points_of_interest":null}
+
+
