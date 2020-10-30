@@ -1,9 +1,9 @@
 site_name: Crowdsec
 nav:
-  - Crowdsec Documentation:
-    - Home: index.md
-    - v0.3.X: '!include ./docs/v0.3.X/mkdocs.yml'
-    - v1.X: '!include ./docs/v1.X/mkdocs.yml'
+  - Home: index.md
+  - Crowdsec v0: '!include ./docs/v0.3.X/mkdocs.yml'
+  - Crowdsec v1 : '!include ./docs/v1.X/mkdocs.yml'
+  - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
 
 markdown_extensions:
   - codehilite:
@@ -15,6 +15,8 @@ theme:
   name: material
   logo: assets/images/crowdsec2.png
   favicon: assets/images/crowdsec2.png
+  features:
+    - navigation.tabs
   palette:
     primary: "#3d85c6" 
   language: en
@@ -29,11 +31,13 @@ plugins:
     - search
     - macros
     - monorepo
+    - swagger
 google_analytics:
     - UA-164365852-3
     - auto
 
 extra:
+    swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/wip_lapi/pkg/models/localapi_swagger.yaml"
     v0X:
       doc:
           new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
