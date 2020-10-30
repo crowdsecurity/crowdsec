@@ -1,30 +1,33 @@
-## cscli simulation enable
+## cscli collections upgrade
 
-Enable the simulation, globally or on specified scenarios
+Upgrade given collection(s)
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+Fetch and upgrade given collection(s) from hub
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli collections upgrade collection [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli collections upgrade crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -d, --download-only   Only download packages, don't enable
+      --force           Force install : Overwrite tainted and outdated files
+  -h, --help            help for upgrade
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +39,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli collections](cscli_collections.md)	 - Manage collections from hub
 
 

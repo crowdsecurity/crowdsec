@@ -1,25 +1,21 @@
-## cscli simulation enable
+## cscli decisions
 
-Enable the simulation, globally or on specified scenarios
+Manage decisions
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
-
-```
-cscli simulation enable [scenario] [flags]
-```
+Add/List/Delete decisions from LAPI
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli decisions [action] [filter]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for decisions
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +32,9 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli](cscli.md)	 - cscli allows you to manage crowdsec
+* [cscli decisions add](cscli_decisions_add.md)	 - Add decision to LAPI
+* [cscli decisions delete](cscli_decisions_delete.md)	 - Delete decisions
+* [cscli decisions list](cscli_decisions_list.md)	 - List decisions from LAPI
 
 

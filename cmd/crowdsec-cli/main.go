@@ -85,7 +85,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		Hidden: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := doc.GenMarkdownTree(rootCmd, "./doc/"); err != nil {
-				log.Fatalf("Failed to generate cobra doc")
+				log.Fatalf("Failed to generate cobra doc: %s", err.Error())
 			}
 		},
 	}

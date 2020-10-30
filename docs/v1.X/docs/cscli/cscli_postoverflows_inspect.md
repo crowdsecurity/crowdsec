@@ -1,30 +1,31 @@
-## cscli simulation enable
+## cscli postoverflows inspect
 
-Enable the simulation, globally or on specified scenarios
+Inspect given postoverflow
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+Inspect given postoverflow
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli postoverflows inspect [config] [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli postoverflows inspect crowdsec/xxx crowdsec/xyz
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for inspect
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +37,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli postoverflows](cscli_postoverflows.md)	 - Install/Remove/Upgrade/Inspect postoverflow(s) from hub
 
 

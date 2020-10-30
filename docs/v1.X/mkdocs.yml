@@ -41,16 +41,17 @@ nav:
     - General: contributing.md
     - Writing Output Plugins: references/plugins_api.md
   - Cscli commands:
-    - API: cscli/cscli_api.md
-    - Backup: cscli/cscli_backup.md
-    - Bans: cscli/cscli_ban.md
-    - Metrics: cscli/cscli_metrics.md
-    - Update: cscli/cscli_update.md
-    - Install configurations: cscli/cscli_install.md
-    - Remove configurations: cscli/cscli_remove.md
-    - Upgrade configurations: cscli/cscli_upgrade.md
-    - List configurations: cscli/cscli_list.md
-    - Inspect configurations: cscli/cscli_inspect.md
-    - Manage simulation: cscli/cscli_simulation.md
+    - Alerts: cscli/cscli_alerts.md
+    - Bouncers: cscli/cscli_bouncers.md
+    - Collections: cscli/cscli_collections.md
+    - Config: cscli/cscli_config.md
     - Dashboard: cscli/cscli_dashboard.md
+    - Decisions: cscli/cscli_decisions.md
+    - Hub: cscli/cscli_hub.md
+    - Machines: cscli/cscli_machines.md
+    - Metrics: cscli/cscli_metrics.md
+    - Parsers: cscli/cscli_parsers.md
+    - Postoverflows: cscli/cscli_postoverflows.md
+    - Scenarios: cscli/cscli_scenarios.md
+    - Simulation: cscli/cscli_simulation.md
   - About: about.md

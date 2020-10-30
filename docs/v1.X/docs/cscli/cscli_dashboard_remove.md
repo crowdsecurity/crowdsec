@@ -1,25 +1,29 @@
-## cscli simulation enable
+## cscli dashboard remove
 
-Enable the simulation, globally or on specified scenarios
+removes the metabase container.
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+removes the metabase container using docker.
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli dashboard remove [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+
+cscli dashboard remove
+cscli dashboard remove --force
+ 
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -f, --force   Force remove : stop the container if running and remove.
+  -h, --help    help for remove
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +40,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
 
 

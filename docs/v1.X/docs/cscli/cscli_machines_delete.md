@@ -1,25 +1,26 @@
-## cscli simulation enable
+## cscli machines delete
 
-Enable the simulation, globally or on specified scenarios
+delete machines
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+delete machines
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli machines delete --machine MyTestMachine [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli machines delete --machine test
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help             help for delete
+  -m, --machine string   machine to delete
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +37,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli machines](cscli_machines.md)	 - Manage local API machines
 
 

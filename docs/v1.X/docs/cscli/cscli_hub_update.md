@@ -1,30 +1,28 @@
-## cscli simulation enable
+## cscli hub update
 
-Enable the simulation, globally or on specified scenarios
+Fetch available configs from hub
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+
+Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.index.json) file from hub, containing the list of available configs.
+
 
 ```
-cscli simulation enable [scenario] [flags]
-```
-
-### Examples
-
-```
-cscli simulation enable
+cscli hub update [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for update
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -a, --all             List as well disabled items
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -36,6 +34,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli hub](cscli_hub.md)	 - Manage Hub
 
 

@@ -1,25 +1,28 @@
-## cscli simulation enable
+## cscli machines register
 
-Enable the simulation, globally or on specified scenarios
+register a machine to a remote API
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+register a machine to a remote API.
+/!\ The machine will not be validated. You have to connect on the remote API server and run 'cscli machine validate -m <machine_id>'
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli machines register -u http://127.0.0.1:8080/ [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli machine register
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -f, --file string   output file destination
+  -h, --help          help for register
+  -u, --url string    URL of the API
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +39,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli machines](cscli_machines.md)	 - Manage local API machines
 
 

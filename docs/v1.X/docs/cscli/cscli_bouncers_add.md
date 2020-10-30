@@ -1,25 +1,27 @@
-## cscli simulation enable
+## cscli bouncers add
 
-Enable the simulation, globally or on specified scenarios
+add bouncer
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
+add bouncer
 
 ```
-cscli simulation enable [scenario] [flags]
+cscli bouncers add MyBouncerName [--length 16] [flags]
 ```
 
 ### Examples
 
 ```
-cscli simulation enable
+cscli bouncers add MyBouncerName
+cscli bouncers add MyBouncerName -l 24
 ```
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help         help for add
+  -l, --length int   length of the api key (default 16)
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +38,6 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
 
 

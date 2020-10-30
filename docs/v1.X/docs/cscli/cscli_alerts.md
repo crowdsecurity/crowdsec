@@ -1,25 +1,15 @@
-## cscli simulation enable
+## cscli alerts
 
-Enable the simulation, globally or on specified scenarios
+Manage alerts
 
 ### Synopsis
 
-Enable the simulation, globally or on specified scenarios
-
-```
-cscli simulation enable [scenario] [flags]
-```
-
-### Examples
-
-```
-cscli simulation enable
-```
+Manage alerts
 
 ### Options
 
 ```
-  -h, --help   help for enable
+  -h, --help   help for alerts
 ```
 
 ### Options inherited from parent commands
@@ -36,6 +26,9 @@ cscli simulation enable
 
 ### SEE ALSO
 
-* [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli](cscli.md)	 - cscli allows you to manage crowdsec
+* [cscli alerts delete](cscli_alerts_delete.md)	 - Delete alerts
+/!\ This command can be use only on the same machine than the local API.
+* [cscli alerts list](cscli_alerts_list.md)	 - List alerts
 
 
