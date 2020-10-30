@@ -49,22 +49,6 @@ INFO[0000] POSTOVERFLOWS:
 ```
 </details>
 
-
-## Finding configurations
-
-{{v1X.crowdsec.Name}} efficiency is dictated by installed parsers and scenarios, often bundled together as {{v1X.collections.Htmlname}} so take a look at the {{v1X.hub.htmlname}} to find the appropriated ones !
-
-You will have to pick the right {{v1X.collections.htmlname}}. This will ensure that {{v1X.crowdsec.name}} can parse the logs and has the corresponding scenarios.
-
-For example, if you're processing [nginx](http://nginx.org) logs, you might want to install the [nginx collection](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx).
-
-A collection can be installed by typing `cscli collections install crowdsecurity/nginx`, and provides all the necessary parsers and scenarios to handle said log source. `systemctl reload crowdsec` to ensure the new scenarios are loaded.
-
-In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
-
-While {{v1X.crowdsec.name}} is running, a quick look at [`cscli metrics`](/Crowdsec/v1/observability/command_line/) should help you ensure that your log sources are correctly parsed.
-
-
 ## List existing bans
 
 
@@ -95,6 +79,31 @@ There are different bans sources:
   - crowdsec : bans triggered locally 
   - api : bans fetched from the API as part of the global consensus
   - csli : bans added via `{{v1X.cli.bin}} decisions add`
+
+
+## List alerts
+
+
+```bash
+{{v1X.cli.bin}} alerts list
+```
+
+While decisions won't be shown anymore once they expire (or are manually deleted), the alerts will stay visible, allowing you to keep track of past decisions.
+You will here see the alerts, even if the associated decisions expired.
+
+<details>
+  <summary>output example</summary>
+```bash
+$ cscli alerts list --since 1h
++----+-------------+----------------------------+---------+----+-----------+---------------------------+
+| ID | SCOPE:VALUE |           REASON           | COUNTRY | AS | DECISIONS |        CREATED AT         |
++----+-------------+----------------------------+---------+----+-----------+---------------------------+
+|  5 | Ip:1.2.3.6  | crowdsecurity/ssh-bf (0.1) | US      |    | ban:1     | 2020-10-29T11:33:36+01:00 |
++----+-------------+----------------------------+---------+----+-----------+---------------------------+
+
+```
+</details>
+
 
 ## Monitor on-going activity (prometheus)
 
@@ -160,3 +169,18 @@ The {{v1X.crowdsec.main_log}} file will tell you what is going on and when an IP
 
 Check [{{v1X.crowdsec.name}} monitoring](/Crowdsec/v1/observability/overview/) for more !
 
+
+
+## Finding configurations : collections, parsers and scenarios
+
+{{v1X.crowdsec.Name}} efficiency is dictated by installed parsers and scenarios, often bundled together as {{v1X.collections.Htmlname}} so take a look at the {{v1X.hub.htmlname}} to find the appropriated ones !
+
+You will have to pick the right {{v1X.collections.htmlname}}. This will ensure that {{v1X.crowdsec.name}} can parse the logs and has the corresponding scenarios.
+
+For example, if you're processing [nginx](http://nginx.org) logs, you might want to install the [nginx collection](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx).
+
+A collection can be installed by typing `cscli collections install crowdsecurity/nginx`, and provides all the necessary parsers and scenarios to handle said log source. `systemctl reload crowdsec` to ensure the new scenarios are loaded.
+
+In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
+
+While {{v1X.crowdsec.name}} is running, a quick look at [`cscli metrics`](/Crowdsec/v1/observability/command_line/) should help you ensure that your log sources are correctly parsed.

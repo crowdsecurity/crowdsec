@@ -1,5 +1,32 @@
-{{v1X.crowdsec.Name}}'s main goal is to crunch logs to detect things (duh).
-You will find below an introduction to the concepts that are frequently used within the documentation.
+<!-- {{v1X.crowdsec.Name}}'s main goal is to crunch logs to detect things (duh).
+You will find below an introduction to the concepts that are frequently used within the documentation. -->
+
+# Global overview
+
+{{v1X.crowdsec.Name}} runtime revolves around a few simple concepts :
+
+ - It read logs (defined via {{v1X.ref.acquis}} config)
+ - Those logs are parsed via {{v1X.ref.parser}} and eventually enriched
+ - Those normalized logs are then matched against the {{v1X.ref.scenario}}s that the user deployed
+ - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htlmname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
+    - The alert is here mostly for tracability, and will stay even after the decision expires
+    - The decision on the other hand, is short lived, and tells *what* action should be taken against the offending ip/range/user...
+ - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.Htmlname}} and stored in the database
+
+As you might have guessed by now, {{v1X.crowdsec.Name}} itself does the detection part and stores those decisions.
+Then, {{v1X.bouncers.Htmlname}} can "consume" those decisions (via the very same {{v1X.lapi.Htmlname}}) and apply some actual remediation.
+
+## Crowd sourced aspect
+
+Whenever the {{v1X.lapi.Htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
+ - The source ip that triggered the alert
+ - The scenario that was triggered
+ - The timestamp of the attack
+
+These are the only information that are sent to our API. Those are then processed on our side to be able to redistribute relevant blocklists to all the participants.
+
+
+# Configuration items
 
 ## Acquisition
 
@@ -100,6 +127,31 @@ In this way, if you want to cover basic use-cases of let's say "nginx", you can 
 
 As usual, those can be found on the {{v1X.hub.htmlname}} !
 
+## PostOverflow
+
+A postoverflow is a parser that will be applied on overflows (scenario results) before the decision is written to local DB or pushed to API. Parsers in postoverflows are meant to be used for "expensive" enrichment/parsing process that you do not want to perform on all incoming events, but rather on decision that are about to be taken.
+
+An example could be slack/mattermost enrichment plugin that requires human confirmation before applying the decision or reverse-dns lookup operations.
+
+# Runtime objects
+
+## Decision
+
+A decision is a remediation to be applied against a given scope. Decisions are created when a scenario with an active remediation is triggered.
+
+Most of the time it will be an IP, but isn't restricted to it. A decision is composed of :
+
+ - `Duration` : for how long is the decision valid.
+ - `Scope` and `Value` : indicates to "what" the decisions apply.
+
+  !!! note
+      While most of the scenarios will focus on ips (the scope will be `Ip`), it can apply to more or less anything, such as a user session, a cookie, a username etc.
+
+## Alert
+
+An alert is created when a scenario is triggered, and can have one or more decisions associated.
+
+
 ## Event
 
 The objects that are processed within {{v1X.crowdsec.name}} are named "Events".
@@ -111,7 +163,7 @@ An Event can be a log line, or an overflow result. This object layout evolves ar
  - `Meta` is an associative array that will be used to keep track of meta information about the event. 
 
 _Other fields omitted for clarity, see [`pkg/types/event.go`](https://github.com/crowdsecurity/crowdsec/blob/master/pkg/types/event.go) for detailed definition_
-
+<!-- 
 ## Overflow or SignalOccurence
 
 This object holds the relevant information about a scenario that happened : who / when / where / what etc.
@@ -126,9 +178,4 @@ Its most relevant fields are :
  - `Labels` : an associative array representing the scenario "labels" (see scenario definition)
 
 _Other fields omitted for clarity, see [`pkg/types/signal_occurence.go`](https://github.com/crowdsecurity/crowdsec/blob/master/pkg/types/signal_occurence.go) for detailed definition_
-
-### PostOverflow
-
-A postoverflow is a parser that will be applied on overflows (scenario results) before the decision is written to local DB or pushed to API. Parsers in postoverflows are meant to be used for "expensive" enrichment/parsing process that you do not want to perform on all incoming events, but rather on decision that are about to be taken.
-
-An example could be slack/mattermost enrichment plugin that requires human confirmation before applying the decision or reverse-dns lookup operations.
+ -->

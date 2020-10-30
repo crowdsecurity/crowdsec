@@ -116,7 +116,7 @@ Or if you loose your credentials:
 The profiles is what allows you to decide how do you react when a scenario is triggered :
 
  - do you notify yourself on mattermost/slack ?
- - do you push the signal to a database so that your blockers can stop the IP from continuing its attack ?
+ - do you push the signal to a database so that your bouncers can stop the IP from continuing its attack ?
  - do you want to avoid pushing this signal to the API ?
 
 Behind the scenes, the "profiles" system actually allows you to dispatch an event/overflow to various output plugins.
