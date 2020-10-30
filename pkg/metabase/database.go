@@ -1,16 +1,21 @@
 package metabase
 
 import (
-	"encoding/json"
-	"net/http"
-	"os"
+	"fmt"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/pkg/errors"
 )
 
+type Databases struct {
+	db map[int]*Database
+}
+
 type Database struct {
-	ID    int
-	Name  string
-	Path  string
-	Model *DatabaseModel
+	ID     int
+	Model  *DatabaseModel
+	Config *csconfig.DatabaseCfg
+	Client *HTTP
 }
 
 type DatabaseModel struct {
@@ -42,14 +47,12 @@ type ScheduleModel struct {
 	ScheduleType  string      `json:"hourly"`
 }
 
-func (m *Metabase) AddDatabase() (map[string]interface{}, *http.Response, error) {
-	var respJSON map[string]interface{}
-
+func NewDatabase(config *Config, client *HTTP) (*Database, error) {
 	var database *DatabaseModel
-	switch m.Config.database.Type {
+	switch config.database.Type {
 	case "sqlite":
 		database = &DatabaseModel{
-			Engine: m.Config.database.Type,
+			Engine: config.database.Type,
 			Name:   "crowdsec",
 			Details: &DetailsModel{
 				DB:                        "/metabase-data/crowdsec.db",
@@ -59,14 +62,14 @@ func (m *Metabase) AddDatabase() (map[string]interface{}, *http.Response, error)
 		}
 	case "mysql":
 		database = &DatabaseModel{
-			Engine: m.Config.database.Type,
-			Name:   m.Config.database.DbName,
+			Engine: config.database.Type,
+			Name:   config.database.DbName,
 			Details: &DetailsModel{
-				Host:          m.Config.database.Host,
-				Port:          m.Config.database.Port,
-				DBName:        m.Config.database.DbName,
-				User:          m.Config.database.User,
-				Password:      m.Config.database.Password,
+				Host:          config.database.Host,
+				Port:          config.database.Port,
+				DBName:        config.database.DbName,
+				User:          config.database.User,
+				Password:      config.database.Password,
 				SSL:           false,
 				TunnelEnabled: false,
 			},
@@ -82,25 +85,45 @@ func (m *Metabase) AddDatabase() (map[string]interface{}, *http.Response, error)
 				},
 			},
 		}
-
-	}
-	resp, err := m.Client.New().Post(routes[databaseEndpoint]).BodyJSON(database).Receive(&respJSON, &respJSON)
-
-	if err != nil {
-		return nil, nil, err
+	default:
+		return nil, fmt.Errorf("unsupported database type '%s'", config.database.Type)
 	}
 
-	db := &Database{
-		ID:    int(respJSON["id"].(float64)),
-		Name:  respJSON["name"].(string),
-		Model: database,
-	}
-	m.Databases = append(m.Databases, db)
+	return &Database{
+		Model:  database,
+		Config: config.database,
+		Client: client,
+	}, nil
 
-	return respJSON, resp, nil
 }
 
-func (d *Database) Backup(data map[string]interface{}) error {
+func (d *Database) Add() error {
+	success, errormsg, err := d.Client.Do("POST", routes[databaseEndpoint], d.Model)
+	if err != nil {
+		return errors.Wrap(err, "add database:")
+	}
+	if errormsg != nil {
+		return fmt.Errorf("add database: %+v", errormsg)
+	}
+
+	body, ok := success.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("bad response type: %+v", success)
+	}
+	if _, ok := body["id"]; !ok {
+		return fmt.Errorf("no database id, no id in response: %v", body)
+	}
+
+	idFloat, ok := body["id"].(float64)
+	if !ok {
+		return fmt.Errorf("bad database id type: %v", body)
+	}
+	d.ID = int(idFloat)
+
+	return nil
+}
+
+/*func (d *Database) Backup(data map[string]interface{}) error {
 	f, err := os.Create(d.Path)
 
 	if err != nil {
@@ -120,3 +143,4 @@ func (d *Database) Backup(data map[string]interface{}) error {
 	}
 	return nil
 }
+*/

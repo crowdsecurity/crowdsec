@@ -4,37 +4,134 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 
-	"github.com/dghubble/sling"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 )
 
 type Dashboard struct {
-	ID          int          `json:"-"`
-	Name        string       `json:"name"`
-	Description string       `json:"description"`
-	Folder      string       `json:"-"`
-	Client      *sling.Sling `json:"-"`
-	Cards       []*Card      `json:"-"`
+	ID          int     `json:"id"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	Folder      string  `json:"-"`
+	Client      *HTTP   `json:"-"`
+	Cards       []*Card `json:"-"`
 	Data        map[string]interface{}
+	Model       *GetDashboardModel
 }
 
-func (d *Dashboard) AddDashboard() (map[string]interface{}, *http.Response, error) {
-	var respJSON map[string]interface{}
+type GetDashboardModel struct {
+	Description          string         `json:"description"`
+	Archived             bool           `json:"archived"`
+	CollectionPosition   interface{}    `json:"collection_position"`
+	OrderedCards         []*OrderedCard `json:"ordered_cards"`
+	ParamValues          interface{}    `json:"param_values"`
+	CanWrite             bool           `json:"can_write"`
+	EnableEmbedding      bool           `json:"enable_embedding"`
+	CollectionID         interface{}    `json:"collection_id"`
+	ShowInGettingStarted bool           `json:"show_in_getting_started"`
+	Name                 string         `json:"name"`
+	Caveats              interface{}    `json:"caveats"`
+	CreatorID            int            `json:"creator_id"`
+	UpdatedAt            string         `json:"updated_at"`
+	MadePublicByID       interface{}    `json:"made_public_by_id"`
+	EmbeddingParams      interface{}    `json:"embedding_params"`
+	ID                   int            `json:"id"`
+	Position             interface{}    `json:"position"`
+	ParamFields          interface{}    `json:"param_fields"`
+	Parameters           []interface{}  `json:"parameters"`
+	CreatedAt            string         `json:"created_at"`
+	PublicUUID           interface{}    `json:"public_uuid"`
+	PointsOfInterest     interface{}    `json:"points_of_interest"`
+}
 
-	resp, err := d.Client.New().Post(routes[dashboardEndpoint]).BodyJSON(d).Receive(&respJSON, &respJSON)
+type UpdateDashboardModel struct {
+	Description          string         `json:"description"`
+	Archived             bool           `json:"archived"`
+	CollectionPosition   interface{}    `json:"collection_position"`
+	OrderedCards         []*OrderedCard `json:"ordered_cards"`
+	ParamValues          interface{}    `json:"param_values"`
+	CanWrite             bool           `json:"can_write"`
+	EnableEmbedding      bool           `json:"enable_embedding"`
+	CollectionID         interface{}    `json:"collection_id"`
+	ShowInGettingStarted bool           `json:"show_in_getting_started"`
+	Name                 string         `json:"name"`
+	Caveats              interface{}    `json:"caveats"`
+	CreatorID            int            `json:"creator_id"`
+	UpdatedAt            string         `json:"updated_at"`
+	MadePublicByID       interface{}    `json:"made_public_by_id"`
+	EmbeddingParams      interface{}    `json:"embedding_params"`
+	Position             interface{}    `json:"position"`
+	ParamFields          interface{}    `json:"param_fields"`
+	Parameters           []interface{}  `json:"parameters"`
+	CreatedAt            string         `json:"created_at"`
+	PublicUUID           interface{}    `json:"public_uuid"`
+	PointsOfInterest     interface{}    `json:"points_of_interest"`
+}
+
+func (d *Dashboard) Add() error {
+	success, errorMsg, err := d.Client.Do("POST", routes[dashboardEndpoint], d)
 	if err != nil {
-		return respJSON, resp, err
+		return err
 	}
-	if val, ok := respJSON["id"]; ok {
-		d.ID = int(val.(float64))
+
+	if errorMsg != nil {
+		return fmt.Errorf("add dashboard: %+v", errorMsg)
 	}
-	return respJSON, resp, nil
+
+	body, ok := success.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("add dashboard bad response type: %+v", success)
+	}
+	if _, ok := body["id"]; !ok {
+		return fmt.Errorf("no dashboard id in response: %v", body)
+	}
+
+	if val, ok := body["id"].(float64); ok {
+		d.ID = int(val)
+		return nil
+	}
+	return fmt.Errorf("bad id type: %v", body["id"])
 }
+
+func (d *Dashboard) Backup() error {
+	success, errorMsg, err := d.Client.Do("GET", fmt.Sprintf(routes[dashboardByIDEndpoint], d.ID), nil)
+	if err != nil {
+		return err
+	}
+	if errorMsg != nil {
+		return fmt.Errorf("backup dashboard: %+v", errorMsg)
+	}
+
+	dash, err := json.Marshal(success)
+	if err != nil {
+		return errors.Wrap(err, "dashboard backup:")
+	}
+	dashboard := GetDashboardModel{}
+	if err := json.Unmarshal(dash, &dashboard); err != nil {
+		return errors.Wrap(err, "dashboard backup:")
+	}
+
+	data, err := json.Marshal(dashboard)
+	if err != nil {
+		return errors.Wrap(err, "dashboard backup:")
+	}
+
+	if err := ioutil.WriteFile(filepath.Join(d.Folder, "dashboard.json"), data, os.ModePerm); err != nil {
+		return errors.Wrap(err, "dashboard backup:")
+	}
+
+	for _, card := range dashboard.OrderedCards {
+		if err := card.Backup(d.Folder); err != nil {
+			return errors.Wrap(err, "card backup:")
+		}
+	}
+
+	return nil
+}
+
+/*
 
 func (d *Dashboard) Backup() error {
 	var respJSON map[string]interface{}
@@ -95,10 +192,10 @@ func (d *Dashboard) Update() (map[string]interface{}, *http.Response, error) {
 		}
 		body["cards"] = append(body["cards"], &model)
 	}
-	log.Infof("PUT %s", fmt.Sprintf(routes[addCardToDashboard], d.ID))
+	log.Infof("PUT %s", fmt.Sprintf(routes[addCardToDashboardEndpoint], d.ID))
 	t, _ := json.Marshal(body)
 	log.Infof("%s", string(t))
-	resp, err := d.Client.New().Put(fmt.Sprintf(routes[addCardToDashboard], d.ID)).BodyJSON(body).Receive(&respJSON, &respJSON)
+	resp, err := d.Client.New().Put(fmt.Sprintf(routes[addCardToDashboardEndpoint], d.ID)).BodyJSON(body).Receive(&respJSON, &respJSON)
 	if err != nil {
 		return respJSON, resp, errors.Wrap(err, "dashboard update:")
 	}
@@ -129,3 +226,4 @@ func (d *Dashboard) Update() (map[string]interface{}, *http.Response, error) {
 
 	return respJSON, resp, nil
 }
+*/

@@ -4,16 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/dghubble/sling"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 const (
@@ -21,27 +20,26 @@ const (
 	credentialFile = "credentials.yaml"
 )
 
-type mbConfig struct {
+type Config struct {
 	database   *csconfig.DatabaseCfg
 	mbURL      string
 	mbUsername string
 	mbPassword string
 	setupToken string
 	mbFolder   string
-	UserID     int
 }
 
 type Metabase struct {
 	Dashboards []*Dashboard
-	Databases  []*Database
-	Config     *mbConfig
-	Client     *sling.Sling
-	User       *Creator
+	Database   *Database
+	Config     *Config
+	Client     *HTTP
+	User       *User
 }
 
 func NewMetabase(dbConfig *csconfig.DatabaseCfg, mbURL string, mbUsername string, mbPassword string, metabaseFolder string) (*Metabase, error) {
 	mb := &Metabase{
-		Config: &mbConfig{
+		Config: &Config{
 			database:   dbConfig,
 			mbURL:      mbURL,
 			mbUsername: mbUsername,
@@ -53,8 +51,12 @@ func NewMetabase(dbConfig *csconfig.DatabaseCfg, mbURL string, mbUsername string
 }
 
 func (m *Metabase) Init() error {
-	httpClient := &http.Client{Timeout: 20 * time.Second}
-	m.Client = sling.New().Client(httpClient).Base(m.Config.mbURL).Set("User-Agent", fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()))
+	var err error
+	m.Client, err = NewHTTP(m.Config)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -68,37 +70,121 @@ func (m *Metabase) Setup(archive string) error {
 	if err := m.WaitAlive(); err != nil {
 		return err
 	}
+	log.Debug("Metabase is alive")
 
-	// setup metabase
-	if _, _, err := m.FirstSetup(); err != nil {
+	setup, err := NewSetup(m.Config, m.Client)
+	if err != nil {
 		return err
 	}
+	// setup metabase
+	if err := setup.Run(); err != nil {
+		return err
+	}
+	log.Debug("Metabse setup successfully")
 
-	m.User, _, err = m.CurrentUser()
+	m.User, err = NewUser(m.Config, m.Client)
 	if err != nil {
 		return err
 	}
 
-	if _, _, err := m.AddDatabase(); err != nil {
+	log.Debugf("User: %+v", m.User)
+
+	m.Database, err = NewDatabase(m.Config, m.Client)
+	if err != nil {
+		return err
+	}
+	if err := m.Database.Add(); err != nil {
+		return err
+	}
+	time.Sleep(1 * time.Second)
+
+	log.Debugf("Database added successfully")
+
+	return nil
+
+}
+
+func (m *Metabase) LoadCredentials() error {
+	yamlFile, err := ioutil.ReadFile(filepath.Join(m.Config.mbFolder, credentialFile))
+	if err != nil {
 		return err
 	}
 
-	time.Sleep(2 * time.Second)
+	creds := make(map[string]string)
 
-	if err := m.Import(archive); err != nil {
+	var username string
+	var password string
+	var url string
+	var ok bool
+
+	err = yaml.Unmarshal(yamlFile, creds)
+	if err != nil {
+		return err
+	}
+
+	if username, ok = creds["username"]; !ok {
+		return fmt.Errorf("'username' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	}
+
+	if password, ok = creds["password"]; !ok {
+		return fmt.Errorf("'password' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	}
+
+	if url, ok = creds["url"]; !ok {
+		return fmt.Errorf("'url' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	}
+
+	m.Config.mbUsername = username
+	m.Config.mbPassword = password
+	m.Config.mbURL = url
+
+	if err := m.Init(); err != nil {
 		return err
 	}
 
 	return nil
+
 }
 
-func (m *Metabase) CurrentUser() (*Creator, *http.Response, error) {
-	user := Creator{}
-	resp, err := m.Client.New().Get(routes[currentUser]).Receive(&user, &user)
+func (m *Metabase) GetSession() (interface{}, error) {
+	success, errormsg, err := m.Client.Do("GET", routes[getSessionEndpoint], nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return &user, resp, nil
+
+	if err != errormsg {
+		return nil, fmt.Errorf("get session: %+v", errormsg)
+	}
+
+	return success, err
+}
+
+func (m *Metabase) WaitAlive() error {
+	var err error
+	var success interface{}
+	for {
+		if success, err = m.GetSession(); err == nil {
+			break
+		}
+		fmt.Printf(".")
+		time.Sleep(2 * time.Second)
+	}
+	fmt.Printf("\n")
+
+	body, ok := success.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("get session: bad response type: %+v", success)
+	}
+	if _, ok := body["setup-token"]; !ok {
+		return fmt.Errorf("no setup-token in response: %v", body)
+	}
+	token, ok := body["setup-token"].(string)
+	if !ok {
+		return fmt.Errorf("get session: setup token bad type: %+v", body["setup-token"])
+	}
+	m.Config.setupToken = token
+
+	return nil
 }
 
 func (m *Metabase) Import(archive string) error {
@@ -120,7 +206,6 @@ func (m *Metabase) Import(archive string) error {
 	if err != nil {
 		return err
 	}
-
 	for _, dashboard := range dashboards {
 		dashboard.Folder = filepath.Join(tmpFolder, "dashboards", dashboard.Name)
 		if _, err := os.Stat(dashboard.Folder); os.IsNotExist(err) {
@@ -128,12 +213,12 @@ func (m *Metabase) Import(archive string) error {
 			continue
 		}
 		dashboard.Client = m.Client
+
 		log.Infof("creating dashboard from '%s'", dashboard.Folder)
-		if _, _, err := dashboard.AddDashboard(); err != nil {
+		if err := dashboard.Add(); err != nil {
 			log.Errorf("fail to created dashboard '%s': %s", dashboard.Name, err)
 			continue
 		}
-		log.Infof("dashboard : %+v \n", dashboard)
 		if _, err := os.Stat(filepath.Join(dashboard.Folder, "dashboard.json")); os.IsNotExist(err) {
 			log.Errorf("can't find '%s', skip", filepath.Join(dashboard.Folder, "dashboardjson"))
 			continue
@@ -144,9 +229,13 @@ func (m *Metabase) Import(archive string) error {
 			return err
 		}
 
-		if err := json.Unmarshal(file, &dashboard.Data); err != nil {
+		DashboardModel := GetDashboardModel{}
+
+		if err := json.Unmarshal(file, &DashboardModel); err != nil {
 			return err
 		}
+		dashboard.Model = &DashboardModel
+		dashboard.Model.ID = dashboard.ID
 
 		// add cards from /etc/crowdsec/metabase/dashboards/<dashboard_name>/*.json
 		var files []string
@@ -162,12 +251,40 @@ func (m *Metabase) Import(archive string) error {
 		}
 		for _, file := range files {
 
-			card, err := NewCard(file, dashboard.ID, m.Client, m.User)
+			card, err := NewCardFromFile(file, dashboard.ID, m.Client, m.User)
 			if err != nil {
 				log.Errorf("unable to create card: %s", err)
 				continue
 			}
-			if _, _, err := card.AddCard(); err != nil {
+
+			if err := card.Dataset(); err != nil {
+				return errors.Wrap(err, "card import:")
+			}
+
+			if err := card.Add(); err != nil {
+				return errors.Wrap(err, "card import: ")
+			}
+
+			if err := card.Query(); err != nil {
+				return errors.Wrap(err, "card import: ")
+			}
+
+			if err := card.AddToDashboard(); err != nil {
+				return errors.Wrap(err, "card import:")
+			}
+
+			/*
+				TODO
+				if err := card.PositionDashboard(); err != nil {
+					return errors.Wrap(err, "card import:")
+				}
+				if err := dashboard.UpdateDashboard(); err != nil {
+					return errors.Wrap(err, "card import:")
+				}
+
+			*/
+
+			/*if _, _, err := card.AddCard(); err != nil {
 				log.Errorf("error while adding card '%s' : %s", file, err)
 				continue
 			}
@@ -178,45 +295,76 @@ func (m *Metabase) Import(archive string) error {
 				continue
 			}
 			dashboard.Cards = append(dashboard.Cards, card)
+			*/
 		}
 
-		log.Infof("updating dashboard '%s'", dashboard.Name)
-		if _, _, err := dashboard.Update(); err != nil {
-			return err
-		}
-		m.Dashboards = append(m.Dashboards, dashboard)
+	}
+	return nil
+}
+
+func (m *Metabase) GetDatabases() (interface{}, error) {
+	success, errorMsg, err := m.Client.Do("GET", routes[databaseEndpoint], nil)
+	if err != nil {
+		return nil, err
 	}
 
-	os.RemoveAll("/tmp/crowdsec_metabase/")
+	if errorMsg != nil {
+		return nil, fmt.Errorf("get database: %+v", errorMsg)
+	}
+
+	return success, nil
+}
+
+func (m *Metabase) Login() error {
+	var err error
+
+	if err := m.Init(); err != nil {
+		return err
+	}
+	log.Infof("zadadad")
+	if err := m.LoadCredentials(); err != nil {
+		return err
+	}
+	m.User, err = NewUser(m.Config, m.Client)
+	if err != nil {
+		return err
+	}
+	if _, err := m.User.Login(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (m *Metabase) Export(target string) error {
-	dashboards, _, err := m.GetDashboards()
+	success, err := m.GetDashboards()
 	if err != nil {
 		return err
+	}
+	dash, err := json.Marshal(success)
+	if err != nil {
+		return errors.Wrap(err, "export: ")
+	}
+	dashboards := []*Dashboard{}
+	if err := json.Unmarshal(dash, &dashboards); err != nil {
+		return errors.Wrap(err, "export: ")
 	}
 
 	tmpFolder := "./crowdsec_metabase"
 	log.Infof("creating temporary directory: %s", tmpFolder)
 
 	for _, dashboard := range dashboards {
-		dash := &Dashboard{
-			ID:     int(int(dashboard["id"].(float64))),
-			Name:   dashboard["name"].(string),
-			Client: m.Client,
-			Folder: filepath.Join(tmpFolder, "dashboards", dashboard["name"].(string)),
-		}
 
-		if err := os.MkdirAll(dash.Folder, os.ModePerm); err != nil {
+		dashboard.Folder = filepath.Join(tmpFolder, "dashboards", dashboard.Name)
+		dashboard.Client = m.Client
+		if err := os.MkdirAll(dashboard.Folder, os.ModePerm); err != nil {
 			return err
 		}
-		log.Infof("backup dashboard '%s'", dash.Name)
-		if err := dash.Backup(); err != nil {
+		log.Infof("backup dashboard '%s'", dashboard.Name)
+		if err := dashboard.Backup(); err != nil {
 			return err
 		}
 
-		m.Dashboards = append(m.Dashboards, dash)
+		m.Dashboards = append(m.Dashboards, dashboard)
 	}
 
 	dumpDashboards, err := json.Marshal(m.Dashboards)
@@ -229,7 +377,7 @@ func (m *Metabase) Export(target string) error {
 		return err
 	}
 
-	databases, _, err := m.GetDatabases()
+	/*databases, _, err := m.GetDatabases()
 	if err != nil {
 		return err
 	}
@@ -246,7 +394,7 @@ func (m *Metabase) Export(target string) error {
 		if err := d.Backup(database); err != nil {
 			return err
 		}
-	}
+	}*/
 
 	if !strings.HasSuffix(target, "/") {
 		target = target + "/"
@@ -264,24 +412,15 @@ func (m *Metabase) Export(target string) error {
 	return nil
 }
 
-func (m *Metabase) GetDashboards() ([]map[string]interface{}, *http.Response, error) {
-	var respJSON []map[string]interface{}
-
-	resp, err := m.Client.New().Get(routes[dashboardEndpoint]).Receive(&respJSON, &respJSON)
+func (m *Metabase) GetDashboards() (interface{}, error) {
+	success, errorMsg, err := m.Client.Do("GET", routes[dashboardEndpoint], nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return respJSON, resp, nil
-}
-
-func (m *Metabase) GetDatabases() ([]map[string]interface{}, *http.Response, error) {
-	var respJSON []map[string]interface{}
-
-	resp, err := m.Client.New().Get(routes[databaseEndpoint]).Receive(&respJSON, &respJSON)
-	if err != nil {
-		return nil, nil, err
+	if errorMsg != nil {
+		return nil, fmt.Errorf("get dashboards: %+v", errorMsg)
 	}
 
-	return respJSON, resp, nil
+	return success, nil
 }

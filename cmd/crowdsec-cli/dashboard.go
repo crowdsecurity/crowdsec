@@ -201,7 +201,7 @@ cscli dashboard export
 				log.Fatalf(err.Error())
 			}
 
-			if _, _, err := mb.Login(); err != nil {
+			if err := mb.Login(); err != nil {
 				log.Fatalf(err.Error())
 			}
 
@@ -228,7 +228,7 @@ cscli dashboard import --force
 				log.Fatalf(err.Error())
 			}
 
-			if _, _, err := mb.Login(); err != nil {
+			if err := mb.Login(); err != nil {
 				log.Fatalf(err.Error())
 			}
 
