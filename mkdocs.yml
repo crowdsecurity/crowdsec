@@ -31,7 +31,6 @@ plugins:
     - search
     - macros
     - monorepo
-    - swagger
 google_analytics:
     - UA-164365852-3
     - auto

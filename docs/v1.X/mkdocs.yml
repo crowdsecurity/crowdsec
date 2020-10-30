@@ -1,23 +1,24 @@
 site_name: Crowdsec/v1
 nav:
   - Home: index.md
+  - QuickStart: index.md
   - Getting Started:
     - Installation : getting_started/installation.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
-    - Concepts & Glossary : getting_started/concepts.md
-    - FAQ: getting_started/FAQ.md
-  - Guide:
-    - Overview: guide/crowdsec/overview.md
+    - Concepts & Architecture : getting_started/concepts.md
+    - Glossary: getting_started/glossary.md
+  - User guide:
+    # - Overview: guide/crowdsec/overview.md
     - Acquisition: guide/crowdsec/acquisition.md
-    - Parsers: guide/crowdsec/parsers.md
-    - Enrichers: guide/crowdsec/enrichers.md
-    - Scenarios: guide/crowdsec/scenarios.md
+    - Configurations management: guide/crowdsec/collections.md
+    # - Collections: guide/crowdsec/collections.md
+    # - Parsers: guide/crowdsec/parsers.md
+    # - Enrichers: guide/crowdsec/enrichers.md
+    # - Scenarios: guide/crowdsec/scenarios.md
     - Cscli: guide/cscli.md
-    - Simulation Mode: guide/crowdsec/simulation.md
-  - Cheat Sheets:
     - Ban Management: cheat_sheets/ban-mgmt.md
-    - Configuration Management: cheat_sheets/config-mgmt.md
-    - Debugging Parsers & Scenarios: cheat_sheets/debugging_configs.md
+    - Bouncers & machines management: cheat_sheets/ban-mgmt.md
+    - Crowdsec forensic mode: guide/cscli.md
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
@@ -25,22 +26,7 @@ nav:
         - Prometheus: observability/prometheus.md
         - Command line: observability/command_line.md
     - Dashboard: observability/dashboard.md
-  - References:
-    - Parsers format: references/parsers.md
-    - Scenarios format: references/scenarios.md
-    - Outputs format: references/output.md
-  - Write Configurations:
-    - Requirements: write_configurations/requirements.md
-    - Acquisition: write_configurations/acquisition.md
-    - Parsers: write_configurations/parsers.md
-    - Scenarios: write_configurations/scenarios.md
-    - Whitelists: write_configurations/whitelist.md
-    - Expressions: write_configurations/expressions.md
-  - Bouncers: bouncers/index.md
-  - Contributing: 
-    - General: contributing.md
-    - Writing Output Plugins: references/plugins_api.md
-  - Cscli commands:
+  - Cscli:
     - Alerts: cscli/cscli_alerts.md
     - Bouncers: cscli/cscli_bouncers.md
     - Collections: cscli/cscli_collections.md
@@ -54,4 +40,27 @@ nav:
     - Postoverflows: cscli/cscli_postoverflows.md
     - Scenarios: cscli/cscli_scenarios.md
     - Simulation: cscli/cscli_simulation.md
-  - About: about.md
+  - References:
+    - Parsers format: references/parsers.md
+    - Scenarios format: references/scenarios.md
+    - Outputs format: references/output.md
+    - Acquisition format: references/acquisition.md
+    - Profiles format: references/profiles.md
+    - Simulation configuration: references/profiles.md
+    - Expressions helpers: write_configurations/expressions.md
+  - Write Configurations:
+    - Requirements: write_configurations/requirements.md
+    - Acquisition: write_configurations/acquisition.md
+    - Parsers: write_configurations/parsers.md
+    - Scenarios: write_configurations/scenarios.md
+    - Whitelists: write_configurations/whitelist.md
+  - Admin Guide:
+    - Services Configuration: write_configurations/whitelist.md
+    - Architecture: write_configurations/whitelist.md
+  - Blockers: blockers/index.md
+  - Contributing: 
+    - General: contributing.md
+    - Reporting bugs: contributing.md
+    - Asking questions: contributing.md
+    - Publishing parsers & scenarios: contributing.md
+
