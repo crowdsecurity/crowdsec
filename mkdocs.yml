@@ -42,8 +42,6 @@ google_analytics:
     - auto
 
 extra:
-    version:
-        method: mike
     swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/wip_lapi/pkg/models/localapi_swagger.yaml"
     v0X:
       doc:
