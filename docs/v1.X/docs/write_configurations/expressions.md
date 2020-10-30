@@ -14,7 +14,7 @@ To learn more about [expr](https://github.com/antonmedv/expr), [check the github
 When {{v1X.crowdsec.name}} relies on `expr`, a context is provided to let the expression access relevant objects :
 
  - `evt.` is the representation of the current {{v1X.event.htmlname}} and is the most relevant object
- - in [profiles](/Crowdsec/v1/references/output/#profile), {{v1X.signal.htmlname}} is accessible via the `sig.` object
+ - in [profiles](/Crowdsec/v1/references/output/#profile), {{v1X.alert.htmlname}} is accessible via the `sig.` object
 
 If the `debug` is enabled (in the scenario or parser where expr is used), additional debug will be displayed regarding evaluated expressions.
 

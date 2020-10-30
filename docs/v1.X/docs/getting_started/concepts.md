@@ -7,8 +7,8 @@ You will find below an introduction to the concepts that are frequently used wit
 
  - It read logs (defined via {{v1X.ref.acquis}} config)
  - Those logs are parsed via {{v1X.ref.parser}} and eventually enriched
- - Those normalized logs are then matched against the {{v1X.ref.scenario}}s that the user deployed
- - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htlmname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
+ - Those normalized logs are then matched against the {{v1X.ref.scenario}} that the user deployed
+ - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htmlname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
     - The alert is here mostly for tracability, and will stay even after the decision expires
     - The decision on the other hand, is short lived, and tells *what* action should be taken against the offending ip/range/user...
  - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.Htmlname}} and stored in the database
@@ -147,10 +147,12 @@ Most of the time it will be an IP, but isn't restricted to it. A decision is com
   !!! note
       While most of the scenarios will focus on ips (the scope will be `Ip`), it can apply to more or less anything, such as a user session, a cookie, a username etc.
 
+Decisions can be viewed/searched with `cscli decisions`
+
 ## Alert
 
 An alert is created when a scenario is triggered, and can have one or more decisions associated.
-
+Unlike decisions, scenario do not expire. You can view/search them with `cscli alerts`
 
 ## Event
 

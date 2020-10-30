@@ -4,7 +4,7 @@ Scenarios lead to the instantiation, and sometime the overflow, of buckets.
 
 
 When a bucket "overflows", the scenario is considered as having been realized.
-This event leads to the creation of a new {{v1X.event.htmlname}} that describes the scenario that just happened (via a {{v1X.signal.htmlname}}).
+This event leads to the creation of a new {{v1X.event.htmlname}} that describes the scenario that just happened (via a {{v1X.alert.htmlname}}).
 
 
 ## Listing installed scenarios

@@ -44,7 +44,7 @@ outputs:
     store: false
 ```
 
-Here we can use {{v1X.filter.htmlname}} like in parsers and scenarios with the {{v1X.signal.htmlname}} object to choose which signal will be process by which plugin.
+Here we can use {{v1X.filter.htmlname}} like in parsers and scenarios with the {{v1X.alert.htmlname}} object to choose which signal will be process by which plugin.
 
 
 

@@ -100,7 +100,7 @@ We can see our "mock" scenario is working, let's see what happened :
 
 - The second event is processed
     - The `filter` is still true, and the event is poured
-    - As our bucket's capacity is `1`, pouring this second overflow leads to an {{v1X.overflow.htmlname}}
+    - As our bucket's capacity is `1`, pouring this second overflow leads to an {{v1X.alert.htmlname}}
     - Because we set a blackhole directive of `1 minute`, we remember to prevent this bucket to overflowing again for the next minute
 
 The overflow itself is produced and we get this message :
