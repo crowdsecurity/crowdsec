@@ -233,7 +233,7 @@ func ShowPrometheus(url string) {
 		acquisTable.Render()
 		log.Printf("Parser Metrics:")
 		parsersTable.Render()
-		log.Printf("APIL Metrics:")
+		log.Printf("Local Api Metrics:")
 		apilTable.Render()
 	} else if csConfig.Cscli.Output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {

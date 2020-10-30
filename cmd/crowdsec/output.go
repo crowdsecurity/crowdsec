@@ -53,7 +53,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	}
 	_, _, err = client.Alerts.Add(ctx, alertsToPush)
 	if err != nil {
-		return errors.Wrap(err, "failed sending alert to apil")
+		return errors.Wrap(err, "failed sending alert to LAPI")
 	}
 	return nil
 }

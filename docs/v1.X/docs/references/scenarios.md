@@ -3,7 +3,7 @@
 
 Scenarios are YAML files that allow to detect and qualify a specific behavior, usually an attack.
 
-Scenarios receive {{v1X.event.htmlname}}(s) and can produce {{v1X.overflow.htmlname}}(s) using the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) algorithm.
+Scenarios receive {{v1X.event.htmlname}}(s) and can produce {{v1X.alert.htmlname}}(s) using the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) algorithm.
 
 As an {{v1X.event.htmlname}} can be the representation of a log line, or an overflow, it  allows scenarios to process both logs or overflows to allow inference.
 

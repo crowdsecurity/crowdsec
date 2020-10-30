@@ -47,7 +47,7 @@ extra:
           name: Crowdsec Hub
           htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
           url: "https://hub.crowdsec.net/"
-          plugins_url: "https://hub.crowdsec.net/browse/#blockers"
+          plugins_url: "https://hub.crowdsec.net/browse/#bouncers"
           scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
           parsers_url: "https://hub.crowdsec.net/browse/#configurations"
           collections_url: "https://hub.crowdsec.net/browse/#collections"
@@ -82,12 +82,12 @@ extra:
           cli_dir: /etc/crowdsec/cscli/
           crowdsec_dir: "/etc/crowdsec/config/"
           acquis_path: "/etc/crowdsec/config/acquis.yaml"
-      blockers:
-          name: blockers
-          Name: Blockers
-          url: "https://hub.crowdsec.net/browse/#blockers"
-          htmlname: "[blockers](/Crowdsec/v0/blockers/)"
-          Htmlname: "[blockers](/Crowdsec/v0/blockers/)"
+      bouncers:
+          name: bouncers
+          Name: bouncers
+          url: "https://hub.crowdsec.net/browse/#bouncers"
+          htmlname: "[bouncers](/Crowdsec/v0/bouncers/)"
+          Htmlname: "[bouncers](/Crowdsec/v0/bouncers/)"
       plugins:
           name: backend plugins
           configpath: "/etc/crowdsec/plugins/backend/"
@@ -212,19 +212,24 @@ extra:
           name: Crowdsec Hub
           htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"
           url: "https://hub.crowdsec.net/"
-          plugins_url: "https://hub.crowdsec.net/browse/#blockers"
+          plugins_url: "https://hub.crowdsec.net/browse/#bouncers"
           scenarios_url: "https://hub.crowdsec.net/browse/#configurations"
           parsers_url: "https://hub.crowdsec.net/browse/#configurations"
           collections_url: "https://hub.crowdsec.net/browse/#collections"
       crowdsec:
-          name: Crowdsec
-          Name: Crowdsec
-          bin: crowdsec-agent
-          path: /usr/bin/crowdsec-agent
+          name: crowdsec-agent
+          Name: Crowdsec-agent
+          bin: crowdsec
+          path: /usr/local/bin/crowdsec
           url: https://github.com/crowdsecurity/crowdsec
           bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
           main_log: "/var/log/crowdsec.log"
           download_url: https://github.com/crowdsecurity/crowdsec/releases/latest
+      lapi:
+          name: local API (LAPI)
+          Name: Local API (LAPI)
+          htmlName: "[local api](/Crowdsec/v1/localAPI/)"
+          htmlname: "[local API](/Crowdsec/v1/localAPI/)"
       cli:
           name: cscli
           Name: Cscli
@@ -247,12 +252,12 @@ extra:
           cli_dir: /etc/crowdsec/cscli/
           crowdsec_dir: "/etc/crowdsec/config/"
           acquis_path: "/etc/crowdsec/config/acquis.yaml"
-      blockers:
-          name: blockers
-          Name: Blockers
-          url: "https://hub.crowdsec.net/browse/#blockers"
-          htmlname: "[blockers](/Crowdsec/v1/blockers/)"
-          Htmlname: "[blockers](/Crowdsec/v1/blockers/)"
+      bouncers:
+          name: bouncers
+          Name: Bouncers
+          url: "https://hub.crowdsec.net/browse/#bouncers"
+          htmlname: "[bouncers](/Crowdsec/v1/bouncers/)"
+          Htmlname: "[bouncers](/Crowdsec/v1/bouncers/)"
       plugins:
           name: backend plugins
           configpath: "/etc/crowdsec/plugins/backend/"
@@ -260,6 +265,7 @@ extra:
       metabase:
           name: metabase
           url: https://github.com/crowdsecurity/crowdsec
+          htmlName: "[dashboard](/Crowdsec/v1/observability/dashboard)"
       wizard:
           name: wizard
           url: "https://github.com/crowdsecurity/crowdsec"
@@ -320,21 +326,31 @@ extra:
           Name: TimeMachine
           htmlname: "[timeMachine](/Crowdsec/v1/getting_started/concepts/#timemachine)"
           Htmlname: "[TimeMachine](/Crowdsec/v1/getting_started/concepts/#timemachine)"
-      overflow:
-          name: overflow
-          Name: Overflow
-          htmlname: "[overflow](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
-          Htmlname: "[Overflow](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
+      alert:
+          name: alert
+          Name: Alert
+          htmlname: "[alert](/Crowdsec/v1/getting_started/concepts/#alert)"
+          Htmlname: "[Alert](/Crowdsec/v1/getting_started/concepts/#alert)"
+      decision:
+          name: decision
+          Name: Decision
+          htmlname: "[decision](/Crowdsec/v1/getting_started/concepts/#decision)"
+          Htmlname: "[Decision](/Crowdsec/v1/getting_started/concepts/#decision)"
+    #   overflow:
+    #       name: overflow
+    #       Name: Overflow
+    #       htmlname: "[overflow](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
+    #       Htmlname: "[Overflow](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
       whitelists:
           name: whitelists
           Name: Whitelists
           htmlname: "[whitelists](/Crowdsec/v1/write_configurations/whitelist/)"
           Htmlname: "[Whitelists](/Crowdsec/v1/write_configurations/whitelist/)"
-      signal:
-          name: signal
-          Name: Signal
-          htmlname: "[signal](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
-          Htmlname: "[Signal](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
+    #   signal:
+    #       name: signal
+    #       Name: Signal
+    #       htmlname: "[signal](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
+    #       Htmlname: "[Signal](/Crowdsec/v1/getting_started/concepts/#overflow-or-signaloccurence)"
   #scenario stuff
       stage:
           name: stage

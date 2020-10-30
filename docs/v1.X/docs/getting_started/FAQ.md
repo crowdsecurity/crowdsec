@@ -28,7 +28,7 @@ Your logs are not sent to our central API, only meta-data about blocked attacks 
 ## What is the performance impact ?
 
 As {{v1X.crowdsec.name}} only works on logs, it shouldn't impact your production.
-When it comes to {{v1X.blockers.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
+When it comes to {{v1X.bouncers.name}}, it should perform **one** request to the database when a **new** IP is discovered thus have minimal performance impact.
 
 ## How fast is it ?
 
@@ -42,7 +42,7 @@ Currently (0.3.0), {{v1X.crowdsec.name}} supports SQLite (default) and MySQL dat
 See [backend configuration](/Crowdsec/v1/references/output/#switching-backend-database) for relevant configuration.
 
 SQLite is the default backend as it's suitable for standalone/single-machine setups.
-On the other hand, MySQL is more suitable for distributed architectures where blockers across the applicative stack need to access a centralized ban database.
+On the other hand, MySQL is more suitable for distributed architectures where bouncers across the applicative stack need to access a centralized ban database.
 
 ## How to control granularity of actions ? (whitelists, learning etc.)
 
@@ -110,7 +110,7 @@ do:
 
 ### On Configurations (Parsers, scenarios)
 
-### On Blockers
+### On bouncers
 
 
 

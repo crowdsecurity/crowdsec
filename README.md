@@ -30,7 +30,7 @@ To achieve this, Crowdsec reads logs from different sources (files, streams ...)
 
 Crowdsec is a modular and plug-able framework, it ships a large variety of well known popular scenarios; users can choose what scenarios they want to be protected from as well as easily add new custom ones to better fit their environment.
 
-Detected malevolent peers can then be prevented from accessing your resources by deploying [blockers](https://hub.crowdsec.net/browse/#blockers) at various levels (applicative, system, infrastructural) of your stack.
+Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers](https://hub.crowdsec.net/browse/#bouncers) at various levels (applicative, system, infrastructural) of your stack.
 
 One of the advantages of Crowdsec when compared to other solutions is its crowded aspect : Meta information about detected attacks (source IP, time and triggered scenario) are sent to a central API and then shared amongst all users.
 
@@ -86,7 +86,7 @@ sudo ./wizard.sh -i
 ### Easy blocker deployment
 
 <details>
-  <summary>It's trivial to add blockers to enforce decisions of crowdsec (click to expand)</summary>
+  <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
   <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/blocker-installation.gif">
 </details>
 

@@ -9,7 +9,7 @@ You can tag some (or all) scenarios as being in **simulation mode**, which is es
     Simulation and [Whitelists](/Crowdsec/v1/write_configurations/whitelist/) are not to be mixed. [Whitelists](/Crowdsec/v1/write_configurations/whitelist/) allows you to purely discard an overflow or a log, while simulation will only "cancel" the action against a peer, while keeping track of events and overflows.
 
 
-When this happens, the scenarios are still triggered, but the action is prefixed with `simulation:`, which means that blockers won't take action against the peer(s) that triggered the scenario.
+When this happens, the scenarios are still triggered, but the action is prefixed with `simulation:`, which means that bouncers won't take action against the peer(s) that triggered the scenario.
 
 Simulation can be managed with [cscli simulation](/Crowdsec/v1/cscli/cscli_simulation/) command, and allows you to have settings such as _"all in simulation except scenarios X,Y,Z"_ or _"only scenarios X,Y,Z in simulation mode"_ :
 

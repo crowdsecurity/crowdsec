@@ -136,7 +136,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.API.Server.DbConfig = c.DbConfig
 		c.API.Server.LogDir = c.Common.LogDir
 		if err := c.API.Server.LoadProfiles(); err != nil {
-			return errors.Wrap(err, "while loading profiles for APIL")
+			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
