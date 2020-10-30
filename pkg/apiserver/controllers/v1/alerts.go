@@ -21,11 +21,18 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	var data models.AddAlertsRequest
 	for _, alertItem := range result {
 		var outputAlert models.Alert
+		var machineID string
 		startAt := alertItem.StartedAt.String()
 		StopAt := alertItem.StoppedAt.String()
+		if alertItem.Edges.Owner == nil {
+			machineID = "N/A"
+		} else {
+			machineID = alertItem.Edges.Owner.MachineId
+		}
+
 		outputAlert = models.Alert{
 			ID:              int64(alertItem.ID),
-			MachineID:       alertItem.Edges.Owner.MachineId,
+			MachineID:       machineID,
 			CreatedAt:       alertItem.CreatedAt.Format(time.RFC3339),
 			Scenario:        &alertItem.Scenario,
 			ScenarioVersion: &alertItem.ScenarioVersion,
