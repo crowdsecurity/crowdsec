@@ -261,6 +261,7 @@ extra:
       metabase:
           name: metabase
           url: https://github.com/crowdsecurity/crowdsec
+          htmlName: "[dashboard](/Crowdsec/v1/observability/dashboard)"
       wizard:
           name: wizard
           url: "https://github.com/crowdsecurity/crowdsec"

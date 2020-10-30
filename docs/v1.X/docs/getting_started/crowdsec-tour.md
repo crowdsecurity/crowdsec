@@ -49,7 +49,7 @@ INFO[0000] POSTOVERFLOWS:
 ```
 </details>
 
-## List existing bans
+## List active decisions
 
 
 ```bash
@@ -163,11 +163,9 @@ INFO[0000] Local Api Metrics:
 
 </details>
 
-## Monitor on-going activity (log files)
+## Deploy dashboard
 
-The {{v1X.crowdsec.main_log}} file will tell you what is going on and when an IP is blocked.
-
-Check [{{v1X.crowdsec.name}} monitoring](/Crowdsec/v1/observability/overview/) for more !
+A metabase {{v1X.metabase.htmlName}} can be deployed with `cscli dashboard` 
 
 
 
