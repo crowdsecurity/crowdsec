@@ -274,7 +274,15 @@ func CollecDepsCheck(v *Item) error {
 						v.UpToDate = false
 						return fmt.Errorf("outdated %s %s", ptrtype, p)
 					}
-					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
+					skip := false
+					for idx := range val.BelongsToCollections {
+						if val.BelongsToCollections[idx] == v.Name {
+							skip = true
+						}
+					}
+					if !skip {
+						val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
+					}
 					hubIdx[ptrtype][p] = val
 					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 				} else {

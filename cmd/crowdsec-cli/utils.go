@@ -453,11 +453,12 @@ func ShowScenarioMetric(itemName string, metrics map[string]int) {
 
 func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
 	skip := true
+
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed"})
+	table.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
 	for source, stats := range metrics {
-		if stats["read"] > 0 {
-			table.Append([]string{source, fmt.Sprintf("%d", stats["read"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
+		if stats["hits"] > 0 {
+			table.Append([]string{source, fmt.Sprintf("%d", stats["hits"]), fmt.Sprintf("%d", stats["parsed"]), fmt.Sprintf("%d", stats["unparsed"])})
 			skip = false
 		}
 	}
