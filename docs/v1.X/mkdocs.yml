@@ -1,13 +1,12 @@
 site_name: Crowdsec/v1
 nav:
   - Home: index.md
-  - Quick Start: quick_start.md
+  - The allmighty crowd: getting_started/crowd-power.md
   - Getting Started:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
     - Install Crowdsec : getting_started/installation.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
-    - The allmighty crowd: getting_started/crowd-power.md
   - User guide:
     - CLI: user_guide/cscli.md
     - Configurations management:
