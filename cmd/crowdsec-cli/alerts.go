@@ -18,6 +18,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var printMachine bool
+
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
 	var decMap = make(map[string]int)
@@ -34,23 +36,40 @@ func DecisionsFromAlert(alert *models.Alert) string {
 	return ret
 }
 
-func AlertsToTable(alerts *models.GetAlertsResponse) error {
+func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
+		if printMachine {
+			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at,machine\n")
+		} else {
+			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
+		}
 		for _, alertItem := range *alerts {
 			if alertItem.ScenarioVersion == nil {
 				alertItem.ScenarioVersion = new(string)
 				*alertItem.ScenarioVersion = "N/A"
 			}
-			fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
-				alertItem.ID,
-				*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-				fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
-				alertItem.Source.Cn,
-				alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-				DecisionsFromAlert(alertItem),
-				alertItem.CreatedAt)
+			if printMachine {
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
+					alertItem.ID,
+					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
+					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					alertItem.Source.Cn,
+					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
+					DecisionsFromAlert(alertItem),
+					alertItem.CreatedAt,
+					alertItem.MachineID)
+			} else {
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
+					alertItem.ID,
+					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
+					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					alertItem.Source.Cn,
+					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
+					DecisionsFromAlert(alertItem),
+					alertItem.CreatedAt)
+			}
+
 		}
 	} else if csConfig.Cscli.Output == "json" {
 		x, _ := json.MarshalIndent(alerts, "", " ")
@@ -58,7 +77,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at"})
+		if printMachine {
+			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at", "machine"})
+		} else {
+			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at"})
+		}
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -70,15 +93,29 @@ func AlertsToTable(alerts *models.GetAlertsResponse) error {
 				alertItem.ScenarioVersion = new(string)
 				*alertItem.ScenarioVersion = "N/A"
 			}
-			table.Append([]string{
-				strconv.Itoa(int(alertItem.ID)),
-				*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-				fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
-				alertItem.Source.Cn,
-				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-				DecisionsFromAlert(alertItem),
-				alertItem.CreatedAt,
-			})
+			if printMachine {
+				table.Append([]string{
+					strconv.Itoa(int(alertItem.ID)),
+					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
+					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					alertItem.Source.Cn,
+					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					DecisionsFromAlert(alertItem),
+					alertItem.CreatedAt,
+					alertItem.MachineID,
+				})
+			} else {
+				table.Append([]string{
+					strconv.Itoa(int(alertItem.ID)),
+					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
+					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					alertItem.Source.Cn,
+					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					DecisionsFromAlert(alertItem),
+					alertItem.CreatedAt,
+				})
+			}
+
 		}
 		table.Render() // Send output
 	}
@@ -192,7 +229,7 @@ cscli alerts list --type ban`,
 				log.Fatalf("Unable to list alerts : %v", err.Error())
 			}
 
-			err = AlertsToTable(alerts)
+			err = AlertsToTable(alerts, printMachine)
 			if err != nil {
 				log.Fatalf("unable to list alerts : %v", err.Error())
 			}
@@ -207,6 +244,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var ActiveDecision bool
