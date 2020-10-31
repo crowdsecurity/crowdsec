@@ -129,7 +129,7 @@ func ListItem(itemType string, args []string) {
 	}
 }
 
-func InstallItem(name string, obtype string) {
+func InstallItem(name string, obtype string, force bool) {
 	it := cwhub.GetItem(obtype, name)
 	if it == nil {
 		log.Fatalf("unable to retrive item : %s", name)
@@ -137,7 +137,9 @@ func InstallItem(name string, obtype string) {
 	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
-		return
+		if !force {
+			return
+		}
 	}
 	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, forceInstall)
 	if err != nil {
@@ -155,8 +157,6 @@ func InstallItem(name string, obtype string) {
 	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
 	return
-	log.Warningf("%s not found in hub index", name)
-	/*iterate of pkg index data*/
 }
 
 func RemoveMany(itemType string, name string) {
@@ -191,7 +191,7 @@ func RemoveMany(itemType string, name string) {
 	log.Infof("Disabled %d items", disabled)
 }
 
-func UpgradeConfig(itemType string, name string) {
+func UpgradeConfig(itemType string, name string, force bool) {
 	var err error
 	var updated int
 	var found bool
@@ -202,16 +202,22 @@ func UpgradeConfig(itemType string, name string) {
 		}
 		if !v.Installed {
 			log.Tracef("skip %s, not installed", v.Name)
-			continue
+			if !force {
+				continue
+			}
 		}
 		if !v.Downloaded {
 			log.Warningf("%s : not downloaded, please install.", v.Name)
-			continue
+			if !force {
+				continue
+			}
 		}
 		found = true
 		if v.UpToDate {
 			log.Infof("%s : up-to-date", v.Name)
-			continue
+			if !force {
+				continue
+			}
 		}
 		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, forceUpgrade)
 		if err != nil {

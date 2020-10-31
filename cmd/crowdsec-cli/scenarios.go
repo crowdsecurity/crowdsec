@@ -51,7 +51,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.SCENARIOS)
+				InstallItem(name, cwhub.SCENARIOS, forceInstall)
 			}
 		},
 	}
@@ -94,10 +94,10 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgradeAll {
-				UpgradeConfig(cwhub.SCENARIOS, "")
+				UpgradeConfig(cwhub.SCENARIOS, "", forceUpgrade)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.SCENARIOS, name)
+					UpgradeConfig(cwhub.SCENARIOS, name, forceUpgrade)
 				}
 			}
 		},

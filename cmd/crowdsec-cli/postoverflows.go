@@ -50,7 +50,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS_OVFLW)
+				InstallItem(name, cwhub.PARSERS_OVFLW, forceInstall)
 			}
 		},
 	}
@@ -93,10 +93,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgradeAll {
-				UpgradeConfig(cwhub.PARSERS_OVFLW, "")
+				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceUpgrade)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS_OVFLW, name)
+					UpgradeConfig(cwhub.PARSERS_OVFLW, name, forceUpgrade)
 				}
 			}
 		},

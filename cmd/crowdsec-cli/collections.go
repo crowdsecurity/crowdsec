@@ -47,7 +47,7 @@ func NewCollectionsCmd() *cobra.Command {
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.COLLECTIONS)
+				InstallItem(name, cwhub.COLLECTIONS, forceInstall)
 			}
 		},
 	}
@@ -90,10 +90,10 @@ func NewCollectionsCmd() *cobra.Command {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgradeAll {
-				UpgradeConfig(cwhub.COLLECTIONS, "")
+				UpgradeConfig(cwhub.COLLECTIONS, "", forceUpgrade)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.COLLECTIONS, name)
+					UpgradeConfig(cwhub.COLLECTIONS, name, forceUpgrade)
 				}
 			}
 		},
