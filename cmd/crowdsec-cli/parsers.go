@@ -51,7 +51,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Fatalf("failed to get Hub index : %v", err)
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS)
+				InstallItem(name, cwhub.PARSERS, forceInstall)
 			}
 		},
 	}
@@ -94,10 +94,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			if upgradeAll {
-				UpgradeConfig(cwhub.PARSERS, "")
+				UpgradeConfig(cwhub.PARSERS, "", forceUpgrade)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS, name)
+					UpgradeConfig(cwhub.PARSERS, name, forceUpgrade)
 				}
 			}
 		},
