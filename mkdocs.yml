@@ -147,13 +147,13 @@ extra:
       parsers:
           name: parsers
           Name: Parsers
-          htmlname: "[parsers](/Crowdsec/v0/getting_started/concepts/#parser)"
-          Htmlname: "[Parsers](/Crowdsec/v0/getting_started/concepts/#parser)"
+          htmlname: "[parsers](/Crowdsec/v0/getting_started/concepts/#parsers)"
+          Htmlname: "[Parsers](/Crowdsec/v0/getting_started/concepts/#parsers)"
       scenarios:
           name: scenarios
           Name: Scenarios
-          htmlname: "[scenarios](/Crowdsec/v0/getting_started/concepts/#scenario)"
-          Htmlname: "[Scenarios](/Crowdsec/v0/getting_started/concepts/#scenario)"
+          htmlname: "[scenarios](/Crowdsec/v0/getting_started/concepts/#scenarios)"
+          Htmlname: "[Scenarios](/Crowdsec/v0/getting_started/concepts/#scenarios)"
       collections:
           name: collections
           Name: Collections
@@ -318,8 +318,8 @@ extra:
       parsers:
           name: parsers
           Name: Parsers
-          htmlname: "[parsers](/Crowdsec/v1/getting_started/concepts/#parser)"
-          Htmlname: "[Parsers](/Crowdsec/v1/getting_started/concepts/#parser)"
+          htmlname: "[parsers](/Crowdsec/v1/getting_started/concepts/#parsers)"
+          Htmlname: "[Parsers](/Crowdsec/v1/getting_started/concepts/#parsers)"
       scenarios:
           name: scenarios
           Name: Scenarios
