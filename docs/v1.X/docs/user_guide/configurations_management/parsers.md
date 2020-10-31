@@ -32,7 +32,7 @@ cscli parsers list
 
 
 <details>
-  <summary>{{v1X.cli.name}} list example</summary>
+  <summary>cscli parsers list example</summary>
 
 ```bash
 $ cscli parsers list
@@ -62,20 +62,19 @@ $ {{v1X.cli.bin}} parsers upgrade crowdsecurity/sshd-logs
 
 Parsers upgrade allows you to upgrade an existing parser to the latest version.
 
-<!--TBD: refaire le output apres avoir fixe la commande en --force -->
 <details>
-  <summary>cscli collections list example</summary>
+  <summary>cscli parsers upgrade example</summary>
 
 ```bash
-$ cscli collections list   
--------------------------------------------------------------------------------------------------------------
- NAME                               📦 STATUS    VERSION  LOCAL PATH                                         
--------------------------------------------------------------------------------------------------------------
- crowdsecurity/nginx                ✔️  enabled  0.1      /etc/crowdsec/collections/nginx.yaml               
- crowdsecurity/base-http-scenarios  ✔️  enabled  0.1      /etc/crowdsec/collections/base-http-scenarios.yaml 
- crowdsecurity/sshd                 ✔️  enabled  0.1      /etc/crowdsec/collections/sshd.yaml                
- crowdsecurity/linux                ✔️  enabled  0.2      /etc/crowdsec/collections/linux.yaml               
--------------------------------------------------------------------------------------------------------------
+$ cscli collections upgrade crowdsecurity/sshd  
+INFO[0000] crowdsecurity/sshd : up-to-date              
+WARN[0000] crowdsecurity/sshd-logs : overwrite          
+WARN[0000] crowdsecurity/ssh-bf : overwrite             
+WARN[0000] crowdsecurity/sshd : overwrite               
+INFO[0000] 📦 crowdsecurity/sshd : updated               
+INFO[0000] Upgraded 1 items                             
+INFO[0000] Run 'systemctl reload crowdsec' for the new configuration to be effective.
+
 ```
 
 </details>

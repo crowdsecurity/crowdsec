@@ -177,7 +177,7 @@ tail -f /var/log/crowdsec.log
 ```
 
  - `/var/log/crowdsec.log` is the main log, it shows ongoing decisions and acquisition/parsing/scenario errors.
-<!--TBD: is it the only log file to monitor -->
+ - `/var/log/crowdsec_api.log` is the access log of the local api (LAPI)
 
 ## Installing collections
 

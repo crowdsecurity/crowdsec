@@ -1,4 +1,3 @@
-<!-- TBD: Tous les liens ici doivent renvoyer vers reference(s) : on *introduit* juste les concepts -->
 
 # Global overview
 
