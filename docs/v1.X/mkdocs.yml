@@ -1,7 +1,7 @@
 site_name: Crowdsec/v1
 nav:
   - Home: index.md
-  - The allmighty crowd: getting_started/crowd-power.md
+  - Crowd Power: getting_started/crowd-power.md
   - Getting Started:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
