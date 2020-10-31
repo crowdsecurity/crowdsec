@@ -47,8 +47,8 @@ const (
 
 //Move in leakybuckets
 type ScopeType struct {
-	Scope         string `yaml:"scope_type"`
-	Filter        string `yaml:"filter"`
+	Scope         string `yaml:"type"`
+	Filter        string `yaml:"expression"`
 	RunTimeFilter *vm.Program
 }
 
