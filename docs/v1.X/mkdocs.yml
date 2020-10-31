@@ -16,6 +16,7 @@ nav:
       - Parsers: user_guide/configurations_management/parsers.md
       - Enrichers: user_guide/configurations_management/enrichers.md
       - Scenarios: user_guide/configurations_management/scenarios.md
+      - Managing local/custom configuration: user_guide/configurations_management/local-configurations.md
     - Decisions Management: user_guide/decision_management.md
     - Bouncers & machines management: user_guide/bouncer_machine_management.md
     - Crowdsec forensic mode: user_guide/forensic_mode.md

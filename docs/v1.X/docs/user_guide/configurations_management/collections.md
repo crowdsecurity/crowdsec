@@ -59,7 +59,7 @@ $ cscli collections list
 
 </details>
 
-## Listing installed collections
+## Upgrading installed collections
 
 ```bash
 $ {{v1X.cli.bin}} hub update
@@ -68,6 +68,8 @@ $ {{v1X.cli.bin}} collections upgrade crowdsecurity/sshd
 
 Collection upgrade allows you to upgrade an existing collection (and its items) to the latest version.
 
+
+<!--TBD: refaire le output apres avoir fixe la commande en --force -->
 <details>
   <summary>cscli collections list example</summary>
 
