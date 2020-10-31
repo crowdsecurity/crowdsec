@@ -67,22 +67,26 @@ extra:
           download_url: https://github.com/crowdsecurity/crowdsec/releases/latest
       cli:
           name: cscli
-          Name: Cscli
-          bin: cscli
-          path: /usr/bin/cscli
+          Name: cscli
           main_doc: /Crowdsec/v0/cscli/cscli/
           url: "https://github.com/crowdsecurity/crowdsec"
           bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
-          api_doc: /Crowdsec/v0/cscli/cscli_api/
-          ban_doc: /Crowdsec/v0/cscli/cscli_ban/
-          metrics_doc: /Crowdsec/v0/cscli/cscli_metrics/
-          remove_doc: /Crowdsec/v0/cscli/cscli_remove/
-          install_doc: /Crowdsec/v0/cscli/cscli_install/
-          list_doc: /Crowdsec/v0/cscli/cscli_list/
-          update_doc: /Crowdsec/v0/cscli/cscli_update/
-          upgrade_doc: /Crowdsec/v0/cscli/cscli_upgrade/
-          backup_doc: /Crowdsec/v0/cscli/cscli_backup/
-          simulation_doc: /Crowdsec/v0/cscli/cscli_simulation/
+        #   alerts_doc: /Crowdsec/v1/cscli/cscli_alerts/
+        #   decisions_doc: /Crowdsec/v1/cscli/cscli_decisions/
+        #   collections_doc: /Crowdsec/v1/cscli/cscli_collections/
+        #   parsers_doc: /Crowdsec/v1/cscli/cscli_parsers/
+        #   scenarios_doc: /Crowdsec/v1/cscli/cscli_scenarios/
+        
+        #   api_doc: /Crowdsec/v0/cscli/cscli_api/
+        #   ban_doc: /Crowdsec/v0/cscli/cscli_ban/
+        #   metrics_doc: /Crowdsec/v0/cscli/cscli_metrics/
+        #   remove_doc: /Crowdsec/v0/cscli/cscli_remove/
+        #   install_doc: /Crowdsec/v0/cscli/cscli_install/
+        #   list_doc: /Crowdsec/v0/cscli/cscli_list/
+        #   update_doc: /Crowdsec/v0/cscli/cscli_update/
+        #   upgrade_doc: /Crowdsec/v0/cscli/cscli_upgrade/
+        #   backup_doc: /Crowdsec/v0/cscli/cscli_backup/
+        #   simulation_doc: /Crowdsec/v0/cscli/cscli_simulation/
       config:
           cli_dir: /etc/crowdsec/cscli/
           crowdsec_dir: "/etc/crowdsec/config/"

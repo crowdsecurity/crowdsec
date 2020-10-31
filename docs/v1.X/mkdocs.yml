@@ -3,14 +3,15 @@ nav:
   - Home: index.md
   - Quick Start: quick_start.md
   - Getting Started:
-    - Glossary: getting_started/glossary.md
+#    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
     - Install Crowdsec : getting_started/installation.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
+    - The allmighty crowd: getting_started/crowd-power.md
   - User guide:
     - CLI: user_guide/cscli.md
-    - Acquisition: user_guide/acquisition.md
     - Configurations management:
+      - Acquisition: user_guide/configurations_management/acquisition.md
       - Collections: user_guide/configurations_management/collections.md
       - Parsers: user_guide/configurations_management/parsers.md
       - Enrichers: user_guide/configurations_management/enrichers.md
@@ -43,7 +44,10 @@ nav:
   - Bouncers: bouncers/index.md
   - References:
     - Parsers format: references/parsers.md
+    - PostOverlows format: references/postoverflows.md
+    - Enrichers format: references/enrichers.md
     - Scenarios format: references/scenarios.md
+    - Collections: references/collections.md
     - Outputs format: references/output.md
     - Acquisition format: references/acquisition.md
     - Profiles format: references/profiles.md
