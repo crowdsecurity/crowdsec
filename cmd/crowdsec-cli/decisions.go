@@ -31,7 +31,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
 		alertItem := (*alerts)[aIdx]
 		for _, decisionItem := range alertItem.Decisions {
-			spamKey := fmt.Sprintf("%s:%s:%s", *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
+			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
 				alertItem.Decisions = nil
 			} else {
