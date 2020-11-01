@@ -4,8 +4,8 @@
 {{v1X.crowdsec.Name}} runtime revolves around a few simple concepts :
 
  - It read logs (defined via {{v1X.ref.acquis}} config)
- - Those logs are parsed via {{v1X.ref.parser}} and eventually enriched
- - Those normalized logs are then matched against the {{v1X.ref.scenario}} that the user deployed
+ - Those logs are parsed via {{v1X.ref.parsers}} and eventually enriched
+ - Those normalized logs are then matched against the {{v1X.ref.scenarios}} that the user deployed
  - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htmlname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
     - The alert is here mostly for tracability, and will stay even after the decision expires
     - The decision on the other hand, is short lived, and tells *what* action should be taken against the offending ip/range/user...
@@ -146,7 +146,16 @@ An example could be slack/mattermost enrichment plugin that requires human confi
 
 ## Events
 
+[[References](/Crowdsec/v1/references/events)]
+
+An `Event` is the runtime representation of an item being processed by crowdsec : It be a Log line being parsed, or an Overflow being reprocessed.
+
+The `Event` object is modified by parses, scenarios, and directly via user [statics expressions](/Crowdsec/v1/references/parsers/#statics) (for example).
+
+
 ## Alerts
+
+
 
 ## Decisions
 

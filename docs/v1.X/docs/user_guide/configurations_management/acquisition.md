@@ -29,7 +29,7 @@ labels:
 
 ### At startup
 
-At startup, you will see the monitored files in `{{v1X.crowdsec.main_log}}` :
+At startup, you will see the monitored files in `/var/log/crowdsec.log` :
 
 ```
 ...

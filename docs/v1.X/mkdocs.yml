@@ -48,6 +48,7 @@ nav:
     - PostOverlows format: references/postoverflows.md
     - Enrichers format: references/enrichers.md
     - Scenarios format: references/scenarios.md
+    - Event format: references/events.md
     - Collections: references/collections.md
     - Database & Backend: references/database-backend.md
     - Acquisition format: references/acquisition.md

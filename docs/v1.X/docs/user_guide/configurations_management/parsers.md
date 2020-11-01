@@ -1,3 +1,5 @@
+
+
 ## Installing parsers
 
 ```bash
@@ -79,7 +81,7 @@ INFO[0000] Run 'systemctl reload crowdsec' for the new configuration to be effec
 
 </details>
 
-## Monitoring parser
+## Monitoring parsers
 
 ```bash
 $ cscli collections inspect crowdsecurity/sshd

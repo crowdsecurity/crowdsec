@@ -1,6 +1,6 @@
 Logs concern everything that happens to {{v1X.crowdsec.Name}} itself (startup, configuration, events like IP ban or an alert, shutdown, and so on).
 
-By default, logs are written to `{{v1X.crowdsec.main_log}}`, in text format. 
+By default, logs are written to `/var/log/crowdsec.log`, in text format. 
 
 <details>
   <summary>Logs example</summary>

@@ -14,7 +14,7 @@ To achieve this, {{v1X.crowdsec.Name}} reads logs from different sources (files,
 
 {{v1X.crowdsec.Name}} is a modular and plug-able framework, it ships a large variety of [well known popular scenarios](https://hub.crowdsec.net/browse/#configurations); users can choose what scenarios they want to be protected from as well as easily adding new custom ones to better fit their environment.
 
-Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers]({{v1X.hub.plugins_url}}) at various levels (applicative, system, infrastructural) of your stack.
+Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers]({{v1X.hub.bouncers_url}}) at various levels (applicative, system, infrastructural) of your stack.
 
 One of the advantages of Crowdsec when compared to other solutions is its crowd-sourced aspect : Meta information about detected attacks (source IP, time and triggered scenario) are sent to a central API and then shared amongst all users.
 
@@ -39,7 +39,7 @@ Thanks to this, besides detecting and stopping attacks in real time based on you
 
  - [{{v1X.crowdsec.Name}}]({{v1X.crowdsec.url}}) is the lightweight service that processes logs and keeps track of attacks.
  - [{{v1X.cli.name}}]({{v1X.cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find, or update scenarios and parsers
- - [{{v1X.bouncers.name}}]({{v1X.hub.plugins_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
+ - [{{v1X.bouncers.name}}]({{v1X.hub.bouncers_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
 
 ## About this documentation
 
