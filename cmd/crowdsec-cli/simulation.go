@@ -119,8 +119,9 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 	cmdSimulation.Flags().SortFlags = false
 	cmdSimulation.PersistentFlags().SortFlags = false
 
+	var forceGlobalSimulation bool
 	var cmdSimulationEnable = &cobra.Command{
-		Use:     "enable [scenario]",
+		Use:     "enable [scenario] [-global]",
 		Short:   "Enable the simulation, globally or on specified scenarios",
 		Example: `cscli simulation enable`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -165,13 +166,16 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 				if err := dumpSimulationFile(); err != nil {
 					log.Fatalf("simulation enable: %s", err.Error())
 				}
-			} else {
+			} else if forceGlobalSimulation {
 				if err := enableGlobalSimulation(); err != nil {
 					log.Fatalf("unable to enable global simulation mode : %s", err.Error())
 				}
+			} else {
+				cmd.Help()
 			}
 		},
 	}
+	cmdSimulationEnable.Flags().BoolVarP(&forceGlobalSimulation, "global", "g", false, "Enable global simulation (reverse mode)")
 	cmdSimulation.AddCommand(cmdSimulationEnable)
 
 	var cmdSimulationDisable = &cobra.Command{
@@ -205,13 +209,16 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 				if err := dumpSimulationFile(); err != nil {
 					log.Fatalf("simulation disable: %s", err.Error())
 				}
-			} else {
+			} else if forceGlobalSimulation {
 				if err := disableGlobalSimulation(); err != nil {
 					log.Fatalf("unable to disable global simulation mode : %s", err.Error())
 				}
+			} else {
+				cmd.Help()
 			}
 		},
 	}
+	cmdSimulationDisable.Flags().BoolVarP(&forceGlobalSimulation, "global", "g", false, "Disable global simulation (reverse mode)")
 	cmdSimulation.AddCommand(cmdSimulationDisable)
 
 	var cmdSimulationStatus = &cobra.Command{
