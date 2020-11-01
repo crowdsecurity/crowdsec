@@ -19,3 +19,8 @@ Enrichers can be installed as any other parsers with the following command:
 ```
 
 Take a tour at the {{v1X.hub.htmlname}} to find them !
+
+## Reference documentation
+
+[Link to enrichers reference documentation](/Crowdsec/v1/references/enrichers/)
+

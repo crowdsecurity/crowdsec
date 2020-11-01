@@ -130,3 +130,8 @@ Current metrics :
 ```
 
 <details>
+
+## Reference documentation
+
+[Link to parsers reference documentation](/Crowdsec/v1/references/parsers/)
+

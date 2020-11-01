@@ -130,3 +130,6 @@ Current metrics :
 
 <details>
 
+## Reference documentation
+
+[Link to scenarios reference documentation](/Crowdsec/v1/references/scenarios/)

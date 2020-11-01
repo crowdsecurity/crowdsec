@@ -158,7 +158,7 @@ To list/add/delete machines
 		Use:   "add",
 		Short: "add machine to the database.",
 		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
-		Example: `cscli machines add -m MyTestMachine
+		Example: `cscli machines add -m MyTestMachine -a
 cscli machines add --machine TestMachine --password password
 `,
 		Args: cobra.ExactArgs(0),

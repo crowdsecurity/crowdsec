@@ -135,3 +135,7 @@ Current metrics :
 ```
 
 <details>
+
+## Reference documentation
+
+[Link to collections reference documentation](/Crowdsec/v1/references/collections/)
