@@ -5,30 +5,21 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type User struct {
-	Email                string      `json:"email"`
-	LdapAuth             bool        `json:"ldap_auth"`
-	FirstName            string      `json:"first_name"`
-	Locale               interface{} `json:"locale"`
-	LastLogin            string      `json:"last_login"`
-	IsActive             bool        `json:"is_active"`
-	IsQbnewb             bool        `json:"is_qbnewb"`
-	UpdatedAt            string      `json:"updated_at"`
-	GroupIds             []int       `json:"group_ids"`
-	IsSuperuser          bool        `json:"is_superuser"`
-	LoginAttributes      interface{} `json:"login_attributes"`
-	ID                   int         `json:"id"`
-	LastName             string      `json:"last_name"`
-	DateJoined           string      `json:"date_joined"`
-	PersonalCollectionID int         `json:"personal_collection_id"`
-	CommonName           string      `json:"common_name"`
-	GoogleAuth           bool        `json:"google_auth"`
-	Client               *HTTP       `json:"-"`
-	Username             string      `json:"-"`
-	Password             string      `json:"-"`
+	Email       string `json:"email"`
+	FirstName   string `json:"first_name"`
+	LastLogin   string `json:"last_login"`
+	IsQbnewb    bool   `json:"is_qbnewb"`
+	IsSuperuser bool   `json:"is_superuser"`
+	ID          int    `json:"id"`
+	LastName    string `json:"last_name"`
+	DateJoined  string `json:"date_joined"`
+	CommonName  string `json:"common_name"`
+	Client      *HTTP  `json:"-"`
+	Username    string `json:"-"`
+	Password    string `json:"-"`
 }
 
 func NewUser(config *Config, client *HTTP) (*User, error) {
@@ -69,7 +60,6 @@ func (u *User) Login() (interface{}, error) {
 		"username": u.Username,
 		"password": u.Password,
 	}
-	log.Infof("Sending : %+v", body)
 	success, errormsg, err := u.Client.Do("POST", routes[loginEndpoint], body)
 	if err != nil {
 		return nil, err

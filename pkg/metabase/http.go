@@ -1,12 +1,14 @@
 package metabase
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/dghubble/sling"
+	log "github.com/sirupsen/logrus"
 )
 
 type HTTP struct {
@@ -27,13 +29,22 @@ func (h *HTTP) Do(method string, route string, body interface{}) (interface{}, i
 	var Error interface{}
 	var resp *http.Response
 	var err error
+	var data []byte
+	if body != nil {
+		data, _ = json.Marshal(body)
+	}
 
 	switch method {
 	case "POST":
+		log.Debugf("POST /%s", route)
+		log.Debugf("%s", string(data))
 		resp, err = h.CTX.New().Post(route).BodyJSON(body).Receive(&Success, &Error)
 	case "GET":
+		log.Debugf("GET /%s", route)
 		resp, err = h.CTX.New().Get(route).Receive(&Success, &Error)
 	case "PUT":
+		log.Debugf("PUT /%s", route)
+		log.Debugf("%s", string(data))
 		resp, err = h.CTX.New().Put(route).BodyJSON(body).Receive(&Success, &Error)
 	case "DELETE":
 	default:

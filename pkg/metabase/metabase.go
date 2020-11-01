@@ -155,7 +155,6 @@ func (m *Metabase) GetSession() (interface{}, error) {
 	if err != errormsg {
 		return nil, fmt.Errorf("get session: %+v", errormsg)
 	}
-
 	return success, err
 }
 
@@ -180,7 +179,7 @@ func (m *Metabase) WaitAlive() error {
 	}
 	token, ok := body["setup-token"].(string)
 	if !ok {
-		return fmt.Errorf("get session: setup token bad type: %+v", body["setup-token"])
+		return fmt.Errorf("get session: setup token bad type: %+v", body)
 	}
 	m.Config.setupToken = token
 
@@ -206,6 +205,7 @@ func (m *Metabase) Import(archive string) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("dashboards : %+v", dashboards)
 	for _, dashboard := range dashboards {
 		dashboard.Folder = filepath.Join(tmpFolder, "dashboards", dashboard.Name)
 		if _, err := os.Stat(dashboard.Folder); os.IsNotExist(err) {
@@ -234,9 +234,14 @@ func (m *Metabase) Import(archive string) error {
 		if err := json.Unmarshal(file, &DashboardModel); err != nil {
 			return err
 		}
+
 		dashboard.Model = &DashboardModel
 		dashboard.Model.ID = dashboard.ID
-
+		dashboard.SendModel = &UpdateDashboardModel{}
+		get, _ := json.Marshal(dashboard.Model)
+		if err := json.Unmarshal([]byte(get), dashboard.SendModel); err != nil {
+			return err
+		}
 		// add cards from /etc/crowdsec/metabase/dashboards/<dashboard_name>/*.json
 		var files []string
 
@@ -249,8 +254,8 @@ func (m *Metabase) Import(archive string) error {
 		if err != nil {
 			return err
 		}
+		orderedCards := make([]*OrderedCard, 0)
 		for _, file := range files {
-
 			card, err := NewCardFromFile(file, dashboard.ID, m.Client, m.User)
 			if err != nil {
 				log.Errorf("unable to create card: %s", err)
@@ -269,10 +274,13 @@ func (m *Metabase) Import(archive string) error {
 				return errors.Wrap(err, "card import: ")
 			}
 
-			if err := card.AddToDashboard(); err != nil {
-				return errors.Wrap(err, "card import:")
-			}
-
+			dashboard.Cards = append(dashboard.Cards, card)
+			card.GetModel.Creator = m.User
+			card.OrderedCard.CardID = card.GetModel.ID
+			card.OrderedCard.Card.CanWrite = true
+			dashboard.FrontInfo = append(dashboard.FrontInfo, card.AddFrontInfoModel)
+			orderedCards = append(orderedCards, card.OrderedCard)
+			log.Infof("Ordered : %+v", orderedCards)
 			/*
 				TODO
 				if err := card.PositionDashboard(); err != nil {
@@ -296,6 +304,20 @@ func (m *Metabase) Import(archive string) error {
 			}
 			dashboard.Cards = append(dashboard.Cards, card)
 			*/
+		}
+		dashboard.SendModel.OrderedCards = orderedCards
+		for _, card := range dashboard.Cards {
+			if err := card.AddToDashboard(); err != nil {
+				return errors.Wrap(err, "card import:")
+			}
+		}
+		if err := dashboard.UpdateFrontInfo(); err != nil {
+			return errors.Wrap(err, "update front:")
+		}
+
+		log.Infof("Updating dashboard!!")
+		if err := dashboard.UpdateDashboard(m.User); err != nil {
+			return errors.Wrap(err, "update dashboard")
 		}
 
 	}
@@ -321,7 +343,6 @@ func (m *Metabase) Login() error {
 	if err := m.Init(); err != nil {
 		return err
 	}
-	log.Infof("zadadad")
 	if err := m.LoadCredentials(); err != nil {
 		return err
 	}
