@@ -1,5 +1,5 @@
 APACHEERRORTIME %{DAY} %{MONTH} %{MONTHDAY} %{TIME} %{YEAR}
-APACHEERRORPREFIX \[%{APACHEERRORTIME:timestamp}\] \[%{NOTSPACE:apacheseverity}\] (\[pid %{INT}:tid %{INT}\] )?\[client %{IPORHOST:sourcehost}(:%{INT:source_port})?\] (\[client %{IPORHOST}\])?
+APACHEERRORPREFIX \[%{APACHEERRORTIME:timestamp}\] \[%{NOTSPACE:apacheseverity}\] (\[pid %{INT:tid}\] )?\[client %{IPORHOST:sourcehost}(:%{INT:source_port})?\]( \[client %{IPORHOST}\])?
 GENERICAPACHEERROR %{APACHEERRORPREFIX} %{GREEDYDATA:message}
 MODSECPREFIX %{APACHEERRORPREFIX} ModSecurity: %{NOTSPACE:modsecseverity}\. %{GREEDYDATA:modsecmessage}
 MODSECRULEFILE \[file %{QUOTEDSTRING:rulefile}\]
