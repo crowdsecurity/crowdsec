@@ -24,8 +24,12 @@ func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
 	var decMap = make(map[string]int)
 	for _, decision := range alert.Decisions {
-		v := decMap[*decision.Type]
-		decMap[*decision.Type] = v + 1
+		k := *decision.Type
+		if *decision.Simulated {
+			k = fmt.Sprintf("(simul)%s", k)
+		}
+		v := decMap[k]
+		decMap[k] = v + 1
 	}
 	for k, v := range decMap {
 		if len(ret) > 0 {
@@ -84,7 +88,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 
 		if len(*alerts) == 0 {
-			fmt.Println("No active decisions")
+			fmt.Println("No active alerts")
 			return nil
 		}
 

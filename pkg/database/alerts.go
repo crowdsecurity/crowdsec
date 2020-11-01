@@ -173,8 +173,6 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.SimulatedEQ(false))
 		}
 		delete(filter, "simulated")
-	} else {
-		alerts = alerts.Where(alert.SimulatedEQ(false))
 	}
 
 	for param, value := range filter {
