@@ -176,7 +176,9 @@ func (c *GlobalConfig) LoadSimulation() error {
 			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
 		}
 	}
-
+	if simCfg.Simulation == nil {
+		simCfg.Simulation = new(bool)
+	}
 	if c.Crowdsec != nil {
 		c.Crowdsec.SimulationConfig = &simCfg
 	}
