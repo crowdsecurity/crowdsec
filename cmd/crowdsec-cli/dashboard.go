@@ -5,20 +5,18 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/dghubble/sling"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -29,29 +27,26 @@ import (
 )
 
 var (
-	metabasePassword   string
 	metabaseURL        string
 	metabaseImportPath string
 	metabaseExportPath string
 
-	tmpMetabaseSetupArchive = "/home/kkado/tmp/crowdsec_metabase_2020-10-28.tar"
+	metabaseFolderPath  = ""
+	metabaseArchivePath = "/etc/crowdsec/metabase/crowdsec_metabase.tar"
+	metabaseArchive     = "crowdsec_metabase.tar"
+
+	metabaseConfigPath string
+	metabaseConfigFile = "config.yaml"
 
 	metabaseUsername = "crowdsec@crowdsec.net"
-	metabaseFolder   = "/etc/crowdsec/metabase/"
-	metabaseImage    = "metabase/metabase"
-	metabaseDbURI    = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
-	metabaseDbPath   = "/var/lib/crowdsec/data"
-	/**/
+	metabasePassword string
+
+	metabaseImage         = "metabase/metabase"
+	metabaseDbURI         = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase.db.zip"
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
 	metabaseContainerID   = "/crowdsec-metabase"
-	/*informations needed to setup a random password on user's behalf*/
-	metabaseURI          = "http://localhost:3000/api/"
-	metabaseURISession   = "session"
-	metabaseURIRescan    = "database/2/rescan_values"
-	metabaseURIUpdatepwd = "user/1/password"
-	defaultPassword      = "c6cmetabase"
-	defaultEmail         = "metabase@crowdsec.net"
+	metabaseURI           = "http://localhost:3000/api/"
 )
 
 func NewDashboardCmd() *cobra.Command {
@@ -61,6 +56,15 @@ func NewDashboardCmd() *cobra.Command {
 		Short: "Manage your metabase dashboard container",
 		Long:  `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.`,
 		Args:  cobra.ExactArgs(1),
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if metabaseFolderPath == "" {
+				metabaseFolderPath = filepath.Join(csConfig.ConfigPaths.ConfigDir, "metabase/")
+			}
+			metabaseConfigPath = filepath.Join(metabaseFolderPath, metabaseConfigFile)
+			if err := os.MkdirAll(csConfig.ConfigPaths.DataDir, os.ModePerm); err != nil {
+				log.Fatalf(err.Error())
+			}
+		},
 		Example: `
 cscli dashboard setup
 cscli dashboard start
@@ -69,37 +73,20 @@ cscli dashboard remove
 `,
 	}
 
-	cmdDashboard.Flags().StringVar(&metabaseFolder, "metabase-folder", metabaseFolder, "metabase folder to store dashboards/datasources ..")
+	cmdDashboard.Flags().StringVar(&metabaseFolderPath, "metabase-folder", metabaseFolderPath, "metabase folder to store dashboards/datasources ..")
 
 	var force bool
 	var cmdDashSetup = &cobra.Command{
 		Use:   "setup",
 		Short: "Setup a metabase container.",
-		Long:  `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
+		Long:  `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container (will use configured database in crowdsec local api configuration).`,
 		Args:  cobra.ExactArgs(0),
 		Example: `
 cscli dashboard setup
-cscli dashboard setup --listen 0.0.0.0
-cscli dashboard setup -l 0.0.0.0 -p 443
+cscli dashboard setup --listen 0.0.0.0 -u <username> -p <password>
+cscli dashboard setup -l 0.0.0.0 -p 443 -u <username> -p <password>
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			/*if err := downloadMetabaseDB(force); err != nil {
-				log.Fatalf("Failed to download metabase DB : %s", err)
-			}
-			log.Infof("Downloaded metabase DB")
-			if err := createMetabase(); err != nil {
-				log.Fatalf("Failed to start metabase container : %s", err)
-			}
-			log.Infof("Started metabase")
-			newpassword := generatePassword(passwordLength)
-			if err := resetMetabasePassword(newpassword); err != nil {
-				log.Fatalf("Failed to reset password : %s", err)
-			}
-			log.Infof("Setup finished")
-			log.Infof("url : http://%s:%s", metabaseListenAddress, metabaseListenPort)
-			log.Infof("username: %s", defaultEmail)
-			log.Infof("password: %s", newpassword)
-			*/
 
 			if err := createMetabase(); err != nil {
 				log.Fatalf("failed to start metabase container : %s", err)
@@ -109,24 +96,38 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 				metabasePassword = generatePassword(16)
 			}
 
-			metabaseURL = fmt.Sprintf("http://%s:%s/", metabaseListenAddress, metabaseListenPort)
-
-			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
-			if err != nil {
+			mbURL := fmt.Sprintf("http://%s:%s/", metabaseListenAddress, metabaseListenPort)
+			mb := &metabase.Metabase{
+				Config: &metabase.Config{
+					Database:      csConfig.DbConfig,
+					ListenAddress: metabaseListenAddress,
+					ListenPort:    metabaseListenPort,
+					URL:           mbURL,
+					Username:      metabaseUsername,
+					Password:      metabasePassword,
+					Folder:        metabaseFolderPath,
+				},
+			}
+			if err := mb.Setup(metabaseArchivePath); err != nil {
 				log.Fatalf(err.Error())
 			}
 
-			if err := mb.Setup(tmpMetabaseSetupArchive); err != nil {
+			if err := mb.DumpConfig(metabaseConfigPath); err != nil {
 				log.Fatalf(err.Error())
 			}
+
+			log.Printf("URL: '%s'", mb.Config.URL)
+			log.Printf("Username: '%s'", mb.Config.Username)
+			log.Printf("Password: '%s'", mb.Config.Password)
+
 		},
 	}
 	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
-	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", metabaseDbPath, "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseUsername, "username", "u", metabaseUsername, "metabase username")
 	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
+	cmdDashSetup.Flags().StringVarP(&metabaseArchivePath, "archive", "a", metabaseArchivePath, "metabase archive path")
 
 	cmdDashboard.AddCommand(cmdDashSetup)
 
@@ -136,12 +137,17 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 		Long:  `Stats the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			/*if err := startMetabase(); err != nil {
-				log.Fatalf("Failed to start metabase container : %s", err)
+			if err := startMetabase(); err != nil {
+				log.Fatalf("failed to start metabase container : %s", err)
 			}
-			log.Infof("Started metabase")
-			log.Infof("url : http://%s:%s", metabaseListenAddress, metabaseListenPort)
-			*/
+			mb, err := metabase.NewMetabase(metabaseConfigPath)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Infof("Metabase started")
+			log.Printf("URL: '%s'", mb.Config.URL)
+			log.Printf("Username: '%s'", mb.Config.Username)
+			log.Printf("Password: '%s'", mb.Config.Password)
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashStart)
@@ -152,9 +158,9 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 		Long:  `Stops the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			/*if err := stopMetabase(); err != nil {
+			if err := stopMetabase(); err != nil {
 				log.Fatalf("Failed to stop metabase container : %s", err)
-			}*/
+			}
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashStop)
@@ -169,7 +175,7 @@ cscli dashboard remove
 cscli dashboard remove --force
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			/*if force {
+			if force {
 				if err := stopMetabase(); err != nil {
 					log.Fatalf("Failed to stop metabase container : %s", err)
 				}
@@ -181,7 +187,7 @@ cscli dashboard remove --force
 				if err := removeMetabaseImage(); err != nil {
 					log.Fatalf("Failed to stop metabase container : %s", err)
 				}
-			}*/
+			}
 		},
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
@@ -196,7 +202,7 @@ cscli dashboard remove --force
 cscli dashboard export
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
+			mb, err := metabase.NewMetabase(metabaseConfigPath)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -223,7 +229,7 @@ cscli dashboard import
 cscli dashboard import --force
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(csConfig.DbConfig, metabaseURL, metabaseUsername, metabasePassword, metabaseFolder)
+			mb, err := metabase.NewMetabase(metabaseConfigPath)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -245,7 +251,7 @@ cscli dashboard import --force
 
 func downloadMetabaseDB(force bool) error {
 
-	metabaseDBSubpath := path.Join(metabaseDbPath, "metabase.db")
+	metabaseDBSubpath := path.Join(csConfig.ConfigPaths.DataDir, "metabase.db")
 
 	_, err := os.Stat(metabaseDBSubpath)
 	if err == nil && !force {
@@ -292,7 +298,7 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 		if strings.Contains(f.Name, "..") {
 			return fmt.Errorf("invalid path '%s' in archive", f.Name)
 		}
-		tfname := fmt.Sprintf("%s/%s", metabaseDbPath, f.Name)
+		tfname := fmt.Sprintf("%s/%s", csConfig.ConfigPaths.DataDir, f.Name)
 		log.Tracef("%s -> %d", f.Name, f.UncompressedSize64)
 		if f.UncompressedSize64 == 0 {
 			continue
@@ -314,91 +320,6 @@ func extractMetabaseDB(buf *bytes.Reader) error {
 		log.Infof("written %d bytes to %s", written, tfname)
 		rc.Close()
 	}
-	return nil
-}
-
-func resetMetabasePassword(newpassword string) error {
-
-	httpctx := sling.New().Base(metabaseURI).Set("User-Agent", fmt.Sprintf("Crowdsec/%s", cwversion.VersionStr()))
-
-	log.Printf("Waiting for metabase API to be up (can take up to a minute)")
-	for {
-		sessionreq, err := httpctx.New().Post(metabaseURISession).BodyJSON(map[string]string{"username": defaultEmail, "password": defaultPassword}).Request()
-		if err != nil {
-			return fmt.Errorf("api signin: HTTP request creation failed: %s", err)
-		}
-		httpClient := http.Client{Timeout: 20 * time.Second}
-		resp, err := httpClient.Do(sessionreq)
-		if err != nil {
-			fmt.Printf(".")
-			log.Debugf("While waiting for metabase to be up : %s", err)
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		defer resp.Body.Close()
-		fmt.Printf("\n")
-		log.Printf("Metabase API is up")
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("metabase session unable to read API response body: '%s'", err)
-		}
-		if resp.StatusCode != 200 {
-			return fmt.Errorf("metabase session http error (%d): %s", resp.StatusCode, string(body))
-		}
-		log.Printf("Successfully authenticated")
-		jsonResp := make(map[string]string)
-		err = json.Unmarshal(body, &jsonResp)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshal metabase api response '%s': %s", string(body), err.Error())
-		}
-		log.Tracef("unmarshaled response : %v", jsonResp)
-		httpctx = httpctx.Set("Cookie", fmt.Sprintf("metabase.SESSION=%s", jsonResp["id"]))
-		break
-	}
-
-	/*rescan values*/
-	sessionreq, err := httpctx.New().Post(metabaseURIRescan).Request()
-	if err != nil {
-		return fmt.Errorf("metabase rescan_values http error : %s", err)
-	}
-	httpClient := http.Client{Timeout: 20 * time.Second}
-	resp, err := httpClient.Do(sessionreq)
-	if err != nil {
-		return fmt.Errorf("while trying to do rescan api call to metabase : %s", err)
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("while reading rescan api call response : %s", err)
-	}
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("got '%s' (http:%d) while trying to rescan metabase", string(body), resp.StatusCode)
-	}
-	/*update password*/
-	sessionreq, err = httpctx.New().Put(metabaseURIUpdatepwd).BodyJSON(map[string]string{
-		"id":           "1",
-		"password":     newpassword,
-		"old_password": defaultPassword}).Request()
-	if err != nil {
-		return fmt.Errorf("metabase password change http error : %s", err)
-	}
-	httpClient = http.Client{Timeout: 20 * time.Second}
-	resp, err = httpClient.Do(sessionreq)
-	if err != nil {
-		return fmt.Errorf("while trying to reset metabase password : %s", err)
-	}
-	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("while reading from %s: '%s'", metabaseURIUpdatepwd, err)
-	}
-	if resp.StatusCode != 200 {
-		log.Printf("Got %s (http:%d) while trying to reset password.", string(body), resp.StatusCode)
-		log.Printf("Password has probably already been changed.")
-		log.Printf("Use the dashboard install command to reset existing setup.")
-		return fmt.Errorf("got http error %d on %s : %s", resp.StatusCode, metabaseURIUpdatepwd, string(body))
-	}
-	log.Printf("Changed password !")
 	return nil
 }
 
@@ -482,7 +403,6 @@ func createMetabase() error {
 		return fmt.Errorf("failed to read imagepull reader: %s", err)
 	}
 	fmt.Print("\n")
-
 	hostConfig := &container.HostConfig{
 		PortBindings: nat.PortMap{
 			"3000/tcp": []nat.PortBinding{
@@ -495,7 +415,7 @@ func createMetabase() error {
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
-				Source: metabaseDbPath,
+				Source: csConfig.ConfigPaths.DataDir,
 				Target: "/metabase-data",
 			},
 		},
@@ -503,7 +423,6 @@ func createMetabase() error {
 	dockerConfig := &container.Config{
 		Image: metabaseImage,
 		Tty:   true,
-		Env:   []string{"MB_DB_FILE=/metabase-data/metabase.db"},
 	}
 
 	log.Printf("Creating container")

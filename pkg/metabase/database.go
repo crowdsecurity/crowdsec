@@ -49,10 +49,10 @@ type ScheduleModel struct {
 
 func NewDatabase(config *Config, client *HTTP) (*Database, error) {
 	var database *DatabaseModel
-	switch config.database.Type {
+	switch config.Database.Type {
 	case "sqlite":
 		database = &DatabaseModel{
-			Engine: config.database.Type,
+			Engine: config.Database.Type,
 			Name:   "crowdsec",
 			Details: &DetailsModel{
 				DB:                        "/metabase-data/crowdsec.db",
@@ -62,14 +62,14 @@ func NewDatabase(config *Config, client *HTTP) (*Database, error) {
 		}
 	case "mysql":
 		database = &DatabaseModel{
-			Engine: config.database.Type,
-			Name:   config.database.DbName,
+			Engine: config.Database.Type,
+			Name:   config.Database.DbName,
 			Details: &DetailsModel{
-				Host:          config.database.Host,
-				Port:          config.database.Port,
-				DBName:        config.database.DbName,
-				User:          config.database.User,
-				Password:      config.database.Password,
+				Host:          config.Database.Host,
+				Port:          config.Database.Port,
+				DBName:        config.Database.DbName,
+				User:          config.Database.User,
+				Password:      config.Database.Password,
 				SSL:           false,
 				TunnelEnabled: false,
 			},
@@ -86,12 +86,12 @@ func NewDatabase(config *Config, client *HTTP) (*Database, error) {
 			},
 		}
 	default:
-		return nil, fmt.Errorf("unsupported database type '%s'", config.database.Type)
+		return nil, fmt.Errorf("unsupported database type '%s'", config.Database.Type)
 	}
 
 	return &Database{
 		Model:  database,
-		Config: config.database,
+		Config: config.Database,
 		Client: client,
 	}, nil
 

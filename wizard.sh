@@ -311,7 +311,7 @@ install_crowdsec() {
     install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
     ## end tmp
 
-    cp -r "./config/metabase/*" "${CROWDSEC_METABASE_FOLDER}" || exit
+    cp -r "./config/metabase/crowdsec_metabase.tar" "${CROWDSEC_METABASE_FOLDER}" || exit
     install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit

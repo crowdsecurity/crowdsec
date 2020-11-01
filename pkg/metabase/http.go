@@ -19,7 +19,7 @@ type HTTP struct {
 func NewHTTP(config *Config) (*HTTP, error) {
 	httpClient := &http.Client{Timeout: 20 * time.Second}
 	return &HTTP{
-		CTX:    sling.New().Client(httpClient).Base(config.mbURL).Set("User-Agent", fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())),
+		CTX:    sling.New().Client(httpClient).Base(config.URL).Set("User-Agent", fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())),
 		Client: httpClient,
 	}, nil
 }

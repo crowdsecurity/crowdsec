@@ -24,8 +24,8 @@ type User struct {
 
 func NewUser(config *Config, client *HTTP) (*User, error) {
 	user := &User{
-		Username: config.mbUsername,
-		Password: config.mbPassword,
+		Username: config.Username,
+		Password: config.Password,
 		Client:   client,
 	}
 

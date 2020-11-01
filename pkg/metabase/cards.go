@@ -165,18 +165,6 @@ func NewCardFromFile(file string, dashboardID int, client *HTTP, creator *User) 
 	if err != nil {
 		return nil, errors.Wrapf(err, "new card from file (%s):", file)
 	}
-	// to export/import (without result metadata)
-	/*type AddCardModel struct {
-		ID                    interface{}   `json:"id"`
-		Name                  string        `json:"name"`
-		DatasetQuery          *DatasetQuery `json:"dataset_query"`
-		Display               string        `json:"display"`
-		Description           interface{}   `json:"description"`
-		VisualizationSettings interface{}   `json:"visualization_settings"`
-		CollectionID          interface{}   `json:"collection_id"`
-		ResultMetadata        interface{}   `json:"result_metadata"`
-		MetadataChecksum      string        `json:"metadata_checksum"`
-	}*/
 
 	ret.AddModel = &AddCardModel{
 		Name:                  card.Card.Name,
@@ -209,11 +197,11 @@ func NewCardFromFile(file string, dashboardID int, client *HTTP, creator *User) 
 func (c *Card) Dataset() error {
 	success, errormsg, err := c.Client.Do("POST", routes[datasetEndpoint], c.DatasetQuery)
 	if errormsg != nil {
-		return fmt.Errorf("dataset: %+v", errormsg)
+		return fmt.Errorf("dataset: http err:%+v", errormsg)
 	}
 
 	if err != nil {
-		return fmt.Errorf("dataset err: %s", err)
+		return fmt.Errorf("dataset: err: %s", err)
 	}
 
 	response := struct {
@@ -229,7 +217,7 @@ func (c *Card) Dataset() error {
 
 	marshal, err = json.Marshal(response.Data)
 	if err != nil {
-		return errors.Wrap(err, "dataset:")
+		return errors.Wrap(err, "dataset")
 	}
 
 	resp := struct {
@@ -237,13 +225,13 @@ func (c *Card) Dataset() error {
 	}{}
 
 	if err := json.Unmarshal(marshal, &resp); err != nil {
-		return errors.Wrap(err, "dataset:")
+		return errors.Wrap(err, "dataset")
 	}
 
 	resultMeta := make([]interface{}, 0)
 
 	if _, ok := resp.Result["columns"]; !ok {
-		return fmt.Errorf("dataset: no columns: %+v", resp.Result)
+		return fmt.Errorf("dataset: no columns key found: %+v", string(marshal))
 	}
 
 	columns, ok := resp.Result["columns"].([]interface{})
@@ -350,12 +338,12 @@ func (c *Card) Query() error {
 	c.AddModel.ResultMetadata = resultMeta
 
 	if _, ok := resp.Result["checksum"]; !ok {
-		return fmt.Errorf("dataset: no checksum : %+v", resp.Result)
+		return fmt.Errorf("dataset: no checksum in result_metadata: %+v", resp.Result)
 	}
 
 	c.AddModel.MetadataChecksum, ok = resp.Result["checksum"].(string)
 	if !ok {
-		return fmt.Errorf("dataset: checksum bad type : %+v", resp.Result["checksum"])
+		return fmt.Errorf("dataset: checksum is not good type: %+v", resp.Result["checksum"])
 	}
 	return nil
 }

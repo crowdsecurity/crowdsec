@@ -16,17 +16,18 @@ import (
 )
 
 const (
-	dashboardFile  = "dashboards.json"
-	credentialFile = "credentials.yaml"
+	dashboardFile = "dashboards.json"
 )
 
 type Config struct {
-	database   *csconfig.DatabaseCfg
-	mbURL      string
-	mbUsername string
-	mbPassword string
-	setupToken string
-	mbFolder   string
+	Database      *csconfig.DatabaseCfg
+	URL           string `json:"url"`
+	ListenPort    string `json:"listen_port"`
+	ListenAddress string `json:"listen_address"`
+	Username      string `json:"username"`
+	Password      string `json:"password"`
+	setupToken    string
+	Folder        string
 }
 
 type Metabase struct {
@@ -37,17 +38,12 @@ type Metabase struct {
 	User       *User
 }
 
-func NewMetabase(dbConfig *csconfig.DatabaseCfg, mbURL string, mbUsername string, mbPassword string, metabaseFolder string) (*Metabase, error) {
-	mb := &Metabase{
-		Config: &Config{
-			database:   dbConfig,
-			mbURL:      mbURL,
-			mbUsername: mbUsername,
-			mbPassword: mbPassword,
-			mbFolder:   metabaseFolder,
-		},
+func NewMetabase(configPath string) (*Metabase, error) {
+	m := &Metabase{}
+	if err := m.LoadConfig(configPath); err != nil {
+		return m, err
 	}
-	return mb, nil
+	return m, nil
 }
 
 func (m *Metabase) Init() error {
@@ -100,43 +96,38 @@ func (m *Metabase) Setup(archive string) error {
 
 	log.Debugf("Database added successfully")
 
+	if err := m.Import(archive); err != nil {
+		return err
+	}
+
 	return nil
 
 }
 
-func (m *Metabase) LoadCredentials() error {
-	yamlFile, err := ioutil.ReadFile(filepath.Join(m.Config.mbFolder, credentialFile))
+func (m *Metabase) LoadConfig(configPath string) error {
+	yamlFile, err := ioutil.ReadFile(configPath)
 	if err != nil {
 		return err
 	}
 
-	creds := make(map[string]string)
+	config := &Config{}
 
-	var username string
-	var password string
-	var url string
-	var ok bool
-
-	err = yaml.Unmarshal(yamlFile, creds)
+	err = yaml.Unmarshal(yamlFile, config)
 	if err != nil {
 		return err
 	}
 
-	if username, ok = creds["username"]; !ok {
-		return fmt.Errorf("'username' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	if config.Username == "" {
+		return fmt.Errorf("'username' not found in credentials file '%s'", configPath)
 	}
 
-	if password, ok = creds["password"]; !ok {
-		return fmt.Errorf("'password' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	if config.Password == "" {
+		return fmt.Errorf("'password' not found in credentials file '%s'", configPath)
 	}
 
-	if url, ok = creds["url"]; !ok {
-		return fmt.Errorf("'url' not found in credentials file '%s'", filepath.Join(m.Config.mbFolder, credentialFile))
+	if config.URL == "" {
+		return fmt.Errorf("'url' not found in credentials file '%s'", configPath)
 	}
-
-	m.Config.mbUsername = username
-	m.Config.mbPassword = password
-	m.Config.mbURL = url
 
 	if err := m.Init(); err != nil {
 		return err
@@ -205,7 +196,6 @@ func (m *Metabase) Import(archive string) error {
 	if err != nil {
 		return err
 	}
-	log.Infof("dashboards : %+v", dashboards)
 	for _, dashboard := range dashboards {
 		dashboard.Folder = filepath.Join(tmpFolder, "dashboards", dashboard.Name)
 		if _, err := os.Stat(dashboard.Folder); os.IsNotExist(err) {
@@ -256,6 +246,7 @@ func (m *Metabase) Import(archive string) error {
 		}
 		orderedCards := make([]*OrderedCard, 0)
 		for _, file := range files {
+			log.Debugf("creating card from '%s'", file)
 			card, err := NewCardFromFile(file, dashboard.ID, m.Client, m.User)
 			if err != nil {
 				log.Errorf("unable to create card: %s", err)
@@ -280,30 +271,6 @@ func (m *Metabase) Import(archive string) error {
 			card.OrderedCard.Card.CanWrite = true
 			dashboard.FrontInfo = append(dashboard.FrontInfo, card.AddFrontInfoModel)
 			orderedCards = append(orderedCards, card.OrderedCard)
-			log.Infof("Ordered : %+v", orderedCards)
-			/*
-				TODO
-				if err := card.PositionDashboard(); err != nil {
-					return errors.Wrap(err, "card import:")
-				}
-				if err := dashboard.UpdateDashboard(); err != nil {
-					return errors.Wrap(err, "card import:")
-				}
-
-			*/
-
-			/*if _, _, err := card.AddCard(); err != nil {
-				log.Errorf("error while adding card '%s' : %s", file, err)
-				continue
-			}
-			log.Infof("Adding card from '%s'", file)
-
-			if _, _, err := card.AddCardToDashboard(); err != nil {
-				log.Errorf("error while adding card to dashboard '%s' : %s", file, err)
-				continue
-			}
-			dashboard.Cards = append(dashboard.Cards, card)
-			*/
 		}
 		dashboard.SendModel.OrderedCards = orderedCards
 		for _, card := range dashboard.Cards {
@@ -315,7 +282,6 @@ func (m *Metabase) Import(archive string) error {
 			return errors.Wrap(err, "update front:")
 		}
 
-		log.Infof("Updating dashboard!!")
 		if err := dashboard.UpdateDashboard(m.User); err != nil {
 			return errors.Wrap(err, "update dashboard")
 		}
@@ -341,9 +307,6 @@ func (m *Metabase) Login() error {
 	var err error
 
 	if err := m.Init(); err != nil {
-		return err
-	}
-	if err := m.LoadCredentials(); err != nil {
 		return err
 	}
 	m.User, err = NewUser(m.Config, m.Client)
@@ -397,26 +360,6 @@ func (m *Metabase) Export(target string) error {
 	if err != nil {
 		return err
 	}
-
-	/*databases, _, err := m.GetDatabases()
-	if err != nil {
-		return err
-	}
-
-	if err := os.MkdirAll(filepath.Join(tmpFolder, "databases"), os.ModePerm); err != nil {
-		return err
-	}
-	for _, database := range databases {
-		dbFilename := fmt.Sprintf("%s_%d.json", database["name"].(string), int(database["id"].(float64)))
-		d := &Database{
-			Path: filepath.Join(tmpFolder, "databases", dbFilename),
-		}
-
-		if err := d.Backup(database); err != nil {
-			return err
-		}
-	}*/
-
 	if !strings.HasSuffix(target, "/") {
 		target = target + "/"
 	}
@@ -444,4 +387,12 @@ func (m *Metabase) GetDashboards() (interface{}, error) {
 	}
 
 	return success, nil
+}
+
+func (m *Metabase) DumpConfig(path string) error {
+	data, err := json.Marshal(m.Config)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(path, data, os.ModePerm)
 }
