@@ -112,7 +112,7 @@ func NewDecisionsCmd() *cobra.Command {
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("parsing api url ('%s'):", csConfig.API.Client.Credentials.URL, err)
+				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Client.Credentials.URL, err)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
