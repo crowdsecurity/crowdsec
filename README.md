@@ -8,6 +8,7 @@
 
 </br>
 </br>
+</br>
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/tests/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build/badge.svg">
