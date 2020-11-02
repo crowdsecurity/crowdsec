@@ -84,7 +84,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
 			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
+				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0600)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
