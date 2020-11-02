@@ -67,11 +67,6 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	apiclient.BaseURL, err = url.Parse(apiConfig.URL)
-	if err != nil {
-		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
-	}
-	apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
 	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 	if err != nil {
 		return fmt.Errorf("Failed to load the list of local scenarios : %s", err)
@@ -84,6 +79,11 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		Scenarios: scenarios,
 	}
 	Client := apiclient.NewClient(t.Client())
+	Client.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
+	Client.BaseURL, err = url.Parse(apiConfig.URL)
+	if err != nil {
+		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
+	}
 
 LOOP:
 	for {
