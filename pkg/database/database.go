@@ -38,7 +38,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
 		}
-	case "postgres":
+	case "postgres", "postgresql":
 		client, err = ent.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s", config.Host, config.Port, config.User, config.DbName, config.Password))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to postgres: %v", err)
