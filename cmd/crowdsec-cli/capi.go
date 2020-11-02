@@ -40,13 +40,13 @@ func NewCapiCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			apiclient.BaseURL, err = url.Parse(APIBaseURL)
+
+			Client = apiclient.NewClient(nil)
+			Client.BaseURL, err = url.Parse(APIBaseURL)
 			if err != nil {
 				log.Fatalf("unable to parse api url %s : %s", APIBaseURL, err)
 			}
-			apiclient.URLPrefix = APIURLPrefix
-
-			Client = apiclient.NewClient(nil)
+			Client.URLPrefix = APIURLPrefix
 
 			id, err := generateID()
 			if err != nil {
