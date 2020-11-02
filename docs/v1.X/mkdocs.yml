@@ -50,7 +50,7 @@ nav:
     - Scenarios format: references/scenarios.md
     - Event format: references/events.md
     - Collections: references/collections.md
-    - Database & Backend: references/database-backend.md
+    - Database: references/database.md
     - Acquisition format: references/acquisition.md
     - Profiles format: references/profiles.md
     - Simulation configuration: references/simulation.md
