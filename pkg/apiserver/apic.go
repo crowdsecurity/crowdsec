@@ -42,6 +42,20 @@ type apic struct {
 	credentials     *csconfig.ApiCredentialsCfg
 }
 
+func AlertToSignal(alert *models.Alert) *apiclient.Signal {
+	return &apiclient.Signal{
+		Message:         *alert.Message,
+		Scenario:        *alert.Scenario,
+		ScenarioHash:    *alert.ScenarioHash,
+		ScenarioVersion: *alert.ScenarioVersion,
+		Source:          alert.Source,
+		StartAt:         *alert.StartAt,
+		StopAt:          *alert.StopAt,
+		CreatedAt:       alert.CreatedAt,
+		MachineID:       alert.MachineID,
+	}
+}
+
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*apic, error) {
 	var err error
 	var ret *apic
@@ -87,7 +101,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 func (a *apic) Push() error {
 	defer types.CatchPanic("apil/pushToAPIC")
 
-	var cache []*models.Alert
+	var cache []*apiclient.Signal
 	ticker := time.NewTicker(a.pushInterval)
 	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
 
@@ -103,7 +117,7 @@ func (a *apic) Push() error {
 			// flush
 			a.mu.Lock()
 			cacheCopy := cache
-			cache = make([]*models.Alert, 0)
+			cache = make([]*apiclient.Signal, 0)
 			a.mu.Unlock()
 			log.Infof("api push: pushed %d signals", len(cacheCopy))
 			err := a.Send(cacheCopy)
@@ -113,14 +127,18 @@ func (a *apic) Push() error {
 			ticker = time.NewTicker(a.pushInterval)
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
-			cache = append(cache, alerts...)
+			var signal *apiclient.Signal
+			for _, alert := range alerts {
+				signal = AlertToSignal(alert)
+			}
+			cache = append(cache, signal)
 			a.mu.Unlock()
 		}
 	}
 }
 
-func (a *apic) Send(cache []*models.Alert) error {
-	_, _, err := a.apiClient.Alerts.Add(context.Background(), cache)
+func (a *apic) Send(cache []*apiclient.Signal) error {
+	_, _, err := a.apiClient.Signal.Add(context.Background(), cache)
 	return err
 }
 
