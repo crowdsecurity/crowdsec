@@ -103,27 +103,24 @@ func NewDecisionsCmd() *cobra.Command {
 		/*TBD example*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var err error
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
 			if csConfig.API.Client.Credentials == nil {
 				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
-			if err != nil {
-				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
-			}
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
-
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-			t := &apiclient.JWTTransport{
-				MachineID: &csConfig.API.Client.Credentials.Login,
-				Password:  &password,
+			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
+			if err != nil {
+				log.Fatalf("parsing api url ('%s'):", csConfig.API.Client.Credentials.URL, err)
 			}
-
-			Client = apiclient.NewClient(t.Client())
-
+			Client, err = apiclient.NewClient(&apiclient.Config{
+				MachineID:     csConfig.API.Client.Credentials.Login,
+				Password:      password,
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiurl,
+				VersionPrefix: "/v1",
+			})
 		},
 	}
 

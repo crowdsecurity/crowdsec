@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
@@ -22,7 +23,10 @@ type APIKeyTransport struct {
 	APIKey string
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport http.RoundTripper
+	Transport     http.RoundTripper
+	URL           *url.URL
+	VersionPrefix string
+	UserAgent     string
 }
 
 // RoundTrip implements the RoundTripper interface.
@@ -36,8 +40,8 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("X-Api-Key", t.APIKey)
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
 	if log.GetLevel() >= log.TraceLevel {
@@ -72,11 +76,14 @@ func (t *APIKeyTransport) transport() http.RoundTripper {
 }
 
 type JWTTransport struct {
-	MachineID  *string
-	Password   *strfmt.Password
-	token      string
-	Expiration time.Time
-	Scenarios  []string
+	MachineID     *string
+	Password      *strfmt.Password
+	token         string
+	Expiration    time.Time
+	Scenarios     []string
+	URL           *url.URL
+	VersionPrefix string
+	UserAgent     string
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
 	Transport http.RoundTripper
@@ -103,14 +110,14 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s/watchers/login", BaseURL, URLPrefix), buf)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/watchers/login", t.URL), buf)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
@@ -166,8 +173,8 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("req-jwt: %s", string(dump))
 	}
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)

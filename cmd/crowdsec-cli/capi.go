@@ -29,7 +29,13 @@ func NewCapiCmd() *cobra.Command {
 		Short: "Manage interraction with Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
+			if csConfig.API.Server == nil {
+				log.Fatalln("There is no configuration on 'api_client:'")
+			}
+			if csConfig.API.Server.OnlineClient == nil {
+				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+			}
+
 			return nil
 		},
 	}
@@ -41,26 +47,25 @@ func NewCapiCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
-			Client = apiclient.NewClient(nil)
-			Client.BaseURL, err = url.Parse(APIBaseURL)
-			if err != nil {
-				log.Fatalf("unable to parse api url %s : %s", APIBaseURL, err)
-			}
-			Client.URLPrefix = APIURLPrefix
-
 			id, err := generateID()
 			if err != nil {
 				log.Fatalf("unable to generate machine id: %s", err)
 			}
-			log.Printf("your machine ID : %s", id)
 			password := strfmt.Password(generatePassword(passwordLength))
-			log.Printf("your password : %s", password)
-			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{
-				MachineID: &id,
-				Password:  &password,
-			})
+			apiurl, err := url.Parse(APIBaseURL)
 			if err != nil {
-				log.Errorf("unable to register to API (%s) : %s", Client.BaseURL, err)
+				log.Fatalf("unable to parse api url %s : %s", APIBaseURL, err)
+			}
+			_, err = apiclient.RegisterClient(&apiclient.Config{
+				MachineID:     id,
+				Password:      password,
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiurl,
+				VersionPrefix: APIURLPrefix,
+			})
+
+			if err != nil {
+				log.Fatalf("api client register ('%s'): %s", APIBaseURL, err)
 			}
 			log.Printf("Successfully registered to Central API (CAPI)")
 
@@ -111,25 +116,30 @@ func NewCapiCmd() *cobra.Command {
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
-			if err != nil {
-				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Server.OnlineClient.Credentials.URL, err.Error())
+
+			if csConfig.API.Server.OnlineClient.Credentials == nil {
+				log.Fatalf("no credentials for crowdsec API in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("failed to get Hub index : %v", err)
+
+			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
+			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
+			if err != nil {
+				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
 			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}
-			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
+
+			Client, err = apiclient.NewDefaultClient(apiurl, APIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()))
+			if err != nil {
+				log.Fatalf("init default client: %s", err)
+			}
 			t := models.WatcherAuthRequest{
 				MachineID: &csConfig.API.Server.OnlineClient.Credentials.Login,
 				Password:  &password,
 				Scenarios: scenarios,
 			}
-			Client = apiclient.NewClient(nil)
 			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Errorf("Your configuration is in %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)

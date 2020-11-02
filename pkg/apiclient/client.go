@@ -1,17 +1,18 @@
 package apiclient
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
-var BaseURL *url.URL
-var URLPrefix = "v1"
-var UserAgent string
 var (
 	InsecureSkipVerify = true
 )
@@ -36,17 +37,51 @@ type service struct {
 	client *ApiClient
 }
 
-func NewClient(httpClient *http.Client) *ApiClient {
-	if httpClient == nil {
-		httpClient = &http.Client{}
+func NewClient(config *Config) (*ApiClient, error) {
+	t := &JWTTransport{
+		MachineID:     &config.MachineID,
+		Password:      &config.Password,
+		Scenarios:     config.Scenarios,
+		URL:           config.URL,
+		UserAgent:     config.UserAgent,
+		VersionPrefix: config.VersionPrefix,
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent, URLPrefix: URLPrefix}
+	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
-	return c
+
+	return c, nil
+}
+
+func NewDefaultClient(URL *url.URL, prefix string, userAgent string) (*ApiClient, error) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	c := &ApiClient{client: &http.Client{}, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
+	c.common.client = c
+	c.Decisions = (*DecisionsService)(&c.common)
+	c.Alerts = (*AlertsService)(&c.common)
+	c.Auth = (*AuthService)(&c.common)
+
+	return c, nil
+}
+
+func RegisterClient(config *Config) (*ApiClient, error) {
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	c := &ApiClient{client: &http.Client{}, BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	c.common.client = c
+	c.Decisions = (*DecisionsService)(&c.common)
+	c.Alerts = (*AlertsService)(&c.common)
+	c.Auth = (*AuthService)(&c.common)
+
+	_, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password})
+	if err != nil {
+		return c, errors.Wrapf(err, "api register (%s): %s", c.BaseURL, err)
+	}
+
+	return c, nil
+
 }
 
 type Response struct {

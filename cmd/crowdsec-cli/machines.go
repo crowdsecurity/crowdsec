@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -16,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/denisbrodbeck/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
@@ -303,17 +301,20 @@ cscli machines add --machine TestMachine --password password
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
-
-			apiclient.BaseURL, err = url.Parse(apiURL)
+			apiurl, err := url.Parse(apiURL)
 			if err != nil {
-				log.Fatalf("unable to parse API Client URL '%s' : %s", apiURL, err)
+				log.Fatalf("parsing api url: %s", err)
 			}
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
+			_, err = apiclient.RegisterClient(&apiclient.Config{
+				MachineID:     id,
+				Password:      password,
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiurl,
+				VersionPrefix: "/v1",
+			})
 
-			Client = apiclient.NewClient(nil)
-			_, err = Client.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &id, Password: &password})
 			if err != nil {
-				log.Fatalf("unable to register to API (%s) : %s", Client.BaseURL, err)
+				log.Fatalf("api client register: %s", err)
 			}
 
 			var dumpFile string

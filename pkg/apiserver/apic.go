@@ -46,12 +46,6 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 	var err error
 	var ret *apic
 
-	password := strfmt.Password(config.Credentials.Password)
-	t := &apiclient.JWTTransport{
-		MachineID: &config.Credentials.Login,
-		Password:  &password,
-	}
-
 	pullInterval, err := time.ParseDuration(PullInterval)
 	if err != nil {
 		return ret, err
@@ -65,13 +59,15 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 		return ret, err
 	}
 
-	Client := apiclient.NewClient(t.Client())
-	Client.BaseURL, err = url.Parse(config.Credentials.URL)
-	if err != nil {
-		return ret, errors.Wrapf(err, "parse local API URL '%s': %v ", config.Credentials.URL, err.Error())
-	}
-	Client.UserAgent = fmt.Sprintf("crowdsec-LAPI/%s", cwversion.VersionStr())
-
+	password := strfmt.Password(config.Credentials.Password)
+	apiURL, err := url.Parse(config.Credentials.URL)
+	Client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID:     config.Credentials.Login,
+		Password:      password,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "/v2",
+	})
 	return &apic{
 		apiClient:       Client,
 		alertToPush:     make(chan []*models.Alert),
@@ -93,6 +89,7 @@ func (a *apic) Push() error {
 
 	var cache []*models.Alert
 	ticker := time.NewTicker(a.pushInterval)
+	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
 
 	for {
 		select {
@@ -128,6 +125,7 @@ func (a *apic) Send(cache []*models.Alert) error {
 
 func (a *apic) Pull() error {
 	defer types.CatchPanic("apil/pullFromAPIC")
+	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
 
 	ticker := time.NewTicker(a.pullInterval)
 	for {
@@ -212,6 +210,7 @@ func (a *apic) Pull() error {
 func (a *apic) SendMetrics() error {
 	defer types.CatchPanic("apil/metricsToAPIC")
 
+	log.Infof("start crowdsec api send metrics (interval: %s)", MetricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
 		select {

@@ -140,19 +140,21 @@ func NewAlertsCmd() *cobra.Command {
 			if csConfig.API.Client.Credentials == nil {
 				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
+			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
+				log.Fatalf("parsing api url: %s", apiURL)
 			}
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
+			Client, err = apiclient.NewClient(&apiclient.Config{
+				MachineID:     csConfig.API.Client.Credentials.Login,
+				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiURL,
+				VersionPrefix: "/v1",
+			})
 
-			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-			t := &apiclient.JWTTransport{
-				MachineID: &csConfig.API.Client.Credentials.Login,
-				Password:  &password,
+			if err != nil {
+				log.Fatalf("new api client: %s", err.Error())
 			}
-
-			Client = apiclient.NewClient(t.Client())
 		},
 	}
 

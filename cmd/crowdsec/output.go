@@ -69,20 +69,30 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 
 	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 	if err != nil {
-		return fmt.Errorf("Failed to load the list of local scenarios : %s", err)
+		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
 	}
 
-	password := strfmt.Password(apiConfig.Password)
+	/*password := strfmt.Password(apiConfig.Password)
 	t := &apiclient.JWTTransport{
 		MachineID: &apiConfig.Login,
 		Password:  &password,
 		Scenarios: scenarios,
-	}
-	Client := apiclient.NewClient(t.Client())
-	Client.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
-	Client.BaseURL, err = url.Parse(apiConfig.URL)
+	}*/
+
+	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
-		return fmt.Errorf("unable to parse api url '%s': %s", apiConfig.URL, err)
+		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
+	}
+	Client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID:     apiConfig.Login,
+		Password:      strfmt.Password(apiConfig.Password),
+		Scenarios:     scenarios,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "/v1",
+	})
+	if err != nil {
+		return errors.Wrapf(err, "new client api: %s", err)
 	}
 
 LOOP:

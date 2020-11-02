@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	log "github.com/sirupsen/logrus"
 )
 
 // type ApiAlerts service
@@ -30,7 +29,6 @@ func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) 
 func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.WatcherRegistrationRequest) (*Response, error) {
 
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
-	log.Printf("->> %s", u)
 
 	req, err := s.client.NewRequest("POST", u, &registration)
 	if err != nil {
