@@ -106,6 +106,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 	var apiClient *apic
 	if config.OnlineClient != nil {
+		log.Printf("Loading CAPI pusher")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
 		if err != nil {
 			return &APIServer{}, err

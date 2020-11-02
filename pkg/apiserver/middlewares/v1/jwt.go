@@ -60,7 +60,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		Where(machine.MachineId(machineID)).
 		First(j.DbClient.CTX)
 	if err != nil {
-		log.Printf("Error machine login : %+v ", err)
+		log.Printf("Error machine login for %s : %+v ", machineID, err)
 		return nil, err
 	}
 
