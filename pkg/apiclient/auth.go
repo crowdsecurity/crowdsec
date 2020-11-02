@@ -103,7 +103,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/watchers/login", BaseURL), buf)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s/watchers/login", BaseURL, URLPrefix), buf)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"net/http/httputil"
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -139,7 +140,8 @@ func NewCapiCmd() *cobra.Command {
 			for k, v := range resp.Response.Header {
 				log.Debugf("[headers] %s : %s", k, v)
 			}
-			log.Debugf("Response Body: %s", resp.Response.Body)
+			dump, _ := httputil.DumpResponse(resp.Response, true)
+			log.Debugf("Response: %s", string(dump))
 		},
 	}
 	cmdCapi.AddCommand(cmdCapiStatus)
