@@ -105,11 +105,12 @@ func (a *apic) Push() error {
 			cacheCopy := cache
 			cache = make([]*models.Alert, 0)
 			a.mu.Unlock()
-
+			log.Infof("api push: pushed %d signals", len(cacheCopy))
 			err := a.Send(cacheCopy)
 			if err != nil {
 				return err
 			}
+			ticker = time.NewTicker(a.pushInterval)
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
 			cache = append(cache, alerts...)
@@ -138,7 +139,7 @@ func (a *apic) Pull() error {
 			if a.startup {
 				a.startup = false
 			}
-
+			log.Infof("Receive from CAPI: %+v", data.New)
 			// process deleted decisions
 			var filter map[string][]string
 			for _, decision := range data.Deleted {
@@ -197,6 +198,8 @@ func (a *apic) Pull() error {
 					return errors.Wrap(err, "decision creation from crowdsec-api:")
 				}
 			}
+
+			ticker = time.NewTicker(a.pullInterval)
 			log.Printf("pull top: added %d entries", len(data.New))
 
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
@@ -243,8 +246,9 @@ func (a *apic) SendMetrics() error {
 				}
 				metric.Machines = append(metric.Bouncers, m)
 			}
+			log.Infof("TODO: send metrics : %+v", metric)
+			ticker = time.NewTicker(a.metricsInterval)
 
-			return nil
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)

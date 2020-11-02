@@ -135,6 +135,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
+	c.CAPIChan <- input
+
 	gctx.JSON(http.StatusOK, alerts)
 	return
 }
