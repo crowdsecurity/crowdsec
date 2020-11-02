@@ -9,10 +9,10 @@
  - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htmlname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
     - The alert is here mostly for tracability, and will stay even after the decision expires
     - The decision on the other hand, is short lived, and tells *what* action should be taken against the offending ip/range/user...
- - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.Htmlname}} and stored in the database
+ - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.htmlname}} and stored in the database
 
 As you might have guessed by now, {{v1X.crowdsec.Name}} itself does the detection part and stores those decisions.
-Then, {{v1X.bouncers.Htmlname}} can "consume" those decisions (via the very same {{v1X.lapi.Htmlname}}) and apply some actual remediation.
+Then, {{v1X.bouncers.htmlname}} can "consume" those decisions (via the very same {{v1X.lapi.htmlname}}) and apply some actual remediation.
 
 ## Crowd sourced aspect
 
