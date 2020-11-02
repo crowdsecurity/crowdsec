@@ -65,8 +65,10 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 	resp, err := c.client.Do(req)
 	if log.GetLevel() >= log.TraceLevel {
-		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("response: %s", string(dump))
+		if resp != nil {
+			dump, _ := httputil.DumpResponse(resp, true)
+			log.Tracef("response: %s", string(dump))
+		}
 	}
 	if err != nil {
 		// If we got an error, and the context has been canceled,
