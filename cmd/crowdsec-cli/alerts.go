@@ -281,29 +281,34 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
-				alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-				_ = cmd.Help()
-				log.Fatalf("%s", err)
-			}
-			alertDeleteFilter.ActiveDecisionEquals = &ActiveDecision
 
-			if *alertDeleteFilter.ScopeEquals == "" {
-				alertDeleteFilter.ScopeEquals = nil
-			}
-			if *alertDeleteFilter.ValueEquals == "" {
-				alertDeleteFilter.ValueEquals = nil
-			}
-			if *alertDeleteFilter.ScenarioEquals == "" {
-				alertDeleteFilter.ScenarioEquals = nil
-			}
-			if *alertDeleteFilter.IPEquals == "" {
-				alertDeleteFilter.IPEquals = nil
-			}
-			if *alertDeleteFilter.RangeEquals == "" {
-				alertDeleteFilter.RangeEquals = nil
-			}
+			if !AlertDeleteAll {
+				if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
+					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
+					_ = cmd.Help()
+					log.Fatalf("%s", err)
+				}
 
+				alertDeleteFilter.ActiveDecisionEquals = &ActiveDecision
+
+				if *alertDeleteFilter.ScopeEquals == "" {
+					alertDeleteFilter.ScopeEquals = nil
+				}
+				if *alertDeleteFilter.ValueEquals == "" {
+					alertDeleteFilter.ValueEquals = nil
+				}
+				if *alertDeleteFilter.ScenarioEquals == "" {
+					alertDeleteFilter.ScenarioEquals = nil
+				}
+				if *alertDeleteFilter.IPEquals == "" {
+					alertDeleteFilter.IPEquals = nil
+				}
+				if *alertDeleteFilter.RangeEquals == "" {
+					alertDeleteFilter.RangeEquals = nil
+				}
+			} else {
+				alertDeleteFilter = apiclient.AlertsDeleteOpts{}
+			}
 			alerts, _, err := Client.Alerts.Delete(context.Background(), alertDeleteFilter)
 			if err != nil {
 				log.Fatalf("Unable to delete alerts : %v", err.Error())
@@ -318,6 +323,8 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.ScenarioEquals, "scenario", "s", "", "the scenario (ie. crowdsecurity/ssh-bf)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
+	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
+
 	cmdAlerts.AddCommand(cmdAlertsDelete)
 	return cmdAlerts
 }
