@@ -1,36 +1,38 @@
-<!-- {{v1X.crowdsec.Name}}'s main goal is to crunch logs to detect things (duh).
-You will find below an introduction to the concepts that are frequently used within the documentation. -->
 
 # Global overview
 
 {{v1X.crowdsec.Name}} runtime revolves around a few simple concepts :
 
  - It read logs (defined via {{v1X.ref.acquis}} config)
- - Those logs are parsed via {{v1X.ref.parser}} and eventually enriched
- - Those normalized logs are then matched against the {{v1X.ref.scenario}} that the user deployed
+ - Those logs are parsed via {{v1X.ref.parsers}} and eventually enriched
+ - Those normalized logs are then matched against the {{v1X.ref.scenarios}} that the user deployed
  - When a scenario is "triggered", {{v1X.crowdsec.Name}} generates an {{v1X.alert.Htmlname}} and eventually one or more associated {{v1X.decision.Htmlname}} :
     - The alert is here mostly for tracability, and will stay even after the decision expires
     - The decision on the other hand, is short lived, and tells *what* action should be taken against the offending ip/range/user...
- - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.Htmlname}} and stored in the database
+ - Those information (the signal, the associated decisions) are then sent to crowdsec's {{v1X.lapi.htmlname}} and stored in the database
 
 As you might have guessed by now, {{v1X.crowdsec.Name}} itself does the detection part and stores those decisions.
-Then, {{v1X.bouncers.Htmlname}} can "consume" those decisions (via the very same {{v1X.lapi.Htmlname}}) and apply some actual remediation.
+Then, {{v1X.bouncers.htmlname}} can "consume" those decisions (via the very same {{v1X.lapi.htmlname}}) and apply some actual remediation.
 
 ## Crowd sourced aspect
 
-Whenever the {{v1X.lapi.Htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
+ [[References](/Crowdsec/v1/getting_started/crowd-power)]
+
+Whenever the {{v1X.lapi.htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
+
  - The source ip that triggered the alert
  - The scenario that was triggered
  - The timestamp of the attack
 
 These are the only information that are sent to our API. Those are then processed on our side to be able to redistribute relevant blocklists to all the participants.
 
+#  Configuration items
 
-# Configuration items
+##  Acquisition
 
-## Acquisition
+[[References](/Crowdsec/v1/references/acquisition/)]
 
-[Acquistion configuration](/Crowdsec/v1/guide/crowdsec/acquisition/) defines which streams of information {{v1X.crowdsec.name}} is going to process.
+Acquistion configuration defines which streams of information {{v1X.crowdsec.name}} is going to process.
 
 At the time of writing, it's mostly files, but it should be more or less any kind of stream, such as a kafka topic or a cloudtrail.
 
@@ -39,13 +41,6 @@ Acquisition configuration always contains a stream (ie. a file to tail) and a ta
 File acquisition configuration is defined as :
 
 ```yaml
-filenames: #a list of file or regexp to read from (supports regular expressions)
-  - /var/log/nginx/http_access.log
-  - /var/log/nginx/https_access.log
-  - /var/log/nginx/error.log
-labels:
-  type: nginx
----
 filenames:
   - /var/log/auth.log
 labels:
@@ -54,7 +49,9 @@ labels:
 
 The `labels` part is here to tag the incoming logs with a type. `labels.type` are used by the parsers to know which logs to process.
 
-## Parsers [[reference](/Crowdsec/v1/references/parsers/)]
+## Parsers
+
+[[References](/Crowdsec/v1/references/parsers/)]
 
 For logs to be able to be exploited and analyzed, they need to be parsed and normalized, and this is where parsers are used.
 
@@ -75,6 +72,8 @@ You can as well [write your own](/Crowdsec/v1/write_configurations/parsers/) !
 
 ## Stages
 
+[[References](/Crowdsec/v1/references/parsers/#stages)]
+
 Parsers are organized into "stages" to allow pipelines and branching in parsing. Each parser belongs to a stage, and can trigger next stage when successful. At the time of writing, the parsers are organized around 3 stages :
 
  - `s00-raw` : low level parser, such as syslog
@@ -93,13 +92,17 @@ Every event starts in the first stage, and will move to the next stage once it h
 
 ## Enrichers
 
+[[References](/Crowdsec/v1/references/enrichers/)]
+
 Enrichment is the action of adding extra context to an event based on the information we already have, so that better decision can later be taken. In most cases, you should be able to find the relevant enrichers on our {{v1X.hub.htmlname}}.
 
 A common/simple type of enrichment would be [geoip-enrich](https://github.com/crowdsecurity/hub/blob/master/parsers/s02-enrich/crowdsecurity/geoip-enrich.yaml) of an event (adding information such as : origin country, origin AS and origin IP range to an event).
 
 Once again, you should be able to find the ones you're looking for on the {{v1X.hub.htmlname}} !
 
-## Scenarios [[reference](/Crowdsec/v1/references/scenarios/)]
+## Scenarios
+
+[[References](/Crowdsec/v1/references/scenarios/)]
 
 Scenarios is the expression of a heuristic that allows you to qualify a specific event (usually an attack).It is a YAML file that describes a set of events characterizing a scenario. Scenarios in {{v1X.crowdsec.name}} gravitate around the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket) principle.
 
@@ -122,62 +125,37 @@ You can as well [write your own](/Crowdsec/v1/write_configurations/scenarios/) !
 
 ## Collections
 
+[[References](/Crowdsec/v1/references/collections/)]
+
 To make user's life easier, "collections" are available, which are just a bundle of parsers and scenarios.
 In this way, if you want to cover basic use-cases of let's say "nginx", you can just install the `crowdsecurity/nginx` collection that is composed of `crowdsecurity/nginx-logs` parser, as well as generic http scenarios such as `crowdsecurity/base-http-scenarios`.
 
 As usual, those can be found on the {{v1X.hub.htmlname}} !
 
-## PostOverflow
+## PostOverflows
+
+[[References](/Crowdsec/v1/references/postoverflows)]
 
 A postoverflow is a parser that will be applied on overflows (scenario results) before the decision is written to local DB or pushed to API. Parsers in postoverflows are meant to be used for "expensive" enrichment/parsing process that you do not want to perform on all incoming events, but rather on decision that are about to be taken.
 
 An example could be slack/mattermost enrichment plugin that requires human confirmation before applying the decision or reverse-dns lookup operations.
 
-# Runtime objects
 
-## Decision
+<!--TBD: define runtime terms-->
+#  Runtime items
 
-A decision is a remediation to be applied against a given scope. Decisions are created when a scenario with an active remediation is triggered.
+## Events
 
-Most of the time it will be an IP, but isn't restricted to it. A decision is composed of :
+[[References](/Crowdsec/v1/references/events)]
 
- - `Duration` : for how long is the decision valid.
- - `Scope` and `Value` : indicates to "what" the decisions apply.
+An `Event` is the runtime representation of an item being processed by crowdsec : It be a Log line being parsed, or an Overflow being reprocessed.
 
-  !!! note
-      While most of the scenarios will focus on ips (the scope will be `Ip`), it can apply to more or less anything, such as a user session, a cookie, a username etc.
+The `Event` object is modified by parses, scenarios, and directly via user [statics expressions](/Crowdsec/v1/references/parsers/#statics) (for example).
 
-Decisions can be viewed/searched with `cscli decisions`
 
-## Alert
+## Alerts
 
-An alert is created when a scenario is triggered, and can have one or more decisions associated.
-Unlike decisions, scenario do not expire. You can view/search them with `cscli alerts`
 
-## Event
 
-The objects that are processed within {{v1X.crowdsec.name}} are named "Events".
-An Event can be a log line, or an overflow result. This object layout evolves around a few important items :
+## Decisions
 
- - `Parsed` is an associative array that will be used during parsing to store temporary variables or processing results.
- - `Enriched`, very similar to `Parsed`, is an associative array but is intended to be used for enrichment process.
- - `Overflow` is a `SignalOccurence` structure that represents information about a triggered scenario, when applicable.
- - `Meta` is an associative array that will be used to keep track of meta information about the event. 
-
-_Other fields omitted for clarity, see [`pkg/types/event.go`](https://github.com/crowdsecurity/crowdsec/blob/master/pkg/types/event.go) for detailed definition_
-<!-- 
-## Overflow or SignalOccurence
-
-This object holds the relevant information about a scenario that happened : who / when / where / what etc.
-Its most relevant fields are :
-
- - `Scenario` : name of the scenario
- - `Alert_message` : a humanly readable message about what happened
- - `Events_count` : the number of individual events that lead to said overflow
- - `Start_at` + `Stop_at` : timestamp of the first and last events that triggered the scenario
- - `Source` : a binary representation of the source of the attack
- - `Source_[ip,range,AutonomousSystemNumber,AutonomousSystemOrganization,Country]` : string representation of source information
- - `Labels` : an associative array representing the scenario "labels" (see scenario definition)
-
-_Other fields omitted for clarity, see [`pkg/types/signal_occurence.go`](https://github.com/crowdsecurity/crowdsec/blob/master/pkg/types/signal_occurence.go) for detailed definition_
- -->

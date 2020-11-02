@@ -1,9 +1,8 @@
 
 ## List installed configurations
 
-
 ```bash
-$ {{v1X.cli.bin}} hub list
+{{v1X.cli.bin}} hub list
 
 ```
 
@@ -107,8 +106,6 @@ $ cscli alerts list --since 1h
 
 ## Monitor on-going activity (prometheus)
 
-> List metrics
-
 ```bash
 {{v1X.cli.bin}} metrics
 ```
@@ -165,20 +162,29 @@ INFO[0000] Local Api Metrics:
 
 ## Deploy dashboard
 
-A metabase {{v1X.metabase.htmlName}} can be deployed with `cscli dashboard` 
+```bash
+cscli dashboard setup --listen 0.0.0.0
+```
 
+A docker metabase {{v1X.metabase.Htmlname}} container can be deployed with `cscli dashboard`.
+It requires docker.
+<!--TBD: add minimum docker version here ?-->
 
+## Logs
 
-## Finding configurations : collections, parsers and scenarios
+```bash
+tail -f /var/log/crowdsec.log
+```
 
-{{v1X.crowdsec.Name}} efficiency is dictated by installed parsers and scenarios, often bundled together as {{v1X.collections.Htmlname}} so take a look at the {{v1X.hub.htmlname}} to find the appropriated ones !
+ - `/var/log/crowdsec.log` is the main log, it shows ongoing decisions and acquisition/parsing/scenario errors.
+ - `/var/log/crowdsec_api.log` is the access log of the local api (LAPI)
 
-You will have to pick the right {{v1X.collections.htmlname}}. This will ensure that {{v1X.crowdsec.name}} can parse the logs and has the corresponding scenarios.
+## Installing collections
 
-For example, if you're processing [nginx](http://nginx.org) logs, you might want to install the [nginx collection](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx).
+```bash
+cscli collections install crowdsecurity/nginx
+```
 
-A collection can be installed by typing `cscli collections install crowdsecurity/nginx`, and provides all the necessary parsers and scenarios to handle said log source. `systemctl reload crowdsec` to ensure the new scenarios are loaded.
+Collections are bundles of parsers/scenarios that form a coherent ensemble to analyze/detect attacks for a specific service. It is the most common way to deploy configurations.
 
-In the same spirit, the [crowdsecurity/sshd](https://hub.crowdsec.net/author/crowdsecurity/collections/sshd)'s collection will fit most sshd setups !
-
-While {{v1X.crowdsec.name}} is running, a quick look at [`cscli metrics`](/Crowdsec/v1/observability/command_line/) should help you ensure that your log sources are correctly parsed.
+They can be found and browsed on the {{v1X.hub.htmlname}}

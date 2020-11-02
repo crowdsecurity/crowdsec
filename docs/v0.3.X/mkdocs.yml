@@ -2,10 +2,9 @@ site_name: Crowdsec/v0
 nav:
   - Home: index.md
   - Getting Started:
-    - Installation : getting_started/installation.md
-    - Crowdsec Tour: getting_started/crowdsec-tour.md
     - Concepts & Glossary : getting_started/concepts.md
-    - FAQ: getting_started/FAQ.md
+    - Crowdsec Tour: getting_started/crowdsec-tour.md
+    - Install Crowdsec : getting_started/installation.md
   - Guide:
     - Overview: guide/crowdsec/overview.md
     - Acquisition: guide/crowdsec/acquisition.md

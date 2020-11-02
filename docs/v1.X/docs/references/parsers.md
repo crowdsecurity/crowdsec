@@ -11,6 +11,8 @@ See the [{{v1X.hub.name}}]({{v1X.hub.url}}) to explore parsers, or see below som
  - [iptables logs parser](https://github.com/crowdsecurity/hub/blob/master/parsers/s01-parse/crowdsecurity/iptables-logs.yaml)
  - [http logs post-processing](https://github.com/crowdsecurity/hub/blob/master/parsers/s02-enrich/crowdsecurity/http-logs.yaml)
 
+The parsers usually reside in `/etc/crowdsec/parsers/<STAGE>/`.
+
 
 ## Stages
 

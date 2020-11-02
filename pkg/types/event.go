@@ -12,9 +12,10 @@ const (
 	OVFLW
 )
 
+//Event is the structure representing a runtime event (log or overflow)
 type Event struct {
 	/* is it a log or an overflow */
-	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`
+	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             //Can be types.LOG (0) or types.OVFLOW (1)
 	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
 	Whitelisted     bool   `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
 	WhiteListReason string `yaml:"whitelist_reason,omitempty" json:"whitelist_reason,omitempty"`
@@ -47,8 +48,8 @@ const (
 
 //Move in leakybuckets
 type ScopeType struct {
-	Scope         string `yaml:"scope_type"`
-	Filter        string `yaml:"filter"`
+	Scope         string `yaml:"type"`
+	Filter        string `yaml:"expression"`
 	RunTimeFilter *vm.Program
 }
 

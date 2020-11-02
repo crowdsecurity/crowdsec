@@ -1,4 +1,6 @@
-Enrichers are basically {{v1X.parsers.htmlname}} that can rely on external methods to provide extra contextual information to the event. The enrichers are usually in the `s02-enrich` {{v1X.stage.htmlname}} (after most of the parsing happened).
+# Enrichers
+
+Enrichers are {{v1X.parsers.htmlname}} that can rely on external methods to provide extra contextual information to the event. The enrichers are usually in the `s02-enrich` {{v1X.stage.htmlname}} (after most of the parsing happened).
 
 Enrichers functions should all accept a string as a parameter, and return an associative string array, that will be automatically merged into the `Enriched` map of the {{v1X.event.htmlname}}.
 

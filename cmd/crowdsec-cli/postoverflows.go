@@ -40,7 +40,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 	cmdPostOverflows.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdPostOverflowsInstall = &cobra.Command{
-		Use:     "postoverflows [config]",
+		Use:     "install [config]",
 		Short:   "Install given postoverflow(s)",
 		Long:    `Fetch and install given postoverflow(s) from hub`,
 		Example: `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,

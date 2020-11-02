@@ -1,4 +1,4 @@
-
+<!--TBD: to fix when we dealt with the new cscli dashboard command -->
 !!! warning "SQLite & MySQL"
     The default database of {{v1X.crowdsec.Name}} is SQLite. While MySQL is supported as well (>= 0.3.0), it is not in the scope of this documentation.
 

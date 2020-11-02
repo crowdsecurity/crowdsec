@@ -14,30 +14,11 @@ To achieve this, {{v1X.crowdsec.Name}} reads logs from different sources (files,
 
 {{v1X.crowdsec.Name}} is a modular and plug-able framework, it ships a large variety of [well known popular scenarios](https://hub.crowdsec.net/browse/#configurations); users can choose what scenarios they want to be protected from as well as easily adding new custom ones to better fit their environment.
 
-Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers]({{v1X.hub.plugins_url}}) at various levels (applicative, system, infrastructural) of your stack.
+Detected malevolent peers can then be prevented from accessing your resources by deploying [bouncers]({{v1X.hub.bouncers_url}}) at various levels (applicative, system, infrastructural) of your stack.
 
 One of the advantages of Crowdsec when compared to other solutions is its crowd-sourced aspect : Meta information about detected attacks (source IP, time and triggered scenario) are sent to a central API and then shared amongst all users.
 
 Thanks to this, besides detecting and stopping attacks in real time based on your logs, it allows you to preemptively block known bad actors from accessing your information system.
-
-## Components
-
-{{v1X.crowdsec.name}} ecosystem is based on the following components :
-
- - [{{v1X.crowdsec.Name}}]({{v1X.crowdsec.url}}) is the lightweight service that processes logs and keeps track of attacks.
- - [{{v1X.cli.name}}]({{v1X.cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find, or update scenarios and parsers
- - [{{v1X.bouncers.name}}]({{v1X.hub.plugins_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
-
-## Architecture
-
-![Architecture](assets/images/crowdsec_architecture.png)
-
-
-## Core concepts
-
-{{v0X.crowdsec.name}} relies on {{v0X.parsers.htmlname}} to normalize and enrich logs, and {{v0X.scenarios.htmlname}} to detect attacks, often bundled together in {{v0X.collections.htmlname}} to form a coherent configuration set. For example the collection [`crowdsecurity/nginx`](https://hub.crowdsec.net/author/crowdsecurity/collections/nginx) contains all the necessary parsers and scenarios to deal with nginx logs and the common attacks that can be seen on http servers.
-
-All of those are represented as YAML files, that can be found, shared and kept up-to-date thanks to the {{v0X.hub.htmlname}}, or [easily hand-crafted](/Crowdsec/v0/write_configurations/scenarios/) to address specific needs.
 
 
 ## Main features
@@ -46,25 +27,23 @@ All of those are represented as YAML files, that can be found, shared and kept u
 
  - **Easy Installation** : The provided wizard allows a [trivial deployment](/Crowdsec/v0/getting_started/installation/#using-the-interactive-wizard) on most standard setups
  - **Easy daily operations** : Using [cscli](/Crowdsec/v0/cscli/cscli_upgrade/) and the {{v0X.hub.htmlname}}, keeping your detection mechanisms up-to-date is trivial
+ - **Reproducibility** : Crowdsec can run not only against live logs, but as well against cold logs. It makes it a lot easier to detect potential false-positives, perform forensic ou generate reporting
  - **Observability** : Providing strongs insights on what is going on and what {{v0X.crowdsec.name}} is doing :
     - Humans have [access to a trivially deployable web interface](/Crowdsec/v0/observability/dashboard/)
     - OPs have [access to detailed prometheus metrics](/Crowdsec/v0/observability/prometheus/)
     - Admins have [a friendly command-line interface tool](/Crowdsec/v0/observability/command_line/) 
 
-## Moving forward
+## Components
 
-To learn more about {{v0X.crowdsec.name}} and give it a try, please see :
+{{v1X.crowdsec.name}} ecosystem is based on the following components :
 
- - [How to install {{v0X.crowdsec.name}}](/Crowdsec/v0/getting_started/installation/)
- - [Take a quick tour of {{v0X.crowdsec.name}} and {{v0X.cli.name}} features](/Crowdsec/v0/getting_started/crowdsec-tour/)
- - [Observability of {{v0X.crowdsec.name}}](/Crowdsec/v0/observability/overview/)
- - [Understand {{v0X.crowdsec.name}} configuration](/Crowdsec/v0/getting_started/concepts/)
- - [Deploy {{v0X.bouncers.name}} to stop malevolent peers](/Crowdsec/v0/bouncers/)
- - [FAQ](getting_started/FAQ/)
+ - [{{v1X.crowdsec.Name}}]({{v1X.crowdsec.url}}) is the lightweight service that processes logs and keeps track of attacks.
+ - [{{v1X.cli.name}}]({{v1X.cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find, or update scenarios and parsers
+ - [{{v1X.bouncers.name}}]({{v1X.hub.bouncers_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
 
-Don't hesitate to reach out if you're facing issues :
+## About this documentation
 
- - [report a bug](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=bug&template=bug_report.md&title=Bug%2F)
- - [suggest an improvement](https://github.com/crowdsecurity/crowdsec/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=Improvment%2F)
- - [ask for help on the forums](https://discourse.crowdsec.net)
+This document is split according to major {{v1X.crowdsec.Name}} versions :
 
+ - [Crowdsec v0](/Crowdsec/v0/) Refers to versions `0.3.X`, before the local API was introduced. (_note: this is going to be deprecated and your are strongly incited to migrate to versions 1.X_)
+ - [Crowdsec v1](/Crowdsec/v1/) Refers to versions `1.X`, it is the current version

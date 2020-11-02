@@ -1,6 +1,3 @@
-
-
-
 # Debugging Scenarios and Parsers
 
 ## General Advice
