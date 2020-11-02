@@ -3,7 +3,7 @@
 
 
 <p align="center">
-<img src="docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="120" height="120"/>
+<img src="docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="140" height="120"/>
 </p>
 
 
