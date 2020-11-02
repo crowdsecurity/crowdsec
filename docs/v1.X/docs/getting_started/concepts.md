@@ -18,7 +18,7 @@ Then, {{v1X.bouncers.htmlname}} can "consume" those decisions (via the very same
 
  [[References](/Crowdsec/v1/getting_started/crowd-power)]
 
-Whenever the {{v1X.lapi.Htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
+Whenever the {{v1X.lapi.htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
 
  - The source ip that triggered the alert
  - The scenario that was triggered

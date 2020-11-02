@@ -166,7 +166,7 @@ INFO[0000] Local Api Metrics:
 cscli dashboard setup --listen 0.0.0.0
 ```
 
-A docker metabase {{v1X.metabase.htmlName}} container can be deployed with `cscli dashboard`.
+A docker metabase {{v1X.metabase.Htmlname}} container can be deployed with `cscli dashboard`.
 It requires docker.
 <!--TBD: add minimum docker version here ?-->
 

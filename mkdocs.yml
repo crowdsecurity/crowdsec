@@ -234,7 +234,7 @@ extra:
       lapi:
           name: local API (LAPI)
           Name: Local API (LAPI)
-          htmlName: "[local api](/Crowdsec/v1/localAPI/)"
+          Htmlname: "[local api](/Crowdsec/v1/localAPI/)"
           htmlname: "[local API](/Crowdsec/v1/localAPI/)"
       cli:
           name: cscli
