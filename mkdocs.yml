@@ -309,8 +309,8 @@ extra:
       alert:
           name: alert
           Name: Alert
-          htmlname: "[alert](/Crowdsec/v1/getting_started/concepts/#alert)"
-          Htmlname: "[Alert](/Crowdsec/v1/getting_started/concepts/#alert)"
+          htmlname: "[alert](/Crowdsec/v1/getting_started/concepts/#alerts)"
+          Htmlname: "[Alert](/Crowdsec/v1/getting_started/concepts/#alerts)"
       decision:
           name: decision
           Name: Decision

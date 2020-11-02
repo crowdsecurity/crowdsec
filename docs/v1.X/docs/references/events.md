@@ -4,7 +4,7 @@
 
 An `Event` is the runtime representation of an item being processed by crowdsec : It be a Log line being parsed, or an Overflow being reprocessed.
 
-The `Event` object is modified by parses, scenarios, and directly via user [statics expressions](/Crowdsec/v1/references/parsers/#statics) (for example).
+The `Event` object is modified by parsers, scenarios, and directly via user [statics expressions](/Crowdsec/v1/references/parsers/#statics) (for example).
 
 The representation of the object can be found here : 
 
