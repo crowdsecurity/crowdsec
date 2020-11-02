@@ -12,7 +12,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -71,7 +70,6 @@ func NewCapiCmd() *cobra.Command {
 
 			var dumpFile string
 
-			log.Printf("config : %s", spew.Sdump(csConfig.API.Server))
 			if outputFile != "" {
 				dumpFile = outputFile
 			} else if csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
@@ -143,9 +141,9 @@ func NewCapiCmd() *cobra.Command {
 				Password:  &password,
 				Scenarios: scenarios,
 			}
+			log.Infof("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
-				log.Errorf("Your configuration is in %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 				log.Fatalf("Failed to authenticate to Central API (CAPI) : %s", err)
 			} else {
 				log.Infof("You can successfully interact with Central API (CAPI)")
