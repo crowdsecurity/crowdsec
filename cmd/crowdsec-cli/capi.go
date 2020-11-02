@@ -126,6 +126,9 @@ func NewCapiCmd() *cobra.Command {
 			if err != nil {
 				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
+			if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
+				return &parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
+			}
 			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
