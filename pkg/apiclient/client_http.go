@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Request, error) {
@@ -20,6 +22,7 @@ func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("new url --->>> %s (baseURL:%s)", u, c.BaseURL)
 
 	var buf io.ReadWriter
 	if body != nil {

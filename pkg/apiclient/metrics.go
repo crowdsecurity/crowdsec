@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -11,7 +12,7 @@ type MetricsService service
 func (s *MetricsService) Add(ctx context.Context, metrics *models.Metrics) (interface{}, *Response, error) {
 	var response interface{}
 
-	u := "v1/metrics/"
+	u := fmt.Sprintf("%s/metrics/", s.client.URLPrefix)
 	req, err := s.client.NewRequest("POST", u, &metrics)
 	if err != nil {
 		return nil, nil, err

@@ -10,6 +10,7 @@ import (
 )
 
 var BaseURL *url.URL
+var URLPrefix = "v1"
 var UserAgent string
 var (
 	InsecureSkipVerify = true
@@ -22,13 +23,13 @@ type ApiClient struct {
 	common service
 	/*config stuff*/
 	BaseURL   *url.URL
+	URLPrefix string
 	UserAgent string
 	/*exposed Services*/
 	Decisions *DecisionsService
 	Alerts    *AlertsService
 	Auth      *AuthService
 	Metrics   *MetricsService
-	// Consensus *ApiConsensus
 }
 
 type service struct {
@@ -40,12 +41,11 @@ func NewClient(httpClient *http.Client) *ApiClient {
 		httpClient = &http.Client{}
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent}
+	c := &ApiClient{client: httpClient, BaseURL: BaseURL, UserAgent: UserAgent, URLPrefix: URLPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
-
 	return c
 }
 
