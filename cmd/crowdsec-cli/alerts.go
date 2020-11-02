@@ -149,7 +149,7 @@ func NewAlertsCmd() *cobra.Command {
 				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiURL,
-				VersionPrefix: "/v1",
+				VersionPrefix: "v1",
 			})
 
 			if err != nil {

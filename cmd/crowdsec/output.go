@@ -89,7 +89,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		Scenarios:     scenarios,
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
-		VersionPrefix: "/v1",
+		VersionPrefix: "v1",
 	})
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)

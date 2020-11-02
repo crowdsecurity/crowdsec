@@ -310,7 +310,7 @@ cscli machines add --machine TestMachine --password password
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
-				VersionPrefix: "/v1",
+				VersionPrefix: "v1",
 			})
 
 			if err != nil {

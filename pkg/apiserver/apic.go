@@ -66,7 +66,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 		Password:      password,
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
-		VersionPrefix: "/v2",
+		VersionPrefix: "v2",
 	})
 	return &apic{
 		apiClient:       Client,

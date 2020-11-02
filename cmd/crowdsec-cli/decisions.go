@@ -119,7 +119,7 @@ func NewDecisionsCmd() *cobra.Command {
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
-				VersionPrefix: "/v1",
+				VersionPrefix: "v1",
 			})
 		},
 	}
