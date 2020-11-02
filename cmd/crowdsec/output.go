@@ -72,13 +72,6 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
 	}
 
-	/*password := strfmt.Password(apiConfig.Password)
-	t := &apiclient.JWTTransport{
-		MachineID: &apiConfig.Login,
-		Password:  &password,
-		Scenarios: scenarios,
-	}*/
-
 	apiURL, err := url.Parse(apiConfig.URL)
 	if err != nil {
 		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
