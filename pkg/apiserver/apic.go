@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -45,11 +46,6 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 	var err error
 	var ret *apic
 
-	apiclient.BaseURL, err = url.Parse(config.Credentials.URL)
-	if err != nil {
-		return ret, errors.Wrapf(err, "parse local API URL '%s': %v ", config.Credentials.URL, err.Error())
-	}
-
 	password := strfmt.Password(config.Credentials.Password)
 	t := &apiclient.JWTTransport{
 		MachineID: &config.Credentials.Login,
@@ -69,8 +65,15 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 		return ret, err
 	}
 
+	Client := apiclient.NewClient(t.Client())
+	Client.BaseURL, err = url.Parse(config.Credentials.URL)
+	if err != nil {
+		return ret, errors.Wrapf(err, "parse local API URL '%s': %v ", config.Credentials.URL, err.Error())
+	}
+	Client.UserAgent = fmt.Sprintf("crowdsec-LAPI/%s", cwversion.VersionStr())
+
 	return &apic{
-		apiClient:       apiclient.NewClient(t.Client()),
+		apiClient:       Client,
 		alertToPush:     make(chan []*models.Alert),
 		dbClient:        dbClient,
 		pullInterval:    pullInterval,
