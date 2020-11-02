@@ -122,25 +122,3 @@ func (d *Database) Add() error {
 
 	return nil
 }
-
-/*func (d *Database) Backup(data map[string]interface{}) error {
-	f, err := os.Create(d.Path)
-
-	if err != nil {
-		return err
-	}
-
-	defer f.Close()
-
-	dataStr, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
-	_, err = f.WriteString(string(dataStr))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-*/

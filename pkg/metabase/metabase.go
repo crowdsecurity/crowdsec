@@ -394,5 +394,5 @@ func (m *Metabase) DumpConfig(path string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(path, data, os.ModePerm)
+	return ioutil.WriteFile(path, data, 0600)
 }

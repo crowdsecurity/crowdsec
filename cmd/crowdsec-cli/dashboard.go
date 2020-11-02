@@ -195,11 +195,12 @@ cscli dashboard remove --force
 
 	var cmdDashExport = &cobra.Command{
 		Use:   "export",
-		Short: "export the metabase container.",
-		Long:  `export the metabase container using docker.`,
+		Short: "export the metabase dashboards.",
+		Long:  `export the metabase dashboards to a .tar archive`,
 		Args:  cobra.ExactArgs(0),
 		Example: `
 cscli dashboard export
+cscli dashboard export -a <export_archive_path>
  `,
 		Run: func(cmd *cobra.Command, args []string) {
 			mb, err := metabase.NewMetabase(metabaseConfigPath)
@@ -214,6 +215,7 @@ cscli dashboard export
 			if err := mb.Export(metabaseExportPath); err != nil {
 				log.Fatalf(err.Error())
 			}
+			log.Infof("dashboards exported successfully to '%s'", metabaseExportPath)
 		},
 	}
 	cmdDashExport.Flags().StringVarP(&metabaseExportPath, "archive", "a", "./", "Export metabase to provided path")
@@ -226,8 +228,8 @@ cscli dashboard export
 		Args:  cobra.ExactArgs(0),
 		Example: `
 cscli dashboard import
-cscli dashboard import --force
- `,
+cscli dashboard import -a <import_archive_path>
+`,
 		Run: func(cmd *cobra.Command, args []string) {
 			mb, err := metabase.NewMetabase(metabaseConfigPath)
 			if err != nil {
