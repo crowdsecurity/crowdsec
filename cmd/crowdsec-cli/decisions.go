@@ -121,6 +121,9 @@ func NewDecisionsCmd() *cobra.Command {
 				URL:           apiurl,
 				VersionPrefix: "v1",
 			})
+			if err != nil {
+				log.Fatalf("creating api client : %s", err)
+			}
 		},
 	}
 
