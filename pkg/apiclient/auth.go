@@ -46,20 +46,20 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("req-api: %s", string(dump))
+		log.Tracef("auth-api request: %s", string(dump))
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)
 	if err != nil {
-		log.Errorf("resp-api: auth with api key failed return nil response, error: %s", err)
+		log.Errorf("auth-api: auth with api key failed return nil response, error: %s", err)
 		return resp, err
 	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-api: %s", string(dump))
+		log.Tracef("auth-api response: %s", string(dump))
 	}
 
-	log.Debugf("resp-api: %d", resp.StatusCode)
+	log.Debugf("resp-api: http %d", resp.StatusCode)
 
 	return resp, err
 }
@@ -121,20 +121,20 @@ func (t *JWTTransport) refreshJwtToken() error {
 	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("req-jwt(auth): %s", string(dump))
+		log.Tracef("auth-jwt request: %s", string(dump))
 	}
 
-	log.Debugf("req-jwt(auth): %s %s", req.Method, req.URL.String())
+	log.Debugf("auth-jwt(auth): %s %s", req.Method, req.URL.String())
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not get jwt token")
 	}
-	log.Debugf("resp-jwt(auth): %d", resp.StatusCode)
+	log.Debugf("auth-jwt : http %d", resp.StatusCode)
 
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-jwt: %s", string(dump))
+		log.Tracef("auth-jwt response: %s", string(dump))
 	}
 
 	defer resp.Body.Close()

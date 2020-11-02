@@ -8,11 +8,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Request, error) {
@@ -58,18 +55,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	if c.UserAgent != "" {
 		req.Header.Add("User-Agent", c.UserAgent)
 	}
-	if log.GetLevel() >= log.TraceLevel {
-		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("request: %s", string(dump))
-	}
 
 	resp, err := c.client.Do(req)
-	if log.GetLevel() >= log.TraceLevel {
-		if resp != nil {
-			dump, _ := httputil.DumpResponse(resp, true)
-			log.Tracef("response: %s", string(dump))
-		}
-	}
+
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
