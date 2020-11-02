@@ -14,7 +14,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -30,12 +29,6 @@ func NewCapiCmd() *cobra.Command {
 		Short: "Manage interraction with Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			var err error
-			apiclient.BaseURL, err = url.Parse(APIBaseURL)
-			if err != nil {
-				return errors.Wrapf(err, "unable to parse api url %s", APIBaseURL)
-			}
-			apiclient.URLPrefix = APIURLPrefix
 			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
 			return nil
 		},
@@ -46,6 +39,13 @@ func NewCapiCmd() *cobra.Command {
 		Short: "Register to Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			apiclient.BaseURL, err = url.Parse(APIBaseURL)
+			if err != nil {
+				log.Fatalf("unable to parse api url %s : %s", APIBaseURL, err)
+			}
+			apiclient.URLPrefix = APIURLPrefix
+
 			Client = apiclient.NewClient(nil)
 
 			id, err := generateID()
