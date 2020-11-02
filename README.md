@@ -6,7 +6,8 @@
 <img src="docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="240"/>
 </p>
 
-
+</br>
+</br>
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/tests/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build/badge.svg">
