@@ -90,7 +90,7 @@ func NewMachinesCmd() *cobra.Command {
 		Long: `
 Machines Management.
 
-To list/add/delete machines
+To list/add/delete/register/validate machines
 `,
 		Example: `cscli machines [action]`,
 	}
@@ -108,7 +108,7 @@ To list/add/delete machines
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, arg []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 			machines, err := dbClient.ListMachines()
 			if err != nil {
 				log.Errorf("unable to list blockers: %s", err)
@@ -158,10 +158,11 @@ To list/add/delete machines
 		Use:   "add",
 		Short: "add machine to the database.",
 		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
-		Example: `cscli machines add -m MyTestMachine -a
-cscli machines add --machine TestMachine --password password
+		Example: `
+cscli machines add --auto                 -> generate login and password
+cscli machines add MyTestMachine --auto   -> generate only password, username is MyTestMachine
+cscli machines add MyTestMachine --password MyPassword  -> use MyTestMachine as username and MyPassword as password
 `,
-		Args: cobra.ExactArgs(0),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -169,11 +170,11 @@ cscli machines add --machine TestMachine --password password
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, arg []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
 			// create machineID if doesn't specified by user
-			if machineID == "" {
+			if len(args) == 0 {
 				if !autoAdd {
 					err = cmd.Help()
 					if err != nil {
@@ -185,6 +186,8 @@ cscli machines add --machine TestMachine --password password
 				if err != nil {
 					log.Fatalf("unable to generate machine id : %s", err)
 				}
+			} else {
+				machineID = args[0]
 			}
 
 			// create password if doesn't specified by user
@@ -247,7 +250,6 @@ cscli machines add --machine TestMachine --password password
 			}
 		},
 	}
-	cmdMachinesAdd.Flags().StringVarP(&machineID, "machine", "m", "", "machine ID to login to the API")
 	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
 	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
@@ -259,7 +261,8 @@ cscli machines add --machine TestMachine --password password
 	var cmdMachinesDelete = &cobra.Command{
 		Use:     "delete --machine MyTestMachine",
 		Short:   "delete machines",
-		Example: `cscli machines delete --machine test`,
+		Example: `cscli machines delete <machine_name>`,
+		Args:    cobra.ExactArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -267,16 +270,14 @@ cscli machines add --machine TestMachine --password password
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, arg []string) {
-			if machineID == "" {
-				log.Errorf("Please provide a name for the watcher you want to delete with --machine|-m")
-				return
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			machineID = args[0]
 			err := dbClient.DeleteWatcher(machineID)
 			if err != nil {
 				log.Errorf("unable to create blocker: %s", err)
 				return
 			}
+			log.Infof("machine '%s' deleted successfully")
 		},
 	}
 	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
@@ -289,7 +290,7 @@ cscli machines add --machine TestMachine --password password
 /!\ The machine will not be validated. You have to connect on the remote API server and run 'cscli machine validate -m <machine_id>'`,
 		Example: `cscli machine register`,
 		Args:    cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, arg []string) {
+		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			id, err := generateID()
 			if err != nil {
@@ -352,7 +353,8 @@ cscli machines add --machine TestMachine --password password
 		Use:     "validate",
 		Short:   "validate a machine to access the local API",
 		Long:    `validate a machine to access the local API.`,
-		Example: `cscli machines validate --machine test`,
+		Example: `cscli machines validate <machine_name>`,
+		Args:    cobra.ExactArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -360,17 +362,14 @@ cscli machines add --machine TestMachine --password password
 				log.Fatalf("unable to create new database client: %s", err)
 			}
 		},
-		Run: func(cmd *cobra.Command, arg []string) {
-			if machineID == "" {
-				log.Fatalf("please provide a machine to delete with --machine|-m")
-			}
+		Run: func(cmd *cobra.Command, args []string) {
+			machineID = args[0]
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
 			}
 			log.Infof("machine '%s' validated successfuly", machineID)
 		},
 	}
-	cmdMachinesValidate.Flags().StringVarP(&machineID, "machine", "m", "", "machine to validate")
 	cmdMachines.AddCommand(cmdMachinesValidate)
 
 	return cmdMachines
