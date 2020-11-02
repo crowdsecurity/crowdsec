@@ -3,7 +3,6 @@ package apiclient
 import (
 	"context"
 	"fmt"
-	"net/http/httputil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -36,10 +35,6 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 	req, err := s.client.NewRequest("POST", u, &registration)
 	if err != nil {
 		return nil, err
-	}
-	if log.GetLevel() >= log.TraceLevel {
-		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("req-api: %s", string(dump))
 	}
 
 	resp, err := s.client.Do(ctx, req, nil)

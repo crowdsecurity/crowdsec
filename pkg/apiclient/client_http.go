@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -22,7 +23,6 @@ func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Requ
 	if err != nil {
 		return nil, err
 	}
-	log.Printf("new url --->>> %s (baseURL:%s)", u, c.BaseURL)
 
 	var buf io.ReadWriter
 	if body != nil {
@@ -43,7 +43,6 @@ func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Requ
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	//req.Header.Set("Accept", mediaTypeV3)
 
 	return req, nil
 }
@@ -59,7 +58,16 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	if c.UserAgent != "" {
 		req.Header.Add("User-Agent", c.UserAgent)
 	}
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpRequest(req, true)
+		log.Tracef("request: %s", string(dump))
+	}
+
 	resp, err := c.client.Do(req)
+	if log.GetLevel() >= log.TraceLevel {
+		dump, _ := httputil.DumpResponse(resp, true)
+		log.Tracef("response: %s", string(dump))
+	}
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -79,7 +87,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	response := newResponse(resp)
 
@@ -88,8 +95,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		return response, err
 	}
 
-	//x, _ := ioutil.ReadAll(resp.Body)
-	//log.Printf("body : %s", string(x))
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
 			io.Copy(w, resp.Body)
