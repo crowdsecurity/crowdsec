@@ -159,9 +159,9 @@ To list/add/delete/register/validate machines
 		Short: "add machine to the database.",
 		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `
-cscli machines add --auto                 -> generate login and password
-cscli machines add MyTestMachine --auto   -> generate only password, username is MyTestMachine
-cscli machines add MyTestMachine --password MyPassword  -> use MyTestMachine as username and MyPassword as password
+cscli machines add --auto
+cscli machines add MyTestMachine --auto
+cscli machines add MyTestMachine --password MyPassword
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -252,10 +252,10 @@ cscli machines add MyTestMachine --password MyPassword  -> use MyTestMachine as 
 	}
 	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
 	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "machine ip address")
-	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "add the machine automatically (generate the machine ID and the password)")
-	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force if the machine was already added")
+	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the local API")
+	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
+	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "add the machine automatically (will generate also the username if not provided)")
+	cmdMachinesAdd.Flags().BoolVar(&forceAdd, "force", false, "will force add the machine if it already exist")
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
 	var cmdMachinesDelete = &cobra.Command{
@@ -277,7 +277,7 @@ cscli machines add MyTestMachine --password MyPassword  -> use MyTestMachine as 
 				log.Errorf("unable to create blocker: %s", err)
 				return
 			}
-			log.Infof("machine '%s' deleted successfully")
+			log.Infof("machine '%s' deleted successfully", machineID)
 		},
 	}
 	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
