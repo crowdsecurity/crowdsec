@@ -1,7 +1,7 @@
 site_name: Crowdsec/v1
 nav:
   - Home: index.md
-  - Crowd Power: getting_started/crowd-power.md
+  - Crowd Power: crowd-power.md
   - Getting Started:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
@@ -35,6 +35,7 @@ nav:
     - Postoverflows: cscli/cscli_postoverflows.md
     - Scenarios: cscli/cscli_scenarios.md
     - Simulation: cscli/cscli_simulation.md
+  - Local API: localAPI/
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
@@ -45,16 +46,18 @@ nav:
   - Bouncers: bouncers/index.md
   - References:
     - Parsers format: references/parsers.md
+    - Scenarios format: references/scenarios.md
     - PostOverlows format: references/postoverflows.md
     - Enrichers format: references/enrichers.md
-    - Scenarios format: references/scenarios.md
-    - Event format: references/events.md
-    - Collections: references/collections.md
+    - Collections format: references/collections.md
     - Database: references/database.md
     - Acquisition format: references/acquisition.md
     - Profiles format: references/profiles.md
     - Simulation configuration: references/simulation.md
     - Expressions helpers: references/expressions.md
+    - Event object: references/events.md
+    - Alert object: references/alerts.md
+    - Decision object: references/decisions.md
   - Write Configurations:
     - Requirements: write_configurations/requirements.md
     - Acquisition: write_configurations/acquisition.md

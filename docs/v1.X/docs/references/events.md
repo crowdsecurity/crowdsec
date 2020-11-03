@@ -1,6 +1,4 @@
-<!--TBD:document runtime event-->
 # Events
-
 
 An `Event` is the runtime representation of an item being processed by crowdsec : It be a Log line being parsed, or an Overflow being reprocessed.
 

@@ -167,8 +167,7 @@ cscli dashboard setup --listen 0.0.0.0
 ```
 
 A docker metabase {{v1X.metabase.Htmlname}} container can be deployed with `cscli dashboard`.
-It requires docker.
-<!--TBD: add minimum docker version here ?-->
+It requires docker, [installation instructions are available here](https://docs.docker.com/engine/install/).
 
 ## Logs
 
