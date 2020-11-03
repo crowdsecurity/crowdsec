@@ -219,6 +219,12 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.CreatedAtLTE(since))
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
+		case "include_capi": //allows to exclude one or more specific origins
+			if value[0] == "false" {
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ("CAPI")))
+			} else if value[0] != "true" {
+				log.Errorf("Invalid bool '%s' for include_capi", value[0])
+			}
 		case "has_active_decision":
 			if hasActiveDecision, err = strconv.ParseBool(value[0]); err != nil {
 				return nil, errors.Wrap(ParseType, fmt.Sprintf("'%s' is not a boolean: %s", value[0], err))
