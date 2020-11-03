@@ -36,6 +36,6 @@ func (s *SignalService) Add(ctx context.Context, signals []*Signal) (interface{}
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "while performing request")
 	}
-	log.Printf("signals add response : %s %s", resp.Response.Status, resp.Response.Body)
+	log.Printf("Signal push response : http %s", resp.Response.Status)
 	return &response, resp, nil
 }
