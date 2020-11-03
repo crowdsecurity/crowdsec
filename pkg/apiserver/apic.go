@@ -23,8 +23,8 @@ import (
 
 const (
 	PullInterval    = "2m"
-	PushInterval    = "30s"
-	MetricsInterval = "30m"
+	PushInterval    = "2m"
+	MetricsInterval = "30s"
 )
 
 type apic struct {
@@ -276,7 +276,12 @@ func (a *apic) SendMetrics() error {
 	for {
 		select {
 		case <-ticker.C:
-			metric := &models.Metrics{}
+			version := cwversion.VersionStr()
+			metric := &models.Metrics{
+				ApilVersion: &version,
+				Machines:    make([]*models.MetricsSoftInfo, 0),
+				Bouncers:    make([]*models.MetricsSoftInfo, 0),
+			}
 			machines, err := a.dbClient.ListMachines()
 			if err != nil {
 				return err
@@ -287,8 +292,6 @@ func (a *apic) SendMetrics() error {
 			}
 			// models.metric structure : len(machines), len(bouncers), a.credentials.Login
 			// _, _, err := a.apiClient.Metrics.Add(//*models.Metrics)
-
-			*metric.ApilVersion = cwversion.VersionStr()
 			for _, machine := range machines {
 				m := &models.MetricsSoftInfo{
 					Version: machine.Version,
@@ -302,9 +305,10 @@ func (a *apic) SendMetrics() error {
 					Version: bouncer.Version,
 					Name:    bouncer.Type,
 				}
-				metric.Machines = append(metric.Bouncers, m)
+				metric.Bouncers = append(metric.Bouncers, m)
 			}
-			log.Infof("TODO: send metrics : %+v", metric)
+			_, _, err = a.apiClient.Metrics.Add(context.Background(), metric)
+			log.Infof("capi metrics: metrics sent successfully")
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
