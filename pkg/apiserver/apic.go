@@ -42,6 +42,36 @@ type apic struct {
 	credentials     *csconfig.ApiCredentialsCfg
 }
 
+func IsInSlice(a string, b []string) bool {
+	for _, v := range b {
+		if a == v {
+			return true
+		}
+	}
+	return false
+}
+
+func FetchScenariosListFromDB(dbClient *database.Client) ([]string, error) {
+	var scenarios []string
+
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return nil, errors.Wrap(err, "while listing machines")
+	}
+	//merge all scenarios together
+	for _, v := range machines {
+		machineScenarios := strings.Split(v.Scenarios, ",")
+		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
+		for _, sv := range machineScenarios {
+			if !IsInSlice(sv, scenarios) {
+				scenarios = append(scenarios, sv)
+			}
+		}
+	}
+	log.Debugf("Returning list of scenarios : %+v", scenarios)
+	return scenarios, nil
+}
+
 func AlertToSignal(alert *models.Alert) *apiclient.Signal {
 	return &apiclient.Signal{
 		Message:         *alert.Message,
@@ -75,12 +105,20 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 
 	password := strfmt.Password(config.Credentials.Password)
 	apiURL, err := url.Parse(config.Credentials.URL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
+	}
+	scenarios, err := FetchScenariosListFromDB(dbClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching scenarios from db")
+	}
 	Client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     config.Credentials.Login,
 		Password:      password,
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
 		VersionPrefix: "v2",
+		Scenarios:     scenarios,
 	})
 	return &apic{
 		apiClient:       Client,
@@ -124,7 +162,6 @@ func (a *apic) Push() error {
 			if err != nil {
 				return err
 			}
-			ticker = time.NewTicker(a.pushInterval)
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
 			var signal *apiclient.Signal
@@ -216,8 +253,6 @@ func (a *apic) Pull() error {
 					return errors.Wrap(err, "decision creation from crowdsec-api:")
 				}
 			}
-
-			ticker = time.NewTicker(a.pullInterval)
 			log.Printf("pull top: added %d entries", len(data.New))
 
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
@@ -265,8 +300,6 @@ func (a *apic) SendMetrics() error {
 				metric.Machines = append(metric.Bouncers, m)
 			}
 			log.Infof("TODO: send metrics : %+v", metric)
-			ticker = time.NewTicker(a.metricsInterval)
-
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)

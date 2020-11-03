@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -25,6 +26,7 @@ func (s *SignalService) Add(ctx context.Context, signals []*Signal) (interface{}
 	var response interface{}
 
 	u := fmt.Sprintf("%s/signals", s.client.URLPrefix)
+	log.Printf("--> %s", u)
 	req, err := s.client.NewRequest("POST", u, &signals)
 	if err != nil {
 		return nil, nil, err
