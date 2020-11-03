@@ -160,6 +160,7 @@ func (a *apic) Push() error {
 			log.Infof("api push: pushed %d signals", len(cacheCopy))
 			err := a.Send(cacheCopy)
 			if err != nil {
+				log.Errorf("got an error while sending signal : %s", err)
 				return err
 			}
 		case alerts := <-a.alertToPush:

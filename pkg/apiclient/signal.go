@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
 type Signal struct {
@@ -29,13 +30,13 @@ func (s *SignalService) Add(ctx context.Context, signals []*Signal) (interface{}
 	log.Printf("--> %s", u)
 	req, err := s.client.NewRequest("POST", u, &signals)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "while building request")
 	}
 
 	resp, err := s.client.Do(ctx, req, &response)
 	if err != nil {
-		return nil, resp, err
+		return nil, resp, errors.Wrap(err, "while performing request")
 	}
-
+	log.Printf("--> %s", resp.Response.Body)
 	return &response, resp, nil
 }
