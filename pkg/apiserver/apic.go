@@ -153,15 +153,17 @@ func (a *apic) Push() error {
 			return err
 		case <-ticker.C:
 			// flush
-			a.mu.Lock()
-			cacheCopy := cache
-			cache = make([]*apiclient.Signal, 0)
-			a.mu.Unlock()
-			log.Infof("api push: pushed %d signals", len(cacheCopy))
-			err := a.Send(cacheCopy)
-			if err != nil {
-				log.Errorf("got an error while sending signal : %s", err)
-				return err
+			if len(cache) > 0 {
+				a.mu.Lock()
+				cacheCopy := cache
+				cache = make([]*apiclient.Signal, 0)
+				a.mu.Unlock()
+				log.Infof("api push: pushed %d signals", len(cacheCopy))
+				err := a.Send(cacheCopy)
+				if err != nil {
+					log.Errorf("got an error while sending signal : %s", err)
+					return err
+				}
 			}
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
