@@ -27,7 +27,6 @@ func (s *SignalService) Add(ctx context.Context, signals []*Signal) (interface{}
 	var response interface{}
 
 	u := fmt.Sprintf("%s/signals", s.client.URLPrefix)
-	log.Printf("--> %s", u)
 	req, err := s.client.NewRequest("POST", u, &signals)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "while building request")
