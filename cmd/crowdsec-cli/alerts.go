@@ -49,7 +49,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
 		}
 		for _, alertItem := range *alerts {
-			if alertItem.ScenarioVersion == nil {
+			if alertItem.ScenarioVersion == nil || *alertItem.ScenarioVersion == "" {
 				alertItem.ScenarioVersion = new(string)
 				*alertItem.ScenarioVersion = "N/A"
 			}
