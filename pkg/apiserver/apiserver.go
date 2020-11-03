@@ -146,18 +146,21 @@ func (s *APIServer) Run() error {
 	if s.apic != nil {
 		s.apic.pushTomb.Go(func() error {
 			if err := s.apic.Push(); err != nil {
+				log.Errorf("while pushing to APIC : %s", err)
 				return err
 			}
 			return nil
 		})
 		s.apic.pullTomb.Go(func() error {
 			if err := s.apic.Pull(); err != nil {
+				log.Errorf("while pulling from APIC : %s", err)
 				return err
 			}
 			return nil
 		})
 		s.apic.metricsTomb.Go(func() error {
 			if err := s.apic.SendMetrics(); err != nil {
+				log.Errorf("while pushing metrics to APIC : %s", err)
 				return err
 			}
 			return nil
@@ -178,6 +181,7 @@ func (s *APIServer) Run() error {
 		}()
 		<-s.httpServerTomb.Dying()
 		if err := s.Shutdown(); err != nil {
+			log.Errorf("while shutting down API Server : %s", err)
 			return err
 		}
 		return nil
