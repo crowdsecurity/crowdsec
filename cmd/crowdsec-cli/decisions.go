@@ -325,7 +325,7 @@ cscli decisions add --scope username --value foobar
 				},
 				StartAt:   &startAt,
 				StopAt:    &stopAt,
-				CreatedAt: &createdAt,
+				CreatedAt: createdAt,
 			}
 			alerts = append(alerts, &alert)
 
