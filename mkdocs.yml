@@ -236,6 +236,7 @@ extra:
           Name: Local API (LAPI)
           Htmlname: "[local api](/Crowdsec/v1/localAPI/)"
           htmlname: "[local API](/Crowdsec/v1/localAPI/)"
+          swagger: https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI
       cli:
           name: cscli
           Name: Cscli
@@ -283,6 +284,8 @@ extra:
           Name: Onsuccess
           htmlname: "[onsuccess](/Crowdsec/v1/references/parsers/#onsuccess)"  
           Htmlname: "[Onsuccess](/Crowdsec/v1/references/parsers/#onsuccess)"  
+      profiles:
+          htmlname: "[profiles](/Crowdsec/v1/references/profiles/)"
       statics:
           name: statics
           Name: Statics
