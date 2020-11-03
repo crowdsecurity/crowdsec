@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"strings"
 	"sync"
@@ -41,20 +42,53 @@ type apic struct {
 	credentials     *csconfig.ApiCredentialsCfg
 }
 
+func IsInSlice(a string, b []string) bool {
+	for _, v := range b {
+		if a == v {
+			return true
+		}
+	}
+	return false
+}
+
+func FetchScenariosListFromDB(dbClient *database.Client) ([]string, error) {
+	var scenarios []string
+
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return nil, errors.Wrap(err, "while listing machines")
+	}
+	//merge all scenarios together
+	for _, v := range machines {
+		machineScenarios := strings.Split(v.Scenarios, ",")
+		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
+		for _, sv := range machineScenarios {
+			if !IsInSlice(sv, scenarios) {
+				scenarios = append(scenarios, sv)
+			}
+		}
+	}
+	log.Debugf("Returning list of scenarios : %+v", scenarios)
+	return scenarios, nil
+}
+
+func AlertToSignal(alert *models.Alert) *apiclient.Signal {
+	return &apiclient.Signal{
+		Message:         *alert.Message,
+		Scenario:        *alert.Scenario,
+		ScenarioHash:    *alert.ScenarioHash,
+		ScenarioVersion: *alert.ScenarioVersion,
+		Source:          alert.Source,
+		StartAt:         *alert.StartAt,
+		StopAt:          *alert.StopAt,
+		CreatedAt:       alert.CreatedAt,
+		MachineID:       alert.MachineID,
+	}
+}
+
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*apic, error) {
 	var err error
 	var ret *apic
-
-	apiclient.BaseURL, err = url.Parse(config.Credentials.URL)
-	if err != nil {
-		return ret, errors.Wrapf(err, "parse local API URL '%s': %v ", config.Credentials.URL, err.Error())
-	}
-
-	password := strfmt.Password(config.Credentials.Password)
-	t := &apiclient.JWTTransport{
-		MachineID: &config.Credentials.Login,
-		Password:  &password,
-	}
 
 	pullInterval, err := time.ParseDuration(PullInterval)
 	if err != nil {
@@ -69,8 +103,25 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 		return ret, err
 	}
 
+	password := strfmt.Password(config.Credentials.Password)
+	apiURL, err := url.Parse(config.Credentials.URL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
+	}
+	scenarios, err := FetchScenariosListFromDB(dbClient)
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching scenarios from db")
+	}
+	Client, err := apiclient.NewClient(&apiclient.Config{
+		MachineID:     config.Credentials.Login,
+		Password:      password,
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v2",
+		Scenarios:     scenarios,
+	})
 	return &apic{
-		apiClient:       apiclient.NewClient(t.Client()),
+		apiClient:       Client,
 		alertToPush:     make(chan []*models.Alert),
 		dbClient:        dbClient,
 		pullInterval:    pullInterval,
@@ -88,8 +139,9 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 func (a *apic) Push() error {
 	defer types.CatchPanic("apil/pushToAPIC")
 
-	var cache []*models.Alert
+	var cache []*apiclient.Signal
 	ticker := time.NewTicker(a.pushInterval)
+	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
 
 	for {
 		select {
@@ -101,30 +153,38 @@ func (a *apic) Push() error {
 			return err
 		case <-ticker.C:
 			// flush
-			a.mu.Lock()
-			cacheCopy := cache
-			cache = make([]*models.Alert, 0)
-			a.mu.Unlock()
-
-			err := a.Send(cacheCopy)
-			if err != nil {
-				return err
+			if len(cache) > 0 {
+				a.mu.Lock()
+				cacheCopy := cache
+				cache = make([]*apiclient.Signal, 0)
+				a.mu.Unlock()
+				log.Infof("api push: pushed %d signals", len(cacheCopy))
+				err := a.Send(cacheCopy)
+				if err != nil {
+					log.Errorf("got an error while sending signal : %s", err)
+					return err
+				}
 			}
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
-			cache = append(cache, alerts...)
+			var signal *apiclient.Signal
+			for _, alert := range alerts {
+				signal = AlertToSignal(alert)
+			}
+			cache = append(cache, signal)
 			a.mu.Unlock()
 		}
 	}
 }
 
-func (a *apic) Send(cache []*models.Alert) error {
-	_, _, err := a.apiClient.Alerts.Add(context.Background(), cache)
+func (a *apic) Send(cache []*apiclient.Signal) error {
+	_, _, err := a.apiClient.Signal.Add(context.Background(), cache)
 	return err
 }
 
 func (a *apic) Pull() error {
 	defer types.CatchPanic("apil/pullFromAPIC")
+	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
 
 	ticker := time.NewTicker(a.pullInterval)
 	for {
@@ -137,7 +197,6 @@ func (a *apic) Pull() error {
 			if a.startup {
 				a.startup = false
 			}
-
 			// process deleted decisions
 			var filter map[string][]string
 			for _, decision := range data.Deleted {
@@ -165,14 +224,13 @@ func (a *apic) Pull() error {
 					Create().
 					SetScenario(*decision.Scenario).
 					SetSourceIp(*decision.Value).
-					//SetSourceAsNumber(alert["as_num"]).
-					//SetSourceAsName(alert["as_org"]).
-					//SetSourceCountry(alert["country"]).
+					SetSourceValue(*decision.Value).
+					SetSourceScope(*decision.Scope).
 					Save(a.dbClient.CTX)
 				if err != nil {
 					return errors.Wrap(err, "create alert from crowdsec-api")
 				}
-
+				log.Infof("alertcreated: %+v", alertCreated)
 				duration, err := time.ParseDuration(*decision.Duration)
 				if err != nil {
 					return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
@@ -190,7 +248,7 @@ func (a *apic) Pull() error {
 					SetEndIP(endIP).
 					SetValue(*decision.Value).
 					SetScope(*decision.Scope).
-					SetOrigin("crowdsec-api").
+					SetOrigin(*decision.Origin).
 					SetOwner(alertCreated).Save(a.dbClient.CTX)
 				if err != nil {
 					return errors.Wrap(err, "decision creation from crowdsec-api:")
@@ -209,6 +267,7 @@ func (a *apic) Pull() error {
 func (a *apic) SendMetrics() error {
 	defer types.CatchPanic("apil/metricsToAPIC")
 
+	log.Infof("start crowdsec api send metrics (interval: %s)", MetricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
 		select {
@@ -241,8 +300,7 @@ func (a *apic) SendMetrics() error {
 				}
 				metric.Machines = append(metric.Bouncers, m)
 			}
-
-			return nil
+			log.Infof("TODO: send metrics : %+v", metric)
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)

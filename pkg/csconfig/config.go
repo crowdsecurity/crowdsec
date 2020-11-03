@@ -139,6 +139,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			c.API.Server.OnlineClient.Credentials = new(ApiCredentialsCfg)
 			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
@@ -149,7 +150,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			}
 			if c.API.Server.OnlineClient.Credentials == nil {
 				log.Debugf("online credentials not found in '%s', will not use crowdsec api", c.API.Server.OnlineClient.CredentialsFilePath)
-				c.API.Server.OnlineClient = nil
 			}
 		}
 	}

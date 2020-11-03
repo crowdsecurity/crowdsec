@@ -35,7 +35,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("v1/decisions/?%s", params.Encode())
+	u := fmt.Sprintf("%s/decisions/?%s", s.client.URLPrefix, params.Encode())
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
@@ -52,7 +52,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 func (s *DecisionsService) GetStream(ctx context.Context, startup bool) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
 
-	u := fmt.Sprintf("v1/decisions/stream?startup=%t", startup)
+	u := fmt.Sprintf("%s/decisions/stream?startup=%t", s.client.URLPrefix, startup)
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
@@ -68,7 +68,7 @@ func (s *DecisionsService) GetStream(ctx context.Context, startup bool) (*models
 
 func (s *DecisionsService) StopStream(ctx context.Context) (*Response, error) {
 
-	u := "v1/decisions"
+	u := fmt.Sprintf("%s/decisions", s.client.URLPrefix)
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("v1/decisions?%s", params.Encode())
+	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
@@ -103,7 +103,7 @@ func (s *DecisionsService) Delete(ctx context.Context, opts DecisionsDeleteOpts)
 
 func (s *DecisionsService) DeleteOne(ctx context.Context, decision_id string) (*models.DeleteDecisionResponse, *Response, error) {
 	var deleteDecisionResponse models.DeleteDecisionResponse
-	u := fmt.Sprintf("v1/decisions/%s", decision_id)
+	u := fmt.Sprintf("%s/decisions/%s", s.client.URLPrefix, decision_id)
 
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {

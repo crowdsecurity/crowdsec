@@ -2,6 +2,7 @@ package apiclient
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -12,7 +13,7 @@ type AuthService service
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
 
-	u := "v1/watchers"
+	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {
 		return nil, err
@@ -27,7 +28,8 @@ func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) 
 
 func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.WatcherRegistrationRequest) (*Response, error) {
 
-	u := "v1/watchers"
+	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
+
 	req, err := s.client.NewRequest("POST", u, &registration)
 	if err != nil {
 		return nil, err
@@ -41,7 +43,7 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 }
 
 func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (*Response, error) {
-	u := "v1/watchers/login"
+	u := fmt.Sprintf("%s/watchers/login", s.client.URLPrefix)
 	req, err := s.client.NewRequest("POST", u, &auth)
 	if err != nil {
 		return nil, err

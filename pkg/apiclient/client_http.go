@@ -40,7 +40,6 @@ func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Requ
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	//req.Header.Set("Accept", mediaTypeV3)
 
 	return req, nil
 }
@@ -56,7 +55,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	if c.UserAgent != "" {
 		req.Header.Add("User-Agent", c.UserAgent)
 	}
+
 	resp, err := c.client.Do(req)
+
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -76,7 +77,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	response := newResponse(resp)
 
@@ -85,8 +85,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		return response, err
 	}
 
-	//x, _ := ioutil.ReadAll(resp.Body)
-	//log.Printf("body : %s", string(x))
 	if v != nil {
 		if w, ok := v.(io.Writer); ok {
 			io.Copy(w, resp.Body)

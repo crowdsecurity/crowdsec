@@ -135,6 +135,11 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+	for _, alert := range input {
+		alert.MachineID = machineID
+	}
+	c.CAPIChan <- input
+
 	gctx.JSON(http.StatusOK, alerts)
 	return
 }

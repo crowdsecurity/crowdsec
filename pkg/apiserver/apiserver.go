@@ -94,24 +94,27 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	})
 	router.Use(gin.Recovery())
 
-	controller := &controllers.Controller{
-		DBClient: dbClient,
-		Ectx:     context.Background(),
-		Router:   router,
-		Profiles: config.Profiles,
-	}
-
-	if err := controller.Init(); err != nil {
-		return &APIServer{}, err
-	}
 	var apiClient *apic
 	if config.OnlineClient != nil {
+		log.Printf("Loading CAPI pusher")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
 		if err != nil {
 			return &APIServer{}, err
 		}
 	} else {
 		apiClient = nil
+	}
+
+	controller := &controllers.Controller{
+		DBClient: dbClient,
+		Ectx:     context.Background(),
+		Router:   router,
+		Profiles: config.Profiles,
+		CAPIChan: apiClient.alertToPush,
+	}
+
+	if err := controller.Init(); err != nil {
+		return &APIServer{}, err
 	}
 
 	return &APIServer{
@@ -143,18 +146,21 @@ func (s *APIServer) Run() error {
 	if s.apic != nil {
 		s.apic.pushTomb.Go(func() error {
 			if err := s.apic.Push(); err != nil {
+				log.Errorf("while pushing to APIC : %s", err)
 				return err
 			}
 			return nil
 		})
 		s.apic.pullTomb.Go(func() error {
 			if err := s.apic.Pull(); err != nil {
+				log.Errorf("while pulling from APIC : %s", err)
 				return err
 			}
 			return nil
 		})
 		s.apic.metricsTomb.Go(func() error {
 			if err := s.apic.SendMetrics(); err != nil {
+				log.Errorf("while pushing metrics to APIC : %s", err)
 				return err
 			}
 			return nil
@@ -175,6 +181,7 @@ func (s *APIServer) Run() error {
 		}()
 		<-s.httpServerTomb.Dying()
 		if err := s.Shutdown(); err != nil {
+			log.Errorf("while shutting down API Server : %s", err)
 			return err
 		}
 		return nil

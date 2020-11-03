@@ -43,7 +43,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 
 	var added_ids models.AddAlertsResponse
 
-	u := "v1/alerts"
+	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
 	req, err := s.client.NewRequest("POST", u, &alerts)
 	if err != nil {
 		return nil, nil, err
@@ -60,14 +60,16 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.GetAlertsResponse, *Response, error) {
 	var alerts models.GetAlertsResponse
 	var URI string
+	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
+
 	params, err := qs.Values(opts)
 	if err != nil {
 		return nil, nil, err
 	}
 	if len(params) > 0 {
-		URI = fmt.Sprintf("v1/alerts?%s", params.Encode())
+		URI = fmt.Sprintf("%s?%s", u, params.Encode())
 	} else {
-		URI = "v1/alerts"
+		URI = u
 	}
 
 	req, err := s.client.NewRequest("GET", URI, nil)
@@ -89,7 +91,7 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("v1/alerts?%s", params.Encode())
+	u := fmt.Sprintf("%s/alerts?%s", s.client.URLPrefix, params.Encode())
 
 	req, err := s.client.NewRequest("DELETE", u, nil)
 	if err != nil {

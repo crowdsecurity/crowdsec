@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
@@ -22,7 +23,10 @@ type APIKeyTransport struct {
 	APIKey string
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport http.RoundTripper
+	Transport     http.RoundTripper
+	URL           *url.URL
+	VersionPrefix string
+	UserAgent     string
 }
 
 // RoundTrip implements the RoundTripper interface.
@@ -36,26 +40,26 @@ func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// specification of http.RoundTripper.
 	req = cloneRequest(req)
 	req.Header.Add("X-Api-Key", t.APIKey)
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	log.Debugf("req-api: %s %s", req.Method, req.URL.String())
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("req-api: %s", string(dump))
+		log.Tracef("auth-api request: %s", string(dump))
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)
 	if err != nil {
-		log.Errorf("resp-api: auth with api key failed return nil response, error: %s", err)
+		log.Errorf("auth-api: auth with api key failed return nil response, error: %s", err)
 		return resp, err
 	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-api: %s", string(dump))
+		log.Tracef("auth-api response: %s", string(dump))
 	}
 
-	log.Debugf("resp-api: %d", resp.StatusCode)
+	log.Debugf("resp-api: http %d", resp.StatusCode)
 
 	return resp, err
 }
@@ -72,11 +76,14 @@ func (t *APIKeyTransport) transport() http.RoundTripper {
 }
 
 type JWTTransport struct {
-	MachineID  *string
-	Password   *strfmt.Password
-	token      string
-	Expiration time.Time
-	Scenarios  []string
+	MachineID     *string
+	Password      *strfmt.Password
+	token         string
+	Expiration    time.Time
+	Scenarios     []string
+	URL           *url.URL
+	VersionPrefix string
+	UserAgent     string
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
 	Transport http.RoundTripper
@@ -103,31 +110,31 @@ func (t *JWTTransport) refreshJwtToken() error {
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}
-	req, err := http.NewRequest("POST", fmt.Sprintf("%sv1/watchers/login", BaseURL), buf)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s%s/watchers/login", t.URL, t.VersionPrefix), buf)
 	if err != nil {
 		return errors.Wrap(err, "could not create request")
 	}
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{}
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpRequest(req, true)
-		log.Tracef("req-jwt(auth): %s", string(dump))
+		log.Tracef("auth-jwt request: %s", string(dump))
 	}
 
-	log.Debugf("req-jwt(auth): %s %s", req.Method, req.URL.String())
+	log.Debugf("auth-jwt(auth): %s %s", req.Method, req.URL.String())
 
 	resp, err := client.Do(req)
 	if err != nil {
 		return errors.Wrap(err, "could not get jwt token")
 	}
-	log.Debugf("resp-jwt(auth): %d", resp.StatusCode)
+	log.Debugf("auth-jwt : http %d", resp.StatusCode)
 
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-jwt: %s", string(dump))
+		log.Tracef("auth-jwt response: %s", string(dump))
 	}
 
 	defer resp.Body.Close()
@@ -166,8 +173,8 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		dump, _ := httputil.DumpRequest(req, true)
 		log.Tracef("req-jwt: %s", string(dump))
 	}
-	if UserAgent != "" {
-		req.Header.Add("User-Agent", UserAgent)
+	if t.UserAgent != "" {
+		req.Header.Add("User-Agent", t.UserAgent)
 	}
 	// Make the HTTP request.
 	resp, err := t.transport().RoundTrip(req)

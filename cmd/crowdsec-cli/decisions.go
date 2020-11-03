@@ -103,27 +103,27 @@ func NewDecisionsCmd() *cobra.Command {
 		/*TBD example*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			var err error
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
 			if csConfig.API.Client.Credentials == nil {
 				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
 			}
-			apiclient.BaseURL, err = url.Parse(csConfig.API.Client.Credentials.URL)
-			if err != nil {
-				log.Fatalf("failed to parse Local API URL %s : %v ", csConfig.API.Client.Credentials.URL, err.Error())
-			}
-			apiclient.UserAgent = fmt.Sprintf("crowdsec/%s", cwversion.VersionStr())
-
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
-			t := &apiclient.JWTTransport{
-				MachineID: &csConfig.API.Client.Credentials.Login,
-				Password:  &password,
+			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
+			if err != nil {
+				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Client.Credentials.URL, err)
 			}
-
-			Client = apiclient.NewClient(t.Client())
-
+			Client, err = apiclient.NewClient(&apiclient.Config{
+				MachineID:     csConfig.API.Client.Credentials.Login,
+				Password:      password,
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiurl,
+				VersionPrefix: "v1",
+			})
+			if err != nil {
+				log.Fatalf("creating api client : %s", err)
+			}
 		},
 	}
 
@@ -261,6 +261,7 @@ cscli decisions add --scope username --value foobar
 			simulated := false
 			startAt := time.Now().Format(time.RFC3339)
 			stopAt := time.Now().Format(time.RFC3339)
+			createdAt := time.Now().Format(time.RFC3339)
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
@@ -322,8 +323,9 @@ cscli decisions add --scope username --value foobar
 					Scope:    &addScope,
 					Value:    &addValue,
 				},
-				StartAt: &startAt,
-				StopAt:  &stopAt,
+				StartAt:   &startAt,
+				StopAt:    &stopAt,
+				CreatedAt: createdAt,
 			}
 			alerts = append(alerts, &alert)
 
