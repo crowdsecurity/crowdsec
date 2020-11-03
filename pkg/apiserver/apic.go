@@ -224,11 +224,13 @@ func (a *apic) Pull() error {
 					Create().
 					SetScenario(*decision.Scenario).
 					SetSourceIp(*decision.Value).
+					SetSourceValue(*decision.Value).
+					SetSourceScope(*decision.Scope).
 					Save(a.dbClient.CTX)
 				if err != nil {
 					return errors.Wrap(err, "create alert from crowdsec-api")
 				}
-
+				log.Infof("alertcreated: %+v", alertCreated)
 				duration, err := time.ParseDuration(*decision.Duration)
 				if err != nil {
 					return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
@@ -246,7 +248,7 @@ func (a *apic) Pull() error {
 					SetEndIP(endIP).
 					SetValue(*decision.Value).
 					SetScope(*decision.Scope).
-					SetOrigin("crowdsec-api").
+					SetOrigin(*decision.Origin).
 					SetOwner(alertCreated).Save(a.dbClient.CTX)
 				if err != nil {
 					return errors.Wrap(err, "decision creation from crowdsec-api:")
