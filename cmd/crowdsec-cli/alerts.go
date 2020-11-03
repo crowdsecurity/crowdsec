@@ -49,15 +49,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
 		}
 		for _, alertItem := range *alerts {
-			if alertItem.ScenarioVersion == nil || *alertItem.ScenarioVersion == "" {
-				alertItem.ScenarioVersion = new(string)
-				*alertItem.ScenarioVersion = "N/A"
-			}
 			if printMachine {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
 					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
@@ -67,7 +63,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
 					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
@@ -93,15 +89,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 
 		for _, alertItem := range *alerts {
-			if alertItem.ScenarioVersion == nil {
-				alertItem.ScenarioVersion = new(string)
-				*alertItem.ScenarioVersion = "N/A"
-			}
 			if printMachine {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
 					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
@@ -112,7 +104,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
 					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
