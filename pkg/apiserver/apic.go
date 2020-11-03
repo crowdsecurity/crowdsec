@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	PullInterval    = "2m"
-	PushInterval    = "2m"
-	MetricsInterval = "30s"
+	PullInterval    = "2h"
+	PushInterval    = "30s"
+	MetricsInterval = "30m"
 )
 
 type apic struct {
