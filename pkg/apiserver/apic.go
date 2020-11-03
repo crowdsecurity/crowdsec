@@ -219,8 +219,8 @@ func (a *apic) Pull() error {
 
 			alertCreated, err := a.dbClient.Ent.Alert.
 				Create().
-				SetScenario(fmt.Sprintf("consensus pull : +%d/-%d", len(data.New), len(data.Deleted))).
-				SetSourceScope("Crowdsec consensus").
+				SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
+				SetSourceScope("Reputation blocklist").
 				Save(a.dbClient.CTX)
 			if err != nil {
 				return errors.Wrap(err, "create alert from crowdsec-api")
