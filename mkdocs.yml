@@ -79,8 +79,8 @@ markdown_extensions:
   - admonition
 theme: 
   name: material
-  logo: assets/images/crowdsec2.png
-  favicon: assets/images/crowdsec2.png
+  logo: assets/images/crowdsec_logo1.png
+  favicon: assets/images/crowdsec_logo1.png
   palette:
     primary: "#3d85c6" 
   language: en
