@@ -219,7 +219,7 @@ func (a *apic) Pull() error {
 
 			alertCreated, err := a.dbClient.Ent.Alert.
 				Create().
-				SetScenario(fmt.Sprintf("consensus pull : %d IPs", len(data.New))).
+				SetScenario(fmt.Sprintf("consensus pull : +%d/-%d", len(data.New), len(data.Deleted))).
 				SetSourceScope("Crowdsec consensus").
 				Save(a.dbClient.CTX)
 			if err != nil {
