@@ -195,7 +195,6 @@ func (a *apic) Pull() error {
 			if a.startup {
 				a.startup = false
 			}
-			log.Infof("Receive from CAPI: %+v", data.New)
 			// process deleted decisions
 			var filter map[string][]string
 			for _, decision := range data.Deleted {
@@ -223,9 +222,6 @@ func (a *apic) Pull() error {
 					Create().
 					SetScenario(*decision.Scenario).
 					SetSourceIp(*decision.Value).
-					//SetSourceAsNumber(alert["as_num"]).
-					//SetSourceAsName(alert["as_org"]).
-					//SetSourceCountry(alert["country"]).
 					Save(a.dbClient.CTX)
 				if err != nil {
 					return errors.Wrap(err, "create alert from crowdsec-api")
