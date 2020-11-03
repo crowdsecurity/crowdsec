@@ -44,15 +44,16 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
 		if printMachine {
-			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at,machine\n")
+			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at,machine\n")
 		} else {
-			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
+			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
 		}
 		for _, alertItem := range *alerts {
 			if printMachine {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
-					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
+					*alertItem.Source.Scope,
+					*alertItem.Source.Value,
 					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
@@ -60,9 +61,10 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					alertItem.CreatedAt,
 					alertItem.MachineID)
 			} else {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
-					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
+					*alertItem.Source.Scope,
+					*alertItem.Source.Value,
 					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
@@ -78,9 +80,9 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 		table := tablewriter.NewWriter(os.Stdout)
 		if printMachine {
-			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at", "machine"})
+			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
 		} else {
-			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at"})
+			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at"})
 		}
 
 		if len(*alerts) == 0 {
@@ -89,10 +91,14 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 
 		for _, alertItem := range *alerts {
+			displayVal := *alertItem.Source.Scope
+			if *alertItem.Source.Value != "" {
+				displayVal += ":" + *alertItem.Source.Value
+			}
 			if printMachine {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
-					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
+					displayVal,
 					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
@@ -103,7 +109,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			} else {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
-					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
+					displayVal,
 					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
