@@ -61,7 +61,7 @@ func NewCapiCmd() *cobra.Command {
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
 				VersionPrefix: APIURLPrefix,
-			})
+			}, nil)
 
 			if err != nil {
 				log.Fatalf("api client register ('%s'): %s", APIBaseURL, err)
@@ -132,7 +132,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}
 
-			Client, err = apiclient.NewDefaultClient(apiurl, APIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()))
+			Client, err = apiclient.NewDefaultClient(apiurl, APIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
 			if err != nil {
 				log.Fatalf("init default client: %s", err)
 			}

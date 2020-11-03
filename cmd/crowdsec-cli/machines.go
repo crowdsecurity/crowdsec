@@ -311,7 +311,7 @@ cscli machines add --machine TestMachine --password password
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
 				VersionPrefix: "v1",
-			})
+			}, nil)
 
 			if err != nil {
 				log.Fatalf("api client register: %s", err)
