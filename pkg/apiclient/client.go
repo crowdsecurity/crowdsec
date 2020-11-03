@@ -59,9 +59,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 	return c, nil
 }
 
-func NewDefaultClient(URL *url.URL, prefix string, userAgent string) (*ApiClient, error) {
+func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
+	if client == nil {
+		client = &http.Client{}
+	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-	c := &ApiClient{client: &http.Client{}, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
+	c := &ApiClient{client: client, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
@@ -71,9 +74,12 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string) (*ApiClient
 	return c, nil
 }
 
-func RegisterClient(config *Config) (*ApiClient, error) {
+func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
+	if client == nil {
+		client = &http.Client{}
+	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
-	c := &ApiClient{client: &http.Client{}, BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	c := &ApiClient{client: client, BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
