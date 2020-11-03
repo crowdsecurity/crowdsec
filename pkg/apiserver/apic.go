@@ -152,13 +152,12 @@ func (a *apic) Push() error {
 			err := a.Send(cache)
 			return err
 		case <-ticker.C:
-			// flush
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
 				cache = make([]*apiclient.Signal, 0)
 				a.mu.Unlock()
-				log.Infof("api push: pushed %d signals", len(cacheCopy))
+				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 				err := a.Send(cacheCopy)
 				if err != nil {
 					log.Errorf("got an error while sending signal : %s", err)
@@ -218,19 +217,24 @@ func (a *apic) Pull() error {
 				log.Printf("pull top: deleted %s entries", nbDeleted)
 			}
 
+			alertCreated, err := a.dbClient.Ent.Alert.
+				Create().
+				SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
+				SetSourceScope("Comunity blocklist").
+				Save(a.dbClient.CTX)
+			if err != nil {
+				return errors.Wrap(err, "create alert from crowdsec-api")
+			}
+
 			// process new decisions
 			for _, decision := range data.New {
-				alertCreated, err := a.dbClient.Ent.Alert.
-					Create().
-					SetScenario(*decision.Scenario).
-					SetSourceIp(*decision.Value).
-					SetSourceValue(*decision.Value).
-					SetSourceScope(*decision.Scope).
-					Save(a.dbClient.CTX)
-				if err != nil {
-					return errors.Wrap(err, "create alert from crowdsec-api")
+				/*ensure scope makes sense no matter what consensus gives*/
+				if strings.ToLower(*decision.Scope) == "ip" {
+					*decision.Scope = types.Ip
+				} else if strings.ToLower(*decision.Scope) == "range" {
+					*decision.Scope = types.Range
 				}
-				log.Infof("alertcreated: %+v", alertCreated)
+
 				duration, err := time.ParseDuration(*decision.Duration)
 				if err != nil {
 					return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)

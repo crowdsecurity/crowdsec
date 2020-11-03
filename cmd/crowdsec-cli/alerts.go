@@ -44,30 +44,28 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
 		if printMachine {
-			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at,machine\n")
+			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at,machine\n")
 		} else {
-			fmt.Printf("id,Scope/Value,reason,country,as,decisions,created_at\n")
+			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
 		}
 		for _, alertItem := range *alerts {
-			if alertItem.ScenarioVersion == nil || *alertItem.ScenarioVersion == "" {
-				alertItem.ScenarioVersion = new(string)
-				*alertItem.ScenarioVersion = "N/A"
-			}
 			if printMachine {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
-					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Source.Scope,
+					*alertItem.Source.Value,
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
 					alertItem.CreatedAt,
 					alertItem.MachineID)
 			} else {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
-					*alertItem.Source.Scope+":"+*alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					*alertItem.Source.Scope,
+					*alertItem.Source.Value,
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
@@ -82,9 +80,9 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 		table := tablewriter.NewWriter(os.Stdout)
 		if printMachine {
-			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at", "machine"})
+			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
 		} else {
-			table.SetHeader([]string{"ID", "scope:value", "reason", "country", "as", "decisions", "created_at"})
+			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at"})
 		}
 
 		if len(*alerts) == 0 {
@@ -93,15 +91,15 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		}
 
 		for _, alertItem := range *alerts {
-			if alertItem.ScenarioVersion == nil {
-				alertItem.ScenarioVersion = new(string)
-				*alertItem.ScenarioVersion = "N/A"
+			displayVal := *alertItem.Source.Scope
+			if *alertItem.Source.Value != "" {
+				displayVal += ":" + *alertItem.Source.Value
 			}
 			if printMachine {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
-					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					displayVal,
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
@@ -111,8 +109,8 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			} else {
 				table.Append([]string{
 					strconv.Itoa(int(alertItem.ID)),
-					*alertItem.Source.Scope + ":" + *alertItem.Source.Value,
-					fmt.Sprintf("%s (%s)", *alertItem.Scenario, *alertItem.ScenarioVersion),
+					displayVal,
+					*alertItem.Scenario,
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),

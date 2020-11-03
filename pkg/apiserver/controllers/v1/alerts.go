@@ -77,8 +77,9 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 			})
 			outputAlert.Meta = outputMetas
 		}
+		var outputDecisions []*models.Decision
+
 		for _, decisionItem := range alertItem.Edges.Decisions {
-			var outputDecisions []*models.Decision
 			duration := decisionItem.Until.Sub(time.Now()).String()
 			outputDecisions = append(outputDecisions, &models.Decision{
 				Duration:  &duration, // transform into time.Time ?
@@ -92,8 +93,9 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 				Simulated: outputAlert.Simulated,
 				ID:        int64(decisionItem.ID),
 			})
-			outputAlert.Decisions = outputDecisions
 		}
+		outputAlert.Decisions = outputDecisions
+
 		data = append(data, &outputAlert)
 	}
 	return data

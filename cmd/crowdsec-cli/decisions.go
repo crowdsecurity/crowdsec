@@ -136,6 +136,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Since:          new(string),
 		Until:          new(string),
 		TypeEquals:     new(string),
+		IncludeCAPI:    new(bool),
 	}
 	var NoSimu bool
 	var cmdDecisionsList = &cobra.Command{
@@ -217,6 +218,7 @@ cscli decisions list -t ban
 		},
 	}
 	cmdDecisionsList.Flags().SortFlags = false
+	cmdDecisionsList.Flags().BoolVarP(filter.IncludeCAPI, "all", "a", false, "Include decisions from Central API")
 	cmdDecisionsList.Flags().StringVar(filter.Since, "since", "", "restrict to alerts newer than since (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
