@@ -261,6 +261,7 @@ cscli decisions add --scope username --value foobar
 			simulated := false
 			startAt := time.Now().Format(time.RFC3339)
 			stopAt := time.Now().Format(time.RFC3339)
+			createdAt := time.Now().Format(time.RFC3339)
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
@@ -322,8 +323,9 @@ cscli decisions add --scope username --value foobar
 					Scope:    &addScope,
 					Value:    &addValue,
 				},
-				StartAt: &startAt,
-				StopAt:  &stopAt,
+				StartAt:   &startAt,
+				StopAt:    &stopAt,
+				CreatedAt: &createdAt,
 			}
 			alerts = append(alerts, &alert)
 
