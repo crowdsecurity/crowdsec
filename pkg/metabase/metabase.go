@@ -129,6 +129,8 @@ func (m *Metabase) LoadConfig(configPath string) error {
 		return fmt.Errorf("'url' not found in credentials file '%s'", configPath)
 	}
 
+	m.Config = config
+
 	if err := m.Init(); err != nil {
 		return err
 	}
