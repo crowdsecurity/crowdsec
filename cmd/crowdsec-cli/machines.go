@@ -227,13 +227,6 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 			log.Infof("Machine '%s' created successfully", machineID)
 
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Client.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Client.CredentialsFilePath
-			} else {
-				dumpFile = ""
-			}
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
