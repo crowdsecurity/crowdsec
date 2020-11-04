@@ -169,6 +169,7 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
+			var dumpFile string
 			var err error
 
 			// create machineID if doesn't specified by user
@@ -186,6 +187,21 @@ cscli machines add MyTestMachine --password MyPassword
 				}
 			} else {
 				machineID = args[0]
+			}
+
+			/*check if file already exists*/
+			if outputFile != "" {
+				dumpFile = outputFile
+			} else if csConfig.API.Client.CredentialsFilePath != "" {
+				dumpFile = csConfig.API.Client.CredentialsFilePath
+			}
+			if dumpFile != "" {
+				if _, err := os.Stat(dumpFile); err == nil {
+					if !forceAdd {
+						log.Errorf("%s already exists, won't overwrite unless --force", dumpFile)
+						return
+					}
+				}
 			}
 
 			// create password if doesn't specified by user
@@ -211,14 +227,6 @@ cscli machines add MyTestMachine --password MyPassword
 			}
 			log.Infof("Machine '%s' created successfully", machineID)
 
-			var dumpFile string
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Client.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Client.CredentialsFilePath
-			} else {
-				dumpFile = ""
-			}
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
