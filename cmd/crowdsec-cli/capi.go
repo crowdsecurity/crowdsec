@@ -19,8 +19,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var APIBaseURL string = "https://api.dev.crowdsec.net/"
-var APIURLPrefix string = "v2"
+var CAPIBaseURL string
+var CAPIURLPrefix string = "v2"
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
@@ -29,7 +29,7 @@ func NewCapiCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.API.Server == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
+				log.Fatalln("There is no API->server configuration")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
@@ -51,20 +51,20 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("unable to generate machine id: %s", err)
 			}
 			password := strfmt.Password(generatePassword(passwordLength))
-			apiurl, err := url.Parse(APIBaseURL)
+			apiurl, err := url.Parse(CAPIBaseURL)
 			if err != nil {
-				log.Fatalf("unable to parse api url %s : %s", APIBaseURL, err)
+				log.Fatalf("unable to parse api url %s : %s", CAPIBaseURL, err)
 			}
 			_, err = apiclient.RegisterClient(&apiclient.Config{
 				MachineID:     id,
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
-				VersionPrefix: APIURLPrefix,
+				VersionPrefix: CAPIURLPrefix,
 			}, nil)
 
 			if err != nil {
-				log.Fatalf("api client register ('%s'): %s", APIBaseURL, err)
+				log.Fatalf("api client register ('%s'): %s", CAPIBaseURL, err)
 			}
 			log.Printf("Successfully registered to Central API (CAPI)")
 
@@ -80,7 +80,7 @@ func NewCapiCmd() *cobra.Command {
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    id,
 				Password: password.String(),
-				URL:      APIBaseURL,
+				URL:      CAPIBaseURL,
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
@@ -99,6 +99,7 @@ func NewCapiCmd() *cobra.Command {
 			log.Warningf("Run 'systemctl reload crowdsec' for the new configuration to be effective")
 		},
 	}
+	cmdCapiRegister.Flags().StringVarP(&CAPIBaseURL, "url", "u", "https://api.dev.crowdsec.net/", "central API URI")
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdCapi.AddCommand(cmdCapiRegister)
 
@@ -132,7 +133,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}
 
-			Client, err = apiclient.NewDefaultClient(apiurl, APIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
+			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
 			if err != nil {
 				log.Fatalf("init default client: %s", err)
 			}
