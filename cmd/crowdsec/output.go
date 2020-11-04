@@ -76,9 +76,12 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
 	}
+
+	password := strfmt.Password(apiConfig.Password)
+
 	Client, err := apiclient.NewClient(&apiclient.Config{
 		MachineID:     apiConfig.Login,
-		Password:      strfmt.Password(apiConfig.Password),
+		Password:      password,
 		Scenarios:     scenarios,
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:           apiURL,
@@ -86,6 +89,13 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	})
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)
+	}
+	if _, err = Client.Auth.AuthenticateWatcher(context.Background(), models.WatcherAuthRequest{
+		MachineID: &apiConfig.Login,
+		Password:  &password,
+		Scenarios: scenarios,
+	}); err != nil {
+		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
 
 LOOP:
