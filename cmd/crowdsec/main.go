@@ -223,7 +223,7 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-// LoadConfig return configuration parsed from command line and configuration file
+// LoadConfig return configuration parsed from configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
 
 	if flags.ConfigFile != "" {
