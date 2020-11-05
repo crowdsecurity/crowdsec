@@ -54,7 +54,7 @@ labels:
 
 {{v1X.crowdsec.name}} can be used not only to process live logs, but as well to process "cold" logs (think forensics).
 
-For this to be able to work, the date/time from the log must have been properly parsed for the scenario temporal aspect to be able to work properly. This relies on the [dateparser enrichment](https://github.com/crowdsecurity/hub/blob/master/parsers/s02-enrich/crowdsecurity/dateparse-enrich.yaml)
+For this to be able to work, the date/time from the log must have been properly parsed for the scenario temporal aspect to be able to work properly. This relies on the [date-parse enrichment](https://github.com/crowdsecurity/hub/blob/master/parsers/s02-enrich/crowdsecurity/dateparse-enrich.yaml). For this to work the field `evt.StrTime` must have been filled with a string that represents the date & time. the date-parse enrichment support a large variety of formats.
 
 
 ## Scenario directives
@@ -358,7 +358,7 @@ If this expression is present and returns false, the overflow will be discarded.
 
 ### data
 
-```
+```yaml
 data:
   - source_url: https://URL/TO/FILE
     dest_file: LOCAL_FILENAME
@@ -381,4 +381,84 @@ data:
     type: string
 ```
 
+
+### format
+
+```yaml
+format: 2.0
+```
+
+{{v1X.crowdsec.name}} has a notion of format support for parsers & scenarios for compatibility management.
+Running `cscli version` will show you such compatibility matrix :
+
+```bash
+$ cscli version
+2020/11/05 09:35:05 version: v0.3.6-183e34c966c475e0d2cdb3c60d0b7426499aa573
+2020/11/05 09:35:05 Codename: beta
+2020/11/05 09:35:05 BuildDate: 2020-11-04_17:56:46
+2020/11/05 09:35:05 GoVersion: 1.13
+2020/11/05 09:35:05 Constraint_parser: >= 1.0, < 2.0
+2020/11/05 09:35:05 Constraint_scenario: >= 1.0, < 3.0
+2020/11/05 09:35:05 Constraint_api: v1
+2020/11/05 09:35:05 Constraint_acquis: >= 1.0, < 2.0
+```
+
+### Scope
+
+```yaml
+scope:
+  type: Range
+  expression: evt.Parsed.mySourceRange
+```
+
+While most scenarios might focus on Ips, {{v1X.crowdsec.name}} and {{v1X.bouncers.name}} can work with any scope.
+The `scope` directive allows you to override the default scope :
+
+ - `type` is a string representing the scope name
+ - `expression` is an `expr` expression that will be evaluated to fetch the value
+
+
+let's imagine a scenario such as :
+
+```yaml
+# ssh bruteforce
+type: leaky
+name: crowdsecurity/ssh-enforce-mfa
+description: "Enforce mfa on users that have been bruteforced"
+filter: "evt.Meta.log_type == 'ssh_failed-auth'"
+leakspeed: "10s"
+capacity: 5
+groupby: evt.Meta.source_ip
+blackhole: 1m
+labels:
+ service: ssh
+ type: bruteforce
+ remediation: true
+scope:
+ type: username
+ expression: evt.Meta.target_user
+```
+
+and a profile such as :
+
+```yaml
+name: enforce_mfa
+filters:
+ - 'Alert.Remediation == true && Alert.GetScope() == "username"'
+decisions:
+ - type: enforce_mfa
+   scope: "username"
+   duration: 1h
+on_success: continue
+```
+
+the resulting overflow will be :
+
+```bash
+$ ./cscli -c dev.yaml decisions list
++----+----------+---------------+-------------------------------+-------------+---------+----+--------+------------------+
+| ID |  SOURCE  |  SCOPE:VALUE  |            REASON             |   ACTION    | COUNTRY | AS | EVENTS |    EXPIRATION    |
++----+----------+---------------+-------------------------------+-------------+---------+----+--------+------------------+
+|  2 | crowdsec | username:rura | crowdsecurity/ssh-enforce-mfa | enforce_mfa |         |    |      6 | 59m46.121840343s |
+```
 
