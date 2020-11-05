@@ -500,8 +500,10 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
-        log_info "Crowdsec LAPI registered"
+        if (whiptail --title "Local API Registration" --yesno "Do you want to be registred to your local API? (select 'Yes' if you don't use a remote API)" 8 78); then
+            ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+            log_info "Crowdsec LAPI registered"
+        fi
 
         ${CSCLI_BIN_INSTALLED} capi register
         log_info "Crowdsec CAPI registered"
