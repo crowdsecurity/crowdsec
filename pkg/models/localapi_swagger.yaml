@@ -39,8 +39,9 @@ paths:
             $ref: '#/definitions/DecisionsStreamResponse'
           headers: {}
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
       summary: stopDecisionsStream
@@ -56,8 +57,9 @@ paths:
           description: successful operation
           headers: {}
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /ping:
     get:
       description: Both blockers/watcher can/will use ping for healthcheck
@@ -75,8 +77,9 @@ paths:
           description: successful operation
           headers: {}
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /decisions:
     get:
       description: Returns information about existing decisions
@@ -125,8 +128,9 @@ paths:
           schema:
             $ref: '#/definitions/GetDecisionsResponse'
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       description: Delete decisions(s) for given filters (only from cscli)
       summary: deleteDecisions
@@ -169,8 +173,9 @@ paths:
             $ref: '#/definitions/DeleteDecisionResponse'
           headers: {}
         '400':
-          description: Invalid input
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   '/decisions/{decision_id}':
     delete:
       description: Delete decision for given ban ID (only from cscli)
@@ -194,8 +199,9 @@ paths:
             $ref: '#/definitions/DeleteDecisionResponse'
           headers: {}
         '404':
-          description: Decision was not found
-          schema: {}
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /watchers:
     post:
       description: This method is used when installing crowdsec (cscli->APIL)
@@ -220,8 +226,9 @@ paths:
           description: Watcher registered
           headers: {}
         '400':
-          description: Invalid watcher information
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       description: This method is used when uninstalling crowdsec
       summary: DeleteWatcher
@@ -237,8 +244,9 @@ paths:
           description: Watcher removed successfully
           headers: {}
         '404':
-          description: Watcher was not registered
-          schema: {}
+          description: "404 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /watchers/login:
     post:
       description: Authenticate current to get session ID
@@ -264,8 +272,9 @@ paths:
           schema:
             $ref: '#/definitions/WatcherAuthResponse'
         '403':
-          description: Failed authentication
-          schema: {}
+          description: "403 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
   /alerts:
     post:
       description: Push alerts to API
@@ -292,8 +301,9 @@ paths:
             $ref: '#/definitions/AddAlertsResponse'
           headers: {}
         '400':
-          description: Invalid alert
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     get:
       description: Allows to search for alerts
       summary: searchAlerts
@@ -363,8 +373,9 @@ paths:
             $ref: '#/definitions/GetAlertsResponse'
           headers: {}
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
     delete:
       description: Allows to delete alerts
       summary: deleteAlerts
@@ -429,8 +440,9 @@ paths:
             $ref: '#/definitions/DeleteAlertsResponse'
           headers: {}
         '400':
-          description: Invalid filters
-          schema: {}
+          description: "400 response"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
 definitions:
   WatcherRegistrationRequest:
     title: WatcherRegistrationRequest
@@ -712,6 +724,19 @@ definitions:
           type: string
         value:
           type: string
+  ErrorResponse:
+    type: "object"
+    required:
+    - "message"
+    properties:
+      message:
+        type: "string"
+        description: "Error message"
+      errors:
+        type: "string"
+        description: "more detail on individual errors"
+    title: "error response"
+    description: "error response return by the API"
 tags:
   - name: blockers
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
