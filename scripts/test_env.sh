@@ -80,7 +80,7 @@ setup() {
 }
 
 setup_api() {
-	$BASE/cscli -c "$CONFIG_FILE" machines add -m test -p testpassword -f $CONFIG_DIR/local_api_credentials.yaml
+	$BASE/cscli -c "$CONFIG_FILE" machines add test -p testpassword -f $CONFIG_DIR/local_api_credentials.yaml --force
 }
 
 

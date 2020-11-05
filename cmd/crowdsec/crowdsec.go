@@ -49,7 +49,7 @@ func runCrowdsec(parsers *parsers) error {
 			defer types.CatchPanic("crowdsec/runParse")
 			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
 			if err != nil {
-				log.Errorf("runParse error : %s", err)
+				log.Fatalf("starting parse error : %s", err)
 				return err
 			}
 			return nil
@@ -61,7 +61,7 @@ func runCrowdsec(parsers *parsers) error {
 			defer types.CatchPanic("crowdsec/runPour")
 			err := runPour(inputEventChan, holders, buckets)
 			if err != nil {
-				log.Errorf("runPour error : %s", err)
+				log.Fatalf("starting pour error : %s", err)
 				return err
 			}
 			return nil
@@ -73,7 +73,7 @@ func runCrowdsec(parsers *parsers) error {
 			defer types.CatchPanic("crowdsec/runOutput")
 			err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
 			if err != nil {
-				log.Errorf("runOutput error : %s", err)
+				log.Fatalf("starting outputs error : %s", err)
 				return err
 			}
 			return nil
@@ -82,7 +82,8 @@ func runCrowdsec(parsers *parsers) error {
 	log.Warningf("Starting processing data")
 
 	if err := acquisition.AcquisStartReading(acquisitionCTX, inputLineChan, &acquisTomb); err != nil {
-		return fmt.Errorf("While starting to read : %s", err)
+		log.Fatalf("starting acquisition error : %s", err)
+		return err
 	}
 
 	return nil

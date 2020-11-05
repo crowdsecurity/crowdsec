@@ -134,6 +134,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewCollectionsCmd())
 	rootCmd.AddCommand(NewPostOverflowsCmd())
 	rootCmd.AddCommand(NewCapiCmd())
+	rootCmd.AddCommand(NewLapiCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}

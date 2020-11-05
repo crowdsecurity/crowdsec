@@ -5,15 +5,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"math/rand"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/denisbrodbeck/machineid"
 	"github.com/enescakir/emoji"
@@ -195,14 +192,6 @@ cscli machines add MyTestMachine --password MyPassword
 			} else if csConfig.API.Client.CredentialsFilePath != "" {
 				dumpFile = csConfig.API.Client.CredentialsFilePath
 			}
-			if dumpFile != "" {
-				if _, err := os.Stat(dumpFile); err == nil {
-					if !forceAdd {
-						log.Errorf("%s already exists, won't overwrite unless --force", dumpFile)
-						return
-					}
-				}
-			}
 
 			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
@@ -231,7 +220,7 @@ cscli machines add MyTestMachine --password MyPassword
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
 				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-					apiURL = csConfig.API.Server.ListenURI
+					apiURL = "http://" + csConfig.API.Server.ListenURI
 				} else {
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
@@ -288,75 +277,6 @@ cscli machines add MyTestMachine --password MyPassword
 	}
 	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
 	cmdMachines.AddCommand(cmdMachinesDelete)
-
-	var cmdMachinesRegister = &cobra.Command{
-		Use:   "register -u http://127.0.0.1:8080/",
-		Short: "register a machine to a remote API",
-		Long: `register a machine to a remote API.
-/!\ The machine will not be validated. You have to connect on the remote API server and run 'cscli machine validate -m <machine_id>'`,
-		Example: `cscli machine register`,
-		Args:    cobra.MaximumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			id, err := generateID()
-			if err != nil {
-				log.Fatalf("unable to generate machine id: %s", err)
-			}
-			password := strfmt.Password(generatePassword(passwordLength))
-			if apiURL == "" {
-				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
-					apiURL = csConfig.API.Client.Credentials.URL
-				} else {
-					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
-				}
-			}
-			apiurl, err := url.Parse(apiURL)
-			if err != nil {
-				log.Fatalf("parsing api url: %s", err)
-			}
-			_, err = apiclient.RegisterClient(&apiclient.Config{
-				MachineID:     id,
-				Password:      password,
-				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-				URL:           apiurl,
-				VersionPrefix: "v1",
-			}, nil)
-
-			if err != nil {
-				log.Fatalf("api client register: %s", err)
-			}
-
-			var dumpFile string
-			if outputFile != "" {
-				dumpFile = outputFile
-			} else if csConfig.API.Client.CredentialsFilePath != "" {
-				dumpFile = csConfig.API.Client.CredentialsFilePath
-			} else {
-				dumpFile = ""
-			}
-			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    id,
-				Password: password.String(),
-				URL:      apiURL,
-			}
-			apiConfigDump, err := yaml.Marshal(apiCfg)
-			if err != nil {
-				log.Fatalf("unable to marshal api credentials: %s", err)
-			}
-			if dumpFile != "" {
-				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
-				if err != nil {
-					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
-				}
-				log.Printf("API credentials dumped to '%s'", dumpFile)
-			} else {
-				fmt.Printf("%s\n", string(apiConfigDump))
-			}
-		},
-	}
-	cmdMachinesRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
-	cmdMachinesRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdMachines.AddCommand(cmdMachinesRegister)
 
 	var cmdMachinesValidate = &cobra.Command{
 		Use:     "validate",
