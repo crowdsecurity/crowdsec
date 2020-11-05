@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -56,6 +57,14 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 					log.Fatalf("No Local API URL. Please provide it in your configuration or with the -u parameter")
 				}
 			}
+			/*URL needs to end with /, but user doesn't care*/
+			if !strings.HasSuffix(apiURL, "/") {
+				apiURL += "/"
+			}
+			/*URL needs to start with http://, but user doesn't care*/
+			if !strings.HasSuffix(apiURL, "http://") && !strings.HasSuffix(apiURL, "https://") {
+				apiURL = "http://" + apiURL
+			}
 			apiurl, err := url.Parse(apiURL)
 			if err != nil {
 				log.Fatalf("parsing api url: %s", err)
@@ -101,7 +110,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			log.Warningf("Run 'systemctl reload crowdsec' for the new configuration to be effective")
 		},
 	}
-	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API")
+	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
 	cmdLapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdLapi.AddCommand(cmdLapiRegister)
 
@@ -139,6 +148,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				Scenarios: scenarios,
 			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
+			log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
 			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
