@@ -61,6 +61,10 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			if !strings.HasSuffix(apiURL, "/") {
 				apiURL += "/"
 			}
+			/*URL needs to start with http://, but user doesn't care*/
+			if !strings.HasSuffix(apiURL, "http://") && !strings.HasSuffix(apiURL, "https://") {
+				apiURL = "http://" + apiURL
+			}
 			apiurl, err := url.Parse(apiURL)
 			if err != nil {
 				log.Fatalf("parsing api url: %s", err)
