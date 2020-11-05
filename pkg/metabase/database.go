@@ -11,46 +11,75 @@ import (
 )
 
 type Database struct {
-	DBUrl       string
-	SQLiteModel *SQLiteModel
-	Config      *csconfig.DatabaseCfg
-	Client      *APIClient
-	Update      func() error
+	DBUrl   string
+	Model   *Model
+	Config  *csconfig.DatabaseCfg
+	Client  *APIClient
+	Details *Details
+	// in case mysql host is 127.0.0.1 the ip address of mysql/pgsql host will be the docker gateway since metabase run in a container
 }
 
-type SQLiteModel struct {
-	Engine  string `json:"engine"`
-	Name    string `json:"name"`
-	Details struct {
-		Db string `json:"db"`
-	} `json:"details"`
+type Details struct {
+	Db                string      `json:"db"`
+	Host              string      `json:"host"`
+	Port              int         `json:"port"`
+	Dbname            string      `json:"dbname"`
+	User              string      `json:"user"`
+	Password          string      `json:"password"`
+	Ssl               bool        `json:"ssl"`
+	AdditionalOptions interface{} `json:"additional-options"`
+	TunnelEnabled     bool        `json:"tunnel-enabled"`
+}
+
+type Model struct {
+	Engine         string                 `json:"engine"`
+	Name           string                 `json:"name"`
+	Details        *Details               `json:"details"`
 	AutoRunQueries bool                   `json:"auto_run_queries"`
 	IsFullSync     bool                   `json:"is_full_sync"`
 	IsOnDemand     bool                   `json:"is_on_demand"`
 	Schedules      map[string]interface{} `json:"schedules"`
 }
 
-func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient) (*Database, error) {
+func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr string) (*Database, error) {
+	var details *Details
+
 	database := Database{}
+
 	switch config.Type {
 	case "mysql":
 		database.DBUrl = metabaseMySQLDBURL
+		details = &Details{
+			Host:              remoteDBAddr,
+			Port:              config.Port,
+			Dbname:            config.DbName,
+			User:              config.User,
+			Password:          config.Password,
+			Ssl:               false,
+			AdditionalOptions: nil,
+			TunnelEnabled:     false,
+		}
 	case "sqlite":
 		database.DBUrl = metabaseSQLiteDBURL
-		database.Update = database.UpdateSQLiteDB
+		localFolder := filepath.Dir(config.DbPath)
+		// replace /var/lib/crowdsec/data/ with /metabase-data/
+		dbPath := strings.Replace(config.DbPath, localFolder, containerSharedFolder, 1)
+		details = &Details{
+			Db: dbPath,
+		}
 	case "postegresql", "postegres", "pgsql":
 		database.DBUrl = metabasePgSQLDBURL
 	default:
 		return nil, fmt.Errorf("database '%s' not supported", config.Type)
 	}
-
+	database.Details = details
 	database.Client = client
 	database.Config = config
 
 	return &database, nil
 }
 
-func (d *Database) UpdateSQLiteDB() error {
+func (d *Database) Update() error {
 	success, errormsg, err := d.Client.Do("GET", routes[databaseEndpoint], nil)
 	if err != nil {
 		return err
@@ -64,15 +93,12 @@ func (d *Database) UpdateSQLiteDB() error {
 		return errors.Wrap(err, "update sqlite db response (marshal)")
 	}
 
-	model := SQLiteModel{}
+	model := Model{}
 
 	if err := json.Unmarshal(data, &model); err != nil {
 		return errors.Wrap(err, "update sqlite db response (unmarshal)")
 	}
-
-	localFolder := filepath.Dir(d.Config.DbPath)
-	dbPath := strings.Replace(d.Config.DbPath, localFolder, containerSharedFolder, 1)
-	model.Details.Db = strings.Replace(d.Config.DbPath, localFolder, containerSharedFolder, 1)
+	model.Details = d.Details
 	success, errormsg, err = d.Client.Do("PUT", routes[databaseEndpoint], model)
 	if err != nil {
 		return err

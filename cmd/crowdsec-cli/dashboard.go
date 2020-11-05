@@ -22,6 +22,8 @@ var (
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
 	metabaseContainerID   = "/crowdsec-metabase"
+
+	dockerGatewayIPAddr = "172.17.0.1"
 	/*informations needed to setup a random password on user's behalf*/
 )
 
@@ -66,7 +68,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 			if metabasePassword == "" {
 				metabasePassword = generatePassword(16)
 			}
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGatewayIPAddr)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -86,6 +88,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	cmdDashSetup.Flags().StringVar(&dockerGatewayIPAddr, "docker-gateway", dockerGatewayIPAddr, "Docker gateway ip address in case the database is mysql/pgsql on localhost")
 
 	cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")

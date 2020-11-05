@@ -28,13 +28,14 @@ type Metabase struct {
 }
 
 type Config struct {
-	Database   *csconfig.DatabaseCfg `yaml:"database"`
-	ListenAddr string                `yaml:"listen_addr"`
-	ListenPort string                `yaml:"listen_port"`
-	ListenURL  string                `yaml:"listen_url"`
-	Username   string                `yaml:"username"`
-	Password   string                `yaml:"password"`
-	DBPath     string                `yaml:"metabase_db_path"`
+	Database      *csconfig.DatabaseCfg `yaml:"database"`
+	ListenAddr    string                `yaml:"listen_addr"`
+	ListenPort    string                `yaml:"listen_port"`
+	ListenURL     string                `yaml:"listen_url"`
+	Username      string                `yaml:"username"`
+	Password      string                `yaml:"password"`
+	DBPath        string                `yaml:"metabase_db_path"`
+	DockerGateway string                `yaml:"docker_gateway"`
 }
 
 var (
@@ -51,13 +52,27 @@ var (
 
 func (m *Metabase) Init() error {
 	var err error
+	var DBConnectionURI string
+	var remoteDBAddr string
 	m.Client, err = NewAPIClient(m.Config.ListenURL)
 	if err != nil {
 		return err
 	}
+	if m.Config.Database.Type != "sqlite" {
+		if m.Config.Database.Host == "127.0.0.1" || m.Config.Database.Host == "::1" {
+			remoteDBAddr = m.Config.DockerGateway
+		} else {
+			remoteDBAddr = m.Config.Database.Host
+		}
+	} else {
+		remoteDBAddr = ""
+	}
+	m.Database, err = NewDatabase(m.Config.Database, m.Client, remoteDBAddr)
+
 	switch m.Config.Database.Type {
 	case "mysql":
 		m.InternalDBURL = metabaseMySQLDBURL
+		DBConnectionURI = fmt.Sprintf("mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postegresql", "postegres", "pgsql":
@@ -65,8 +80,12 @@ func (m *Metabase) Init() error {
 	default:
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
-	m.Container = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage)
-	m.Database, err = NewDatabase(m.Config.Database, m.Client)
+
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI)
+	if err != nil {
+		return errors.Wrap(err, "container init")
+	}
+
 	return nil
 }
 
@@ -115,16 +134,17 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGateway string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
-			Database:   dbConfig,
-			ListenAddr: listenAddr,
-			ListenPort: listenPort,
-			Username:   username,
-			Password:   password,
-			ListenURL:  fmt.Sprintf("http://%s:%s", listenAddr, listenPort),
-			DBPath:     mbDBPath,
+			Database:      dbConfig,
+			ListenAddr:    listenAddr,
+			ListenPort:    listenPort,
+			Username:      username,
+			Password:      password,
+			ListenURL:     fmt.Sprintf("http://%s:%s", listenAddr, listenPort),
+			DBPath:        mbDBPath,
+			DockerGateway: dockerGateway,
 		},
 	}
 	if err := metabase.Init(); err != nil {
@@ -142,6 +162,7 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 	if err := metabase.Container.Start(); err != nil {
 		return nil, errors.Wrap(err, "container start")
 	}
+
 	log.Infof("Waiting for metabase API to be up (can take up to a minute)")
 	if err := metabase.WaitAlive(); err != nil {
 		return nil, errors.Wrap(err, "wait alive")
