@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
@@ -16,87 +17,87 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func FormatOneAlert(alert *ent.Alert) *models.Alert {
+	var outputAlert models.Alert
+	var machineID string
+	startAt := alert.StartedAt.String()
+	StopAt := alert.StoppedAt.String()
+	if alert.Edges.Owner == nil {
+		machineID = "N/A"
+	} else {
+		machineID = alert.Edges.Owner.MachineId
+	}
+
+	outputAlert = models.Alert{
+		ID:              int64(alert.ID),
+		MachineID:       machineID,
+		CreatedAt:       alert.CreatedAt.Format(time.RFC3339),
+		Scenario:        &alert.Scenario,
+		ScenarioVersion: &alert.ScenarioVersion,
+		ScenarioHash:    &alert.ScenarioHash,
+		Message:         &alert.Message,
+		EventsCount:     &alert.EventsCount,
+		StartAt:         &startAt,
+		StopAt:          &StopAt,
+		Capacity:        &alert.Capacity,
+		Leakspeed:       &alert.LeakSpeed,
+		Simulated:       &alert.Simulated,
+		Source: &models.Source{
+			Scope:     &alert.SourceScope,
+			Value:     &alert.SourceValue,
+			IP:        alert.SourceIp,
+			Range:     alert.SourceRange,
+			AsNumber:  alert.SourceAsNumber,
+			AsName:    alert.SourceAsName,
+			Cn:        alert.SourceCountry,
+			Latitude:  alert.SourceLatitude,
+			Longitude: alert.SourceLongitude,
+		},
+	}
+	for _, eventItem := range alert.Edges.Events {
+		var outputEvents []*models.Event
+		var Metas models.Meta
+		timestamp := eventItem.Time.String()
+		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
+			log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
+		}
+		outputEvents = append(outputEvents, &models.Event{
+			Timestamp: &timestamp,
+			Meta:      Metas,
+		})
+		outputAlert.Events = outputEvents
+	}
+	for _, metaItem := range alert.Edges.Metas {
+		var outputMetas models.Meta
+		outputMetas = append(outputMetas, &models.MetaItems0{
+			Key:   metaItem.Key,
+			Value: metaItem.Value,
+		})
+		outputAlert.Meta = outputMetas
+	}
+	for _, decisionItem := range alert.Edges.Decisions {
+		duration := decisionItem.Until.Sub(time.Now()).String()
+		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
+			Duration:  &duration, // transform into time.Time ?
+			Scenario:  &decisionItem.Scenario,
+			Type:      &decisionItem.Type,
+			StartIP:   decisionItem.StartIP,
+			EndIP:     decisionItem.EndIP,
+			Scope:     &decisionItem.Scope,
+			Value:     &decisionItem.Value,
+			Origin:    &decisionItem.Origin,
+			Simulated: outputAlert.Simulated,
+			ID:        int64(decisionItem.ID),
+		})
+	}
+	return &outputAlert
+}
+
 // FormatAlerts : Format results from the database to be swagger model compliant
 func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	var data models.AddAlertsRequest
 	for _, alertItem := range result {
-		var outputAlert models.Alert
-		var machineID string
-		startAt := alertItem.StartedAt.String()
-		StopAt := alertItem.StoppedAt.String()
-		if alertItem.Edges.Owner == nil {
-			machineID = "N/A"
-		} else {
-			machineID = alertItem.Edges.Owner.MachineId
-		}
-
-		outputAlert = models.Alert{
-			ID:              int64(alertItem.ID),
-			MachineID:       machineID,
-			CreatedAt:       alertItem.CreatedAt.Format(time.RFC3339),
-			Scenario:        &alertItem.Scenario,
-			ScenarioVersion: &alertItem.ScenarioVersion,
-			ScenarioHash:    &alertItem.ScenarioHash,
-			Message:         &alertItem.Message,
-			EventsCount:     &alertItem.EventsCount,
-			StartAt:         &startAt,
-			StopAt:          &StopAt,
-			Capacity:        &alertItem.Capacity,
-			Leakspeed:       &alertItem.LeakSpeed,
-			Simulated:       &alertItem.Simulated,
-			Source: &models.Source{
-				Scope:     &alertItem.SourceScope,
-				Value:     &alertItem.SourceValue,
-				IP:        alertItem.SourceIp,
-				Range:     alertItem.SourceRange,
-				AsNumber:  alertItem.SourceAsNumber,
-				AsName:    alertItem.SourceAsName,
-				Cn:        alertItem.SourceCountry,
-				Latitude:  alertItem.SourceLatitude,
-				Longitude: alertItem.SourceLongitude,
-			},
-		}
-		for _, eventItem := range alertItem.Edges.Events {
-			var outputEvents []*models.Event
-			var Metas models.Meta
-			timestamp := eventItem.Time.String()
-			if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
-				log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
-			}
-			outputEvents = append(outputEvents, &models.Event{
-				Timestamp: &timestamp,
-				Meta:      Metas,
-			})
-			outputAlert.Events = outputEvents
-		}
-		for _, metaItem := range alertItem.Edges.Metas {
-			var outputMetas models.Meta
-			outputMetas = append(outputMetas, &models.MetaItems0{
-				Key:   metaItem.Key,
-				Value: metaItem.Value,
-			})
-			outputAlert.Meta = outputMetas
-		}
-		var outputDecisions []*models.Decision
-
-		for _, decisionItem := range alertItem.Edges.Decisions {
-			duration := decisionItem.Until.Sub(time.Now()).String()
-			outputDecisions = append(outputDecisions, &models.Decision{
-				Duration:  &duration, // transform into time.Time ?
-				Scenario:  &decisionItem.Scenario,
-				Type:      &decisionItem.Type,
-				StartIP:   decisionItem.StartIP,
-				EndIP:     decisionItem.EndIP,
-				Scope:     &decisionItem.Scope,
-				Value:     &decisionItem.Value,
-				Origin:    &decisionItem.Origin,
-				Simulated: outputAlert.Simulated,
-				ID:        int64(decisionItem.ID),
-			})
-		}
-		outputAlert.Decisions = outputDecisions
-
-		data = append(data, &outputAlert)
+		data = append(data, FormatOneAlert(alertItem))
 	}
 	return data
 }
@@ -155,6 +156,26 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 		return
 	}
 	data := FormatAlerts(result)
+
+	gctx.JSON(http.StatusOK, data)
+	return
+}
+
+// FindAlertByID return the alert assiocated to the ID
+func (c *Controller) FindAlertByID(gctx *gin.Context) {
+
+	alertIDStr := gctx.Param("alert_id")
+	alertID, err := strconv.Atoi(alertIDStr)
+	if err != nil {
+		gctx.JSON(http.StatusBadRequest, gin.H{"message": "alert_id must be valid integer"})
+		return
+	}
+	result, err := c.DBClient.GetAlertByID(alertID)
+	if err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+	data := FormatOneAlert(result)
 
 	gctx.JSON(http.StatusOK, data)
 	return

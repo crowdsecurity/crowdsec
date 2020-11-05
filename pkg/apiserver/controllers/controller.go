@@ -51,6 +51,7 @@ func (c *Controller) NewV1() error {
 	{
 		jwtAuth.POST("/alerts", handlerV1.CreateAlert)
 		jwtAuth.GET("/alerts", handlerV1.FindAlerts)
+		jwtAuth.GET("/alerts/:alert_id", handlerV1.FindAlertByID)
 		jwtAuth.DELETE("/alerts", handlerV1.DeleteAlerts)
 		jwtAuth.DELETE("/decisions", handlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", handlerV1.DeleteDecisionById)

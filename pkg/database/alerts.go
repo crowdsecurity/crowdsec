@@ -370,3 +370,11 @@ func (c *Client) FlushAlerts(MaxAge time.Duration, MaxItems int) error {
 
 	return nil
 }
+
+func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
+	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().First(c.CTX)
+	if err != nil {
+		return &ent.Alert{}, errors.Wrapf(QueryFail, "alert id '%d'", alertID)
+	}
+	return alert, nil
+}

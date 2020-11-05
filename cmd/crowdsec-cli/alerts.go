@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -124,6 +125,56 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	return nil
 }
 
+func DisplayOneAlert(alert *models.Alert) error {
+	if csConfig.Cscli.Output == "human" {
+		fmt.Printf("\n################################################################################################\n\n")
+		scopeAndValue := *alert.Source.Scope
+		if *alert.Source.Value != "" {
+			scopeAndValue += ":" + *alert.Source.Value
+		}
+		fmt.Printf(" - ID         : %d\n", alert.ID)
+		fmt.Printf(" - Date       : %s\n", alert.CreatedAt)
+		fmt.Printf(" - Machine    : %s\n", alert.MachineID)
+		fmt.Printf(" - Simulation : %v\n", *alert.Simulated)
+		fmt.Printf(" - Reason     : %s\n", *alert.Scenario)
+		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
+		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
+		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
+		fmt.Printf(" - Decisions  :\n")
+		table := tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
+		for _, decision := range alert.Decisions {
+			scopeAndValue := *decision.Scope
+			if *decision.Value != "" {
+				scopeAndValue += ":" + *decision.Value
+			}
+			table.Append([]string{
+				strconv.Itoa(int(decision.ID)),
+				scopeAndValue,
+				*decision.Type,
+				*decision.Duration,
+				alert.CreatedAt,
+			})
+		}
+		table.Render() // Send output
+		fmt.Printf(" - Events  :\n")
+		for _, event := range alert.Events {
+			fmt.Printf("\n- Date: %s\n", *event.Timestamp)
+			table = tablewriter.NewWriter(os.Stdout)
+			table.SetHeader([]string{"Key", "Value"})
+			for _, meta := range event.Meta {
+				table.Append([]string{
+					meta.Key,
+					meta.Value,
+				})
+			}
+			table.Render() // Send output
+		}
+
+	}
+	return nil
+}
+
 func NewAlertsCmd() *cobra.Command {
 	/* ---- ALERTS COMMAND */
 	var cmdAlerts = &cobra.Command{
@@ -174,9 +225,34 @@ cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
-		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
+			var errs []error
+			if len(args) > 0 {
+				for _, alertID := range args {
+					id, err := strconv.Atoi(alertID)
+					if err != nil {
+						errs = append(errs, errors.Wrapf(err, "bad alert ID type: %s", alertID))
+						continue
+					}
+					alert, _, err := Client.Alerts.GetByID(context.Background(), id)
+					if err != nil {
+						errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
+						continue
+					}
+					if err := DisplayOneAlert(alert); err != nil {
+						errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
+						continue
+					}
+				}
+				if len(errs) > 0 {
+					fmt.Printf("ERRORS:\n")
+					for _, err := range errs {
+						fmt.Printf("\t- %s", err.Error())
+					}
+				}
+				return
+			}
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
 				_ = cmd.Help()

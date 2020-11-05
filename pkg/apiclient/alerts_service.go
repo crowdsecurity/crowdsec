@@ -105,3 +105,19 @@ func (s *AlertsService) Delete(ctx context.Context, opts AlertsDeleteOpts) (*mod
 	}
 	return &alerts, resp, nil
 }
+
+func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert, *Response, error) {
+	var alert models.Alert
+	u := fmt.Sprintf("%s/alerts/%d", s.client.URLPrefix, alertID)
+
+	req, err := s.client.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &alert)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &alert, resp, nil
+}
