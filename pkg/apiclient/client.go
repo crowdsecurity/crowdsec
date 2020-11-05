@@ -106,7 +106,7 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("API error (%s) : %s", &e.Message, e.Errors)
+	return fmt.Sprintf("API error (%s) : %s", *e.Message, e.Errors)
 }
 
 func newResponse(r *http.Response) *Response {
