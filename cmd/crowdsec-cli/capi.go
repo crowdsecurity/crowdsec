@@ -19,8 +19,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var CAPIBaseURL string
 var CAPIURLPrefix string = "v2"
+var CAPIBaseURL string = "https://api.dev.crowdsec.net/"
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
@@ -99,7 +99,6 @@ func NewCapiCmd() *cobra.Command {
 			log.Warningf("Run 'systemctl reload crowdsec' for the new configuration to be effective")
 		},
 	}
-	cmdCapiRegister.Flags().StringVarP(&CAPIBaseURL, "url", "u", "https://api.dev.crowdsec.net/", "central API URI")
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdCapi.AddCommand(cmdCapiRegister)
 
