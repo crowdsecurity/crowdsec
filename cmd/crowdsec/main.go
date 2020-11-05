@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"net/http"
 	_ "net/http/pprof"
 	"time"
 
@@ -23,9 +22,6 @@ import (
 )
 
 var (
-	disableAPI *bool
-	disableCS  *bool
-
 	/*tombs for the parser, buckets and outputs.*/
 	acquisTomb   tomb.Tomb
 	parsersTomb  tomb.Tomb
@@ -34,7 +30,7 @@ var (
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
 
-	httpAPIServer http.Server
+	flags *Flags
 
 	/*global crowdsec config*/
 	cConfig *csconfig.GlobalConfig
@@ -47,6 +43,19 @@ var (
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 )
+
+type Flags struct {
+	ConfigFile     string
+	TraceLevel     bool
+	DebugLevel     bool
+	InfoLevel      bool
+	PrintVersion   bool
+	SingleFilePath string
+	SingleFileType string
+	TestMode       bool
+	DisableAgent   bool
+	DisableAPI     bool
+}
 
 type parsers struct {
 	ctx             *parser.UnixParserCtx
@@ -177,9 +186,9 @@ func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	var err error
 	var tmpctx []acquisition.FileCtx
 
-	if *SingleFilePath != "" {
-		log.Debugf("Building acquisition for %s (%s)", *SingleFilePath, *SingleFileType)
-		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(*SingleFilePath, *SingleFileType)
+	if flags.SingleFilePath != "" {
+		log.Debugf("Building acquisition for %s (%s)", flags.SingleFilePath, flags.SingleFileType)
+		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(flags.SingleFilePath, flags.SingleFileType)
 		if err != nil {
 			return fmt.Errorf("Failed to load acquisition : %s", err)
 		}
@@ -198,64 +207,62 @@ func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-var SingleFilePath, SingleFileType *string
+func (f *Flags) Parse() {
+
+	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
+	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
+	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
+	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
+	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
+	flag.StringVar(&f.SingleFilePath, "file", "", "Process a single file in time-machine")
+	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
+	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
+	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec")
+	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+
+	flag.Parse()
+}
 
 // LoadConfig return configuration parsed from command line and configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
-	configFile := flag.String("c", "/etc/crowdsec/config.yaml", "configuration file")
-	printTrace := flag.Bool("trace", false, "VERY verbose")
-	printDebug := flag.Bool("debug", false, "print debug-level on stdout")
-	printInfo := flag.Bool("info", false, "print info-level on stdout")
-	printVersion := flag.Bool("version", false, "display version")
-	SingleFilePath = flag.String("file", "", "Process a single file in time-machine")
-	SingleFileType = flag.String("type", "", "Labels.type for file in time-machine")
-	testMode := flag.Bool("t", false, "only test configs")
-	disableCS = flag.Bool("no-cs", false, "disable crowdsec")
-	disableAPI = flag.Bool("no-api", false, "disable local API")
 
-	flag.Parse()
-	if *printVersion {
-		cwversion.Show()
-		os.Exit(0)
-	}
-
-	if configFile != nil {
-		if err := config.LoadConfigurationFile(*configFile); err != nil {
+	if flags.ConfigFile != "" {
+		if err := config.LoadConfigurationFile(flags.ConfigFile); err != nil {
 			return fmt.Errorf("while loading configuration : %s", err)
 		}
 	} else {
 		log.Warningf("no configuration file provided")
 	}
 
-	if !*disableAPI && config.API.Server == nil {
+	if !flags.DisableAPI && config.API.Server == nil {
 		log.Fatalf("can't run local API Server without configuration. Please edit '%s' to add the API Server configuration", *config.Self)
 	}
 
-	if !*disableCS && config.Crowdsec == nil {
+	if !flags.DisableAgent && config.Crowdsec == nil {
 		log.Fatalf("can't run crowdsec without configuration. Please edit '%s' to add the crowdsec configuration", *config.Self)
 	}
 
-	if *disableAPI && *disableCS {
+	if flags.DisableAPI && flags.DisableAgent {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
-	if *SingleFilePath != "" {
-		if *SingleFileType == "" {
+	if flags.SingleFilePath != "" {
+		if flags.SingleFileType == "" {
 			return fmt.Errorf("-file requires -type")
 		}
 	}
 
-	if *printDebug {
+	if flags.DebugLevel {
 		config.Common.LogLevel = log.DebugLevel
 	}
-	if *printInfo {
+	if flags.InfoLevel {
 		config.Common.LogLevel = log.InfoLevel
 	}
-	if *printTrace {
+	if flags.TraceLevel {
 		config.Common.LogLevel = log.TraceLevel
 	}
 
-	if *testMode {
+	if flags.TestMode {
 		config.Crowdsec.LintOnly = true
 	}
 
@@ -271,6 +278,13 @@ func main() {
 
 	cConfig = csconfig.NewConfig()
 	// Handle command line arguments
+	flags = &Flags{}
+	flags.Parse()
+	if flags.PrintVersion {
+		cwversion.Show()
+		os.Exit(0)
+	}
+
 	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
