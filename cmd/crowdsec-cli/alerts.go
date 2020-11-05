@@ -157,7 +157,7 @@ func DisplayOneAlert(alert *models.Alert) error {
 			})
 		}
 		table.Render() // Send output
-		fmt.Printf(" - Events  :\n")
+		fmt.Printf("\n - Events  :\n")
 		for _, event := range alert.Events {
 			fmt.Printf("\n- Date: %s\n", *event.Timestamp)
 			table = tablewriter.NewWriter(os.Stdout)
@@ -221,6 +221,7 @@ func NewAlertsCmd() *cobra.Command {
 		Use:   "list [filters]",
 		Short: "List alerts",
 		Example: `cscli alerts list
+cscli alerts list <alert_id>
 cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
