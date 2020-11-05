@@ -55,25 +55,21 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		},
 	}
 	for _, eventItem := range alert.Edges.Events {
-		var outputEvents []*models.Event
 		var Metas models.Meta
 		timestamp := eventItem.Time.String()
 		if err := json.Unmarshal([]byte(eventItem.Serialized), &Metas); err != nil {
 			log.Errorf("unable to unmarshall events meta '%s' : %s", eventItem.Serialized, err)
 		}
-		outputEvents = append(outputEvents, &models.Event{
+		outputAlert.Events = append(outputAlert.Events, &models.Event{
 			Timestamp: &timestamp,
 			Meta:      Metas,
 		})
-		outputAlert.Events = outputEvents
 	}
 	for _, metaItem := range alert.Edges.Metas {
-		var outputMetas models.Meta
-		outputMetas = append(outputMetas, &models.MetaItems0{
+		outputAlert.Meta = append(outputAlert.Meta, &models.MetaItems0{
 			Key:   metaItem.Key,
 			Value: metaItem.Value,
 		})
-		outputAlert.Meta = outputMetas
 	}
 	for _, decisionItem := range alert.Edges.Decisions {
 		duration := decisionItem.Until.Sub(time.Now()).String()

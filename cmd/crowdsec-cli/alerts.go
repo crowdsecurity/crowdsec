@@ -140,7 +140,7 @@ func DisplayOneAlert(alert *models.Alert) error {
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
 		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
-		fmt.Printf(" - Decisions  :\n")
+		fmt.Printf(" - Active Decisions  :\n")
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
 		for _, decision := range alert.Decisions {
@@ -170,7 +170,6 @@ func DisplayOneAlert(alert *models.Alert) error {
 			}
 			table.Render() // Send output
 		}
-
 	}
 	return nil
 }
