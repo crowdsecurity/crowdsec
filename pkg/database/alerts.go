@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -12,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -178,7 +180,13 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	for param, value := range filter {
 		switch param {
 		case "scope":
-			alerts = alerts.Where(alert.SourceScopeEQ(value[0]))
+			var scope string = value[0]
+			if strings.ToLower(scope) == "ip" {
+				scope = types.Ip
+			} else if strings.ToLower(scope) == "range" {
+				scope = types.Range
+			}
+			alerts = alerts.Where(alert.SourceScopeEQ(scope))
 		case "value":
 			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
 		case "scenario":
