@@ -108,13 +108,13 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		if _, ok := err.(*ent.NotFoundError); ok {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
 		} else {
-			gctx.JSON(http.StatusInternalServerError, gin.H{"message": "not allowed"})
+			gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
 		}
 		return
 	}
 
 	if bouncerInfo == nil {
-		gctx.JSON(http.StatusInternalServerError, gin.H{"message": "not allowed"})
+		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
 		return
 	}
 

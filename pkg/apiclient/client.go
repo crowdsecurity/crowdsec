@@ -102,13 +102,11 @@ type Response struct {
 }
 
 type ErrorResponse struct {
-	Response *http.Response // HTTP response that caused this error
-	Message  string         `json:"message"` // error message
-	Errors   []string       `json:"errors"`  // more detail on individual errors
+	models.ErrorResponse
 }
 
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("API error (%s) : %+v", e.Message, e.Errors)
+	return fmt.Sprintf("API error (%s) : %s", *e.Message, e.Errors)
 }
 
 func newResponse(r *http.Response) *Response {
@@ -121,7 +119,7 @@ func CheckResponse(r *http.Response) error {
 	if c := r.StatusCode; 200 <= c && c <= 299 {
 		return nil
 	}
-	errorResponse := &ErrorResponse{Response: r}
+	errorResponse := &ErrorResponse{}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
