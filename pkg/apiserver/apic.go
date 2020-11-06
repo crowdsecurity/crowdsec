@@ -72,15 +72,15 @@ func FetchScenariosListFromDB(dbClient *database.Client) ([]string, error) {
 	return scenarios, nil
 }
 
-func AlertToSignal(alert *models.Alert) *apiclient.Signal {
-	return &apiclient.Signal{
-		Message:         *alert.Message,
-		Scenario:        *alert.Scenario,
-		ScenarioHash:    *alert.ScenarioHash,
-		ScenarioVersion: *alert.ScenarioVersion,
+func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
+	return &models.AddSignalsRequestItem{
+		Message:         alert.Message,
+		Scenario:        alert.Scenario,
+		ScenarioHash:    alert.ScenarioHash,
+		ScenarioVersion: alert.ScenarioVersion,
 		Source:          alert.Source,
-		StartAt:         *alert.StartAt,
-		StopAt:          *alert.StopAt,
+		StartAt:         alert.StartAt,
+		StopAt:          alert.StopAt,
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
 	}
@@ -139,7 +139,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 func (a *apic) Push() error {
 	defer types.CatchPanic("apil/pushToAPIC")
 
-	var cache []*apiclient.Signal
+	var cache models.AddSignalsRequest
 	ticker := time.NewTicker(a.pushInterval)
 	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
 
@@ -149,16 +149,16 @@ func (a *apic) Push() error {
 			a.pullTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
-			err := a.Send(cache)
+			err := a.Send(&cache)
 			return err
 		case <-ticker.C:
 			if len(cache) > 0 {
 				a.mu.Lock()
 				cacheCopy := cache
-				cache = make([]*apiclient.Signal, 0)
+				cache = make(models.AddSignalsRequest, 0)
 				a.mu.Unlock()
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
-				err := a.Send(cacheCopy)
+				err := a.Send(&cacheCopy)
 				if err != nil {
 					log.Errorf("got an error while sending signal : %s", err)
 					return err
@@ -166,7 +166,7 @@ func (a *apic) Push() error {
 			}
 		case alerts := <-a.alertToPush:
 			a.mu.Lock()
-			var signal *apiclient.Signal
+			var signal *models.AddSignalsRequestItem
 			for _, alert := range alerts {
 				signal = AlertToSignal(alert)
 			}
@@ -176,7 +176,7 @@ func (a *apic) Push() error {
 	}
 }
 
-func (a *apic) Send(cache []*apiclient.Signal) error {
+func (a *apic) Send(cache *models.AddSignalsRequest) error {
 	_, _, err := a.apiClient.Signal.Add(context.Background(), cache)
 	return err
 }
