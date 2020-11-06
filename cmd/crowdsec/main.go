@@ -296,7 +296,7 @@ func main() {
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
 	if !flags.DisableAPI && cConfig.API == nil && cConfig.API.Server == nil {
-		log.Fatalf("no configuration found local API, abort.")
+		log.Fatalf("no configuration found for local API, abort.")
 	}
 
 	if !flags.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
