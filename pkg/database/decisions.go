@@ -2,12 +2,14 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 )
 
@@ -28,7 +30,13 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	for param, value := range filter {
 		switch param {
 		case "scope":
-			query = query.Where(decision.ScopeEQ(value[0]))
+			var scope string = value[0]
+			if strings.ToLower(scope) == "ip" {
+				scope = types.Ip
+			} else if strings.ToLower(scope) == "range" {
+				scope = types.Range
+			}
+			query = query.Where(decision.ScopeEQ(scope))
 		case "value":
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
@@ -54,8 +62,8 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 
 	if startIP != 0 && endIP != 0 {
 		query = query.Where(decision.And(
-			decision.StartIPGTE(startIP),
-			decision.EndIPLTE(endIP),
+			decision.StartIPLTE(startIP),
+			decision.EndIPGTE(endIP),
 		))
 	}
 	return query, nil
@@ -165,8 +173,8 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 
 		if startIP != 0 && endIP != 0 {
 			decisions = decisions.Where(decision.And(
-				decision.StartIPGTE(startIP),
-				decision.EndIPLTE(endIP),
+				decision.StartIPLTE(startIP),
+				decision.EndIPGTE(endIP),
 			))
 		}
 	}
@@ -213,8 +221,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 		if startIP != 0 && endIP != 0 {
 			decisions = decisions.Where(decision.And(
-				decision.StartIPGTE(startIP),
-				decision.EndIPLTE(endIP),
+				decision.StartIPLTE(startIP),
+				decision.EndIPGTE(endIP),
 			))
 		}
 	}

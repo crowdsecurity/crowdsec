@@ -248,8 +248,8 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	}
 	if startIP != 0 && endIP != 0 {
 		alerts = alerts.Where(alert.And(
-			alert.HasDecisionsWith(decision.StartIPGTE(startIP)),
-			alert.HasDecisionsWith(decision.EndIPLTE(endIP)),
+			alert.HasDecisionsWith(decision.StartIPLTE(startIP)),
+			alert.HasDecisionsWith(decision.EndIPGTE(endIP)),
 		))
 	}
 	return alerts, nil
