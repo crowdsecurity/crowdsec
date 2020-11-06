@@ -3,11 +3,15 @@ module github.com/crowdsecurity/crowdsec
 go 1.13
 
 require (
+	github.com/AlecAivazis/survey/v2 v2.2.1
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/antonmedv/expr v1.8.2
+	github.com/appleboy/gin-jwt/v2 v2.6.4
+	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/buger/jsonparser v1.0.0
 	github.com/containerd/containerd v1.3.4 // indirect
+	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dghubble/sling v1.3.0
@@ -16,15 +20,21 @@ require (
 	github.com/docker/go-connections v0.4.0
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/enescakir/emoji v1.0.0
+	github.com/facebook/ent v0.5.0
+	github.com/gin-gonic/gin v1.6.3
+	github.com/go-co-op/gocron v0.3.2
 	github.com/go-openapi/errors v0.19.7
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/go-openapi/swag v0.19.9
 	github.com/go-openapi/validate v0.19.11
+	github.com/go-sql-driver/mysql v1.5.1-0.20200311113236-681ffa848bae
+	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.0
 	github.com/jamiealquiza/tachymeter v2.0.0+incompatible
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
+	github.com/lib/pq v1.8.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -44,13 +54,14 @@ require (
 	github.com/rogpeppe/godef v1.1.2 // indirect
 	github.com/sevlyar/go-daemon v0.1.5
 	github.com/sirupsen/logrus v1.5.0
-	github.com/spf13/cobra v0.0.7
+	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.6.1
+	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
-	golang.org/x/mod v0.2.0
+	golang.org/x/mod v0.3.0
 	golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-	golang.org/x/tools v0.0.0-20200422022333-3d57cf2e726e // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.3.0

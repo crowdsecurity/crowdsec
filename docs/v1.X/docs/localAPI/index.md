@@ -10,8 +10,11 @@ The Local API (LAPI) is a core component of {{v1X.crowdsec.name}} and has a few 
 ## Authentication
 
 There is two kinds of authentication to the local API :
+
  - Bouncers : they authenticate with a simple API key and can only read decisions
+
  - Machines : they authenticate with a login&password and can not only read decisions, but create new ones
+ 
 
 
 

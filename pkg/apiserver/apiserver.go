@@ -93,24 +93,25 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return
 	})
 	router.Use(gin.Recovery())
+	controller := &controllers.Controller{
+		DBClient: dbClient,
+		Ectx:     context.Background(),
+		Router:   router,
+		Profiles: config.Profiles,
+	}
 
 	var apiClient *apic
+
 	if config.OnlineClient != nil {
 		log.Printf("Loading CAPI pusher")
 		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
 		if err != nil {
 			return &APIServer{}, err
 		}
+		controller.CAPIChan = apiClient.alertToPush
 	} else {
 		apiClient = nil
-	}
-
-	controller := &controllers.Controller{
-		DBClient: dbClient,
-		Ectx:     context.Background(),
-		Router:   router,
-		Profiles: config.Profiles,
-		CAPIChan: apiClient.alertToPush,
+		controller.CAPIChan = nil
 	}
 
 	if err := controller.Init(); err != nil {
