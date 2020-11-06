@@ -73,10 +73,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
 	}
 
-	if c.Crowdsec.AcquisitionFilePath == "" {
-		c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
-	}
-
 	if err := c.LoadSimulation(); err != nil {
 		return err
 	}
@@ -86,6 +82,9 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	}
 
 	if c.Crowdsec != nil {
+		if c.Crowdsec.AcquisitionFilePath == "" {
+			c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+		}
 		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 		c.Crowdsec.HubDir = c.ConfigPaths.HubDir

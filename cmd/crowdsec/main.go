@@ -273,7 +273,7 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		config.Common.LogLevel = log.TraceLevel
 	}
 
-	if flags.TestMode {
+	if flags.TestMode && !disableAgent {
 		config.Crowdsec.LintOnly = true
 	}
 

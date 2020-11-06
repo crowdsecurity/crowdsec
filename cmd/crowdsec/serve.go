@@ -225,7 +225,11 @@ func Serve() error {
 		if err != nil {
 			return errors.Wrap(err, "api server init")
 		}
-		if !cConfig.Crowdsec.LintOnly {
+		if cConfig.Crowdsec != nil {
+			if !cConfig.Crowdsec.LintOnly {
+				serveAPIServer(apiServer)
+			}
+		} else {
 			serveAPIServer(apiServer)
 		}
 	}
