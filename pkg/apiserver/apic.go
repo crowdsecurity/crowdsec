@@ -165,12 +165,12 @@ func (a *apic) Push() error {
 				}
 			}
 		case alerts := <-a.alertToPush:
-			a.mu.Lock()
-			var signal *models.AddSignalsRequestItem
+			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
-				signal = AlertToSignal(alert)
+				signals = append(signals, AlertToSignal(alert))
 			}
-			cache = append(cache, signal)
+			a.mu.Lock()
+			cache = append(cache, signals...)
 			a.mu.Unlock()
 		}
 	}
