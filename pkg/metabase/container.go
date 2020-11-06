@@ -43,7 +43,7 @@ func NewContainer(listenAddr string, listenPort string, sharedFolder string, nam
 
 func (c *Container) Start() error {
 	ctx := context.Background()
-	if err := c.CLI.ContainerStart(ctx, c.ID, types.ContainerStartOptions{}); err != nil {
+	if err := c.CLI.ContainerStart(ctx, c.Name, types.ContainerStartOptions{}); err != nil {
 		return fmt.Errorf("failed while starting %s : %s", c.ID, err)
 	}
 

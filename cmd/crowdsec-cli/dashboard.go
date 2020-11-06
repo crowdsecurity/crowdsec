@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	metabaseUser         string
+	metabaseUser         = "crowdsec@crowdsec.net"
 	metabasePassword     string
 	metabaseDbPath       string
 	metabaseConfigPath   string
@@ -59,7 +59,7 @@ cscli dashboard remove
 		Example: `
 cscli dashboard setup
 cscli dashboard setup --listen 0.0.0.0
-cscli dashboard setup -l 0.0.0.0 -p 443
+cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
  `,
 		Run: func(cmd *cobra.Command, args []string) {
 			if metabaseDbPath == "" {
@@ -89,9 +89,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
-	cmdDashSetup.Flags().StringVar(&dockerGatewayIPAddr, "docker-gateway", dockerGatewayIPAddr, "Docker gateway ip address in case the database is mysql/pgsql on localhost")
-
-	cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
+	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
 
 	cmdDashboard.AddCommand(cmdDashSetup)

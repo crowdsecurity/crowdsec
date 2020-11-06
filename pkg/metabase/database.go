@@ -67,7 +67,7 @@ func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr s
 		details = &Details{
 			Db: dbPath,
 		}
-	case "postegresql", "postegres", "pgsql":
+	case "postgresql", "postgres", "pgsql":
 		database.DBUrl = metabasePgSQLDBURL
 	default:
 		return nil, fmt.Errorf("database '%s' not supported", config.Type)
