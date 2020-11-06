@@ -77,10 +77,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		return err
 	}
 
-	if err := c.CleanupPaths(); err != nil {
-		return errors.Wrap(err, "invalid config")
-	}
-
 	if c.Crowdsec != nil {
 		if c.Crowdsec.AcquisitionFilePath == "" {
 			c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
@@ -100,6 +96,10 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		if c.Crowdsec.OutputRoutinesCount <= 0 {
 			c.Crowdsec.OutputRoutinesCount = 1
 		}
+	}
+
+	if err := c.CleanupPaths(); err != nil {
+		return errors.Wrap(err, "invalid config")
 	}
 
 	if c.Cscli != nil {
