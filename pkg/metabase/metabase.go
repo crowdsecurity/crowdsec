@@ -45,8 +45,6 @@ var (
 	containerSharedFolder   = "/metabase-data"
 
 	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
-	metabaseMySQLDBURL  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_mysql.zip"
-	metabasePgSQLDBURL  = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_pgsql.zip"
 )
 
 func (m *Metabase) Init() error {
@@ -56,13 +54,11 @@ func (m *Metabase) Init() error {
 
 	switch m.Config.Database.Type {
 	case "mysql":
-		m.InternalDBURL = metabaseMySQLDBURL
 		return fmt.Errorf("'mysql' is not supported yet for cscli dashboard")
 		//DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postgresql", "postgres", "pgsql":
-		m.InternalDBURL = metabasePgSQLDBURL
 		return fmt.Errorf("'postgresql' is not supported yet by cscli dashboard")
 	default:
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
