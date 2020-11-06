@@ -48,17 +48,7 @@ func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr s
 
 	switch config.Type {
 	case "mysql":
-		database.DBUrl = metabaseMySQLDBURL
-		details = &Details{
-			Host:              remoteDBAddr,
-			Port:              config.Port,
-			Dbname:            config.DbName,
-			User:              config.User,
-			Password:          config.Password,
-			Ssl:               false,
-			AdditionalOptions: nil,
-			TunnelEnabled:     false,
-		}
+		return nil, fmt.Errorf("database '%s' is not supported yet", config.Type)
 	case "sqlite":
 		database.DBUrl = metabaseSQLiteDBURL
 		localFolder := filepath.Dir(config.DbPath)
@@ -68,7 +58,7 @@ func NewDatabase(config *csconfig.DatabaseCfg, client *APIClient, remoteDBAddr s
 			Db: dbPath,
 		}
 	case "postgresql", "postgres", "pgsql":
-		database.DBUrl = metabasePgSQLDBURL
+		return nil, fmt.Errorf("database '%s' is not supported yet", config.Type)
 	default:
 		return nil, fmt.Errorf("database '%s' not supported", config.Type)
 	}
