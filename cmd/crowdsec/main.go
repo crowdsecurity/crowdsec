@@ -295,8 +295,12 @@ func main() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
-		log.Fatalf("Missing client local API credentials, abort.")
+	if !flags.DisableAPI && cConfig.API.Server == nil {
+		log.Fatalf("no configuration found local API, abort.")
+	}
+
+	if !flags.DisableAgent && cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil {
+		log.Fatalf("missing local API credentials for crowdsec agent, abort.")
 	}
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
