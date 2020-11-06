@@ -131,7 +131,7 @@ func (c *Container) RemoveImage() error {
 	ctx := context.Background()
 
 	log.Printf("Removing docker image %s", c.Image)
-	if _, err := c.CLI.ImageRemove(ctx, c.Image, types.ImageRemoveOptions{}); err != nil {
+	if _, err := c.CLI.ImageRemove(ctx, c.Image, types.ImageRemoveOptions{Force: true}); err != nil {
 		return fmt.Errorf("failed remove %s image: %s", c.Image, err)
 	}
 

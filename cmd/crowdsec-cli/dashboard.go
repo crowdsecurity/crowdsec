@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -141,21 +142,32 @@ cscli dashboard remove
 cscli dashboard remove --force
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath)
-			if err != nil {
-				log.Fatalf(err.Error())
+			answer := false
+			prompt := &survey.Confirm{
+				Message: "Do you really want to remove crowdsec dashboard? (all your changes will be lost)",
+				Default: true,
 			}
-			if force {
-				if err := mb.Container.Stop(); err != nil {
-					log.Fatalf("Failed to stop metabase container : %s", err)
+			survey.AskOne(prompt, &answer)
+			if answer {
+				mb, err := metabase.NewMetabase(metabaseConfigPath)
+				if err != nil {
+					log.Fatalf(err.Error())
 				}
-			}
-			if err := mb.Container.Remove(); err != nil {
-				log.Fatalf("Failed to remove metabase container : %s", err)
-			}
-			if force {
-				if err := mb.Container.RemoveImage(); err != nil {
-					log.Fatalf("Failed to stop metabase container : %s", err)
+				if force {
+					if err := mb.Container.Stop(); err != nil {
+						log.Fatalf("Failed to stop metabase container : %s", err)
+					}
+				}
+				if err := mb.Container.Remove(); err != nil {
+					log.Fatalf("Failed to remove metabase container : %s", err)
+				}
+				if err := mb.RemoveDatabase(); err != nil {
+					log.Fatalf("failed to remove metabase internal db : %s", err)
+				}
+				if force {
+					if err := mb.Container.RemoveImage(); err != nil {
+						log.Fatalf("Failed to stop metabase container : %s", err)
+					}
 				}
 			}
 		},

@@ -72,13 +72,13 @@ func (m *Metabase) Init() error {
 	switch m.Config.Database.Type {
 	case "mysql":
 		m.InternalDBURL = metabaseMySQLDBURL
-		return fmt.Errorf("'mysql' is not supported for dashboard")
+		return fmt.Errorf("'mysql' is not supported yet for cscli dashboard")
 		//DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postegresql", "postegres", "pgsql":
 		m.InternalDBURL = metabasePgSQLDBURL
-		return fmt.Errorf("'mysql' is not supported for dashboard")
+		return fmt.Errorf("'postegresql' is not supported yet by cscli dashboard")
 	default:
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
@@ -367,4 +367,8 @@ func (m *Metabase) ExtractDatabase(buf *bytes.Reader) error {
 		rc.Close()
 	}
 	return nil
+}
+
+func (m *Metabase) RemoveDatabase() error {
+	return os.RemoveAll(path.Join(m.Config.DBPath, "metabase.db"))
 }
