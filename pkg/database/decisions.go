@@ -61,10 +61,20 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	}
 
 	if startIP != 0 && endIP != 0 {
-		query = query.Where(decision.And(
-			decision.StartIPLTE(startIP),
-			decision.EndIPGTE(endIP),
-		))
+		/*the user is checking for a single IP*/
+		if startIP == endIP {
+			//DECISION_START <= IP_Q >= DECISON_END
+			query = query.Where(decision.And(
+				decision.StartIPLTE(startIP),
+				decision.EndIPGTE(endIP),
+			))
+		} else { /*the user is checking for a RANGE */
+			//START_Q >= DECISION_START AND END_Q <= DECISION_END
+			query = query.Where(decision.And(
+				decision.StartIPGTE(startIP),
+				decision.EndIPLTE(endIP),
+			))
+		}
 	}
 	return query, nil
 }

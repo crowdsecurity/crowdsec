@@ -247,10 +247,20 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		}
 	}
 	if startIP != 0 && endIP != 0 {
-		alerts = alerts.Where(alert.And(
-			alert.HasDecisionsWith(decision.StartIPLTE(startIP)),
-			alert.HasDecisionsWith(decision.EndIPGTE(endIP)),
-		))
+		/*the user is checking for a single IP*/
+		if startIP == endIP {
+			//DECISION_START <= IP_Q >= DECISON_END
+			alerts = alerts.Where(alert.And(
+				alert.HasDecisionsWith(decision.StartIPLTE(startIP)),
+				alert.HasDecisionsWith(decision.EndIPGTE(endIP)),
+			))
+		} else { /*the user is checking for a RANGE */
+			//START_Q >= DECISION_START AND END_Q <= DECISION_END
+			alerts = alerts.Where(alert.And(
+				alert.HasDecisionsWith(decision.StartIPGTE(startIP)),
+				alert.HasDecisionsWith(decision.EndIPLTE(endIP)),
+			))
+		}
 	}
 	return alerts, nil
 }
