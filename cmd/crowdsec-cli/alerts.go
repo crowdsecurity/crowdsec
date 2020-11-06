@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -125,7 +126,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	return nil
 }
 
-func DisplayOneAlert(alert *models.Alert) error {
+func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 	if csConfig.Cscli.Output == "human" {
 		fmt.Printf("\n################################################################################################\n\n")
 		scopeAndValue := *alert.Source.Scope
@@ -140,10 +141,19 @@ func DisplayOneAlert(alert *models.Alert) error {
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
 		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
-		fmt.Printf(" - Active Decisions  :\n")
+		foundActive := false
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
 		for _, decision := range alert.Decisions {
+			parsedDuration, err := time.ParseDuration(*decision.Duration)
+			if err != nil {
+				log.Errorf(err.Error())
+			}
+			expire := time.Now().Add(parsedDuration)
+			if time.Now().After(expire) {
+				continue
+			}
+			foundActive = true
 			scopeAndValue := *decision.Scope
 			if *decision.Value != "" {
 				scopeAndValue += ":" + *decision.Value
@@ -156,19 +166,25 @@ func DisplayOneAlert(alert *models.Alert) error {
 				alert.CreatedAt,
 			})
 		}
-		table.Render() // Send output
-		fmt.Printf("\n - Events  :\n")
-		for _, event := range alert.Events {
-			fmt.Printf("\n- Date: %s\n", *event.Timestamp)
-			table = tablewriter.NewWriter(os.Stdout)
-			table.SetHeader([]string{"Key", "Value"})
-			for _, meta := range event.Meta {
-				table.Append([]string{
-					meta.Key,
-					meta.Value,
-				})
-			}
+		if foundActive {
+			fmt.Printf(" - Active Decisions  :\n")
 			table.Render() // Send output
+		}
+
+		if withDetail {
+			fmt.Printf("\n - Events  :\n")
+			for _, event := range alert.Events {
+				fmt.Printf("\n- Date: %s\n", *event.Timestamp)
+				table = tablewriter.NewWriter(os.Stdout)
+				table.SetHeader([]string{"Key", "Value"})
+				for _, meta := range event.Meta {
+					table.Append([]string{
+						meta.Key,
+						meta.Value,
+					})
+				}
+				table.Render() // Send output
+			}
 		}
 	}
 	return nil
@@ -227,32 +243,7 @@ cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var errs []error
-			if len(args) > 0 {
-				for _, alertID := range args {
-					id, err := strconv.Atoi(alertID)
-					if err != nil {
-						errs = append(errs, errors.Wrapf(err, "bad alert ID type: %s", alertID))
-						continue
-					}
-					alert, _, err := Client.Alerts.GetByID(context.Background(), id)
-					if err != nil {
-						errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
-						continue
-					}
-					if err := DisplayOneAlert(alert); err != nil {
-						errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
-						continue
-					}
-				}
-				if len(errs) > 0 {
-					fmt.Printf("ERRORS:\n")
-					for _, err := range errs {
-						fmt.Printf("\t- %s", err.Error())
-					}
-				}
-				return
-			}
+
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
 				_ = cmd.Help()
@@ -402,5 +393,46 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
 
 	cmdAlerts.AddCommand(cmdAlertsDelete)
+
+	var details bool
+	var cmdAlertsInspect = &cobra.Command{
+		Use:     "inspect <alert_id>",
+		Short:   `Show info about an alert`,
+		Example: `cscli alerts inspect 123`,
+		Run: func(cmd *cobra.Command, args []string) {
+			var errs []error
+			if len(args) == 0 {
+				_ = cmd.Help()
+				return
+			}
+			for _, alertID := range args {
+				id, err := strconv.Atoi(alertID)
+				if err != nil {
+					errs = append(errs, errors.Wrapf(err, "bad alert ID type: %s", alertID))
+					continue
+				}
+				alert, _, err := Client.Alerts.GetByID(context.Background(), id)
+				if err != nil {
+					errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
+					continue
+				}
+				if err := DisplayOneAlert(alert, details); err != nil {
+					errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
+					continue
+				}
+			}
+			if len(errs) > 0 {
+				fmt.Printf("ERRORS:\n")
+				for _, err := range errs {
+					fmt.Printf("\t- %s", err.Error())
+				}
+			}
+		},
+	}
+	cmdAlertsInspect.Flags().SortFlags = false
+	cmdAlertsInspect.Flags().BoolVarP(&details, "details", "d", false, "show alerts with events")
+
+	cmdAlerts.AddCommand(cmdAlertsInspect)
+
 	return cmdAlerts
 }
