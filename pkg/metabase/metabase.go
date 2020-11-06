@@ -72,11 +72,13 @@ func (m *Metabase) Init() error {
 	switch m.Config.Database.Type {
 	case "mysql":
 		m.InternalDBURL = metabaseMySQLDBURL
-		DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
+		return fmt.Errorf("'mysql' is not supported for dashboard")
+		//DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postegresql", "postegres", "pgsql":
 		m.InternalDBURL = metabasePgSQLDBURL
+		return fmt.Errorf("'mysql' is not supported for dashboard")
 	default:
 		return fmt.Errorf("database '%s' not supported", m.Config.Database.Type)
 	}
