@@ -41,7 +41,7 @@ func reloadHandler(sig os.Signal) error {
 	var err error
 
 	//stop go routines
-	if !flags.DisableAgent {
+	if !disableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			log.Fatalf("Failed to shut down crowdsec routines: %s", err)
 		}
@@ -56,7 +56,7 @@ func reloadHandler(sig os.Signal) error {
 		}
 	}
 
-	if !flags.DisableAPI {
+	if !disableAPI {
 		if err := shutdownAPI(); err != nil {
 			log.Fatalf("Failed to shut down api routines: %s", err)
 		}
@@ -80,7 +80,7 @@ func reloadHandler(sig os.Signal) error {
 		log.Fatal(err.Error())
 	}
 
-	if !flags.DisableAPI || cConfig.API.Server == nil {
+	if !disableAPI {
 		apiServer, err := initAPIServer()
 		if err != nil {
 			return fmt.Errorf("unable to init api server: %s", err)
@@ -89,7 +89,7 @@ func reloadHandler(sig os.Signal) error {
 		serveAPIServer(apiServer)
 	}
 
-	if !flags.DisableAgent {
+	if !disableAgent {
 		csParsers, err := initCrowdsec()
 		if err != nil {
 			return fmt.Errorf("unable to init crowdsec: %s", err)
@@ -220,7 +220,7 @@ func Serve() error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 
-	if !flags.DisableAPI || cConfig.API.Server == nil {
+	if !disableAPI {
 		apiServer, err := initAPIServer()
 		if err != nil {
 			return errors.Wrap(err, "api server init")
@@ -230,7 +230,7 @@ func Serve() error {
 		}
 	}
 
-	if !flags.DisableAgent {
+	if !disableAgent {
 		csParsers, err := initCrowdsec()
 		if err != nil {
 			return errors.Wrap(err, "crowdsec init")
