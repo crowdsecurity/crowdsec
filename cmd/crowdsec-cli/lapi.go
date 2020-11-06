@@ -62,7 +62,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				apiURL += "/"
 			}
 			/*URL needs to start with http://, but user doesn't care*/
-			if !strings.HasSuffix(apiURL, "http://") && !strings.HasSuffix(apiURL, "https://") {
+			if !strings.HasPrefix(apiURL, "http://") && !strings.HasPrefix(apiURL, "https://") {
 				apiURL = "http://" + apiURL
 			}
 			apiurl, err := url.Parse(apiURL)
