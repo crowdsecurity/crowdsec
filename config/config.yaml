@@ -17,7 +17,7 @@ crowdsec_service:
 cscli:
   output: human
 db_config:
-  type: mysql
+  type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
   user: crowdsec
   password: crowdsec
