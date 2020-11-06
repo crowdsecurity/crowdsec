@@ -72,7 +72,7 @@ func (m *Metabase) Init() error {
 	switch m.Config.Database.Type {
 	case "mysql":
 		m.InternalDBURL = metabaseMySQLDBURL
-		DBConnectionURI = fmt.Sprintf("mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
+		DBConnectionURI = fmt.Sprintf("MB_DB_CONNECTION_URI=mysql://%s:%d/%s?user=%s&password=%s&allowPublicKeyRetrieval=true", remoteDBAddr, m.Config.Database.Port, m.Config.Database.DbName, m.Config.Database.User, m.Config.Database.Password)
 	case "sqlite":
 		m.InternalDBURL = metabaseSQLiteDBURL
 	case "postegresql", "postegres", "pgsql":

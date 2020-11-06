@@ -17,12 +17,12 @@ crowdsec_service:
 cscli:
   output: human
 db_config:
-  type: sqlite
+  type: mysql
   db_path: /var/lib/crowdsec/data/crowdsec.db
-  user: root
+  user: crowdsec
   password: crowdsec
   db_name: crowdsec
-  host: "172.17.0.2"
+  host: "127.0.0.1"
   port: 3306
 api:
   client:
