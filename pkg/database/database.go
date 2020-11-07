@@ -9,16 +9,19 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type Client struct {
 	Ent *ent.Client
 	CTX context.Context
+	Log *log.Logger
 }
 
 func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
@@ -47,10 +50,20 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		return &Client{}, fmt.Errorf("unknown database type")
 	}
 
+	/*The logger that will be used by db operations*/
+	clog := log.New()
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, errors.Wrap(err, "while configuring db logger")
+	}
+	clog.SetLevel(config.LogLevel)
+	if config.LogLevel >= log.TraceLevel {
+		log.Debugf("Enabling request debug")
+		client = client.Debug()
+	}
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background()}, nil
+	return &Client{Ent: client, CTX: context.Background(), Log: clog}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
