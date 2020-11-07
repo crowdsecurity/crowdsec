@@ -15,9 +15,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 var printMachine bool
@@ -399,7 +399,6 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		Short:   `Show info about an alert`,
 		Example: `cscli alerts inspect 123`,
 		Run: func(cmd *cobra.Command, args []string) {
-			var errs []error
 			if len(args) == 0 {
 				_ = cmd.Help()
 				return
@@ -407,23 +406,30 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			for _, alertID := range args {
 				id, err := strconv.Atoi(alertID)
 				if err != nil {
-					errs = append(errs, errors.Wrapf(err, "bad alert ID type: %s", alertID))
+					log.Fatalf("bad alert id %s", alertID)
 					continue
 				}
 				alert, _, err := Client.Alerts.GetByID(context.Background(), id)
 				if err != nil {
-					errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
-					continue
+					log.Fatalf("can't find alert with id %s: %s", alertID, err)
 				}
-				if err := DisplayOneAlert(alert, details); err != nil {
-					errs = append(errs, errors.Wrapf(err, "alert '%d'", id))
-					continue
-				}
-			}
-			if len(errs) > 0 {
-				fmt.Printf("ERRORS:\n")
-				for _, err := range errs {
-					fmt.Printf("\t- %s", err.Error())
+				switch csConfig.Cscli.Output {
+				case "human":
+					if err := DisplayOneAlert(alert, details); err != nil {
+						continue
+					}
+				case "json":
+					data, err := json.MarshalIndent(alert, "", "  ")
+					if err != nil {
+						log.Fatalf("unable to marshal alert with id %s: %s", alertID, err)
+					}
+					fmt.Printf("%s\n", string(data))
+				case "raw":
+					data, err := yaml.Marshal(alert)
+					if err != nil {
+						log.Fatalf("unable to marshal alert with id %s: %s", alertID, err)
+					}
+					fmt.Printf("%s\n", string(data))
 				}
 			}
 		},
