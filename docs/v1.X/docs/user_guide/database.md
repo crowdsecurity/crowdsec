@@ -9,10 +9,10 @@ For `SQLite`, there is nothing to do on your side in order to make it work with 
 Connect to your `MySQL` server and run the following command:
 
 ```
-CREATE DATABASE crowdsec;
-CREATE USER 'crowdsec'@'%' IDENTIFIED BY '<password>';
-GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'%';
-FLUSH PRIVILEGES;
+mysql> CREATE DATABASE crowdsec;
+mysql> CREATE USER 'crowdsec'@'%' IDENTIFIED BY '<password>';
+mysql> GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec'@'%';
+mysql> FLUSH PRIVILEGES;
 ```
 
 Then edit `{{v1X.config.crowdsec_config_file}}` to update the [`db_config`](/Crowdsec/v1/references/database/#db_config) part.
@@ -24,9 +24,9 @@ You can now start/restart crowdsec.
 Connect to your `PostgreSQL` server and run the following command:
 
 ```
-CREATE DATABASE crowdsec;
-CREATE USER crowdsec WITH PASSWORD '<password>';
-GRANT ALL PRIVILEGES ON DATABASE crowdsec TO crowdsec;
+postgres=# CREATE DATABASE crowdsec;
+postgres=# CREATE USER crowdsec WITH PASSWORD '<password>';
+postgres=# GRANT ALL PRIVILEGES ON DATABASE crowdsec TO crowdsec;
 ```
 
 Then edit `{{v1X.config.crowdsec_config_file}}` to update the [`db_config`](/Crowdsec/v1/references/database/#db_config) part.
