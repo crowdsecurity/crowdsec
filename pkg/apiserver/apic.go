@@ -18,6 +18,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+
 	"gopkg.in/tomb.v2"
 )
 
@@ -161,7 +162,11 @@ func (a *apic) Push() error {
 				err := a.Send(&cacheCopy)
 				if err != nil {
 					log.Errorf("got an error while sending signal : %s", err)
-					return err
+					log.Debugf("dump: %+v", cacheCopy)
+					/*
+						even in case of error, we don't want to return here, or we need to kill everything.
+						this go-routine is in charge of pushing the signals to LAPI and is emptying the CAPIChan
+					*/
 				}
 			}
 		case alerts := <-a.alertToPush:
@@ -177,7 +182,20 @@ func (a *apic) Push() error {
 }
 
 func (a *apic) Send(cache *models.AddSignalsRequest) error {
-	_, _, err := a.apiClient.Signal.Add(context.Background(), cache)
+	/*we do have a problem with this :
+	The apic.Push background routine reads from alertToPush chan.
+	This chan is filled by Controller.CreateAlert
+
+	If the chan apic.Send hangs, the alertToPush chan will become full,
+	with means that Controller.CreateAlert is going to hang, blocking API worker(s).
+
+	So instead, we prefer to cancel write.
+
+	I don't know enough about gin to tell how much of an issue it can be.
+	*/
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, _, err := a.apiClient.Signal.Add(ctx, cache)
 	return err
 }
 
