@@ -59,10 +59,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
 
+	/*The logger that will be used by handlers*/
 	clog := log.New()
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
+	clog.SetLevel(config.LogLevel)
+
 	gin.DefaultErrorWriter = clog.Writer()
 
 	// Logging to a file.
@@ -98,7 +101,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		Ectx:     context.Background(),
 		Router:   router,
 		Profiles: config.Profiles,
+		Log:      clog,
 	}
+	controller.DBClient.Log = clog
 
 	var apiClient *apic
 
