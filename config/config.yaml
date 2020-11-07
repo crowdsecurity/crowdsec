@@ -20,6 +20,7 @@ db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
   user: crowdsec
+  #log_level: info
   password: crowdsec
   db_name: crowdsec
   host: "127.0.0.1"
@@ -29,6 +30,7 @@ api:
     insecure_skip_verify: true # default true
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
+    #log_level: info
     listen_uri: localhost:8080
     profiles_path: /etc/crowdsec/profiles.yaml
     online_client: # Crowdsec API
