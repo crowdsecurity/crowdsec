@@ -8,6 +8,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 type Controller struct {
@@ -16,6 +17,7 @@ type Controller struct {
 	Router   *gin.Engine
 	Profiles []*csconfig.ProfileCfg
 	CAPIChan chan []*models.Alert
+	Log      *log.Logger
 }
 
 func (c *Controller) Init() error {
