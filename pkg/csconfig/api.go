@@ -6,9 +6,9 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	URL      string `yaml:"url,omitempty"`
-	Login    string `yaml:"login,omitempty"`
-	Password string `yaml:"password,omitempty"`
+	URL      string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login    string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password string `yaml:"password,omitempty" json:"-"`
 }
 
 /*global api config (for lapi->oapi)*/

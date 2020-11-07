@@ -18,6 +18,7 @@ nav:
       - Managing local/custom configuration: user_guide/configurations_management/local-configurations.md
     - Decisions Management: user_guide/decision_management.md
     - Bouncers & machines management: user_guide/bouncer_machine_management.md
+    - Databases: user_guide/database.md
     - Simulation Management: user_guide/simulation_mode.md
     - Crowdsec forensic mode: user_guide/forensic_mode.md
     - Debugging: user_guide/debugging_configs.md
@@ -50,7 +51,7 @@ nav:
     - PostOverlows format: references/postoverflows.md
     - Enrichers format: references/enrichers.md
     - Collections format: references/collections.md
-    - Database: references/database.md
+    - Database format: references/database.md
     - Acquisition format: references/acquisition.md
     - Profiles format: references/profiles.md
     - Simulation configuration: references/simulation.md
