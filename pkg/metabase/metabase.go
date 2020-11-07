@@ -41,7 +41,7 @@ var (
 	metabaseDefaultUser     = "crowdsec@crowdsec.net"
 	metabaseDefaultPassword = "!!Cr0wdS3c_M3t4b4s3??"
 	containerName           = "/crowdsec-metabase"
-	metabaseImage           = "metabase/metabase"
+	metabaseImage           = "metabase/metabase:v0.37.0.2"
 	containerSharedFolder   = "/metabase-data"
 
 	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
