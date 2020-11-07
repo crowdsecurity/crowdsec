@@ -1,5 +1,7 @@
 package csconfig
 
+import log "github.com/sirupsen/logrus"
+
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
 	Server *LocalApiServerCfg `yaml:"server"`
@@ -33,6 +35,7 @@ type LocalApiServerCfg struct {
 	OnlineClient *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath string              `yaml:"profiles_path,omitempty"`
 	Profiles     []*ProfileCfg       `yaml:"-"`
+	LogLevel     log.Level           `yaml:"log_level"`
 }
 
 type TLSCfg struct {

@@ -1,5 +1,7 @@
 package csconfig
 
+import log "github.com/sirupsen/logrus"
+
 type DatabaseCfg struct {
 	User     string      `yaml:"user"`
 	Password string      `yaml:"password"`
@@ -9,6 +11,7 @@ type DatabaseCfg struct {
 	DbPath   string      `yaml:"db_path"`
 	Type     string      `yaml:"type"`
 	Flush    *FlushDBCfg `yaml:"flush"`
+	LogLevel log.Level   `yaml:"log_level"`
 }
 
 type FlushDBCfg struct {
