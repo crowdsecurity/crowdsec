@@ -103,7 +103,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		Profiles: config.Profiles,
 		Log:      clog,
 	}
-	controller.DBClient.Log = clog
 
 	var apiClient *apic
 
