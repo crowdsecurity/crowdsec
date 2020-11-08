@@ -14,9 +14,72 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
+
+func formatAlertAsString(machineId string, alert *models.Alert) []string {
+	var retStr []string
+
+	/**/
+	src := ""
+	if alert.Source != nil {
+		if *alert.Source.Scope == types.Ip {
+			src = fmt.Sprintf("ip %s", *alert.Source.Value)
+			if alert.Source.Cn != "" {
+				src += " (" + alert.Source.Cn
+				if alert.Source.AsNumber != "" {
+					src += "/" + alert.Source.AsNumber
+				}
+				src += ")"
+			}
+		} else if *alert.Source.Scope == types.Range {
+			src = fmt.Sprintf("range %s", *alert.Source.Value)
+			if alert.Source.Cn != "" {
+				src += " (" + alert.Source.Cn
+				if alert.Source.AsNumber != "" {
+					src += "/" + alert.Source.AsNumber
+				}
+				src += ")"
+			}
+		} else {
+			src = fmt.Sprintf("%s %s", *alert.Source.Scope, *alert.Source.Value)
+		}
+	} else {
+		src = "empty source"
+	}
+
+	/**/
+	reason := ""
+	if *alert.Scenario != "" {
+		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
+	} else if *alert.Message != "" {
+		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
+	} else {
+		reason = fmt.Sprintf("empty scenario by %s", src)
+	}
+
+	if len(alert.Decisions) > 0 {
+		for _, decisionItem := range alert.Decisions {
+			decision := ""
+			if alert.Simulated != nil && *alert.Simulated {
+				decision = "(simulated alert)"
+			} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
+				decision = "(simulated decision)"
+			}
+			log.Debugf("%s", spew.Sdump(decisionItem))
+			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
+				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
+			retStr = append(retStr,
+				fmt.Sprintf("(%s/%s) %s : %s", machineId,
+					*decisionItem.Origin, reason, decision))
+		}
+	} else {
+		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
+	}
+	return retStr
+}
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	var decisions []*ent.Decision
@@ -26,6 +89,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	ret := []string{}
 	bulkSize := 20
 
+	c.Log.Debugf("writting %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	for i, alertItem := range alertList {
 		owner, err := c.QueryMachineByID(machineId)
@@ -44,6 +108,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
 			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+		}
+		/*display proper alert in logs*/
+		for _, disp := range formatAlertAsString(machineId, alertItem) {
+			log.Info(disp)
 		}
 
 		if len(alertItem.Events) > 0 {
@@ -105,7 +173,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 			}
 		}
-
 		alertB := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
