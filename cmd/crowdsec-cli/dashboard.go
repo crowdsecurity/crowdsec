@@ -24,6 +24,8 @@ var (
 	metabaseListenPort    = "3000"
 	metabaseContainerID   = "/crowdsec-metabase"
 
+	forceYes bool
+
 	dockerGatewayIPAddr = "172.17.0.1"
 	/*informations needed to setup a random password on user's behalf*/
 )
@@ -140,12 +142,15 @@ cscli dashboard remove
 cscli dashboard remove --force
  `,
 		Run: func(cmd *cobra.Command, args []string) {
-			answer := false
-			prompt := &survey.Confirm{
-				Message: "Do you really want to remove crowdsec dashboard? (all your changes will be lost)",
-				Default: true,
+			answer := true
+			if !forceYes {
+				prompt := &survey.Confirm{
+					Message: "Do you really want to remove crowdsec dashboard? (all your changes will be lost)",
+					Default: true,
+				}
+				survey.AskOne(prompt, &answer)
 			}
-			survey.AskOne(prompt, &answer)
+
 			if answer {
 				mb, err := metabase.NewMetabase(metabaseConfigPath)
 				if err != nil {
@@ -171,6 +176,7 @@ cscli dashboard remove --force
 		},
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
+	cmdDashRemove.Flags().BoolVarP(&force, "yes", "y", false, "force  yes")
 	cmdDashboard.AddCommand(cmdDashRemove)
 
 	return cmdDashboard
