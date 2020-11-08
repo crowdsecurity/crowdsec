@@ -161,7 +161,7 @@ func (a *apic) Push() error {
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 				err := a.Send(&cacheCopy)
 				if err != nil {
-					log.Errorf("got an error while sending signal : %s", err)
+					log.Errorf("while sending signal to Central API : %s", err)
 					log.Debugf("dump: %+v", cacheCopy)
 					/*
 						even in case of error, we don't want to return here, or we need to kill everything.
