@@ -333,7 +333,8 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 	for _, alertItem := range alertsToDelete {
 		err = c.DeleteAlertGraph(alertItem)
 		if err != nil {
-			return []*ent.Alert{}, errors.Wrap(DeleteFail, fmt.Sprintf("event with alert ID '%d'", alertItem.ID))
+			log.Warningf("DeleteAlertWithFilter : %s", err)
+			return []*ent.Alert{}, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
 		}
 	}
 	return alertsToDelete, nil
@@ -393,6 +394,7 @@ func (c *Client) FlushAlerts(MaxAge time.Duration, MaxItems int) error {
 func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
 	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().First(c.CTX)
 	if err != nil {
+		log.Warningf("GetAlertByID : %s", err)
 		return &ent.Alert{}, errors.Wrapf(QueryFail, "alert id '%d'", alertID)
 	}
 	return alert, nil

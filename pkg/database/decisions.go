@@ -45,19 +45,19 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 		case "ip":
 			isValidIP := IsIpv4(value[0])
 			if !isValidIP {
-				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
+				return nil, errors.Wrapf(InvalidIPOrRange, "unable to parse '%s': %s", value[0], err)
 			}
 			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
 			if err != nil {
-				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
 			}
 		case "range":
 			startIP, endIP, err = GetIpsFromIpRange(value[0])
 			if err != nil {
-				return nil, errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
 			}
 		default:
-			return query, errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+			return query, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
 
@@ -104,6 +104,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldOrigin,
 	).Scan(c.CTX, &data)
 	if err != nil {
+		log.Warningf("QueryDecisionWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
 	}
 
@@ -113,6 +114,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now())).All(c.CTX)
 	if err != nil {
+		log.Warningf("QueryAllDecisions : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions")
 	}
 	return data, nil
@@ -121,6 +123,7 @@ func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
 func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).All(c.CTX)
 	if err != nil {
+		log.Warningf("QueryExpiredDecisions : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
 	return data, nil
@@ -129,6 +132,7 @@ func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since)).All(c.CTX)
 	if err != nil {
+		log.Warningf("QueryExpiredDecisionsSince : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
 	return data, nil
@@ -137,7 +141,8 @@ func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, e
 func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
 	if err != nil {
-		return []*ent.Decision{}, errors.Wrap(QueryFail, fmt.Sprintf("new decisions since '%s'", since.String()))
+		log.Warningf("QueryNewDecisionsSince : %s", err)
+		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
 	return data, nil
 }
@@ -193,6 +198,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 
 	nbDeleted, err := decisions.Exec(c.CTX)
 	if err != nil {
+		log.Warningf("DeleteDecisionsWithFilter : %s", err)
 		return "0", errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 	return strconv.Itoa(nbDeleted), nil
@@ -240,6 +246,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	}
 	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
 	if err != nil {
+		log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
 		return "0", errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
 	}
 	return strconv.Itoa(nbDeleted), nil
