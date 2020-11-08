@@ -225,11 +225,7 @@ func Serve() error {
 		if err != nil {
 			return errors.Wrap(err, "api server init")
 		}
-		if cConfig.Crowdsec != nil {
-			if !cConfig.Crowdsec.LintOnly {
-				serveAPIServer(apiServer)
-			}
-		} else {
+		if !flags.TestMode {
 			serveAPIServer(apiServer)
 		}
 	}
@@ -240,17 +236,19 @@ func Serve() error {
 			return errors.Wrap(err, "crowdsec init")
 		}
 		/* if it's just linting, we're done */
-		if cConfig.Crowdsec.LintOnly {
-			log.Infof("lint done")
-			os.Exit(0)
+		if !flags.TestMode {
+			serveCrowdsec(csParsers)
 		}
-		serveCrowdsec(csParsers)
+	}
+	if flags.TestMode {
+		log.Infof("test done")
+		os.Exit(0)
 	}
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
-		sent, err := daemon.SdNotify(false, "READY=1")
-		if !sent && err != nil {
-			log.Errorf("Failed to notify: %v", err)
+		sent, err := daemon.SdNotify(false, daemon.SdNotifyReady)
+		if !sent || err != nil {
+			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
 		/*wait for signals*/
 		HandleSignals()
