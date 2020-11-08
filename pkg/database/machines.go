@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -76,6 +77,7 @@ func (c *Client) ListMachines() ([]*ent.Machine, error) {
 func (c *Client) ValidateMachine(machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
 	if err != nil {
+		log.Warningf("ValidateMachine : %s", err)
 		return errors.Wrap(UpdateFail, "setting machine status")
 	}
 	return nil

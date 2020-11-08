@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -144,7 +145,8 @@ func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error
 func (c *Client) DeleteDecisionById(decisionId int) error {
 	err := c.Ent.Decision.DeleteOneID(decisionId).Exec(c.CTX)
 	if err != nil {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionId))
+		log.Warningf("DeleteDecisionById : %s", err)
+		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
 	}
 	return nil
 }
@@ -247,7 +249,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
-		return errors.Wrap(DeleteFail, fmt.Sprintf("decision with id '%d' doesn't exist", decisionID))
+		log.Warningf("SoftDeleteDecisionByID : %s", err)
+		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 	return nil
 }
