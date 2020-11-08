@@ -18,15 +18,12 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 
 	for _, refDecision := range Profile.Decisions {
 		decision := models.Decision{}
-		decisionType := *refDecision.Type
 		/*the reference decision from profile is in sumulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
-			decisionType = fmt.Sprintf("(simulation) %s", decisionType)
 			decision.Simulated = new(bool)
 			*decision.Simulated = true
 			/*the event is already in simulation mode */
 		} else if Alert.Simulated != nil && *Alert.Simulated {
-			decisionType = fmt.Sprintf("(simulation) %s", decisionType)
 			decision.Simulated = new(bool)
 			*decision.Simulated = true
 		}
@@ -84,7 +81,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		}
 		decision.Scenario = new(string)
 		*decision.Scenario = *Alert.Scenario
-		log.Printf("%s %s decision : %s %s", *decision.Scope, *decision.Value, *decision.Duration, decisionType)
 		decisions = append(decisions, &decision)
 	}
 	return decisions, nil
