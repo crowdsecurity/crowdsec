@@ -210,7 +210,6 @@ cscli decisions list -t ban
 			if err != nil {
 				log.Fatalf("Unable to list decisions : %v", err.Error())
 			}
-			log.Infof("ALERTS RETURNED: %+v", alerts)
 
 			err = DecisionsToTable(alerts)
 			if err != nil {
