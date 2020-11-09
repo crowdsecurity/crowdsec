@@ -355,6 +355,6 @@ func (m *Metabase) ExtractDatabase(buf *bytes.Reader) error {
 	return nil
 }
 
-func (m *Metabase) RemoveDatabase() error {
-	return os.RemoveAll(path.Join(m.Config.DBPath, "metabase.db"))
+func RemoveDatabase(dataDir string) error {
+	return os.RemoveAll(path.Join(dataDir, "metabase.db"))
 }

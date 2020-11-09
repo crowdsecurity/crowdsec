@@ -7,6 +7,7 @@ import (
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
+
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -121,12 +122,8 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 		Long:  `Stops the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath)
-			if err != nil {
-				log.Fatalf(err.Error())
-			}
-			if err := mb.Container.Stop(); err != nil {
-				log.Fatalf("Failed to start metabase container : %s", err)
+			if err := metabase.StopContainer(metabaseContainerID); err != nil {
+				log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
 			}
 		},
 	}
@@ -154,23 +151,18 @@ cscli dashboard remove --force
 			}
 
 			if answer {
-				mb, err := metabase.NewMetabase(metabaseConfigPath)
-				if err != nil {
-					log.Fatalf(err.Error())
+				if err := metabase.StopContainer(metabaseContainerID); err != nil {
+					log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
 				}
-				if force {
-					if err := mb.Container.Stop(); err != nil {
-						log.Fatalf("Failed to stop metabase container : %s", err)
-					}
+				if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
+					log.Fatalf("unable to remove container '%s': %s", metabaseContainerID, err)
 				}
-				if err := mb.Container.Remove(); err != nil {
-					log.Fatalf("Failed to remove metabase container : %s", err)
-				}
-				if err := mb.RemoveDatabase(); err != nil {
+
+				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
 					log.Fatalf("failed to remove metabase internal db : %s", err)
 				}
 				if force {
-					if err := mb.Container.RemoveImage(); err != nil {
+					if err := metabase.RemoveImageContainer(metabaseImage); err != nil {
 						log.Fatalf("Failed to stop metabase container : %s", err)
 					}
 				}

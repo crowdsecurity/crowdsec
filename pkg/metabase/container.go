@@ -41,25 +41,6 @@ func NewContainer(listenAddr string, listenPort string, sharedFolder string, nam
 	}, nil
 }
 
-func (c *Container) Start() error {
-	ctx := context.Background()
-	if err := c.CLI.ContainerStart(ctx, c.Name, types.ContainerStartOptions{}); err != nil {
-		return fmt.Errorf("failed while starting %s : %s", c.ID, err)
-	}
-
-	return nil
-}
-
-func (c *Container) Stop() error {
-	ctx := context.Background()
-	var to time.Duration = 20 * time.Second
-	if err := c.CLI.ContainerStop(ctx, c.Name, &to); err != nil {
-		return fmt.Errorf("failed while stopping %s : %s", c.ID, err)
-	}
-	log.Printf("container stopped successfully")
-	return nil
-}
-
 func (c *Container) Create() error {
 	ctx := context.Background()
 	log.Printf("Pulling docker image %s", c.Image)
@@ -118,22 +99,64 @@ func (c *Container) Create() error {
 	return nil
 }
 
-func (c *Container) Remove() error {
+func (c *Container) Start() error {
 	ctx := context.Background()
-	log.Printf("Removing docker metabase %s", c.Name)
-	if err := c.CLI.ContainerRemove(ctx, c.Name, types.ContainerRemoveOptions{}); err != nil {
-		return fmt.Errorf("failed remove container %s : %s", c.Name, err)
+	if err := c.CLI.ContainerStart(ctx, c.Name, types.ContainerStartOptions{}); err != nil {
+		return fmt.Errorf("failed while starting %s : %s", c.ID, err)
+	}
+
+	return nil
+}
+
+func StartContainer(name string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+	ctx := context.Background()
+	if err := cli.ContainerStart(ctx, name, types.ContainerStartOptions{}); err != nil {
+		return fmt.Errorf("failed while starting %s : %s", name, err)
+	}
+
+	return nil
+}
+
+func StopContainer(name string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+	ctx := context.Background()
+	var to time.Duration = 20 * time.Second
+	if err := cli.ContainerStop(ctx, name, &to); err != nil {
+		return fmt.Errorf("failed while stopping %s : %s", name, err)
+	}
+	log.Printf("container stopped successfully")
+	return nil
+}
+
+func RemoveContainer(name string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+	ctx := context.Background()
+	log.Printf("Removing docker metabase %s", name)
+	if err := cli.ContainerRemove(ctx, name, types.ContainerRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove container %s : %s", name, err)
 	}
 	return nil
 }
 
-func (c *Container) RemoveImage() error {
-	ctx := context.Background()
-
-	log.Printf("Removing docker image %s", c.Image)
-	if _, err := c.CLI.ImageRemove(ctx, c.Image, types.ImageRemoveOptions{Force: true}); err != nil {
-		return fmt.Errorf("failed remove %s image: %s", c.Image, err)
+func RemoveImageContainer(image string) error {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
 	}
-
+	ctx := context.Background()
+	log.Printf("Removing docker metabase %s", image)
+	if err := cli.ContainerRemove(ctx, image, types.ContainerRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove container %s : %s", image, err)
+	}
 	return nil
 }
