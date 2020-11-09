@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -282,7 +281,6 @@ func (a *apic) Pull() error {
 	scenario := a.scenarioList
 	for {
 		if len(scenario) > 0 {
-			spew.Dump(scenario)
 			break
 		}
 		log.Warningf("scenario list is empty, will not pull yet")
