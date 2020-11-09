@@ -174,11 +174,11 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*/
 	start_at, err := leaky.First_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to marshal start ts %s : %s", leaky.First_ts.String(), err)
 	}
-	stop_at, err := leaky.Last_ts.MarshalText()
+	stop_at, err := leaky.Ovflw_ts.MarshalText()
 	if err != nil {
-		log.Warningf("failed to marshal ts %s : %s", leaky.First_ts.String(), err)
+		log.Warningf("failed to marshal ovflw ts %s : %s", leaky.First_ts.String(), err)
 	}
 	capacity := int32(leaky.Capacity)
 	EventsCount := int32(leaky.Total_count)
@@ -219,7 +219,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	} else {
 		sourceStr = "UNKNOWN"
 	}
-	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Ovflw_ts)
+	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
 

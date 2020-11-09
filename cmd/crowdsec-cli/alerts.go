@@ -60,7 +60,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
-					alertItem.CreatedAt,
+					*alertItem.StartAt,
 					alertItem.MachineID)
 			} else {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
@@ -71,7 +71,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
-					alertItem.CreatedAt)
+					*alertItem.StartAt)
 			}
 
 		}
@@ -105,7 +105,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
-					alertItem.CreatedAt,
+					*alertItem.StartAt,
 					alertItem.MachineID,
 				})
 			} else {
@@ -116,7 +116,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					alertItem.Source.Cn,
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					DecisionsFromAlert(alertItem),
-					alertItem.CreatedAt,
+					*alertItem.StartAt,
 				})
 			}
 
