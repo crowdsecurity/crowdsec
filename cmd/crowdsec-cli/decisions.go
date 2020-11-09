@@ -156,7 +156,7 @@ cscli decisions list -t ban
 			}
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
-			if NoSimu != nil && *NoSimu == true {
+			if NoSimu != nil && *NoSimu {
 				*filter.IncludeSimulated = false
 			}
 			/*nulify the empty entries to avoid bad filter*/
