@@ -36,6 +36,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 			if _, ok := spamLimit[spamKey]; ok {
 				continue
 			}
+			spamLimit[spamKey] = true
 			newDecisions = append(newDecisions, decisionItem)
 		}
 		alertItem.Decisions = newDecisions
