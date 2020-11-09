@@ -1,11 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
-	"io/ioutil"
 
 	_ "net/http/pprof"
 	"time"
@@ -341,15 +339,4 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 
-	if flags.SingleFileJsonOutput != "" {
-		var out []byte
-		out, err = json.Marshal(SingleFileJsonOutput)
-		if err != nil {
-			log.Errorf("Can't marshal events or postoverflows")
-		}
-		err := ioutil.WriteFile(flags.SingleFileJsonOutput, out, 0644)
-		if err != nil {
-			log.Errorf("Can't write files %s", flags.SingleFileJsonOutput)
-		}
-	}
 }
