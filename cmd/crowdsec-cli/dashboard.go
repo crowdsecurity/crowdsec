@@ -148,7 +148,9 @@ cscli dashboard remove --force
 					Message: "Do you really want to remove crowdsec dashboard? (all your changes will be lost)",
 					Default: true,
 				}
-				survey.AskOne(prompt, &answer)
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					log.Fatalf("unable to ask to force: %s", err)
+				}
 			}
 
 			if answer {
