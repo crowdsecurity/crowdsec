@@ -21,6 +21,7 @@ import (
 )
 
 var printMachine bool
+var limit int
 
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
@@ -50,7 +51,8 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		} else {
 			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
 		}
-		for _, alertItem := range *alerts {
+		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
+			alertItem := (*alerts)[aIdx]
 			if printMachine {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
@@ -91,8 +93,10 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Println("No active alerts")
 			return nil
 		}
+		cpt := 0
+		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
+			alertItem := (*alerts)[aIdx]
 
-		for _, alertItem := range *alerts {
 			displayVal := *alertItem.Source.Scope
 			if *alertItem.Source.Value != "" {
 				displayVal += ":" + *alertItem.Source.Value
@@ -118,6 +122,10 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					DecisionsFromAlert(alertItem),
 					*alertItem.StartAt,
 				})
+			}
+			cpt++
+			if cpt == limit {
+				break
 			}
 
 		}
@@ -315,6 +323,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
+	cmdAlertsList.Flags().IntVarP(&limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var ActiveDecision *bool

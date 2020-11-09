@@ -42,10 +42,10 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		alertItem.Decisions = newDecisions
 	}
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated\n")
+		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated,alert_id\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					decisionItem.ID,
 					*decisionItem.Origin,
 					*decisionItem.Scope+":"+*decisionItem.Value,
@@ -55,7 +55,8 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
 					*alertItem.EventsCount,
 					*decisionItem.Duration,
-					*decisionItem.Simulated)
+					*decisionItem.Simulated,
+					alertItem.ID)
 			}
 		}
 	} else if csConfig.Cscli.Output == "json" {
@@ -64,7 +65,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration"})
+		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"})
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -86,6 +87,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
 					strconv.Itoa(int(*alertItem.EventsCount)),
 					*decisionItem.Duration,
+					strconv.Itoa(int(alertItem.ID)),
 				})
 			}
 		}
