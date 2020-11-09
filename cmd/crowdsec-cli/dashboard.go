@@ -178,7 +178,7 @@ cscli dashboard remove --force
 		},
 	}
 	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
-	cmdDashRemove.Flags().BoolVarP(&force, "yes", "y", false, "force  yes")
+	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	cmdDashboard.AddCommand(cmdDashRemove)
 
 	return cmdDashboard

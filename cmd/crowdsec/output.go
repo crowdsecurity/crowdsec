@@ -80,12 +80,13 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	password := strfmt.Password(apiConfig.Password)
 
 	Client, err := apiclient.NewClient(&apiclient.Config{
-		MachineID:     apiConfig.Login,
-		Password:      password,
-		Scenarios:     scenarios,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-		URL:           apiURL,
-		VersionPrefix: "v1",
+		MachineID:      apiConfig.Login,
+		Password:       password,
+		Scenarios:      scenarios,
+		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:            apiURL,
+		VersionPrefix:  "v1",
+		UpdateScenario: cwhub.GetUpstreamInstalledScenariosAsString,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)

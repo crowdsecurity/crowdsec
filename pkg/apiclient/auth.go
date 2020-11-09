@@ -86,10 +86,19 @@ type JWTTransport struct {
 	UserAgent     string
 	// Transport is the underlying HTTP transport to use when making requests.
 	// It will default to http.DefaultTransport if nil.
-	Transport http.RoundTripper
+	Transport      http.RoundTripper
+	UpdateScenario func() ([]string, error)
 }
 
 func (t *JWTTransport) refreshJwtToken() error {
+	var err error
+	if t.UpdateScenario != nil {
+		t.Scenarios, err = t.UpdateScenario()
+		if err != nil {
+			return fmt.Errorf("can't update scenario list: %s", err)
+		}
+		log.Infof("scenarios liste updated for '%s'", *t.MachineID)
+	}
 
 	var auth = models.WatcherAuthRequest{
 		MachineID: t.MachineID,
@@ -106,7 +115,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	buf = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
-	err := enc.Encode(auth)
+	err = enc.Encode(auth)
 	if err != nil {
 		return errors.Wrap(err, "could not encode jwt auth body")
 	}

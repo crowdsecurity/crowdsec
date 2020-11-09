@@ -30,16 +30,16 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*process in reverse order to keep the latest item only*/
 	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
 		alertItem := (*alerts)[aIdx]
+		newDecisions := make([]*models.Decision, 0)
 		for _, decisionItem := range alertItem.Decisions {
 			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
-				alertItem.Decisions = nil
-			} else {
-				spamLimit[spamKey] = true
+				continue
 			}
+			newDecisions = append(newDecisions, decisionItem)
 		}
+		alertItem.Decisions = newDecisions
 	}
-
 	if csConfig.Cscli.Output == "raw" {
 		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated\n")
 		for _, alertItem := range *alerts {
@@ -138,7 +138,7 @@ func NewDecisionsCmd() *cobra.Command {
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
 	}
-	var NoSimu bool
+	NoSimu := new(bool)
 	var cmdDecisionsList = &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
@@ -154,11 +154,11 @@ cscli decisions list -t ban
 			if err := manageCliDecisionAlerts(filter.IPEquals, filter.RangeEquals, filter.ScopeEquals, filter.ValueEquals); err != nil {
 				log.Fatalf("%s", err)
 			}
-
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
-			NoSimu = !NoSimu //revert the flag before setting it
-			filter.IncludeSimulated = &NoSimu
+			if NoSimu != nil && *NoSimu {
+				*filter.IncludeSimulated = false
+			}
 			/*nulify the empty entries to avoid bad filter*/
 			if *filter.Until == "" {
 				filter.Until = nil
@@ -227,7 +227,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
-	cmdDecisionsList.Flags().BoolVar(&NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
 	var (
