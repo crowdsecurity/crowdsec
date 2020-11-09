@@ -199,90 +199,98 @@ func (a *apic) Send(cache *models.AddSignalsRequest) error {
 	return err
 }
 
+func (a *apic) PullTop() error {
+	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup)
+	if err != nil {
+		return errors.Wrap(err, "get stream")
+	}
+	if a.startup {
+		a.startup = false
+	}
+	// process deleted decisions
+	var filter map[string][]string
+	for _, decision := range data.Deleted {
+		if strings.ToLower(*decision.Scope) == "ip" {
+			filter = make(map[string][]string, 1)
+			filter["value"] = []string{*decision.Value}
+		} else {
+			filter = make(map[string][]string, 3)
+			filter["value"] = []string{*decision.Value}
+			filter["type"] = []string{*decision.Type}
+			filter["value"] = []string{*decision.Scope}
+		}
+
+		nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		if err != nil {
+			return err
+		}
+
+		log.Printf("pull top: deleted %s entries", nbDeleted)
+	}
+
+	alertCreated, err := a.dbClient.Ent.Alert.
+		Create().
+		SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
+		SetSourceScope("Comunity blocklist").
+		Save(a.dbClient.CTX)
+	if err != nil {
+		return errors.Wrap(err, "create alert from crowdsec-api")
+	}
+
+	// process new decisions
+	for _, decision := range data.New {
+		/*ensure scope makes sense no matter what consensus gives*/
+		if strings.ToLower(*decision.Scope) == "ip" {
+			*decision.Scope = types.Ip
+		} else if strings.ToLower(*decision.Scope) == "range" {
+			*decision.Scope = types.Range
+		}
+
+		duration, err := time.ParseDuration(*decision.Duration)
+		if err != nil {
+			return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
+		}
+		startIP, endIP, err := controllers.GetIpsFromIpRange(*decision.Value)
+		if err != nil {
+			return errors.Wrapf(err, "ip to int '%s':", *decision.Value)
+		}
+
+		_, err = a.dbClient.Ent.Decision.Create().
+			SetUntil(time.Now().Add(duration)).
+			SetScenario(*decision.Scenario).
+			SetType(*decision.Type).
+			SetStartIP(startIP).
+			SetEndIP(endIP).
+			SetValue(*decision.Value).
+			SetScope(*decision.Scope).
+			SetOrigin(*decision.Origin).
+			SetOwner(alertCreated).Save(a.dbClient.CTX)
+		if err != nil {
+			return errors.Wrap(err, "decision creation from crowdsec-api:")
+		}
+	}
+	log.Printf("pull top: added %d entries", len(data.New))
+	return nil
+}
+
 func (a *apic) Pull() error {
 	defer types.CatchPanic("apil/pullFromAPIC")
 	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
-
+	if err := a.PullTop(); err != nil {
+		log.Errorf("capi pull top: %s", err)
+	}
 	ticker := time.NewTicker(a.pullInterval)
 	for {
 		select {
 		case <-ticker.C:
-			data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup)
-			if err != nil {
-				return errors.Wrap(err, "pull top")
+			if err := a.PullTop(); err != nil {
+				log.Errorf("capi pull top: %s", err)
+				continue
 			}
-			if a.startup {
-				a.startup = false
-			}
-			// process deleted decisions
-			var filter map[string][]string
-			for _, decision := range data.Deleted {
-				if strings.ToLower(*decision.Scope) == "ip" {
-					filter = make(map[string][]string, 1)
-					filter["value"] = []string{*decision.Value}
-				} else {
-					filter = make(map[string][]string, 3)
-					filter["value"] = []string{*decision.Value}
-					filter["type"] = []string{*decision.Type}
-					filter["value"] = []string{*decision.Scope}
-				}
-
-				nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
-				if err != nil {
-					return err
-				}
-
-				log.Printf("pull top: deleted %s entries", nbDeleted)
-			}
-
-			alertCreated, err := a.dbClient.Ent.Alert.
-				Create().
-				SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
-				SetSourceScope("Comunity blocklist").
-				Save(a.dbClient.CTX)
-			if err != nil {
-				return errors.Wrap(err, "create alert from crowdsec-api")
-			}
-
-			// process new decisions
-			for _, decision := range data.New {
-				/*ensure scope makes sense no matter what consensus gives*/
-				if strings.ToLower(*decision.Scope) == "ip" {
-					*decision.Scope = types.Ip
-				} else if strings.ToLower(*decision.Scope) == "range" {
-					*decision.Scope = types.Range
-				}
-
-				duration, err := time.ParseDuration(*decision.Duration)
-				if err != nil {
-					return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
-				}
-				startIP, endIP, err := controllers.GetIpsFromIpRange(*decision.Value)
-				if err != nil {
-					return errors.Wrapf(err, "ip to int '%s':", *decision.Value)
-				}
-
-				_, err = a.dbClient.Ent.Decision.Create().
-					SetUntil(time.Now().Add(duration)).
-					SetScenario(*decision.Scenario).
-					SetType(*decision.Type).
-					SetStartIP(startIP).
-					SetEndIP(endIP).
-					SetValue(*decision.Value).
-					SetScope(*decision.Scope).
-					SetOrigin(*decision.Origin).
-					SetOwner(alertCreated).Save(a.dbClient.CTX)
-				if err != nil {
-					return errors.Wrap(err, "decision creation from crowdsec-api:")
-				}
-			}
-			log.Printf("pull top: added %d entries", len(data.New))
-
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
 		}
-
 	}
 }
 
