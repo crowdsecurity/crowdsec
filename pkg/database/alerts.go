@@ -149,15 +149,21 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 
+		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
+		if err != nil {
+			log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
+			ts = time.Now()
+		}
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
+
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
 					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
 				}
 				decisionBulk[i] = c.Ent.Decision.Create().
-					SetUntil(time.Now().Add(duration)).
+					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
 					SetStartIP(decisionItem.StartIP).
