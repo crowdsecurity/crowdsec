@@ -1,12 +1,12 @@
 # Databases
 
-By default, the crowdsec Local API use `SQLite` as backend storage. But in case you except a lot of traffic on your local API, you should use `MySQL` or `PostgreSQL`.
+By default, the crowdsec Local API use `SQLite` as backend storage. But in case you expect a lot of traffic on your local API, you should use `MySQL` or `PostgreSQL`.
 
 For `SQLite`, there is nothing to do on your side in order to make it work with crowdsec. But for `MySQL` and `PostgreSQL` , you have to create the database and the user.
 
 ## MySQL
 
-Connect to your `MySQL` server and run the following command:
+Connect to your `MySQL` server and run the following commands:
 
 ```
 mysql> CREATE DATABASE crowdsec;
@@ -21,7 +21,7 @@ You can now start/restart crowdsec.
 
 ## PostgreSQL
 
-Connect to your `PostgreSQL` server and run the following command:
+Connect to your `PostgreSQL` server and run the following commands:
 
 ```
 postgres=# CREATE DATABASE crowdsec;
