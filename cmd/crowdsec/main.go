@@ -75,12 +75,12 @@ type parsers struct {
 
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
-func newParsers() *parsers {
-	parsers := &parsers{
-		ctx:             &parser.UnixParserCtx{},
-		povfwctx:        &parser.UnixParserCtx{},
-		stageFiles:      make([]parser.Stagefile, 0),
-		povfwStageFiles: make([]parser.Stagefile, 0),
+func newParsers() *parser.Parsers {
+	parsers := &parser.Parsers{
+		Ctx:             &parser.UnixParserCtx{},
+		Povfwctx:        &parser.UnixParserCtx{},
+		StageFiles:      make([]parser.Stagefile, 0),
+		PovfwStageFiles: make([]parser.Stagefile, 0),
 	}
 	for _, itemType := range []string{cwhub.PARSERS, cwhub.PARSERS_OVFLW} {
 		for _, hubParserItem := range cwhub.GetItemMap(itemType) {
@@ -90,67 +90,15 @@ func newParsers() *parsers {
 					Stage:    hubParserItem.Stage,
 				}
 				if itemType == cwhub.PARSERS {
-					parsers.stageFiles = append(parsers.stageFiles, stagefile)
+					parsers.StageFiles = append(parsers.StageFiles, stagefile)
 				}
 				if itemType == cwhub.PARSERS_OVFLW {
-					parsers.povfwStageFiles = append(parsers.povfwStageFiles, stagefile)
+					parsers.PovfwStageFiles = append(parsers.PovfwStageFiles, stagefile)
 				}
 			}
 		}
 	}
 	return parsers
-}
-
-func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *parsers) (*parsers, error) {
-	var err error
-
-	log.Infof("Loading grok library %s", cConfig.Crowdsec.ConfigDir+string("/patterns/"))
-	/* load base regexps for two grok parsers */
-	parsers.ctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
-		"data": cConfig.Crowdsec.DataDir})
-	if err != nil {
-		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
-	}
-	parsers.povfwctx, err = parser.Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
-		"data": cConfig.Crowdsec.DataDir})
-	if err != nil {
-		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
-	}
-
-	/*
-		Load enrichers
-	*/
-	log.Infof("Loading enrich plugins")
-
-	parsers.enricherCtx, err = parser.Loadplugin(cConfig.Crowdsec.DataDir)
-	if err != nil {
-		return parsers, fmt.Errorf("Failed to load enrich plugin : %v", err)
-	}
-
-	/*
-	 Load the actual parsers
-	*/
-
-	log.Infof("Loading parsers %d stages", len(parsers.stageFiles))
-
-	parsers.nodes, err = parser.LoadStages(parsers.stageFiles, parsers.ctx, parsers.enricherCtx)
-	if err != nil {
-		return parsers, fmt.Errorf("failed to load parser config : %v", err)
-	}
-
-	log.Infof("Loading postoverflow parsers")
-	parsers.povfwnodes, err = parser.LoadStages(parsers.povfwStageFiles, parsers.povfwctx, parsers.enricherCtx)
-
-	if err != nil {
-		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)
-	}
-
-	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
-		parsers.ctx.Profiling = true
-		parsers.povfwctx.Profiling = true
-	}
-
-	return parsers, nil
 }
 
 func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
