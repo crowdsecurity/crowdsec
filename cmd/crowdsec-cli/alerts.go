@@ -317,7 +317,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
-	var ActiveDecision bool
+	var ActiveDecision *bool
 	var AlertDeleteAll bool
 	var alertDeleteFilter = apiclient.AlertsDeleteOpts{
 		ScopeEquals:    new(string),
@@ -354,8 +354,9 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 					_ = cmd.Help()
 					log.Fatalf("%s", err)
 				}
-
-				alertDeleteFilter.ActiveDecisionEquals = &ActiveDecision
+				if ActiveDecision != nil {
+					alertDeleteFilter.ActiveDecisionEquals = ActiveDecision
+				}
 
 				if *alertDeleteFilter.ScopeEquals == "" {
 					alertDeleteFilter.ScopeEquals = nil
