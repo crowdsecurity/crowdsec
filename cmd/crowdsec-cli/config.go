@@ -55,11 +55,11 @@ func NewConfigCmd() *cobra.Command {
 				switch csConfig.DbConfig.Type {
 				case "sqlite":
 					fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-				case "mysql", "postgresql", "postegres":
-					fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.DbPath)
-					fmt.Printf("      - Port                : %s\n", csConfig.DbConfig.DbPath)
-					fmt.Printf("      - User                : %s\n", csConfig.DbConfig.DbPath)
-					fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbPath)
+				case "mysql", "postgresql", "postgres":
+					fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
+					fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
+					fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
+					fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
 				}
 				fmt.Printf("Central API:\n")
 				fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)

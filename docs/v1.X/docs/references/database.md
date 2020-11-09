@@ -9,11 +9,11 @@ Currently, 3 databases are supported:
 
 -  `mysql`
 
--  `postegresql`
+-  `postgresql`
 
 
 !!! warning
-    It is recommanded to use `mysql` or `postegresql` if you expect to have a lot of traffic on the API.
+    It is recommanded to use `mysql` or `postgresql` if you expect to have a lot of traffic on the API.
 
 
 The database configuration can be found in the `crowdsec` configuration file (default: {{v1X.config.crowdsec_config_file}}).
@@ -45,11 +45,11 @@ db_config:
 ```
 </details>
 <details>
-<summary>PostegreSQL</summary>
+<summary>PostgreSQL</summary>
 
 ```yaml
 db_config:
-  type: postegresql
+  type: postgresql
   user: crowdsec
   password: crowdsecpassword
   db_name: crowdsec
@@ -61,18 +61,20 @@ db_config:
 
 ## Configuration Format
 
+### `db_config`
+> Contains the configuration of the database
 
 ```
 db_config:
   type:     <db_type>
   
-  db_path:  <path_to_database_file>  # in case of sqlite
+  db_path:  <path_to_database_file>  # for sqlite
   
-  user:     <db_user>      # in case of mysql/pgsql
-  password: <db_password>  # in case of mysql/pgsql
-  db_name:  <db_name>      # in case of mysql/pgsql
-  host:     <db_host_ip>   # in case of mysql/pgsql
-  port:     <db_host_port> # in case of mysql/pgsql
+  user:     <db_user>      # for mysql/pgsql
+  password: <db_password>  # for mysql/pgsql
+  db_name:  <db_name>      # for mysql/pgsql
+  host:     <db_host_ip>   # for mysql/pgsql
+  port:     <db_host_port> # for mysql/pgsql
 ```
 
 
@@ -90,7 +92,7 @@ The `type` of database to use. It can be:
 
 - `sqlite`
 - `mysql`
-- `postegresql`
+- `postgresql`
 
 ### `db_path`
 
@@ -106,51 +108,51 @@ The path to the database file (only if the type of database is `sqlite`)
 
 ```yaml
 db_config:
-  type: mysql|postegresql
+  type: mysql|postgresql
 
   user: foo
 ```
-The username to connect to the database (only if the type of database is `mysql` or `postegresql`)
+The username to connect to the database (only if the type of database is `mysql` or `postgresql`)
 
 ### `password`
 
 ```yaml
 db_config:
-  type: mysql|postegresql
+  type: mysql|postgresql
 
   password: foobar
 ```
-The password to connect to the database (only if the type of database is `mysql` or `postegresql`)
+The password to connect to the database (only if the type of database is `mysql` or `postgresql`)
 
 ### `db_name`
 
 ```yaml
 db_config:
-  type: mysql|postegresql
+  type: mysql|postgresql
 
   db_name: crowdsec
 ```
-The database name to connect to (only if the type of database is `mysql` or `postegresql`)
+The database name to connect to (only if the type of database is `mysql` or `postgresql`)
 
 ### `db_host`
 
 ```yaml
 db_config:
-  type: mysql|postegresql
+  type: mysql|postgresql
 
   user: foo
 ```
-The host to connect to (only if the type of database is `mysql` or `postegresql`)
+The host to connect to (only if the type of database is `mysql` or `postgresql`)
 
 ### `db_port`
 
 ```yaml
 db_config:
-  type: mysql|postegresql
+  type: mysql|postgresql
 
   user: foo
 ```
-The port to connect to (only if the type of database is `mysql` or `postegresql`)
+The port to connect to (only if the type of database is `mysql` or `postgresql`)
 
 
 # Behind the scenes
