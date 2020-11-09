@@ -3,9 +3,11 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
+	log "github.com/sirupsen/logrus"
 )
 
 type DecisionsService service
@@ -62,6 +64,9 @@ func (s *DecisionsService) GetStream(ctx context.Context, startup bool) (*models
 	if err != nil {
 		return nil, resp, err
 	}
+
+	body, _ := ioutil.ReadAll(resp.Response.Body)
+	log.Infof("body: %s", string(body))
 
 	return &decisions, resp, nil
 }

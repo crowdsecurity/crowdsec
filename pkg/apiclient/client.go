@@ -40,12 +40,13 @@ type service struct {
 
 func NewClient(config *Config) (*ApiClient, error) {
 	t := &JWTTransport{
-		MachineID:     &config.MachineID,
-		Password:      &config.Password,
-		Scenarios:     config.Scenarios,
-		URL:           config.URL,
-		UserAgent:     config.UserAgent,
-		VersionPrefix: config.VersionPrefix,
+		MachineID:      &config.MachineID,
+		Password:       &config.Password,
+		Scenarios:      config.Scenarios,
+		URL:            config.URL,
+		UserAgent:      config.UserAgent,
+		VersionPrefix:  config.VersionPrefix,
+		UpdateScenario: config.UpdateScenario,
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}

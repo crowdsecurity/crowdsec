@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -41,6 +42,7 @@ type apic struct {
 	metricsTomb     tomb.Tomb
 	startup         bool
 	credentials     *csconfig.ApiCredentialsCfg
+	scenarioList    []string
 }
 
 func IsInSlice(a string, b []string) bool {
@@ -52,10 +54,9 @@ func IsInSlice(a string, b []string) bool {
 	return false
 }
 
-func FetchScenariosListFromDB(dbClient *database.Client) ([]string, error) {
-	var scenarios []string
-
-	machines, err := dbClient.ListMachines()
+func (a *apic) FetchScenariosListFromDB() ([]string, error) {
+	scenarios := make([]string, 0)
+	machines, err := a.dbClient.ListMachines()
 	if err != nil {
 		return nil, errors.Wrap(err, "while listing machines")
 	}
@@ -64,7 +65,7 @@ func FetchScenariosListFromDB(dbClient *database.Client) ([]string, error) {
 		machineScenarios := strings.Split(v.Scenarios, ",")
 		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
 		for _, sv := range machineScenarios {
-			if !IsInSlice(sv, scenarios) {
+			if !IsInSlice(sv, scenarios) && sv != "" {
 				scenarios = append(scenarios, sv)
 			}
 		}
@@ -89,17 +90,27 @@ func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*apic, error) {
 	var err error
-	var ret *apic
+	ret := &apic{
+		alertToPush:  make(chan []*models.Alert),
+		dbClient:     dbClient,
+		mu:           sync.Mutex{},
+		startup:      true,
+		credentials:  config.Credentials,
+		pullTomb:     tomb.Tomb{},
+		pushTomb:     tomb.Tomb{},
+		metricsTomb:  tomb.Tomb{},
+		scenarioList: make([]string, 0),
+	}
 
-	pullInterval, err := time.ParseDuration(PullInterval)
+	ret.pullInterval, err = time.ParseDuration(PullInterval)
 	if err != nil {
 		return ret, err
 	}
-	pushInterval, err := time.ParseDuration(PushInterval)
+	ret.pushInterval, err = time.ParseDuration(PushInterval)
 	if err != nil {
 		return ret, err
 	}
-	metricsInterval, err := time.ParseDuration(MetricsInterval)
+	ret.metricsInterval, err = time.ParseDuration(MetricsInterval)
 	if err != nil {
 		return ret, err
 	}
@@ -109,32 +120,20 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 	if err != nil {
 		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
 	}
-	scenarios, err := FetchScenariosListFromDB(dbClient)
+	ret.scenarioList, err = ret.FetchScenariosListFromDB()
 	if err != nil {
 		return nil, errors.Wrap(err, "while fetching scenarios from db")
 	}
-	Client, err := apiclient.NewClient(&apiclient.Config{
-		MachineID:     config.Credentials.Login,
-		Password:      password,
-		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-		URL:           apiURL,
-		VersionPrefix: "v2",
-		Scenarios:     scenarios,
+	ret.apiClient, err = apiclient.NewClient(&apiclient.Config{
+		MachineID:      config.Credentials.Login,
+		Password:       password,
+		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:            apiURL,
+		VersionPrefix:  "v2",
+		Scenarios:      ret.scenarioList,
+		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
-	return &apic{
-		apiClient:       Client,
-		alertToPush:     make(chan []*models.Alert),
-		dbClient:        dbClient,
-		pullInterval:    pullInterval,
-		pushInterval:    pushInterval,
-		metricsInterval: metricsInterval,
-		mu:              sync.Mutex{},
-		startup:         true,
-		credentials:     config.Credentials,
-		pullTomb:        tomb.Tomb{},
-		pushTomb:        tomb.Tomb{},
-		metricsTomb:     tomb.Tomb{},
-	}, nil
+	return ret, nil
 }
 
 func (a *apic) Push() error {
@@ -200,6 +199,8 @@ func (a *apic) Send(cache *models.AddSignalsRequest) error {
 }
 
 func (a *apic) PullTop() error {
+	var err error
+
 	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup)
 	if err != nil {
 		return errors.Wrap(err, "get stream")
@@ -276,6 +277,21 @@ func (a *apic) PullTop() error {
 func (a *apic) Pull() error {
 	defer types.CatchPanic("apil/pullFromAPIC")
 	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
+	var err error
+
+	scenario := a.scenarioList
+	for {
+		if len(scenario) > 0 {
+			spew.Dump(scenario)
+			break
+		}
+		log.Warningf("scenario list is empty, will not pull yet")
+		time.Sleep(1 * time.Second)
+		scenario, err = a.FetchScenariosListFromDB()
+		if err != nil {
+			log.Errorf("unable to fetch scenarios from db: %s", err)
+		}
+	}
 	if err := a.PullTop(); err != nil {
 		log.Errorf("capi pull top: %s", err)
 	}

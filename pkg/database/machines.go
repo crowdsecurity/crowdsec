@@ -68,9 +68,8 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 }
 
 func (c *Client) ListMachines() ([]*ent.Machine, error) {
-	var machines []*ent.Machine
+	machines := make([]*ent.Machine, 0)
 	var err error
-
 	machines, err = c.Ent.Machine.Query().All(c.CTX)
 	if err != nil {
 		log.Warningf("ListMachines : %s", err)

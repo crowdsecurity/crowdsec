@@ -378,7 +378,7 @@ delete_bins() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
-    ${CSCLI_BIN} dashboard remove -f || echo "metabase not running"
+    ${CSCLI_BIN} dashboard remove -f -y || echo "metabase not running"
     delete_bins
     delete_plugins
 
