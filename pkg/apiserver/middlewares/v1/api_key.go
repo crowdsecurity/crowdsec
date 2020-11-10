@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -48,6 +49,7 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		defer types.CatchPanic("crowdsec/middlewaresV1/api_key/MiddlewareFunc")
 		val, ok := c.Request.Header[APIKeyHeader]
 		if !ok {
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})

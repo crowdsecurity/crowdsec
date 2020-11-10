@@ -35,7 +35,7 @@ type LocalApiServerCfg struct {
 	OnlineClient *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath string              `yaml:"profiles_path,omitempty"`
 	Profiles     []*ProfileCfg       `yaml:"-"`
-	LogLevel     log.Level           `yaml:"log_level"`
+	LogLevel     *log.Level          `yaml:"log_level"`
 }
 
 type TLSCfg struct {
