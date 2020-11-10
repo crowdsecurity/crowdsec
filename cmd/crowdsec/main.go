@@ -97,12 +97,16 @@ func newParsers() *parser.Parsers {
 			}
 		}
 	}
-	sort.Slice(parsers.StageFiles,func(i, j int) bool {
-		return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
-	})
-	sort.Slice(parsers.StageFiles,func(i, j int) bool {
-		return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
-	})
+	if parsers.StageFiles != nil {
+		sort.Slice(parsers.StageFiles,func(i, j int) bool {
+			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+		})
+	}
+	if parsers.PovfwStageFiles != nil {
+		sort.Slice(parsers.PovfwStageFiles,func(i,j int)bool  {
+			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
+		})
+	}
 
 	return parsers
 }
