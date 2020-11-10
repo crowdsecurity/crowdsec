@@ -103,7 +103,7 @@ func newParsers() *parser.Parsers {
 		})
 	}
 	if parsers.PovfwStageFiles != nil {
-		sort.Slice(parsers.StageFiles,func(i,j int)bool  {
+		sort.Slice(parsers.PovfwStageFiles,func(i,j int)bool  {
 			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
 		})
 	}
