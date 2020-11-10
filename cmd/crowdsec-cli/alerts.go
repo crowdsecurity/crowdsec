@@ -51,8 +51,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		} else {
 			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
 		}
-		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
-			alertItem := (*alerts)[aIdx]
+		for _, alertItem := range *alerts {
 			if printMachine {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
@@ -93,9 +92,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Println("No active alerts")
 			return nil
 		}
-		cpt := 0
-		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
-			alertItem := (*alerts)[aIdx]
+		for _, alertItem := range *alerts {
 
 			displayVal := *alertItem.Source.Scope
 			if *alertItem.Source.Value != "" {
@@ -123,11 +120,6 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					*alertItem.StartAt,
 				})
 			}
-			cpt++
-			if cpt == limit {
-				break
-			}
-
 		}
 		table.Render() // Send output
 	}
@@ -256,6 +248,8 @@ cscli alerts list --type ban`,
 				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
+			alertListFilter.Limit = limit
+
 			if *alertListFilter.Until == "" {
 				alertListFilter.Until = nil
 			} else {

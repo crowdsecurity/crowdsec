@@ -3,9 +3,11 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
+	log "github.com/sirupsen/logrus"
 )
 
 // type ApiAlerts service
@@ -24,6 +26,7 @@ type AlertsListOpts struct {
 	IncludeSimulated     *bool   `url:"simulated,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
+	Limit                int     `url:"limit,omitempty"`
 	ListOpts
 }
 
@@ -82,6 +85,8 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	if err != nil {
 		return nil, resp, err
 	}
+	body, _ := ioutil.ReadAll(resp.Response.Body)
+	log.Infof("body: %s", string(body))
 	return &alerts, resp, nil
 }
 
