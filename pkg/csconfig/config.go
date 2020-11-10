@@ -193,12 +193,13 @@ func NewConfig() *GlobalConfig {
 }
 
 func NewDefaultConfig() *GlobalConfig {
+	logLevel := log.InfoLevel
 	CommonCfg := CommonCfg{
 		Daemonize: false,
 		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
 		//LogDir unneeded
-		LogLevel:   log.InfoLevel,
+		LogLevel:   &logLevel,
 		WorkingDir: ".",
 	}
 	prometheus := PrometheusCfg{
