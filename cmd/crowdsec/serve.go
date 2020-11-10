@@ -6,9 +6,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-	"encoding/json"
-	"io/ioutil"
-	
 
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/pkg/errors"
