@@ -358,7 +358,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		WithMetas().
 		WithOwner().
 		Order(ent.Desc(alert.FieldCreatedAt))
-
+	log.Infof("Filter: %+v", filter)
 	limit := defaultLimit
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
@@ -367,6 +367,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		}
 		limit = limitConv
 	}
+	log.Infof("Limit: %+v", limit)
 
 	if limit == 0 {
 		return alerts.All(c.CTX)
