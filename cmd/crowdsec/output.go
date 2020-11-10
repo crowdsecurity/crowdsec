@@ -142,6 +142,10 @@ LOOP:
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}
 			log.Printf("%s", *event.Overflow.Alert.Message)
+			if event.Overflow.Whitelisted {
+				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
+				continue
+			}
 			cacheMutex.Lock()
 			cache = append(cache, event.Overflow)
 			cacheMutex.Unlock()
