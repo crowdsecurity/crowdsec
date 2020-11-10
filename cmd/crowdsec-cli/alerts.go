@@ -249,7 +249,7 @@ cscli alerts list --type ban`,
 				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
-			if limit != nil { // 50 is default limit
+			if limit != nil {
 				alertListFilter.Limit = limit
 			}
 
