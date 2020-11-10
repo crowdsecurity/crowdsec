@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	paginationSize = 100
-	defaultLimit   = 100
-	bulkSize       = 50
+	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit   = 100 // default limit of element to returns when query alerts
+	bulkSize       = 50  // bulk size when create alerts
 )
 
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
