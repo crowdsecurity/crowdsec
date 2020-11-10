@@ -100,7 +100,7 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 			ret = append(ret, results...)
 			break
 		}
-		results, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd-1])
+		results, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd])
 		if err != nil {
 			return []string{}, fmt.Errorf("unable to create alerts: %s", err)
 		}
