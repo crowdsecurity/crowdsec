@@ -148,6 +148,9 @@ func (a *apic) Push() error {
 			a.pullTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
+			if len(cache) == 0 {
+				return nil
+			}
 			err := a.Send(&cache)
 			return err
 		case <-ticker.C:
