@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	paginationSize = 50
+	paginationSize = 100
 	defaultLimit   = 100
 )
 
@@ -347,17 +347,6 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 }
 
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
-	alerts := c.Ent.Alert.Query()
-	alerts, err := BuildAlertRequestFromFilter(alerts, filter)
-	if err != nil {
-		return []*ent.Alert{}, err
-	}
-	alerts = alerts.
-		WithDecisions().
-		WithEvents().
-		WithMetas().
-		WithOwner().
-		Order(ent.Desc(alert.FieldCreatedAt))
 	limit := defaultLimit
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
@@ -365,28 +354,45 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			return []*ent.Alert{}, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
 		}
 		limit = limitConv
+
 	}
 
-	if limit == 0 {
-		return alerts.All(c.CTX)
-	}
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
+		alerts := c.Ent.Debug().Alert.Query()
+		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
+		if err != nil {
+			return []*ent.Alert{}, err
+		}
+		alerts = alerts.
+			WithDecisions().
+			WithEvents().
+			WithMetas().
+			WithOwner().
+			Order(ent.Desc(alert.FieldCreatedAt))
+		if limit == 0 {
+			limit, err = alerts.Count(c.CTX)
+			if err != nil {
+				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
+			}
+		}
+		log.Infof("len(ret) = %d | pagination size = %d | offset = %d | limit = %d", len(ret), paginationSize, offset, limit)
+
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
 		if err != nil {
-			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d", paginationSize, offset)
+			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
 				break
 			}
-			ret = append(ret, result[0:diff-1]...)
+			ret = append(ret, result[0:diff]...)
 		} else {
 			ret = append(ret, result...)
 		}
-		if len(ret) == limit {
+		if len(ret) == limit || len(ret) == 0 {
 			break
 		}
 		offset += paginationSize

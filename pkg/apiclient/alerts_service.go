@@ -3,11 +3,9 @@ package apiclient
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
-	log "github.com/sirupsen/logrus"
 )
 
 // type ApiAlerts service
@@ -84,8 +82,6 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	if err != nil {
 		return nil, resp, err
 	}
-	body, _ := ioutil.ReadAll(resp.Response.Body)
-	log.Infof("body: %s", string(body))
 	return &alerts, resp, nil
 }
 
