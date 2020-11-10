@@ -21,7 +21,7 @@ import (
 )
 
 var printMachine bool
-var limit int
+var limit *int
 
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
@@ -232,6 +232,7 @@ func NewAlertsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 	}
+	limit = new(int)
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
 		Short: "List alerts",
@@ -248,7 +249,9 @@ cscli alerts list --type ban`,
 				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
-			alertListFilter.Limit = limit
+			if limit != nil { // 50 is default limit
+				alertListFilter.Limit = limit
+			}
 
 			if *alertListFilter.Until == "" {
 				alertListFilter.Until = nil
@@ -317,7 +320,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
-	cmdAlertsList.Flags().IntVarP(&limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
+	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var ActiveDecision *bool

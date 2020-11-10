@@ -26,7 +26,7 @@ type AlertsListOpts struct {
 	IncludeSimulated     *bool   `url:"simulated,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
-	Limit                int     `url:"limit,omitempty"`
+	Limit                *int    `url:"limit,omitempty"`
 	ListOpts
 }
 
@@ -65,7 +65,6 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	var alerts models.GetAlertsResponse
 	var URI string
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
-
 	params, err := qs.Values(opts)
 	if err != nil {
 		return nil, nil, err
