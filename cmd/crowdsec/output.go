@@ -136,11 +136,6 @@ LOOP:
 				input <- event
 			}
 			/* process post overflow parser nodes */
-			event, err := parser.Parse(postOverflowCTX, event, postOverflowNodes)
-			if flags.SingleFileJsonOutput != "" {
-				SingleFileJsonOutput = append(SingleFileJsonOutput, event)			
-			}
-
 			if err != nil {
 				return fmt.Errorf("postoverflow failed : %s", err)
 			}

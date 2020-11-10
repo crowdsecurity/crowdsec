@@ -263,18 +263,6 @@ func Serve() error {
 				os.Exit(0)
 			case <-crowdsecTomb.Dead():
 				log.Errorf("crowdsec shutdown")
-				if flags.SingleFileJsonOutput != "" {
-					var out []byte
-					out, err := json.Marshal(SingleFileJsonOutput)
-					if err != nil {
-						log.Errorf("Can't marshal events or postoverflows")
-					}
-					err = ioutil.WriteFile(flags.SingleFileJsonOutput, out, 0644)
-					if err != nil {
-						log.Errorf("Can't write files %s", flags.SingleFileJsonOutput)
-					}
-				}
-				
 				os.Exit(0)
 			}
 		}

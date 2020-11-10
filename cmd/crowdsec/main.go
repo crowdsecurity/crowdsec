@@ -46,8 +46,6 @@ var (
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
-
-	SingleFileJsonOutput []types.Event = []types.Event{}
 )
 
 type Flags struct {
@@ -178,7 +176,6 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.SingleFilePath, "file", "", "Process a single file in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
-	flag.StringVar(&f.SingleFileJsonOutput, "json", "", "path for parsing result json output")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
@@ -220,12 +217,6 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	if flags.SingleFilePath != "" {
 		if flags.SingleFileType == "" {
 			return fmt.Errorf("-file requires -type")
-		}
-	}
-
-	if flags.SingleFileJsonOutput != "" {
-		if flags.SingleFilePath == "" {
-			return fmt.Errorf("-json requires -file")
 		}
 	}
 
