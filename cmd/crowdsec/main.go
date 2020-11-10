@@ -15,6 +15,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"sort"
 
 	log "github.com/sirupsen/logrus"
 
@@ -98,6 +99,13 @@ func newParsers() *parser.Parsers {
 			}
 		}
 	}
+	sort.Slice(parsers.StageFiles,func(i, j int) bool {
+		return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+	})
+	sort.Slice(parsers.StageFiles,func(i, j int) bool {
+		return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+	})
+
 	return parsers
 }
 
