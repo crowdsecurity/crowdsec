@@ -22,6 +22,7 @@ import (
 const (
 	paginationSize = 100
 	defaultLimit   = 100
+	bulkSize       = 50
 )
 
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
@@ -84,6 +85,30 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
 	}
 	return retStr
+}
+
+func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
+	pageStart := 0
+	pageEnd := bulkSize
+	ret := []string{}
+	for {
+		if pageEnd >= len(alertList) {
+			results, err := c.CreateAlertBulk(machineID, alertList[pageStart:])
+			if err != nil {
+				return []string{}, fmt.Errorf("unable to create alerts: %s", err)
+			}
+			ret = append(ret, results...)
+			break
+		}
+		results, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd-1])
+		if err != nil {
+			return []string{}, fmt.Errorf("unable to create alerts: %s", err)
+		}
+		ret = append(ret, results...)
+		pageStart += bulkSize
+		pageEnd += bulkSize
+	}
+	return ret, nil
 }
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
@@ -377,8 +402,6 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
 			}
 		}
-		log.Infof("len(ret) = %d | pagination size = %d | offset = %d | limit = %d", len(ret), paginationSize, offset, limit)
-
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
 		if err != nil {
 			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)

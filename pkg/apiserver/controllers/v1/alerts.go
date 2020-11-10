@@ -129,7 +129,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 	}
 
-	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)
+	alerts, err := c.DBClient.CreateAlert(machineID, input)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
