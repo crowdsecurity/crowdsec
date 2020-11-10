@@ -11,7 +11,6 @@ mkdocs-macros-plugin==0.4.6
 mkdocs-material==4.6.3
 mkdocs-monorepo-plugin==0.4.11
 nltk==3.5b1
-pkg-resources==0.0.0
 prompt-toolkit==2.0.10
 Pygments==2.6.1
 pymdown-extensions==7.0rc1
