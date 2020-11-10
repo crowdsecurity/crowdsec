@@ -21,7 +21,7 @@ import (
 )
 
 var printMachine bool
-var limit int
+var limit *int
 
 func DecisionsFromAlert(alert *models.Alert) string {
 	ret := ""
@@ -51,8 +51,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 		} else {
 			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
 		}
-		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
-			alertItem := (*alerts)[aIdx]
+		for _, alertItem := range *alerts {
 			if printMachine {
 				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
 					alertItem.ID,
@@ -93,9 +92,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			fmt.Println("No active alerts")
 			return nil
 		}
-		cpt := 0
-		for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
-			alertItem := (*alerts)[aIdx]
+		for _, alertItem := range *alerts {
 
 			displayVal := *alertItem.Source.Scope
 			if *alertItem.Source.Value != "" {
@@ -123,11 +120,6 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					*alertItem.StartAt,
 				})
 			}
-			cpt++
-			if cpt == limit {
-				break
-			}
-
 		}
 		table.Render() // Send output
 	}
@@ -240,6 +232,7 @@ func NewAlertsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 	}
+	limit = new(int)
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
 		Short: "List alerts",
@@ -256,6 +249,10 @@ cscli alerts list --type ban`,
 				_ = cmd.Help()
 				log.Fatalf("%s", err)
 			}
+			if limit != nil {
+				alertListFilter.Limit = limit
+			}
+
 			if *alertListFilter.Until == "" {
 				alertListFilter.Until = nil
 			} else {
@@ -323,7 +320,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
-	cmdAlertsList.Flags().IntVarP(&limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
+	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
 	var ActiveDecision *bool

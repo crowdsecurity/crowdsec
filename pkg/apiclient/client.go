@@ -125,7 +125,6 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
-
 	return errorResponse
 }
 

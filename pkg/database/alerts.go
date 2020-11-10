@@ -19,6 +19,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit   = 100 // default limit of element to returns when query alerts
+	bulkSize       = 50  // bulk size when create alerts
+)
+
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	var retStr []string
 
@@ -79,6 +85,30 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 		retStr = append(retStr, fmt.Sprintf("(%s) alert : %s", machineId, reason))
 	}
 	return retStr
+}
+
+func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
+	pageStart := 0
+	pageEnd := bulkSize
+	ret := []string{}
+	for {
+		if pageEnd >= len(alertList) {
+			results, err := c.CreateAlertBulk(machineID, alertList[pageStart:])
+			if err != nil {
+				return []string{}, fmt.Errorf("unable to create alerts: %s", err)
+			}
+			ret = append(ret, results...)
+			break
+		}
+		results, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd])
+		if err != nil {
+			return []string{}, fmt.Errorf("unable to create alerts: %s", err)
+		}
+		ret = append(ret, results...)
+		pageStart += bulkSize
+		pageEnd += bulkSize
+	}
+	return ret, nil
 }
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
@@ -316,6 +346,8 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			} else {
 				alerts = alerts.Where(alert.Not(alert.HasDecisions()))
 			}
+		case "limit":
+			continue
 		default:
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
 		}
@@ -340,26 +372,56 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 }
 
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
-	alerts := c.Ent.Alert.Query()
-	alerts, err := BuildAlertRequestFromFilter(alerts, filter)
-	if err != nil {
-		return []*ent.Alert{}, err
-	}
-	alerts = alerts.
-		WithDecisions().
-		WithEvents().
-		WithMetas().
-		WithOwner()
+	limit := defaultLimit
+	if val, ok := filter["limit"]; ok {
+		limitConv, err := strconv.Atoi(val[0])
+		if err != nil {
+			return []*ent.Alert{}, errors.Wrapf(QueryFail, "bad limit in parameters: %s", val)
+		}
+		limit = limitConv
 
-	result, err := alerts.
-		Order(ent.Asc(alert.FieldCreatedAt)).
-		All(c.CTX)
-
-	if err != nil {
-		return []*ent.Alert{}, errors.Wrapf(QueryFail, "filter '%+v' : %s", filter, err)
 	}
 
-	return result, nil
+	offset := 0
+	ret := make([]*ent.Alert, 0)
+	for {
+		alerts := c.Ent.Alert.Query()
+		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
+		if err != nil {
+			return []*ent.Alert{}, err
+		}
+		alerts = alerts.
+			WithDecisions().
+			WithEvents().
+			WithMetas().
+			WithOwner().
+			Order(ent.Desc(alert.FieldCreatedAt))
+		if limit == 0 {
+			limit, err = alerts.Count(c.CTX)
+			if err != nil {
+				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
+			}
+		}
+		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
+		if err != nil {
+			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
+		}
+		if diff := limit - len(ret); diff < paginationSize {
+			if len(result) < diff {
+				ret = append(ret, result...)
+				break
+			}
+			ret = append(ret, result[0:diff]...)
+		} else {
+			ret = append(ret, result...)
+		}
+		if len(ret) == limit || len(ret) == 0 {
+			break
+		}
+		offset += paginationSize
+	}
+
+	return ret, nil
 }
 
 func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {

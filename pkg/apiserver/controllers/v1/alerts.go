@@ -131,7 +131,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 	}
 
-	alerts, err := c.DBClient.CreateAlertBulk(machineID, input)
+	alerts, err := c.DBClient.CreateAlert(machineID, input)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
@@ -154,7 +154,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 func (c *Controller) FindAlerts(gctx *gin.Context) {
 	defer types.CatchPanic("crowdsec/controllersV1/FindAlerts")
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
-
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

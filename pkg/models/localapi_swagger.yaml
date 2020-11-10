@@ -365,7 +365,12 @@ paths:
           in: query
           required: false
           type: string
-          description: 'restrict results to alerts with decisions matching given type'   
+          description: 'restrict results to alerts with decisions matching given type'
+        - name: limit
+          in: query
+          required: false
+          type: number
+          description: 'number of alerts to return' 
       responses:
         '200':
           description: successful operation
