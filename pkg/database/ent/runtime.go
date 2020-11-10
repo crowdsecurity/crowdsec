@@ -108,6 +108,10 @@ func init() {
 	machineDescUpdatedAt := machineFields[1].Descriptor()
 	// machine.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	machine.DefaultUpdatedAt = machineDescUpdatedAt.Default.(func() time.Time)
+	// machineDescScenarios is the schema descriptor for scenarios field.
+	machineDescScenarios := machineFields[5].Descriptor()
+	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
+	machine.ScenariosValidator = machineDescScenarios.Validators[0].(func(string) error)
 	// machineDescIsValidated is the schema descriptor for isValidated field.
 	machineDescIsValidated := machineFields[7].Descriptor()
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
