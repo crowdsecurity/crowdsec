@@ -21,7 +21,7 @@ func (Event) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now),
 		field.Time("time"),
-		field.String("serialized"),
+		field.String("serialized").MaxLen(4095),
 	}
 }
 

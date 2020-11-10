@@ -156,6 +156,11 @@ func (mc *MetaCreate) check() error {
 	if _, ok := mc.mutation.Value(); !ok {
 		return &ValidationError{Name: "value", err: errors.New("ent: missing required field \"value\"")}
 	}
+	if v, ok := mc.mutation.Value(); ok {
+		if err := meta.ValueValidator(v); err != nil {
+			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+		}
+	}
 	return nil
 }
 

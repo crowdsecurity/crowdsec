@@ -156,6 +156,11 @@ func (ec *EventCreate) check() error {
 	if _, ok := ec.mutation.Serialized(); !ok {
 		return &ValidationError{Name: "serialized", err: errors.New("ent: missing required field \"serialized\"")}
 	}
+	if v, ok := ec.mutation.Serialized(); ok {
+		if err := event.SerializedValidator(v); err != nil {
+			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
+		}
+	}
 	return nil
 }
 

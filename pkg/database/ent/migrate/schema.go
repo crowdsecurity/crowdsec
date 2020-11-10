@@ -108,7 +108,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "time", Type: field.TypeTime},
-		{Name: "serialized", Type: field.TypeString},
+		{Name: "serialized", Type: field.TypeString, Size: 4095},
 		{Name: "alert_events", Type: field.TypeInt, Nullable: true},
 	}
 	// EventsTable holds the schema information for the "events" table.
@@ -134,7 +134,7 @@ var (
 		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
-		{Name: "scenarios", Type: field.TypeString, Nullable: true},
+		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 4095},
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool},
 		{Name: "status", Type: field.TypeString, Nullable: true},
@@ -152,7 +152,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "key", Type: field.TypeString},
-		{Name: "value", Type: field.TypeString},
+		{Name: "value", Type: field.TypeString, Size: 4095},
 		{Name: "alert_metas", Type: field.TypeInt, Nullable: true},
 	}
 	// MetaTable holds the schema information for the "meta" table.
