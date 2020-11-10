@@ -56,7 +56,6 @@ LOOP:
 					log.Warningf("failed to unmarshal time from event : %s", err)
 				}
 			}
-
 		}
 	}
 	log.Tracef("Sending signal Bucketify")

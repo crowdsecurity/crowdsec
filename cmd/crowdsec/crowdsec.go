@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -12,34 +13,34 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func initCrowdsec() (*parsers, error) {
+func initCrowdsec() (*parser.Parsers, error) {
 	err := exprhelpers.Init()
 	if err != nil {
-		return &parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
+		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
 	}
 
 	// Populate cwhub package tools
 	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
-		return &parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
+		return &parser.Parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
 	}
 
 	// Start loading configs
 	csParsers := newParsers()
-	if csParsers, err = LoadParsers(cConfig, csParsers); err != nil {
-		return &parsers{}, fmt.Errorf("Failed to load parsers: %s", err)
+	if csParsers, err = parser.LoadParsers(cConfig, csParsers); err != nil {
+		return &parser.Parsers{}, fmt.Errorf("Failed to load parsers: %s", err)
 	}
 
 	if err := LoadBuckets(cConfig); err != nil {
-		return &parsers{}, fmt.Errorf("Failed to load scenarios: %s", err)
+		return &parser.Parsers{}, fmt.Errorf("Failed to load scenarios: %s", err)
 	}
 
 	if err := LoadAcquisition(cConfig); err != nil {
-		return &parsers{}, fmt.Errorf("Error while loading acquisition config : %s", err)
+		return &parser.Parsers{}, fmt.Errorf("Error while loading acquisition config : %s", err)
 	}
 	return csParsers, nil
 }
 
-func runCrowdsec(parsers *parsers) error {
+func runCrowdsec(parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
@@ -47,7 +48,7 @@ func runCrowdsec(parsers *parsers) error {
 	for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 		parsersTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/runParse")
-			err := runParse(inputLineChan, inputEventChan, *parsers.ctx, parsers.nodes)
+			err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
 			if err != nil {
 				log.Fatalf("starting parse error : %s", err)
 				return err
@@ -71,7 +72,7 @@ func runCrowdsec(parsers *parsers) error {
 
 		outputsTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/runOutput")
-			err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.povfwctx, parsers.povfwnodes, *cConfig.API.Client.Credentials)
+			err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials)
 			if err != nil {
 				log.Fatalf("starting outputs error : %s", err)
 				return err
@@ -89,7 +90,7 @@ func runCrowdsec(parsers *parsers) error {
 	return nil
 }
 
-func serveCrowdsec(parsers *parsers) {
+func serveCrowdsec(parsers *parser.Parsers) {
 	crowdsecTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
