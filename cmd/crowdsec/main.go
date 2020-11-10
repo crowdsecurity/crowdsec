@@ -8,6 +8,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"sort"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -15,7 +17,6 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"sort"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,17 +50,17 @@ var (
 )
 
 type Flags struct {
-	ConfigFile     string
-	TraceLevel     bool
-	DebugLevel     bool
-	InfoLevel      bool
-	PrintVersion   bool
-	SingleFilePath string
-	SingleFileType string
+	ConfigFile           string
+	TraceLevel           bool
+	DebugLevel           bool
+	InfoLevel            bool
+	PrintVersion         bool
+	SingleFilePath       string
+	SingleFileType       string
 	SingleFileJsonOutput string
-	TestMode       bool
-	DisableAgent   bool
-	DisableAPI     bool
+	TestMode             bool
+	DisableAgent         bool
+	DisableAPI           bool
 }
 
 type parsers struct {
@@ -98,12 +99,12 @@ func newParsers() *parser.Parsers {
 		}
 	}
 	if parsers.StageFiles != nil {
-		sort.Slice(parsers.StageFiles,func(i, j int) bool {
+		sort.Slice(parsers.StageFiles, func(i, j int) bool {
 			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
 		})
 	}
 	if parsers.PovfwStageFiles != nil {
-		sort.Slice(parsers.PovfwStageFiles,func(i,j int)bool  {
+		sort.Slice(parsers.PovfwStageFiles, func(i, j int) bool {
 			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
 		})
 	}
@@ -225,13 +226,16 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 	}
 
 	if flags.DebugLevel {
-		config.Common.LogLevel = log.DebugLevel
+		logLevel := log.DebugLevel
+		config.Common.LogLevel = &logLevel
 	}
-	if flags.InfoLevel {
-		config.Common.LogLevel = log.InfoLevel
+	if flags.InfoLevel || config.Common.LogLevel == nil {
+		logLevel := log.InfoLevel
+		config.Common.LogLevel = &logLevel
 	}
 	if flags.TraceLevel {
-		config.Common.LogLevel = log.TraceLevel
+		logLevel := log.TraceLevel
+		config.Common.LogLevel = &logLevel
 	}
 
 	if flags.TestMode && !disableAgent {
@@ -261,7 +265,7 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, cConfig.Common.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
 		log.Fatal(err.Error())
 	}
 
@@ -284,7 +288,6 @@ func main() {
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)
 	}
-
 
 	if err := Serve(); err != nil {
 		log.Fatalf(err.Error())

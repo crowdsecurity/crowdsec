@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -43,6 +44,7 @@ func IdentityHandler(c *gin.Context) interface{} {
 }
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
+	defer types.CatchPanic("crowdsec/middlewaresV1/jwt/Authenticator")
 	var loginInput models.WatcherAuthRequest
 	var scenarios string
 	var err error

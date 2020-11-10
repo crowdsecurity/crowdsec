@@ -64,7 +64,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
-	clog.SetLevel(config.LogLevel)
+	if config.LogLevel != nil {
+		clog.SetLevel(*config.LogLevel)
+	}
 
 	gin.DefaultErrorWriter = clog.Writer()
 

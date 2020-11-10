@@ -55,10 +55,12 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, errors.Wrap(err, "while configuring db logger")
 	}
-	clog.SetLevel(config.LogLevel)
-	if config.LogLevel >= log.TraceLevel {
-		log.Debugf("Enabling request debug")
-		client = client.Debug()
+	if config.LogLevel != nil {
+		clog.SetLevel(*config.LogLevel)
+		if *config.LogLevel >= log.TraceLevel {
+			log.Debugf("Enabling request debug")
+			client = client.Debug()
+		}
 	}
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
