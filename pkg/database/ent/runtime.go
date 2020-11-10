@@ -98,6 +98,10 @@ func init() {
 	eventDescUpdatedAt := eventFields[1].Descriptor()
 	// event.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	event.DefaultUpdatedAt = eventDescUpdatedAt.Default.(func() time.Time)
+	// eventDescSerialized is the schema descriptor for serialized field.
+	eventDescSerialized := eventFields[3].Descriptor()
+	// event.SerializedValidator is a validator for the "serialized" field. It is called by the builders before save.
+	event.SerializedValidator = eventDescSerialized.Validators[0].(func(string) error)
 	machineFields := schema.Machine{}.Fields()
 	_ = machineFields
 	// machineDescCreatedAt is the schema descriptor for created_at field.
@@ -108,6 +112,10 @@ func init() {
 	machineDescUpdatedAt := machineFields[1].Descriptor()
 	// machine.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	machine.DefaultUpdatedAt = machineDescUpdatedAt.Default.(func() time.Time)
+	// machineDescScenarios is the schema descriptor for scenarios field.
+	machineDescScenarios := machineFields[5].Descriptor()
+	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
+	machine.ScenariosValidator = machineDescScenarios.Validators[0].(func(string) error)
 	// machineDescIsValidated is the schema descriptor for isValidated field.
 	machineDescIsValidated := machineFields[7].Descriptor()
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
@@ -122,4 +130,8 @@ func init() {
 	metaDescUpdatedAt := metaFields[1].Descriptor()
 	// meta.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	meta.DefaultUpdatedAt = metaDescUpdatedAt.Default.(func() time.Time)
+	// metaDescValue is the schema descriptor for value field.
+	metaDescValue := metaFields[3].Descriptor()
+	// meta.ValueValidator is a validator for the "value" field. It is called by the builders before save.
+	meta.ValueValidator = metaDescValue.Validators[0].(func(string) error)
 }

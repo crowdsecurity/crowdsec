@@ -221,6 +221,11 @@ func (mc *MachineCreate) check() error {
 	if _, ok := mc.mutation.IpAddress(); !ok {
 		return &ValidationError{Name: "ipAddress", err: errors.New("ent: missing required field \"ipAddress\"")}
 	}
+	if v, ok := mc.mutation.Scenarios(); ok {
+		if err := machine.ScenariosValidator(v); err != nil {
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+		}
+	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		return &ValidationError{Name: "isValidated", err: errors.New("ent: missing required field \"isValidated\"")}
 	}

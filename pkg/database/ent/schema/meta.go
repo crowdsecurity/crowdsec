@@ -21,7 +21,7 @@ func (Meta) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now),
 		field.String("key"),
-		field.String("value").MaxLen(2048),
+		field.String("value").MaxLen(4095),
 	}
 }
 

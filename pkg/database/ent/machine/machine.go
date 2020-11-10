@@ -73,6 +73,8 @@ var (
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	DefaultUpdatedAt func() time.Time
+	// ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
+	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the isValidated field.
 	DefaultIsValidated bool
 )

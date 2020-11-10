@@ -197,12 +197,18 @@ func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 		affected int
 	)
 	if len(mu.hooks) == 0 {
+		if err = mu.check(); err != nil {
+			return 0, err
+		}
 		affected, err = mu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*MachineMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = mu.check(); err != nil {
+				return 0, err
 			}
 			mu.mutation = mutation
 			affected, err = mu.sqlSave(ctx)
@@ -239,6 +245,16 @@ func (mu *MachineUpdate) ExecX(ctx context.Context) {
 	if err := mu.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (mu *MachineUpdate) check() error {
+	if v, ok := mu.mutation.Scenarios(); ok {
+		if err := machine.ScenariosValidator(v); err != nil {
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+		}
+	}
+	return nil
 }
 
 func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -580,12 +596,18 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 		node *Machine
 	)
 	if len(muo.hooks) == 0 {
+		if err = muo.check(); err != nil {
+			return nil, err
+		}
 		node, err = muo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*MachineMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
+			}
+			if err = muo.check(); err != nil {
+				return nil, err
 			}
 			muo.mutation = mutation
 			node, err = muo.sqlSave(ctx)
@@ -622,6 +644,16 @@ func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 	if err := muo.Exec(ctx); err != nil {
 		panic(err)
 	}
+}
+
+// check runs all checks and user-defined validators on the builder.
+func (muo *MachineUpdateOne) check() error {
+	if v, ok := muo.mutation.Scenarios(); ok {
+		if err := machine.ScenariosValidator(v); err != nil {
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+		}
+	}
+	return nil
 }
 
 func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err error) {
