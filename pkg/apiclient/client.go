@@ -107,7 +107,8 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("API error (%s) : %s", *e.Message, e.Errors)
+	return fmt.Sprintf("API error")
+	//return fmt.Sprintf("API error (%s) : %s", *e.Message, e.Errors)
 }
 
 func newResponse(r *http.Response) *Response {
@@ -125,7 +126,6 @@ func CheckResponse(r *http.Response) error {
 	if err == nil && data != nil {
 		json.Unmarshal(data, errorResponse)
 	}
-
 	return errorResponse
 }
 

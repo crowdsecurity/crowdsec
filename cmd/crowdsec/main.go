@@ -8,6 +8,8 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"sort"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -15,7 +17,6 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"sort"
 
 	log "github.com/sirupsen/logrus"
 
@@ -49,17 +50,17 @@ var (
 )
 
 type Flags struct {
-	ConfigFile     string
-	TraceLevel     bool
-	DebugLevel     bool
-	InfoLevel      bool
-	PrintVersion   bool
-	SingleFilePath string
-	SingleFileType string
+	ConfigFile           string
+	TraceLevel           bool
+	DebugLevel           bool
+	InfoLevel            bool
+	PrintVersion         bool
+	SingleFilePath       string
+	SingleFileType       string
 	SingleFileJsonOutput string
-	TestMode       bool
-	DisableAgent   bool
-	DisableAPI     bool
+	TestMode             bool
+	DisableAgent         bool
+	DisableAPI           bool
 }
 
 type parsers struct {
@@ -97,12 +98,17 @@ func newParsers() *parser.Parsers {
 			}
 		}
 	}
-	sort.Slice(parsers.StageFiles,func(i, j int) bool {
-		return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
-	})
-	sort.Slice(parsers.StageFiles,func(i, j int) bool {
-		return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
-	})
+
+	if parsers.StageFiles != nil && len(parsers.StageFiles) > 0 {
+		sort.Slice(parsers.StageFiles, func(i, j int) bool {
+			return parsers.StageFiles[i].Filename < parsers.StageFiles[j].Filename
+		})
+	}
+	if parsers.PovfwStageFiles != nil && len(parsers.PovfwStageFiles) > 0 {
+		sort.Slice(parsers.StageFiles, func(i, j int) bool {
+			return parsers.PovfwStageFiles[i].Filename < parsers.PovfwStageFiles[j].Filename
+		})
+	}
 
 	return parsers
 }
@@ -280,7 +286,6 @@ func main() {
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus.Level)
 	}
-
 
 	if err := Serve(); err != nil {
 		log.Fatalf(err.Error())
