@@ -151,6 +151,10 @@ cscli dashboard remove --force
 			}
 
 			if answer {
+				if !metabase.IsContainerExist(metabaseContainerID) {
+					log.Infof("container %s not found", metabaseContainerID)
+					os.Exit(0)
+				}
 				if err := metabase.StopContainer(metabaseContainerID); err != nil {
 					log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
 				}
