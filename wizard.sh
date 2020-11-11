@@ -95,16 +95,16 @@ detect_services () {
     #raw ps
     PSAX=`ps ax -o comm=`
     for SVC in ${SUPPORTED_SERVICES} ; do
-	log_info "Checking if service '${SVC}' is running (ps+systemd)"
-	for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-	    echo ${SRC} | grep ${SVC} >/dev/null
-	    if [ $? -eq 0 ]; then
-		DETECTED_SERVICES+=(${SVC})
-        HMENU+=(${SVC} "on")
-		log_info "Found '${SVC}' running"
-		break;
-	    fi;
-	done;
+        log_info "Checking if service '${SVC}' is running (ps+systemd)"
+        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
+            echo ${SRC} | grep ${SVC} >/dev/null
+            if [ $? -eq 0 ]; then
+                DETECTED_SERVICES+=(${SVC})
+                HMENU+=(${SVC} "on")
+                log_info "Found '${SVC}' running"
+                break;
+            fi;
+        done;
     done;
     if [[ ${OSTYPE} == "linux-gnu" ]]; then
         DETECTED_SERVICES+=("linux")
@@ -117,9 +117,12 @@ detect_services () {
         #we put whiptail results in an array, notice the dark magic fd redirection
         DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at services selection"
-        exit 1;
+            log_err "user bailed out at services selection"
+            exit 1;
         fi;
+        echo "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
+    else
+        echo "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
     fi;
 }
 
@@ -177,8 +180,8 @@ find_logs_for() {
     if [[ ${SILENT} == "false" ]]; then
         DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at log file selection"
-        exit 1;
+            log_err "user bailed out at log file selection"
+            exit 1;
         fi;
     fi
 }
@@ -200,32 +203,35 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    if [[ ${SILENT} == "false" ]]; then
-        for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-            #echo "collection raw : ${collect_info}" >> out.txt
-            collection="$(echo ${collect_info} | cut -d " " -f1)"
-            description="$(echo ${collect_info} | cut -d " " -f2-)"
-            in_array $collection "${DETECTED_SERVICES[@]}"
-            if [[ $? == 0 ]]; then
+    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
+        collection="$(echo ${collect_info} | cut -d " " -f1)"
+        description="$(echo ${collect_info} | cut -d " " -f2-)"
+        in_array $collection "${DETECTED_SERVICES[@]}"
+        if [[ $? == 0 ]]; then
+            HMENU+=("${collection}" "${description}" "ON")
+            #in case we're not in interactive mode, assume defaults
+            COLLECTION_TO_INSTALL+=(${collection})
+        else
+            if [[ ${collection} == "linux" ]]; then
                 HMENU+=("${collection}" "${description}" "ON")
+                #in case we're not in interactive mode, assume defaults
+                COLLECTION_TO_INSTALL+=(${collection})
             else
-                if [[ ${collection} == "linux" ]]; then
-                    HMENU+=("${collection}" "${description}" "ON")
-                else
-                    HMENU+=("${collection}" "${description}" "OFF")
-                fi
+                HMENU+=("${collection}" "${description}" "OFF")
             fi
-        done
+        fi
+    done
+
+    if [[ ${SILENT} == "false" ]]; then
         COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at collection selection"
-        exit 1;
+            log_err "user bailed out at collection selection"
+            exit 1;
         fi;
-    else
         for collection in "${DETECTED_SERVICES[@]}"; do 
             COLLECTION_TO_INSTALL+=(${collection})
         done
-    fi
+    fi;
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
