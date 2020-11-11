@@ -25,6 +25,13 @@ CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
+
+DBOX_BIN=""
+
+WHIPTAIL_BIN="whiptail"
+DIALOG_BIN="dialog"
+
+
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
@@ -111,7 +118,7 @@ detect_services () {
 
     if [[ ${SILENT} == "false" ]]; then
         #we put whiptail results in an array, notice the dark magic fd redirection
-        DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
+        DETECTED_SERVICES=($(${DBOX_BIN} --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
         log_err "user bailed out at services selection"
         exit 1;
@@ -171,7 +178,7 @@ find_logs_for() {
     done;
 
     if [[ ${SILENT} == "false" ]]; then
-        DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
+        DETECTED_LOGFILES=($(${DBOX_BIN} --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
         log_err "user bailed out at log file selection"
         exit 1;
@@ -212,7 +219,7 @@ install_collection() {
                 fi
             fi
         done
-        COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
+        COLLECTION_TO_INSTALL=($(${DBOX_BIN} --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
         log_err "user bailed out at collection selection"
         exit 1;
@@ -392,6 +399,7 @@ setup_cron_pull() {
 
 
 main() {
+
     if [[ "$1" == "backup_to_dir" ]];
     then
         backup_to_dir
@@ -460,6 +468,21 @@ main() {
             log_err "Please run it as root"
             exit 1
         fi
+
+        if [[ ${SILENT} == "false" ]]; then
+            which ${WHIPTAIL_BIN} >/dev/null
+            if [ $? -ne 0 ]; then
+                which ${DIALOG_BIN} >/dev/null
+                if [ $? -ne 0 ]; then
+                    log_err "please install whiptail or dialog to run interactive wizard"
+                    exit 1
+                else
+                    DBOX_BIN=${DIALOG_BIN}
+                fi
+            else
+                DBOX_BIN=${WHIPTAIL_BIN}           
+            fi
+        fi;
 
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
         log_info "installing crowdsec"
