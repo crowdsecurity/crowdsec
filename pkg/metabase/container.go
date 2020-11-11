@@ -160,3 +160,15 @@ func RemoveImageContainer(image string) error {
 	}
 	return nil
 }
+
+func IsContainerExist(name string) bool {
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		log.Fatalf("failed to create docker client : %s", err)
+	}
+	ctx := context.Background()
+	if _, err := cli.ContainerInspect(ctx, name); err != nil {
+		return false
+	}
+	return true
+}
