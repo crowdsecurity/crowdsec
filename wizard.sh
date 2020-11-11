@@ -120,6 +120,8 @@ detect_services () {
         log_err "user bailed out at services selection"
         exit 1;
         fi;
+    else
+        DETECTED_SERVICES=${SVC}
     fi;
 }
 
@@ -200,33 +202,37 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    if [[ ${SILENT} == "false" ]]; then
-        for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-            #echo "collection raw : ${collect_info}" >> out.txt
-            collection="$(echo ${collect_info} | cut -d " " -f1)"
-            description="$(echo ${collect_info} | cut -d " " -f2-)"
-            in_array $collection "${DETECTED_SERVICES[@]}"
-            if [[ $? == 0 ]]; then
+    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
+        collection="$(echo ${collect_info} | cut -d " " -f1)"
+        description="$(echo ${collect_info} | cut -d " " -f2-)"
+        in_array $collection "${DETECTED_SERVICES[@]}"
+        if [[ $? == 0 ]]; then
+            HMENU+=("${collection}" "${description}" "ON")
+            #in case we're not in interactive mode, assume defaults
+            COLLECTION_TO_INSTALL+=(${collection})
+        else
+            if [[ ${collection} == "linux" ]]; then
                 HMENU+=("${collection}" "${description}" "ON")
+                #in case we're not in interactive mode, assume defaults
+                COLLECTION_TO_INSTALL+=(${collection})
             else
-                if [[ ${collection} == "linux" ]]; then
-                    HMENU+=("${collection}" "${description}" "ON")
-                else
-                    HMENU+=("${collection}" "${description}" "OFF")
-                fi
+                HMENU+=("${collection}" "${description}" "OFF")
             fi
-        done
+        fi
+    done
+
+    if [[ ${SILENT} == "false" ]]; then
         COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at collection selection"
-        exit 1;
+            log_err "user bailed out at collection selection"
+            exit 1;
         fi;
-    else
         for collection in "${DETECTED_SERVICES[@]}"; do 
             COLLECTION_TO_INSTALL+=(${collection})
         done
-    fi
+    fi;
 
+    log_err "Installing collections for ${DETECTED_SERVICES[@]}"
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
         ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
