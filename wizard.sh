@@ -95,16 +95,16 @@ detect_services () {
     #raw ps
     PSAX=`ps ax -o comm=`
     for SVC in ${SUPPORTED_SERVICES} ; do
-	log_info "Checking if service '${SVC}' is running (ps+systemd)"
-	for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-	    echo ${SRC} | grep ${SVC} >/dev/null
-	    if [ $? -eq 0 ]; then
-		DETECTED_SERVICES+=(${SVC})
-        HMENU+=(${SVC} "on")
-		log_info "Found '${SVC}' running"
-		break;
-	    fi;
-	done;
+        log_info "Checking if service '${SVC}' is running (ps+systemd)"
+        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
+            echo ${SRC} | grep ${SVC} >/dev/null
+            if [ $? -eq 0 ]; then
+                DETECTED_SERVICES+=(${SVC})
+                HMENU+=(${SVC} "on")
+                log_info "Found '${SVC}' running"
+                break;
+            fi;
+        done;
     done;
     if [[ ${OSTYPE} == "linux-gnu" ]]; then
         DETECTED_SERVICES+=("linux")
@@ -117,11 +117,12 @@ detect_services () {
         #we put whiptail results in an array, notice the dark magic fd redirection
         DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at services selection"
-        exit 1;
+            log_err "user bailed out at services selection"
+            exit 1;
         fi;
+        echo "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
     else
-        DETECTED_SERVICES=${SVC}
+        echo "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
     fi;
 }
 
@@ -179,8 +180,8 @@ find_logs_for() {
     if [[ ${SILENT} == "false" ]]; then
         DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at log file selection"
-        exit 1;
+            log_err "user bailed out at log file selection"
+            exit 1;
         fi;
     fi
 }
