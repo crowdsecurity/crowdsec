@@ -138,6 +138,7 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - Machine    : %s\n", alert.MachineID)
 		fmt.Printf(" - Simulation : %v\n", *alert.Simulated)
 		fmt.Printf(" - Reason     : %s\n", *alert.Scenario)
+		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
 		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
