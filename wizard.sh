@@ -232,7 +232,6 @@ install_collection() {
         done
     fi;
 
-    log_err "Installing collections for ${DETECTED_SERVICES[@]}"
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
         ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
