@@ -318,7 +318,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
-			alerts = alerts.Where(alert.CreatedAtGTE(since))
+			alerts = alerts.Where(alert.StartedAtGTE(since))
 		case "until":
 			duration, err := time.ParseDuration(value[0])
 			if err != nil {
@@ -328,7 +328,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
-			alerts = alerts.Where(alert.CreatedAtLTE(since))
+			alerts = alerts.Where(alert.StartedAtLTE(since))
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
