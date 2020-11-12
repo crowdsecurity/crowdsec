@@ -256,10 +256,10 @@ func Serve() error {
 		for {
 			select {
 			case <-apiTomb.Dead():
-				log.Errorf("api shutdown")
+				log.Infof("api shutdown")
 				os.Exit(0)
 			case <-crowdsecTomb.Dead():
-				log.Errorf("crowdsec shutdown")
+				log.Infof("crowdsec shutdown")
 				os.Exit(0)
 			}
 		}

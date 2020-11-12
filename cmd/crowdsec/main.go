@@ -242,6 +242,10 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		config.Crowdsec.LintOnly = true
 	}
 
+	if flags.SingleFilePath != "" {
+		config.API.Server.OnlineClient = nil
+	}
+
 	return nil
 }
 

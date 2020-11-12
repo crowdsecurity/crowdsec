@@ -1,7 +1,7 @@
 # Writing {{v1X.crowdsec.Name}} scenarios
 
 !!! info
-    Please ensure that you have working env or setup test environment before writing your scenario.
+    Please ensure that you have working env or [setup test environment](/Crowdsec/v1/write_configurations/requirements/) before writing your scenario.
 
     Ensure that [your logs are properly parsed](/Crowdsec/v1/write_configurations/parsers/).
 
@@ -19,6 +19,8 @@
 
 
 A rudimentary scenario can be defined as :
+!!! warning
+    Your yaml file must be in the `config/scenarios/` directory.
 
 ```yaml
 type: leaky

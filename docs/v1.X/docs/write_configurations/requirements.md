@@ -31,31 +31,38 @@ The deployed environment is intended to write and test parsers and scenarios eas
 
 ```bash
 $ tar xzvf ./crowdsec-release.tgz
-$ cd ./crowdsec-v0.0.18/
+$ cd ./crowdsec-v*/
 $ ./test_env.sh 
-[09/05/2020:20:02:19][INFO] Creating test arboresence in /tmp/crowdsec-v0.0.18/tests
-[09/05/2020:20:02:19][INFO] Arboresence created
-[09/05/2020:20:02:19][INFO] Copying needed files for tests environment
-[09/05/2020:20:02:19][INFO] Files copied
-[09/05/2020:20:02:19][INFO] Setting up configurations
-INFO[0000] Failed to open config /tmp/crowdsec-v0.0.18/tests/config/crowdsec-cli/config : open /tmp/crowdsec-v0.0.18/tests/config/crowdsec-cli/config: no such file or directory 
-WARN[0000] creating skeleton!                           
-INFO[0000] wrote config to /tmp/crowdsec-v0.0.18/tests/config/crowdsec-cli/config  
-INFO[0000] wrote config to /tmp/crowdsec-v0.0.18/tests/config/crowdsec-cli/config  
-INFO[0000] Wrote new 45625 bytes index to /tmp/crowdsec-v0.0.18/tests/config/crowdsec-cli/.index.json 
+[12/11/2020:11:45:19][INFO] Creating test arboresence in /tmp/crowdsec-v1.0.0/tests
+[12/11/2020:11:45:19][INFO] Arboresence created
+[12/11/2020:11:45:19][INFO] Copying needed files for tests environment
+[12/11/2020:11:45:19][INFO] Files copied
+[12/11/2020:11:45:19][INFO] Setting up configurations
+INFO[0000] Machine 'test' created successfully          
+INFO[0000] API credentials dumped to '/tmp/crowdsec-v1.0.0/tests/config/local_api_credentials.yaml' 
+INFO[0000] Wrote new 73826 bytes index to /tmp/crowdsec-v1.0.0/tests/config/hub/.index.json 
 INFO[0000] crowdsecurity/syslog-logs : OK               
 INFO[0000] crowdsecurity/geoip-enrich : OK              
-INFO[0000] crowdsecurity/dateparse-enrich : OK          
-INFO[0001] crowdsecurity/linux : OK                     
-INFO[0001] /tmp/crowdsec-v0.0.18/tests/config/collections doesn\'t exist, create 
-INFO[0001] /tmp/crowdsec-v0.0.18/tests/config/parsers/s00-raw doesn\'t exist, create 
-INFO[0001] Enabled parsers : crowdsecurity/syslog-logs  
-INFO[0001] /tmp/crowdsec-v0.0.18/tests/config/parsers/s02-enrich doesn\'t exist, create 
-INFO[0001] Enabled parsers : crowdsecurity/geoip-enrich 
-INFO[0001] Enabled parsers : crowdsecurity/dateparse-enrich 
-INFO[0001] Enabled collections : crowdsecurity/linux    
-INFO[0001] Enabled crowdsecurity/linux                  
-[09/05/2020:20:02:20][INFO] Environment is ready in /tmp/crowdsec-v0.0.18/tests
+INFO[0000] downloading data 'https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/GeoLite2-City.mmdb' in '/tmp/crowdsec-v1.0.0/tests/data/GeoLite2-City.mmdb' 
+INFO[0002] downloading data 'https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/GeoLite2-ASN.mmdb' in '/tmp/crowdsec-v1.0.0/tests/data/GeoLite2-ASN.mmdb' 
+INFO[0003] crowdsecurity/dateparse-enrich : OK          
+INFO[0003] crowdsecurity/sshd-logs : OK                 
+INFO[0004] crowdsecurity/ssh-bf : OK                    
+INFO[0004] crowdsecurity/sshd : OK                      
+WARN[0004] crowdsecurity/sshd : overwrite               
+INFO[0004] crowdsecurity/linux : OK                     
+INFO[0004] /tmp/crowdsec-v1.0.0/tests/config/collections doesn't exist, create 
+INFO[0004] Enabled parsers : crowdsecurity/syslog-logs  
+INFO[0004] Enabled parsers : crowdsecurity/geoip-enrich 
+INFO[0004] Enabled parsers : crowdsecurity/dateparse-enrich 
+INFO[0004] Enabled parsers : crowdsecurity/sshd-logs    
+INFO[0004] Enabled scenarios : crowdsecurity/ssh-bf     
+INFO[0004] Enabled collections : crowdsecurity/sshd     
+INFO[0004] Enabled collections : crowdsecurity/linux    
+INFO[0004] Enabled crowdsecurity/linux                  
+INFO[0004] Run 'systemctl reload crowdsec' for the new configuration to be effective. 
+[12/11/2020:11:45:25][INFO] Environment is ready in /tmp/crowdsec-v1.0.0/tests
+
 ```
 
 </details>
