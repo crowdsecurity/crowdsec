@@ -228,9 +228,6 @@ install_collection() {
             log_err "user bailed out at collection selection"
             exit 1;
         fi;
-        for collection in "${DETECTED_SERVICES[@]}"; do 
-            COLLECTION_TO_INSTALL+=(${collection})
-        done
     fi;
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
