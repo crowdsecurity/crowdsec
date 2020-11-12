@@ -98,7 +98,6 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}); err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
-
 LOOP:
 	for {
 		select {

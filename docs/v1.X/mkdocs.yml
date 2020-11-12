@@ -46,6 +46,7 @@ nav:
     - Dashboard: observability/dashboard.md
   - Bouncers: bouncers/index.md
   - References:
+    - Stages format: references/stages.md
     - Parsers format: references/parsers.md
     - Scenarios format: references/scenarios.md
     - PostOverlows format: references/postoverflows.md
