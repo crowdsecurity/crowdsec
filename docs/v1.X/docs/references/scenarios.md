@@ -12,7 +12,7 @@ Scenarios can be of different types (leaky, trigger, counter), and are based on 
   - the speed/frequency of the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
   - the capacity of the [leaky bucket](https://en.wikipedia.org/wiki/Leaky_bucket)
   - the characteristic(s) of eligible {{v1X.event.htmlname}}(s) : "log type XX with field YY set to ZZ"
-  - various filters/directives that can alter the bucket's behavior, such as [groupby](/Crowdsec/v1/references/scenarios/#groupby), [distinct](references/scenarios/#distinct) or [blackhole](/Crowdsec/v1/references/scenarios/#blackhole)
+  - various filters/directives that can alter the bucket's behavior, such as [groupby](/Crowdsec/v1/references/scenarios/#groupby), [distinct](/Crowdsec/v1/references/scenarios/#distinct) or [blackhole](/Crowdsec/v1/references/scenarios/#blackhole)
 
 Behind the scenes, {{v1X.crowdsec.name}} is going to create one or more buckets when events with matching characteristics arrive to the scenario. When any of these buckets overflows, the scenario has been triggered.
 

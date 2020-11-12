@@ -1,14 +1,11 @@
 
+{{v1X.hub.htmlname}} allows you to find needed collections.
 
 ## Installing collections
 
 ```bash
 $ cscli collections install crowdsecurity/whitelist-good-actors
 ```
-
-{{v1X.hub.htmlname}} allows you to find needed collections, with the command to paste :
-
-![Hub Screenshot](/Crowdsec/v1/assets/images/hub_parser.png)
 
 <details>
   <summary>{{v1X.cli.name}} collection install example</summary>

@@ -306,7 +306,7 @@ statics:
 `statics` is a list of directives that will be executed when the node is considered successful.
 Each entry of the list is composed of a target (where to write) and a source (what data to write).
 
-**Target**
+#### Target
 
 The target aims at being any part of the {{v1X.event.htmlname}} object, and can be expressed in different ways :
 
@@ -319,7 +319,7 @@ The target aims at being any part of the {{v1X.event.htmlname}} object, and can 
          - `target: evt.StrTime`
     
  
- **Source**
+#### Source
 
  The source itself can be either a static value, or an {{v1X.expr.htmlname}} result :
 

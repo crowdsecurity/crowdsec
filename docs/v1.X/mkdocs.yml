@@ -1,7 +1,6 @@
 site_name: Crowdsec/v1
 nav:
   - Home: index.md
-  - Crowd Power: crowd-power.md
   - Getting Started:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
@@ -23,6 +22,7 @@ nav:
     - Crowdsec forensic mode: user_guide/forensic_mode.md
     - Debugging: user_guide/debugging_configs.md
   - CLI:
+    - Cscli: cscli/cscli.md
     - Alerts: cscli/cscli_alerts.md
     - Bouncers: cscli/cscli_bouncers.md
     - Collections: cscli/cscli_collections.md

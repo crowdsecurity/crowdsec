@@ -268,13 +268,13 @@ extra:
       event:
           name: event
           Name: Event
-          htmlname: "[event](/Crowdsec/v1/getting_started/concepts/#event)"
-          Htmlname: "[Event](/Crowdsec/v1/getting_started/concepts/#event)" 
+          htmlname: "[event](/Crowdsec/v1/getting_started/concepts/#events)"
+          Htmlname: "[Event](/Crowdsec/v1/getting_started/concepts/#events)" 
       expr:
           name: expr
           Name: Expr
-          htmlname: "[expr](/Crowdsec/v1/write_configurations/expressions/)"
-          Htmlname: "[Expr](/Crowdsec/v1/write_configurations/expressions/)"
+          htmlname: "[expr](/Crowdsec/v1/references/expressions/)"
+          Htmlname: "[Expr](/Crowdsec/v1/references/expressions/)"
       filter:
           name: filter
           Name: Filter
@@ -300,8 +300,8 @@ extra:
       scenarios:
           name: scenarios
           Name: Scenarios
-          htmlname: "[scenarios](/Crowdsec/v1/getting_started/concepts/#scenario)"
-          Htmlname: "[Scenarios](/Crowdsec/v1/getting_started/concepts/#scenario)"
+          htmlname: "[scenarios](/Crowdsec/v1/getting_started/concepts/#scenarios)"
+          Htmlname: "[Scenarios](/Crowdsec/v1/getting_started/concepts/#scenarios)"
       collections:
           name: collections
           Name: Collections
@@ -320,8 +320,8 @@ extra:
       decision:
           name: decision
           Name: Decision
-          htmlname: "[decision](/Crowdsec/v1/getting_started/concepts/#decision)"
-          Htmlname: "[Decision](/Crowdsec/v1/getting_started/concepts/#decision)"
+          htmlname: "[decision](/Crowdsec/v1/getting_started/concepts/#decisions)"
+          Htmlname: "[Decision](/Crowdsec/v1/getting_started/concepts/#decisions)"
       whitelists:
           name: whitelists
           Name: Whitelists

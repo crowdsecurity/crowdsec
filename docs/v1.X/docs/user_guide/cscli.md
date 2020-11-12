@@ -10,7 +10,7 @@
  - manage [simulation](/Crowdsec/v1/cscli/cscli_simulation/) configurations, allowing you to disable/modify remediation triggered by specific scenarios
 
 
-Take a look at the [dedicated documentation](/Crowdsec/v1/cscli/)
+Take a look at the [dedicated documentation](/Crowdsec/v1/cscli/cscli)
 
 # Configuration
 

@@ -10,30 +10,3 @@ They can either within the applicative stack, or work out of band :
 
 You can explore [available {{v0X.bouncers.name}} on the hub]({{v0X.hub.plugins_url}}), and find below a few of the "main" {{v0X.bouncers.name}} :
 
-
-
-
-## Nginx
-
-### [Installation](https://github.com/crowdsecurity/cs-nginx-blocker#installation)
-
-### [Configuration](https://github.com/crowdsecurity/cs-nginx-blocker#configuration)
-
-## Netfilter
-
-### [Installation](https://github.com/crowdsecurity/cs-netfilter-blocker#installation)
-
-### [Configuration](https://github.com/crowdsecurity/cs-netfilter-blocker#configuration)
-
-## Custom
-
-### [Installation](https://github.com/crowdsecurity/cs-custom-blocker#installation)
-
-### [Configuration](https://github.com/crowdsecurity/cs-custom-blocker#configuration)
-
-## Cloudflare
-
-### [Installation](https://github.com/crowdsecurity/cs-cloudflare-blocker#installation)
-
-### [Configuration](https://github.com/crowdsecurity/cs-cloudflare-blocker#configuration)
-

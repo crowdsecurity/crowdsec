@@ -10,7 +10,7 @@ On the machine where you deployed {{v1X.crowdsec.name}}, type `{{v1X.cli.bin}} h
 This list represents the parsers, scenarios and/or collections that you deployed. They represent what your {{v1X.crowdsec.name}} setup can read (logs) and detect (scenarios). `{{v1X.cli.bin}} hub list -a` will list all available configurations in the hub.
 
 
-Check [{{v1X.cli.name}} configuration](/Crowdsec/v1/guide/cscli/) management for more !
+Check [{{v1X.cli.name}} configuration](/Crowdsec/v1/user_guide/cscli/) management for more !
 
 <details>
   <summary>output example</summary>
@@ -57,7 +57,7 @@ INFO[0000] POSTOVERFLOWS:
 
 If you just deployed {{v1X.crowdsec.name}}, the list might be empty, but don't worry, it simply means you haven't yet been attacked, congrats!
 
-Check [{{v1X.cli.name}} ban](/Crowdsec/v1/cheat_sheets/ban-mgmt/) management for more !
+Check [{{v1X.cli.name}} decisions](/Crowdsec/v1/user_guide/decision_management/) management for more !
 
 
 <details>
