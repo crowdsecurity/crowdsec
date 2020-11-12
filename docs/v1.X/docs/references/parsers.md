@@ -14,27 +14,7 @@ See the [{{v1X.hub.name}}]({{v1X.hub.url}}) to explore parsers, or see below som
 The parsers usually reside in `/etc/crowdsec/parsers/<STAGE>/`.
 
 
-## Stages
-
-Stages concept is central to data parsing in {{v1X.crowdsec.name}}, as it allows to have various "steps" of parsing. All parsers belong to a given stage. While users can add or modify the stages order, the following stages exist :
-
- - `s00-raw` : low level parser, such as syslog
- - `s01-parse` :  most of the services parsers (ssh, nginx etc.)
- - `s02-enrich` : enrichment that requires parsed events (ie. geoip-enrichment) or generic parsers that apply on parsed logs (ie. second stage http parser)
-
-
-Every event starts in the first stage, and will move to the next stage once it has been successfully processed by a parser that has the `onsuccess` directive set to `next_stage`, and so on until it reaches the last stage, when it's going to start to be matched against scenarios. Thus a sshd log might follow this pipeline :
-
- - `s00-raw` : be parsed by `crowdsecurity/syslog-logs` (will move event to the next stage)
- - `s01-raw` : be parsed by `crowdsecurity/sshd-logs` (will move event to the next stage)
- - `s02-enrich` : will be parsed by `crowdsecurity/geoip-enrich` and `crowdsecurity/dateparse-enrich`
-
-
-It is possible to write custom stage. If you want some specific parsing or enrichment to be done after the `s02-enrich` stage, it is possible by creating a new folder `s03-<custom_stage>` (and so on). The configuration that will be created in this folder will process the logs configured to go to `next_stage` in the `s02-enrich` stage. 
-
-
 ## Parser configuration format
-
 
 A parser node might look like :
 ```yaml

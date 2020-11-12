@@ -26,9 +26,9 @@ Whenever the {{v1X.lapi.htmlname}} receives an alert with associated decisions, 
 
 These are the only information that are sent to our API. Those are then processed on our side to be able to redistribute relevant blocklists to all the participants.
 
-#  Configuration items
+# Configuration items
 
-##  Acquisition
+## Acquisition
 
 [[References](/Crowdsec/v1/references/acquisition/)]
 
@@ -48,6 +48,23 @@ labels:
 ```
 
 The `labels` part is here to tag the incoming logs with a type. `labels.type` are used by the parsers to know which logs to process.
+
+## Stages
+
+[[References](/Crowdsec/v1/references/parsers/#stages)]
+
+Stages concept is central to data parsing in {{v1X.crowdsec.name}}, as it allows to have various "steps" of parsing. All parsers belong to a given stage. While users can add or modify the stages order, the following stages exist :
+
+ - `s00-raw` : low level parser, such as syslog
+ - `s01-parse` :  most of the services parsers (ssh, nginx etc.)
+ - `s02-enrich` : enrichment that requires parsed events (ie. geoip-enrichment) or generic parsers that apply on parsed logs (ie. second stage http parser)
+
+
+Every event starts in the first stage, and will move to the next stage once it has been successfully processed by a parser that has the `onsuccess` directive set to `next_stage`, and so on until it reaches the last stage, when it's going to start to be matched against scenarios. Thus a sshd log might follow this pipeline :
+
+ - `s00-raw` : be parsed by `crowdsecurity/syslog-logs` (will move event to the next stage)
+ - `s01-raw` : be parsed by `crowdsecurity/sshd-logs` (will move event to the next stage)
+ - `s02-enrich` : will be parsed by `crowdsecurity/geoip-enrich` and `crowdsecurity/dateparse-enrich`
 
 ## Parsers
 
@@ -70,23 +87,6 @@ See the [{{v1X.hub.name}}]({{v1X.hub.url}}) to explore parsers, or see below som
 You can as well [write your own](/Crowdsec/v1/write_configurations/parsers/) !
 
 
-## Stages
-
-[[References](/Crowdsec/v1/references/parsers/#stages)]
-
-Parsers are organized into "stages" to allow pipelines and branching in parsing. Each parser belongs to a stage, and can trigger next stage when successful. At the time of writing, the parsers are organized around 3 stages :
-
- - `s00-raw` : low level parser, such as syslog
- - `s01-parse` : most of the services parsers (ssh, nginx etc.)
- - `s02-enrich` : enrichment that requires parsed events (ie. geoip-enrichment) or generic parsers that apply on parsed logs (ie. second stage http parser)
- 
-The number and structure of stages can be altered by the user, the directory structure and their alphabetical order dictates in which order stages and parsers are processed.
-
-Every event starts in the first stage, and will move to the next stage once it has been successfully processed by a parser that has the `onsuccess` directive set to `next_stage`, and so on until it reaches the last stage, when it's going to start to be matched against scenarios. Thus a sshd log might follow this pipeline :
-
- - `s00-raw` : be parsed by `crowdsecurity/syslog-logs` (will move event to the next stage)
- - `s01-raw` : be parsed by `crowdsecurity/sshd-logs` (will move event to the next stage)
- - `s02-enrich` : will be parsed by `crowdsecurity/geoip-enrich` and `crowdsecurity/dateparse-enrich`
 
 
 
@@ -141,7 +141,7 @@ A postoverflow is a parser that will be applied on overflows (scenario results) 
 An example could be slack/mattermost enrichment plugin that requires human confirmation before applying the decision or reverse-dns lookup operations.
 
 
-#  Runtime items
+# Runtime items
 
 ## Events
 
