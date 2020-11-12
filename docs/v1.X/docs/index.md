@@ -10,7 +10,7 @@
 {{v1X.crowdsec.name}} ecosystem is based on the following components :
 
  - [{{v1X.crowdsec.Name}}]({{v1X.crowdsec.url}}) is the lightweight service that processes logs and keeps track of attacks.
- - [{{v1X.lapi.Name}}]({{v1X.lapi.url}}) is a core component of crowdsec-agent that exposed a local API to interact with crowdsec-agent.
+ - [{{v1X.lapi.Name}}]({{v1X.lapi.url}}) is a core component of crowdsec-agent that exposes a local API to interact with crowdsec-agent.
  - [{{v1X.cli.name}}]({{v1X.cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find, or update scenarios and parsers
  - [{{v1X.bouncers.name}}]({{v1X.hub.bouncers_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
 
