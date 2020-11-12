@@ -96,7 +96,7 @@ extra:
           Name: bouncers
           url: "https://hub.crowdsec.net/browse/#bouncers"
           htmlname: "[bouncers](/Crowdsec/v0/bouncers/)"
-          Htmlname: "[bouncers](/Crowdsec/v0/bouncers/)"
+          Htmlname: "[Bouncers](/Crowdsec/v0/bouncers/)"
       plugins:
           name: backend plugins
           configpath: "/etc/crowdsec/plugins/backend/"
@@ -234,8 +234,9 @@ extra:
       lapi:
           name: local API (LAPI)
           Name: Local API (LAPI)
-          Htmlname: "[local api](/Crowdsec/v1/localAPI/)"
+          Htmlname: "[Local API](/Crowdsec/v1/localAPI/)"
           htmlname: "[local API](/Crowdsec/v1/localAPI/)"
+          url: /Crowdsec/v1/localAPI/
           swagger: https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI
       cli:
           name: cscli
