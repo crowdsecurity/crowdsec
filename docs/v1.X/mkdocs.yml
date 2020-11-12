@@ -36,7 +36,7 @@ nav:
     - Postoverflows: cscli/cscli_postoverflows.md
     - Scenarios: cscli/cscli_scenarios.md
     - Simulation: cscli/cscli_simulation.md
-  - Local API: localAPI/
+  - Local API: localAPI/index.md
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md

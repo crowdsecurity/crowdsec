@@ -2,7 +2,7 @@
 
 ## What is {{v1X.crowdsec.name}} ?
 
-{{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/Crowdsec/v1/#what-is-crowdsec)
+{{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/#what-is-crowdsec)
 
 
 ## What language is it written in ?
@@ -38,18 +38,20 @@ If you need help for large scale deployment, please get in touch with us on the 
 
 ## What backend database does {{v1X.crowdsec.Name}} supports and how to switch ?
 
-Currently (0.3.0), {{v1X.crowdsec.name}} supports SQLite (default) and MySQL databases.
-See [backend configuration](/Crowdsec/v1/references/output/#switching-backend-database) for relevant configuration.
+{{v1X.crowdsec.name}} versions (under v0.3.X) supports SQLite (default) and MySQL databases.
+See [backend configuration](/Crowdsec/v0/references/output/#switching-backend-database) for relevant configuration. MySQL here is more suitable for distributed architectures where bouncers across the applicative stack need to access a centralized ban database.
 
-SQLite is the default backend as it's suitable for standalone/single-machine setups.
-On the other hand, MySQL is more suitable for distributed architectures where bouncers across the applicative stack need to access a centralized ban database.
+{{v1X.crowdsec.name}} versions (after v1) supports SQLite (default), MySQL and PostgreSQL databases.
+See [databases configuration](/Crowdsec/v1/user_guide/database/) for relevant configuration. Thanks to the {{v1X.lapi.Htmlname}}, distributed architectures are resolved even with sqlite database.
 
-## How to control granularity of actions ? (whitelists, learning etc.)
+SQLite by default as it's suitable for standalone/single-machine setups.
 
-{{v1X.crowdsec.name}} support both [whitelists]((/Crowdsec/v1/write_configurations/whitelist/) and [learning](/Crowdsec/v1/guide/crowdsec/simulation/) :
+## How to control granularity of actions ? (whitelists, simulation etc.)
+
+{{v1X.crowdsec.name}} support both [whitelists]((/Crowdsec/v1/write_configurations/whitelist/) and [simulation](/Crowdsec/v1/references/simulation/) :
 
  - Whitelists allows you to "discard" events or overflows
- - Learning allows you to simply cancel the decision that is going to be taken, but keep track of it
+ - Simulation allows you to simply cancel the decision that is going to be taken, but keep track of it
 
 ## How to add whitelists ?
 
@@ -79,7 +81,7 @@ Several initiatives have been taken to tackle the false positives approach as ea
 
  - The scenarios published on the hub are tailored to favor low false positive rates
  - You can find [generic whitelists](https://hub.crowdsec.net/author/crowdsecurity/collections/whitelist-good-actors) that should allow to cover most common cases (SEO whitelists, CDN whitelists etc.)
- - The [simulation configuration](/Crowdsec/v1/guide/crowdsec/simulation/) allows you to keep a tight control over scenario and their false positives
+ - The [simulation configuration](/Crowdsec/v1/references/simulation/) allows you to keep a tight control over scenario and their false positives
 
 
 ## I need some help

@@ -25,21 +25,13 @@ Thanks to this, besides detecting and stopping attacks in real time based on you
 
 {{v0X.crowdsec.Name}}, besides the core "detect and react" mechanism,  is committed to a few other key points :
 
- - **Easy Installation** : The provided wizard allows a [trivial deployment](/Crowdsec/v0/getting_started/installation/#using-the-interactive-wizard) on most standard setups
- - **Easy daily operations** : Using [cscli](/Crowdsec/v0/cscli/cscli_upgrade/) and the {{v0X.hub.htmlname}}, keeping your detection mechanisms up-to-date is trivial
+ - **Easy Installation** : The provided wizard allows a [trivial deployment](/Crowdsec/v1/getting_started/installation/#using-the-interactive-wizard) on most standard setups
+ - **Easy daily operations** : Using [cscli](/Crowdsec/v1/cscli/cscli_upgrade/) and the {{v0X.hub.htmlname}}, keeping your detection mechanisms up-to-date is trivial
  - **Reproducibility** : Crowdsec can run not only against live logs, but as well against cold logs. It makes it a lot easier to detect potential false-positives, perform forensic ou generate reporting
  - **Observability** : Providing strongs insights on what is going on and what {{v0X.crowdsec.name}} is doing :
-    - Humans have [access to a trivially deployable web interface](/Crowdsec/v0/observability/dashboard/)
-    - OPs have [access to detailed prometheus metrics](/Crowdsec/v0/observability/prometheus/)
-    - Admins have [a friendly command-line interface tool](/Crowdsec/v0/observability/command_line/) 
-
-## Components
-
-{{v1X.crowdsec.name}} ecosystem is based on the following components :
-
- - [{{v1X.crowdsec.Name}}]({{v1X.crowdsec.url}}) is the lightweight service that processes logs and keeps track of attacks.
- - [{{v1X.cli.name}}]({{v1X.cli.main_doc}}) is the command line interface for humans, it allows you to view, add, or remove bans as well as to install, find, or update scenarios and parsers
- - [{{v1X.bouncers.name}}]({{v1X.hub.bouncers_url}}) are the components that block malevolent traffic, and can be deployed anywhere in your stack
+    - Humans have [access to a trivially deployable web interface](/Crowdsec/v1/observability/dashboard/)
+    - OPs have [access to detailed prometheus metrics](/Crowdsec/v1/observability/prometheus/)
+    - Admins have [a friendly command-line interface tool](/Crowdsec/v1/observability/command_line/)
 
 ## About this documentation
 
