@@ -3,8 +3,8 @@ nav:
   - Home: index.md
   - Getting Started:
     - Concepts & Glossary : getting_started/concepts.md
-    - Crowdsec Tour: getting_started/crowdsec-tour.md
     - Install Crowdsec : getting_started/installation.md
+    - Crowdsec Tour: getting_started/crowdsec-tour.md
   - Guide:
     - Overview: guide/crowdsec/overview.md
     - Acquisition: guide/crowdsec/acquisition.md
@@ -40,6 +40,7 @@ nav:
     - General: contributing.md
     - Writing Output Plugins: references/plugins_api.md
   - Cscli commands:
+    - Cscli: cscli/cscli.md
     - API: cscli/cscli_api.md
     - Backup: cscli/cscli_backup.md
     - Bans: cscli/cscli_ban.md

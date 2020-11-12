@@ -1,13 +1,10 @@
+{{v1X.hub.htmlname}} allows you to find needed scenarios.
+
 ## Installing scenarios
 
 ```bash
 $ cscli scenarios install crowdsecurity/http-bf-wordpress_bf
 ```
-
-
-[{{v1X.hub.name}}]({{v1X.hub.scenarios_url}}) allows you to find needed scenarios, just paste the command on your machine :
-
-![Hub Screenshot](/Crowdsec/v1/assets/images/hub_scenario.png)
 
 <details>
   <summary>cscli scenarios install example</summary>

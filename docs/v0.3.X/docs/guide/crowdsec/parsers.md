@@ -40,9 +40,7 @@ INFO[0000] Loaded 9 collecs, 14 parsers, 12 scenarios, 1 post-overflow parsers
 
 ### From the hub
 
-[{{v0X.hub.name}}]({{v0X.hub.parsers_url}}) allows you to find needed scenarios, just paste the command on your machine :
-
-![Hub Screenshot](/Crowdsec/v0/assets/images/hub_parser.png)
+{{v0X.hub.htmlname}} allows you to find needed parsers.
 
 ```bash
 # {{v0X.cli.name}} install parser crowdsec/nginx-logs

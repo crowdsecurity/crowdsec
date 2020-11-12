@@ -1,14 +1,10 @@
-
+{{v1X.hub.htmlname}} allows you to find needed parsers.
 
 ## Installing parsers
 
 ```bash
 $ cscli parsers install crowdsecurity/sshd-logs
 ```
-
-[{{v1X.hub.name}}]({{v1X.hub.parsers_url}}) allows you to find needed parsers, just paste the command on your machine :
-
-![Hub Screenshot](/Crowdsec/v1/assets/images/hub_parser.png)
 
 <details>
   <summary>cscli parsers install example</summary>

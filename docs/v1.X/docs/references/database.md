@@ -1,7 +1,7 @@
 
 # Database
 
-The database is mostly used by the [local API]({{v1X.lapi.htmlname}}) but also by {{v1X.cli.user_guide}} for some tasks.
+The database is mostly used by the {{v1X.lapi.htmlname}} but also by {{v1X.cli.user_guide}} for some tasks.
 
 Currently, 3 databases are supported:
 
