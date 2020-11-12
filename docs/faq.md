@@ -44,7 +44,7 @@ See [backend configuration](/Crowdsec/v0/references/output/#switching-backend-da
 {{v1X.crowdsec.name}} versions (after v1) supports SQLite (default), MySQL and PostgreSQL databases.
 See [databases configuration](/Crowdsec/v1/user_guide/database/) for relevant configuration. Thanks to the {{v1X.lapi.Htmlname}}, distributed architectures are resolved even with sqlite database.
 
-SQLite is the default backend as it's suitable for standalone/single-machine setups.
+SQLite by default as it's suitable for standalone/single-machine setups.
 
 ## How to control granularity of actions ? (whitelists, simulation etc.)
 
