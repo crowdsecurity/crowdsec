@@ -25,6 +25,9 @@ db_config:
   db_name: crowdsec
   host: "127.0.0.1"
   port: 3306
+  flush:
+    max_items: 5000
+    max_age: 7d
 api:
   client:
     insecure_skip_verify: true # default true
