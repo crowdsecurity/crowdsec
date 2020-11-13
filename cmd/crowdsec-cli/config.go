@@ -61,6 +61,15 @@ func NewConfigCmd() *cobra.Command {
 					fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
 					fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
 				}
+				if csConfig.DbConfig.Flush != nil {
+					if *csConfig.DbConfig.Flush.MaxAge != "" {
+						fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
+					}
+					if *csConfig.DbConfig.Flush.MaxItems != 0 {
+						fmt.Printf("      - Flush size          : %d\n", csConfig.DbConfig.Flush.MaxItems)
+					}
+				}
+
 				fmt.Printf("Central API:\n")
 				fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
 				fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)

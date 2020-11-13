@@ -298,6 +298,11 @@ cscli decisions add --scope username --value foobar
 				}
 				ipRange = addValue
 			}
+
+			if addReason == "" {
+				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
+			}
+
 			decision := models.Decision{
 				Duration: &addDuration,
 				Scope:    &addScope,
