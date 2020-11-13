@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
@@ -75,11 +77,11 @@ func dumpMetrics() {
 	}
 }
 
-func registerPrometheus(mode string) {
+func registerPrometheus(config *csconfig.PrometheusCfg) {
 	defer types.CatchPanic("crowdsec/registerPrometheus")
 	/*Registering prometheus*/
 	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
-	if mode == "aggregated" {
+	if config.Level == "aggregated" {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
@@ -96,5 +98,5 @@ func registerPrometheus(mode string) {
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":6060", nil)
+	http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil)
 }
