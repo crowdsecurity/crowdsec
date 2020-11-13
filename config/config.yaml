@@ -16,6 +16,7 @@ crowdsec_service:
   parser_routines: 1
 cscli:
   output: human
+  hub_branch: wip_lapi
 db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
