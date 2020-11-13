@@ -244,6 +244,9 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 
 	if flags.SingleFilePath != "" {
 		config.API.Server.OnlineClient = nil
+		config.Common.Daemonize = false
+		config.Common.LogMedia = "stdout"
+		log.Printf("single file mode : daemonize is off, log media is stdout")
 	}
 
 	return nil
