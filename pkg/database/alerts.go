@@ -310,7 +310,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
 			}
 		case "since":
-			duration, err := time.ParseDuration(value[0])
+			duration, err := types.ParseDuration(value[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "while parsing duration")
 			}
@@ -320,15 +320,15 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			}
 			alerts = alerts.Where(alert.StartedAtGTE(since))
 		case "until":
-			duration, err := time.ParseDuration(value[0])
+			duration, err := types.ParseDuration(value[0])
 			if err != nil {
 				return nil, errors.Wrap(err, "while parsing duration")
 			}
-			since := time.Now().Add(-duration)
-			if since.IsZero() {
-				return nil, fmt.Errorf("Empty time now() - %s", since.String())
+			until := time.Now().Add(-duration)
+			if until.IsZero() {
+				return nil, fmt.Errorf("Empty time now() - %s", until.String())
 			}
-			alerts = alerts.Where(alert.StartedAtLTE(since))
+			alerts = alerts.Where(alert.StartedAtLTE(until))
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
@@ -475,18 +475,17 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 	return alertsToDelete, nil
 }
 
-func (c *Client) FlushAlerts(MaxAge time.Duration, MaxItems int) error {
+func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var totalDeleted int
-	until := time.Now().Add(-MaxAge)
 
-	if MaxAge > 0 {
+	if MaxAge != "" {
 		filter := map[string][]string{
-			"until": {until.Format(time.RFC3339)},
+			"until": {MaxAge},
 		}
 		deleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
 			log.Warningf("FlushAlerts : %s", err)
-			return errors.Wrapf(err, "unable to flush alerts with filter %s", until.String())
+			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
 		totalDeleted += len(deleted)
 	}

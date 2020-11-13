@@ -8,8 +8,12 @@ import (
 	"io/ioutil"
 	"net"
 	"runtime/debug"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -136,4 +140,24 @@ func CatchPanic(component string) {
 		log.Errorf("stacktrace/report is written to %s : please join it to your issue", tmpfile.Name())
 		log.Fatalf("crowdsec stopped")
 	}
+}
+
+func ParseDuration(d string) (time.Duration, error) {
+	durationStr := d
+	if strings.HasSuffix(d, "d") {
+		days := strings.Split(d, "d")[0]
+		if len(days) == 0 {
+			return 0, fmt.Errorf("max_age (%s) can't be parsed as duration", d)
+		}
+		daysInt, err := strconv.Atoi(days)
+		if err != nil {
+			return 0, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", d)
+		}
+		durationStr = strconv.Itoa(daysInt*24) + "h"
+	}
+	duration, err := time.ParseDuration(durationStr)
+	if err != nil {
+		return 0, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", d)
+	}
+	return duration, nil
 }
