@@ -24,9 +24,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
-			if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
-				cwhub.HubBranch = csConfig.Cscli.HubBranch
-			}
+
 			if err := setHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
