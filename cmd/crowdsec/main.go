@@ -290,7 +290,7 @@ func main() {
 	}
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus.Level)
+		go registerPrometheus(cConfig.Prometheus)
 	}
 
 	if err := Serve(); err != nil {
