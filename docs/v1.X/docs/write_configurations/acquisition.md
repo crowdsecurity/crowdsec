@@ -1,41 +1,34 @@
 # Write the acquisition file (optional for test)
 
 In order for your log to be processed by the good parser, it must match the filter that you will configure in your parser file.
-There are two options:
 
- - Your logs are written by a syslog server, so you just have to install the [syslog parser](https://master.d3padiiorjhf1k.amplifyapp.com/author/crowdsecurity/configurations/syslog-logs)
- - Your logs are read from a log file. Please add this kind of configuration in your `acquis.yaml` file:
+The filters of the parsers in the first (`s00-raw`) stage will usually check `evt.Line.Labels.type`, which is the label of your acquisition file :
 
-&#9432; the `type` will be matched by the parsers's `filter` in stage `s01-parse`.
-
+With an acquisition file like this :
 
 ```yaml
----
-filename: <PATH_TO_YOUR_LOG_FILE>
+filename: /path/to/log/file.log
 labels:
-  type: <PROGRAM_NAME>
-
+  type: my_program
 ```
-Here an example:
 
-<details>
-  <summary>Nginx acquisition</summary>
+ - The log line will enter the parsing pipeline with `evt.Line.Labels.type` set to `my_program`
+ - The parsers in the 1st stage (`s00-raw`) are dealing with the raw format, and the program name will end up in `evt.Parsed.program`
+ - When the log line arrive the main parsing stage (`s01-parse`), `evt.Parsed.program` will be `my_program`
+
+
+For example, this file line(s) :
 
 ```yaml
----
 filename: /var/log/nginx/access.log
 labels:
   type: nginx
 ```
 
-</details>
-
-<details>
-  <summary>Nginx parser filter</summary>
+will be read by this parser :
 
 ```yaml
----
-filter: evt.Parsed.program == 'nginx'
+filter: "evt.Parsed.program startsWith 'nginx'"
+onsuccess: next_stage
+...
 ```
-
-</details>
