@@ -66,7 +66,7 @@ func NewConfigCmd() *cobra.Command {
 						fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
 					}
 					if *csConfig.DbConfig.Flush.MaxItems != 0 {
-						fmt.Printf("      - Flush size          : %d\n", csConfig.DbConfig.Flush.MaxItems)
+						fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
 					}
 				}
 
