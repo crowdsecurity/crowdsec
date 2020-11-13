@@ -54,9 +54,13 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}) (map[string]string,
 	}
 
 	ip := net.ParseIP(field)
+	if ip == nil {
+		log.Infof("Can't parse ip %s, no ASN enrich", ip)
+		return nil, nil
+	}
 	record, err := ctx.(GeoIpEnricherCtx).dba.ASN(ip)
 	if err != nil {
-		log.Debugf("Unable to enrich ip '%s'", field)
+		log.Errorf("Unable to enrich ip '%s'", field)
 		return nil, nil
 	}
 	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
@@ -71,10 +75,14 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 		return nil, nil
 	}
 	ip := net.ParseIP(field)
+	if ip == nil {
+		log.Infof("Can't parse ip %s, no City enrich", ip)
+		return nil, nil
+	}
 	record, err := ctx.(GeoIpEnricherCtx).dbc.City(ip)
 	if err != nil {
-		log.Fatal(err)
-		return nil, err
+		log.Debugf("Unable to enrich ip '%s'", ip)
+		return nil, nil
 	}
 	ret["IsoCode"] = record.Country.IsoCode
 	ret["IsInEU"] = strconv.FormatBool(record.Country.IsInEuropeanUnion)
