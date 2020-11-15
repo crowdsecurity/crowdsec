@@ -138,3 +138,53 @@ INFO[0040] Metabase is ready
 	username  : 'crowdsec@crowdsec.net'
 	password  : ...
 ```
+
+## Injection alerts into new database - dev env
+
+From a fresh release :
+
+```bash
+$ tar xvzf crowdsec-release.tgz
+$ cd crowdsec-v1.0.0-rc
+$ ./test_env.sh
+$ cd tests
+```
+
+Install the needed collection(s) :
+
+```bash
+$ ./cscli -c dev.yaml collections install crowdsecurity/nginx
+```
+
+And we can process logs :
+
+```bash
+$ ./crowdsec -c dev.yaml -file ~/github/crowdsec/OLDS/LOGS/nginx/10k_ACCESS_LOGS.log -type nginx
+INFO[0000] single file mode : log_media=stdout daemonize=true 
+INFO[15-11-2020 11:18:27] Crowdsec v1.0.0-rc-0ecb142dfffc89b019b6d9044cb7cc5569d12c70 
+INFO[15-11-2020 11:18:38] Ip x.x.x.x performed 'crowdsecurity/http-sensitive-files' (5 events over 4s) at 2017-10-23 12:35:54 +0200 CEST 
+INFO[15-11-2020 11:18:39] (test/crowdsec) crowdsecurity/http-probing by ip x.x.x.x (DE) : 1h ban on Ip x.x.x.x 
+```
+
+And we can then query the local api (while letting the {{v1X.crowdsec.name}} running) :
+```bash
+$ ./cscli -c dev.yaml alerts list
++----+--------------------+---------------------------------------+---------+--------------+-----------+--------------------------------+
+| ID |       VALUE        |                REASON                 | COUNTRY |      AS      | DECISIONS |           CREATED AT           |
++----+--------------------+---------------------------------------+---------+--------------+-----------+--------------------------------+
+| 28 | Ip:x.x.x.x  | crowdsecurity/http-crawl-non_statics  | DE      |  Linode, LLC | ban:1     | 2017-10-23 12:36:48 +0200      |
+|    |                    |                                       |         |              |           | +0200                          |
+| 27 | Ip:x.x.x.x  | crowdsecurity/http-sensitive-files    | DE      |  Linode, LLC | ban:1     | 2017-10-23 12:35:50 +0200      |
+|    |                    |                                       |         |              |           | +0200                          |
+
+```
+
+Or even start a dashboard to view data :
+
+```bash
+$ sudo ./cscli dashboard setup
+...
+INFO[0002] waiting for metabase to be up (can take up to a minute) 
+........
+
+```
