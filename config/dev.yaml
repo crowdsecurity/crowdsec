@@ -1,5 +1,5 @@
 common:
-  daemonize: false
+  daemonize: true
   pid_dir: /tmp/
   log_media: stdout
   log_level: info
@@ -17,7 +17,7 @@ cscli:
   output: human
 db_config:
   type: sqlite
-  db_path: ./crowdsec.db
+  db_path: ./data/crowdsec.db
   user: root
   password: crowdsec
   db_name: crowdsec
@@ -31,7 +31,7 @@ api:
     credentials_path: ./config/local_api_credentials.yaml
   server:
     #insecure_skip_verify: true
-    listen_uri: localhost:8080
+    listen_uri: localhost:8081
     profiles_path: ./config/profiles.yaml
     tls:
       #cert_file: ./cert.pem
