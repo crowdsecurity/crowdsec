@@ -40,11 +40,6 @@ ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
 ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
 
-setup_cron_pull() {
-    cp ./config/crowdsec_pull /etc/cron.d/
-}
-
-
 PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
@@ -404,12 +399,6 @@ uninstall_crowdsec() {
 }
 
 
-setup_cron_pull() {
-    cp ./config/crowdsec_pull /etc/cron.d/
-}
-
-
-
 main() {
     if [[ "$1" == "backup_to_dir" ]];
     then
@@ -519,9 +508,6 @@ main() {
         
         ${CSCLI_BIN_INSTALLED} capi register
         log_info "Crowdsec CAPI registered"
-
-        # Set the cscli api pull cronjob 
-        setup_cron_pull
 
         return
     fi
