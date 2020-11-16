@@ -49,7 +49,9 @@ func initConfig() {
 	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
-
+	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
+		cwhub.HubBranch = csConfig.Cscli.HubBranch
+	}
 	if OutputFormat != "" {
 		csConfig.Cscli.Output = OutputFormat
 		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {

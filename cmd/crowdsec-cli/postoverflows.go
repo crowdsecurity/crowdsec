@@ -37,7 +37,6 @@ func NewPostOverflowsCmd() *cobra.Command {
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdPostOverflows.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdPostOverflowsInstall = &cobra.Command{
 		Use:     "install [config]",

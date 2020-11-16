@@ -38,7 +38,6 @@ cscli parsers remove crowdsecurity/sshd-logs
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdParsers.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdParsersInstall = &cobra.Command{
 		Use:     "install [config]",

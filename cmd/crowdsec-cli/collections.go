@@ -34,7 +34,6 @@ func NewCollectionsCmd() *cobra.Command {
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdCollections.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdCollectionsInstall = &cobra.Command{
 		Use:     "install collection",

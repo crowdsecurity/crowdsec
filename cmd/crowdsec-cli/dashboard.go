@@ -169,7 +169,8 @@ cscli dashboard remove --force
 				if force {
 					log.Debugf("Removing image %s", metabaseImage)
 					if err := metabase.RemoveImageContainer(metabaseImage); err != nil {
-						log.Warningf("Failed to stop metabase container : %s", err)
+            log.Warningf("Failed to remove metabase container %s : %s", metabaseImage, err)
+
 					}
 				}
 			}

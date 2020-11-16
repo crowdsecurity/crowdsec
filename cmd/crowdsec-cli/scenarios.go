@@ -38,7 +38,6 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
-	cmdScenarios.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdScenariosInstall = &cobra.Command{
 		Use:     "install [config]",
