@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -143,18 +144,32 @@ func TestAlertListFilters(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	//create one alert
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
 	//bad filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -311,7 +326,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit zuzu in duration 1zuzu"}`)
+	assert.Equal(t, `{"message":"while parsing duration: time: unknown unit \"zuzu\" in duration \"1zuzu\""}`, w.Body.String())
 
 	//test until (ok)
 	w = httptest.NewRecorder()
@@ -339,7 +354,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit zuzu in duration 1zuzu"}`)
+	assert.Equal(t, `{"message":"while parsing duration: time: unknown unit \"zuzu\" in duration \"1zuzu\""}`, w.Body.String())
 
 	//test simulated (ok)
 	w = httptest.NewRecorder()

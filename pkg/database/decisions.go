@@ -189,10 +189,20 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		}
 
 		if startIP != 0 && endIP != 0 {
-			decisions = decisions.Where(decision.And(
-				decision.StartIPLTE(startIP),
-				decision.EndIPGTE(endIP),
-			))
+			/*the user is checking for a single IP*/
+			if startIP == endIP {
+				//DECISION_START <= IP_Q >= DECISON_END
+				decisions = decisions.Where(decision.And(
+					decision.StartIPLTE(startIP),
+					decision.EndIPGTE(endIP),
+				))
+			} else { /*the user is checking for a RANGE */
+				//START_Q >= DECISION_START AND END_Q <= DECISION_END
+				decisions = decisions.Where(decision.And(
+					decision.StartIPGTE(startIP),
+					decision.EndIPLTE(endIP),
+				))
+			}
 		}
 	}
 
@@ -210,7 +220,6 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	var startIP, endIP int64
 
 	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now()))
-
 	for param, value := range filter {
 		switch param {
 		case "scope":
@@ -238,10 +247,20 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		}
 
 		if startIP != 0 && endIP != 0 {
-			decisions = decisions.Where(decision.And(
-				decision.StartIPLTE(startIP),
-				decision.EndIPGTE(endIP),
-			))
+			/*the user is checking for a single IP*/
+			if startIP == endIP {
+				//DECISION_START <= IP_Q >= DECISON_END
+				decisions = decisions.Where(decision.And(
+					decision.StartIPLTE(startIP),
+					decision.EndIPGTE(endIP),
+				))
+			} else { /*the user is checking for a RANGE */
+				//START_Q >= DECISION_START AND END_Q <= DECISION_END
+				decisions = decisions.Where(decision.And(
+					decision.StartIPGTE(startIP),
+					decision.EndIPLTE(endIP),
+				))
+			}
 		}
 	}
 	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
@@ -256,7 +275,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
-		log.Warningf("SoftDeleteDecisionByID : %s", err)
+		log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 	return nil

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -147,17 +146,17 @@ func ParseDuration(d string) (time.Duration, error) {
 	if strings.HasSuffix(d, "d") {
 		days := strings.Split(d, "d")[0]
 		if len(days) == 0 {
-			return 0, fmt.Errorf("max_age (%s) can't be parsed as duration", d)
+			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
 		}
 		daysInt, err := strconv.Atoi(days)
 		if err != nil {
-			return 0, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", d)
+			return 0, err
 		}
 		durationStr = strconv.Itoa(daysInt*24) + "h"
 	}
 	duration, err := time.ParseDuration(durationStr)
 	if err != nil {
-		return 0, errors.Wrapf(err, "max_age (%s) can't be parsed as duration", d)
+		return 0, err
 	}
 	return duration, nil
 }
