@@ -270,7 +270,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, w.Body.String(), `{"message":"unable to parse 'gruueq': %!s(\u003cnil\u003e): invalid ip address / range"}`)
+	assert.Equal(t, `{"message":"unable to parse 'gruueq': %!s(\u003cnil\u003e): invalid ip address / range"}`, w.Body.String())
 
 	//test range (ok)
 	w = httptest.NewRecorder()
@@ -298,7 +298,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, w.Body.String(), `{"message":"unable to convert 'ratata' to int interval: 'ratata' is not a valid CIDR: invalid ip address / range"}`)
+	assert.Equal(t, `{"message":"unable to convert 'ratata' to int interval: 'ratata' is not a valid CIDR: invalid ip address / range"}`, w.Body.String())
 
 	//test since (ok)
 	w = httptest.NewRecorder()
@@ -336,7 +336,7 @@ func TestAlertListFilters(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
-	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
+	assert.Contains(t, `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`, w.Body.String())
 
 	//test until (ok but no return)
 	w = httptest.NewRecorder()
@@ -402,7 +402,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, w.Body.String(), `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`)
+	assert.Equal(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
 
 }
 
