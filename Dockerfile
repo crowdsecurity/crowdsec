@@ -21,8 +21,7 @@ RUN cscli collections install crowdsecurity/linux
 RUN rm -rf /go/src/crowdsec
 RUN apk del git jq gcc libc-dev make bash gettext
 
-#ENTRYPOINT ["crowdsec", "-c", "/etc/crowdsec/config.yaml", "-t"]
-CMD crowdsec -c /etc/crowdsec/config.yaml
+CMD cscli hub update && cscli collections upgrade crowdsecurity/linux && crowdsec -c /etc/crowdsec/config.yaml
 
 
 
