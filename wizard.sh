@@ -11,6 +11,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 SILENT="false"
+DOCKER_MODE="false"
 
 CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
@@ -323,10 +324,14 @@ install_crowdsec() {
     mkdir -p ${PID_DIR} || exit
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
-    CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+    fi
     install_bins
     install_plugins
-	systemctl daemon-reload
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+	    systemctl daemon-reload
+    fi
 }
 
 update_bins() {
@@ -461,9 +466,15 @@ main() {
         fi
         log_info "installing crowdsec"
         install_crowdsec
-         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
-        log_info "Crowdsec api registered"
+        # lapi register
+        MACHINE_ID=""
+        if [[ ${DOCKER_MODE} == "false" ]]; then
+            ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        else
+            ${CSCLI_BIN_INSTALLED} machines add --force --auto -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        fi
+            
+        log_info "Crowdsec LAPI registered"
         return
     fi
 
@@ -542,6 +553,7 @@ usage() {
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
       echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
+      echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
       echo "    ./wizard.sh -r|--restore                     Restore saved configurations from ${BACKUP_DIR} to ${CROWDSEC_CONFIG_PATH}"
       echo "    ./wizard.sh -b|--backup                      Backup existing configurations to ${BACKUP_DIR}"
 
@@ -573,6 +585,11 @@ do
         shift # past argument
         ;;
     --bininstall)
+        ACTION="bininstall"
+        shift # past argument
+        ;;
+    --docker-mode)
+        DOCKER_MODE="true"
         ACTION="bininstall"
         shift # past argument
         ;;
