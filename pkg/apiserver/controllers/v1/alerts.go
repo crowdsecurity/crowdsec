@@ -143,7 +143,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	case c.CAPIChan <- input:
 		log.Debugf("alert send to CAPI channel")
 	default:
-		log.Errorf("can't send alert to CAPI channel")
+		log.Warningf("Cannot send alert to Central API channel")
 	}
 
 	gctx.JSON(http.StatusOK, alerts)

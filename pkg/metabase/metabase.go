@@ -174,9 +174,17 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 func (m *Metabase) WaitAlive() error {
 	var err error
 	for {
-		if err = m.Login(metabaseDefaultUser, metabaseDefaultPassword); err == nil {
+		err = m.Login(metabaseDefaultUser, metabaseDefaultPassword)
+		if err != nil {
+			if strings.Contains(err.Error(), "password:did not match stored password") {
+				log.Errorf("Password mismatch error, is your dashboard already setup ? Run 'cscli dashboard remove' to reset it.")
+				return errors.Wrapf(err, "Password mismatch error")
+			}
+			log.Debugf("%+v", err)
+		} else {
 			break
 		}
+
 		fmt.Printf(".")
 		time.Sleep(2 * time.Second)
 	}

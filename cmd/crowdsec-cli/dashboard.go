@@ -151,23 +151,26 @@ cscli dashboard remove --force
 			}
 
 			if answer {
-				if !metabase.IsContainerExist(metabaseContainerID) {
-					log.Infof("container %s not found", metabaseContainerID)
-					os.Exit(0)
+				if metabase.IsContainerExist(metabaseContainerID) {
+					log.Debugf("Stopping container %s", metabaseContainerID)
+					if err := metabase.StopContainer(metabaseContainerID); err != nil {
+						log.Warningf("unable to stop container '%s': %s", metabaseContainerID, err)
+					}
+					log.Debugf("Removing container %s", metabaseContainerID)
+					if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
+						log.Warningf("unable to remove container '%s': %s", metabaseContainerID, err)
+					}
+					log.Infof("container %s stopped & removed", metabaseContainerID)
 				}
-				if err := metabase.StopContainer(metabaseContainerID); err != nil {
-					log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
-				}
-				if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
-					log.Fatalf("unable to remove container '%s': %s", metabaseContainerID, err)
-				}
-
+				log.Debugf("Removing database %s", csConfig.ConfigPaths.DataDir)
 				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
-					log.Fatalf("failed to remove metabase internal db : %s", err)
+					log.Warningf("failed to remove metabase internal db : %s", err)
 				}
 				if force {
+					log.Debugf("Removing image %s", metabaseImage)
 					if err := metabase.RemoveImageContainer(metabaseImage); err != nil {
-						log.Fatalf("Failed to remove image '%s' : %s", metabaseImage, err)
+            log.Warningf("Failed to remove metabase container %s : %s", metabaseImage, err)
+
 					}
 				}
 			}

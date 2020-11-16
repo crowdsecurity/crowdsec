@@ -244,6 +244,12 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 
 	if flags.SingleFilePath != "" {
 		config.API.Server.OnlineClient = nil
+		/*if the api is disabled as well, just read file and exit, don't daemonize*/
+		if disableAPI {
+			config.Common.Daemonize = false
+		}
+		config.Common.LogMedia = "stdout"
+		log.Infof("single file mode : log_media=%s daemonize=%t", config.Common.LogMedia, config.Common.Daemonize)
 	}
 
 	return nil
