@@ -336,7 +336,7 @@ func TestAlertListFilters(t *testing.T) {
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
-	assert.Contains(t, `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`, w.Body.String())
+	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"start_ip":1534676931,"type":"ban","value":"91.121.79.195"`)
 
 	//test until (ok but no return)
 	w = httptest.NewRecorder()
