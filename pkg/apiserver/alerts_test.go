@@ -326,7 +326,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"while parsing duration: time: unknown unit \"zuzu\" in duration \"1zuzu\""}`, w.Body.String())
+	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
 
 	//test until (ok)
 	w = httptest.NewRecorder()
@@ -354,7 +354,7 @@ func TestAlertListFilters(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, `{"message":"while parsing duration: time: unknown unit \"zuzu\" in duration \"1zuzu\""}`, w.Body.String())
+	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
 
 	//test simulated (ok)
 	w = httptest.NewRecorder()
