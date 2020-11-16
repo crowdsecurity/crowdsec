@@ -1,5 +1,3 @@
-ARG ARCH=amd64
-ARG OS=linux
 ARG GOVERSION=1.14
 
 FROM golang:${GOVERSION}-alpine AS build
@@ -19,5 +17,6 @@ COPY --from=build /etc/crowdsec /etc/crowdsec
 COPY --from=build /var/lib/crowdsec /var/lib/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
 COPY --from=build /usr/local/bin/cscli /usr/local/bin/cscli
+COPY --from=build /go/src/crowdsec/scripts/docker_start.sh /
 
-CMD cscli hub update && cscli collections upgrade crowdsecurity/linux && crowdsec -c /etc/crowdsec/config.yaml
+ENTRYPOINT /bin/sh docker_start.sh

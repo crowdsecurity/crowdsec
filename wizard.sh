@@ -459,8 +459,6 @@ main() {
         MACHINE_ID=""
         if [[ ${DOCKER_MODE} == "false" ]]; then
             ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
-        else
-            ${CSCLI_BIN_INSTALLED} machines add --force --auto -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
         fi
             
         log_info "Crowdsec LAPI registered"
