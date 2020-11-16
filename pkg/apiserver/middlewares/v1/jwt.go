@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"crypto/rand"
 	"fmt"
 	"os"
 	"strings"
@@ -142,17 +143,32 @@ func Unauthorized(c *gin.Context, code int, message string) {
 
 func NewJWT(dbClient *database.Client) (*JWT, error) {
 	// Get secret from environment variable "SECRET"
-	secret := os.Getenv("SECRET")
-	if secret == "" {
-		secret = "crowdsecret"
+	var (
+		secret []byte
+	)
+
+	secret_string := os.Getenv("SECRET")
+
+	if secret_string == "" {
+		secret = make([]byte, 8)
+		if n, err := rand.Reader.Read(secret); err != nil {
+			log.Fatalf("Unable to generate a new random seed for JWT generation")
+		} else {
+			if n != 8 {
+				log.Errorf("Not enough entropy at random seed generation for JWT generation")
+			}
+		}
+	} else {
+		secret = []byte(secret_string)
 	}
+
 	jwtMiddleware := &JWT{
 		DbClient: dbClient,
 	}
 
 	ret, err := jwt.New(&jwt.GinJWTMiddleware{
 		Realm:           "Crowdsec API local",
-		Key:             []byte(secret),
+		Key:             secret,
 		Timeout:         time.Hour,
 		MaxRefresh:      time.Hour,
 		IdentityKey:     identityKey,
