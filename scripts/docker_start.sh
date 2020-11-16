@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x
+
 # Check if the container has already been started
 cscli machines list | grep 127.0.0.1
 if [ $? == 1 ]; then
