@@ -19,8 +19,10 @@ In order to run this container you'll need docker installed.
 
 #### Build
 
-`git clone https://github.com/crowdsecurity/crowdsec.git && cd crowdsec`
-`docker build -t crowdsec .`
+```shell
+git clone https://github.com/crowdsecurity/crowdsec.git && cd crowdsec
+docker build -t crowdsec .
+```
 
 #### Run
 
@@ -75,7 +77,7 @@ docker run -d --name crowdsec \
     -v /var/log/syslog.log:/logs/syslog.log \
     -v /var/log/apache:/logs/apache \
     -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db # Database path set up in config.yaml file (if you use sqlite)
-    -e COLLECTIONS="crowdsecurity/apache2"
+    -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd"
 ```
 
 ### Environment Variables
