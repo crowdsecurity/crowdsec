@@ -224,34 +224,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 	}
 
-	//Iterate on leafs
-	if len(n.LeavesNodes) > 0 {
-		for _, leaf := range n.LeavesNodes {
-			//clog.Debugf("Processing sub-node %d/%d : %s", idx, len(n.SuccessNodes), leaf.rn)
-			ret, err := leaf.process(p, ctx)
-			if err != nil {
-				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
-				clog.Debugf("Event leaving node : ko")
-				return false, err
-			}
-			clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
-			if ret {
-				NodeState = true
-				/* if child is successful, stop processing */
-				if n.OnSuccess == "next_stage" {
-					clog.Debugf("child is success, OnSuccess=next_stage, skip")
-					break
-				}
-			} else {
-				NodeState = false
-			}
-		}
-	}
-	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behaviour */
-
-	clog.Tracef("State after nodes : %v", NodeState)
-
 	//Process grok if present, should be exclusive with nodes :)
 	gstr := ""
 	if n.Grok.RunTimeRegexp != nil {
@@ -301,6 +273,34 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	} else {
 		clog.Tracef("! No grok pattern : %p", n.Grok.RunTimeRegexp)
 	}
+
+	//Iterate on leafs
+	if len(n.LeavesNodes) > 0 {
+		for _, leaf := range n.LeavesNodes {
+			//clog.Debugf("Processing sub-node %d/%d : %s", idx, len(n.SuccessNodes), leaf.rn)
+			ret, err := leaf.process(p, ctx)
+			if err != nil {
+				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
+				clog.Debugf("Event leaving node : ko")
+				return false, err
+			}
+			clog.Tracef("\tsub-node (%s) ret : %v (strategy:%s)", leaf.rn, ret, n.OnSuccess)
+			if ret {
+				NodeState = true
+				/* if child is successful, stop processing */
+				if n.OnSuccess == "next_stage" {
+					clog.Debugf("child is success, OnSuccess=next_stage, skip")
+					break
+				}
+			} else {
+				NodeState = false
+			}
+		}
+	}
+	/*todo : check if a node made the state change ?*/
+	/* should the childs inherit the on_success behaviour */
+
+	clog.Tracef("State after nodes : %v", NodeState)
 
 	//grok or leafs failed, don't process statics
 	if !NodeState {
