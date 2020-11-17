@@ -147,7 +147,7 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		secret []byte
 	)
 
-	secret_string := os.Getenv("SECRET")
+	secret_string := os.Getenv("CS_LAPI_SECRET")
 
 	if secret_string == "" {
 		secret = make([]byte, 8)
