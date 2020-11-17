@@ -4,7 +4,7 @@ Crowdsec - An open-source, lightweight agent to detect and respond to bad behavi
 
 ## Getting Started
 
-Before start using docker image, we suggest you to read our documentation to understand all [crowdsec concepts](https://docs.crowdsec.net/).
+Before starting using docker image, we suggest you to read our documentation to understand all [crowdsec concepts](https://docs.crowdsec.net/).
 
 ### Prerequisities
 
@@ -26,11 +26,11 @@ docker build -t crowdsec .
 
 #### Run
 
-The container is built with [default configuration](https://github.com/crowdsecurity/crowdsec/blob/master/config/config.yaml) with `daemonize:false` and `log_media:false`, you need to do some actions before :
+The container is built with [default configuration](https://github.com/crowdsecurity/crowdsec/blob/master/config/config.yaml) with `daemonize:false` and `log_media:false`, You should apply following configuration before starting it :
 
-* Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) in installed)
+* Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
 * Mount volumes to specify your configuration
-* Mount volumes to specify your log files that would be ingested by crowdsec (set up in acquis.yaml)
+* Mount volumes to specify your log files that should be ingested by crowdsec (set up in acquis.yaml)
 * Mount other volumes : if you want to share the database for example
 
 ```shell
@@ -42,7 +42,7 @@ docker run -d --name crowdsec \
     -v /path/mycustom.log:/var/log/mycustom.log \
 ```
 
-#### Exemple
+#### Example
 
 I have my own configuration :
 ```shell
@@ -85,6 +85,7 @@ docker run -d --name crowdsec \
 * `COLLECTIONS` - collections to install from the [hub](https://hub.crowdsec.net/browse/#collections), separated by space : `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"`
 * `SCENARIOS`   - scenarios to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
 * `PARSERS`     - parsers to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e PARSERS="crowdsecurity/http-logs crowdsecurity/modsecurity"`
+* `POSTOVERFLOWS`     - parsers to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e POSTOVERFLOWS="crowdsecurity/cdn-whitelist"`
 
 ### Volumes
 
