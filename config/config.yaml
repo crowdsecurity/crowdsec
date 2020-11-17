@@ -39,6 +39,9 @@ api:
     profiles_path: /etc/crowdsec/profiles.yaml
     online_client: # Crowdsec API
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
+#    tls:
+#      cert_file: /etc/crowdsec/ssl/cert.pem
+#      key_file: /etc/crowdsec/ssl/key.pem
 prometheus:
   enabled: true
   level: full

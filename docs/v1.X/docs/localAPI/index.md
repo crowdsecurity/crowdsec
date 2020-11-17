@@ -15,8 +15,14 @@ There is two kinds of authentication to the local API :
 
  - Machines : they authenticate with a login&password and can not only read decisions, but create new ones
  
+## Note on SSL encryption
 
+The most common use case of the local API is to listen on localhost. In that case there's no need for
+configuring any ssl layer. In some cases, the local API will listen for other crowdsec installation that
+will report its triggered scenarios. In that case, the endpoint may be configured with ssl.
 
 
 See the [Local API public documentation]({{v1X.lapi.swagger}})
+
+
 
