@@ -34,12 +34,12 @@ The container is built with [default configuration](https://github.com/crowdsecu
 * Mount other volumes : if you want to share the database for example
 
 ```shell
-docker run -d --name crowdsec \
-    -v config.yaml:/etc/crowdsec/config.yaml \
+docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
     -v acquis.yaml:/etc/crowdsec/acquis.yaml \
     -e COLLECTIONS="crowdsecurity/sshd"
     -v /var/log/auth.log:/var/log/auth.log \
     -v /path/mycustom.log:/var/log/mycustom.log \
+    --name crowdsec <built-image-tag>
 ```
 
 #### Example
@@ -67,17 +67,20 @@ So, I want to run crowdsec with :
 * My configuration files
 * Ingested my path logs specified in acquis.yaml
 * Share the crowdsec sqlite database with my host (You need to create empty file first, otherwise docker will create a directory instead of simple file)
+* Expose local API through host (listen by default on `8080`)
+* Expose prometheus handler through host (listen by default on `6060`)
 
 ```shell
 touch /path/myDatabase.db
-docker run -d --name crowdsec \
-    -v config.yaml:/etc/crowdsec/config.yaml \
+docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
     -v acquis.yaml:/etc/crowdsec/acquis.yaml \
     -v /var/log/auth.log:/logs/auth.log \
     -v /var/log/syslog.log:/logs/syslog.log \
     -v /var/log/apache:/logs/apache \
-    -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db # Database path set up in config.yaml file (if you use sqlite)
-    -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd"
+    -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db \
+    -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd" \
+    -p 8080:8080 -p 6060:6060 \
+    --name crowdsec <built-image-tag>
 ```
 
 ### Environment Variables
