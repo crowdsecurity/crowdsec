@@ -1,13 +1,16 @@
 package apiserver
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,10 +26,23 @@ func TestDeleteDecisionRange(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -70,10 +86,23 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -117,10 +146,23 @@ func TestGetDecisionFilters(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -192,10 +234,22 @@ func TestGetDecision(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
 
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -238,10 +292,22 @@ func TestDeleteDecisionByID(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
 
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -289,10 +355,23 @@ func TestDeleteDecision(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -330,10 +409,22 @@ func TestStreamDecision(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	alertContent := string(alertContentBytes)
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
 
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().Format(time.RFC3339)
+		*alert.StopAt = time.Now().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
