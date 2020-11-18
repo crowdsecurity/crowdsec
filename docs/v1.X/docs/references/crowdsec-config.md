@@ -33,11 +33,11 @@ db_config:
   log_level: info
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
-  user:
-  password:
-  db_name: 
-  host:
-  port:
+  #user:
+  #password:
+  #db_name: 
+  #host:
+  #port:
   flush:
     max_items: 5000
     max_age: 7d
@@ -68,54 +68,55 @@ prometheus:
 
 ```yaml
 common:
-  daemonize: true
-  pid_dir: /var/run/
-  log_media: file
-  log_level: info
-  log_dir: /var/log/
-  working_dir: .
+  daemonize: (true|false)
+  pid_dir: <path_to_pid_folder>
+  log_media: (file|stdout)
+  log_level: (error|info|debug|trace)
+  log_dir: <path_to_log_folder>
+  working_dir: <path_to_working_folder>
 config_paths:
-  config_dir: /etc/crowdsec/
-  data_dir: /var/lib/crowdsec/data
-  simulation_path: /etc/crowdsec/config/simulation.yaml
-  hub_dir: /etc/crowdsec/hub/
-  index_path: ./config/hub/.index.json
+  config_dir: <path_to_crowdsec_config_folder>
+  data_dir: <path_to_crowdsec_data_folder>
+  simulation_path: <path_to_simulation_file>
+  hub_dir: <path_to_crowdsec_hub_folder>
+  index_path: <path_to_hub_index_file>
 crowdsec_service:
-  acquisition_path: ./config/acquis.yaml
-  parser_routines: 1
+  acquisition_path: <acqusition_file_path>
+  parser_routines: <number_of_parser_routines>
+  buckets_routines: <number_of_buckets_routines>
+  output_routines: <number_of_output_routines>
 cscli:
-  output: human
-  hub_branch: wip_lapi
+  output: (human|json|raw)
+  hub_branch: <hub_branch>
 db_config:
-  type: sqlite
-  db_path: /var/lib/crowdsec/data/crowdsec.db
-  user: crowdsec
-  log_level: info
-  password: crowdsec
-  db_name: crowdsec
-  host: "127.0.0.1"
-  port: 3306
+  type:     <db_type>
+  db_path:  <path_to_database_file>  
+  user:     <db_user>      # for mysql/pgsql
+  password: <db_password>  # for mysql/pgsql
+  db_name:  <db_name>      # for mysql/pgsql
+  host:     <db_host_ip>   # for mysql/pgsql
+  port:     <db_host_port> # for mysql/pgsql
   flush:
-    max_items: 5000
-    max_age: 7d
+    max_items: <max_alerts_in_db>
+	max_age: <max_age_of_alerts_in_db>
 api:
   client:
-    insecure_skip_verify: true
-    credentials_path: /etc/crowdsec/local_api_credentials.yaml
+    insecure_skip_verify: (true|false)
+    credentials_path: <path_to_local_api_client_credential_file>
   server:
-    log_level: info
-    listen_uri: localhost:8080
-    profiles_path: /etc/crowdsec/profiles.yaml
+    log_level: (error|info|debug|trace>)
+    listen_uri: <listen_uri> # host:port
+    profiles_path: <path_to_profile_file>
     online_client:
-      credentials_path: /etc/crowdsec/online_api_credentials.yaml
-    #tls:
-      #cert_file: /etc/crowdsec/ssl/cert.pem
-      #key_file: /etc/crowdsec/ssl/cert.key
+      credentials_path: <path_to_crowdsec_api_client_credential_file>
+    tls:
+      cert_file: <path_to_certificat_file>
+      key_file: <path_to_certificat_key_file>
 prometheus:
-  enabled: true
-  level: full
-  listen_addr: 127.0.0.1
-  listen_port: 6060
+  enabled: (true|false)
+  level: (full|aggregated)
+  listen_addr: <listen_address>
+  listen_port: <listen_port>
 ```
 
 ## Configuration directives
@@ -235,7 +236,7 @@ Number of dedicated goroutines for managing live buckets.
 
 Number of dedicated goroutines for pushing data to local api.
 
-#### `acquisition_path` :
+#### `acquisition_path`
 > string
 
 Path to the yaml file containing logs that needs to be read.

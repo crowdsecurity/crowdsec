@@ -29,6 +29,9 @@ Its located under the `db_config` block.
 db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
+  flush:
+    max_items: 5000
+    max_age: 7d
 ```
 </details>
 <details>
@@ -42,6 +45,9 @@ db_config:
   db_name: crowdsec
   host: "127.0.0.1"
   port: 3306
+  flush:
+    max_items: 5000
+    max_age: 7d
 ```
 </details>
 <details>
@@ -55,6 +61,9 @@ db_config:
   db_name: crowdsec
   host: "127.0.0.1"
   port: 3306
+  flush:
+    max_items: 5000
+    max_age: 7d  
 ```
 
 </details>
@@ -64,7 +73,7 @@ db_config:
 ### `db_config`
 > Contains the configuration of the database
 
-```
+```yaml
 db_config:
   type:     <db_type>
   
@@ -75,8 +84,10 @@ db_config:
   db_name:  <db_name>      # for mysql/pgsql
   host:     <db_host_ip>   # for mysql/pgsql
   port:     <db_host_port> # for mysql/pgsql
+  flush:
+    max_items: <max_alerts_in_db>
+	max_age: <max_age_of_alerts_in_db>
 ```
-
 
 
 ## Configuration Directives
@@ -153,6 +164,34 @@ db_config:
   user: foo
 ```
 The port to connect to (only if the type of database is `mysql` or `postgresql`)
+
+### `flush`
+
+```yaml
+flush:
+  max_items: <nb_max_alerts_in_database>
+  max_age: <max_alerts_age_in_database>
+```
+
+#### `max_items`
+> int
+
+Number max of alerts in database.
+
+#### `max_age`
+> string
+
+Alerts retention time.
+
+Supported units:
+
+ - `s`: seconds
+
+ - `m`: minutes
+
+ - `h`: hours
+
+ - `d`: days
 
 
 # Behind the scenes

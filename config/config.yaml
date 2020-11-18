@@ -21,11 +21,11 @@ db_config:
   log_level: info
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
-  user: crowdsec
-  password:
-  db_name:
-  host:
-  port:
+  #user: 
+  #password:
+  #db_name:
+  #host:
+  #port:
   flush:
     max_items: 5000
     max_age: 7d
