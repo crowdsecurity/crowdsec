@@ -17,34 +17,36 @@ common:
   working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/
-  data_dir: /var/lib/crowdsec/data
-  #simulation_path: /etc/crowdsec/config/simulation.yaml
-  #hub_dir: /etc/crowdsec/hub/
-  #index_path: ./config/hub/.index.json
+  data_dir: /var/lib/crowdsec/data/
+  simulation_path: /etc/crowdsec/simulation.yaml
+  hub_dir: /etc/crowdsec/hub/
+  index_path: /etc/crowdsec/hub/.index.json
 crowdsec_service:
-  #acquisition_path: ./config/acquis.yaml
+  acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
+  buckets_routines: 1
+  output_routines: 1
 cscli:
   output: human
   hub_branch: wip_lapi
 db_config:
+  log_level: info
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
-  user: crowdsec
-  #log_level: info
-  password: crowdsec
-  db_name: crowdsec
-  host: "127.0.0.1"
-  port: 3306
+  user:
+  password:
+  db_name: 
+  host:
+  port:
   flush:
     max_items: 5000
     max_age: 7d
 api:
   client:
-    insecure_skip_verify: true # default true
+    insecure_skip_verify: true
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
-    #log_level: info
+    log_level: info
     listen_uri: localhost:8080
     profiles_path: /etc/crowdsec/profiles.yaml
     online_client: # Crowdsec API
@@ -75,11 +77,11 @@ common:
 config_paths:
   config_dir: /etc/crowdsec/
   data_dir: /var/lib/crowdsec/data
-  #simulation_path: /etc/crowdsec/config/simulation.yaml
-  #hub_dir: /etc/crowdsec/hub/
-  #index_path: ./config/hub/.index.json
+  simulation_path: /etc/crowdsec/config/simulation.yaml
+  hub_dir: /etc/crowdsec/hub/
+  index_path: ./config/hub/.index.json
 crowdsec_service:
-  #acquisition_path: ./config/acquis.yaml
+  acquisition_path: ./config/acquis.yaml
   parser_routines: 1
 cscli:
   output: human
@@ -88,7 +90,7 @@ db_config:
   type: sqlite
   db_path: /var/lib/crowdsec/data/crowdsec.db
   user: crowdsec
-  #log_level: info
+  log_level: info
   password: crowdsec
   db_name: crowdsec
   host: "127.0.0.1"
@@ -98,17 +100,17 @@ db_config:
     max_age: 7d
 api:
   client:
-    insecure_skip_verify: true # default true
+    insecure_skip_verify: true
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
-    #log_level: info
+    log_level: info
     listen_uri: localhost:8080
     profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API
+    online_client:
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
-#    tls:
-#      cert_file: /etc/crowdsec/ssl/cert.pem
-#      key_file: /etc/crowdsec/ssl/key.pem
+    #tls:
+      #cert_file: /etc/crowdsec/ssl/cert.pem
+      #key_file: /etc/crowdsec/ssl/cert.key
 prometheus:
   enabled: true
   level: full
@@ -122,12 +124,12 @@ prometheus:
 
 ```yaml
 common:
-  daemonize: true
-  pid_dir: /var/run/
-  log_media: file
-  log_level: info
-  log_dir: /var/log/
-  working_dir: 
+  daemonize: (true|false)
+  pid_dir: <path_to_pid_folder>
+  log_media: (file|stdout)
+  log_level: (error|info|debug|trace)
+  log_dir: <path_to_log_folder>
+  working_dir: <path_to_working_folder>
 ```
 
 #### `daemonize`
@@ -143,7 +145,7 @@ Folder to store PID file.
 #### `log_media`
 > string
 
-Log media. Can be `stdout` or `file`
+Log media. Can be `stdout` or `file`.
 
 #### `log_level`
 > string
@@ -164,7 +166,6 @@ Folder to write log file.
 Current working directory.
 
 
-
 ### `config_paths`
 
 This section contains most paths to various sub configuration items.
@@ -172,11 +173,11 @@ This section contains most paths to various sub configuration items.
 
 ```yaml
 config_paths:
-  config_dir: /etc/crowdsec/
-  data_dir: /var/lib/crowdsec/data
-  #simulation_path: /etc/crowdsec/config/simulation.yaml
-  #hub_dir: /etc/crowdsec/hub/
-  #index_path: ./config/hub/.index.json
+  config_dir: <path_to_crowdsec_config_folder>
+  data_dir: <path_to_crowdsec_data_folder>
+  simulation_path: <path_to_simulation_file>
+  hub_dir: <path_to_crowdsec_hub_folder>
+  index_path: <path_to_hub_index_file>
 ```
 
 #### `config_dir`
@@ -192,17 +193,17 @@ This is where crowdsec is going to store data, such as files downloaded by scena
 #### `simulation_path`
 > string
 
-The path to the {{v1X.simulation.htmlname}} configuration
+The path to the {{v1X.simulation.htmlname}} configuration.
 
 #### `hub_dir`
 > string
 
-The directory where `cscli` will store parsers, scenarios, collections and such
+The directory where `cscli` will store parsers, scenarios, collections and such.
 
 #### `index_path`
 > string
 
-Tath to the `.index.json` file downloaded by `cscli` to know the list of available configurations
+Tath to the `.index.json` file downloaded by `cscli` to know the list of available configurations.
 
 
 ### `crowdsec_service`
@@ -212,8 +213,10 @@ This section is only used by crowdsec agent.
 
 ```yaml
 crowdsec_service:
-  #acquisition_path: ./config/acquis.yaml
-  parser_routines: 1
+  acquisition_path: <acqusition_file_path>
+  parser_routines: <number_of_parser_routines>
+  buckets_routines: <number_of_buckets_routines>
+  output_routines: <number_of_output_routines>
 ```
 
 
@@ -235,27 +238,28 @@ Number of dedicated goroutines for pushing data to local api.
 #### `acquisition_path` :
 > string
 
-Path to the yaml file containing logs that needs to be read
+Path to the yaml file containing logs that needs to be read.
 
 
-## cscli
+### `cscli`
 
 This section is only used by `cscli`.
 
 ```yaml
 cscli:
-  output: human
-  hub_branch: master
+  output: (human|json|raw)
+  hub_branch: <hub_branch>
 ```
 
 #### `output`
+> string
 
-The default output format (human, json or raw)
+The default output format (human, json or raw).
 
 #### `hub_branch`
+> string
 
-The git branch on which `cscli` is going to fetch configurations
-
+The git branch on which `cscli` is going to fetch configurations.
 
 ## `db_config`
 
@@ -268,56 +272,88 @@ The api section is used by both `cscli`, `crowdsec` and the local API.
 ```yaml
 api:
   client:
-    insecure_skip_verify: true # default true
-    credentials_path: /etc/crowdsec/local_api_credentials.yaml
+    insecure_skip_verify: (true|false)
+    credentials_path: <path_to_local_api_client_credential_file>
   server:
-    #log_level: info
-    listen_uri: localhost:8080
-    profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API
-      credentials_path: /etc/crowdsec/online_api_credentials.yaml
-#    tls:
-#      cert_file: /etc/crowdsec/ssl/cert.pem
-#      key_file: /etc/crowdsec/ssl/key.pem
+    log_level: (error|info|debug|trace>)
+    listen_uri: <listen_uri> # host:port
+    profiles_path: <path_to_profile_file>
+    online_client:
+      credentials_path: <path_to_crowdsec_api_client_credential_file>
+    tls:
+      cert_file: <path_to_certificat_file>
+      key_file: <path_to_certificat_key_file>
 ```
 
 ### `client`
 
-The client subsection is used by `crowdsec` and `cscli` :
+The client subsection is used by `crowdsec` and `cscli` to read and write decisions to the local API.
+
+```yaml
+client:
+  insecure_skip_verify: (true|false)
+  credentials_path: <path_to_local_api_client_credential_file>
+```
 
 #### `insecure_skip_verify`
+>bool
 
-Allows the use of https with self-signed certificates
+Allows the use of https with self-signed certificates.
 
 #### `credentials_path`
+>string
 
-Path to the credential files (contains API url + login/password)
+Path to the credential files (contains API url + login/password).
 
 ### `server`
 
-the server subsection is used only the local API.
+The `server` subsection is the local API configuration.
+
+```yaml
+server:
+  log_level: (error|info|debug|trace)
+  listen_uri: <listen_uri> # host:port
+  profiles_path: <path_to_profile_file>
+  online_client:
+    credentials_path: <path_to_crowdsec_api_client_credential_file>
+  tls:
+    cert_file: <path_to_certificat_file>
+    key_file: <path_to_certificat_key_file>
+```
 
 #### `listen_uri`
 > string
 
-Address and port listen configuration
+Address and port listen configuration, the form `host:port`.
 
 #### `profiles_path`
 > string
 
-The path to the {{v1X.profiles.htmlname}} configuration
+The path to the {{v1X.profiles.htmlname}} configuration.
 
 #### `online_client`
 
+Configuration to push signals and receive bad IPs from Crowdsec API.
+
+```yaml
+online_client:
+  credentials_path: <path_to_crowdsec_api_client_credential_file>
+```
 
 ##### `credentials_path`
 > string
 
-Path to a file containing credentials for the Central API
+Path to a file containing credentials for the Central API.
 
 #### `tls`
 
-if present, holds paths to certs and key files
+if present, holds paths to certs and key files.
+
+```yaml
+tls:
+  cert_file: <path_to_certificat_file>
+  key_file: <path_to_certificat_key_file>
+```
 
 ##### `cert_file`
 > string
@@ -329,31 +365,35 @@ Path to certificate file.
 
 Path to certficate key file.
 
-## prometheus 
+### `prometheus` 
 
 This section is used by local API and crowdsec.
 
 ```yaml
 prometheus:
-  enabled: true
-  level: full
-  listen_addr: 127.0.0.1
-  listen_port: 6060
+  enabled: (true|false)
+  level: (full|aggregated)
+  listen_addr: <listen_address>
+  listen_port: <listen_port>
 ```
 
 
 #### `enabled`
+> bool
 
-Allows to enable/disable prometheus instrumentation
+Allows to enable/disable prometheus instrumentation.
 
 #### `level`
+> string
 
-Can be `full` (all metrics) or `aggregated` (to allow minimal metrics that will keep cardinality low)
+Can be `full` (all metrics) or `aggregated` (to allow minimal metrics that will keep cardinality low).
 
 #### `listen_addr`
+> string
 
-Prometheus listen url
+Prometheus listen url.
 
 #### `listen_port`
+> int
 
-Prometheus listen port
+Prometheus listen port.
