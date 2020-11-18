@@ -324,6 +324,8 @@ install_crowdsec() {
     fi
     install_bins
     install_plugins
+    systemctl daemon-reload
+
     if [[ ${DOCKER_MODE} == "false" ]]; then
 	    systemctl daemon-reload
     fi
@@ -381,6 +383,7 @@ delete_bins() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
+    systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard remove -f -y
     delete_bins
     delete_plugins
@@ -506,6 +509,14 @@ main() {
         
         ${CSCLI_BIN_INSTALLED} capi register
         log_info "Crowdsec CAPI registered"
+
+
+        # Set the cscli api pull cronjob 
+        setup_cron_pull
+       
+        systemctl enable crowdsec
+        systemctl start crowdsec
+        log_info "Enabling and starting crowdsec daemon"
 
         return
     fi
