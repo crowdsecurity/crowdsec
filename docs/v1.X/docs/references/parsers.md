@@ -18,35 +18,22 @@ The parsers usually reside in `/etc/crowdsec/parsers/<STAGE>/`.
 
 A parser node might look like :
 ```yaml
-#if 'onsuccess' is 'next_stage', the event will make it to next stage if this node succeed
 onsuccess: next_stage
-#a 'debug' (bool) flag allow to enable node level debug  in any node to enable local debug
 debug: true
-#a filter to decide if the Event is elligible for this parser node
 filter: "evt.Parsed.program == 'kernel'"
-#a unique name to allow easy debug & logging
 name: crowdsecurity/demo-iptables
-#this is for humans
 description: "Parse iptables drop logs"
-#we can define named capture groups (a-la-grok)
 pattern_syntax:
   MYCAP: ".*"
-#an actual grok pattern (regular expression with named capture groupe)
 grok:
   pattern: ^xxheader %{MYCAP:extracted_value} trailing stuff$
-  #we define on which field the regular expression must be applied
   apply_on: evt.Parsed.some_field
-#statics are transformations that are applied on the event if the node is considered "successfull"
 statics:
   - parsed: something
     expression: JsonExtract(evt.Event.extracted_value, "nested.an_array[0]")
-  #to which field the value will be written (here -> evt.Meta.log_type)
   - meta: log_type
-    #and here a static value
     value: parsed_testlog
-  #another one
   - meta: source_ip
-    #here the value stored is the result of a dynamic expression
     expression: "evt.Parsed.src_ip"
 ```
 
