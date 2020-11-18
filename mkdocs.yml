@@ -287,6 +287,8 @@ extra:
           Htmlname: "[Onsuccess](/Crowdsec/v1/references/parsers/#onsuccess)"  
       profiles:
           htmlname: "[profiles](/Crowdsec/v1/references/profiles/)"
+      simulation:
+          htmlname: "[profiles](/Crowdsec/v1/references/simulation/)"
       statics:
           name: statics
           Name: Statics
