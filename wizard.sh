@@ -324,7 +324,7 @@ install_crowdsec() {
     CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     install_bins
     install_plugins
-	systemctl daemon-reload
+    systemctl daemon-reload
 }
 
 update_bins() {
@@ -379,6 +379,7 @@ delete_bins() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
+    systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard stop --remove
     delete_bins
     delete_plugins
@@ -521,6 +522,8 @@ main() {
         fi;
         # Set the cscli api pull cronjob 
         setup_cron_pull
+
+        systemctl enable crowdsec && log_info "crowdsec daemon enabled" || log_err "Unable to enable crowdsec daemon"
 
         return
     fi
