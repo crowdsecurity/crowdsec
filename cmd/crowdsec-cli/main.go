@@ -26,6 +26,7 @@ var removeAll bool
 var purgeRemove bool
 var upgradeAll bool
 var listAll bool
+var restoreOldBackup bool
 
 var prometheusURL string
 

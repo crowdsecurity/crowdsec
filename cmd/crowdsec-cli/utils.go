@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -473,4 +474,170 @@ func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
 		table.Render()
 		fmt.Println()
 	}
+}
+
+//it's a rip of the cli version, but in silent-mode
+func silenceInstallItem(name string, obtype string) (string, error) {
+	var item *cwhub.Item
+	item = cwhub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
+	}
+	it := *item
+	if downloadOnly && it.Downloaded && it.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	}
+	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceInstall)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+
+	if downloadOnly {
+		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+	}
+	it, err = cwhub.EnableItem(csConfig.Cscli, it)
+	if err != nil {
+		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Enabled %s", it.Name), nil
+}
+
+func RestoreHub(dirPath string) error {
+	var err error
+
+	for _, itype := range cwhub.ItemTypes {
+		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
+		if _, err = os.Stat(itemDirectory); err != nil {
+			log.Infof("no %s in backup", itype)
+			continue
+		}
+		/*restore the upstream items*/
+		upstreamListFN := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itype)
+		file, err := ioutil.ReadFile(upstreamListFN)
+		if err != nil {
+			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
+		}
+		var upstreamList []string
+		err = json.Unmarshal([]byte(file), &upstreamList)
+		if err != nil {
+			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
+		}
+		for _, toinstall := range upstreamList {
+			label, err := silenceInstallItem(toinstall, itype)
+			if err != nil {
+				log.Errorf("Error while installing %s : %s", toinstall, err)
+			} else if label != "" {
+				log.Infof("Installed %s : %s", toinstall, label)
+			} else {
+				log.Printf("Installed %s : ok", toinstall)
+			}
+		}
+		/*restore the local and tainted items*/
+		files, err := ioutil.ReadDir(itemDirectory)
+		if err != nil {
+			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
+		}
+		for _, file := range files {
+			//dir are stages, keep track
+			if !file.IsDir() {
+				continue
+			}
+			stage := file.Name()
+			stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
+			log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
+			if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
+				return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
+			}
+			/*find items*/
+			ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+			if err != nil {
+				return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
+			}
+			//finaly copy item
+			for _, tfile := range ifiles {
+				log.Infof("Going to restore local/tainted [%s]", tfile.Name())
+				sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
+				destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
+				if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+				}
+				log.Infof("restored %s to %s", sourceFile, destinationFile)
+			}
+		}
+	}
+	return nil
+}
+
+func BackupHub(dirPath string) error {
+	var err error
+	var itemDirectory string
+	var upstreamParsers []string
+
+	for _, itemType := range cwhub.ItemTypes {
+		clog := log.WithFields(log.Fields{
+			"type": itemType,
+		})
+		if _, ok := cwhub.HubIdx[itemType]; ok {
+			itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
+			if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
+				return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
+			}
+			upstreamParsers = []string{}
+			stage := ""
+			for k, v := range cwhub.HubIdx[itemType] {
+				clog = clog.WithFields(log.Fields{
+					"file": v.Name,
+				})
+				if !v.Installed { //only backup installed ones
+					clog.Debugf("[%s] : not installed", k)
+					continue
+				}
+
+				//for the local/tainted ones, we backup the full file
+				if v.Tainted || v.Local || !v.UpToDate {
+					//we need to backup stages for parsers
+					if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
+						tmp := strings.Split(v.LocalPath, "/")
+						stage = "/" + tmp[len(tmp)-2] + "/"
+						fstagedir := fmt.Sprintf("%s%s", itemDirectory, stage)
+						if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
+							return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
+						}
+					}
+					clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
+					tfile := fmt.Sprintf("%s%s%s", itemDirectory, stage, v.FileName)
+					if err = types.CopyFile(v.LocalPath, tfile); err != nil {
+						return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
+					}
+					clog.Infof("local/tainted saved %s to %s", v.LocalPath, tfile)
+					continue
+				}
+				clog.Debugf("[%s] : from hub, just backup name (up-to-date:%t)", k, v.UpToDate)
+				clog.Infof("saving, version:%s, up-to-date:%t", v.Version, v.UpToDate)
+				upstreamParsers = append(upstreamParsers, v.Name)
+			}
+			//write the upstream items
+			upstreamParsersFname := fmt.Sprintf("%s/upstream-%s.json", itemDirectory, itemType)
+			upstreamParsersContent, err := json.MarshalIndent(upstreamParsers, "", " ")
+			if err != nil {
+				return fmt.Errorf("failed marshaling upstream parsers : %s", err)
+			}
+			err = ioutil.WriteFile(upstreamParsersFname, upstreamParsersContent, 0644)
+			if err != nil {
+				return fmt.Errorf("unable to write to %s %s : %s", itemType, upstreamParsersFname, err)
+			}
+			clog.Infof("Wrote %d entries for %s to %s", len(upstreamParsers), itemType, upstreamParsersFname)
+
+		} else {
+			clog.Infof("No %s to backup.", itemType)
+		}
+	}
+
+	return nil
 }
