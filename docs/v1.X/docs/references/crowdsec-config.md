@@ -98,7 +98,7 @@ db_config:
   port:     <db_host_port> # for mysql/pgsql
   flush:
     max_items: <max_alerts_in_db>
-	max_age: <max_age_of_alerts_in_db>
+    max_age: <max_age_of_alerts_in_db>
 api:
   client:
     insecure_skip_verify: (true|false)
