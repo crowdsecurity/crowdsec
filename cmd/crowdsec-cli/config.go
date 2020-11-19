@@ -125,6 +125,13 @@ func restoreConfigFromDirectory(dirPath string) error {
 				return fmt.Errorf("failed copy %s to %s : %s", backupLAPICreds, csConfig.API.Client.CredentialsFilePath, err)
 			}
 		}
+
+		backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
+		if _, err = os.Stat(backupProfiles); err == nil {
+			if err = types.CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
+				return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
+			}
+		}
 	}
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
@@ -138,13 +145,6 @@ func restoreConfigFromDirectory(dirPath string) error {
 	if _, err = os.Stat(backupAcquisition); err == nil {
 		if err = types.CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
-		}
-	}
-
-	backupProfiles := fmt.Sprintf("%s/profiles.yaml", dirPath)
-	if _, err = os.Stat(backupProfiles); err == nil {
-		if err = types.CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 		}
 	}
 

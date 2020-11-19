@@ -321,10 +321,10 @@ update_bins() {
 update_full() {
 
     if [[ ! -f "$CROWDSEC_BIN" ]]; then
-        log_err "Crowdwatch binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
+        log_err "Crowdsec binary '$CROWDSEC_BIN' not found. Please build it with 'make build'" && exit
     fi
     if [[ ! -f "$CSCLI_BIN" ]]; then
-        log_err "Cwcli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
+        log_err "Cscli binary '$CSCLI_BIN' not found. Please build it with 'make build'" && exit
     fi
 
     log_info "Backing up existing configuration"
