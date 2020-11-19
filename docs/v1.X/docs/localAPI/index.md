@@ -20,6 +20,7 @@ There is two kinds of authentication to the local API :
 The most common use case of the local API is to listen on localhost. In that case there's no need for
 configuring any ssl layer. In some cases, the local API will listen for other crowdsec installation that
 will report its triggered scenarios. In that case, the endpoint may be configured with ssl.
+You can see how to configure SSL on your local API [here](/Crowdsec/v1/references/crowdsec-config/#tls)
 
 
 See the [Local API public documentation]({{v1X.lapi.swagger}})

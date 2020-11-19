@@ -1,6 +1,6 @@
 # Collections
 
-Collections are bundle of parsers, scenarios, postoverflows that form a coherent ensemble.
+Collections are bundle of parsers, scenarios, postoverflows that form a coherent package.
 Collections are present in `/etc/crowdsec/collections/` and follow this format :
 
 > `/etc/crowdsec/collections/linux.yaml`

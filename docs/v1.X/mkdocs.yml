@@ -47,6 +47,7 @@ nav:
     - Dashboard: observability/dashboard.md
   - Bouncers: bouncers/index.md
   - References:
+    - Configuration format: references/crowdsec-config.md
     - Stages format: references/stages.md
     - Parsers format: references/parsers.md
     - Scenarios format: references/scenarios.md

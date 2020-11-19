@@ -87,6 +87,8 @@ This node consists actually of two sub-nodes that have different conditions (bra
 
 A real-life example can be seen when it comes to parsing HTTP logs.
 HTTP ACCESS and ERROR logs often have different formats, and thus our "nginx" parser needs to handle both formats
+<details>
+  <summary>Nginx parser</summary>
 
 ```yaml
 filter: "evt.Parsed.program == 'nginx'"
@@ -122,10 +124,11 @@ statics:
   - meta: http_path
     expression: "evt.Parsed.request"
 ```
+</details>
 
 ## Parser directives
 
-### debug
+### `debug`
 
 ```yaml
 debug: true|false
@@ -166,7 +169,7 @@ DEBU[31-07-2020 16:36:28]        evt.Parsed.program = 'nginx'           id=withe
 </details>
 
 
-### filter
+### `filter`
 
 ```yaml
 filter: expression
@@ -186,7 +189,7 @@ Examples :
  - `filter: "evt.Meta.bar == 'test' && evt.Meta.foo == 'test2'`
 
 
-### grok
+### `grok`
 
 ```yaml
 grok:
@@ -212,7 +215,7 @@ The field(s) returned by the regular expression are going to be merged into the 
 
 
 
-### name
+### `name`
 
 ```yaml
 name: explicit_string
@@ -221,7 +224,7 @@ name: explicit_string
 The *mandatory* name of the node. If not present, node will be skipped at runtime.
 It is used for example in debug log to help you track things.
 
-### nodes
+### `nodes`
 
 ```yaml
 nodes:
@@ -232,7 +235,7 @@ nodes:
 `nodes` is a list of parser nodes, allowing you to build trees.
 Each subnode must be valid, and if any of the subnodes succeed, the whole node is considered successful. 
 
-### onsuccess
+### `onsuccess`
 
 ```
 onsuccess: next_stage|continue
@@ -242,7 +245,7 @@ _default: continue_
 
 if set to `next_stage` and the node is considered successful, the {{v1X.event.name}} will be moved directly to next stage without processing other nodes in the current stage.
 
-### pattern_syntax
+### `pattern_syntax`
 
 ```yaml
 pattern_syntax:
@@ -261,7 +264,7 @@ grok:
 ```
 
 
-### statics
+### `statics`
 
 ```yaml
 statics:
@@ -276,20 +279,20 @@ statics:
 `statics` is a list of directives that will be executed when the node is considered successful.
 Each entry of the list is composed of a target (where to write) and a source (what data to write).
 
-#### Target
+#### `target`
 
 The target aims at being any part of the {{v1X.event.htmlname}} object, and can be expressed in different ways :
 
-    - `meta: <target_field>`
-    - `parsed: <target_field>`
-    - `enriched: <target_field>`
-    - a dynamic target (please note that the **current** event is accessible via the `evt.` variable) :
-         - `target: evt.Meta.foobar`
-         - `target: Meta.foobar`
-         - `target: evt.StrTime`
+- `meta: <target_field>`
+- `parsed: <target_field>`
+- `enriched: <target_field>`
+- a dynamic target (please note that the **current** event is accessible via the `evt.` variable) :
+      - `target: evt.Meta.foobar`
+      - `target: Meta.foobar`
+      - `target: evt.StrTime`
     
  
-#### Source
+#### `value`
 
  The source itself can be either a static value, or an {{v1X.expr.htmlname}} result :
 
@@ -303,13 +306,24 @@ statics:
     expression: evt.Meta.target_field + ' this_is' + ' a dynamic expression'
 ```
 
-### data
+##### `value`
+> string
 
-```
+A static value
+
+##### `expression`
+> string
+
+A valid [`expr`](https://github.com/antonmedv/expr) expression to eval. 
+The result of the evaluation will be set in the target field.
+
+### `data`
+
+```yaml
 data:
   - source_url: https://URL/TO/FILE
     dest_file: LOCAL_FILENAME
-    [type: (regexp|string)]
+    type: (regexp|string)
 ```
 
 `data` allows user to specify an external source of data.
