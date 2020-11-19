@@ -17,13 +17,10 @@ CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
-CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
-CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
 CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
-CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
@@ -275,21 +272,6 @@ genacquisition() {
     done 
 }
 
-delete_plugins(){
-    rm -rf "${CROWDSEC_PLUGIN_DIR}"
-    rm -rf "${CROWDSEC_BACKEND_FOLDER}"
-}
-
-install_plugins() {
-    install_plugins_bin
-    mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
-    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
-}
-
-install_plugins_bin() {
-    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
-}
-
 
 #install crowdsec and cscli
 install_crowdsec() {
@@ -310,20 +292,17 @@ install_crowdsec() {
     ## end tmp
 
     install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 600 -D ./config/api.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
     if [[ ${DOCKER_MODE} == "false" ]]; then
         CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
     fi
     install_bins
-    install_plugins
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
 	    systemctl daemon-reload
@@ -334,7 +313,6 @@ update_bins() {
     log_info "Only upgrading binaries"
     delete_bins
     install_bins
-    install_plugins_bin
     log_info "Upgrade finished"
     systemctl restart crowdsec
 }
@@ -370,7 +348,6 @@ install_bins() {
     log_info "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" || exit
-    install_plugins_bin || exit
 }
 
 delete_bins() {
@@ -385,7 +362,6 @@ uninstall_crowdsec() {
     systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard remove -f -y
     delete_bins
-    delete_plugins
 
     # tmp
     rm -rf /tmp/data/
