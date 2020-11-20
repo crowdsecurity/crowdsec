@@ -401,7 +401,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		limit = limitConv
 
 	}
-
+	log.Infof("Filter: %+v", filter)
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
@@ -433,6 +433,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
+				log.Infof("Pagination done, %d < %d", len(result), diff)
 				break
 			}
 			ret = append(ret, result[0:diff]...)
@@ -440,6 +441,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			ret = append(ret, result...)
 		}
 		if len(ret) == limit || len(ret) == 0 {
+			log.Infof("Pagination done len(ret) = %d", len(ret))
 			break
 		}
 		offset += paginationSize
