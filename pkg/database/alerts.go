@@ -539,7 +539,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 	}
 	if deletedByNbItem > 0 {
-		log.Infof("flushed %d alerts because max number of alerts has been reached (%s max)", deletedByNbItem, MaxItems)
+		log.Infof("flushed %d alerts because max number of alerts has been reached (%d max)", deletedByNbItem, MaxItems)
 	}
 	if deletedByAge > 0 {
 		log.Infof("flushed %d alerts because of they were created '%s' days ago or more", deletedByAge, MaxAge)
