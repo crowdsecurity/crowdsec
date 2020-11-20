@@ -383,6 +383,10 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	return alerts, nil
 }
 
+func (c *Client) TotalAlerts() (int, error) {
+	return c.Ent.Alert.Query().Count(c.CTX)
+}
+
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
 	sort := "DESC" // we sort by desc by default
 	if val, ok := filter["sort"]; ok {
@@ -518,7 +522,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		deletedByAge = len(deleted)
 	}
 	if MaxItems > 0 {
-		totalAlerts, err = c.Ent.Alert.Query().Count(c.CTX)
+		totalAlerts, err = c.TotalAlerts()
 		if err != nil {
 			log.Warningf("FlushAlerts (max items count) : %s", err)
 			return errors.Wrap(err, "unable to get alerts count")
