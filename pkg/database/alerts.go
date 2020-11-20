@@ -500,7 +500,8 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
-	var totalDeleted int
+	var deletedByAge int
+	var deletedByNbItem int
 	if MaxAge != "" {
 		filter := map[string][]string{
 			"created_before": {MaxAge},
@@ -510,7 +511,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
-		totalDeleted += len(deleted)
+		deletedByAge = len(deleted)
 	}
 	if MaxItems > 0 {
 		totalAlerts, err := c.Ent.Alert.Query().Count(c.CTX)
@@ -532,15 +533,17 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 						log.Warningf("FlushAlerts : %s", err)
 						return errors.Wrap(err, "unable to flush alert")
 					}
+					deletedByNbItem++
 				}
 			}
-			totalDeleted += nbToDelete
 		}
 	}
-	if totalDeleted > 0 {
-		log.Infof("%d alerts automatically flushed", totalDeleted)
+	if deletedByNbItem > 0 {
+		log.Infof("flushed %d alerts because max number of alerts has been reached (%s max)", deletedByNbItem, MaxItems)
 	}
-
+	if deletedByAge > 0 {
+		log.Infof("flushed %d alerts because of they were created '%s' days ago or more", deletedByAge, MaxAge)
+	}
 	return nil
 }
 
