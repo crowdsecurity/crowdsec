@@ -523,11 +523,13 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 		if totalAlerts > MaxItems {
 			nbToDelete := totalAlerts - MaxItems
+			log.Infof("Number of alerts to delete: %d (%d - %d)", nbToDelete, totalAlerts, MaxItems)
 			alerts, err := c.QueryAlertWithFilter(map[string][]string{"sort": {"ASC"}}) // we want to delete older alerts if we reach the max number of items
 			if err != nil {
 				log.Warningf("FlushAlerts (max items query) : %s", err)
 				return errors.Wrap(err, "unable to get all alerts")
 			}
+			log.Infof("Alerts query returned %d alerts", len(alerts))
 			for itemNb, alert := range alerts {
 				if itemNb < nbToDelete {
 					err := c.DeleteAlertGraph(alert)
