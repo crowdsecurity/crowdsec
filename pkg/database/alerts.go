@@ -328,7 +328,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
-			alerts = alerts.Where(alert.CreatedAtGTE(since))
+			alerts = alerts.Where(alert.CreatedAtLTE(since))
 		case "until":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
@@ -405,7 +405,6 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		limit = limitConv
 
 	}
-	log.Infof("Filter: %+v", filter)
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
