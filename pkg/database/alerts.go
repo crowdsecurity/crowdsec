@@ -524,7 +524,10 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		if totalAlerts > MaxItems {
 			nbToDelete := totalAlerts - MaxItems
 			log.Infof("Number of alerts to delete: %d (%d - %d)", nbToDelete, totalAlerts, MaxItems)
-			alerts, err := c.QueryAlertWithFilter(map[string][]string{"sort": {"ASC"}}) // we want to delete older alerts if we reach the max number of items
+			alerts, err := c.QueryAlertWithFilter(map[string][]string{
+				"sort":  {"ASC"},
+				"limit": {strconv.Itoa(nbToDelete)},
+			}) // we want to delete older alerts if we reach the max number of items
 			if err != nil {
 				log.Warningf("FlushAlerts (max items query) : %s", err)
 				return errors.Wrap(err, "unable to get all alerts")
@@ -546,7 +549,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		log.Infof("flushed %d/%d alerts because max number of alerts has been reached (%d max)", deletedByNbItem, totalAlerts, MaxItems)
 	}
 	if deletedByAge > 0 {
-		log.Infof("flushed %d/%d alerts because of they were created '%s' days ago or more", deletedByAge, totalAlerts, MaxAge)
+		log.Infof("flushed %d/%d alerts because of they were created %s ago or more", deletedByAge, totalAlerts, MaxAge)
 	}
 	return nil
 }
