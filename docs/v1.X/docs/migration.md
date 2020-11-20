@@ -57,7 +57,7 @@ INFO[0000] Trying to authenticate with username 941c3fxxxxxxxxxxxxxxxxxxxxxxx on
 INFO[0000] You can successfully interact with Central API (CAPI)
 
 ubuntu@ip-:~$ sudo systemctl start crowdsec.service
-sudo systemctl status crowdsec.service
+ubuntu@ip-:~$ sudo systemctl status crowdsec.service
 ```
 
 You can even check logs (located by default here: `/var/log/crowdsec.log` & `/var/log/crowdsec_api.log`).

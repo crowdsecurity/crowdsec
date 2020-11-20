@@ -43,7 +43,7 @@ sudo cp -R /tmp/crowdsec_backup/patterns /etc/crowdsec/
 
 #### Start & health check
 
-Finally, you will be able to start {{v0X.crowdsec.name}} service. Before that, just check if {{v0X.lapi.name}} and {{v0X.api.name}} are correctly configured.
+Finally, you will be able to start {{v0X.crowdsec.name}} service. Before that, just check if {{v1X.lapi.name}} and {{v0X.api.name}} are correctly configured.
 
 ```
 ubuntu@ip-:~$ sudo cscli lapi status 
@@ -57,7 +57,7 @@ INFO[0000] Trying to authenticate with username 941c3fxxxxxxxxxxxxxxxxxxxxxxx on
 INFO[0000] You can successfully interact with Central API (CAPI)
 
 ubuntu@ip-:~$ sudo systemctl start crowdsec.service
-sudo systemctl status crowdsec.service
+ubuntu@ip-:~$ sudo systemctl status crowdsec.service
 ```
 
 You can even check logs (located by default here: `/var/log/crowdsec.log` & `/var/log/crowdsec_api.log`).
