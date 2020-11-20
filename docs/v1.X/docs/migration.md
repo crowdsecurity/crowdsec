@@ -1,6 +1,6 @@
 # Migration from v0.X to v1.X
 
-To upgrade {{v0X.crowdsec.name}} from v0.X to v1, we'll follow those steps
+To upgrade {{v1X.crowdsec.name}} from v0.X to v1, we'll follow those steps
 
 #### Backup up configuration
 
@@ -11,7 +11,7 @@ sudo cp -R  /etc/crowdsec/config/patterns /tmp/crowdsec_backup
 
 #### Uninstall old version & install new 
 
-Download latest V1 {{v0X.crowdsec.name}} version [here]({{v0X.crowdsec.download_url}})
+Download latest V1 {{v1X.crowdsec.name}} version [here]({{v1X.crowdsec.download_url}})
 
 ```
 tar xvzf crowdsec-release.tgz
@@ -21,7 +21,7 @@ sudo ./wizard.sh --bininstall
 ```
 
 !!! warning
-        Don't forget to remove {{v0X.metabase.name}} dashboard if you installed it manually (without {{v0X.cli.name}}).
+        Don't forget to remove {{v1X.metabase.name}} dashboard if you installed it manually (without {{v1X.cli.name}}).
 
 #### Restore configuration
 
@@ -43,7 +43,7 @@ sudo cp -R /tmp/crowdsec_backup/patterns /etc/crowdsec/
 
 #### Start & health check
 
-Finally, you will be able to start {{v0X.crowdsec.name}} service. Before that, just check if {{v0X.lapi.name}} and {{v0X.api.name}} are correctly configured.
+Finally, you will be able to start {{v1X.crowdsec.name}} service. Before that, just check if {{v1X.lapi.name}} and {{v1X.api.name}} are correctly configured.
 
 ```
 ubuntu@ip-:~$ sudo cscli lapi status 
@@ -62,12 +62,12 @@ sudo systemctl status crowdsec.service
 
 You can even check logs (located by default here: `/var/log/crowdsec.log` & `/var/log/crowdsec_api.log`).
 
-You can now navigate documentation to learn new {{v0X.cli.name}} commands to interact with crowdsec.
+You can now navigate documentation to learn new {{v1X.cli.name}} commands to interact with crowdsec.
 
-#### Upgrade {{v0X.bouncers.name}}
+#### Upgrade {{v1X.bouncers.name}}
 
-If you were using **{{v0X.bouncers.name}}** (formerly called **blocker(s)**), you need to replace them by the new compatibles {{v0X.bouncers.name}}, available on the [hub](https://hub.crowdsec.net/browse/#bouncers) (selecting `agent version` to `v1`).
+If you were using **{{v1X.bouncers.name}}** (formerly called **blocker(s)**), you need to replace them by the new compatibles {{v1X.bouncers.name}}, available on the [hub](https://hub.crowdsec.net/browse/#bouncers) (selecting `agent version` to `v1`).
 
-Following your bouncer type (netfilter, nginx, wordpress etc...), you need to replace them by the new available {{v0X.bouncers.name}} on the hub, please follow the {{v0X.bouncers.name}} documentation that will help you to install easily.
+Following your bouncer type (netfilter, nginx, wordpress etc...), you need to replace them by the new available {{v1X.bouncers.name}} on the hub, please follow the {{v1X.bouncers.name}} documentation that will help you to install easily.
 
-We're also available to help (on [discourse](https://discourse.crowdsec.net/) or [gitter](https://gitter.im/crowdsec-project/community)) upgrading your {{v0X.bouncers.name}}.
+We're also available to help (on [discourse](https://discourse.crowdsec.net/) or [gitter](https://gitter.im/crowdsec-project/community)) upgrading your {{v1X.bouncers.name}}.
