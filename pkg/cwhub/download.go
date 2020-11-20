@@ -33,7 +33,7 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 			return errors.Wrap(err, "failed to read index")
 		}
 	}
-	HubIdx = ret
+	hubIdx = ret
 	if err := LocalSync(cscli); err != nil {
 		return errors.Wrap(err, "failed to sync")
 	}
@@ -83,17 +83,17 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-						HubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
+						hubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
 						if err != nil {
 							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 						}
 					}
-					HubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
+					hubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
@@ -203,6 +203,6 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 			return target, errors.Wrap(err, "while getting data")
 		}
 	}
-	HubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }

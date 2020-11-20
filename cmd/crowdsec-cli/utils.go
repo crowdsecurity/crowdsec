@@ -583,14 +583,15 @@ func BackupHub(dirPath string) error {
 		clog := log.WithFields(log.Fields{
 			"type": itemType,
 		})
-		if _, ok := cwhub.HubIdx[itemType]; ok {
+		itemMap := cwhub.GetItemMap(itemType)
+		if itemMap != nil {
 			itemDirectory = fmt.Sprintf("%s/%s/", dirPath, itemType)
 			if err := os.MkdirAll(itemDirectory, os.ModePerm); err != nil {
 				return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
 			}
 			upstreamParsers = []string{}
 			stage := ""
-			for k, v := range cwhub.HubIdx[itemType] {
+			for k, v := range itemMap {
 				clog = clog.WithFields(log.Fields{
 					"file": v.Name,
 				})

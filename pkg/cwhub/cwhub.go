@@ -23,7 +23,7 @@ var SCENARIOS = "scenarios"
 var COLLECTIONS = "collections"
 var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
-var HubIdx map[string]map[string]Item
+var hubIdx map[string]map[string]Item
 
 var RawFileURLTemplate = "https://raw.githubusercontent.com/crowdsecurity/hub/%s/%s"
 var HubBranch = "master"
@@ -100,13 +100,13 @@ func GetItemMap(itemType string) map[string]Item {
 	var m map[string]Item
 	var ok bool
 
-	if m, ok = HubIdx[itemType]; !ok {
+	if m, ok = hubIdx[itemType]; !ok {
 		return nil
 	}
 	return m
 }
 
-//GetItemByPath retrieves the item from HubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
+//GetItemByPath retrieves the item from hubIdx based on the path. To achieve this it will resolve symlink to find associated hub item.
 func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	/*try to resolve symlink*/
 	finalName := ""
@@ -163,13 +163,13 @@ func AddItem(itemType string, item Item) error {
 	if !in {
 		return fmt.Errorf("ItemType %s is unknown", itemType)
 	}
-	HubIdx[itemType][item.Name] = item
+	hubIdx[itemType][item.Name] = item
 	return nil
 }
 
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(HubIdx[COLLECTIONS]),
-		len(HubIdx[PARSERS]), len(HubIdx[SCENARIOS]), len(HubIdx[PARSERS_OVFLW]))
+	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items : %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -222,10 +222,10 @@ func GetUpstreamInstalledScenariosAsString() ([]string, error) {
 func GetUpstreamInstalledScenarios() ([]Item, error) {
 	var retItems []Item
 
-	if _, ok := HubIdx[SCENARIOS]; !ok {
-		return nil, fmt.Errorf("no scenarios in HubIdx")
+	if _, ok := hubIdx[SCENARIOS]; !ok {
+		return nil, fmt.Errorf("no scenarios in hubIdx")
 	}
-	for _, item := range HubIdx[SCENARIOS] {
+	for _, item := range hubIdx[SCENARIOS] {
 		if item.Installed && !item.Tainted {
 			retItems = append(retItems, item)
 		}
@@ -235,7 +235,7 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
 func HubStatus(itemType string, name string, listAll bool) []map[string]string {
-	if _, ok := HubIdx[itemType]; !ok {
+	if _, ok := hubIdx[itemType]; !ok {
 		log.Errorf("type %s doesn't exist", itemType)
 
 		return nil
@@ -243,7 +243,7 @@ func HubStatus(itemType string, name string, listAll bool) []map[string]string {
 
 	var ret []map[string]string
 	/*remember, you do it for the user :)*/
-	for _, item := range HubIdx[itemType] {
+	for _, item := range hubIdx[itemType] {
 		if name != "" && name != item.Name {
 			//user has required a specific name
 			continue

@@ -29,8 +29,8 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
-					HubIdx[ptrtype][p], err = DisableItem(cscli, val, purge)
+				if val, ok := hubIdx[ptrtype][p]; ok {
+					hubIdx[ptrtype][p], err = DisableItem(cscli, val, purge)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
 					}
@@ -83,7 +83,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 		target.Downloaded = false
 		log.Infof("Removed source file [%s] : %s", target.Name, hubpath)
 	}
-	HubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }
 
@@ -119,8 +119,8 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
-					HubIdx[ptrtype][p], err = EnableItem(cscli, val)
+				if val, ok := hubIdx[ptrtype][p]; ok {
+					hubIdx[ptrtype][p], err = EnableItem(cscli, val)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
 					}
@@ -151,6 +151,6 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 		return target, nil
 	}
 	target.Installed = true
-	HubIdx[target.Type][target.Name] = target
+	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }
