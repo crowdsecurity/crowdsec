@@ -307,6 +307,7 @@ func (a *apic) Pull() error {
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+			return nil
 		}
 	}
 }
@@ -358,6 +359,7 @@ func (a *apic) SendMetrics() error {
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+			return nil
 		}
 	}
 }
