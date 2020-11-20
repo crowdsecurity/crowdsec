@@ -246,9 +246,9 @@ func NewConfigCmd() *cobra.Command {
 		Short: "Backup current config",
 		Long: `Backup the current crowdsec configuration including :
 
-- main config (config.yaml)
-- simulation config (simulation.yaml)
-- profiles config (profiles.yaml)
+- Main config (config.yaml)
+- Simulation config (simulation.yaml)
+- Profiles config (profiles.yaml)
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
@@ -271,9 +271,9 @@ func NewConfigCmd() *cobra.Command {
 		Short: "Restore config in backup <directory>",
 		Long: `Restore the crowdsec configuration from specified backup <directory> including:
 
-- main config (config.yaml)
-- simulation config (simulation.yaml)
-- profiles config (profiles.yaml)
+- Main config (config.yaml)
+- Simulation config (simulation.yaml)
+- Profiles config (profiles.yaml)
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
@@ -288,7 +288,7 @@ func NewConfigCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdConfigRestore.PersistentFlags().BoolVar(&restoreOldBackup, "old-backup", false, "Restore backup from v0.X")
+	cmdConfigRestore.PersistentFlags().BoolVar(&restoreOldBackup, "old-backup", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
 	cmdConfig.AddCommand(cmdConfigRestore)
 
 	return cmdConfig
