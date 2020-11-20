@@ -187,6 +187,7 @@ func (s *APIServer) Run() error {
 			}
 		}()
 		<-s.httpServerTomb.Dying()
+		log.Infof("run: shutting down api server")
 		if err := s.Shutdown(); err != nil {
 			log.Errorf("while shutting down API Server : %s", err)
 			return err
