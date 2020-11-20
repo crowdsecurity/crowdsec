@@ -433,7 +433,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
-				log.Infof("Pagination done, %d < %d", len(result), diff)
+				log.Debugf("Pagination done, %d < %d", len(result), diff)
 				break
 			}
 			ret = append(ret, result[0:diff]...)
@@ -441,7 +441,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			ret = append(ret, result...)
 		}
 		if len(ret) == limit || len(ret) == 0 {
-			log.Infof("Pagination done len(ret) = %d", len(ret))
+			log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}
 		offset += paginationSize
@@ -525,7 +525,6 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 		if totalAlerts > MaxItems {
 			nbToDelete := totalAlerts - MaxItems
-			log.Infof("Number of alerts to delete: %d (%d - %d)", nbToDelete, totalAlerts, MaxItems)
 			alerts, err := c.QueryAlertWithFilter(map[string][]string{
 				"sort":  {"ASC"},
 				"limit": {strconv.Itoa(nbToDelete)},
@@ -534,7 +533,6 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 				log.Warningf("FlushAlerts (max items query) : %s", err)
 				return errors.Wrap(err, "unable to get all alerts")
 			}
-			log.Infof("Alerts query returned %d alerts", len(alerts))
 			for itemNb, alert := range alerts {
 				if itemNb < nbToDelete {
 					err := c.DeleteAlertGraph(alert)
