@@ -590,7 +590,6 @@ func BackupHub(dirPath string) error {
 				return fmt.Errorf("error while creating %s : %s", itemDirectory, err)
 			}
 			upstreamParsers = []string{}
-			stage := ""
 			for k, v := range itemMap {
 				clog = clog.WithFields(log.Fields{
 					"file": v.Name,
@@ -604,15 +603,13 @@ func BackupHub(dirPath string) error {
 				if v.Tainted || v.Local || !v.UpToDate {
 					//we need to backup stages for parsers
 					if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
-						tmp := strings.Split(v.LocalPath, "/")
-						stage = "/" + tmp[len(tmp)-2] + "/"
-						fstagedir := fmt.Sprintf("%s%s", itemDirectory, stage)
+						fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)
 						if err := os.MkdirAll(fstagedir, os.ModePerm); err != nil {
 							return fmt.Errorf("error while creating stage dir %s : %s", fstagedir, err)
 						}
 					}
 					clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
-					tfile := fmt.Sprintf("%s%s%s", itemDirectory, stage, v.FileName)
+					tfile := fmt.Sprintf("%s%s%s", itemDirectory, v.Stage, v.FileName)
 					if err = types.CopyFile(v.LocalPath, tfile); err != nil {
 						return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
 					}
