@@ -40,7 +40,8 @@ var (
 	/*global crowdsec config*/
 	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
-	acquisitionCTX *acquisition.FileAcquisCtx
+	//acquisitionCTX *acquisition.FileAcquisCtx
+	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
 	holders         []leaky.BucketFactory
 	buckets         *leaky.Buckets
@@ -149,26 +150,22 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 
 func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	var err error
-	var tmpctx []acquisition.FileCtx
+	//var tmpctx []acquisition.FileCtx
 
 	if flags.SingleFilePath != "" {
-		log.Debugf("Building acquisition for %s (%s)", flags.SingleFilePath, flags.SingleFileType)
-		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(flags.SingleFilePath, flags.SingleFileType)
-		if err != nil {
-			return fmt.Errorf("Failed to load acquisition : %s", err)
-		}
+		log.Fatalf("to be implemented")
+		// log.Debugf("Building acquisition for %s (%s)", flags.SingleFilePath, flags.SingleFileType)
+		// tmpctx, err = acquisition.LoadAcquisCtxSingleFile(flags.SingleFilePath, flags.SingleFileType)
+		// if err != nil {
+		// 	return fmt.Errorf("Failed to load acquisition : %s", err)
+		// }
 	} else {
-		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
-		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig.Crowdsec)
+		dataSources, err = acquisition.LoadAcquisitionConfig(cConfig.Crowdsec)
 		if err != nil {
-			return fmt.Errorf("Failed to load acquisition : %s", err)
+			log.Fatalf("While loading acquisition configuration : %s", err)
 		}
 	}
 
-	acquisitionCTX, err = acquisition.InitReaderFromFileCtx(tmpctx)
-	if err != nil {
-		return fmt.Errorf("Failed to start acquisition : %s", err)
-	}
 	return nil
 }
 

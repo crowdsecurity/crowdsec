@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -28,7 +27,7 @@ import (
 */
 
 type JournaldSource struct {
-	Config  *DataSourceCfg
+	Config  DataSourceCfg
 	Cmd     *exec.Cmd
 	Stdout  io.ReadCloser
 	Stderr  io.ReadCloser
@@ -37,6 +36,7 @@ type JournaldSource struct {
 }
 
 func (j *JournaldSource) Configure(config DataSourceCfg) error {
+	j.Config = config
 	if config.JournalctlFilters == nil {
 		return fmt.Errorf("journalctl_filter shouldn't be empty")
 	}
@@ -47,7 +47,12 @@ func (j *JournaldSource) Configure(config DataSourceCfg) error {
 	j.Stderr, _ = j.Cmd.StderrPipe()
 	j.Stdout, _ = j.Cmd.StdoutPipe()
 	j.SrcName = fmt.Sprintf("journalctl-%s", strings.Join(config.JournalctlFilters, "."))
+	log.Infof("Configured with source : %+v", journalArgs)
 	return nil
+}
+
+func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
+	return fmt.Errorf("JournaldSource doesn't support cat")
 }
 
 func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
@@ -58,9 +63,18 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 	clog := log.WithFields(log.Fields{
 		"acquisition file": j.SrcName,
 	})
-	clog.Debugf("starting")
-	scanner := bufio.NewScanner(os.Stdin)
+	clog.Infof("starting journalctlxxxx")
+	if err := j.Cmd.Start(); err != nil {
+		clog.Errorf("failed to start journalctl: %s", err)
+		return errors.Wrapf(err, "starting journalctl (%s)", j.SrcName)
+	}
+	scanner := bufio.NewScanner(j.Stdout)
+	if scanner == nil {
+		clog.Errorf("failed to create scanner :<")
+		return fmt.Errorf("failed to create scanner")
+	}
 	for scanner.Scan() {
+		clog.Errorf("SCANNING LINNNNNE")
 		l := types.Line{}
 
 		ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
@@ -70,7 +84,9 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 		l.Time = time.Now()
 		l.Src = j.SrcName
 		l.Process = true
-		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+		evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+		log.Printf("event -> %+v", evt)
+		out <- evt
 		if err := scanner.Err(); err != nil {
 			return errors.Wrapf(err, "reading %s", j.SrcName)
 		}

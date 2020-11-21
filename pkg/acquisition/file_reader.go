@@ -23,51 +23,66 @@ import (
 )
 
 type FileSource struct {
-	Config *DataSourceCfg
+	Config DataSourceCfg
 	tails  []*tail.Tail
 	Files  []string
 }
 
 func (f *FileSource) Configure(Config DataSourceCfg) error {
-	/* TBD : higher level configuration or such is going to split filenames into individual file and objects*/
-	if Config.Filename == "" {
+	f.Config = Config
+	if len(Config.Filename) == 0 && len(Config.Filenames) == 0 {
 		return fmt.Errorf("no filename or filenames")
 	}
 
-	files, err := filepath.Glob(Config.Filename)
-	if err != nil {
-		return errors.Wrapf(err, "while globbing %s", Config.Filename)
-	}
-	if len(files) == 0 {
-		log.Warningf("no results for %s", Config.Filename)
-		return nil
+	//let's deal with the array no matter what
+	if len(Config.Filename) != 0 {
+		Config.Filenames = append(Config.Filenames, Config.Filename)
 	}
 
-	for _, file := range files {
-		/*check that we can read said file*/
-		if err := unix.Access(file, unix.R_OK); err != nil {
-			log.Errorf("unable to open %s : %v", file, err)
-			continue
-		}
-		log.Infof("Opening file '%s' (pattern:%s)", file, Config.Filename)
-
-		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
+	for _, fexpr := range Config.Filenames {
+		files, err := filepath.Glob(fexpr)
 		if err != nil {
-			log.Errorf("skipping %s : %v", file, err)
+			return errors.Wrapf(err, "while globbing %s", fexpr)
+		}
+		if len(files) == 0 {
+			log.Warningf("no results for %s", fexpr)
 			continue
 		}
-		f.Files = append(f.Files, file)
-		f.tails = append(f.tails, tail)
+
+		for _, file := range files {
+			/*check that we can read said file*/
+			if err := unix.Access(file, unix.R_OK); err != nil {
+				log.Errorf("unable to open %s : %v", file, err)
+				continue
+			}
+			log.Infof("Opening file '%s' (pattern:%s)", file, Config.Filename)
+
+			tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
+			if err != nil {
+				log.Errorf("skipping %s : %v", file, err)
+				continue
+			}
+			f.Files = append(f.Files, file)
+			f.tails = append(f.tails, tail)
+		}
 	}
+
+	log.Infof("appended : %d", len(f.Files))
 	return nil
 }
 
 /*A tail-mode file reader (tail) */
 func (f *FileSource) StartTail(output chan types.Event, AcquisTomb *tomb.Tomb) error {
+	/*tbd instead use the tomb to lance subroutines*/
+	log.Infof("starting file tail with %d items", len(f.tails))
 	for i := 0; i < len(f.tails); i++ {
-		go f.TailOneFile(output, AcquisTomb, i)
+		idx := i
+		log.Infof("starting %d", idx)
+		AcquisTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/acquis/file")
+			return f.TailOneFile(output, AcquisTomb, idx)
+		})
 	}
-	AcquisTomb.Wait()
 	return nil
 }
 
@@ -80,6 +95,7 @@ func (f *FileSource) StartCat(output chan types.Event, AcquisTomb *tomb.Tomb) er
 /*A tail-mode file reader (tail) */
 func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb, idx int) error {
 
+	log.Infof("index = %d", idx)
 	file := f.Files[idx]
 	tail := f.tails[idx]
 
@@ -89,7 +105,7 @@ func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb,
 	clog.Debugf("starting")
 
 	timeout := time.Tick(1 * time.Second)
-LOOP:
+
 	for {
 		l := types.Line{}
 		select {
@@ -98,7 +114,7 @@ LOOP:
 			if err := tail.Stop(); err != nil {
 				clog.Errorf("error in stop : %s", err)
 			}
-			break LOOP
+			return nil
 		case <-tail.Tomb.Dying(): //our tailer is dying
 			clog.Warningf("Reader is dying/dead")
 			return fmt.Errorf("reader for %s is dead", file)
@@ -122,10 +138,11 @@ LOOP:
 			l.Src = file
 			l.Process = true
 			//we're tailing, it must be real time logs
+			log.Infof("pushing %+v", l)
 			output <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 		case <-timeout:
 			//time out, shall we do stuff ?
-			clog.Tracef("timeout")
+			clog.Debugf("timeout")
 		}
 	}
 	return nil
@@ -175,5 +192,6 @@ func (f *FileSource) CatOneFile(output chan types.Event, AcquisTomb *tomb.Tomb, 
 		output <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
 	}
 	clog.Warningf("read %d lines", count)
+	AcquisTomb.Kill(nil)
 	return nil
 }

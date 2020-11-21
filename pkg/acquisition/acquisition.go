@@ -45,8 +45,11 @@ var ReaderHits = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
+var TAIL_MODE = "tail"
+var CAT_MODE = "cat"
+
 type DataSourceCfg struct {
-	Type              string            `yaml:"type,omitempty"` //file|bin|...
+	//Type              string            `yaml:"type,omitempty"` //file|bin|...
 	Mode              string            `yaml:"mode,omitempty"` //tail|cat|...
 	Filename          string            `yaml:"filename,omitempty"`
 	Filenames         []string          `yaml:"filenames,omitempty"`
@@ -57,13 +60,16 @@ type DataSourceCfg struct {
 
 type DataSource interface {
 	Configure(DataSourceCfg) error
-	Exists() (bool, error)
+	//Exists() (bool, error)
 	/*add a type parameter ?*/
 	StartTail(chan types.Event, *tomb.Tomb) error
 	StartCat(chan types.Event, *tomb.Tomb) error
+	//Label() string
 }
 
-func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]*DataSource, error) {
+func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
+
+	var sources []DataSource
 
 	yamlFile, err := os.Open(config.AcquisitionFilePath)
 	if err != nil {
@@ -82,9 +88,48 @@ func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]*DataSource, 
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
 		}
-		/*guess the type of acquisition from the fields*/
-
+		if t.Mode == "" { /*default mode is tail*/
+			t.Mode = TAIL_MODE
+		}
+		/*it's file acquisition*/
+		if len(t.Filename) > 0 || len(t.Filenames) > 0 {
+			fileSrc := new(FileSource)
+			if err := fileSrc.Configure(t); err != nil {
+				log.Errorf("Bad acquisition configuration : %s", err)
+				continue
+			}
+			sources = append(sources, fileSrc)
+		} else if len(t.JournalctlFilters) > 0 {
+			journaldSrc := new(JournaldSource)
+			if err := journaldSrc.Configure(t); err != nil {
+				log.Errorf("Bad acquisition configuration : %s", err)
+				continue
+			}
+			sources = append(sources, journaldSrc)
+		}
 	}
-	return nil, nil
+	return sources, nil
+}
 
+func StartAcquisition(sources []DataSource, output chan types.Event) error {
+	var AcquisTomb tomb.Tomb
+
+	log.Printf("startiiiiing")
+	for i := 0; i < len(sources); i++ {
+		subsrc := sources[i]
+		log.Printf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
+		AcquisTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/acquis")
+			if err := subsrc.StartTail(output, &AcquisTomb); err != nil {
+				log.Errorf("in tail acquisition : %s", err)
+				return err
+			}
+			return nil
+		})
+	}
+	// for sidx, source := range sources {
+
+	// }
+	err := AcquisTomb.Wait()
+	return err
 }
