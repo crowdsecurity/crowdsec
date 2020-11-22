@@ -144,7 +144,6 @@ func StartAcquisition(sources []DataSource, output chan types.Event, t *tomb.Tom
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")
 			if err := subsrc.StartReading(output, AcquisTomb); err != nil {
-				log.Errorf("in acquisition : %s", err)
 				return err
 			}
 			return nil

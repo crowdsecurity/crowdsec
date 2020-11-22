@@ -67,6 +67,74 @@ func (j *JournaldSource) Mode() string {
 	return j.Config.Mode
 }
 
+func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
+
+	/*
+		todo : handle the channel
+	*/
+	clog := log.WithFields(log.Fields{
+		"acquisition file": j.SrcName,
+	})
+	if err := j.Cmd.Start(); err != nil {
+		clog.Errorf("failed to start journalctl: %s", err)
+		return errors.Wrapf(err, "starting journalctl (%s)", j.SrcName)
+	}
+
+	readErr := make(chan error)
+
+	/*read stderr*/
+	go func() {
+		scanner := bufio.NewScanner(j.Stderr)
+		if scanner == nil {
+			readErr <- fmt.Errorf("failed to create stderr scanner")
+			return
+		}
+		for scanner.Scan() {
+			readErr <- fmt.Errorf(scanner.Text())
+		}
+	}()
+	/*read stdout*/
+	go func() {
+		scanner := bufio.NewScanner(j.Stdout)
+		if scanner == nil {
+			readErr <- fmt.Errorf("failed to create stdout scanner")
+			return
+		}
+		for scanner.Scan() {
+			l := types.Line{}
+			ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
+			l.Raw = scanner.Text()
+			l.Labels = j.Config.Labels
+			l.Time = time.Now()
+			l.Src = j.SrcName
+			l.Process = true
+			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			log.Infof("event -> %+v", evt)
+			out <- evt
+		}
+		if err := scanner.Err(); err != nil {
+			log.Warningf("reading %s : %s", j.SrcName, err)
+			readErr <- err
+			return
+		}
+		readErr <- nil
+	}()
+
+	for {
+		select {
+		case <-t.Dying():
+			log.Infof("journalctl datasource %s stopping", j.SrcName)
+			return nil
+		case err := <-readErr:
+			if err != nil {
+				log.Warningf("journalctl reader error : %s", err)
+				t.Kill(err)
+			}
+			return err
+		}
+	}
+}
+
 func (j *JournaldSource) StartReading(out chan types.Event, t *tomb.Tomb) error {
 
 	if j.Config.Mode == CAT_MODE {
@@ -87,37 +155,7 @@ func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
 		"acquisition file": j.SrcName,
 	})
 	clog.Infof("starting (cat) journalctlxxxx")
-	if err := j.Cmd.Start(); err != nil {
-		clog.Errorf("failed to start journalctl: %s", err)
-		return errors.Wrapf(err, "starting journalctl (%s)", j.SrcName)
-	}
-	scanner := bufio.NewScanner(j.Stdout)
-	if scanner == nil {
-		return fmt.Errorf("failed to create scanner")
-	}
-	for scanner.Scan() {
-		l := types.Line{}
-
-		ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
-
-		l.Raw = scanner.Text()
-		l.Labels = j.Config.Labels
-		l.Time = time.Now()
-		l.Src = j.SrcName
-		l.Process = true
-		evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-		log.Debugf("event -> %+v", evt)
-		out <- evt
-		if err := scanner.Err(); err != nil {
-			return errors.Wrapf(err, "reading %s", j.SrcName)
-		}
-	}
-	log.Errorf("Journald scanner %s returns", j.SrcName)
-	if err := scanner.Err(); err != nil {
-		return errors.Wrapf(err, "reading %s", j.SrcName)
-	}
-	t.Kill(nil)
-	return nil
+	return j.readOutput(out, t)
 }
 
 func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
@@ -128,46 +166,8 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 	clog := log.WithFields(log.Fields{
 		"acquisition file": j.SrcName,
 	})
-	if err := j.Cmd.Start(); err != nil {
-		clog.Errorf("failed to start journalctl: %s", err)
-		return errors.Wrapf(err, "starting journalctl (%s)", j.SrcName)
-	}
-	scanner := bufio.NewScanner(j.Stdout)
-	if scanner == nil {
-		return fmt.Errorf("failed to create scanner")
-	}
-
-	readErr := make(chan error)
-	go func() {
-		for scanner.Scan() {
-			l := types.Line{}
-			ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
-			l.Raw = scanner.Text()
-			l.Labels = j.Config.Labels
-			l.Time = time.Now()
-			l.Src = j.SrcName
-			l.Process = true
-			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-			log.Debugf("event -> %+v", evt)
-			out <- evt
-		}
-		if err := scanner.Err(); err != nil {
-			log.Warningf("reading %s : %s", j.SrcName, err)
-			readErr <- err
-		}
-	}()
-
-	for {
-		select {
-		case <-t.Dying():
-			log.Infof("journalctl datasource %s stopping", j.SrcName)
-			return nil
-		case err := <-readErr:
-			log.Infof("journalctl reader error : %s", err)
-			t.Kill(err)
-			return err
-		}
-	}
+	clog.Infof("starting (cat) journalctlxxxx")
+	return j.readOutput(out, t)
 }
 
 func (j *JournaldSource) Exists() (bool, error) {
