@@ -109,11 +109,10 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 			l.Src = j.SrcName
 			l.Process = true
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-			log.Infof("event -> %+v", evt)
 			out <- evt
 		}
 		if err := scanner.Err(); err != nil {
-			log.Warningf("reading %s : %s", j.SrcName, err)
+			clog.Warningf("reading %s : %s", j.SrcName, err)
 			readErr <- err
 			return
 		}
@@ -123,11 +122,11 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 	for {
 		select {
 		case <-t.Dying():
-			log.Infof("journalctl datasource %s stopping", j.SrcName)
+			clog.Infof("journalctl datasource %s stopping", j.SrcName)
 			return nil
 		case err := <-readErr:
 			if err != nil {
-				log.Warningf("journalctl reader error : %s", err)
+				clog.Warningf("journalctl reader error : %s", err)
 				t.Kill(err)
 			}
 			return err
@@ -147,26 +146,10 @@ func (j *JournaldSource) StartReading(out chan types.Event, t *tomb.Tomb) error 
 }
 
 func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
-
-	/*
-		todo : handle the channel
-	*/
-	clog := log.WithFields(log.Fields{
-		"acquisition file": j.SrcName,
-	})
-	clog.Infof("starting (cat) journalctlxxxx")
 	return j.readOutput(out, t)
 }
 
 func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
-
-	/*
-		todo : handle the channel
-	*/
-	clog := log.WithFields(log.Fields{
-		"acquisition file": j.SrcName,
-	})
-	clog.Infof("starting (cat) journalctlxxxx")
 	return j.readOutput(out, t)
 }
 
