@@ -52,8 +52,7 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 		for _, file := range files {
 			/*check that we can read said file*/
 			if err := unix.Access(file, unix.R_OK); err != nil {
-				log.Errorf("unable to open %s : %v", file, err)
-				continue
+				return fmt.Errorf("unable to open %s : %s", file, err)
 			}
 			log.Infof("Opening file '%s' (pattern:%s)", file, Config.Filename)
 
@@ -66,8 +65,10 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 			f.tails = append(f.tails, tail)
 		}
 	}
+	if len(f.tails) == 0 {
+		return fmt.Errorf("no files to read for %+v", Config.Filenames)
+	}
 
-	log.Infof("appended : %d", len(f.Files))
 	return nil
 }
 
@@ -102,7 +103,6 @@ func (f *FileSource) StartTail(output chan types.Event, AcquisTomb *tomb.Tomb) e
 
 /*A one shot file reader (cat) */
 func (f *FileSource) StartCat(output chan types.Event, AcquisTomb *tomb.Tomb) error {
-	log.Debugf("starting file cat with %d items", len(f.tails))
 	for i := 0; i < len(f.tails); i++ {
 		idx := i
 		log.Debugf("starting %d", idx)
@@ -167,7 +167,6 @@ func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb,
 			clog.Debugf("timeout")
 		}
 	}
-	return nil
 }
 
 /*A one shot file reader (cat) */
