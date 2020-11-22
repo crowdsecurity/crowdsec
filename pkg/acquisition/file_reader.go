@@ -56,16 +56,27 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 			}
 			log.Infof("Opening file '%s' (pattern:%s)", file, Config.Filename)
 
-			tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
-			if err != nil {
-				log.Errorf("skipping %s : %v", file, err)
-				continue
+			if f.Config.Mode == TAIL_MODE {
+				tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
+				if err != nil {
+					log.Errorf("skipping %s : %v", file, err)
+					continue
+				}
+				f.Files = append(f.Files, file)
+				f.tails = append(f.tails, tail)
+			} else if f.Config.Mode == CAT_MODE {
+				//simply check that the file exists, it will be read differently
+				if _, err := os.Stat(file); err != nil {
+					return fmt.Errorf("can't open file %s : %s", file, err)
+				}
+				f.Files = append(f.Files, file)
+			} else {
+				return fmt.Errorf("unknown mode %s for file acquisition", f.Config.Mode)
 			}
-			f.Files = append(f.Files, file)
-			f.tails = append(f.tails, tail)
+
 		}
 	}
-	if len(f.tails) == 0 {
+	if len(f.Files) == 0 {
 		return fmt.Errorf("no files to read for %+v", Config.Filenames)
 	}
 
@@ -103,7 +114,7 @@ func (f *FileSource) StartTail(output chan types.Event, AcquisTomb *tomb.Tomb) e
 
 /*A one shot file reader (cat) */
 func (f *FileSource) StartCat(output chan types.Event, AcquisTomb *tomb.Tomb) error {
-	for i := 0; i < len(f.tails); i++ {
+	for i := 0; i < len(f.Files); i++ {
 		idx := i
 		log.Debugf("starting %d", idx)
 		AcquisTomb.Go(func() error {

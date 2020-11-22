@@ -47,6 +47,8 @@ func (j *JournaldSource) Configure(config DataSourceCfg) error {
 		journalArgs = []string{"--follow"}
 	} else if j.Config.Mode == CAT_MODE {
 		journalArgs = []string{}
+	} else {
+		return fmt.Errorf("unknown mode '%s' for journald source", j.Config.Mode)
 	}
 	journalArgs = append(journalArgs, config.JournalctlFilters...)
 
