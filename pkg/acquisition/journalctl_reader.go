@@ -102,7 +102,7 @@ func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
 		l.Src = j.SrcName
 		l.Process = true
 		evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-		log.Printf("event -> %+v", evt)
+		log.Debugf("event -> %+v", evt)
 		out <- evt
 		if err := scanner.Err(); err != nil {
 			return errors.Wrapf(err, "reading %s", j.SrcName)
@@ -138,7 +138,6 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 	readErr := make(chan error)
 	go func() {
 		for scanner.Scan() {
-			log.Debugf("journalctl : after scan")
 			l := types.Line{}
 			ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
 			l.Raw = scanner.Text()
@@ -147,9 +146,8 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 			l.Src = j.SrcName
 			l.Process = true
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-			log.Printf("event -> %+v", evt)
+			log.Debugf("event -> %+v", evt)
 			out <- evt
-			log.Debugf("journalctl : before scan")
 		}
 		if err := scanner.Err(); err != nil {
 			log.Warningf("reading %s : %s", j.SrcName, err)
