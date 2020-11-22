@@ -13,14 +13,12 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 	var (
 		count int
 	)
-LOOP:
 	for {
 		//bucket is now ready
 		select {
 		case <-bucketsTomb.Dying():
-			log.Infof("Exiting pour routine")
-
-			break LOOP
+			log.Infof("Bucket routine exiting")
+			return nil
 		case parsed := <-input:
 			count++
 			if count%5000 == 0 {
@@ -58,6 +56,4 @@ LOOP:
 			}
 		}
 	}
-	log.Tracef("Sending signal Bucketify")
-	return nil
 }
