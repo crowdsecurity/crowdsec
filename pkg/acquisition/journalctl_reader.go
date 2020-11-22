@@ -24,6 +24,9 @@ import (
  systemd has its own logging system, which stores files in non-text mode.
  To be able to read those, we're going to read the output of journalctl, see https://github.com/crowdsecurity/crowdsec/issues/423
 
+
+ TBD :
+  - handle journalctl errors
 */
 
 type JournaldSource struct {
