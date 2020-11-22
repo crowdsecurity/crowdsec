@@ -71,15 +71,29 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 	return nil
 }
 
+func (f *FileSource) Mode() string {
+	return f.Config.Mode
+}
+
+func (f *FileSource) StartReading(out chan types.Event, t *tomb.Tomb) error {
+
+	if f.Config.Mode == CAT_MODE {
+		return f.StartCat(out, t)
+	} else if f.Config.Mode == TAIL_MODE {
+		return f.StartTail(out, t)
+	} else {
+		return fmt.Errorf("unknown mode '%s' for file acquisition", f.Config.Mode)
+	}
+}
+
 /*A tail-mode file reader (tail) */
 func (f *FileSource) StartTail(output chan types.Event, AcquisTomb *tomb.Tomb) error {
-	/*tbd instead use the tomb to lance subroutines*/
-	log.Infof("starting file tail with %d items", len(f.tails))
+	log.Debugf("starting file tail with %d items", len(f.tails))
 	for i := 0; i < len(f.tails); i++ {
 		idx := i
-		log.Infof("starting %d", idx)
+		log.Debugf("starting %d", idx)
 		AcquisTomb.Go(func() error {
-			defer types.CatchPanic("crowdsec/acquis/file")
+			defer types.CatchPanic("crowdsec/acquis/tailfile")
 			return f.TailOneFile(output, AcquisTomb, idx)
 		})
 	}
@@ -88,14 +102,21 @@ func (f *FileSource) StartTail(output chan types.Event, AcquisTomb *tomb.Tomb) e
 
 /*A one shot file reader (cat) */
 func (f *FileSource) StartCat(output chan types.Event, AcquisTomb *tomb.Tomb) error {
-
+	log.Debugf("starting file cat with %d items", len(f.tails))
+	for i := 0; i < len(f.tails); i++ {
+		idx := i
+		log.Debugf("starting %d", idx)
+		AcquisTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/acquis/catfile")
+			return f.CatOneFile(output, AcquisTomb, idx)
+		})
+	}
 	return nil
 }
 
 /*A tail-mode file reader (tail) */
 func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb, idx int) error {
 
-	log.Infof("index = %d", idx)
 	file := f.Files[idx]
 	tail := f.tails[idx]
 
@@ -110,13 +131,14 @@ func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb,
 		l := types.Line{}
 		select {
 		case <-AcquisTomb.Dying(): //we are being killed by main
-			clog.Infof("Killing acquistion routine")
+			clog.Infof("file datasource %s stopping", file)
 			if err := tail.Stop(); err != nil {
 				clog.Errorf("error in stop : %s", err)
 			}
 			return nil
 		case <-tail.Tomb.Dying(): //our tailer is dying
-			clog.Warningf("Reader is dying/dead")
+			clog.Warningf("File reader of %s died", file)
+			AcquisTomb.Kill(fmt.Errorf("dead reader for %s", file))
 			return fmt.Errorf("reader for %s is dead", file)
 		case line := <-tail.Lines:
 			if line == nil {
@@ -138,7 +160,7 @@ func (f *FileSource) TailOneFile(output chan types.Event, AcquisTomb *tomb.Tomb,
 			l.Src = file
 			l.Process = true
 			//we're tailing, it must be real time logs
-			log.Infof("pushing %+v", l)
+			log.Debugf("pushing %+v", l)
 			output <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 		case <-timeout:
 			//time out, shall we do stuff ?
@@ -178,20 +200,18 @@ func (f *FileSource) CatOneFile(output chan types.Event, AcquisTomb *tomb.Tomb, 
 		scanner = bufio.NewScanner(fd)
 	}
 	scanner.Split(bufio.ScanLines)
-	count := 0
 	for scanner.Scan() {
 		log.Tracef("line %s", scanner.Text())
-		count++
 		l := types.Line{}
 		l.Raw = scanner.Text()
 		l.Time = time.Now()
 		l.Src = file
 		l.Labels = f.Config.Labels
 		l.Process = true
+		ReaderHits.With(prometheus.Labels{"source": file}).Inc()
 		//we're reading logs at once, it must be time-machine buckets
 		output <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
 	}
-	clog.Warningf("read %d lines", count)
 	AcquisTomb.Kill(nil)
 	return nil
 }
