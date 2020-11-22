@@ -75,6 +75,8 @@ type DataSourceCfg struct {
 */
 type DataSource interface {
 	Configure(DataSourceCfg) error
+	/*the readers must watch the tomb (especially in tail mode) to know when to shutdown.
+	tomb is as well used to trigger general shutdown when a datasource errors */
 	StartReading(chan types.Event, *tomb.Tomb) error
 	Mode() string //return CAT_MODE or TAIL_MODE
 	//Not sure it makes sense to make those funcs part of the interface.
