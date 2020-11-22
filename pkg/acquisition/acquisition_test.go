@@ -18,19 +18,19 @@ func TestConfigLoading(t *testing.T) {
 	cfg := csconfig.CrowdsecServiceCfg{
 		AcquisitionFilePath: "./tests/xxx.yaml",
 	}
-	srcs, err := LoadAcquisitionFromFile(&cfg)
+	_, err := LoadAcquisitionFromFile(&cfg)
 	assert.Contains(t, fmt.Sprintf("%s", err), "can't open ./tests/xxx.yaml: open ./tests/xxx.yaml: no such file or directory")
 	//bad config file
 	cfg = csconfig.CrowdsecServiceCfg{
 		AcquisitionFilePath: "./tests/test.log",
 	}
-	srcs, err = LoadAcquisitionFromFile(&cfg)
+	_, err = LoadAcquisitionFromFile(&cfg)
 	assert.Contains(t, fmt.Sprintf("%s", err), "failed to yaml decode ./tests/test.log: yaml: unmarshal errors")
 	//correct config file
 	cfg = csconfig.CrowdsecServiceCfg{
 		AcquisitionFilePath: "./tests/acquis_test.yaml",
 	}
-	srcs, err = LoadAcquisitionFromFile(&cfg)
+	srcs, err := LoadAcquisitionFromFile(&cfg)
 	if err != nil {
 		t.Fatalf("unexpected error : %s", err)
 	}
@@ -96,7 +96,7 @@ func TestDataSourceConfigure(t *testing.T) {
 				log.Infof("expected read error ok : %s", test.read_error)
 			} else {
 				if err != nil {
-					t.Fatalf("%d/%d unexpected read error %s", tidx, len(tests), err)
+					log.Fatalf("%d/%d unexpected read error %s", tidx, len(tests), err)
 				}
 			}
 		}()
