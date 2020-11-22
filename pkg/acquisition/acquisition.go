@@ -69,10 +69,6 @@ type DataSourceCfg struct {
 	Profiling         bool              `yaml:"profiling,omitempty"`
 }
 
-/* possible methods to add :
-- CanStart() (bool, error) : deal with file-is-not-here-yet-but-might-appear-later ?
-- Label() string : to get a unique identifier for each data-source ?
-*/
 type DataSource interface {
 	Configure(DataSourceCfg) error
 	/*the readers must watch the tomb (especially in tail mode) to know when to shutdown.
