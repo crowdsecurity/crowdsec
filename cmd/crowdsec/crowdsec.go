@@ -82,7 +82,7 @@ func runCrowdsec(parsers *parser.Parsers) error {
 	}
 	log.Warningf("Starting processing data")
 
-	if err := acquisition.StartAcquisition(dataSources, inputLineChan); err != nil {
+	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
 		log.Fatalf("starting acquisition error : %s", err)
 		return err
 	}
@@ -159,7 +159,7 @@ func waitOnTomb() {
 			}
 			return
 		case <-crowdsecTomb.Dying():
-			log.Warningf("Crowdsec being killed, shutdown")
+			log.Infof("Crowdsec engine shutting down")
 			return
 		}
 	}
