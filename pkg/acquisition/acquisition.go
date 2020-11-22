@@ -12,29 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
-	/*
-	   ---
-	   type: nginx
-	   source: journald
-	   filter: "PROG=nginx"
-	   ---
-	   type: nginx
-	   source: files
-	   filenames:
-	    - "/var/log/nginx/*.log"
-	   ---
-
-	   filename: /tmp/test.log
-	   labels:
-	     type: nginx
-	   ---
-	   journalctl_filter: xxxx
-	   labels:
-	     type: nginx
-	*/
-
 	tomb "gopkg.in/tomb.v2"
-	//"gopkg.in/yaml.v3"
 )
 
 var ReaderHits = prometheus.NewCounterVec(
@@ -45,11 +23,44 @@ var ReaderHits = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
+/*
+ current limits :
+ - The acquisition is not yet modular (cf. traefik/yaegi), but we start with an interface to pave the road for it.
+ - The configuration item unmarshaled (DataSourceCfg) isn't generic neither yet.
+ - This changes should be made when we're ready to have acquisition managed by the hub & cscli
+ once this change is done, we might go for the following configuration format instead :
+   ```yaml
+   ---
+   type: nginx
+   source: journald
+   filter: "PROG=nginx"
+   ---
+   type: nginx
+   source: files
+   filenames:
+	- "/var/log/nginx/*.log"
+	```
+*/
+
+/* Approach
+
+We support acquisition in two modes :
+ - tail mode : we're following a stream of info (tail -f $src). this is used when monitoring live logs
+ - cat mode : we're reading a file/source one-shot (cat $src), and scenarios will match the timestamp extracted from logs.
+
+One DataSourceCfg can lead to multiple goroutines, hence the Tombs passing around to allow proper tracking.
+tail mode shouldn't return except on errors or when externally killed via tombs.
+cat mode will return once source has been exhausted.
+
+
+ TBD in current iteration :
+  - how to deal with "file was not present at startup but might appear later" ?
+*/
+
 var TAIL_MODE = "tail"
 var CAT_MODE = "cat"
 
 type DataSourceCfg struct {
-	//Type              string            `yaml:"type,omitempty"` //file|bin|...
 	Mode              string            `yaml:"mode,omitempty"` //tail|cat|...
 	Filename          string            `yaml:"filename,omitempty"`
 	Filenames         []string          `yaml:"filenames,omitempty"`
@@ -58,16 +69,45 @@ type DataSourceCfg struct {
 	Profiling         bool              `yaml:"profiling,omitempty"`
 }
 
+/* possible methods to add :
+- CanStart() (bool, error) : deal with file-is-not-here-yet-but-might-appear-later ?
+- Label() string : to get a unique identifier for each data-source ?
+*/
 type DataSource interface {
 	Configure(DataSourceCfg) error
-	//Exists() (bool, error)
-	/*add a type parameter ?*/
-	StartTail(chan types.Event, *tomb.Tomb) error
-	StartCat(chan types.Event, *tomb.Tomb) error
-	//Label() string
+	StartReading(chan types.Event, *tomb.Tomb) error
+	Mode() string //return CAT_MODE or TAIL_MODE
+	//Not sure it makes sense to make those funcs part of the interface.
+	//While 'cat' and 'tail' are the only two modes we see now, other modes might appear
+	//StartTail(chan types.Event, *tomb.Tomb) error
+	//StartCat(chan types.Event, *tomb.Tomb) error
 }
 
-func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
+func DataSourceConfigure(t DataSourceCfg) (DataSource, error) {
+	if t.Mode == "" { /*default mode is tail*/
+		t.Mode = TAIL_MODE
+	}
+
+	if len(t.Filename) > 0 || len(t.Filenames) > 0 { /*it's file acquisition*/
+
+		fileSrc := new(FileSource)
+		if err := fileSrc.Configure(t); err != nil {
+			return nil, errors.Wrap(err, "configuring file datasource")
+		}
+		return fileSrc, nil
+	} else if len(t.JournalctlFilters) > 0 { /*it's journald acquisition*/
+
+		journaldSrc := new(JournaldSource)
+		if err := journaldSrc.Configure(t); err != nil {
+			return nil, errors.Wrap(err, "configuring journald datasource")
+		}
+		return journaldSrc, nil
+	} else {
+		return nil, fmt.Errorf("empty filename(s) and journalctl filter, malformed datasource")
+	}
+}
+
+func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
 
 	var sources []DataSource
 
@@ -75,7 +115,6 @@ func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]DataSource, e
 	if err != nil {
 		return nil, errors.Wrapf(err, "can't open %s", config.AcquisitionFilePath)
 	}
-	//process the yaml
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
 	for {
@@ -88,48 +127,32 @@ func LoadAcquisitionConfig(config *csconfig.CrowdsecServiceCfg) ([]DataSource, e
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
 		}
-		if t.Mode == "" { /*default mode is tail*/
-			t.Mode = TAIL_MODE
+		src, err := DataSourceConfigure(t)
+		if err != nil {
+			log.Errorf("while configuring datasource from %+v : %s", t, err)
+			continue
 		}
-		/*it's file acquisition*/
-		if len(t.Filename) > 0 || len(t.Filenames) > 0 {
-			fileSrc := new(FileSource)
-			if err := fileSrc.Configure(t); err != nil {
-				log.Errorf("Bad acquisition configuration : %s", err)
-				continue
-			}
-			sources = append(sources, fileSrc)
-		} else if len(t.JournalctlFilters) > 0 {
-			journaldSrc := new(JournaldSource)
-			if err := journaldSrc.Configure(t); err != nil {
-				log.Errorf("Bad acquisition configuration : %s", err)
-				continue
-			}
-			sources = append(sources, journaldSrc)
-		}
+		sources = append(sources, src)
 	}
 	return sources, nil
 }
 
-func StartAcquisition(sources []DataSource, output chan types.Event) error {
-	var AcquisTomb tomb.Tomb
+func StartAcquisition(sources []DataSource, output chan types.Event, t *tomb.Tomb) error {
+	var AcquisTomb = t
 
-	log.Printf("startiiiiing")
 	for i := 0; i < len(sources); i++ {
-		subsrc := sources[i]
-		log.Printf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
+		subsrc := sources[i] //ensure its a copy
+		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")
-			if err := subsrc.StartTail(output, &AcquisTomb); err != nil {
-				log.Errorf("in tail acquisition : %s", err)
+			if err := subsrc.StartReading(output, AcquisTomb); err != nil {
+				log.Errorf("in acquisition : %s", err)
 				return err
 			}
 			return nil
 		})
 	}
-	// for sidx, source := range sources {
-
-	// }
+	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()
 	return err
 }
