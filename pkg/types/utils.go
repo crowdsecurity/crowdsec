@@ -56,7 +56,6 @@ func LastAddress(n *net.IPNet) net.IP {
 var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
-var logReportCaller bool
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
 
@@ -79,10 +78,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 		log.SetFormatter(logFormatter)
 	}
-	if logLevel >= log.DebugLevel {
-		logReportCaller = true
-		log.SetReportCaller(true)
-	}
+
 	return nil
 }
 
@@ -91,9 +87,7 @@ func ConfigureLogger(clog *log.Logger) error {
 	if LogOutput != nil {
 		clog.SetOutput(LogOutput)
 	}
-	if logReportCaller {
-		clog.SetReportCaller(true)
-	}
+
 	if logFormatter != nil {
 		clog.SetFormatter(logFormatter)
 	}
