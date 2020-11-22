@@ -93,7 +93,6 @@ func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
 	}
 	scanner := bufio.NewScanner(j.Stdout)
 	if scanner == nil {
-		clog.Errorf("failed to create scanner :<")
 		return fmt.Errorf("failed to create scanner")
 	}
 	for scanner.Scan() {
@@ -129,14 +128,12 @@ func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
 	clog := log.WithFields(log.Fields{
 		"acquisition file": j.SrcName,
 	})
-	clog.Infof("starting journalctlxxxx")
 	if err := j.Cmd.Start(); err != nil {
 		clog.Errorf("failed to start journalctl: %s", err)
 		return errors.Wrapf(err, "starting journalctl (%s)", j.SrcName)
 	}
 	scanner := bufio.NewScanner(j.Stdout)
 	if scanner == nil {
-		clog.Errorf("failed to create scanner :<")
 		return fmt.Errorf("failed to create scanner")
 	}
 
