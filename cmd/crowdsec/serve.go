@@ -155,18 +155,22 @@ func ShutdownCrowdsecRoutines() error {
 }
 
 func shutdownAPI() error {
+	log.Debugf("shutting down api via Tomb")
 	apiTomb.Kill(nil)
 	if err := apiTomb.Wait(); err != nil {
 		return err
 	}
+	log.Debugf("done")
 	return nil
 }
 
 func shutdownCrowdsec() error {
+	log.Debugf("shutting down crowdsec via Tomb")
 	crowdsecTomb.Kill(nil)
 	if err := crowdsecTomb.Wait(); err != nil {
 		return err
 	}
+	log.Debugf("done")
 	return nil
 }
 
@@ -177,6 +181,7 @@ func termHandler(sig os.Signal) error {
 	if err := shutdownAPI(); err != nil {
 		log.Errorf("Error encountered while shutting down api: %s", err)
 	}
+	log.Debugf("termHandler done")
 	return nil
 }
 
@@ -194,11 +199,13 @@ func HandleSignals() {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
+				log.Warningf("SIGHUP received, reloading")
 				if err := reloadHandler(s); err != nil {
 					log.Fatalf("Reload handler failure : %s", err)
 				}
 			// kill -SIGTERM XXXX
 			case syscall.SIGTERM:
+				log.Warningf("SIGTERM received, shutting down")
 				if err := termHandler(s); err != nil {
 					log.Fatalf("Term handler failure : %s", err)
 				}
