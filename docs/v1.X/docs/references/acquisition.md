@@ -7,6 +7,7 @@ A least one of :
 
  - filename: a string representing the path to a file (globbing supported)
  - filenames: a list of string represent paths to files (globbing supported)
+ - journalctl_filter: a list of string passed as arguments to `journalctl`
 
 And a `labels` object with a field `type` indicating the log's type :
 ```yaml
@@ -20,6 +21,12 @@ filenames:
   - /var/log/auth.log
 labels:
   type: syslog
+---
+journalctl_filter:
+ - "_SYSTEMD_UNIT=ssh.service"
+labels:
+  type: syslog
+
 ```
 
 The `labels.type` is *important* as it is what will determine which parser will try to process the logs. 
