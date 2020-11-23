@@ -18,6 +18,7 @@ import (
 	"strconv"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -292,11 +293,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ret {
 				isStageOK = true
 				if ParseDump {
-					evtcopy := types.Event{}
-					if err := types.Clone(&event, &evtcopy); err != nil {
-						log.Fatalf("while cloning Event in parser : %s", err)
-					}
-					StageParseCache[stage][node.Name] = evtcopy
+					evtcopy := deepcopy.Copy(event)
+					StageParseCache[stage][node.Name] = evtcopy.(types.Event)
 				}
 			}
 			if ret && node.OnSuccess == "next_stage" {
