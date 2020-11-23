@@ -319,6 +319,16 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
 			alerts = alerts.Where(alert.StartedAtGTE(since))
+		case "created_before":
+			duration, err := types.ParseDuration(value[0])
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing duration")
+			}
+			since := time.Now().Add(-duration)
+			if since.IsZero() {
+				return nil, fmt.Errorf("Empty time now() - %s", since.String())
+			}
+			alerts = alerts.Where(alert.CreatedAtLTE(since))
 		case "until":
 			duration, err := types.ParseDuration(value[0])
 			if err != nil {
@@ -348,6 +358,8 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			}
 		case "limit":
 			continue
+		case "sort":
+			continue
 		default:
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
 		}
@@ -371,7 +383,19 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	return alerts, nil
 }
 
+func (c *Client) TotalAlerts() (int, error) {
+	return c.Ent.Alert.Query().Count(c.CTX)
+}
+
 func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
+	sort := "DESC" // we sort by desc by default
+	if val, ok := filter["sort"]; ok {
+		if val[0] != "ASC" && val[0] != "DESC" {
+			log.Errorf("invalid 'sort' parameter: %s", val)
+		} else {
+			sort = val[0]
+		}
+	}
 	limit := defaultLimit
 	if val, ok := filter["limit"]; ok {
 		limitConv, err := strconv.Atoi(val[0])
@@ -381,7 +405,6 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		limit = limitConv
 
 	}
-
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
@@ -394,8 +417,12 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			WithDecisions().
 			WithEvents().
 			WithMetas().
-			WithOwner().
-			Order(ent.Desc(alert.FieldCreatedAt))
+			WithOwner()
+		if sort == "ASC" {
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+		} else {
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+		}
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
@@ -409,6 +436,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
+				log.Debugf("Pagination done, %d < %d", len(result), diff)
 				break
 			}
 			ret = append(ret, result[0:diff]...)
@@ -416,6 +444,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			ret = append(ret, result...)
 		}
 		if len(ret) == limit || len(ret) == 0 {
+			log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}
 		offset += paginationSize
@@ -476,36 +505,35 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
-	var totalDeleted int
-
+	var deletedByAge int
+	var deletedByNbItem int
+	var totalAlerts int
+	var err error
+	totalAlerts, err = c.TotalAlerts()
+	if err != nil {
+		log.Warningf("FlushAlerts (max items count) : %s", err)
+		return errors.Wrap(err, "unable to get alerts count")
+	}
 	if MaxAge != "" {
 		filter := map[string][]string{
-			"until": {MaxAge},
+			"created_before": {MaxAge},
 		}
 		deleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
-			log.Warningf("FlushAlerts : %s", err)
+			log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
-		totalDeleted += len(deleted)
+		deletedByAge = len(deleted)
 	}
 	if MaxItems > 0 {
-		totalAlerts, err := c.Ent.Alert.Query().Count(c.CTX)
-		if err != nil {
-			log.Warningf("FlushAlerts : %s", err)
-			return errors.Wrap(err, "unable to get alerts count")
-		}
 		if totalAlerts > MaxItems {
 			nbToDelete := totalAlerts - MaxItems
-			alerts, err := c.Ent.Alert.Query().
-				WithDecisions().
-				WithEvents().
-				WithMetas().
-				WithOwner().
-				Order(ent.Asc(alert.FieldCreatedAt)).
-				All(c.CTX)
+			alerts, err := c.QueryAlertWithFilter(map[string][]string{
+				"sort":  {"ASC"},
+				"limit": {strconv.Itoa(nbToDelete)},
+			}) // we want to delete older alerts if we reach the max number of items
 			if err != nil {
-				log.Warningf("FlushAlerts : %s", err)
+				log.Warningf("FlushAlerts (max items query) : %s", err)
 				return errors.Wrap(err, "unable to get all alerts")
 			}
 			for itemNb, alert := range alerts {
@@ -515,13 +543,17 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 						log.Warningf("FlushAlerts : %s", err)
 						return errors.Wrap(err, "unable to flush alert")
 					}
+					deletedByNbItem++
 				}
 			}
-			totalDeleted += nbToDelete
 		}
 	}
-	log.Debugf("%d alerts automatically flushed", totalDeleted)
-
+	if deletedByNbItem > 0 {
+		log.Infof("flushed %d/%d alerts because max number of alerts has been reached (%d max)", deletedByNbItem, totalAlerts, MaxItems)
+	}
+	if deletedByAge > 0 {
+		log.Infof("flushed %d/%d alerts because they were created %s ago or more", deletedByAge, totalAlerts, MaxAge)
+	}
 	return nil
 }
 
