@@ -201,6 +201,9 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		return runtimeAlert, fmt.Errorf("leaky.BucketConfig is nil")
 	}
 
+	//give information about the bucket
+	runtimeAlert.Mapkey = leaky.Mapkey
+
 	//Get the sources from Leaky/Queue
 	sources, source_scope, err := alertFormatSource(leaky, queue)
 	if err != nil {
