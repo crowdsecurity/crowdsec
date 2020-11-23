@@ -78,6 +78,18 @@ func dumpMetrics() {
 }
 
 func registerPrometheus(config *csconfig.PrometheusCfg) {
+	if !config.Enabled {
+		return
+	}
+	if config.ListenAddr == "" {
+		log.Warningf("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
+		config.ListenAddr = "127.0.0.1"
+	}
+	if config.ListenPort == 0 {
+		log.Warningf("prometheus is enabled, but the listen port is empty, using '6060'")
+		config.ListenPort = 6060
+	}
+
 	defer types.CatchPanic("crowdsec/registerPrometheus")
 	/*Registering prometheus*/
 	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
