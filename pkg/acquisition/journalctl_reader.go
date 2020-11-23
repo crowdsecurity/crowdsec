@@ -38,6 +38,10 @@ type JournaldSource struct {
 	SrcName string
 }
 
+var JOURNALD_CMD = "journalctl"
+var JOURNALD_DEFAULT_TAIL_ARGS = []string{"--follow"}
+var JOURNALD_DEFAULT_CAT_ARGS = []string{}
+
 func (j *JournaldSource) Configure(config DataSourceCfg) error {
 	var journalArgs []string
 
@@ -47,19 +51,22 @@ func (j *JournaldSource) Configure(config DataSourceCfg) error {
 	}
 
 	if j.Config.Mode == TAIL_MODE {
-		journalArgs = []string{"--follow"}
+		journalArgs = JOURNALD_DEFAULT_TAIL_ARGS
 	} else if j.Config.Mode == CAT_MODE {
-		journalArgs = []string{}
+		journalArgs = JOURNALD_DEFAULT_CAT_ARGS
 	} else {
 		return fmt.Errorf("unknown mode '%s' for journald source", j.Config.Mode)
 	}
 	journalArgs = append(journalArgs, config.JournalctlFilters...)
 
-	j.Cmd = exec.Command("journalctl", journalArgs...)
+	j.Cmd = exec.Command(JOURNALD_CMD, journalArgs...)
 	j.Stderr, _ = j.Cmd.StderrPipe()
 	j.Stdout, _ = j.Cmd.StdoutPipe()
 	j.SrcName = fmt.Sprintf("journalctl-%s", strings.Join(config.JournalctlFilters, "."))
 	log.Infof("Configured with source : %+v", journalArgs)
+	log.Debugf("cmd path : %s", j.Cmd.Path)
+	log.Debugf("cmd args : %+v", j.Cmd.Args)
+
 	return nil
 }
 
@@ -90,7 +97,9 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 			return
 		}
 		for scanner.Scan() {
-			readErr <- fmt.Errorf(scanner.Text())
+			txt := scanner.Text()
+			clog.Warningf("got stderr message : %s", txt)
+			readErr <- fmt.Errorf(txt)
 		}
 	}()
 	/*read stdout*/
@@ -104,6 +113,7 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 			l := types.Line{}
 			ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
 			l.Raw = scanner.Text()
+			clog.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.Config.Labels
 			l.Time = time.Now()
 			l.Src = j.SrcName
@@ -111,8 +121,9 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			out <- evt
 		}
+		clog.Debugf("finished reading from journalctl")
 		if err := scanner.Err(); err != nil {
-			clog.Warningf("reading %s : %s", j.SrcName, err)
+			clog.Debugf("got an error while reading %s : %s", j.SrcName, err)
 			readErr <- err
 			return
 		}
@@ -122,9 +133,10 @@ func (j *JournaldSource) readOutput(out chan types.Event, t *tomb.Tomb) error {
 	for {
 		select {
 		case <-t.Dying():
-			clog.Infof("journalctl datasource %s stopping", j.SrcName)
+			clog.Debugf("journalctl datasource %s stopping", j.SrcName)
 			return nil
 		case err := <-readErr:
+			clog.Debugf("the subroutine returned, leave as well")
 			if err != nil {
 				clog.Warningf("journalctl reader error : %s", err)
 				t.Kill(err)
@@ -146,13 +158,17 @@ func (j *JournaldSource) StartReading(out chan types.Event, t *tomb.Tomb) error 
 }
 
 func (j *JournaldSource) StartCat(out chan types.Event, t *tomb.Tomb) error {
-	return j.readOutput(out, t)
+	t.Go(func() error {
+		defer types.CatchPanic("crowdsec/acquis/tailjournalctl")
+		return j.readOutput(out, t)
+	})
+	return nil
 }
 
 func (j *JournaldSource) StartTail(out chan types.Event, t *tomb.Tomb) error {
-	return j.readOutput(out, t)
-}
-
-func (j *JournaldSource) Exists() (bool, error) {
-	return true, nil
+	t.Go(func() error {
+		defer types.CatchPanic("crowdsec/acquis/catjournalctl")
+		return j.readOutput(out, t)
+	})
+	return nil
 }

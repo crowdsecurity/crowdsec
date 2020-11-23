@@ -65,10 +65,21 @@ func TestDataSourceConfigure(t *testing.T) {
 			},
 			config_error: "configuring file datasource: unknown mode ratata for file acquisition",
 		},
-		{ //missing filename(s)
+		{ //ok test
 			cfg: DataSourceCfg{
 				Mode:     CAT_MODE,
 				Filename: "./tests/test.log",
+			},
+		},
+		{ //missing mode, default to CAT_MODE
+			cfg: DataSourceCfg{
+				Filename: "./tests/test.log",
+			},
+		},
+		{ //ok test for journalctl
+			cfg: DataSourceCfg{
+				Mode:              CAT_MODE,
+				JournalctlFilters: []string{"-test.run=TestSimJournalctlCatOneLine", "--"},
 			},
 		},
 	}
@@ -85,6 +96,12 @@ func TestDataSourceConfigure(t *testing.T) {
 				t.Fatalf("%d/%d unexpected config error %s", tidx, len(tests), err)
 			}
 		}
+
+		//check we got the expected mode
+		if tests[tidx].cfg.Mode == "" {
+			tests[tidx].cfg.Mode = TAIL_MODE
+		}
+		assert.Equal(t, srcs.Mode(), tests[tidx].cfg.Mode)
 
 		out := make(chan types.Event)
 		tomb := tomb.Tomb{}

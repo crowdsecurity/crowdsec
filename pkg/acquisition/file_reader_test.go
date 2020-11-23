@@ -3,6 +3,7 @@ package acquisition
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -157,6 +158,40 @@ func TestTailKill(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	if tb.Err() != nil {
 		t.Fatalf("unexpected tomb error %s (should be dead)", tb.Err())
+	}
+
+}
+
+func TestTailKillBis(t *testing.T) {
+	cfg := DataSourceCfg{
+		Filename: "./tests/test.log",
+		Mode:     TAIL_MODE,
+	}
+
+	fileSrc := new(FileSource)
+	err := fileSrc.Configure(cfg)
+	if err != nil {
+		t.Fatalf("unexpected config error %s", err)
+	}
+
+	out := make(chan types.Event)
+	tb := tomb.Tomb{}
+
+	err = fileSrc.StartReading(out, &tb)
+	if err != nil {
+		t.Fatalf("unexpected read error %s", err)
+	}
+	time.Sleep(1 * time.Second)
+	if tb.Err() != tomb.ErrStillAlive {
+		t.Fatalf("unexpected tomb error %s (should be alive)", tb.Err())
+	}
+	//kill the underlying tomb of tailer
+	fileSrc.tails[0].Kill(fmt.Errorf("ratata"))
+	time.Sleep(1 * time.Second)
+	//it can be two errors :
+	if !strings.Contains(fmt.Sprintf("%s", tb.Err()), "dead reader for ./tests/test.log") &&
+		!strings.Contains(fmt.Sprintf("%s", tb.Err()), "tail for ./tests/test.log is empty") {
+		t.Fatalf("unexpected error : %s", tb.Err())
 	}
 
 }
