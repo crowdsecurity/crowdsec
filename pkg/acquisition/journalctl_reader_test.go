@@ -41,7 +41,7 @@ func TestSimJournalctlCat(t *testing.T) {
 		return
 	}
 	defer os.Exit(0)
-	fmt.Printf(testjournalctl_output_1)
+	fmt.Print(testjournalctl_output_1)
 }
 
 func TestSimJournalctlCatError(t *testing.T) {
@@ -49,7 +49,7 @@ func TestSimJournalctlCatError(t *testing.T) {
 		return
 	}
 	defer os.Exit(0)
-	fmt.Printf("this is a single line being produced")
+	fmt.Print("this is a single line being produced")
 	log.Warningf("this is an error message")
 }
 
@@ -58,7 +58,7 @@ func TestSimJournalctlCatOneLine(t *testing.T) {
 		return
 	}
 	defer os.Exit(0)
-	fmt.Printf("this is a single line being produced")
+	fmt.Print("this is a single line being produced")
 }
 
 func TestJournaldTail(t *testing.T) {

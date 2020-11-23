@@ -81,22 +81,22 @@ type DataSource interface {
 	//StartCat(chan types.Event, *tomb.Tomb) error
 }
 
-func DataSourceConfigure(t DataSourceCfg) (DataSource, error) {
-	if t.Mode == "" { /*default mode is tail*/
-		t.Mode = TAIL_MODE
+func DataSourceConfigure(config DataSourceCfg) (DataSource, error) {
+	if config.Mode == "" { /*default mode is tail*/
+		config.Mode = TAIL_MODE
 	}
 
-	if len(t.Filename) > 0 || len(t.Filenames) > 0 { /*it's file acquisition*/
+	if len(config.Filename) > 0 || len(config.Filenames) > 0 { /*it's file acquisition*/
 
 		fileSrc := new(FileSource)
-		if err := fileSrc.Configure(t); err != nil {
+		if err := fileSrc.Configure(config); err != nil {
 			return nil, errors.Wrap(err, "configuring file datasource")
 		}
 		return fileSrc, nil
-	} else if len(t.JournalctlFilters) > 0 { /*it's journald acquisition*/
+	} else if len(config.JournalctlFilters) > 0 { /*it's journald acquisition*/
 
 		journaldSrc := new(JournaldSource)
-		if err := journaldSrc.Configure(t); err != nil {
+		if err := journaldSrc.Configure(config); err != nil {
 			return nil, errors.Wrap(err, "configuring journald datasource")
 		}
 		return journaldSrc, nil
@@ -116,8 +116,8 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 	dec := yaml.NewDecoder(yamlFile)
 	dec.SetStrict(true)
 	for {
-		t := DataSourceCfg{}
-		err = dec.Decode(&t)
+		sub := DataSourceCfg{}
+		err = dec.Decode(&sub)
 		if err != nil {
 			if err == io.EOF {
 				log.Tracef("End of yaml file")
@@ -125,9 +125,9 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
 		}
-		src, err := DataSourceConfigure(t)
+		src, err := DataSourceConfigure(sub)
 		if err != nil {
-			log.Warningf("while configuring datasource : %s", t, err)
+			log.Warningf("while configuring datasource : %s", err)
 			continue
 		}
 		sources = append(sources, src)
@@ -135,8 +135,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 	return sources, nil
 }
 
-func StartAcquisition(sources []DataSource, output chan types.Event, t *tomb.Tomb) error {
-	var AcquisTomb = t
+func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
 	for i := 0; i < len(sources); i++ {
 		subsrc := sources[i] //ensure its a copy
