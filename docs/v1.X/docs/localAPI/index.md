@@ -32,7 +32,7 @@ To allow a machine to communicate with the local API, the machine need to be val
 
 There is two ways to register a crowdsec to a local API.
 
-* You can create a machine directly on the API server that will be automatically validate by running the following command on the server where the API is installed:
+* You can create a machine directly on the API server that will be automatically validated, by running the following command on the server where the API is installed:
 
 ```bash
 $ cscli machines add testMachine
