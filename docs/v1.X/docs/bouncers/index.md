@@ -22,4 +22,4 @@ Api key for 'testBouncer':
 Please keep this key since you will not be able to retrive it!
 ```
 
-Note: this command must be run on the server where the local API in installed.
+Note: this command must be run on the server where the local API is installed (or at least with a cscli that has valid credentials to communicate with the database used by the API).
