@@ -63,7 +63,7 @@ func (j *JournaldSource) Configure(config DataSourceCfg) error {
 	j.Stderr, _ = j.Cmd.StderrPipe()
 	j.Stdout, _ = j.Cmd.StdoutPipe()
 	j.SrcName = fmt.Sprintf("journalctl-%s", strings.Join(config.JournalctlFilters, "."))
-	log.Infof("Configured with source : %+v", journalArgs)
+	log.Infof("[journald datasource] Configured with filters : %+v", journalArgs)
 	log.Debugf("cmd path : %s", j.Cmd.Path)
 	log.Debugf("cmd args : %+v", j.Cmd.Args)
 

@@ -45,7 +45,7 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 			return errors.Wrapf(err, "while globbing %s", fexpr)
 		}
 		if len(files) == 0 {
-			log.Warningf("no results for %s", fexpr)
+			log.Warningf("[file datasource] no results for %s", fexpr)
 			continue
 		}
 
@@ -54,12 +54,12 @@ func (f *FileSource) Configure(Config DataSourceCfg) error {
 			if err := unix.Access(file, unix.R_OK); err != nil {
 				return fmt.Errorf("unable to open %s : %s", file, err)
 			}
-			log.Infof("Opening file '%s' (pattern:%s)", file, Config.Filename)
+			log.Infof("[file datasource] opening file '%s'", file)
 
 			if f.Config.Mode == TAIL_MODE {
 				tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: 2}})
 				if err != nil {
-					log.Errorf("skipping %s : %v", file, err)
+					log.Errorf("[file datasource] skipping %s : %v", file, err)
 					continue
 				}
 				f.Files = append(f.Files, file)

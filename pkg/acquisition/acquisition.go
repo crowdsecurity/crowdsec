@@ -127,7 +127,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		}
 		src, err := DataSourceConfigure(t)
 		if err != nil {
-			log.Errorf("while configuring datasource from %+v : %s", t, err)
+			log.Warningf("while configuring datasource : %s", t, err)
 			continue
 		}
 		sources = append(sources, src)
