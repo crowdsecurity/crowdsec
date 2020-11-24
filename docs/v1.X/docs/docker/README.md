@@ -64,6 +64,7 @@ labels:
 ```
 
 So, I want to run crowdsec with :
+
 * My configuration files
 * Ingested my path logs specified in acquis.yaml
 * Share the crowdsec sqlite database with my host (You need to create empty file first, otherwise docker will create a directory instead of simple file)

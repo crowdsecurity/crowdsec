@@ -80,4 +80,5 @@ nav:
     - Reporting bugs: contributing.md
     - Asking questions: contributing.md
     - Publishing parsers & scenarios: contributing.md
+  - Upgrade V0.X to V1.X: migration.md
 

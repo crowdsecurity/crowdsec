@@ -39,7 +39,7 @@ Besides detecting and stopping attacks in real time based on your logs, it allow
 
 ## Install it !
 
-Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/latest)
+Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases)
 
 Ensure you have dependencies :
 <details open>

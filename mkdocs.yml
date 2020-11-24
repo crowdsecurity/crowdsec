@@ -64,7 +64,7 @@ extra:
           url: https://github.com/crowdsecurity/crowdsec
           bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
           main_log: "/var/log/crowdsec.log"
-          download_url: https://github.com/crowdsecurity/crowdsec/releases/latest
+          download_url: https://github.com/crowdsecurity/crowdsec/releases
       cli:
           name: cscli
           Name: cscli
@@ -230,7 +230,7 @@ extra:
           Name: Crowdsec-agent
           url: https://github.com/crowdsecurity/crowdsec
           bugreport: "https://github.com/crowdsecurity/crowdsec/issues"
-          download_url: https://github.com/crowdsecurity/crowdsec/releases/latest
+          download_url: https://github.com/crowdsecurity/crowdsec/releases
       lapi:
           name: local API (LAPI)
           Name: Local API (LAPI)
