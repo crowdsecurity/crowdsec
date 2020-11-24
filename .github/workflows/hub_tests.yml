@@ -2,9 +2,9 @@ name: Hub tests
 
 on:
   push:
-    branches: [ master ]
+    branches: [ fix_hub_ci ]
   pull_request:
-    branches: [ master ]
+    branches: [ fix_hub_ci ]
 
 jobs:
   build:
