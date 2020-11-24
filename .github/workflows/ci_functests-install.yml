@@ -2,9 +2,9 @@ name: Hub-CI
 
 on:
   push:
-    branches: [ wip_lapi ]
+    branches: [ wip_lapi_xxx_no ]
   pull_request:
-    branches: [ wip_lapi ]
+    branches: [ wip_lapi_xxx_no ]
 
 jobs:
   build:
