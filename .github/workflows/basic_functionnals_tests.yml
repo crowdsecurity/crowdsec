@@ -1,4 +1,4 @@
-name: Hub-CI
+name: Basic functionals tests
 
 on:
   push:
