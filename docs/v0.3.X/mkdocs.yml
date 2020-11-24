@@ -53,4 +53,3 @@ nav:
     - Inspect configurations: cscli/cscli_inspect.md
     - Manage simulation: cscli/cscli_simulation.md
     - Dashboard: cscli/cscli_dashboard.md
-  - About: about.md

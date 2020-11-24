@@ -47,21 +47,25 @@ nav:
     - Dashboard: observability/dashboard.md
   - Bouncers: bouncers/index.md
   - References:
-    - Configuration format: references/crowdsec-config.md
-    - Stages format: references/stages.md
-    - Parsers format: references/parsers.md
-    - Scenarios format: references/scenarios.md
-    - PostOverlows format: references/postoverflows.md
-    - Enrichers format: references/enrichers.md
-    - Collections format: references/collections.md
-    - Database format: references/database.md
-    - Acquisition format: references/acquisition.md
-    - Profiles format: references/profiles.md
-    - Simulation configuration: references/simulation.md
-    - Expressions helpers: references/expressions.md
-    - Event object: references/events.md
-    - Alert object: references/alerts.md
-    - Decision object: references/decisions.md
+    - Parsers, Scenarios etc.:
+      - Stages format: references/stages.md
+      - Parsers format: references/parsers.md
+      - Scenarios format: references/scenarios.md
+      - PostOverlows format: references/postoverflows.md
+      - Enrichers format: references/enrichers.md
+      - Collections format: references/collections.md
+      - Expressions helpers: references/expressions.md
+      - Patterns references: references/patterns-documentation.md
+    - Configuration files:
+      - Configuration format: references/crowdsec-config.md
+      - Database format: references/database.md
+      - Acquisition format: references/acquisition.md
+      - Profiles format: references/profiles.md
+      - Simulation configuration: references/simulation.md
+    - Runtime objects:
+      - Event object: references/events.md
+      - Alert object: references/alerts.md
+      - Decision object: references/decisions.md
   - Write Configurations:
     - Requirements: write_configurations/requirements.md
     - Acquisition: write_configurations/acquisition.md
