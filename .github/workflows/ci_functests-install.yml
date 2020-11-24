@@ -24,6 +24,7 @@ jobs:
       run: |
         cd crowdsec-xxx
         sudo bash -x ./wizard.sh --bininstall
+        sudo cscli machines add -a
     - name: Post-installation check
       run: |
         sudo cscli hub update
