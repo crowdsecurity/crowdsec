@@ -23,7 +23,7 @@ jobs:
     - name: Install release
       run: |
         cd crowdsec-xxx
-        sudo ./wizard.sh --bininstall
+        sudo bash -x ./wizard.sh --bininstall
     - name: Post-installation check
       #capi shouldn't be registered
       # sudo cscli capi status -> this would error
