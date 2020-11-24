@@ -354,3 +354,7 @@ A parser is considered "successful" if :
  - No grok pattern was present
  
   
+### Patterns documentation
+
+
+You can find [exhaustive patterns documentation here](/Crowdsec/v1/references/patterns-documentation).
