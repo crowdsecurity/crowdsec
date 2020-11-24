@@ -27,11 +27,13 @@
 
 > Crowdsec is in BETA version. It shouldn't, and didn't crash any production so far we know, but some features might be missing or undergo evolutions. IP Blocklists are limited to very-safe-to-ban IPs only (~5% of the global database so far, will grow soon)
 
+If you want to be notified of software **updates**, <a href="https://docs.google.com/forms/d/e/1FAIpQLSdirOC4OMYtR-HG2c54T8Ubwrq8oPLZ5k-VHOjrANip-O_KfA/viewform">click here</a>
+
 ## <TL;DR>
 
 A modern behavior detection system, written in Go. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs, a modern decoupled approach (detect here, remedy there) for Cloud/Containers/VM based infrastructures. Once detected you can remedy threats with various bouncers (block, 403, Captchas, etc.) and the blocked IPs are shared among all users to further improve their security.
 
-## About the crowdsec project
+## :information_source: About the crowdsec project
 
 Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user friendly design and assistance offers a low technical barrier of entry and nevertheless a high security gain.
 
@@ -46,7 +48,7 @@ By detecting, blocking and sharing the threat they faced, all clients are reinfo
 
 (*) CrowdSec ships by default with scenario (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the [hub](https://hub.crowdsec.net). It is also very easy to adapt an existing one or create one yourself.
 
-## What it is not
+## :point_right: What it is not
 
 CrowdSec is not a SIEM, storing your logs (neither locally nor remotely).
 
@@ -55,7 +57,7 @@ Your data stay in your premises and are only analyzed and forgotten.
 Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attemps.
 
 
-## Install it !
+## :arrow_down: Install it !
 
 In order to install it on an `amd64` platform, you can use the available prebuilt release package. 
 Just follow the steps below. However, if you want crowdsec for a different architecture
@@ -93,7 +95,7 @@ cd crowdsec-v*
 sudo ./wizard.sh -i
 ```
 
-## Build it !
+## ⚙️ Build it !
 
 If you want to build crowdsec yourself follow these steps:
 
@@ -107,7 +109,7 @@ For more details read the chapter
 [Installation from source](https://doc.crowdsec.net/getting_started/installation/#from-source) in 
 our [documentation](https://doc.crowdsec.net).
 
-## Key points
+## :tada: Key points
 
 ### Fast assisted installation, no technical barrier
 
@@ -137,7 +139,7 @@ our [documentation](https://doc.crowdsec.net).
   <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/cscli-metabase.gif">
 </details>
 
-## About this repository
+## 📦 About this repository
 
 This repository contains the code for the two main components of crowdsec :
  - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristis to logs. This is the component in charge of "detecting" the attacks
