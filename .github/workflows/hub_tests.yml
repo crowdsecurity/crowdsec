@@ -40,10 +40,7 @@ jobs:
       id: crowdsec  # The step ID to refer to later.
     - name: Create crowdsec test env with all parsers from the release
       run: |
-        cd crowdsec-${{ steps.crowdsec.outputs.tag }}
-        ./test_env.sh
-        cd tests
-
+        ls
     - name: Setup hub ci in crowdsec
       working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
       run: |
