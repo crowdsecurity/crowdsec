@@ -145,32 +145,33 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 		jsonFile, err := os.Open(backupOldAPICfg)
 		if err != nil {
-			return fmt.Errorf("failed to open %s : %s", backupOldAPICfg, err)
-		}
-		byteValue, _ := ioutil.ReadAll(jsonFile)
-		err = json.Unmarshal(byteValue, &oldAPICfg)
-		if err != nil {
-			return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
-		}
+			log.Warningf("failed to open %s : %s", backupOldAPICfg, err)
+		} else {
+			byteValue, _ := ioutil.ReadAll(jsonFile)
+			err = json.Unmarshal(byteValue, &oldAPICfg)
+			if err != nil {
+				return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
+			}
 
-		apiCfg := csconfig.ApiCredentialsCfg{
-			Login:    oldAPICfg.MachineID,
-			Password: oldAPICfg.Password,
-			URL:      CAPIBaseURL,
+			apiCfg := csconfig.ApiCredentialsCfg{
+				Login:    oldAPICfg.MachineID,
+				Password: oldAPICfg.Password,
+				URL:      CAPIBaseURL,
+			}
+			apiConfigDump, err := yaml.Marshal(apiCfg)
+			if err != nil {
+				return fmt.Errorf("unable to dump api credentials: %s", err)
+			}
+			apiConfigDumpFile := fmt.Sprintf("%s/online_api_credentials.yaml", csConfig.ConfigPaths.ConfigDir)
+			if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
+				apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
+			}
+			err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+			if err != nil {
+				return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
+			}
+			log.Infof("Saved API credentials to %s", apiConfigDumpFile)
 		}
-		apiConfigDump, err := yaml.Marshal(apiCfg)
-		if err != nil {
-			return fmt.Errorf("unable to dump api credentials: %s", err)
-		}
-		apiConfigDumpFile := fmt.Sprintf("%s/online_api_credentials.yaml", csConfig.ConfigPaths.ConfigDir)
-		if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
-			apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
-		}
-		err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
-		if err != nil {
-			return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
-		}
-		log.Infof("Saved API credentials to %s", apiConfigDumpFile)
 	}
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
