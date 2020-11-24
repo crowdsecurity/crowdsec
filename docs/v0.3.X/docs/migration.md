@@ -32,14 +32,6 @@ sudo ./wizard.sh --bininstall
 
 #### Restore configuration
 
-Copy `machine_id` and `password` from `/tmp/crowdsec_backup/api_creds.json` and edit `/etc/crowdsec/online_api_credentials.yaml`
-
-```
-url: https://api.crowdsec.net/
-login: <machine_id>
-password: <password>
-```
-
 !!! warning
         Before restoring old backup, if you have `local` or `tainted` postoverflows, be aware that they are no longer compatible. You should update the syntax (the community and us are available to help you doing this part).
 ```
