@@ -374,8 +374,8 @@ func TestGeneratePatternsDoc(t *testing.T) {
 	p := make(PairList, len(pctx.Grok))
 
 	i := 0
-	for k, v := range pctx.Grok {
-		p[i] = Pair{k, v}
+	for key, val := range pctx.Grok {
+		p[i] = Pair{key, val}
 		p[i].Value = strings.Replace(p[i].Value, "{%{", "\\{\\%\\{", -1)
 		i++
 	}
