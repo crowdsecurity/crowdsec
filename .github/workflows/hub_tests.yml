@@ -1,4 +1,4 @@
-name: Hub-CI
+name: Hub tests
 
 on:
   push:
@@ -43,9 +43,7 @@ jobs:
         cd crowdsec-${{ steps.crowdsec.outputs.tag }}
         ./test_env.sh
         cd tests
-        for i in `./cscli -c dev.yaml list parsers -a -o json | jq -r ".[].name" ` ; do 
-          ./cscli -c dev.yaml install parser $i ; 
-        done
+
     - name: Setup hub ci in crowdsec
       working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
       run: |

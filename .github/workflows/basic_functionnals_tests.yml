@@ -2,9 +2,9 @@ name: Hub-CI
 
 on:
   push:
-    branches: [ functional_basic_tests ]
+    branches: [ fix_hub_ci ]
   pull_request:
-    branches: [ functional_basic_tests ]
+    branches: [ fix_hub_ci ]
 
 jobs:
   build:
