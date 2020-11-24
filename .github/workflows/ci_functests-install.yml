@@ -2,9 +2,13 @@ name: Hub-CI
 
 on:
   push:
-    branches: [ functional_tests ]
+    branches:
+      - wip_lapi
+      - master
   pull_request:
-    branches: [ functional_tests ]
+    branches:
+      - wip_lapi
+      - master
 
 jobs:
   build:
