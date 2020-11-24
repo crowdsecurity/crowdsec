@@ -139,9 +139,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 				return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 			}
 		}
-	}
-
-	if !restoreOldBackup {
+	} else {
 		var oldAPICfg OldAPICfg
 		backupOldAPICfg := fmt.Sprintf("%s/api_creds.json", dirPath)
 
