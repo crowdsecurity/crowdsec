@@ -48,6 +48,7 @@ require (
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/nxadm/tail v1.4.4
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
