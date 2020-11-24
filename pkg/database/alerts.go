@@ -558,7 +558,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 }
 
 func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
-	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().First(c.CTX)
+	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(c.CTX)
 	if err != nil {
 		log.Warningf("GetAlertByID : %s", err)
 		return &ent.Alert{}, errors.Wrapf(QueryFail, "alert id '%d'", alertID)
