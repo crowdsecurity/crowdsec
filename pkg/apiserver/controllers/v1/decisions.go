@@ -51,7 +51,10 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-
+	if gctx.Request.Method == "HEAD" {
+		gctx.String(http.StatusOK, "")
+		return
+	}
 	gctx.JSON(http.StatusOK, results)
 	return
 }
@@ -158,7 +161,10 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-
+			if gctx.Request.Method == "HEAD" {
+				gctx.String(http.StatusOK, "")
+				return
+			}
 			gctx.JSON(http.StatusOK, ret)
 			return
 		}

@@ -57,7 +57,7 @@ type Alert struct {
 	// Required: true
 	Message *string `json:"message"`
 
-	// the Meta data of the Alert itself
+	// meta
 	Meta Meta `json:"meta,omitempty"`
 
 	// remediation

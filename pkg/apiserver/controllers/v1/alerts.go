@@ -160,6 +160,10 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 	}
 	data := FormatAlerts(result)
 
+	if gctx.Request.Method == "HEAD" {
+		gctx.String(http.StatusOK, "")
+		return
+	}
 	gctx.JSON(http.StatusOK, data)
 	return
 }
@@ -181,6 +185,10 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	}
 	data := FormatOneAlert(result)
 
+	if gctx.Request.Method == "HEAD" {
+		gctx.String(http.StatusOK, "")
+		return
+	}
 	gctx.JSON(http.StatusOK, data)
 	return
 }
