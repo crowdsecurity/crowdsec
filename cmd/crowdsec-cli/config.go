@@ -172,6 +172,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		if err != nil {
 			return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 		}
+		log.Infof("Saved API credentials to %s", apiConfigDumpFile)
 	}
 
 	backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
