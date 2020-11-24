@@ -26,7 +26,14 @@ docker build -t crowdsec .
 
 #### Run
 
-The container is built with [default configuration](https://github.com/crowdsecurity/crowdsec/blob/master/config/config.yaml) with `daemonize:false` and `log_media:false`, You should apply following configuration before starting it :
+The container is built with [default configuration](https://github.com/crowdsecurity/crowdsec/blob/master/config/config.yaml) with :
+
+  * `daemonize: false`
+  * `log_media: false`
+  * `api.server.listen_uri: 0.0.0.0:8080`
+  * `prometheus.listen_addr: 0.0.0.0`
+
+You should apply following configuration before starting it :
 
 * Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
 * Mount volumes to specify your configuration

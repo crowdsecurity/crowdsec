@@ -10,6 +10,8 @@ RUN BUILD_VERSION="$(git describe --tags `git rev-list --tags --max-count=1`)" m
 RUN /bin/bash wizard.sh --docker-mode
 RUN sed -ri 's/^(\s*)(daemonize\s*:\s*true\s*$)/\1daemonize: false/' /etc/crowdsec/config.yaml
 RUN sed -ri 's/^(\s*)(log_media\s*:\s*file\s*$)/\1log_media: stdout/' /etc/crowdsec/config.yaml
+RUN sed -ri 's/^(\s*)(listen_uri\s*:\s*localhost:8080\s*$)/\1listen_uri: 0.0.0.0:8080/' /etc/crowdsec/config.yaml
+RUN sed -ri 's/^(\s*)(listen_addr\s*:\s*127.0.0.1\s*$)/\1listen_addr: 0.0.0.0/' /etc/crowdsec/config.yaml
 RUN sed -ri 's/^(\s*)(credentials_path\s*:\s*\s*\/etc\/crowdsec\/online_api_credentials.yaml\s*$)/\1#credentials_path: /' /etc/crowdsec/config.yaml
 RUN cscli hub update && cscli collections install crowdsecurity/linux
 
