@@ -54,9 +54,4 @@ jobs:
         cp ../../hub-tests/main .
     - name: Run the HUB CI
       working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
-      run: |
-        for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
-          echo "::group::Test-${i}" ; 
-          ./main -c dev.yaml $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.json" ${i}"/results.json.fail") ;
-          echo "::endgroup::" ;
-        done ;
+      run: ls -lR .
