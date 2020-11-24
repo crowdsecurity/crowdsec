@@ -3,14 +3,21 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
+
+type OldAPICfg struct {
+	MachineID string `json:"machine_id"`
+	Password  string `json:"password"`
+}
 
 /* Backup crowdsec configurations to directory <dirPath> :
 
@@ -131,6 +138,39 @@ func restoreConfigFromDirectory(dirPath string) error {
 			if err = types.CopyFile(backupProfiles, csConfig.API.Server.ProfilesPath); err != nil {
 				return fmt.Errorf("failed copy %s to %s : %s", backupProfiles, csConfig.API.Server.ProfilesPath, err)
 			}
+		}
+	}
+
+	if !restoreOldBackup {
+		var oldAPICfg OldAPICfg
+		backupOldAPICfg := fmt.Sprintf("%s/api_creds.json", dirPath)
+
+		jsonFile, err := os.Open(backupOldAPICfg)
+		if err != nil {
+			return fmt.Errorf("failed to open %s : %s", backupOldAPICfg, err)
+		}
+		byteValue, _ := ioutil.ReadAll(jsonFile)
+		err = json.Unmarshal(byteValue, &oldAPICfg)
+		if err != nil {
+			return fmt.Errorf("failed to load json file %s : %s", backupOldAPICfg, err)
+		}
+
+		apiCfg := csconfig.ApiCredentialsCfg{
+			Login:    oldAPICfg.MachineID,
+			Password: oldAPICfg.Password,
+			URL:      CAPIBaseURL,
+		}
+		apiConfigDump, err := yaml.Marshal(apiCfg)
+		if err != nil {
+			return fmt.Errorf("unable to dump api credentials: %s", err)
+		}
+		apiConfigDumpFile := fmt.Sprintf("%s/online_api_credentials.yaml", csConfig.ConfigPaths.ConfigDir)
+		if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.CredentialsFilePath != "" {
+			apiConfigDumpFile = csConfig.API.Server.OnlineClient.CredentialsFilePath
+		}
+		err = ioutil.WriteFile(apiConfigDumpFile, apiConfigDump, 0644)
+		if err != nil {
+			return fmt.Errorf("write api credentials in '%s' failed: %s", apiConfigDumpFile, err)
 		}
 	}
 
