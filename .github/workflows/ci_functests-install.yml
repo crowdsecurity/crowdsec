@@ -2,9 +2,9 @@ name: Hub-CI
 
 on:
   push:
-    branches: [ functional_basic_tests ]
+    branches: [ wip_lapi ]
   pull_request:
-    branches: [ functional_basic_tests ]
+    branches: [ wip_lapi ]
 
 jobs:
   build:
@@ -20,25 +20,23 @@ jobs:
       uses: actions/checkout@v2
     - name: Build release
       run: BUILD_VERSION=xxx make release
-    # - name: Cache release directory
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ./crowdsec-xxx
-    #     key: ${{ runner.os }}-crowdsec-xxx
     - name: Install release
       run: |
         cd crowdsec-xxx
         sudo ./wizard.sh --bininstall
-        sudo cscli update
-        sudo sed -i 's/api: true/api: false/g' /etc/crowdsec/config/default.yaml
+    - name: Post-installation check
+      #capi shouldn't be registered
+      # sudo cscli capi status -> this would error
+      run: |
+        sudo cscli hub update
     - name: Install collection
       run: |
-        sudo cscli list -a
-        sudo cscli install parser crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
-        sudo cscli install scenario crowdsecurity/ssh-bf
-    - name: Crowdsec Startup check
+        sudo cscli hub list -a
+        sudo cscli parsers install crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
+        sudo cscli scenarios install crowdsecurity/ssh-bf
+    - name: Crowdsec start service
       run: |
-        sudo crowdsec -c /etc/crowdsec/config/user.yaml -t 
+        sudo systemctl start crowdsec
     - name: Generate fake ssh bf logs
       run: |
         for i in `seq 1 10` ; do 
@@ -46,41 +44,42 @@ jobs:
         done;
     - name: Process ssh-bf logs in time-machine
       run: |
-        sudo crowdsec -c /etc/crowdsec/config/user.yaml -file ./ssh-bf.log -type syslog
+        sudo crowdsec -file ./ssh-bf.log -type syslog -no-api
     - name: Cscli ban list check
+      #check that we got the expected ban and that the filters are working properly
       run: |
-        sudo cscli ban list
-        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
-        sudo cscli ban list --range 1.1.1.0/24 -o json | jq -e '.[].iptext == "1.1.1.172"'
+        sudo cscli decisions list
+        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+        sudo cscli decisions list -r 1.1.1.0/24 -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+        sudo cscli decisions list -r 1.1.2.0/24 -o=json | jq -e '. == null'
+        sudo cscli decisions list -i 1.1.1.172 -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+        sudo cscli decisions list -i 1.1.1.173 -o=json | jq -e '. == null'
     - name: Cscli ban del check
+      #check that the delete is working and that filters are working properly
       run: |
-        sudo cscli ban del ip 1.1.1.172
-        sudo cscli -c /etc/crowdsec/config/user.yaml ban list -o json | jq -e '. == null'
-    - name: Service start
+        sudo cscli decisions delete -i 1.1.1.173
+        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+        sudo cscli decisions delete -i 1.1.1.172
+        sudo cscli decisions list -o=json | jq -e '. == null'
+    - name: Metrics check
       run: |
-        sudo rm -f /etc/crowdsec/config/acquis.yaml 
-        touch /tmp/test.log
+        sudo cscli metrics
+    - name: Service stop & config change
+      #shutdown the service, edit that acquisition.yaml
+      run: |
+        sudo systemctl stop crowdsec
         echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "labels:" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
         echo "  type: syslog" | sudo tee -a /etc/crowdsec/config/acquis.yaml > /dev/null
-        sudo systemctl restart crowdsec
-    - name: Service status check
+    - name: Service start & check
       run: |
-        sleep 3
-        sudo cat /var/log/crowdsec.log
-        sudo systemctl status crowdsec
-        sudo cscli metrics
-    - name: Inject logs
+        sudo systemctl start crowdsec
+    - name: Trigger events via normal acquisition
       run: |
         cat ssh-bf.log >> /tmp/test.log
         sleep 1
     - name: Check results
       run: |
-        sudo cscli ban list
-        sudo cscli ban list -o json | jq -e '.[].iptext == "1.1.1.172"'
-        sudo cat /var/log/crowdsec.log
-    - name: Check metrics
-      run: |
-        sudo cscli metrics
-          
+        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+
 
