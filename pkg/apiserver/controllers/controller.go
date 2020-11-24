@@ -53,7 +53,9 @@ func (c *Controller) NewV1() error {
 	{
 		jwtAuth.POST("/alerts", handlerV1.CreateAlert)
 		jwtAuth.GET("/alerts", handlerV1.FindAlerts)
+		jwtAuth.HEAD("/alerts", handlerV1.FindAlerts)
 		jwtAuth.GET("/alerts/:alert_id", handlerV1.FindAlertByID)
+		jwtAuth.HEAD("/alerts/:alert_id", handlerV1.FindAlertByID)
 		jwtAuth.DELETE("/alerts", handlerV1.DeleteAlerts)
 		jwtAuth.DELETE("/decisions", handlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", handlerV1.DeleteDecisionById)
@@ -63,7 +65,9 @@ func (c *Controller) NewV1() error {
 	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFunc())
 	{
 		apiKeyAuth.GET("/decisions", handlerV1.GetDecision)
+		apiKeyAuth.HEAD("/decisions", handlerV1.GetDecision)
 		apiKeyAuth.GET("/decisions/stream", handlerV1.StreamDecision)
+		apiKeyAuth.HEAD("/decisions/stream", handlerV1.StreamDecision)
 	}
 
 	return nil
