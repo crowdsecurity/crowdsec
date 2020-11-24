@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	_ "net/http/pprof"
 	"time"
@@ -40,7 +41,7 @@ var (
 	/*global crowdsec config*/
 	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
-	acquisitionCTX *acquisition.FileAcquisCtx
+	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
 	holders         []leaky.BucketFactory
 	buckets         *leaky.Buckets
@@ -50,17 +51,18 @@ var (
 )
 
 type Flags struct {
-	ConfigFile           string
-	TraceLevel           bool
-	DebugLevel           bool
-	InfoLevel            bool
-	PrintVersion         bool
-	SingleFilePath       string
-	SingleFileType       string
-	SingleFileJsonOutput string
-	TestMode             bool
-	DisableAgent         bool
-	DisableAPI           bool
+	ConfigFile             string
+	TraceLevel             bool
+	DebugLevel             bool
+	InfoLevel              bool
+	PrintVersion           bool
+	SingleFilePath         string
+	SingleJournalctlFilter string
+	SingleFileType         string
+	SingleFileJsonOutput   string
+	TestMode               bool
+	DisableAgent           bool
+	DisableAPI             bool
 }
 
 type parsers struct {
@@ -149,26 +151,34 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 
 func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
 	var err error
-	var tmpctx []acquisition.FileCtx
 
-	if flags.SingleFilePath != "" {
-		log.Debugf("Building acquisition for %s (%s)", flags.SingleFilePath, flags.SingleFileType)
-		tmpctx, err = acquisition.LoadAcquisCtxSingleFile(flags.SingleFilePath, flags.SingleFileType)
-		if err != nil {
-			return fmt.Errorf("Failed to load acquisition : %s", err)
+	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
+
+		tmpCfg := acquisition.DataSourceCfg{}
+		tmpCfg.Mode = acquisition.CAT_MODE
+		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
+
+		if flags.SingleFilePath != "" {
+			tmpCfg.Filename = flags.SingleFilePath
+		} else if flags.SingleJournalctlFilter != "" {
+			tmpCfg.JournalctlFilters = strings.Split(flags.SingleJournalctlFilter, " ")
 		}
+
+		datasrc, err := acquisition.DataSourceConfigure(tmpCfg)
+		if err != nil {
+			return fmt.Errorf("while configuring specified file datasource : %s", err)
+		}
+		if dataSources == nil {
+			dataSources = make([]acquisition.DataSource, 0)
+		}
+		dataSources = append(dataSources, datasrc)
 	} else {
-		log.Debugf("Building acquisition from %s", cConfig.Crowdsec.AcquisitionFilePath)
-		tmpctx, err = acquisition.LoadAcquisCtxConfigFile(cConfig.Crowdsec)
+		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			return fmt.Errorf("Failed to load acquisition : %s", err)
+			log.Fatalf("While loading acquisition configuration : %s", err)
 		}
 	}
 
-	acquisitionCTX, err = acquisition.InitReaderFromFileCtx(tmpctx)
-	if err != nil {
-		return fmt.Errorf("Failed to start acquisition : %s", err)
-	}
 	return nil
 }
 
@@ -180,6 +190,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.SingleFilePath, "file", "", "Process a single file in time-machine")
+	flag.StringVar(&f.SingleJournalctlFilter, "jfilter", "", "Process a single journalctl output in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec")
@@ -225,6 +236,12 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		}
 	}
 
+	if flags.SingleJournalctlFilter != "" {
+		if flags.SingleFileType == "" {
+			return fmt.Errorf("-jfilter requires -type")
+		}
+	}
+
 	if flags.DebugLevel {
 		logLevel := log.DebugLevel
 		config.Common.LogLevel = &logLevel
@@ -242,7 +259,7 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 		config.Crowdsec.LintOnly = true
 	}
 
-	if flags.SingleFilePath != "" {
+	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 		config.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if disableAPI {

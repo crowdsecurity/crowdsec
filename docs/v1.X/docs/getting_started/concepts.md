@@ -34,7 +34,7 @@ These are the only information that are sent to our API. Those are then processe
 
 Acquistion configuration defines which streams of information {{v1X.crowdsec.name}} is going to process.
 
-At the time of writing, it's mostly files, but it should be more or less any kind of stream, such as a kafka topic or a cloudtrail.
+At the time of writing, it's mostly files or journald, but it should be more or less any kind of stream, such as a kafka topic or a cloudtrail.
 
 Acquisition configuration always contains a stream (ie. a file to tail) and a tag (ie. "these are in syslog format" "these are non-syslog nginx logs").
 
