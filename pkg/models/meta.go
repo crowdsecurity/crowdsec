@@ -15,6 +15,8 @@ import (
 
 // Meta Meta
 //
+// the Meta data of the Alert itself
+//
 // swagger:model Meta
 type Meta []*MetaItems0
 
