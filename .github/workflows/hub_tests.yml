@@ -34,11 +34,11 @@ jobs:
         cd hub-tests
         make
     - id: keydb
-        uses: pozetroninc/github-action-get-latest-release@master
-        with:
-          owner: crowdsecurity
-          repo: crowdsec
-          excludes: prerelease, draft
+      uses: pozetroninc/github-action-get-latest-release@master
+      with:
+        owner: crowdsecurity
+        repo: crowdsec
+        excludes: prerelease, draft
     - name: Create crowdsec test env with all parsers from the release
       run: |
         cd crowdsec-${{ steps.keydb.outputs.release }}
