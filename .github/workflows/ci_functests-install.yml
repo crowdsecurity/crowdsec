@@ -73,6 +73,7 @@ jobs:
     - name: Service start & check
       run: |
         sudo systemctl start crowdsec
+        sudo journalctl -xe
     - name: Trigger events via normal acquisition
       run: |
         cat ssh-bf.log >> /tmp/test.log
