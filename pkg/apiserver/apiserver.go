@@ -56,6 +56,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
 	}
 
+	if log.GetLevel() < log.DebugLevel {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
 
