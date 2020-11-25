@@ -209,8 +209,8 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					not found in map
 				*/
 
-				holder.logger.Debugf("Creating bucket %s", buckey)
-				keymiss += 1
+				holder.logger.Debugf("Creating bucket grouped by '%s'", groupby)
+				keymiss++
 				var fresh_bucket *Leaky
 
 				switch parsed.ExpectMode {
@@ -223,6 +223,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				default:
 					holder.logger.Fatalf("input event has no expected mode, malformed : %+v", parsed)
 				}
+				fresh_bucket.GroupBy = groupby
 				fresh_bucket.In = make(chan types.Event)
 				fresh_bucket.Mapkey = buckey
 				fresh_bucket.Signal = make(chan bool, 1)

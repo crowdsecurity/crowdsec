@@ -45,6 +45,8 @@ type Leaky struct {
 	CacheSize int
 	//the unique identifier of the bucket (a hash)
 	Mapkey string
+	// the key of the bucket to group by
+	GroupBy string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
 	Reprocess    bool
@@ -279,7 +281,7 @@ func LeakRoutine(leaky *Leaky) {
 				}
 				leaky.logger.Infof("Timed Overflow")
 			} else {
-				leaky.logger.Debugf("bucket underflow, destroy")
+				leaky.logger.Debugf("Expiration for bucket grouped by '%s'", leaky.GroupBy)
 				BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 			}
