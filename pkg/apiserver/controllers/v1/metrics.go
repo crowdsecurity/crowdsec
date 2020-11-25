@@ -1,6 +1,7 @@
 package v1
 
 import (
+	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -13,6 +14,53 @@ var ApilRouteHits = prometheus.NewCounterVec(
 	},
 	[]string{"route", "method"},
 )
+
+/*hits per machine*/
+var ApilMachineHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_apil_per_machine_calls",
+		Help: "Number of calls for each machine.",
+	},
+	[]string{"machine", "route", "method"},
+)
+
+/*hits per bouncer*/
+var ApilBouncerHits = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_apil_per_bouncer_calls",
+		Help: "Number of calls for each bouncer.",
+	},
+	[]string{"bouncer", "route", "method"},
+)
+
+func PrometheusMachinesMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		claims := jwt.ExtractClaims(c)
+		if claims != nil {
+			if rawID, ok := claims["id"]; ok {
+				machineID := rawID.(string)
+				ApilMachineHits.With(prometheus.Labels{
+					"machine": machineID,
+					"route":   c.Request.URL.Path,
+					"method":  c.Request.Method}).Inc()
+			}
+		}
+		c.Next()
+	}
+}
+
+func PrometheusBouncersMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		name, ok := c.Get("BOUNCER_NAME")
+		if ok {
+			ApilBouncerHits.With(prometheus.Labels{
+				"bouncer": name.(string),
+				"route":   c.Request.URL.Path,
+				"method":  c.Request.Method}).Inc()
+		}
+		c.Next()
+	}
+}
 
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {

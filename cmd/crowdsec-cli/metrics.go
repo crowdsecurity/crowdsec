@@ -20,6 +20,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func apilMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
+
+	//stats : machine -> route -> method -> count
+	/*we want consistant display order*/
+	machineKeys := []string{}
+	for k := range stats {
+		machineKeys = append(machineKeys, k)
+	}
+	sort.Strings(machineKeys)
+
+	for _, machine := range machineKeys {
+		//oneRow : route -> method -> count
+		machineRow := stats[machine]
+		for routeName, route := range machineRow {
+			for methodName, count := range route {
+				row := []string{}
+				row = append(row, machine)
+				row = append(row, routeName)
+				row = append(row, methodName)
+				if count != 0 {
+					row = append(row, fmt.Sprintf("%d", count))
+				} else {
+					row = append(row, "-")
+				}
+				table.Append(row)
+			}
+		}
+	}
+	return nil
+}
+
 func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, keys []string) error {
 
 	var sortedKeys []string
@@ -83,6 +114,8 @@ func ShowPrometheus(url string) {
 	parsers_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
 	apil_stats := map[string]map[string]int{}
+	apil_machine_stats := map[string]map[string]map[string]int{}
+	apil_bouncer_stats := map[string]map[string]map[string]int{}
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -100,6 +133,9 @@ func ShowPrometheus(url string) {
 				log.Debugf("no source in Metric %v", metric.Labels)
 			}
 			value := m.(prom2json.Metric).Value
+			machine := metric.Labels["machine"]
+			bouncer := metric.Labels["bouncer"]
+
 			route := metric.Labels["route"]
 			method := metric.Labels["method"]
 
@@ -175,6 +211,22 @@ func ShowPrometheus(url string) {
 					apil_stats[route] = make(map[string]int)
 				}
 				apil_stats[route][method] += ival
+			case "cs_apil_per_machine_calls":
+				if _, ok := apil_machine_stats[machine]; !ok {
+					apil_machine_stats[machine] = make(map[string]map[string]int)
+				}
+				if _, ok := apil_machine_stats[machine][route]; !ok {
+					apil_machine_stats[machine][route] = make(map[string]int)
+				}
+				apil_machine_stats[machine][route][method] += ival
+			case "cs_apil_per_bouncer_calls":
+				if _, ok := apil_bouncer_stats[bouncer]; !ok {
+					apil_bouncer_stats[bouncer] = make(map[string]map[string]int)
+				}
+				if _, ok := apil_bouncer_stats[bouncer][route]; !ok {
+					apil_bouncer_stats[bouncer][route] = make(map[string]int)
+				}
+				apil_bouncer_stats[bouncer][route][method] += ival
 			default:
 				continue
 			}
@@ -201,6 +253,19 @@ func ShowPrometheus(url string) {
 		keys = []string{"hits", "parsed", "unparsed"}
 		if err := metricsToTable(parsersTable, parsers_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
+		}
+
+		apilMachinesTable := tablewriter.NewWriter(os.Stdout)
+		apilMachinesTable.SetHeader([]string{"Machine", "Route", "Method", "Hits"})
+		if err := apilMetricsToTable(apilMachinesTable, apil_machine_stats); err != nil {
+			log.Warningf("while collecting machine apil stats : %s", err)
+		}
+
+		//apilMetricsToTable
+		apilBouncersTable := tablewriter.NewWriter(os.Stdout)
+		apilBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
+		if err := apilMetricsToTable(apilBouncersTable, apil_bouncer_stats); err != nil {
+			log.Warningf("while collecting bouncer apil stats : %s", err)
 		}
 
 		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
@@ -235,6 +300,10 @@ func ShowPrometheus(url string) {
 		parsersTable.Render()
 		log.Printf("Local Api Metrics:")
 		apilTable.Render()
+		log.Printf("Local Api Machines Metrics:")
+		apilMachinesTable.Render()
+		log.Printf("Local Api Bouncers Metrics:")
+		apilBouncersTable.Render()
 	} else if csConfig.Cscli.Output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
 			x, err := json.MarshalIndent(val, "", " ")

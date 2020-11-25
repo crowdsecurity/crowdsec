@@ -105,10 +105,14 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
-			v1.ApilRouteHits,
+			v1.ApilRouteHits, v1.ApilMachineHits, v1.ApilBouncerHits,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil)
+	listen := fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort)
+	err := http.ListenAndServe(listen, nil)
+	if err != nil {
+		log.Fatalf("Unable to listen on %s : %s", listen, err)
+	}
 }
