@@ -110,5 +110,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil)
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
+		log.Warningf("prometheus: %s", err)
+	}
 }
