@@ -1,10 +1,10 @@
-name: Hub-CI
+name: Basic functionals tests
 
 on:
   push:
-    branches: [ functional_basic_tests ]
+    branches: [ master ]
   pull_request:
-    branches: [ functional_basic_tests ]
+    branches: [ master ]
 
 jobs:
   build:
