@@ -292,18 +292,30 @@ func ShowPrometheus(url string) {
 			}
 		}
 
-		log.Printf("Buckets Metrics:")
-		bucketsTable.Render()
-		log.Printf("Acquisition Metrics:")
-		acquisTable.Render()
-		log.Printf("Parser Metrics:")
-		parsersTable.Render()
-		log.Printf("Local Api Metrics:")
-		apilTable.Render()
-		log.Printf("Local Api Machines Metrics:")
-		apilMachinesTable.Render()
-		log.Printf("Local Api Bouncers Metrics:")
-		apilBouncersTable.Render()
+		if bucketsTable.NumLines() > 0 {
+			log.Printf("Buckets Metrics:")
+			bucketsTable.Render()
+		}
+		if acquisTable.NumLines() > 0 {
+			log.Printf("Acquisition Metrics:")
+			acquisTable.Render()
+		}
+		if parsersTable.NumLines() > 0 {
+			log.Printf("Parser Metrics:")
+			parsersTable.Render()
+		}
+		if apilTable.NumLines() > 0 {
+			log.Printf("Local Api Metrics:")
+			apilTable.Render()
+		}
+		if apilMachinesTable.NumLines() > 0 {
+			log.Printf("Local Api Machines Metrics:")
+			apilMachinesTable.Render()
+		}
+		if apilBouncersTable.NumLines() > 0 {
+			log.Printf("Local Api Bouncers Metrics:")
+			apilBouncersTable.Render()
+		}
 	} else if csConfig.Cscli.Output == "json" {
 		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
