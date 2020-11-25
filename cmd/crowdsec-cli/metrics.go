@@ -317,7 +317,7 @@ func ShowPrometheus(url string) {
 			apilBouncersTable.Render()
 		}
 	} else if csConfig.Cscli.Output == "json" {
-		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -325,7 +325,7 @@ func ShowPrometheus(url string) {
 			fmt.Printf("%s\n", string(x))
 		}
 	} else if csConfig.Cscli.Output == "raw" {
-		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)

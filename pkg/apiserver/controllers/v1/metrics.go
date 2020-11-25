@@ -33,6 +33,25 @@ var ApilBouncerHits = prometheus.NewCounterVec(
 	[]string{"bouncer", "route", "method"},
 )
 
+/* keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
+while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
+var ApilNilDecisions = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_apil_decision_nil",
+		Help: "Number of calls to /decisions that returned nil result.",
+	},
+	[]string{"bouncer"},
+)
+
+/*hits per bouncer*/
+var ApilNonNilDecisions = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_apil_decision_nil",
+		Help: "Number of calls to /decisions that returned non-nil result.",
+	},
+	[]string{"bouncer"},
+)
+
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		claims := jwt.ExtractClaims(c)
