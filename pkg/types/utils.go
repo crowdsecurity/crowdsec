@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	nested "github.com/antonfisher/nested-logrus-formatter"
+
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -77,10 +79,18 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	if logLevel >= log.InfoLevel {
-		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
-		log.SetFormatter(logFormatter)
+	//logFormatter = &log.TextFormatter{
+	//TimestampFormat: "02-01-2006 15:04:05",
+	//FullTimestamp: true,
+	//	}
+
+	logFormatter = &nested.Formatter{
+		TimestampFormat: "2006-01-02 15:04:05",
+		ShowFullLevel:   false,
+		NoColors:        false,
+		NoFieldsSpace:   true,
 	}
+	log.SetFormatter(logFormatter)
 
 	return nil
 }

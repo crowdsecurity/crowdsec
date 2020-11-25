@@ -29,10 +29,10 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		total += 1
+		total++
 		//bucket already overflowed, we can kill it
 		if !val.Ovflw_ts.IsZero() {
-			discard += 1
+			discard++
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
 			val.KillSwitch <- true
@@ -88,9 +88,9 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		total += 1
+		total++
 		if !val.Ovflw_ts.IsZero() {
-			discard += 1
+			discard++
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			return true
 		}
@@ -104,7 +104,7 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 		if tokat >= tokcapa {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
-			discard += 1
+			discard++
 			return true
 		} else {
 			val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
@@ -195,7 +195,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		attempts := 0
 		start := time.Now()
 		for !sent {
-			attempts += 1
+			attempts++
 			/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 			if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now()) {
 				holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d keymiss:%d failed_sent:%d attempts:%d)", time.Since(start),
@@ -244,7 +244,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					//it's closed, delete it
 					bucket.logger.Debugf("Bucket %s found dead, cleanup the body", buckey)
 					buckets.Bucket_map.Delete(buckey)
-					sigclosed += 1
+					sigclosed++
 					continue
 				}
 				holder.logger.Tracef("Signal exists, try to pour :)")
@@ -276,7 +276,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				sent = true
 				continue
 			default:
-				failed_sent += 1
+				failed_sent++
 				holder.logger.Tracef("Failed to send, try again")
 				continue
 

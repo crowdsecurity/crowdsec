@@ -132,16 +132,16 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {
-		log.Debugf("Loading '%s'", f)
-		if !strings.HasSuffix(f, ".yaml") {
-			log.Debugf("Skipping %s : not a yaml file", f)
+		log.Debugf("loading '%s'", f)
+		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
+			log.Debugf("skipping '%s': file must have '.yaml' or '.yml' extension", f)
 			continue
 		}
 
 		//process the yaml
 		bucketConfigurationFile, err := os.Open(f)
 		if err != nil {
-			log.Errorf("Can't access leaky configuration file %s", f)
+			log.Errorf("can't open leaky configuration file '%s': %s", f, err)
 			return nil, nil, err
 		}
 		dec := yaml.NewDecoder(bucketConfigurationFile)
@@ -151,30 +151,30 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
 				if err == io.EOF {
-					log.Tracef("End of yaml file")
+					log.Tracef("file '%s': EOF")
 					break
 				} else {
-					log.Errorf("Bad yaml in %s : %v", f, err)
+					log.Errorf("failed to decode '%s' yaml file: %s", f, err)
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
 			}
 			bucketFactory.DataDir = cscfg.DataDir
 			//check empty
 			if bucketFactory.Name == "" {
-				log.Errorf("Won't load nameless bucket")
-				return nil, nil, fmt.Errorf("nameless bucket")
+				log.Errorf("please provide a name to scenario '%s'", f)
+				return nil, nil, fmt.Errorf("scenario '%s' doesn't contains name")
 			}
 			//check compat
 			if bucketFactory.FormatVersion == "" {
-				log.Tracef("no version in %s : %s, assuming '1.0'", bucketFactory.Name, f)
+				log.Tracef("no version in '%s': assuming '1.0'", f)
 				bucketFactory.FormatVersion = "1.0"
 			}
 			ok, err := cwversion.Statisfies(bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 			if err != nil {
-				log.Fatalf("Failed to check version : %s", err)
+				log.Fatalf("failed to check constraint version for '%s': %s", f, err)
 			}
 			if !ok {
-				log.Errorf("can't load %s : %s doesn't satisfy scenario format %s, skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
+				log.Errorf("can't load '%s': %s doesn't satisfy scenario constraint version (%s), skip", bucketFactory.Name, bucketFactory.FormatVersion, cwversion.Constraint_scenario)
 				continue
 			}
 
@@ -183,7 +183,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 			bucketFactory.ret = response
 			hubItem, err := cwhub.GetItemByPath(cwhub.SCENARIOS, bucketFactory.Filename)
 			if err != nil {
-				log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+				log.Errorf("scenario '%s'(%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Filename, bucketFactory.Name)
 			} else {
 				if cscfg.SimulationConfig != nil {
 					bucketFactory.Simulated = cscfg.SimulationConfig.IsSimulated(hubItem.Name)
@@ -192,7 +192,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 					bucketFactory.ScenarioVersion = hubItem.LocalVersion
 					bucketFactory.hash = hubItem.LocalHash
 				} else {
-					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Name, bucketFactory.Filename)
+					log.Errorf("scenario %s (%s) couldn't be find in hub (ignore if in unit tests)", bucketFactory.Filename, bucketFactory.Name)
 				}
 			}
 
@@ -214,20 +214,22 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	if bucketFactory.Debug {
 		var clog = logrus.New()
 		if err := types.ConfigureLogger(clog); err != nil {
-			log.Fatalf("While creating bucket-specific logger : %s", err)
+			log.Fatalf("configuring bucket logger for '%s': %s", bucketFactory.Filename, err)
 		}
 		clog.SetLevel(log.DebugLevel)
 		bucketFactory.logger = clog.WithFields(log.Fields{
-			"cfg":  bucketFactory.BucketName,
-			"name": bucketFactory.Name,
-			"file": bucketFactory.Filename,
+			"config": "bucket",
+			"id":     bucketFactory.BucketName,
+			"name":   bucketFactory.Name,
+			"type":   bucketFactory.Type,
 		})
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
 		bucketFactory.logger = log.WithFields(log.Fields{
-			"cfg":  bucketFactory.BucketName,
-			"name": bucketFactory.Name,
-			"file": bucketFactory.Filename,
+			"config": "bucket",
+			"id":     bucketFactory.BucketName,
+			"name":   bucketFactory.Name,
+			"type":   bucketFactory.Type,
 		})
 	}
 
@@ -266,7 +268,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 		}
 	}
 
-	bucketFactory.logger.Infof("Adding %s bucket", bucketFactory.Type)
+	bucketFactory.logger.Infof("scenario loaded successfully")
 	//return the Holder correponding to the type of bucket
 	bucketFactory.processors = []Processor{}
 	switch bucketFactory.Type {

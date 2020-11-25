@@ -13,6 +13,7 @@ import (
 	"io"
 	_ "net/http/pprof"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -77,7 +78,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 
 			//check for empty bucket
 			if node.Name == "" && node.Description == "" && node.Author == "" {
-				log.Infof("Node in %s has no name,author or description. Skipping.", stageFile.Filename)
+				log.WithFields(log.Fields{"config": "parser"}).Infof("node number %d in parser '%s' has no name,author or description. skipping.", (nodesCount + 1), stageFile.Filename)
 				continue
 			}
 			//check compat
@@ -122,14 +123,14 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 			nodes = append(nodes, node)
 			nodesCount++
 		}
-		log.WithFields(log.Fields{"file": stageFile.Filename}).Infof("Loaded %d parser nodes", nodesCount)
+		log.WithFields(log.Fields{"config": "parser", "file": filepath.Base(stageFile.Filename)}).Infof("loaded %d nodes", nodesCount)
 	}
 
 	for k := range tmpstages {
 		pctx.Stages = append(pctx.Stages, k)
 	}
 	sort.Strings(pctx.Stages)
-	log.Infof("Loaded %d nodes, %d stages", len(nodes), len(pctx.Stages))
+	log.WithFields(log.Fields{"config": "parser"}).Infof("loaded %d nodes from %d stages", len(nodes), len(pctx.Stages))
 
 	return nodes, nil
 }

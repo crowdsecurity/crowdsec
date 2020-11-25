@@ -254,8 +254,11 @@ func Serve() error {
 
 	if cConfig.Common != nil && cConfig.Common.Daemonize {
 		sent, err := daemon.SdNotify(false, daemon.SdNotifyReady)
-		if !sent || err != nil {
+		if err != nil {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
+		}
+		if !sent {
+			log.Warningf("failed to notify: message was not sent")
 		}
 		/*wait for signals*/
 		HandleSignals()
