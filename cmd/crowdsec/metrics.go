@@ -82,12 +82,11 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		return
 	}
 	if config.ListenAddr == "" {
-		log.Warningf("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
+		log.Errorf("prometheus is enabled, but the")
 		config.ListenAddr = "127.0.0.1"
 	}
 	if config.ListenPort == 0 {
-		log.Warningf("prometheus is enabled, but the listen port is empty, using '6060'")
-		config.ListenPort = 6060
+		config.ListenPort = 9090
 	}
 
 	defer types.CatchPanic("crowdsec/registerPrometheus")
@@ -110,5 +109,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil)
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
+		log.Warningf("prometheus: %s", err)
+	}
 }
