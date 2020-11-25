@@ -24,7 +24,7 @@ var LAPIURLPrefix string = "v1"
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
 		Use:   "lapi [action]",
-		Short: "Manage interraction with Local API (LAPI)",
+		Short: "Manage interaction with Local API (LAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.API.Client == nil {
