@@ -1,0 +1,49 @@
+common:
+  daemonize: false
+  pid_dir: /var/run/
+  log_media: stdout
+  log_level: info
+  log_dir: /var/log/
+  working_dir: .
+config_paths:
+  config_dir: /etc/crowdsec/
+  data_dir: /var/lib/crowdsec/data/
+  simulation_path: /etc/crowdsec/simulation.yaml
+  hub_dir: /etc/crowdsec/hub/
+  index_path: /etc/crowdsec/hub/.index.json
+crowdsec_service:
+  acquisition_path: /etc/crowdsec/acquis.yaml
+  parser_routines: 1
+cscli:
+  output: human
+  hub_branch: wip_lapi
+db_config:
+  log_level: info
+  type: sqlite
+  db_path: /var/lib/crowdsec/data/crowdsec.db
+  #user: 
+  #password:
+  #db_name:
+  #host:
+  #port:
+  flush:
+    max_items: 5000
+    max_age: 7d
+api:
+  client:
+    insecure_skip_verify: true
+    credentials_path: /etc/crowdsec/local_api_credentials.yaml
+  server:
+    log_level: info
+    listen_uri: 0.0.0.0:8080
+    profiles_path: /etc/crowdsec/profiles.yaml
+    online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
+      #credentials_path: /etc/crowdsec/online_api_credentials.yaml
+#    tls:
+#      cert_file: /etc/crowdsec/ssl/cert.pem
+#      key_file: /etc/crowdsec/ssl/key.pem
+prometheus:
+  enabled: true
+  level: full
+  listen_addr: 0.0.0.0
+  listen_port: 6060
