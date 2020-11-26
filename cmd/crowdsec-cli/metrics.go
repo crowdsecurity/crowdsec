@@ -231,7 +231,7 @@ func ShowPrometheus(url string) {
 					apil_bouncer_stats[bouncer][route] = make(map[string]int)
 				}
 				apil_bouncer_stats[bouncer][route][method] += ival
-			case "cs_apil_decisions_ko_total":
+			case "cs_apil_decisions_ko_total", "cs_apil_decisions_ok_total":
 				if _, ok := apil_decisions_stats[bouncer]; !ok {
 					apil_decisions_stats[bouncer] = struct {
 						NonEmpty int
@@ -239,17 +239,11 @@ func ShowPrometheus(url string) {
 					}{}
 				}
 				x := apil_decisions_stats[bouncer]
-				x.Empty += ival
-				apil_decisions_stats[bouncer] = x
-			case "cs_apil_decisions_ok_total":
-				if _, ok := apil_decisions_stats[bouncer]; !ok {
-					apil_decisions_stats[bouncer] = struct {
-						NonEmpty int
-						Empty    int
-					}{}
+				if fam.Name == "cs_apil_decisions_ko_total" {
+					x.Empty += ival
+				} else if fam.Name == "cs_apil_decisions_ok_total" {
+					x.NonEmpty += ival
 				}
-				x := apil_decisions_stats[bouncer]
-				x.NonEmpty += ival
 				apil_decisions_stats[bouncer] = x
 			default:
 				continue
