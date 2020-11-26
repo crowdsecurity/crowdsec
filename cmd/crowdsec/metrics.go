@@ -105,7 +105,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
-			v1.ApilRouteHits, v1.ApilMachineHits, v1.ApilBouncerHits,
+			v1.ApilRouteHits, v1.ApilMachineHits, v1.ApilBouncerHits, v1.ApilNilDecisions, v1.ApilNonNilDecisions,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 
 	}

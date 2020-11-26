@@ -110,6 +110,10 @@ func ShowPrometheus(url string) {
 	}
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 	/*walk*/
+	apil_decisions_stats := map[string]struct {
+		NonEmpty int
+		Empty    int
+	}{}
 	acquis_stats := map[string]map[string]int{}
 	parsers_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
@@ -206,12 +210,12 @@ func ShowPrometheus(url string) {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["unparsed"] += ival
-			case "cs_apil_route_calls":
+			case "cs_apil_route_requests_total":
 				if _, ok := apil_stats[route]; !ok {
 					apil_stats[route] = make(map[string]int)
 				}
 				apil_stats[route][method] += ival
-			case "cs_apil_per_machine_calls":
+			case "cs_apil_machine_requests_total":
 				if _, ok := apil_machine_stats[machine]; !ok {
 					apil_machine_stats[machine] = make(map[string]map[string]int)
 				}
@@ -219,7 +223,7 @@ func ShowPrometheus(url string) {
 					apil_machine_stats[machine][route] = make(map[string]int)
 				}
 				apil_machine_stats[machine][route][method] += ival
-			case "cs_apil_per_bouncer_calls":
+			case "cs_apil_bouncer_requests_total":
 				if _, ok := apil_bouncer_stats[bouncer]; !ok {
 					apil_bouncer_stats[bouncer] = make(map[string]map[string]int)
 				}
@@ -227,6 +231,26 @@ func ShowPrometheus(url string) {
 					apil_bouncer_stats[bouncer][route] = make(map[string]int)
 				}
 				apil_bouncer_stats[bouncer][route][method] += ival
+			case "cs_apil_decisions_ko_total":
+				if _, ok := apil_decisions_stats[bouncer]; !ok {
+					apil_decisions_stats[bouncer] = struct {
+						NonEmpty int
+						Empty    int
+					}{}
+				}
+				x := apil_decisions_stats[bouncer]
+				x.Empty += ival
+				apil_decisions_stats[bouncer] = x
+			case "cs_apil_decisions_ok_total":
+				if _, ok := apil_decisions_stats[bouncer]; !ok {
+					apil_decisions_stats[bouncer] = struct {
+						NonEmpty int
+						Empty    int
+					}{}
+				}
+				x := apil_decisions_stats[bouncer]
+				x.NonEmpty += ival
+				apil_decisions_stats[bouncer] = x
 			default:
 				continue
 			}
@@ -266,6 +290,16 @@ func ShowPrometheus(url string) {
 		apilBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
 		if err := apilMetricsToTable(apilBouncersTable, apil_bouncer_stats); err != nil {
 			log.Warningf("while collecting bouncer apil stats : %s", err)
+		}
+
+		apilDecisionsTable := tablewriter.NewWriter(os.Stdout)
+		apilDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
+		for bouncer, hits := range apil_decisions_stats {
+			row := make([]string, 3)
+			row = append(row, bouncer)
+			row = append(row, fmt.Sprintf("%d", hits.Empty))
+			row = append(row, fmt.Sprintf("%d", hits.NonEmpty))
+			apilDecisionsTable.Append(row)
 		}
 
 		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
@@ -316,8 +350,14 @@ func ShowPrometheus(url string) {
 			log.Printf("Local Api Bouncers Metrics:")
 			apilBouncersTable.Render()
 		}
+
+		if apilDecisionsTable.NumLines() > 0 {
+			log.Printf("Local Api Bouncers Decisions:")
+			apilDecisionsTable.Render()
+		}
+
 	} else if csConfig.Cscli.Output == "json" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats, apil_decisions_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -325,7 +365,7 @@ func ShowPrometheus(url string) {
 			fmt.Printf("%s\n", string(x))
 		}
 	} else if csConfig.Cscli.Output == "raw" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats, apil_decisions_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)

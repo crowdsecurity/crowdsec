@@ -9,7 +9,7 @@ import (
 /*prometheus*/
 var ApilRouteHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_route_calls",
+		Name: "cs_apil_route_requests_total",
 		Help: "Number of calls to each route.",
 	},
 	[]string{"route", "method"},
@@ -18,7 +18,7 @@ var ApilRouteHits = prometheus.NewCounterVec(
 /*hits per machine*/
 var ApilMachineHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_per_machine_calls",
+		Name: "cs_apil_machine_requests_total",
 		Help: "Number of calls for each machine.",
 	},
 	[]string{"machine", "route", "method"},
@@ -27,7 +27,7 @@ var ApilMachineHits = prometheus.NewCounterVec(
 /*hits per bouncer*/
 var ApilBouncerHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_per_bouncer_calls",
+		Name: "cs_apil_bouncer_requests_total",
 		Help: "Number of calls for each bouncer.",
 	},
 	[]string{"bouncer", "route", "method"},
@@ -37,7 +37,7 @@ var ApilBouncerHits = prometheus.NewCounterVec(
 while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
 var ApilNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_decision_nil",
+		Name: "cs_apil_decisions_ko_total",
 		Help: "Number of calls to /decisions that returned nil result.",
 	},
 	[]string{"bouncer"},
@@ -46,11 +46,27 @@ var ApilNilDecisions = prometheus.NewCounterVec(
 /*hits per bouncer*/
 var ApilNonNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_decision_nil",
+		Name: "cs_apil_decisions_ok_total",
 		Help: "Number of calls to /decisions that returned non-nil result.",
 	},
 	[]string{"bouncer"},
 )
+
+func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
+	name, ok := c.Get("BOUNCER_NAME")
+	if ok {
+		ApilNilDecisions.With(prometheus.Labels{
+			"bouncer": name.(string)}).Inc()
+	}
+}
+
+func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
+	name, ok := c.Get("BOUNCER_NAME")
+	if ok {
+		ApilNonNilDecisions.With(prometheus.Labels{
+			"bouncer": name.(string)}).Inc()
+	}
+}
 
 func PrometheusMachinesMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
