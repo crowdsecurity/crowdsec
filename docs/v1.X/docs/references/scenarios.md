@@ -210,6 +210,19 @@ A positive integer representing the bucket capacity.
 If there are more than `capacity` item in the bucket, it will overflow.
 
 
+### cache_size
+
+```yaml
+cache_size: 10
+```
+
+A positive integer representing the number of events we hold in the
+bucket. All events are still accounted for the bucket, it only
+prevents the bucket event history to grow larger than
+`cache_size`. When the bucket reachs `cache_size` events, then events
+are discarded on an first-in first-out basis.
+
+
 ### leakspeed
 
 ```yaml
