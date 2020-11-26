@@ -295,7 +295,7 @@ func ShowPrometheus(url string) {
 		apilDecisionsTable := tablewriter.NewWriter(os.Stdout)
 		apilDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
 		for bouncer, hits := range apil_decisions_stats {
-			row := make([]string, 3)
+			row := []string{}
 			row = append(row, bouncer)
 			row = append(row, fmt.Sprintf("%d", hits.Empty))
 			row = append(row, fmt.Sprintf("%d", hits.NonEmpty))
