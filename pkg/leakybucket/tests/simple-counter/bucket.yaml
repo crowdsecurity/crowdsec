@@ -1,5 +1,5 @@
 type: counter
-name: test/simple-trigger
+name: test/simple-counter
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
 duration: 1s

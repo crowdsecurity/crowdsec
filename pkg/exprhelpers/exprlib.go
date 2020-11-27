@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -93,6 +94,7 @@ func File(filename string) []string {
 		return dataFile[filename]
 	}
 	log.Errorf("file '%s' (type:string) not found in expr library", filename)
+	log.Errorf("expr library : %s", spew.Sdump(dataFile))
 	return []string{}
 }
 
@@ -105,6 +107,7 @@ func RegexpInFile(data string, filename string) bool {
 		}
 	} else {
 		log.Errorf("file '%s' (type:regexp) not found in expr library", filename)
+		log.Errorf("expr library : %s", spew.Sdump(dataFileRegex))
 	}
 	return false
 }
