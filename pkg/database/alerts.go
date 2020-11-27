@@ -74,7 +74,7 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 			} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
 				decision = "(simulated decision)"
 			}
-			if log.GetLevel() > log.DebugLevel {
+			if log.GetLevel() >= log.DebugLevel {
 				/*spew is expensive*/
 				log.Debugf("%s", spew.Sdump(decisionItem))
 			}
