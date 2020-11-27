@@ -51,6 +51,14 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	/*let's follow a naive logic : when a bouncer queries /decisions, if the answer is empty, we assume there is no decision for this ip/user/...,
+	but if it's non-empty, it means that there is one or more decisions for this target*/
+	if len(results) > 0 {
+		PrometheusBouncersHasNonEmptyDecision(gctx)
+	} else {
+		PrometheusBouncersHasEmptyDecision(gctx)
+	}
+
 	if gctx.Request.Method == "HEAD" {
 		gctx.String(http.StatusOK, "")
 		return

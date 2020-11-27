@@ -43,13 +43,13 @@ func (c *Controller) NewV1() error {
 	}
 
 	c.Router.Use(v1.PrometheusMiddleware())
-	v1 := c.Router.Group("/v1")
-	v1.POST("/watchers", handlerV1.CreateMachine)
-	v1.POST("/watchers/login", handlerV1.Middlewares.JWT.Middleware.LoginHandler)
+	groupV1 := c.Router.Group("/v1")
+	groupV1.POST("/watchers", handlerV1.CreateMachine)
+	groupV1.POST("/watchers/login", handlerV1.Middlewares.JWT.Middleware.LoginHandler)
 
-	jwtAuth := v1.Group("")
+	jwtAuth := groupV1.Group("")
 	jwtAuth.GET("/refresh_token", handlerV1.Middlewares.JWT.Middleware.RefreshHandler)
-	jwtAuth.Use(handlerV1.Middlewares.JWT.Middleware.MiddlewareFunc())
+	jwtAuth.Use(handlerV1.Middlewares.JWT.Middleware.MiddlewareFunc(), v1.PrometheusMachinesMiddleware())
 	{
 		jwtAuth.POST("/alerts", handlerV1.CreateAlert)
 		jwtAuth.GET("/alerts", handlerV1.FindAlerts)
@@ -61,8 +61,8 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/decisions/:decision_id", handlerV1.DeleteDecisionById)
 	}
 
-	apiKeyAuth := v1.Group("")
-	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFunc())
+	apiKeyAuth := groupV1.Group("")
+	apiKeyAuth.Use(handlerV1.Middlewares.APIKey.MiddlewareFunc(), v1.PrometheusBouncersMiddleware())
 	{
 		apiKeyAuth.GET("/decisions", handlerV1.GetDecision)
 		apiKeyAuth.HEAD("/decisions", handlerV1.GetDecision)

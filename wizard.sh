@@ -30,8 +30,9 @@ CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
 
-CROWDSEC_BIN_INSTALLED="/usr/local/bin/crowdsec"
-CSCLI_BIN_INSTALLED="/usr/local/bin/cscli"
+BIN_INSTALL_PATH="/usr/local/bin"
+CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
+CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
 
 ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
@@ -348,6 +349,16 @@ install_bins() {
     log_info "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" || exit
+    symlink_bins
+}
+
+symlink_bins() {
+    if grep -q "${BIN_INSTALL_PATH}" <<< $PATH; then
+        log_dbg "${BIN_INSTALL_PATH} found in PATH"
+    else
+        ln -s "${CSCLI_BIN_INSTALLED}" /usr/bin/cscli
+        ln -s "${CROWDSEC_BIN_INSTALLED}" /usr/bin/crowdsec
+    fi
 }
 
 delete_bins() {
@@ -375,6 +386,7 @@ uninstall_crowdsec() {
     rm -f ${SYSTEMD_PATH_FILE} || echo ""
     log_info "crowdsec successfully uninstalled"
 }
+
 
 
 main() {

@@ -146,7 +146,7 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 }
 
 func (s *APIServer) Run() error {
-	defer types.CatchPanic("apil/runServer")
+	defer types.CatchPanic("lapi/runServer")
 
 	s.httpServer = &http.Server{
 		Addr:    s.URL,
