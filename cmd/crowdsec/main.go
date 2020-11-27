@@ -193,7 +193,7 @@ func (f *Flags) Parse() {
 	flag.StringVar(&f.SingleJournalctlFilter, "jfilter", "", "Process a single journalctl output in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
-	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec")
+	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 
 	flag.Parse()

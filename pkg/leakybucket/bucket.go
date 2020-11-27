@@ -214,7 +214,9 @@ func LeakRoutine(leaky *Leaky) {
 					goto End
 				}
 			}
-			leaky.logger.Tracef("Pour event: %s", spew.Sdump(msg))
+			if leaky.logger.Level >= log.TraceLevel {
+				leaky.logger.Tracef("Pour event: %s", spew.Sdump(msg))
+			}
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src}).Inc()
 
 			leaky.Pour(leaky, msg) // glue for now
@@ -244,7 +246,9 @@ func LeakRoutine(leaky *Leaky) {
 					break
 				}
 			}
-			leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+			if leaky.logger.Level >= log.TraceLevel {
+				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+			}
 			mt, _ := leaky.Ovflw_ts.MarshalText()
 			leaky.logger.Tracef("overflow time : %s", mt)
 
@@ -283,7 +287,7 @@ func LeakRoutine(leaky *Leaky) {
 				BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 			}
-			if log.GetLevel() >= log.TraceLevel {
+			if leaky.logger.Level >= log.TraceLevel {
 				/*don't sdump if it's not going to printed, it's expensive*/
 				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.Event{Overflow: alert}))
 			}

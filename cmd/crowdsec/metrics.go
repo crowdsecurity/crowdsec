@@ -110,9 +110,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
-	listen := fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort)
-	err := http.ListenAndServe(listen, nil)
-	if err != nil {
-		log.Fatalf("Unable to listen on %s : %s", listen, err)
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
+		log.Warningf("prometheus: %s", err)
 	}
 }
