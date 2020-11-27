@@ -27,9 +27,9 @@ jobs:
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
         infile: coverage.out
-        outfile: coverage.lcov
+        outfile: coverage.txt
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: coverage.lcov
+        path-to-lcov: coverage.txt
