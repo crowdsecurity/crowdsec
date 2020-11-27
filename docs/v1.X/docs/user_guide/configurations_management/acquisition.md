@@ -4,6 +4,7 @@
 
 The acquisition configuration specifies lists of logs that {{v1X.crowdsec.name}} will ingest and feed to parsers.
 Acquisition provides two information about a given log :
+
  - its source (a path to a file, or a journalctl filter)
  - its type, given in the form of a label
 
