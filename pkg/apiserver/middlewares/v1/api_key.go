@@ -72,6 +72,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
+		c.Set("BOUNCER_NAME", bouncer.Name)
+
 		if bouncer.IPAddress == "" {
 			err = a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID)
 			if err != nil {

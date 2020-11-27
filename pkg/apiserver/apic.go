@@ -136,7 +136,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 }
 
 func (a *apic) Push() error {
-	defer types.CatchPanic("apil/pushToAPIC")
+	defer types.CatchPanic("lapi/pushToAPIC")
 
 	var cache models.AddSignalsRequest
 	ticker := time.NewTicker(a.pushInterval)
@@ -277,7 +277,7 @@ func (a *apic) PullTop() error {
 }
 
 func (a *apic) Pull() error {
-	defer types.CatchPanic("apil/pullFromAPIC")
+	defer types.CatchPanic("lapi/pullFromAPIC")
 	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
 	var err error
 
@@ -313,7 +313,7 @@ func (a *apic) Pull() error {
 }
 
 func (a *apic) SendMetrics() error {
-	defer types.CatchPanic("apil/metricsToAPIC")
+	defer types.CatchPanic("lapi/metricsToAPIC")
 
 	log.Infof("start crowdsec api send metrics (interval: %s)", MetricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
