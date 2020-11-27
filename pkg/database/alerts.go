@@ -74,7 +74,10 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 			} else if decisionItem.Simulated != nil && *decisionItem.Simulated {
 				decision = "(simulated decision)"
 			}
-			log.Debugf("%s", spew.Sdump(decisionItem))
+			if log.GetLevel() > log.DebugLevel {
+				/*spew is expensive*/
+				log.Debugf("%s", spew.Sdump(decisionItem))
+			}
 			decision += fmt.Sprintf("%s %s on %s %s", *decisionItem.Duration,
 				*decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			retStr = append(retStr,
