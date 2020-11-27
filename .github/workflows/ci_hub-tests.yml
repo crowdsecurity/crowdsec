@@ -1,4 +1,4 @@
-name: Hub tests
+name: Hub-CI
 
 on:
   push:
@@ -33,27 +33,26 @@ jobs:
         git clone https://github.com/crowdsecurity/hub-tests.git
         cd hub-tests
         make
-    - id: keydb
-      uses: pozetroninc/github-action-get-latest-release@master
+    - uses: oprypin/find-latest-tag@v1
       with:
-        owner: crowdsecurity
-        repo: crowdsec
-        excludes: prerelease, draft
+        repository: crowdsecurity/crowdsec  # The repository to scan.
+        releases-only: false  # We know that all relevant tags have a GitHub release for them.
+      id: crowdsec  # The step ID to refer to later.
     - name: Create crowdsec test env with all parsers from the release
       run: |
-        cd crowdsec-${{ steps.keydb.outputs.release }}
+        cd crowdsec-${{ steps.crowdsec.outputs.tag }}
         ./test_env.sh
         cd tests
         for i in `./cscli -c dev.yaml list parsers -a -o json | jq -r ".[].name" ` ; do 
           ./cscli -c dev.yaml install parser $i ; 
         done
     - name: Setup hub ci in crowdsec
-      working-directory: ./crowdsec-${{ steps.keydb.outputs.release }}/tests/
+      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
       run: |
         cp -R ../../hub-tests/tests .
         cp ../../hub-tests/main .
     - name: Run the HUB CI
-      working-directory: ./crowdsec-${{ steps.keydb.outputs.release }}/tests/
+      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
       run: |
         for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
           echo "::group::Test-${i}" ; 
