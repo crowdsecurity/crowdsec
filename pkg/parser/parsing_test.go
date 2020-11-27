@@ -152,7 +152,7 @@ func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
 	}
 
 	//Load enrichment
-	datadir := "../../data/"
+	datadir := "./test_data/"
 	ectx, err = Loadplugin(datadir)
 	if err != nil {
 		log.Fatalf("failed to load plugin geoip : %v", err)
