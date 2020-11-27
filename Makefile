@@ -3,7 +3,6 @@ CFG_PREFIX = $(PREFIX)"/etc/crowdsec/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 
-PLUGIN_FOLDER="./plugins"
 PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
@@ -14,14 +13,13 @@ BUILD_CMD="build"
 GOARCH=amd64
 GOOS=linux
 
-
-#Current versioning information from env
+#Golang version info
 GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
 GO_MINOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 13
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
-
+#Current versioning information from env
 BUILD_VERSION?="$(shell git describe --tags `git rev-list --tags --max-count=1`)"
 BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
 BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
@@ -36,20 +34,20 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 all: clean test build
 
-build: clean goversion crowdsec cscli
+build: goversion crowdsec cscli
 
 static: goversion crowdsec_static cscli_static
 
 goversion:
 	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		exit 0 ;\
-	elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
-		echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
-		exit 1; \
-	fi
+        exit 0 ;\
+    elif [ $(GO_MAJOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
+        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+        exit 1; \
+    elif [ $(GO_MINOR_VERSION) -lt $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) ] ; then \
+        echo '$(GO_VERSION_VALIDATION_ERR_MSG)';\
+        exit 1; \
+    fi
 
 hubci:
 	@rm -rf crowdsec-xxx hub-tests
@@ -69,26 +67,50 @@ clean:
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
 
-cscli: goversion
+cscli:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CSCLI_FOLDER) build --no-print-directory
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
 
 
-
-crowdsec: goversion
+crowdsec:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CROWDSEC_FOLDER) build --no-print-directory
-	@bash ./scripts/build_plugins.sh
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
 
 
-cscli_static: goversion
+cscli_static:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CSCLI_FOLDER) static --no-print-directory
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
 
 
-crowdsec_static: goversion
+crowdsec_static:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CROWDSEC_FOLDER) static --no-print-directory
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
+
 
 #.PHONY: test
 test:
+ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@make -C $(CROWDSEC_FOLDER) test --no-print-directory
+else
+	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
+	@exit 1;
+endif
 
 .PHONY: uninstall
 uninstall:
@@ -110,7 +132,4 @@ release: check_release build
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
-	@bash ./scripts/build_plugins.sh
-	@mkdir -p "$(RELDIR)/plugins/backend"
-	@find ./plugins -type f -name "*.so" -exec install -Dm 644 {} "$(RELDIR)/{}" \; || exiting 
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	

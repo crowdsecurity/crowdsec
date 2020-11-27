@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -65,6 +66,7 @@ func ShowPrometheus(url string) {
 	transport.ResponseHeaderTimeout = time.Minute
 
 	go func() {
+		defer types.CatchPanic("crowdsec/ShowPrometheus")
 		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
 		if err != nil {
 			log.Fatalf("failed to fetch prometheus metrics : %v", err)
@@ -80,11 +82,13 @@ func ShowPrometheus(url string) {
 	acquis_stats := map[string]map[string]int{}
 	parsers_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
+	apil_stats := map[string]map[string]int{}
+
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
 			continue
 		}
-		log.Debugf("round %d", idx)
+		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
 			metric := m.(prom2json.Metric)
 			name, ok := metric.Labels["name"]
@@ -96,6 +100,9 @@ func ShowPrometheus(url string) {
 				log.Debugf("no source in Metric %v", metric.Labels)
 			}
 			value := m.(prom2json.Metric).Value
+			route := metric.Labels["route"]
+			method := metric.Labels["method"]
+
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
 				log.Errorf("Unexpected int value %s : %s", value, err)
@@ -163,13 +170,18 @@ func ShowPrometheus(url string) {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["unparsed"] += ival
+			case "cs_apil_route_calls":
+				if _, ok := apil_stats[route]; !ok {
+					apil_stats[route] = make(map[string]int)
+				}
+				apil_stats[route][method] += ival
 			default:
 				continue
 			}
 
 		}
 	}
-	if config.output == "human" {
+	if csConfig.Cscli.Output == "human" {
 
 		acquisTable := tablewriter.NewWriter(os.Stdout)
 		acquisTable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
@@ -191,22 +203,48 @@ func ShowPrometheus(url string) {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 
+		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
+		apilTable := tablewriter.NewWriter(os.Stdout)
+		apilTable.SetHeader([]string{"Route", "Method", "Hits"})
+		sortedKeys := []string{}
+		for akey := range apil_stats {
+			sortedKeys = append(sortedKeys, akey)
+		}
+		sort.Strings(sortedKeys)
+		for _, alabel := range sortedKeys {
+			astats := apil_stats[alabel]
+			subKeys := []string{}
+			for skey := range astats {
+				subKeys = append(subKeys, skey)
+			}
+			sort.Strings(subKeys)
+			for _, sl := range subKeys {
+				row := []string{}
+				row = append(row, alabel)
+				row = append(row, sl)
+				row = append(row, fmt.Sprintf("%d", astats[sl]))
+				apilTable.Append(row)
+			}
+		}
+
 		log.Printf("Buckets Metrics:")
 		bucketsTable.Render()
 		log.Printf("Acquisition Metrics:")
 		acquisTable.Render()
 		log.Printf("Parser Metrics:")
 		parsersTable.Render()
-	} else if config.output == "json" {
-		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
+		log.Printf("Local Api Metrics:")
+		apilTable.Render()
+	} else if csConfig.Cscli.Output == "json" {
+		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
 			}
 			fmt.Printf("%s\n", string(x))
 		}
-	} else if config.output == "raw" {
-		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats} {
+	} else if csConfig.Cscli.Output == "raw" {
+		for _, val := range []map[string]map[string]int{acquis_stats, parsers_stats, buckets_stats, apil_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -216,8 +254,6 @@ func ShowPrometheus(url string) {
 	}
 }
 
-var purl string
-
 func NewMetricsCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdMetrics = &cobra.Command{
@@ -226,10 +262,10 @@ func NewMetricsCmd() *cobra.Command {
 		Long:  `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			ShowPrometheus(purl)
+			ShowPrometheus(prometheusURL)
 		},
 	}
-	cmdMetrics.PersistentFlags().StringVarP(&purl, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
 
 	return cmdMetrics
 }

@@ -1,33 +1,22 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
-	"github.com/jamiealquiza/tachymeter"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
-
-	"runtime"
-)
-
-var (
-	parseStat     *tachymeter.Tachymeter
-	bucketStat    *tachymeter.Tachymeter
-	outputStat    *tachymeter.Tachymeter
-	linesReadOK   uint64
-	linesReadKO   uint64
-	linesParsedOK uint64
-	linesParsedKO uint64
-	linesPouredOK uint64
-	linesPouredKO uint64
 )
 
 /*prometheus*/
@@ -79,69 +68,49 @@ func dumpMetrics() {
 	var tmpFile string
 	var err error
 
-	if cConfig.DumpBuckets {
+	if cConfig.Crowdsec.BucketStateDumpDir != "" {
 		log.Infof("!! Dumping buckets state")
-		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), buckets); err != nil {
+		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
 			log.Fatalf("Failed dumping bucket state : %s", err)
 		}
 		log.Infof("Buckets state dumped to %s", tmpFile)
 	}
+}
 
-	if cConfig.Profiling {
-		var memoryStats runtime.MemStats
-		runtime.ReadMemStats(&memoryStats)
-
-		log.Infof("parser evt/s : %s", parseStat.Calc())
-		log.Infof("bucket pour evt/s : %s", bucketStat.Calc())
-		log.Infof("outputs evt/s : %s", outputStat.Calc())
-		log.Infof("Alloc = %v MiB", bToMb(memoryStats.Alloc))
-		log.Infof("TotalAlloc = %v MiB", bToMb(memoryStats.TotalAlloc))
-		log.Infof("Sys = %v MiB", bToMb(memoryStats.Sys))
-		log.Infof("NumGC = %v", memoryStats.NumGC)
-		log.Infof("Lines read ok : %d", linesReadOK)
-		if linesReadKO > 0 {
-			log.Infof("Lines discarded : %d (%.2f%%)", linesReadKO, float64(linesReadKO)/float64(linesReadOK)*100.0)
-		}
-		log.Infof("Lines parsed ok : %d", linesParsedOK)
-		if linesParsedKO > 0 {
-			log.Infof("Lines unparsed : %d (%.2f%%)", linesParsedKO, float64(linesParsedKO)/float64(linesParsedOK)*100.0)
-		}
-		log.Infof("Lines poured ok : %d", linesPouredOK)
-		if linesPouredKO > 0 {
-			log.Infof("Lines never poured : %d (%.2f%%)", linesPouredKO, float64(linesPouredKO)/float64(linesPouredOK)*100.0)
-		}
-		log.Infof("Writting metrics dump to %s", cConfig.WorkingFolder+"/crowdsec.profile")
-		if err := prometheus.WriteToTextfile(cConfig.WorkingFolder+"/crowdsec.profile", prometheus.DefaultGatherer); err != nil {
-			log.Errorf("failed to write metrics to %s : %s", cConfig.WorkingFolder+"/crowdsec.profile", err)
-		}
+func registerPrometheus(config *csconfig.PrometheusCfg) {
+	if !config.Enabled {
+		return
 	}
-}
+	if config.ListenAddr == "" {
+		log.Warningf("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
+		config.ListenAddr = "127.0.0.1"
+	}
+	if config.ListenPort == 0 {
+		log.Warningf("prometheus is enabled, but the listen port is empty, using '6060'")
+		config.ListenPort = 6060
+	}
 
-func runTachymeter(HTTPListen string) {
-	log.Warningf("Starting profiling and http server")
-	/*Tachymeter for global perfs */
-	parseStat = tachymeter.New(&tachymeter.Config{Size: 100})
-	bucketStat = tachymeter.New(&tachymeter.Config{Size: 100})
-	outputStat = tachymeter.New(&tachymeter.Config{Size: 100})
-	log.Fatal(http.ListenAndServe(HTTPListen, nil))
-}
-
-func registerPrometheus(mode string) {
+	defer types.CatchPanic("crowdsec/registerPrometheus")
 	/*Registering prometheus*/
 	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
-	if mode == "aggregated" {
+	if config.Level == "aggregated" {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
 			leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow,
+			v1.ApilRouteHits,
 			leaky.BucketsCurrentCount)
 	} else {
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			acquisition.ReaderHits, globalCsInfo,
+			v1.ApilRouteHits,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 
 	}
 	http.Handle("/metrics", promhttp.Handler())
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
+		log.Warningf("prometheus: %s", err)
+	}
 }
