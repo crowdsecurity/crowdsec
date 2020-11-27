@@ -7,27 +7,27 @@ import (
 )
 
 /*prometheus*/
-var ApilRouteHits = prometheus.NewCounterVec(
+var LapiRouteHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_route_requests_total",
+		Name: "cs_lapi_route_requests_total",
 		Help: "Number of calls to each route.",
 	},
 	[]string{"route", "method"},
 )
 
 /*hits per machine*/
-var ApilMachineHits = prometheus.NewCounterVec(
+var LapiMachineHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_machine_requests_total",
+		Name: "cs_lapi_machine_requests_total",
 		Help: "Number of calls for each machine.",
 	},
 	[]string{"machine", "route", "method"},
 )
 
 /*hits per bouncer*/
-var ApilBouncerHits = prometheus.NewCounterVec(
+var LapiBouncerHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_bouncer_requests_total",
+		Name: "cs_lapi_bouncer_requests_total",
 		Help: "Number of calls for each bouncer.",
 	},
 	[]string{"bouncer", "route", "method"},
@@ -35,18 +35,18 @@ var ApilBouncerHits = prometheus.NewCounterVec(
 
 /* keep track of the number of calls (per bouncer) that lead to nil/non-nil responses.
 while it's not exact, it's a good way to know - when you have a rutpure bouncer - what is the rate of ok/ko answers you got from lapi*/
-var ApilNilDecisions = prometheus.NewCounterVec(
+var LapiNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_decisions_ko_total",
+		Name: "cs_lapi_decisions_ko_total",
 		Help: "Number of calls to /decisions that returned nil result.",
 	},
 	[]string{"bouncer"},
 )
 
 /*hits per bouncer*/
-var ApilNonNilDecisions = prometheus.NewCounterVec(
+var LapiNonNilDecisions = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
-		Name: "cs_apil_decisions_ok_total",
+		Name: "cs_lapi_decisions_ok_total",
 		Help: "Number of calls to /decisions that returned non-nil result.",
 	},
 	[]string{"bouncer"},
@@ -55,7 +55,7 @@ var ApilNonNilDecisions = prometheus.NewCounterVec(
 func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
 	name, ok := c.Get("BOUNCER_NAME")
 	if ok {
-		ApilNilDecisions.With(prometheus.Labels{
+		LapiNilDecisions.With(prometheus.Labels{
 			"bouncer": name.(string)}).Inc()
 	}
 }
@@ -63,7 +63,7 @@ func PrometheusBouncersHasEmptyDecision(c *gin.Context) {
 func PrometheusBouncersHasNonEmptyDecision(c *gin.Context) {
 	name, ok := c.Get("BOUNCER_NAME")
 	if ok {
-		ApilNonNilDecisions.With(prometheus.Labels{
+		LapiNonNilDecisions.With(prometheus.Labels{
 			"bouncer": name.(string)}).Inc()
 	}
 }
@@ -74,7 +74,7 @@ func PrometheusMachinesMiddleware() gin.HandlerFunc {
 		if claims != nil {
 			if rawID, ok := claims["id"]; ok {
 				machineID := rawID.(string)
-				ApilMachineHits.With(prometheus.Labels{
+				LapiMachineHits.With(prometheus.Labels{
 					"machine": machineID,
 					"route":   c.Request.URL.Path,
 					"method":  c.Request.Method}).Inc()
@@ -88,7 +88,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		name, ok := c.Get("BOUNCER_NAME")
 		if ok {
-			ApilBouncerHits.With(prometheus.Labels{
+			LapiBouncerHits.With(prometheus.Labels{
 				"bouncer": name.(string),
 				"route":   c.Request.URL.Path,
 				"method":  c.Request.Method}).Inc()
@@ -99,7 +99,7 @@ func PrometheusBouncersMiddleware() gin.HandlerFunc {
 
 func PrometheusMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		ApilRouteHits.With(prometheus.Labels{
+		LapiRouteHits.With(prometheus.Labels{
 			"route":  c.Request.URL.Path,
 			"method": c.Request.Method}).Inc()
 		c.Next()

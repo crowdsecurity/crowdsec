@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func apilMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
+func lapiMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
 
 	//stats : machine -> route -> method -> count
 	/*we want consistant display order*/
@@ -110,16 +110,16 @@ func ShowPrometheus(url string) {
 	}
 	log.Debugf("Finished reading prometheus output, %d entries", len(result))
 	/*walk*/
-	apil_decisions_stats := map[string]struct {
+	lapi_decisions_stats := map[string]struct {
 		NonEmpty int
 		Empty    int
 	}{}
 	acquis_stats := map[string]map[string]int{}
 	parsers_stats := map[string]map[string]int{}
 	buckets_stats := map[string]map[string]int{}
-	apil_stats := map[string]map[string]int{}
-	apil_machine_stats := map[string]map[string]map[string]int{}
-	apil_bouncer_stats := map[string]map[string]map[string]int{}
+	lapi_stats := map[string]map[string]int{}
+	lapi_machine_stats := map[string]map[string]map[string]int{}
+	lapi_bouncer_stats := map[string]map[string]map[string]int{}
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -210,41 +210,41 @@ func ShowPrometheus(url string) {
 					parsers_stats[name] = make(map[string]int)
 				}
 				parsers_stats[name]["unparsed"] += ival
-			case "cs_apil_route_requests_total":
-				if _, ok := apil_stats[route]; !ok {
-					apil_stats[route] = make(map[string]int)
+			case "cs_lapi_route_requests_total":
+				if _, ok := lapi_stats[route]; !ok {
+					lapi_stats[route] = make(map[string]int)
 				}
-				apil_stats[route][method] += ival
-			case "cs_apil_machine_requests_total":
-				if _, ok := apil_machine_stats[machine]; !ok {
-					apil_machine_stats[machine] = make(map[string]map[string]int)
+				lapi_stats[route][method] += ival
+			case "cs_lapi_machine_requests_total":
+				if _, ok := lapi_machine_stats[machine]; !ok {
+					lapi_machine_stats[machine] = make(map[string]map[string]int)
 				}
-				if _, ok := apil_machine_stats[machine][route]; !ok {
-					apil_machine_stats[machine][route] = make(map[string]int)
+				if _, ok := lapi_machine_stats[machine][route]; !ok {
+					lapi_machine_stats[machine][route] = make(map[string]int)
 				}
-				apil_machine_stats[machine][route][method] += ival
-			case "cs_apil_bouncer_requests_total":
-				if _, ok := apil_bouncer_stats[bouncer]; !ok {
-					apil_bouncer_stats[bouncer] = make(map[string]map[string]int)
+				lapi_machine_stats[machine][route][method] += ival
+			case "cs_lapi_bouncer_requests_total":
+				if _, ok := lapi_bouncer_stats[bouncer]; !ok {
+					lapi_bouncer_stats[bouncer] = make(map[string]map[string]int)
 				}
-				if _, ok := apil_bouncer_stats[bouncer][route]; !ok {
-					apil_bouncer_stats[bouncer][route] = make(map[string]int)
+				if _, ok := lapi_bouncer_stats[bouncer][route]; !ok {
+					lapi_bouncer_stats[bouncer][route] = make(map[string]int)
 				}
-				apil_bouncer_stats[bouncer][route][method] += ival
-			case "cs_apil_decisions_ko_total", "cs_apil_decisions_ok_total":
-				if _, ok := apil_decisions_stats[bouncer]; !ok {
-					apil_decisions_stats[bouncer] = struct {
+				lapi_bouncer_stats[bouncer][route][method] += ival
+			case "cs_lapi_decisions_ko_total", "cs_lapi_decisions_ok_total":
+				if _, ok := lapi_decisions_stats[bouncer]; !ok {
+					lapi_decisions_stats[bouncer] = struct {
 						NonEmpty int
 						Empty    int
 					}{}
 				}
-				x := apil_decisions_stats[bouncer]
-				if fam.Name == "cs_apil_decisions_ko_total" {
+				x := lapi_decisions_stats[bouncer]
+				if fam.Name == "cs_lapi_decisions_ko_total" {
 					x.Empty += ival
-				} else if fam.Name == "cs_apil_decisions_ok_total" {
+				} else if fam.Name == "cs_lapi_decisions_ok_total" {
 					x.NonEmpty += ival
 				}
-				apil_decisions_stats[bouncer] = x
+				lapi_decisions_stats[bouncer] = x
 			default:
 				continue
 			}
@@ -273,39 +273,39 @@ func ShowPrometheus(url string) {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 
-		apilMachinesTable := tablewriter.NewWriter(os.Stdout)
-		apilMachinesTable.SetHeader([]string{"Machine", "Route", "Method", "Hits"})
-		if err := apilMetricsToTable(apilMachinesTable, apil_machine_stats); err != nil {
-			log.Warningf("while collecting machine apil stats : %s", err)
+		lapiMachinesTable := tablewriter.NewWriter(os.Stdout)
+		lapiMachinesTable.SetHeader([]string{"Machine", "Route", "Method", "Hits"})
+		if err := lapiMetricsToTable(lapiMachinesTable, lapi_machine_stats); err != nil {
+			log.Warningf("while collecting machine lapi stats : %s", err)
 		}
 
-		//apilMetricsToTable
-		apilBouncersTable := tablewriter.NewWriter(os.Stdout)
-		apilBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
-		if err := apilMetricsToTable(apilBouncersTable, apil_bouncer_stats); err != nil {
-			log.Warningf("while collecting bouncer apil stats : %s", err)
+		//lapiMetricsToTable
+		lapiBouncersTable := tablewriter.NewWriter(os.Stdout)
+		lapiBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
+		if err := lapiMetricsToTable(lapiBouncersTable, lapi_bouncer_stats); err != nil {
+			log.Warningf("while collecting bouncer lapi stats : %s", err)
 		}
 
-		apilDecisionsTable := tablewriter.NewWriter(os.Stdout)
-		apilDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
-		for bouncer, hits := range apil_decisions_stats {
+		lapiDecisionsTable := tablewriter.NewWriter(os.Stdout)
+		lapiDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
+		for bouncer, hits := range lapi_decisions_stats {
 			row := []string{}
 			row = append(row, bouncer)
 			row = append(row, fmt.Sprintf("%d", hits.Empty))
 			row = append(row, fmt.Sprintf("%d", hits.NonEmpty))
-			apilDecisionsTable.Append(row)
+			lapiDecisionsTable.Append(row)
 		}
 
 		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
-		apilTable := tablewriter.NewWriter(os.Stdout)
-		apilTable.SetHeader([]string{"Route", "Method", "Hits"})
+		lapiTable := tablewriter.NewWriter(os.Stdout)
+		lapiTable.SetHeader([]string{"Route", "Method", "Hits"})
 		sortedKeys := []string{}
-		for akey := range apil_stats {
+		for akey := range lapi_stats {
 			sortedKeys = append(sortedKeys, akey)
 		}
 		sort.Strings(sortedKeys)
 		for _, alabel := range sortedKeys {
-			astats := apil_stats[alabel]
+			astats := lapi_stats[alabel]
 			subKeys := []string{}
 			for skey := range astats {
 				subKeys = append(subKeys, skey)
@@ -316,7 +316,7 @@ func ShowPrometheus(url string) {
 				row = append(row, alabel)
 				row = append(row, sl)
 				row = append(row, fmt.Sprintf("%d", astats[sl]))
-				apilTable.Append(row)
+				lapiTable.Append(row)
 			}
 		}
 
@@ -332,26 +332,26 @@ func ShowPrometheus(url string) {
 			log.Printf("Parser Metrics:")
 			parsersTable.Render()
 		}
-		if apilTable.NumLines() > 0 {
+		if lapiTable.NumLines() > 0 {
 			log.Printf("Local Api Metrics:")
-			apilTable.Render()
+			lapiTable.Render()
 		}
-		if apilMachinesTable.NumLines() > 0 {
+		if lapiMachinesTable.NumLines() > 0 {
 			log.Printf("Local Api Machines Metrics:")
-			apilMachinesTable.Render()
+			lapiMachinesTable.Render()
 		}
-		if apilBouncersTable.NumLines() > 0 {
+		if lapiBouncersTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Metrics:")
-			apilBouncersTable.Render()
+			lapiBouncersTable.Render()
 		}
 
-		if apilDecisionsTable.NumLines() > 0 {
+		if lapiDecisionsTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Decisions:")
-			apilDecisionsTable.Render()
+			lapiDecisionsTable.Render()
 		}
 
 	} else if csConfig.Cscli.Output == "json" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats, apil_decisions_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -359,7 +359,7 @@ func ShowPrometheus(url string) {
 			fmt.Printf("%s\n", string(x))
 		}
 	} else if csConfig.Cscli.Output == "raw" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, apil_stats, apil_bouncer_stats, apil_machine_stats, apil_decisions_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
