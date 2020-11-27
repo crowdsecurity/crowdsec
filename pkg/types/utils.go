@@ -5,8 +5,17 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net"
+	"os"
+	"path/filepath"
+	"runtime/debug"
+	"strconv"
+	"strings"
+	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -50,7 +59,6 @@ func LastAddress(n *net.IPNet) net.IP {
 var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
-var logReportCaller bool
 
 func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
 
@@ -73,10 +81,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 		log.SetFormatter(logFormatter)
 	}
-	if logLevel >= log.DebugLevel {
-		logReportCaller = true
-		log.SetReportCaller(true)
-	}
+
 	return nil
 }
 
@@ -85,9 +90,7 @@ func ConfigureLogger(clog *log.Logger) error {
 	if LogOutput != nil {
 		clog.SetOutput(LogOutput)
 	}
-	if logReportCaller {
-		clog.SetReportCaller(true)
-	}
+
 	if logFormatter != nil {
 		clog.SetFormatter(logFormatter)
 	}
@@ -107,4 +110,113 @@ func Clone(a, b interface{}) error {
 		return fmt.Errorf("failed cloning %T", b)
 	}
 	return nil
+}
+
+//CatchPanic is a util func that we should call from all go-routines to ensure proper stacktrace handling
+func CatchPanic(component string) {
+
+	if r := recover(); r != nil {
+		tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
+		if err != nil {
+			log.Fatal(err)
+		}
+		if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
+			tmpfile.Close()
+			log.Fatal(err)
+		}
+		if _, err := tmpfile.Write(debug.Stack()); err != nil {
+			tmpfile.Close()
+			log.Fatal(err)
+		}
+		if err := tmpfile.Close(); err != nil {
+			log.Fatal(err)
+		}
+		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
+		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
+		log.Errorf("stacktrace/report is written to %s : please join it to your issue", tmpfile.Name())
+		log.Fatalf("crowdsec stopped")
+	}
+}
+
+func ParseDuration(d string) (time.Duration, error) {
+	durationStr := d
+	if strings.HasSuffix(d, "d") {
+		days := strings.Split(d, "d")[0]
+		if len(days) == 0 {
+			return 0, fmt.Errorf("'%s' can't be parsed as duration", d)
+		}
+		daysInt, err := strconv.Atoi(days)
+		if err != nil {
+			return 0, err
+		}
+		durationStr = strconv.Itoa(daysInt*24) + "h"
+	}
+	duration, err := time.ParseDuration(durationStr)
+	if err != nil {
+		return 0, err
+	}
+	return duration, nil
+}
+
+/*help to copy the file, ioutil doesn't offer the feature*/
+
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
+}
+
+/*copy the file, ioutile doesn't offer the feature*/
+func CopyFile(sourceSymLink, destinationFile string) (err error) {
+
+	sourceFile, err := filepath.EvalSymlinks(sourceSymLink)
+	if err != nil {
+		log.Infof("Not a symlink : %s", err)
+		sourceFile = sourceSymLink
+	}
+
+	sourceFileStat, err := os.Stat(sourceFile)
+	if err != nil {
+		return
+	}
+	if !sourceFileStat.Mode().IsRegular() {
+		// cannot copy non-regular files (e.g., directories,
+		// symlinks, devices, etc.)
+		return fmt.Errorf("copyFile: non-regular source file %s (%q)", sourceFileStat.Name(), sourceFileStat.Mode().String())
+	}
+	destinationFileStat, err := os.Stat(destinationFile)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return
+		}
+	} else {
+		if !(destinationFileStat.Mode().IsRegular()) {
+			return fmt.Errorf("copyFile: non-regular destination file %s (%q)", destinationFileStat.Name(), destinationFileStat.Mode().String())
+		}
+		if os.SameFile(sourceFileStat, destinationFileStat) {
+			return
+		}
+	}
+	if err = os.Link(sourceFile, destinationFile); err == nil {
+		return
+	}
+	err = copyFileContents(sourceFile, destinationFile)
+	return
 }

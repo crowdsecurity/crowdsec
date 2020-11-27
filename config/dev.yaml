@@ -1,18 +1,43 @@
-working_dir: "."
-data_dir: "./data"
-config_dir: "./config"
-pid_dir: "./"
-cscli_dir: "./config/crowdsec-cli"
-log_dir: "./logs"
-log_mode: "stdout"
-log_level: info
-prometheus: false
-simulation_path: ./config/simulation.yaml
-profiling: false
-apimode: false
-plugin:
-  backend: "./config/plugins/backend"
-  max_records: 10000
-  #30 days = 720 hours
-  max_records_age: 720h
-  
+common:
+  daemonize: true
+  pid_dir: /tmp/
+  log_media: stdout
+  log_level: info
+  working_dir: .
+config_paths:
+  config_dir: ./config
+  data_dir: ./data/
+  #simulation_path: /etc/crowdsec/config/simulation.yaml
+  #hub_dir: /etc/crowdsec/hub/
+  #index_path: ./config/hub/.index.json
+crowdsec_service:
+  #acquisition_path: ./config/acquis.yaml
+  parser_routines: 1
+cscli:
+  output: human
+db_config:
+  type: sqlite
+  db_path: ./data/crowdsec.db
+  user: root
+  password: crowdsec
+  db_name: crowdsec
+  host: "172.17.0.2"
+  port: 3306
+  flush:
+    #max_items: 10000
+    #max_age: 168h
+api:
+  client:
+    credentials_path: ./config/local_api_credentials.yaml
+  server:
+    #insecure_skip_verify: true
+    listen_uri: localhost:8081
+    profiles_path: ./config/profiles.yaml
+    tls:
+      #cert_file: ./cert.pem
+      #key_file: ./key.pem
+    online_client: # Crowdsec API
+      credentials_path: ./config/online_api_credentials.yaml
+prometheus:
+  enabled: true
+  level: full

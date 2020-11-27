@@ -11,41 +11,32 @@ YELLOW='\033[0;33m'
 NC='\033[0m'
 
 SILENT="false"
+DOCKER_MODE="false"
 
 CROWDSEC_RUN_DIR="/var/run"
 CROWDSEC_LIB_DIR="/var/lib/crowdsec"
 CROWDSEC_USR_DIR="/usr/local/lib/crowdsec"
 CROWDSEC_DATA_DIR="${CROWDSEC_LIB_DIR}/data"
-CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
-CROWDSEC_PLUGIN_BACKEND_DIR="${CROWDSEC_PLUGIN_DIR}/backend"
 CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
-CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}/config"
+CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
-CROWDSEC_BACKEND_FOLDER="/etc/crowdsec/plugins/backend"
 CSCLI_FOLDER="/etc/crowdsec/config/cscli"
-
-
-DBOX_BIN=""
-
-WHIPTAIL_BIN="whiptail"
-DIALOG_BIN="dialog"
-
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
-CROWDSEC_BIN_INSTALLED="/usr/local/bin/crowdsec"
-CSCLI_BIN_INSTALLED="/usr/local/bin/cscli"
+
+CLIENT_SECRETS="local_api_credentials.yaml"
+LAPI_SECRETS="online_api_credentials.yaml"
+
+BIN_INSTALL_PATH="/usr/local/bin"
+CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
+CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
 
 ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
 ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
-
-setup_cron_pull() {
-    cp ./config/crowdsec_pull /etc/cron.d/
-}
-
 
 PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
@@ -98,16 +89,16 @@ detect_services () {
     #raw ps
     PSAX=`ps ax -o comm=`
     for SVC in ${SUPPORTED_SERVICES} ; do
-	log_info "Checking if service '${SVC}' is running (ps+systemd)"
-	for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-	    echo ${SRC} | grep ${SVC} >/dev/null
-	    if [ $? -eq 0 ]; then
-		DETECTED_SERVICES+=(${SVC})
-        HMENU+=(${SVC} "on")
-		log_info "Found '${SVC}' running"
-		break;
-	    fi;
-	done;
+        log_info "Checking if service '${SVC}' is running (ps+systemd)"
+        for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
+            echo ${SRC} | grep ${SVC} >/dev/null
+            if [ $? -eq 0 ]; then
+                DETECTED_SERVICES+=(${SVC})
+                HMENU+=(${SVC} "on")
+                log_info "Found '${SVC}' running"
+                break;
+            fi;
+        done;
     done;
     if [[ ${OSTYPE} == "linux-gnu" ]]; then
         DETECTED_SERVICES+=("linux")
@@ -118,11 +109,14 @@ detect_services () {
 
     if [[ ${SILENT} == "false" ]]; then
         #we put whiptail results in an array, notice the dark magic fd redirection
-        DETECTED_SERVICES=($(${DBOX_BIN} --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
+        DETECTED_SERVICES=($(whiptail --separate-output --noitem --ok-button Continue --title "Services to monitor" --checklist "Detected services, uncheck to ignore. Ignored services won't be monitored." 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at services selection"
-        exit 1;
+            log_err "user bailed out at services selection"
+            exit 1;
         fi;
+        echo "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
+    else
+        echo "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
     fi;
 }
 
@@ -178,10 +172,10 @@ find_logs_for() {
     done;
 
     if [[ ${SILENT} == "false" ]]; then
-        DETECTED_LOGFILES=($(${DBOX_BIN} --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
+        DETECTED_LOGFILES=($(whiptail --separate-output  --noitem --ok-button Continue --title "Log files to process for ${SVC}" --checklist "Detected logfiles for ${SVC}, uncheck to ignore" 18 70 10 ${HMENU[@]} 3>&1 1>&2 2>&3))
         if [ $? -eq 1 ]; then
-        log_err "user bailed out at log file selection"
-        exit 1;
+            log_err "user bailed out at log file selection"
+            exit 1;
         fi;
     fi
 }
@@ -201,48 +195,51 @@ in_array() {
 
 install_collection() {
     HMENU=()
-    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} list collections -o raw -a)
+    readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    if [[ ${SILENT} == "false" ]]; then
-        for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-            #echo "collection raw : ${collect_info}" >> out.txt
-            collection="$(echo ${collect_info} | cut -d " " -f1)"
-            description="$(echo ${collect_info} | cut -d " " -f2-)"
-            in_array $collection "${DETECTED_SERVICES[@]}"
-            if [[ $? == 0 ]]; then
-                HMENU+=("${collection}" "${description}" "ON")
-            else
-                if [[ ${collection} == "linux" ]]; then
-                    HMENU+=("${collection}" "${description}" "ON")
-                else
-                    HMENU+=("${collection}" "${description}" "OFF")
-                fi
-            fi
-        done
-        COLLECTION_TO_INSTALL=($(${DBOX_BIN} --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
-        if [ $? -eq 1 ]; then
-        log_err "user bailed out at collection selection"
-        exit 1;
-        fi;
-    else
-        for collection in "${DETECTED_SERVICES[@]}"; do 
+    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
+        collection="$(echo ${collect_info} | cut -d " " -f1)"
+        description="$(echo ${collect_info} | cut -d " " -f2-)"
+        in_array $collection "${DETECTED_SERVICES[@]}"
+        if [[ $? == 0 ]]; then
+            HMENU+=("${collection}" "${description}" "ON")
+            #in case we're not in interactive mode, assume defaults
             COLLECTION_TO_INSTALL+=(${collection})
-        done
-    fi
+        else
+            if [[ ${collection} == "linux" ]]; then
+                HMENU+=("${collection}" "${description}" "ON")
+                #in case we're not in interactive mode, assume defaults
+                COLLECTION_TO_INSTALL+=(${collection})
+            else
+                HMENU+=("${collection}" "${description}" "OFF")
+            fi
+        fi
+    done
+
+    if [[ ${SILENT} == "false" ]]; then
+        COLLECTION_TO_INSTALL=($(whiptail --separate-output --ok-button Continue --title "Crowdsec collections" --checklist "Available collections in crowdsec, try to pick one that fits your profile. Collections contains parsers and scenarios to protect your system." 20 120 10 "${HMENU[@]}" 3>&1 1>&2 2>&3))
+        if [ $? -eq 1 ]; then
+            log_err "user bailed out at collection selection"
+            exit 1;
+        fi;
+    fi;
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
-        ${CSCLI_BIN_INSTALLED} install collection "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
+        ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
 
 
-    ${CSCLI_BIN_INSTALLED} install parser "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
+    ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
-        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a blocker. You can find them on https://hub.crowdsec.net/" 20 50
     fi
 
+
+    if [[ ${SILENT} == "false" ]]; then
+        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/" 20 50
+    fi
 
 }
 
@@ -276,62 +273,47 @@ genacquisition() {
     done 
 }
 
-delete_plugins(){
-    rm -rf "${CROWDSEC_PLUGIN_DIR}"
-    rm -rf "${CROWDSEC_BACKEND_FOLDER}"
-}
-
-install_plugins() {
-    install_plugins_bin
-    mkdir -p "${CROWDSEC_BACKEND_FOLDER}" || exit
-    cp -r ./config/plugins/backend/* "${CROWDSEC_BACKEND_FOLDER}" || exit
-}
-
-install_plugins_bin() {
-    mkdir -p "${CROWDSEC_PLUGIN_BACKEND_DIR}" || exit
-    (cd ./plugins && find . -type f -name "*.so" -exec install -Dm 644 {} "${CROWDSEC_PLUGIN_DIR}/{}" \; && cd ../) || exit
-}
-
 
 #install crowdsec and cscli
 install_crowdsec() {
-
-    if [[ ! -f "$CROWDSEC_BIN" ]]; then
-        log_err "Crowdsec binary '$CROWDSEC_BIN' not found, you have likely clone the repository."
-        log_err "If you are trying to install crowdsec, please download a release :"
-        log_err "https://github.com/crowdsecurity/crowdsec/releases/latest"
-        exit
-    fi
-  
     mkdir -p "${CROWDSEC_DATA_DIR}"
     (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
-    mkdir -p "${CROWDSEC_CONFIG_PATH}/parsers" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
     mkdir -p "${CSCLI_FOLDER}" || exit
 
-    install -v -m 644 -D ./config/prod.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    #tmp
+    mkdir -p /tmp/data
+    mkdir -p /etc/crowdsec/hub/
+    install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+
+    ## end tmp
+
+    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 600 -D ./config/api.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" || exit
     mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/prod.yaml > ${CROWDSEC_CONFIG_PATH}"/default.yaml"   
     PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
-    CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+    fi
     install_bins
-    install_plugins
-    systemctl daemon-reload
+
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+	    systemctl daemon-reload
+    fi
 }
 
 update_bins() {
     log_info "Only upgrading binaries"
     delete_bins
     install_bins
-    install_plugins_bin
     log_info "Upgrade finished"
     systemctl restart crowdsec
 }
@@ -367,7 +349,16 @@ install_bins() {
     log_info "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" || exit
-    install_plugins_bin || exit
+    symlink_bins
+}
+
+symlink_bins() {
+    if grep -q "${BIN_INSTALL_PATH}" <<< $PATH; then
+        log_dbg "${BIN_INSTALL_PATH} found in PATH"
+    else
+        ln -s "${CSCLI_BIN_INSTALLED}" /usr/bin/cscli
+        ln -s "${CROWDSEC_BIN_INSTALLED}" /usr/bin/crowdsec
+    fi
 }
 
 delete_bins() {
@@ -380,9 +371,13 @@ delete_bins() {
 uninstall_crowdsec() {
     systemctl stop crowdsec.service
     systemctl disable crowdsec.service
-    ${CSCLI_BIN} dashboard stop --remove
+    ${CSCLI_BIN} dashboard remove -f -y
     delete_bins
-    delete_plugins
+
+    # tmp
+    rm -rf /tmp/data/
+    ## end tmp
+
     rm -rf ${CROWDSEC_PATH} || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
@@ -393,14 +388,8 @@ uninstall_crowdsec() {
 }
 
 
-setup_cron_pull() {
-    cp ./config/crowdsec_pull /etc/cron.d/
-}
-
-
 
 main() {
-
     if [[ "$1" == "backup_to_dir" ]];
     then
         backup_to_dir
@@ -456,9 +445,6 @@ main() {
         fi
         log_info "installing crowdsec"
         install_crowdsec
-         # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
-        log_info "Crowdsec api registered"
         return
     fi
 
@@ -470,26 +456,11 @@ main() {
             exit 1
         fi
 
-        if [[ ${SILENT} == "false" ]]; then
-            which ${WHIPTAIL_BIN} >/dev/null
-            if [ $? -ne 0 ]; then
-                which ${DIALOG_BIN} >/dev/null
-                if [ $? -ne 0 ]; then
-                    log_err "please install whiptail or dialog to run interactive wizard"
-                    exit 1
-                else
-                    DBOX_BIN=${DIALOG_BIN}
-                fi
-            else
-                DBOX_BIN=${WHIPTAIL_BIN}           
-            fi
-        fi;
-
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
         log_info "installing crowdsec"
         install_crowdsec
         log_info "configuring  ${CSCLI_BIN_INSTALLED}"
-        ${CSCLI_BIN_INSTALLED} update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
+        ${CSCLI_BIN_INSTALLED} hub update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
 
         # detect running services
         detect_services
@@ -513,17 +484,15 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} api register >> /etc/crowdsec/config/api.yaml || ${CSCLI_BIN_INSTALLED} api reset >> /etc/crowdsec/config/api.yaml || log_err "unable to register, skipping crowdsec api registration"
-        log_info "Crowdsec api registered"
-
-        if [[ ${SILENT} == "false" ]]; then
-            (systemctl start crowdsec && log_info "crowdsec started") || log_err "unable to start crowdsec. exiting"
-            ${CSCLI_BIN_INSTALLED} api pull
-        fi;
-        # Set the cscli api pull cronjob 
-        setup_cron_pull
-
-        systemctl enable crowdsec && log_info "crowdsec daemon enabled" || log_err "Unable to enable crowdsec daemon"
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
+        log_info "Crowdsec LAPI registered"
+        
+        ${CSCLI_BIN_INSTALLED} capi register
+        log_info "Crowdsec CAPI registered"
+       
+        systemctl enable crowdsec
+        systemctl start crowdsec
+        log_info "Enabling and starting crowdsec daemon"
 
         return
     fi
@@ -555,6 +524,7 @@ usage() {
       echo "    ./wizard.sh --binupgrade                     Upgrade crowdsec/cscli binaries"
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
       echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
+      echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
       echo "    ./wizard.sh -r|--restore                     Restore saved configurations from ${BACKUP_DIR} to ${CROWDSEC_CONFIG_PATH}"
       echo "    ./wizard.sh -b|--backup                      Backup existing configurations to ${BACKUP_DIR}"
 
@@ -586,6 +556,11 @@ do
         shift # past argument
         ;;
     --bininstall)
+        ACTION="bininstall"
+        shift # past argument
+        ;;
+    --docker-mode)
+        DOCKER_MODE="true"
         ACTION="bininstall"
         shift # past argument
         ;;

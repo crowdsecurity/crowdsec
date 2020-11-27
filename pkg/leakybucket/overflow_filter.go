@@ -28,7 +28,7 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	u := OverflowFilter{}
 	u.Filter = g.OverflowFilter
 	u.FilterRuntime, err = expr.Compile(u.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{
-		"queue": &Queue{}, "signal": &types.SignalOccurence{}, "leaky": &Leaky{}})))
+		"queue": &Queue{}, "signal": &types.RuntimeAlert{}, "leaky": &Leaky{}})))
 	if err != nil {
 		g.logger.Errorf("Unable to compile filter : %v", err)
 		return nil, fmt.Errorf("unable to compile filter : %v", err)
@@ -36,8 +36,8 @@ func NewOverflowFilter(g *BucketFactory) (*OverflowFilter, error) {
 	return &u, nil
 }
 
-func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.SignalOccurence, *Queue) (types.SignalOccurence, *Queue) {
-	return func(l *Leaky, s types.SignalOccurence, q *Queue) (types.SignalOccurence, *Queue) {
+func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
+	return func(l *Leaky, s types.RuntimeAlert, q *Queue) (types.RuntimeAlert, *Queue) {
 		el, err := expr.Run(u.FilterRuntime, exprhelpers.GetExprEnv(map[string]interface{}{
 			"queue": q, "signal": s, "leaky": l}))
 		if err != nil {
@@ -52,12 +52,11 @@ func (u *OverflowFilter) OnBucketOverflow(Bucket *BucketFactory) func(*Leaky, ty
 		/*filter returned false, event is blackholded*/
 		if !element {
 			l.logger.Infof("Event is discard by overflow filter (%s)", u.Filter)
-			return types.SignalOccurence{
-				MapKey: l.Mapkey,
-				// BucketConfiguration: bcfg,
+			return types.RuntimeAlert{
+				Mapkey: l.Mapkey,
 			}, nil
 		} else {
-			l.logger.Debugf("Event is not discard by overflow filter (%s)", u.Filter)
+			l.logger.Tracef("Event is not discard by overflow filter (%s)", u.Filter)
 		}
 		return s, q
 	}

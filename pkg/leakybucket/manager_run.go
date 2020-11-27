@@ -52,7 +52,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			val.KillSwitch <- true
 			return true
 		} else {
-			val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		}
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
@@ -69,8 +69,12 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	return nil
 }
 
-func DumpBucketsStateAt(deadline time.Time, buckets *Buckets) (string, error) {
+func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
 	//var file string
+
+	if outputdir == "" {
+		return "", fmt.Errorf("empty output dir for dump bucket state")
+	}
 	tmpFd, err := ioutil.TempFile(os.TempDir(), "crowdsec-buckets-dump-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file : %s", err)
@@ -148,7 +152,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	for idx, holder := range holders {
 
 		if holder.RunTimeFilter != nil {
-			log.Debugf("event against holder %d/%d", idx, len(holders))
+			holder.logger.Tracef("event against holder %d/%d", idx, len(holders))
 			output, err := expr.Run(holder.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			if err != nil {
 				holder.logger.Errorf("failed parsing : %v", err)
@@ -157,14 +161,14 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			// we assume we a bool should add type check here
 			if condition, ok = output.(bool); !ok {
 				holder.logger.Errorf("unexpected non-bool return : %T", output)
-				log.Fatalf("Filter issue")
+				holder.logger.Fatalf("Filter issue")
 			}
 
 			if holder.Debug {
 				holder.ExprDebugger.Run(holder.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			}
 			if !condition {
-				holder.logger.Debugf("Event leaving node : ko")
+				holder.logger.Debugf("Event leaving node : ko (filter mismatch)")
 				continue
 			}
 		}
@@ -174,12 +178,12 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		if holder.RunTimeGroupBy != nil {
 			tmpGroupBy, err := expr.Run(holder.RunTimeGroupBy, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			if err != nil {
-				log.Errorf("failed groupby : %v", err)
+				holder.logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")
 			}
 
 			if groupby, ok = tmpGroupBy.(string); !ok {
-				log.Fatalf("failed groupby type : %v", err)
+				holder.logger.Fatalf("failed groupby type : %v", err)
 				return false, errors.New("groupby wrong type")
 			}
 		}
@@ -194,7 +198,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			attempts += 1
 			/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 			if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now()) {
-				log.Warningf("stuck for %s sending event to %s (sigclosed:%d keymiss:%d failed_sent:%d attempts:%d)", time.Since(start),
+				holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d keymiss:%d failed_sent:%d attempts:%d)", time.Since(start),
 					buckey, sigclosed, keymiss, failed_sent, attempts)
 			}
 			biface, ok := buckets.Bucket_map.Load(buckey)
@@ -205,7 +209,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					not found in map
 				*/
 
-				log.Debugf("Creating bucket %s", buckey)
+				holder.logger.Debugf("Creating bucket %s", buckey)
 				keymiss += 1
 				var fresh_bucket *Leaky
 
@@ -217,7 +221,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					fresh_bucket = NewLeaky(holder)
 					holder.logger.Debugf("Creating Live bucket")
 				default:
-					log.Fatalf("input event has no expected mode, malformed : %+v", parsed)
+					holder.logger.Fatalf("input event has no expected mode, malformed : %+v", parsed)
 				}
 				fresh_bucket.In = make(chan types.Event)
 				fresh_bucket.Mapkey = buckey
@@ -225,7 +229,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.KillSwitch = make(chan bool, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
 				go LeakRoutine(fresh_bucket)
-				log.Debugf("Created new bucket %s", buckey)
+				holder.logger.Debugf("Created new bucket %s", buckey)
 				//wait for signal to be opened
 				<-fresh_bucket.Signal
 				continue
@@ -242,11 +246,11 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 					sigclosed += 1
 					continue
 				}
-				log.Debugf("Signal exists, try to pour :)")
+				holder.logger.Tracef("Signal exists, try to pour :)")
 
 			default:
 				/*nothing to read, but not closed, try to pour */
-				log.Debugf("Signal exists but empty, try to pour :)")
+				holder.logger.Tracef("Signal exists but empty, try to pour :)")
 
 			}
 			/*let's see if this time-bucket should have expired */
@@ -254,10 +258,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				var d time.Time
 				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 				if err != nil {
-					log.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
 				if d.After(bucket.Last_ts.Add(bucket.Duration)) {
-					bucket.logger.Debugf("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
+					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
 					continue
 				}
@@ -266,19 +270,19 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 			select {
 			case bucket.In <- parsed:
-				log.Debugf("Successfully sent !")
+				holder.logger.Tracef("Successfully sent !")
 				//sent was successful !
 				sent = true
 				continue
 			default:
 				failed_sent += 1
-				log.Debugf("Failed to send, try again")
+				holder.logger.Tracef("Failed to send, try again")
 				continue
 
 			}
 		}
 
-		log.Debugf("bucket '%s' is poured", holder.Name)
+		holder.logger.Debugf("bucket '%s' is poured", holder.Name)
 	}
 	return sent, nil
 }
