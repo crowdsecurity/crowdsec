@@ -267,8 +267,8 @@ paths:
           schema:
             $ref: '#/definitions/WatcherRegistrationRequest'
       responses:
-        '200':
-          description: Watcher registered
+        '201':
+          description: Watcher Created
           headers: {}
         '400':
           description: "400 response"
@@ -322,8 +322,8 @@ paths:
           schema:
             $ref: '#/definitions/AddAlertsRequest'
       responses:
-        '200':
-          description: successful operation
+        '201':
+          description: Alert(s) created
           schema:
             $ref: '#/definitions/AddAlertsResponse'
           headers: {}

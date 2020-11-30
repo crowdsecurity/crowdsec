@@ -150,6 +150,5 @@ func TestUnknownPath(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 404, w.Code)
-	assert.Equal(t, "{\"message\":\"Page or Method not found\"}", w.Body.String())
 
 }
