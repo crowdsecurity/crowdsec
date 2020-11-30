@@ -278,5 +278,9 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 		log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
+
+	if nbUpdated == 0 {
+		return ItemNotFound
+	}
 	return nil
 }

@@ -146,7 +146,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		log.Warningf("Cannot send alert to Central API channel")
 	}
 
-	gctx.JSON(http.StatusOK, alerts)
+	gctx.JSON(http.StatusCreated, alerts)
 	return
 }
 
@@ -202,11 +202,15 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		return
 	}
 	var err error
-	deleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
+	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d deleted alerts", len(deleted))})
+	deleteAlertsResp := models.DeleteAlertsResponse{
+		NbDeleted: strconv.Itoa(nbDeleted),
+	}
+
+	gctx.JSON(http.StatusOK, deleteAlertsResp)
 	return
 }

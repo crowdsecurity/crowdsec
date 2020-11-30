@@ -47,7 +47,7 @@ func TestCreateMachine(t *testing.T) {
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
 }

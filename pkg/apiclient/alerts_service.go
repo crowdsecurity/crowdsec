@@ -6,6 +6,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
+	"github.com/pkg/errors"
 )
 
 // type ApiAlerts service
@@ -65,7 +66,7 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
 	params, err := qs.Values(opts)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "building query")
 	}
 	if len(params) > 0 {
 		URI = fmt.Sprintf("%s?%s", u, params.Encode())
@@ -75,12 +76,12 @@ func (s *AlertsService) List(ctx context.Context, opts AlertsListOpts) (*models.
 
 	req, err := s.client.NewRequest("GET", URI, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, errors.Wrap(err, "building request")
 	}
 
 	resp, err := s.client.Do(ctx, req, &alerts)
 	if err != nil {
-		return nil, resp, err
+		return nil, resp, errors.Wrap(err, "performing request")
 	}
 	return &alerts, resp, nil
 }
@@ -117,7 +118,7 @@ func (s *AlertsService) GetByID(ctx context.Context, alertID int) (*models.Alert
 
 	resp, err := s.client.Do(ctx, req, &alert)
 	if err != nil {
-		return nil, resp, err
+		return nil, nil, err
 	}
 	return &alert, resp, nil
 }

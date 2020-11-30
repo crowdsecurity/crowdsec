@@ -71,11 +71,12 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		if e, ok := err.(*url.Error); ok {
 			if url, err := url.Parse(e.URL); err == nil {
 				e.URL = url.String()
-				return nil, e
+				return newResponse(resp), e
+			} else {
+				return newResponse(resp), err
 			}
 		}
-
-		return nil, err
+		return newResponse(resp), err
 	}
 
 	response := newResponse(resp)
@@ -98,6 +99,5 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 			}
 		}
 	}
-
 	return response, err
 }

@@ -10,6 +10,9 @@ import (
 
 func (c *Controller) HandleDBErrors(gctx *gin.Context, err error) {
 	switch errors.Cause(err) {
+	case database.ItemNotFound:
+		gctx.JSON(http.StatusNotFound, gin.H{"message": err.Error()})
+		return
 	case database.UserExists:
 		gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
 		return

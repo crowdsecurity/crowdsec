@@ -491,7 +491,7 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	return nil
 }
 
-func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert, error) {
+func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) {
 	var err error
 
 	// Get all the alerts that match the filter
@@ -501,10 +501,10 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) ([]*ent.Alert
 		err = c.DeleteAlertGraph(alertItem)
 		if err != nil {
 			log.Warningf("DeleteAlertWithFilter : %s", err)
-			return []*ent.Alert{}, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
+			return 0, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
 		}
 	}
-	return alertsToDelete, nil
+	return len(alertsToDelete), nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
@@ -521,12 +521,12 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		filter := map[string][]string{
 			"created_before": {MaxAge},
 		}
-		deleted, err := c.DeleteAlertWithFilter(filter)
+		nbDeleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
 			log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
-		deletedByAge = len(deleted)
+		deletedByAge = nbDeleted
 	}
 	if MaxItems > 0 {
 		if totalAlerts > MaxItems {
@@ -563,8 +563,13 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
 	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(c.CTX)
 	if err != nil {
+		/*record not found, 404*/
+		if ent.IsNotFound(err) {
+			log.Warningf("GetAlertByID (not found): %s", err)
+			return &ent.Alert{}, ItemNotFound
+		}
 		log.Warningf("GetAlertByID : %s", err)
-		return &ent.Alert{}, errors.Wrapf(QueryFail, "alert id '%d'", alertID)
+		return &ent.Alert{}, QueryFail
 	}
 	return alert, nil
 }

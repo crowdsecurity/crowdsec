@@ -6,6 +6,7 @@ nav:
   - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
   - Hub : https://hub.crowdsec.net/" target="_blank
   - Releases : https://github.com/crowdsecurity/crowdsec/releases" target="_blank
+  - Contributing: contributing.md
   - FAQ: faq.md
 
 
@@ -42,7 +43,7 @@ google_analytics:
     - auto
 
 extra:
-    swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/wip_lapi/pkg/models/localapi_swagger.yaml"
+    swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/pkg/models/localapi_swagger.yaml"
     v0X:
       doc:
           new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
