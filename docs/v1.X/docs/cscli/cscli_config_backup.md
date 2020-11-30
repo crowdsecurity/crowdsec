@@ -1,19 +1,32 @@
-## cscli config show
+## cscli config backup
 
-Displays current config
+Backup current config
 
 ### Synopsis
 
-Displays the current cli configuration.
+Backup the current crowdsec configuration including :
+
+- Main config (config.yaml)
+- Simulation config (simulation.yaml)
+- Profiles config (profiles.yaml)
+- List of scenarios, parsers, postoverflows and collections that are up-to-date
+- Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
+- Backup of API credentials (local API and online API)
 
 ```
-cscli config show [flags]
+cscli config backup <directory> [flags]
+```
+
+### Examples
+
+```
+cscli config backup ./my-backup
 ```
 
 ### Options
 
 ```
-  -h, --help   help for show
+  -h, --help   help for backup
 ```
 
 ### Options inherited from parent commands
