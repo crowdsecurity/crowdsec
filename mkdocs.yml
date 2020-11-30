@@ -6,6 +6,7 @@ nav:
   - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
   - Hub : https://hub.crowdsec.net/" target="_blank
   - Releases : https://github.com/crowdsecurity/crowdsec/releases" target="_blank
+  - Contributing: contributing.md
   - FAQ: faq.md
 
 
