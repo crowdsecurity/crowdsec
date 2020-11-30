@@ -28,6 +28,6 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	gctx.Status(http.StatusOK)
+	gctx.Status(http.StatusCreated)
 	return
 }

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"net/http"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -43,6 +44,14 @@ func (c *Controller) NewV1() error {
 	}
 
 	c.Router.Use(v1.PrometheusMiddleware())
+	c.Router.HandleMethodNotAllowed = true
+	c.Router.NoRoute(func(ctx *gin.Context) {
+		ctx.AbortWithStatus(http.StatusNotFound)
+	})
+	c.Router.NoMethod(func(ctx *gin.Context) {
+		ctx.AbortWithStatus(http.StatusMethodNotAllowed)
+	})
+
 	groupV1 := c.Router.Group("/v1")
 	groupV1.POST("/watchers", handlerV1.CreateMachine)
 	groupV1.POST("/watchers/login", handlerV1.Middlewares.JWT.Middleware.LoginHandler)
