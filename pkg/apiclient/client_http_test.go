@@ -21,7 +21,7 @@ func TestNewRequestInvalid(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -54,7 +54,7 @@ func TestNewRequestTimeout(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),

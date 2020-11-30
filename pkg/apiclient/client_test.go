@@ -47,7 +47,7 @@ func TestNewClientOk(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -84,7 +84,7 @@ func TestNewClientKo(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -117,7 +117,7 @@ func TestNewDefaultClient(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewDefaultClient(apiURL, "/v1", "", nil)
+	client, err := NewDefaultClient(apiURL, "/v1", "", nil)
 	if err != nil {
 		t.Fatalf("new api client: %s", err.Error())
 	}
@@ -161,7 +161,7 @@ func TestNewClientRegisterOK(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = RegisterClient(&Config{
+	client, err := RegisterClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -176,7 +176,7 @@ func TestNewClientRegisterOK(t *testing.T) {
 
 func TestNewClientBadAnswer(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
-	_, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 
 	/*mock login*/

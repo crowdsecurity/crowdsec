@@ -27,7 +27,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -234,7 +234,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -427,7 +427,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -470,7 +470,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	if err != nil {
 		log.Fatalf("parsing api url: %s", apiURL)
 	}
-	client, err = NewClient(&Config{
+	client, err := NewClient(&Config{
 		MachineID:     "test_login",
 		Password:      "test_password",
 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),

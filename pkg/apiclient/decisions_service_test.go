@@ -2,11 +2,13 @@ package apiclient
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -15,7 +17,7 @@ import (
 func TestDecisionsList(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	_, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +99,7 @@ func TestDecisionsList(t *testing.T) {
 func TestDecisionsStream(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	_, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 
 	mux.HandleFunc("/decisions/stream", func(w http.ResponseWriter, r *http.Request) {
@@ -188,4 +190,84 @@ func TestDecisionsStream(t *testing.T) {
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
+}
+
+func TestDeleteDecisions(t *testing.T) {
+	mux, urlx, teardown := setup()
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"nbDeleted":"1"}`))
+		//w.Write([]byte(`{"message":"0 deleted alerts"}`))
+	})
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		log.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err := NewClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+
+	if err != nil {
+		log.Fatalf("new api client: %s", err.Error())
+	}
+
+	filters := DecisionsDeleteOpts{IPEquals: new(string)}
+	*filters.IPEquals = "1.2.3.4"
+	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
+	if err != nil {
+		t.Fatalf("unexpected err : %s", err)
+	}
+	assert.Equal(t, "1", deleted.NbDeleted)
+
+	defer teardown()
+}
+
+func TestDeleteOneDecision(t *testing.T) {
+	mux, urlx, teardown := setup()
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+	mux.HandleFunc("/decisions/1", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"nbDeleted":"1"}`))
+	})
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		log.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err := NewClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+
+	if err != nil {
+		log.Fatalf("new api client: %s", err.Error())
+	}
+
+	filters := DecisionsDeleteOpts{IPEquals: new(string)}
+	*filters.IPEquals = "1.2.3.4"
+	deleted, _, err := client.Decisions.Delete(context.Background(), filters)
+	if err != nil {
+		t.Fatalf("unexpected err : %s", err)
+	}
+	assert.Equal(t, "1", deleted.NbDeleted)
+
+	defer teardown()
 }

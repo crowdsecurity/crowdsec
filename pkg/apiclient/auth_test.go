@@ -13,7 +13,7 @@ import (
 func TestApiAuth(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
 
-	_, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	mux.HandleFunc("/decisions", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
 		if r.Header.Get("X-Api-Key") == "ixu" {
