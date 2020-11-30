@@ -563,8 +563,13 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
 	alert, err := c.Ent.Alert.Query().Where(alert.IDEQ(alertID)).WithDecisions().WithEvents().WithMetas().WithOwner().First(c.CTX)
 	if err != nil {
+		/*record not found, 404*/
+		if ent.IsNotFound(err) {
+			log.Warningf("GetAlertByID (not found): %s", err)
+			return &ent.Alert{}, ItemNotFound
+		}
 		log.Warningf("GetAlertByID : %s", err)
-		return &ent.Alert{}, errors.Wrapf(QueryFail, "alert id '%d'", alertID)
+		return &ent.Alert{}, QueryFail
 	}
 	return alert, nil
 }
