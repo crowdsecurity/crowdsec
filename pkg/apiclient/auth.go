@@ -97,7 +97,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		if err != nil {
 			return fmt.Errorf("can't update scenario list: %s", err)
 		}
-		log.Infof("scenarios liste updated for '%s'", *t.MachineID)
+		log.Infof("scenarios list updated for '%s'", *t.MachineID)
 	}
 
 	var auth = models.WatcherAuthRequest{
