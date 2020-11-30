@@ -42,7 +42,7 @@ google_analytics:
     - auto
 
 extra:
-    swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/wip_lapi/pkg/models/localapi_swagger.yaml"
+    swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/pkg/models/localapi_swagger.yaml"
     v0X:
       doc:
           new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
