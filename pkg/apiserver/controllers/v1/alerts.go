@@ -211,10 +211,6 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
-	if gctx.Request.Method == "HEAD" {
-		gctx.String(http.StatusOK, "")
-		return
-	}
 	gctx.JSON(http.StatusOK, deleteAlertsResp)
 	return
 }
