@@ -37,7 +37,6 @@ nav:
     - Expressions: write_configurations/expressions.md
   - bouncers: bouncers/index.md
   - Contributing: 
-    - General: contributing.md
     - Writing Output Plugins: references/plugins_api.md
   - Cscli commands:
     - Cscli: cscli/cscli.md
