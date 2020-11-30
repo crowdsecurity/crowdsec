@@ -115,28 +115,28 @@ our [documentation](https://doc.crowdsec.net).
 
 <details open>
   <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/crowdsec_install.gif">
+  <img src="docs/assets/images/crowdsec_install.gif">
 </details>
 
 ### Out of the box detection
 
 <details>
   <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/out-of-the-box-protection.gif">
+  <img src="docs/assets/images/out-of-the-box-protection.gif">
 </details>
 
 ### Easy bouncer deployment
 
 <details>
   <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/blocker-installation.gif">
+  <img src="docs/assets/images/blocker-installation.gif">
 </details>
 
 ### Easy dashboard access
 
 <details>
   <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec/blob/master/docs/assets/images/cscli-metabase.gif">
+  <img src="docs/assets/images/cscli-metabase.gif">
 </details>
 
 ## 📦 About this repository
