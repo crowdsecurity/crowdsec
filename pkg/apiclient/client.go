@@ -86,11 +86,14 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	c.Alerts = (*AlertsService)(&c.common)
 	c.Auth = (*AuthService)(&c.common)
 
-	_, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password})
+	resp, err := c.Auth.RegisterWatcher(context.Background(), models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password})
+	/*if we have http status, return it*/
 	if err != nil {
-		return c, errors.Wrapf(err, "api register (%s): %s", c.BaseURL, err)
+		if resp != nil && resp.Response != nil {
+			return nil, errors.Wrapf(err, "api register (%s) http %s : %s", c.BaseURL, resp.Response.Status, err)
+		}
+		return nil, errors.Wrapf(err, "api register (%s) : %s", c.BaseURL, err)
 	}
-
 	return c, nil
 
 }
@@ -107,7 +110,11 @@ type ErrorResponse struct {
 }
 
 func (e *ErrorResponse) Error() string {
-	return fmt.Sprintf("API error (%s) : %s", *e.Message, e.Errors)
+	err := fmt.Sprintf("API error: %s", *e.Message)
+	if len(e.Errors) > 0 {
+		err += fmt.Sprintf(" (%s)", e.Errors)
+	}
+	return err
 }
 
 func newResponse(r *http.Response) *Response {
@@ -123,7 +130,13 @@ func CheckResponse(r *http.Response) error {
 	errorResponse := &ErrorResponse{}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && data != nil {
-		json.Unmarshal(data, errorResponse)
+		err := json.Unmarshal(data, errorResponse)
+		if err != nil {
+			return errors.Wrapf(err, "http code %d, invalid body", r.StatusCode)
+		}
+	} else {
+		errorResponse.Message = new(string)
+		*errorResponse.Message = fmt.Sprintf("http code %d, no error message", r.StatusCode)
 	}
 	return errorResponse
 }
