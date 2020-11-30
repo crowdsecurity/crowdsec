@@ -10,14 +10,14 @@ By default, logs are written to `/var/log/crowdsec.log`, in text format.
 time="12-05-2020 15:34:21" level=info msg="setting loglevel to info"
 time="12-05-2020 15:34:21" level=info msg="Crowdsec v0.0.19-9ae496aa9cfd008513976a096accc7cfc43f2d9b"
 time="12-05-2020 15:34:21" level=warning msg="Loading prometheus collectors"
-time="12-05-2020 15:34:23" level=warning msg="no version in /etc/crowdsec/config/parsers/s00-raw/syslog-logs.yaml, assuming '1.0'"
+time="12-05-2020 15:34:23" level=warning msg="no version in /etc/crowdsec/parsers/s00-raw/syslog-logs.yaml, assuming '1.0'"
 time="12-05-2020 15:34:23" level=warning msg="Starting profiling and http server"
-time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/config/parsers/s00-raw/syslog-logs.yaml, assuming '1.0'"
+time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/parsers/s00-raw/syslog-logs.yaml, assuming '1.0'"
 time="12-05-2020 15:34:24" level=info msg="Node has no name,author or description. Skipping."
-time="12-05-2020 15:34:24" level=info msg="Loading 2 parser nodes" file=/etc/crowdsec/config/parsers/s00-raw/syslog-logs.yaml
-time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/config/parsers/s01-parse/nginx-logs.yaml, assuming '1.0'"
-time="12-05-2020 15:34:24" level=info msg="Loading 3 parser nodes" file=/etc/crowdsec/config/parsers/s01-parse/nginx-logs.yaml
-time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/config/parsers/s01-parse/sshd-logs.yaml, assuming '1.0'"
+time="12-05-2020 15:34:24" level=info msg="Loading 2 parser nodes" file=/etc/crowdsec/parsers/s00-raw/syslog-logs.yaml
+time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/parsers/s01-parse/nginx-logs.yaml, assuming '1.0'"
+time="12-05-2020 15:34:24" level=info msg="Loading 3 parser nodes" file=/etc/crowdsec/parsers/s01-parse/nginx-logs.yaml
+time="12-05-2020 15:34:24" level=warning msg="no version in /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml, assuming '1.0'"
 time="13-05-2020 17:42:53" level=warning msg="24 existing LeakyRoutine"
 time="13-05-2020 18:02:51" level=info msg="Flushed 1 expired entries from Ban Application"
 time="13-05-2020 18:12:46" level=info msg="Flushed 1 expired entries from Ban Application"

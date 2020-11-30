@@ -315,7 +315,7 @@ INFO[0000] SCENARIOS:
  NAME                                  📦 STATUS          VERSION  LOCAL PATH                                                     
 ----------------------------------------------------------------------------------------------------------------------------------
 ...
- mytest.yaml                           🚫  enabled,local           /etc/crowdsec/config/scenarios/mytest.yaml                 
+ mytest.yaml                           🚫  enabled,local           /etc/crowdsec/scenarios/mytest.yaml                 
 ...
 ```
 

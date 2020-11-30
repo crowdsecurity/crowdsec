@@ -47,7 +47,7 @@ May 11 16:23:50 sd-126005 kernel: [47615902.763137] IN=enp1s0 OUT= MAC=00:08:a2:
 !!! warning
     Your yaml file must be in the `config/parsers/s01-parser/` directory.
 
-    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`, or `/etc/crowdsec/config/parsers/s01-parser/myparser.yaml`.
+    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`, or `/etc/crowdsec/parsers/s01-parser/myparser.yaml`.
 
     The {{v1X.stage.htmlname}} directory might not exist, don't forget to create it.
 

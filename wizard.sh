@@ -21,7 +21,6 @@ CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
-CSCLI_FOLDER="/etc/crowdsec/config/cscli"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -282,7 +281,6 @@ install_crowdsec() {
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/collections" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/patterns" || exit
-    mkdir -p "${CSCLI_FOLDER}" || exit
 
     #tmp
     mkdir -p /tmp/data
