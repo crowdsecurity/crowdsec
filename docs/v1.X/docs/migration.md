@@ -2,10 +2,15 @@
 
 !!! warning
         Migrating to V1.X will impact (any change you made will be lost and must be adapted to the new configuration) :
+
                 * Database model : your existing database will be lost, a new one will be created in the V1.
+
                 * {{v1X.crowdsec.Name}} configuration :
+
                         * `/etc/crowdsec/config/default.yaml` : check [new format](/Crowdsec/v1/references/crowdsec-config/#configuration-format)
+
                         * `/etc/crowdsec/config/profiles.yaml` : check [new format](/Crowdsec/v1/references/profiles/#profiles-configurations)
+
 
 To upgrade {{v1X.crowdsec.name}} from v0.X to v1, we'll follow those steps
 
