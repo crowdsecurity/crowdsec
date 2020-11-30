@@ -103,7 +103,7 @@ func TestWatcherRegister(t *testing.T) {
 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		assert.Equal(t, newStr, `{"machine_id":"test_login","password":"test_password"}
 `)
@@ -143,7 +143,7 @@ func TestWatcherUnregister(t *testing.T) {
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		if newStr == `{"machine_id":"test_login","password":"test_password","scenarios":["crowdsecurity/test"]}
 ` {
