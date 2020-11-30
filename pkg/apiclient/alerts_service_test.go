@@ -42,6 +42,14 @@ func TestAlertsListAsMachine(t *testing.T) {
 	defer teardown()
 
 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+
+		if r.URL.RawQuery == "ip=1.2.3.4" {
+			testMethod(t, r, "GET")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `null`)
+			return
+		}
+
 		testMethod(t, r, "GET")
 		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, `[
@@ -96,13 +104,6 @@ func TestAlertsListAsMachine(t *testing.T) {
 		]`)
 	})
 
-	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
-	if err != nil {
-		log.Errorf("test Unable to list alerts : %+v", err)
-	}
-	if resp.Response.StatusCode != http.StatusOK {
-		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
-	}
 	tcapacity := int32(5)
 	tduration := "59m49.264032632s"
 	torigin := "crowdsec"
@@ -195,9 +196,29 @@ func TestAlertsListAsMachine(t *testing.T) {
 	//log.Debugf("data : -> %s", spew.Sdump(alerts))
 	//log.Debugf("resp : -> %s", spew.Sdump(resp))
 	//log.Debugf("expected : -> %s", spew.Sdump(expected))
+	//first one returns data
+	alerts, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
+	if err != nil {
+		log.Errorf("test Unable to list alerts : %+v", err)
+	}
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+
 	if !reflect.DeepEqual(*alerts, expected) {
 		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
 	}
+	//this one doesn't
+	filter := AlertsListOpts{IPEquals: new(string)}
+	*filter.IPEquals = "1.2.3.4"
+	alerts, resp, err = client.Alerts.List(context.Background(), filter)
+	if err != nil {
+		log.Errorf("test Unable to list alerts : %+v", err)
+	}
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+	assert.Equal(t, 0, len(*alerts))
 }
 
 func TestAlertsGetAsMachine(t *testing.T) {
@@ -226,6 +247,11 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	defer teardown()
+	mux.HandleFunc("/alerts/2", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "GET")
+		w.WriteHeader(http.StatusNotFound)
+		fmt.Fprintf(w, `{"message":"object not found"}`)
+	})
 
 	mux.HandleFunc("/alerts/1", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "GET")
@@ -379,6 +405,92 @@ func TestAlertsGetAsMachine(t *testing.T) {
 
 	//fail
 	alerts, resp, err = client.Alerts.GetByID(context.Background(), 2)
-	assert.Contains(t, fmt.Sprintf("%s", err), "http code 404, invalid body")
+	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
 
+}
+
+func TestAlertsCreateAsMachine(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	client, mux, urlx, teardown := setup()
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`["3"]`))
+	})
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		log.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err = NewClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+
+	if err != nil {
+		log.Fatalf("new api client: %s", err.Error())
+	}
+
+	defer teardown()
+	alert := models.AddAlertsRequest{}
+	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
+	expected := &models.AddAlertsResponse{"3"}
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+	if !reflect.DeepEqual(*alerts, *expected) {
+		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
+	}
+}
+
+func TestAlertsDeleteAsMachine(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	client, mux, urlx, teardown := setup()
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
+	})
+	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "DELETE")
+		assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message":"0 deleted alerts"}`))
+	})
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		log.Fatalf("parsing api url: %s", apiURL)
+	}
+	client, err = NewClient(&Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+	})
+
+	if err != nil {
+		log.Fatalf("new api client: %s", err.Error())
+	}
+
+	defer teardown()
+	alert := AlertsDeleteOpts{IPEquals: new(string)}
+	*alert.IPEquals = "1.2.3.4"
+	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
+	expected := &models.DeleteAlertsResponse{""}
+	if resp.Response.StatusCode != http.StatusOK {
+		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
+	}
+	if !reflect.DeepEqual(*alerts, *expected) {
+		t.Errorf("client.Alerts.List returned %+v, want %+v", resp, expected)
+	}
 }
