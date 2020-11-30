@@ -1,6 +1,6 @@
 type: trigger
 debug: true
-name: test/simple-trigger
+name: test/simple-trigger-reprocess
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
 groupby: evt.Meta.source_ip

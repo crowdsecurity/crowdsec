@@ -1,0 +1,61 @@
+name: Hub-CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Hub Parser/Scenario tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.13
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.13
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Build release
+      run: make release
+    # - name: Cache release
+    #   uses: actions/cache@v2
+    #   id: cache
+    #   with:
+    #     path: crowdsec-xxx
+    #     key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: clone and build hub CI tool
+      run: |
+        git clone https://github.com/crowdsecurity/hub-tests.git
+        cd hub-tests
+        make
+    - uses: oprypin/find-latest-tag@v1
+      with:
+        repository: crowdsecurity/crowdsec  # The repository to scan.
+        releases-only: false  # We know that all relevant tags have a GitHub release for them.
+      id: crowdsec  # The step ID to refer to later.
+    - name: Create crowdsec test env with all parsers from the release
+      run: |
+        cd crowdsec-${{ steps.crowdsec.outputs.tag }}
+        ./test_env.sh
+        cd tests
+        for i in `./cscli -c dev.yaml list parsers -a -o json | jq -r ".[].name" ` ; do 
+          ./cscli -c dev.yaml install parser $i ; 
+        done
+    - name: Setup hub ci in crowdsec
+      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
+      run: |
+        cp -R ../../hub-tests/tests .
+        cp ../../hub-tests/main .
+    - name: Run the HUB CI
+      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
+      run: |
+        for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
+          echo "::group::Test-${i}" ; 
+          ./main -c dev.yaml $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.json" ${i}"/results.json.fail") ;
+          echo "::endgroup::" ;
+        done ;

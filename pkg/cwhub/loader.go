@@ -2,10 +2,12 @@ package cwhub
 
 import (
 	"encoding/json"
-	"errors"
+	//"errors"
 	"fmt"
 	"io/ioutil"
 	"sort"
+
+	"github.com/pkg/errors"
 
 	//"log"
 
@@ -13,8 +15,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	log "github.com/sirupsen/logrus"
 )
+
+/*the walk/parser_visit function can't receive extra args*/
+var hubdir, installdir, indexpath string
 
 func parser_visit(path string, f os.FileInfo, err error) error {
 
@@ -26,6 +32,11 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	var ftype string
 	var fauthor string
 	var stage string
+
+	path, err = filepath.Abs(path)
+	if err != nil {
+		return err
+	}
 	//we only care about files
 	if f == nil || f.IsDir() {
 		return nil
@@ -37,37 +48,36 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, Hubdir, Installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.cscli/hub/)*/
-	if strings.HasPrefix(path, Hubdir) {
+	if strings.HasPrefix(path, hubdir) {
+		log.Tracef("in hub dir")
 		inhub = true
-		//~/.cscli/hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		//~/.cscli/hub/scenarios/crowdsec/ssh_bf.yaml
-		//~/.cscli/hub/profiles/crowdsec/linux.yaml
+		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+		//.../hub/scenarios/crowdsec/ssh_bf.yaml
+		//.../hub/profiles/crowdsec/linux.yaml
 		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s", path)
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
 		fname = subs[len(subs)-1]
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-		log.Tracef("HUBB check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
-
-	} else if strings.HasPrefix(path, Installdir) { /*we're in install /etc/crowdsec/<type>/... */
+	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
+		log.Tracef("in install dir")
 		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s", path)
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
 		}
-		///etc/.../parser/stage/file.yaml
-		///etc/.../postoverflow/stage/file.yaml
-		///etc/.../scenarios/scenar.yaml
-		///etc/.../collections/linux.yaml //file is empty
+		///.../config/parser/stage/file.yaml
+		///.../config/postoverflow/stage/file.yaml
+		///.../config/scenarios/scenar.yaml
+		///.../config/collections/linux.yaml //file is empty
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
 		fauthor = ""
-		log.Tracef("INSTALL check [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 	} else {
-		log.Errorf("unknown prefix in %s (not install:%s and not hub:%s)", path, Installdir, Hubdir)
+		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
@@ -78,7 +88,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = COLLECTIONS
 		stage = ""
 	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
-		return fmt.Errorf("unknown prefix in %s : fname:%s, fauthor:%s, stage:%s, ftype:%s", path, fname, fauthor, stage, ftype)
+		return fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
 
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
@@ -113,7 +123,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	//if it's not a symlink and not in hub, it's a local file, don't bother
 	if local && !inhub {
-		log.Debugf("%s is a local file, skip", path)
+		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
 		target.Name = fname
@@ -126,14 +136,14 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		x := strings.Split(path, "/")
 		target.FileName = x[len(x)-1]
 
-		HubIdx[ftype][fname] = target
+		hubIdx[ftype][fname] = target
 		return nil
 	}
 	//try to find which configuration item it is
 	log.Tracef("check [%s] of %s", fname, ftype)
 
 	match := false
-	for k, v := range HubIdx[ftype] {
+	for k, v := range hubIdx[ftype] {
 		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
 		if fname != v.FileName {
 			log.Tracef("%s != %s (filename)", fname, v.FileName)
@@ -153,7 +163,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if v.Name+".yaml" != fauthor+"/"+fname {
 				continue
 			}
-			if path == Hubdir+"/"+v.RemotePath {
+			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
@@ -185,7 +195,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			} else {
 				/*we got an exact match, update struct*/
 				if !inhub {
-					log.Debugf("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
+					log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
 					v.LocalPath = path
 					v.LocalVersion = version
 					v.Tainted = false
@@ -205,7 +215,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			}
 		}
 		if !match {
-			log.Debugf("got tainted match for %s : %s", v.Name, path)
+			log.Tracef("got tainted match for %s : %s", v.Name, path)
 			skippedTainted += 1
 			//the file and the stage is right, but the hash is wrong, it has been tainted by user
 			if !inhub {
@@ -220,8 +230,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			target.FileName = x[len(x)-1]
 
 		}
-		//update the entry
-		HubIdx[ftype][k] = v
+		//update the entry if appropriate
+		if _, ok := hubIdx[ftype][k]; !ok {
+			hubIdx[ftype][k] = v
+		} else if !inhub {
+			hubIdx[ftype][k] = v
+		}
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)
@@ -236,7 +250,7 @@ func CollecDepsCheck(v *Item) error {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := HubIdx[ptrtype][p]; ok {
+				if val, ok := hubIdx[ptrtype][p]; ok {
 					log.Tracef("check %s installed:%t", val.Name, val.Installed)
 					if !v.Installed {
 						continue
@@ -246,7 +260,7 @@ func CollecDepsCheck(v *Item) error {
 						if err := CollecDepsCheck(&val); err != nil {
 							return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
 						}
-						HubIdx[ptrtype][p] = val
+						hubIdx[ptrtype][p] = val
 					}
 
 					//propagate the state of sub-items to set
@@ -260,8 +274,16 @@ func CollecDepsCheck(v *Item) error {
 						v.UpToDate = false
 						return fmt.Errorf("outdated %s %s", ptrtype, p)
 					}
-					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
-					HubIdx[ptrtype][p] = val
+					skip := false
+					for idx := range val.BelongsToCollections {
+						if val.BelongsToCollections[idx] == v.Name {
+							skip = true
+						}
+					}
+					if !skip {
+						val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
+					}
+					hubIdx[ptrtype][p] = val
 					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 				} else {
 					log.Fatalf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, v.Name)
@@ -272,35 +294,54 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-/* Updates the infos from HubInit() with the local state */
-func LocalSync() error {
-	skippedLocal = 0
-	skippedTainted = 0
+func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
+	hubdir = cscli.HubDir
+	installdir = cscli.ConfigDir
+	indexpath = cscli.HubIndexFile
+
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
-		/*Scan install and Hubdir to get local status*/
-		for _, dir := range []string{Installdir, Hubdir} {
-			//walk the user's directory
-			err := filepath.Walk(dir+"/"+scan, parser_visit)
-			if err != nil {
-				return err
-			}
+		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		if err != nil {
+			log.Errorf("failed %s : %s", cpath, err)
 		}
+		err = filepath.Walk(cpath, parser_visit)
+		if err != nil {
+			return err
+		}
+
 	}
 
-	for k, v := range HubIdx[COLLECTIONS] {
+	for k, v := range hubIdx[COLLECTIONS] {
 		if err := CollecDepsCheck(&v); err != nil {
 			log.Infof("dependency issue %s : %s", v.Name, err)
 		}
-		HubIdx[COLLECTIONS][k] = v
+		hubIdx[COLLECTIONS][k] = v
 	}
 	return nil
 }
 
-func GetHubIdx() error {
+/* Updates the infos from HubInit() with the local state */
+func LocalSync(cscli *csconfig.CscliCfg) error {
+	skippedLocal = 0
+	skippedTainted = 0
 
-	bidx, err := ioutil.ReadFile(Cfgdir + "/.index.json")
+	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
+		log.Debugf("scanning %s", dir)
+		if err := SyncDir(cscli, dir); err != nil {
+			return fmt.Errorf("failed to scan %s : %s", dir, err)
+		}
+	}
+
+	return nil
+}
+
+func GetHubIdx(cscli *csconfig.CscliCfg) error {
+
+	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
+	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
 	if err != nil {
+		return errors.Wrap(err, "unable to read index file")
 		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}
 	ret, err := LoadPkgIndex(bidx)
@@ -310,8 +351,8 @@ func GetHubIdx() error {
 		}
 		return err
 	}
-	HubIdx = ret
-	if err := LocalSync(); err != nil {
+	hubIdx = ret
+	if err := LocalSync(cscli); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
@@ -327,9 +368,11 @@ func LoadPkgIndex(buff []byte) (map[string]map[string]Item, error) {
 		return nil, fmt.Errorf("failed to unmarshal index : %v", err)
 	}
 
+	log.Debugf("%d item types in hub index", len(ItemTypes))
 	/*Iterate over the different types to complete struct */
 	for _, itemType := range ItemTypes {
 		/*complete struct*/
+		log.Tracef("%d item", len(RawIndex[itemType]))
 		for idx, item := range RawIndex[itemType] {
 			item.Name = idx
 			item.Type = itemType

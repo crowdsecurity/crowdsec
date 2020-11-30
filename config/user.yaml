@@ -1,16 +1,40 @@
-working_dir: /tmp/
-data_dir: ${DATA}
-config_dir: ${CFG}
-pid_dir: ${PID}
-log_dir: /var/log/
-cscli_dir: ${CFG}/cscli
-log_mode: stdout
-log_level: info
-profiling: false
-apimode: false
-daemon: false
-prometheus: false
-#for prometheus agent / golang debugging
-http_listen: 127.0.0.1:6060
-plugin:
-  backend: "/etc/crowdsec/plugins/backend"
+common:
+  daemonize: false
+  pid_dir: /var/run/
+  log_media: stdout
+  log_level: info
+  log_dir: /var/log/
+  working_dir: .
+config_paths:
+  config_dir: /etc/crowdsec/
+  data_dir: /var/lib/crowdsec/data
+  #simulation_path: /etc/crowdsec/config/simulation.yaml
+  #hub_dir: /etc/crowdsec/hub/
+  #index_path: ./config/hub/.index.json
+crowdsec_service:
+  #acquisition_path: ./config/acquis.yaml
+  parser_routines: 1
+cscli:
+  output: human
+db_config:
+  type: sqlite
+  db_path: /var/lib/crowdsec/data/crowdsec.db
+  user: crowdsec
+  #log_level: info
+  password: crowdsec
+  db_name: crowdsec
+  host: "127.0.0.1"
+  port: 3306
+api:
+  client:
+    insecure_skip_verify: true # default true
+    credentials_path: /etc/crowdsec/local_api_credentials.yaml
+  server:
+    #log_level: info
+    listen_uri: localhost:8080
+    profiles_path: /etc/crowdsec/profiles.yaml
+    online_client: # Crowdsec API
+      credentials_path: /etc/crowdsec/online_api_credentials.yaml
+prometheus:
+  enabled: true
+  level: full

@@ -32,6 +32,6 @@ func JsonExtract(jsblob string, target string) string {
 	}
 	fullpath := strings.Split(target, ".")
 
-	log.Debugf("extract path %+v", fullpath)
+	log.Tracef("extract path %+v", fullpath)
 	return JsonExtractLib(jsblob, fullpath...)
 }

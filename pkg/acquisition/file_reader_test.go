@@ -3,169 +3,225 @@ package acquisition
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/tomb.v2"
+	tomb "gopkg.in/tomb.v2"
 )
 
-func TestLoadAcquisitionConfig(t *testing.T) {
-	testFilePath := "./tests/test.log"
+func TestAcquisCat(t *testing.T) {
 
 	tests := []struct {
-		csConfig *csconfig.CrowdSec
-		result   *FileAcquisCtx
-		err      string
+		cfg DataSourceCfg
+		//tombState
+		config_error string
+		read_error   string
+		tomb_error   string
+		lines        int
 	}{
-		{
-			csConfig: &csconfig.CrowdSec{
-				SingleFile:      testFilePath,
-				SingleFileLabel: "my_test_log",
-				Profiling:       false,
+		{ //missing filename(s)
+			cfg: DataSourceCfg{
+				Mode: CAT_MODE,
 			},
-			result: &FileAcquisCtx{
-				Files: []FileCtx{
-					{
-						Type:      "file",
-						Mode:      "cat",
-						Filename:  testFilePath,
-						Filenames: []string{},
-						Labels: map[string]string{
-							"type": "my_test_log",
-						},
-						Profiling: false,
-					},
-				},
-				Profiling: false,
-			},
-			err: "",
+			config_error: "no filename or filenames",
 		},
-		{
-			csConfig: &csconfig.CrowdSec{
-				SingleFile:      testFilePath,
-				SingleFileLabel: "my_test_log",
-				Profiling:       true,
+		{ //forbiden file
+			cfg: DataSourceCfg{
+				Mode:     CAT_MODE,
+				Filename: "/etc/shadow",
 			},
-			result: &FileAcquisCtx{
-				Files: []FileCtx{
-					{
-						Type:      "file",
-						Mode:      "cat",
-						Filename:  testFilePath,
-						Filenames: []string{},
-						Labels: map[string]string{
-							"type": "my_test_log",
-						},
-						Profiling: false,
-					},
-				},
-				Profiling: true,
+			config_error: "unable to open /etc/shadow : permission denied",
+		},
+		{ //bad regexp
+			cfg: DataSourceCfg{
+				Filename: "[a-",
+				Mode:     CAT_MODE,
 			},
-			err: "",
+			config_error: "while globbing [a-: syntax error in pattern",
+		},
+		{ //inexisting file
+			cfg: DataSourceCfg{
+				Filename: "/does/not/exists",
+				Mode:     CAT_MODE,
+			},
+			config_error: "no files to read for [/does/not/exists]",
+		},
+		{ //ok file
+			cfg: DataSourceCfg{
+				Filename: "./tests/test.log",
+				Mode:     CAT_MODE,
+			},
+			lines: 1,
+		},
+		{ //invalid gz
+			cfg: DataSourceCfg{
+				Filename: "./tests/badlog.gz",
+				Mode:     CAT_MODE,
+			},
+			lines:      0,
+			tomb_error: "failed to read gz ./tests/badlog.gz: EOF",
+		},
+		{ //good gz
+			cfg: DataSourceCfg{
+				Filename: "./tests/test.log.gz",
+				Mode:     CAT_MODE,
+			},
+			lines: 1,
 		},
 	}
 
-	for _, test := range tests {
-		result, err := LoadAcquisitionConfig(test.csConfig)
-		assert.Equal(t, test.result, result)
-		if test.err == "" && err == nil {
+	for tidx, test := range tests {
+		fileSrc := new(FileSource)
+		err := fileSrc.Configure(test.cfg)
+		if test.config_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", err), test.config_error)
+			log.Infof("expected config error ok : %s", test.config_error)
 			continue
-		}
-		assert.EqualError(t, err, test.err)
-	}
-}
-
-func TestAcquisStartReadingTailKilled(t *testing.T) {
-	acquisFilePath := "./tests/acquis_test_log.yaml"
-	csConfig := &csconfig.CrowdSec{
-		AcquisitionFile: acquisFilePath,
-		Profiling:       false,
-	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	outputChan := make(chan types.Event)
-	acquisTomb := tomb.Tomb{}
-
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	if !acquisTomb.Alive() {
-		t.Fatal("acquisition tomb is not alive")
-	}
-
-	time.Sleep(500 * time.Millisecond)
-	filename := "./tests/test.log"
-
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for i := 0; i < 5; i++ {
-		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
-	f.Close()
-
-	time.Sleep(500 * time.Millisecond)
-	reads := 0
-L:
-	for {
-		select {
-		case <-outputChan:
-			reads++
-			if reads == 2 {
-				acquisTomb.Kill(nil)
-				time.Sleep(100 * time.Millisecond)
+		} else {
+			if err != nil {
+				t.Fatalf("%d/%d unexpected config error %s", tidx, len(tests), err)
 			}
-		case <-time.After(1 * time.Second):
-			break L
 		}
+
+		out := make(chan types.Event)
+		tomb := tomb.Tomb{}
+		count := 0
+
+		err = fileSrc.StartReading(out, &tomb)
+		if test.read_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", err), test.read_error)
+			log.Infof("expected read error ok : %s", test.read_error)
+			continue
+		} else {
+			if err != nil {
+				t.Fatalf("%d/%d unexpected read error %s", tidx, len(tests), err)
+			}
+		}
+
+	READLOOP:
+		for {
+			select {
+			case <-out:
+				count++
+			case <-time.After(1 * time.Second):
+				break READLOOP
+			}
+		}
+
+		if count != test.lines {
+			t.Fatalf("%d/%d expected %d line read, got %d", tidx, len(tests), test.lines, count)
+		}
+
+		if test.tomb_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", tomb.Err()), test.tomb_error)
+			log.Infof("expected tomb error ok : %s", test.read_error)
+			continue
+		} else {
+			if tomb.Err() != nil {
+				t.Fatalf("%d/%d unexpected tomb error %s", tidx, len(tests), tomb.Err())
+			}
+		}
+
 	}
 
-	log.Printf("-> %d", reads)
-	if reads != 2 {
-		t.Fatal()
-	}
-
-	f, err = os.OpenFile(filename, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = f.WriteString("one log line\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
 }
 
-func TestAcquisStartReadingTail(t *testing.T) {
-	acquisFilePath := "./tests/acquis_test_log.yaml"
-	filename := "./tests/test.log"
-	csConfig := &csconfig.CrowdSec{
-		AcquisitionFile: acquisFilePath,
-		Profiling:       false,
+func TestTailKill(t *testing.T) {
+	cfg := DataSourceCfg{
+		Filename: "./tests/test.log",
+		Mode:     TAIL_MODE,
 	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
+
+	fileSrc := new(FileSource)
+	err := fileSrc.Configure(cfg)
 	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	outputChan := make(chan types.Event)
-	acquisTomb := tomb.Tomb{}
-
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	if !acquisTomb.Alive() {
-		t.Fatal("acquisition tomb is not alive")
+		t.Fatalf("unexpected config error %s", err)
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	out := make(chan types.Event)
+	tb := tomb.Tomb{}
 
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
+	err = fileSrc.StartReading(out, &tb)
+	if err != nil {
+		t.Fatalf("unexpected read error %s", err)
+	}
+	time.Sleep(1 * time.Second)
+	if tb.Err() != tomb.ErrStillAlive {
+		t.Fatalf("unexpected tomb error %s (should be alive)", tb.Err())
+	}
+	//kill it :>
+	tb.Kill(nil)
+	time.Sleep(1 * time.Second)
+	if tb.Err() != nil {
+		t.Fatalf("unexpected tomb error %s (should be dead)", tb.Err())
+	}
+
+}
+
+func TestTailKillBis(t *testing.T) {
+	cfg := DataSourceCfg{
+		Filename: "./tests/test.log",
+		Mode:     TAIL_MODE,
+	}
+
+	fileSrc := new(FileSource)
+	err := fileSrc.Configure(cfg)
+	if err != nil {
+		t.Fatalf("unexpected config error %s", err)
+	}
+
+	out := make(chan types.Event)
+	tb := tomb.Tomb{}
+
+	err = fileSrc.StartReading(out, &tb)
+	if err != nil {
+		t.Fatalf("unexpected read error %s", err)
+	}
+	time.Sleep(1 * time.Second)
+	if tb.Err() != tomb.ErrStillAlive {
+		t.Fatalf("unexpected tomb error %s (should be alive)", tb.Err())
+	}
+	//kill the underlying tomb of tailer
+	fileSrc.tails[0].Kill(fmt.Errorf("ratata"))
+	time.Sleep(1 * time.Second)
+	//it can be two errors :
+	if !strings.Contains(fmt.Sprintf("%s", tb.Err()), "dead reader for ./tests/test.log") &&
+		!strings.Contains(fmt.Sprintf("%s", tb.Err()), "tail for ./tests/test.log is empty") {
+		t.Fatalf("unexpected error : %s", tb.Err())
+	}
+
+}
+
+func TestTailRuntime(t *testing.T) {
+	//log.SetLevel(log.TraceLevel)
+
+	cfg := DataSourceCfg{
+		Filename: "./tests/test.log",
+		Mode:     TAIL_MODE,
+	}
+
+	fileSrc := new(FileSource)
+	err := fileSrc.Configure(cfg)
+	if err != nil {
+		t.Fatalf("unexpected config error %s", err)
+	}
+
+	out := make(chan types.Event)
+	tb := tomb.Tomb{}
+	count := 0
+
+	err = fileSrc.StartReading(out, &tb)
+	if err != nil {
+		t.Fatalf("unexpected read error %s", err)
+	}
+
+	time.Sleep(1 * time.Second)
+	//write data
+	f, err := os.OpenFile(cfg.Filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,30 +233,26 @@ func TestAcquisStartReadingTail(t *testing.T) {
 	}
 	f.Close()
 
-	time.Sleep(500 * time.Millisecond)
-	reads := 0
-L:
+READLOOP:
 	for {
 		select {
-		case <-outputChan:
-			reads++
-			//log.Printf("evt %+v", evt)
+		case <-out:
+			count++
 		case <-time.After(1 * time.Second):
-			break L
+			break READLOOP
 		}
 	}
 
-	log.Printf("-> %d", reads)
-	if reads != 5 {
-		t.Fatal()
+	if count != 5 {
+		t.Fatalf("expected %d line read, got %d", 5, count)
 	}
 
-	acquisTomb.Kill(nil)
-	if err := acquisTomb.Wait(); err != nil {
-		t.Fatalf("Acquisition returned error : %s", err)
+	if tb.Err() != tomb.ErrStillAlive {
+		t.Fatalf("unexpected tomb error %s", tb.Err())
 	}
 
-	f, err = os.OpenFile(filename, os.O_TRUNC|os.O_WRONLY, 0644)
+	/*reset the file*/
+	f, err = os.OpenFile(cfg.Filename, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,105 +263,121 @@ L:
 	f.Close()
 }
 
-func TestAcquisStartReadingCat(t *testing.T) {
-	testFilePath := "./tests/test.log"
+func TestAcquisTail(t *testing.T) {
 
-	f, err := os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
+	tests := []struct {
+		cfg DataSourceCfg
+		//tombState
+		config_error string
+		read_error   string
+		tomb_error   string
+		lines        int
+	}{
+		{ //missing filename(s)
+			cfg: DataSourceCfg{
+				Mode: TAIL_MODE,
+			},
+			config_error: "no filename or filenames",
+		},
+		{ //forbiden file
+			cfg: DataSourceCfg{
+				Mode:     TAIL_MODE,
+				Filename: "/etc/shadow",
+			},
+			config_error: "unable to open /etc/shadow : permission denied",
+		},
+		{ //bad regexp
+			cfg: DataSourceCfg{
+				Filename: "[a-",
+				Mode:     TAIL_MODE,
+			},
+			config_error: "while globbing [a-: syntax error in pattern",
+		},
+		{ //inexisting file
+			cfg: DataSourceCfg{
+				Filename: "/does/not/exists",
+				Mode:     TAIL_MODE,
+			},
+			config_error: "no files to read for [/does/not/exists]",
+		},
+		{ //ok file
+			cfg: DataSourceCfg{
+				Filename: "./tests/test.log",
+				Mode:     TAIL_MODE,
+			},
+			lines:      0,
+			tomb_error: "still alive",
+		},
+		{ //invalid gz
+			cfg: DataSourceCfg{
+				Filename: "./tests/badlog.gz",
+				Mode:     TAIL_MODE,
+			},
+			lines:      0,
+			tomb_error: "still alive",
+		},
+		{ //good gz
+			cfg: DataSourceCfg{
+				Filename: "./tests/test.log.gz",
+				Mode:     TAIL_MODE,
+			},
+			lines:      0,
+			tomb_error: "still alive",
+		},
 	}
-	for i := 0; i < 5; i++ {
-		_, err := f.WriteString(fmt.Sprintf("ratata%d\n", i))
-		if err != nil {
-			t.Fatal(err)
+
+	for tidx, test := range tests {
+		fileSrc := new(FileSource)
+		err := fileSrc.Configure(test.cfg)
+		if test.config_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", err), test.config_error)
+			log.Infof("expected config error ok : %s", test.config_error)
+			continue
+		} else {
+			if err != nil {
+				t.Fatalf("%d/%d unexpected config error %s", tidx, len(tests), err)
+			}
 		}
-	}
-	f.Close()
 
-	csConfig := &csconfig.CrowdSec{
-		SingleFile:      testFilePath,
-		SingleFileLabel: "my_test_log",
-		Profiling:       false,
-	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	outputChan := make(chan types.Event)
-	acquisTomb := tomb.Tomb{}
+		out := make(chan types.Event)
+		tomb := tomb.Tomb{}
+		count := 0
 
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	if !acquisTomb.Alive() {
-		t.Fatal("acquisition tomb is not alive")
-	}
-
-	time.Sleep(500 * time.Millisecond)
-	reads := 0
-L:
-	for {
-		select {
-		case <-outputChan:
-			reads++
-		case <-time.After(1 * time.Second):
-			break L
+		err = fileSrc.StartReading(out, &tomb)
+		if test.read_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", err), test.read_error)
+			log.Infof("expected read error ok : %s", test.read_error)
+			continue
+		} else {
+			if err != nil {
+				t.Fatalf("%d/%d unexpected read error %s", tidx, len(tests), err)
+			}
 		}
-	}
 
-	log.Printf("-> %d", reads)
-	if reads != 5 {
-		t.Fatal()
-	}
-
-	acquisTomb.Kill(nil)
-	if err := acquisTomb.Wait(); err != nil {
-		t.Fatalf("Acquisition returned error : %s", err)
-	}
-
-	f, err = os.OpenFile(testFilePath, os.O_TRUNC|os.O_WRONLY, 0644)
-	if err != nil {
-		t.Fatal(err)
-	}
-	_, err = f.WriteString("one log line\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	f.Close()
-}
-
-func TestAcquisStartReadingGzCat(t *testing.T) {
-	testFilePath := "./tests/test.log.gz"
-
-	csConfig := &csconfig.CrowdSec{
-		SingleFile:      testFilePath,
-		SingleFileLabel: "my_test_log",
-		Profiling:       false,
-	}
-	fCTX, err := LoadAcquisitionConfig(csConfig)
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	outputChan := make(chan types.Event)
-	acquisTomb := tomb.Tomb{}
-
-	AcquisStartReading(fCTX, outputChan, &acquisTomb)
-	if !acquisTomb.Alive() {
-		t.Fatal("acquisition tomb is not alive")
-	}
-
-	time.Sleep(500 * time.Millisecond)
-	reads := 0
-L:
-	for {
-		select {
-		case <-outputChan:
-			reads++
-		case <-time.After(1 * time.Second):
-			break L
+	READLOOP:
+		for {
+			select {
+			case <-out:
+				count++
+			case <-time.After(1 * time.Second):
+				break READLOOP
+			}
 		}
+
+		if count != test.lines {
+			t.Fatalf("%d/%d expected %d line read, got %d", tidx, len(tests), test.lines, count)
+		}
+
+		if test.tomb_error != "" {
+			assert.Contains(t, fmt.Sprintf("%s", tomb.Err()), test.tomb_error)
+			log.Infof("expected tomb error ok : %s", test.read_error)
+			continue
+		} else {
+			if tomb.Err() != nil {
+				t.Fatalf("%d/%d unexpected tomb error %s", tidx, len(tests), tomb.Err())
+			}
+		}
+
 	}
 
-	log.Printf("-> %d", reads)
-	if reads != 1 {
-		t.Fatal()
-	}
 }

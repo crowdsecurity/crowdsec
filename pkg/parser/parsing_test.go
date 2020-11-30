@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -28,13 +29,13 @@ func TestParser(t *testing.T) {
 	debug = true
 	log.SetLevel(log.InfoLevel)
 	var envSetting = os.Getenv("TEST_ONLY")
-	pctx, err := prepTests()
+	pctx, ectx, err := prepTests()
 	if err != nil {
 		t.Fatalf("failed to load env : %s", err)
 	}
 	//Init the enricher
 	if envSetting != "" {
-		if err := testOneParser(pctx, envSetting, nil); err != nil {
+		if err := testOneParser(pctx, ectx, envSetting, nil); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -48,7 +49,7 @@ func TestParser(t *testing.T) {
 			}
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
-			if err := testOneParser(pctx, fname, nil); err != nil {
+			if err := testOneParser(pctx, ectx, fname, nil); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
 		}
@@ -60,14 +61,14 @@ func BenchmarkParser(t *testing.B) {
 	log.Printf("start bench !!!!")
 	debug = false
 	log.SetLevel(log.ErrorLevel)
-	pctx, err := prepTests()
+	pctx, ectx, err := prepTests()
 	if err != nil {
 		t.Fatalf("failed to load env : %s", err)
 	}
 	var envSetting = os.Getenv("TEST_ONLY")
 
 	if envSetting != "" {
-		if err := testOneParser(pctx, envSetting, t); err != nil {
+		if err := testOneParser(pctx, ectx, envSetting, t); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -81,20 +82,21 @@ func BenchmarkParser(t *testing.B) {
 			}
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
-			if err := testOneParser(pctx, fname, t); err != nil {
+			if err := testOneParser(pctx, ectx, fname, t); err != nil {
 				t.Fatalf("Test '%s' failed : %s", fname, err)
 			}
 		}
 	}
 }
 
-func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
+func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testing.B) error {
 
-	var err error
-	var pnodes []Node
+	var (
+		err    error
+		pnodes []Node
 
-	var parser_configs []Stagefile
-
+		parser_configs []Stagefile
+	)
 	log.Warningf("testing %s", dir)
 	parser_cfg_file := fmt.Sprintf("%s/parsers.yaml", dir)
 	cfg, err := ioutil.ReadFile(parser_cfg_file)
@@ -114,7 +116,7 @@ func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
 		return fmt.Errorf("failed unmarshaling %s : %s", parser_cfg_file, err)
 	}
 
-	pnodes, err = LoadStages(parser_configs, pctx)
+	pnodes, err = LoadStages(parser_configs, pctx, ectx)
 	if err != nil {
 		return fmt.Errorf("unable to load parser config : %s", err)
 	}
@@ -137,34 +139,36 @@ func testOneParser(pctx *UnixParserCtx, dir string, b *testing.B) error {
 }
 
 //prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
-func prepTests() (*UnixParserCtx, error) {
-	var pctx *UnixParserCtx
-	var p UnixParser
-	err := exprhelpers.Init()
+func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
+	var (
+		err  error
+		pctx *UnixParserCtx
+		ectx []EnricherCtx
+	)
+
+	err = exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	//Load enrichment
-	datadir := "../../data/"
-	pplugins, err := Loadplugin(datadir)
+	datadir := "./test_data/"
+	ectx, err = Loadplugin(datadir)
 	if err != nil {
 		log.Fatalf("failed to load plugin geoip : %v", err)
 	}
-	ECTX = nil
-	ECTX = append(ECTX, pplugins)
-	log.Printf("Loaded -> %+v", ECTX)
+	log.Printf("Loaded -> %+v", ectx)
 
 	//Load the parser patterns
 	cfgdir := "../../config/"
 
 	/* this should be refactored to 2 lines :p */
 	// Init the parser
-	pctx, err = p.Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
+	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize parser : %v", err)
+		return nil, nil, fmt.Errorf("failed to initialize parser : %v", err)
 	}
-	return pctx, nil
+	return pctx, ectx, nil
 }
 
 func loadTestFile(file string) []TestFile {
@@ -192,7 +196,7 @@ func loadTestFile(file string) []TestFile {
 
 func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bool) {
 	var retInfo []string
-	var valid bool
+	var valid bool = false
 	expectMaps := []map[string]string{expected.Parsed, expected.Meta, expected.Enriched}
 	outMaps := []map[string]string{out.Parsed, out.Meta, out.Enriched}
 	outLabels := []string{"Parsed", "Meta", "Enriched"}
@@ -203,7 +207,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 			if debug {
 				retInfo = append(retInfo, fmt.Sprintf("mismatch stage %s != %s", expected.Stage, out.Stage))
 			}
-			valid = false
 			goto checkFinished
 		} else {
 			valid = true
@@ -217,7 +220,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 		if debug {
 			retInfo = append(retInfo, fmt.Sprintf("mismatch process %t != %t", expected.Process, out.Process))
 		}
-		valid = false
 		goto checkFinished
 	} else {
 		valid = true
@@ -230,7 +232,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 		if debug {
 			retInfo = append(retInfo, fmt.Sprintf("mismatch whitelist %t != %t", expected.Whitelisted, out.Whitelisted))
 		}
-		valid = false
 		goto checkFinished
 	} else {
 		if debug {
@@ -251,7 +252,6 @@ func matchEvent(expected types.Event, out types.Event, debug bool) ([]string, bo
 					if debug {
 						retInfo = append(retInfo, fmt.Sprintf("mismatch %s[%s] %s != %s", outLabels[mapIdx], expKey, expVal, outVal))
 					}
-					valid = false
 					goto checkFinished
 				}
 			} else { //missing entry
@@ -346,4 +346,72 @@ func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
 		}
 	}
 	return true
+}
+
+/*THIS IS ONLY PRESENT TO BE ABLE TO GENERATE DOCUMENTATION OF EXISTING PATTERNS*/
+type Pair struct {
+	Key   string
+	Value string
+}
+
+type PairList []Pair
+
+func (p PairList) Len() int           { return len(p) }
+func (p PairList) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+func (p PairList) Less(i, j int) bool { return len(p[i].Value) < len(p[j].Value) }
+
+func TestGeneratePatternsDoc(t *testing.T) {
+	if os.Getenv("GO_WANT_TEST_DOC") != "1" {
+		return
+	}
+
+	pctx, err := Init(map[string]interface{}{"patterns": "../../config/patterns/", "data": "./tests/"})
+	if err != nil {
+		t.Fatalf("unable to load patterns : %s", err)
+	}
+	log.Infof("-> %s", spew.Sdump(pctx))
+	/*don't judge me, we do it for the users*/
+	p := make(PairList, len(pctx.Grok))
+
+	i := 0
+	for key, val := range pctx.Grok {
+		p[i] = Pair{key, val}
+		p[i].Value = strings.Replace(p[i].Value, "{%{", "\\{\\%\\{", -1)
+		i++
+	}
+	sort.Sort(p)
+
+	f, err := os.OpenFile("./patterns-documentation.md", os.O_TRUNC|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		t.Fatalf("failed to open : %s", err)
+	}
+	if _, err := f.WriteString("# Patterns documentation\n\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	if _, err := f.WriteString("You will find here a generated documentation of all the patterns loaded by crowdsec.\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	if _, err := f.WriteString("They are sorted by pattern length, and are meant to be used in parsers, in the form %{PATTERN_NAME}.\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	if _, err := f.WriteString("\n\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	for _, k := range p {
+		if _, err := f.WriteString(fmt.Sprintf("## %s\n\nPattern :\n```\n%s\n```\n\n", k.Key, k.Value)); err != nil {
+			t.Fatal("failed to write to file")
+		}
+		fmt.Printf("%v\t%v\n", k.Key, k.Value)
+	}
+	if _, err := f.WriteString("\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	if _, err := f.WriteString("# Documentation generation\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	if _, err := f.WriteString("This documentation is generated by `pkg/parser` : `GO_WANT_TEST_DOC=1 go test -run TestGeneratePatternsDoc`\n"); err != nil {
+		t.Fatal("failed to write to file")
+	}
+	f.Close()
+
 }
