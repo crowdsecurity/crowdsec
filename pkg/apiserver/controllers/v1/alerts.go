@@ -202,11 +202,19 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		return
 	}
 	var err error
-	deleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
+	nbDeleted, err := c.DBClient.DeleteAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 	}
 
-	gctx.JSON(http.StatusOK, gin.H{"message": fmt.Sprintf("%d deleted alerts", len(deleted))})
+	deleteAlertsResp := models.DeleteAlertsResponse{
+		NbDeleted: strconv.Itoa(nbDeleted),
+	}
+
+	if gctx.Request.Method == "HEAD" {
+		gctx.String(http.StatusOK, "")
+		return
+	}
+	gctx.JSON(http.StatusOK, deleteAlertsResp)
 	return
 }

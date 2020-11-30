@@ -130,7 +130,7 @@ func TestCreateAlert(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "[\"1\"]", w.Body.String())
 }
 
@@ -538,5 +538,5 @@ func TestDeleteAlert(t *testing.T) {
 	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, `{"message":"1 deleted alerts"}`, w.Body.String())
+	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
