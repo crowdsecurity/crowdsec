@@ -32,7 +32,7 @@ type APIKeyTransport struct {
 // RoundTrip implements the RoundTripper interface.
 func (t *APIKeyTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if t.APIKey == "" {
-		return nil, errors.New("t.APIKey is empty")
+		return nil, errors.New("APIKey is empty")
 	}
 
 	// We must make a copy of the Request so

@@ -35,7 +35,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("%s/decisions/?%s", s.client.URLPrefix, params.Encode())
+	u := fmt.Sprintf("%s/decisions?%s", s.client.URLPrefix, params.Encode())
 
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
