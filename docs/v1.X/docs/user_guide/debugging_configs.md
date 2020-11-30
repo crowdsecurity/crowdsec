@@ -5,12 +5,12 @@
 When trying to debug a parser or a scenario :
 
  - Work on "cold logs" (with the `-file` and `-type` options) rather than live ones
- - Use the `/etc/crowdsec/config/user.yaml` configuration files to have logs on stdout
+ - Use the `/etc/crowdsec/user.yaml` configuration files to have logs on stdout
 
 ## Using user-mode configuration
 
 ```bash
-crowdsec -c /etc/crowdsec/config/user.yaml -file mylogs.log.gz -type syslog
+crowdsec -c /etc/crowdsec/user.yaml -file mylogs.log.gz -type syslog
 INFO[05-08-2020 16:15:47] Crowdsec v0.3.0-rc3-7525f11975a0107746213862dc41c69e00122ac7 
 INFO[05-08-2020 16:15:47] Loading grok library                         
 ...
@@ -18,7 +18,7 @@ WARN[05-08-2020 16:16:12] 182.x.x.x triggered a 4h0m0s ip ban remediation for [c
 ...
 ```
 
- - `/etc/crowdsec/config/user.yaml` disables demonization and push logs to stdout/stderr
+ - `/etc/crowdsec/user.yaml` disables demonization and push logs to stdout/stderr
  - `-type` must respect expected log type (ie. `nginx` `syslog` etc.)
  - `-file` must point to a flat file or a gzip file
 
@@ -30,14 +30,14 @@ When processing logs like this, {{v1X.crowdsec.name}} runs in "time machine" mod
 If you're playing around with parser/scenarios on a live system, you can use the `-t` (lint) option of {{v1X.crowdsec.Name}} to check your configurations validity before restarting/reloading services :
 
 ```bash
-$ emacs /etc/crowdsec/config/scenarios/ssh-bf.yaml
+$ emacs /etc/crowdsec/scenarios/ssh-bf.yaml
 ...
-$ crowdsec -c /etc/crowdsec/config/user.yaml -t        
+$ crowdsec -c /etc/crowdsec/user.yaml -t        
 INFO[06-08-2020 13:36:04] Crowdsec v0.3.0-rc3-4cffef42732944d4b81b3e62a03d4040ad74f185 
 ...
-ERRO[06-08-2020 13:36:05] Bad yaml in /etc/crowdsec/config/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
+ERRO[06-08-2020 13:36:05] Bad yaml in /etc/crowdsec/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
   line 2: field typex not found in type leakybucket.BucketFactory 
-FATA[06-08-2020 13:36:05] Failed to load scenarios: Scenario loading failed : bad yaml in /etc/crowdsec/config/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
+FATA[06-08-2020 13:36:05] Failed to load scenarios: Scenario loading failed : bad yaml in /etc/crowdsec/scenarios/ssh-bf.yaml : yaml: unmarshal errors:
   line 2: field typex not found in type leakybucket.BucketFactory 
 ```
 

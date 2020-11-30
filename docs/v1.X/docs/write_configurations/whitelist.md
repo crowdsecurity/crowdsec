@@ -41,7 +41,7 @@ whitelist:
 
 # Whitelists in parsing
 
-When a whitelist is present in parsing `/etc/crowdsec/config/parsers/...`, it will be checked/discarded before being poured to any bucket. These whitelists intentionally generate no logs and are useful to discard noisy false positive sources.
+When a whitelist is present in parsing `/etc/crowdsec/parsers/...`, it will be checked/discarded before being poured to any bucket. These whitelists intentionally generate no logs and are useful to discard noisy false positive sources.
 
 ## Whitelist by ip
 
@@ -152,7 +152,7 @@ A good example is the [crowdsecurity/whitelist-good-actors](https://hub.crowdsec
 But let's craft ours based on our previous example !
 First of all, install the [crowdsecurity/rdns postoverflow](https://hub.crowdsec.net/author/crowdsecurity/configurations/rdns) : it will be in charge of enriching overflows with reverse dns information of the offending IP.
 
-Let's put the following file in `/etc/crowdsec/config/postoverflows/s01-whitelists/mywhitelists.yaml` :
+Let's put the following file in `/etc/crowdsec/postoverflows/s01-whitelists/mywhitelists.yaml` :
 
 ```yaml
 name: me/my_cool_whitelist

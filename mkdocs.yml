@@ -245,8 +245,8 @@ extra:
           bin: cscli
           user_guide: "[cscli](/Crowdsec/v1/user_guide/cscli/)"
       config:
-          crowdsec_dir: "/etc/crowdsec/config/"
-          acquis_path: "/etc/crowdsec/config/acquis.yaml"
+          crowdsec_dir: "/etc/crowdsec/"
+          acquis_path: "/etc/crowdsec/acquis.yaml"
           crowdsec_config_file: "/etc/crowdsec/config.yaml"
       bouncers:
           name: bouncers
