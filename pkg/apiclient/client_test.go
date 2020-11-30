@@ -19,7 +19,7 @@ import (
 - each test will then bind handler for the method(s) they want to try
 */
 
-func setup() (client *ApiClient, mux *http.ServeMux, serverURL string, teardown func()) {
+func setup() (mux *http.ServeMux, serverURL string, teardown func()) {
 	// mux is the HTTP request multiplexer used with the test server.
 	mux = http.NewServeMux()
 	baseURLPath := "/v1"
@@ -30,7 +30,7 @@ func setup() (client *ApiClient, mux *http.ServeMux, serverURL string, teardown 
 	// server is a test HTTP server used to provide mock API responses.
 	server := httptest.NewServer(apiHandler)
 
-	return client, mux, server.URL, server.Close
+	return mux, server.URL, server.Close
 }
 
 func testMethod(t *testing.T, r *http.Request, want string) {
@@ -41,7 +41,7 @@ func testMethod(t *testing.T, r *http.Request, want string) {
 }
 
 func TestNewClientOk(t *testing.T) {
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -78,7 +78,7 @@ func TestNewClientOk(t *testing.T) {
 }
 
 func TestNewClientKo(t *testing.T) {
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -111,7 +111,7 @@ func TestNewClientKo(t *testing.T) {
 }
 
 func TestNewDefaultClient(t *testing.T) {
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	apiURL, err := url.Parse(urlx + "/")
 	if err != nil {
@@ -147,7 +147,7 @@ func TestNewClientRegisterKO(t *testing.T) {
 
 func TestNewClientRegisterOK(t *testing.T) {
 	log.SetLevel(log.TraceLevel)
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 
 	/*mock login*/
@@ -198,107 +198,3 @@ func TestNewClientBadAnswer(t *testing.T) {
 	}, &http.Client{})
 	assert.Contains(t, fmt.Sprintf("%s", err), `invalid body: invalid character 'b' looking for beginning of value`)
 }
-
-// func TestNewClientEmptyAnswer(t *testing.T) {
-// 	log.SetLevel(log.TraceLevel)
-// 	_, mux, urlx, teardown := setup()
-// 	defer teardown()
-
-// 	/*mock login*/
-// 	mux.HandleFunc("/watchers", func(w http.ResponseWriter, r *http.Request) {
-// 		testMethod(t, r, "POST")
-// 		w.WriteHeader(http.StatusUnauthorized)
-// 	})
-// 	apiURL, err := url.Parse(urlx + "/")
-// 	if err != nil {
-// 		t.Fatalf("parsing api url: %s", apiURL)
-// 	}
-// 	_, err = RegisterClient(&Config{
-// 		MachineID:     "test_login",
-// 		Password:      "test_password",
-// 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-// 		URL:           apiURL,
-// 		VersionPrefix: "v1",
-// 	}, &http.Client{})
-// 	assert.Contains(t, fmt.Sprintf("%s", err), `invalid body: invalid character 'b' looking for beginning of value`)
-// 	//log.Printf("response : %d", )
-// }
-
-// func TestClientSetup(t *testing.T) {
-// 	log.SetLevel(log.DebugLevel)
-
-// 	client, mux, urlx, teardown := setup()
-// 	apiURL, err := url.Parse(urlx + "/")
-// 	if err != nil {
-// 		log.Fatalf("parsing api url: %s", apiURL)
-// 	}
-// 	client, err = NewClient(&Config{
-// 		MachineID:     "test_login",
-// 		Password:      "test_password",
-// 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-// 		URL:           apiURL,
-// 		VersionPrefix: "v1",
-// 	})
-
-// 	if err != nil {
-// 		log.Fatalf("new api client: %s", err.Error())
-// 	}
-
-// 	defer teardown()
-
-// 	mux.HandleFunc("/alerts", func(w http.ResponseWriter, r *http.Request) {
-// 		testMethod(t, r, "GET")
-// 		w.WriteHeader(http.StatusOK)
-// 	})
-
-// 	_, resp, err := client.Alerts.List(context.Background(), AlertsListOpts{})
-// 	if err != nil {
-// 		log.Errorf("test Unable to list alerts : %+v", err)
-// 	}
-// 	if resp.Response.StatusCode != http.StatusOK {
-// 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusCreated)
-// 	}
-// }
-
-// func TestDefaultClient(t *testing.T) {
-// 	apiURL, err := url.Parse("http://127.0.0.1:4242/")
-// 	if err != nil {
-// 		t.Fatalf("parsing api url: %s", apiURL)
-// 	}
-// 	_, err = NewDefaultClient(apiURL, "/v1", "", &http.Client{})
-// 	if err != nil {
-// 		t.Fatalf("new api client: %s", err.Error())
-// 	}
-// }
-// func TestClientSetupError(t *testing.T) {
-// 	log.SetLevel(log.DebugLevel)
-
-// 	client, mux, urlx, teardown := setup()
-// 	apiURL, err := url.Parse(urlx + "/")
-// 	if err != nil {
-// 		log.Fatalf("parsing api url: %s", apiURL)
-// 	}
-// 	client, err = NewClient(&Config{
-// 		MachineID:     "test_login",
-// 		Password:      "test_password",
-// 		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-// 		URL:           apiURL,
-// 		VersionPrefix: "v1",
-// 	})
-
-// 	if err != nil {
-// 		log.Fatalf("new api client: %s", err.Error())
-// 	}
-
-// 	/*mock login*/
-// 	mux.HandleFunc("/alerts/1", func(w http.ResponseWriter, r *http.Request) {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		w.Write([]byte(`{"message" : "something went wrong"}`))
-// 	})
-
-// 	defer teardown()
-
-// 	_, _, err = client.Alerts.GetByID(context.Background(), 1)
-// 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: something went wrong")
-
-// }

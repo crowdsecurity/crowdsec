@@ -14,7 +14,7 @@ import (
 )
 
 func TestNewRequestInvalid(t *testing.T) {
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	//missing slash in uri
 	apiURL, err := url.Parse(urlx)
@@ -47,7 +47,7 @@ func TestNewRequestInvalid(t *testing.T) {
 }
 
 func TestNewRequestTimeout(t *testing.T) {
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	//missing slash in uri
 	apiURL, err := url.Parse(urlx + "/")

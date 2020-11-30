@@ -17,7 +17,7 @@ import (
 func TestAlertsListAsMachine(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
@@ -224,7 +224,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 func TestAlertsGetAsMachine(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
@@ -412,7 +412,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 func TestAlertsCreateAsMachine(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))
@@ -454,7 +454,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 func TestAlertsDeleteAsMachine(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"code": 200, "expire": "2030-01-02T15:04:05Z", "token": "oklol"}`))

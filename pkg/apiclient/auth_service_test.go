@@ -18,14 +18,14 @@ func TestWatcherAuth(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
 		testMethod(t, r, "POST")
 		buf := new(bytes.Buffer)
-		buf.ReadFrom(r.Body)
+		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		log.Printf("--> %s", newStr)
 		if newStr == `{"machine_id":"test_login","password":"test_password","scenarios":["crowdsecurity/test"]}
@@ -96,7 +96,7 @@ func TestWatcherRegister(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
@@ -131,7 +131,7 @@ func TestWatcherUnregister(t *testing.T) {
 
 	log.SetLevel(log.DebugLevel)
 
-	client, mux, urlx, teardown := setup()
+	mux, urlx, teardown := setup()
 	defer teardown()
 	//body: models.WatcherRegistrationRequest{MachineID: &config.MachineID, Password: &config.Password}
 
