@@ -126,6 +126,7 @@ func NewCapiCmd() *cobra.Command {
 			}
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
+				log.Infoln("Run 'cscli hub update' to get the hub index")
 			}
 			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 			if err != nil {

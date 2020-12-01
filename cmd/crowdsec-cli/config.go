@@ -297,7 +297,8 @@ func NewConfigCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("failed to get Hub index : %v", err)
+				log.Fatalf("Failed to get Hub index : %v", err)
+				log.Infoln("Run 'cscli hub update' to get the hub index")
 			}
 			if err = backupConfigToDirectory(args[0]); err != nil {
 				log.Fatalf("Failed to backup configurations: %s", err)
@@ -321,7 +322,8 @@ func NewConfigCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
-				log.Fatalf("failed to get Hub index : %v", err)
+				log.Fatalf("Failed to get Hub index : %v", err)
+				log.Infoln("Run 'cscli hub update' to get the hub index")
 			}
 			if err := restoreConfigFromDirectory(args[0]); err != nil {
 				log.Fatalf("failed restoring configurations from %s : %s", args[0], err)
