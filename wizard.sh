@@ -397,7 +397,7 @@ main() {
     if [[ "$1" == "restore_from_dir" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
         restore_from_dir
@@ -407,7 +407,7 @@ main() {
     if [[ "$1" == "binupgrade" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
         update_bins
@@ -417,7 +417,7 @@ main() {
     if [[ "$1" == "upgrade" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
         update_full
@@ -427,7 +427,7 @@ main() {
     if [[ "$1" == "uninstall" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
         uninstall_crowdsec
@@ -438,7 +438,7 @@ main() {
     if [[ "$1" == "bininstall" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
         log_info "installing crowdsec"
@@ -450,7 +450,7 @@ main() {
     if [[ "$1" == "install" ]];
     then
         if ! [ $(id -u) = 0 ]; then
-            log_err "Please run it as root"
+            log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
 

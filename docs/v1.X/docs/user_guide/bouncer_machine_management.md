@@ -18,20 +18,20 @@ There are two kind of access to the local api :
         The `cscli bouncers` command interacts directly with the database (bouncers add and delete are not implemented in API), and thus it must have correct database configuration.
 
 ```bash
-$ cscli bouncers list
+$ sudo cscli bouncers list
 ```
 
 
 You can view the registered bouncers with `list`, as well as add or delete them :
 
 ```bash
-$ cscli bouncers add mybouncersname
+$ sudo cscli bouncers add mybouncersname
 Api key for 'mybouncersname':
 
    23........b5a0c
 
 Please keep this key since will not be able to retrive it!
-$ cscli bouncers delete mybouncersname
+$ sudo cscli bouncers delete mybouncersname
 ```
 
 The API KEY must be kept and given to the {{v1X.bouncers.htmlname}}.
@@ -80,10 +80,10 @@ $ cscli machines list
 You can view the registered machines with `list`, as well as add or delete them :
 
 ```bash
-$ cscli machines add -m mytestmachine -a
+$ sudo cscli machines add mytestmachine -a
 INFO[0004] Machine 'mytestmachine' created successfully       
 INFO[0004] API credentials dumped to '/etc/crowdsec/local_api_credentials.yaml' 
-$ cscli machines delete -m 82929df7ee394b73b81252fe3b4e5020
+$ sudo cscli machines delete 82929df7ee394b73b81252fe3b4e5020
 ```
 
 
@@ -91,13 +91,13 @@ $ cscli machines delete -m 82929df7ee394b73b81252fe3b4e5020
   <summary>cscli machines example</summary>
 
 ```bash
-$ cscli machines list
+$ sudo cscli machines list
 ----------------------------------------------------------------------------------------------------------------------------------
  NAME                              IP ADDRESS  LAST UPDATE                STATUS  VERSION                                         
 ----------------------------------------------------------------------------------------------------------------------------------
  82929df7ee394b73b81252fe3b4e5020  127.0.0.1   2020-10-31T14:06:32+01:00  ✔️      v0.3.6-3d6ce33908409f2a830af6551a7f5e37f2a4728f 
 ----------------------------------------------------------------------------------------------------------------------------------
-$ cscli machines add -m mytestmachine -a
+$ sudo cscli machines add -m mytestmachine -a
 INFO[0004] Machine 'mytestmachine' created successfully       
 INFO[0004] API credentials dumped to '/etc/crowdsec/local_api_credentials.yaml' 
 $ sudo cscli machines list      
@@ -105,17 +105,15 @@ $ sudo cscli machines list
  NAME                              IP ADDRESS  LAST UPDATE                STATUS  VERSION                                         
 ----------------------------------------------------------------------------------------------------------------------------------
  82929df7ee394b73b81252fe3b4e5020  127.0.0.1   2020-10-31T14:06:32+01:00  ✔️      v0.3.6-3d6ce33908409f2a830af6551a7f5e37f2a4728f 
- mytestmachine                           127.0.0.1   2020-11-01T11:37:19+01:00  ✔️      v0.3.6-6a18458badf8ae5fed8d5f1bb96fc7a59c96163c 
+ mytestmachine                     127.0.0.1   2020-11-01T11:37:19+01:00  ✔️      v0.3.6-6a18458badf8ae5fed8d5f1bb96fc7a59c96163c 
 ----------------------------------------------------------------------------------------------------------------------------------
-$ cscli machines delete -m 82929df7ee394b73b81252fe3b4e5020
-$ cscli machines list                                      
+$ sudo cscli machines delete -m 82929df7ee394b73b81252fe3b4e5020
+$ sudo cscli machines list                                      
 ---------------------------------------------------------------------------------------------------------
  NAME     IP ADDRESS  LAST UPDATE                STATUS  VERSION                                         
 ---------------------------------------------------------------------------------------------------------
  mytestmachine  127.0.0.1   2020-11-01T11:37:19+01:00  ✔️      v0.3.6-6a18458badf8ae5fed8d5f1bb96fc7a59c96163c 
 ---------------------------------------------------------------------------------------------------------
-
-
 ```
 
 </details>

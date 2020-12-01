@@ -3,14 +3,14 @@
 ## Installing scenarios
 
 ```bash
-$ cscli scenarios install crowdsecurity/http-bf-wordpress_bf
+$ sudo cscli scenarios install crowdsecurity/http-bf-wordpress_bf
 ```
 
 <details>
   <summary>cscli scenarios install example</summary>
 
 ```bash
-$ cscli scenarios install crowdsecurity/http-bf-wordpress_bf
+$ sudo cscli scenarios install crowdsecurity/http-bf-wordpress_bf
 INFO[0000] crowdsecurity/http-bf-wordpress_bf : OK      
 INFO[0000] Enabled scenarios : crowdsecurity/http-bf-wordpress_bf 
 INFO[0000] Enabled crowdsecurity/http-bf-wordpress_bf   
@@ -24,7 +24,7 @@ $ systemctl reload crowdsec
 ## Listing installed scenarios
 
 ```bash
-cscli scenarios list
+sudo cscli scenarios list
 ```
 
 {{v1X.scenarios.Htmlname}} are yaml files in `{{v1X.config.crowdsec_dir}}scenarios/`.
@@ -34,7 +34,7 @@ cscli scenarios list
   <summary>cscli scenarios list example</summary>
 
 ```bash
-$ cscli scenarios list
+$ sudo cscli scenarios list
 ---------------------------------------------------------------------------------------------------------------------------
  NAME                                       📦 STATUS    VERSION  LOCAL PATH                                               
 ---------------------------------------------------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ $ cscli scenarios list
 ## Upgrading installed scenarios
 
 ```bash
-$ cscli scenarios upgrade crowdsecurity/sshd-bf
+$ sudo cscli scenarios upgrade crowdsecurity/sshd-bf
 ```
 
 Scenarios upgrade allows you to upgrade an existing scenario to the latest version.
@@ -67,7 +67,7 @@ Scenarios upgrade allows you to upgrade an existing scenario to the latest versi
   <summary>cscli scenarios upgrade example</summary>
 
 ```bash
-$ cscli scenarios upgrade crowdsecurity/ssh-bf
+$ sudo cscli scenarios upgrade crowdsecurity/ssh-bf
 INFO[0000] crowdsecurity/ssh-bf : up-to-date            
 WARN[0000] crowdsecurity/ssh-bf : overwrite             
 INFO[0000] 📦 crowdsecurity/ssh-bf : updated             
@@ -80,49 +80,44 @@ INFO[0000] Run 'systemctl reload crowdsec' for the new configuration to be effec
 ## Monitoring scenarios
 
 ```bash
-$ cscli scenarios inspect crowdsecurity/ssh-bf
+$ sudo cscli scenarios inspect crowdsecurity/ssh-bf
 ```
 
-Collections inspect will give you detailed information about a given collection, including versioning information *and* runtime metrics (fetched from prometheus).
+Scenarios inspect will give you detailed information about a given scenario, including versioning information *and* runtime metrics (fetched from prometheus).
 
-<!--TBD: refaire l'output apres avoir fix le 'parsers inspect XXXX'-->
 <details>
-  <summary>cscli collections inspect example</summary>
+  <summary>cscli scenarios inspect example</summary>
 
 ```bash
-$ cscli collections inspect crowdsecurity/sshd       
-type: collections
-name: crowdsecurity/sshd
-filename: sshd.yaml
-description: 'sshd support : parser and brute-force detection'
+$ sudo cscli scenarios inspect crowdsecurity/ssh-bf    
+type: scenarios
+name: crowdsecurity/ssh-bf
+filename: ssh-bf.yaml
+description: Detect ssh bruteforce
 author: crowdsecurity
+references:
+- http://wikipedia.com/ssh-bf-is-bad
 belongs_to_collections:
-- crowdsecurity/linux
-- crowdsecurity/linux
-remote_path: collections/crowdsecurity/sshd.yaml
+- crowdsecurity/sshd
+remote_path: scenarios/crowdsecurity/ssh-bf.yaml
 version: "0.1"
-local_path: /etc/crowdsec/collections/sshd.yaml
+local_path: /etc/crowdsec/scenarios/ssh-bf.yaml
 localversion: "0.1"
-localhash: 21159aeb87529efcf1a5033f720413d5321a6451bab679a999f7f01a7aa972b3
+localhash: 4441dcff07020f6690d998b7101e642359ba405c2abb83565bbbdcee36de280f
 installed: true
 downloaded: true
 uptodate: true
 tainted: false
 local: false
-parsers:
-- crowdsecurity/sshd-logs
-scenarios:
-- crowdsecurity/ssh-bf
 
-Current metrics : 
+Current metrics :
 
- - (Scenario) crowdsecurity/ssh-bf: 
+ - (Scenario) crowdsecurity/ssh-bf:
 +---------------+-----------+--------------+--------+---------+
 | CURRENT COUNT | OVERFLOWS | INSTANCIATED | POURED | EXPIRED |
 +---------------+-----------+--------------+--------+---------+
-|             0 |         1 |            2 |     10 |       1 |
+|            14 |      5700 |         7987 |  42572 |    2273 |
 +---------------+-----------+--------------+--------+---------+
-
 ```
 
 <details>

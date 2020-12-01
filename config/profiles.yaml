@@ -4,5 +4,5 @@ filters:
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
 decisions:
  - type: ban
-   duration: 1h
+   duration: 4h
 on_success: break

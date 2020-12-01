@@ -3,14 +3,14 @@
 ## Installing parsers
 
 ```bash
-$ cscli parsers install crowdsecurity/sshd-logs
+$ sudo cscli parsers install crowdsecurity/sshd-logs
 ```
 
 <details>
   <summary>cscli parsers install example</summary>
 
 ```bash
-$ cscli parsers install crowdsecurity/iptables-logs    
+$ sudo cscli parsers install crowdsecurity/iptables-logs    
 INFO[0000] crowdsecurity/iptables-logs : OK             
 INFO[0000] Enabled parsers : crowdsecurity/iptables-logs 
 INFO[0000] Enabled crowdsecurity/iptables-logs          
@@ -21,19 +21,17 @@ INFO[0000] Run 'systemctl reload crowdsec' for the new configuration to be effec
 ## Listing installed parsers
 
 ```bash
-cscli parsers list
+sudo cscli parsers list
 ```
 
 {{v1X.parsers.Htmlname}} are yaml files in `{{v1X.config.crowdsec_dir}}parsers/<STAGE>/parser.yaml`.
-
-
 
 
 <details>
   <summary>cscli parsers list example</summary>
 
 ```bash
-$ cscli parsers list
+$ sudo cscli parsers list
 --------------------------------------------------------------------------------------------------------------
  NAME                            📦 STATUS    VERSION  LOCAL PATH                                             
 --------------------------------------------------------------------------------------------------------------
@@ -55,7 +53,7 @@ $ cscli parsers list
 ## Upgrading installed parsers
 
 ```bash
-$ {{v1X.cli.bin}} parsers upgrade crowdsecurity/sshd-logs
+$ sudo {{v1X.cli.bin}} parsers upgrade crowdsecurity/sshd-logs
 ```
 
 Parsers upgrade allows you to upgrade an existing parser to the latest version.
@@ -64,7 +62,7 @@ Parsers upgrade allows you to upgrade an existing parser to the latest version.
   <summary>cscli parsers upgrade example</summary>
 
 ```bash
-$ cscli collections upgrade crowdsecurity/sshd  
+$ sudo cscli parsers upgrade crowdsecurity/sshd-logs  
 INFO[0000] crowdsecurity/sshd : up-to-date              
 WARN[0000] crowdsecurity/sshd-logs : overwrite          
 WARN[0000] crowdsecurity/ssh-bf : overwrite             
@@ -80,48 +78,44 @@ INFO[0000] Run 'systemctl reload crowdsec' for the new configuration to be effec
 ## Monitoring parsers
 
 ```bash
-$ cscli collections inspect crowdsecurity/sshd
+$ sudo cscli parsers inspect crowdsecurity/sshd-logs 
 ```
 
-Collections inspect will give you detailed information about a given collection, including versioning information *and* runtime metrics (fetched from prometheus).
+Parsers inspect will give you detailed information about a given parser, including versioning information *and* runtime metrics (fetched from prometheus).
 
 <!--TBD: refaire l'output apres avoir fix le 'parsers inspect XXXX'-->
 <details>
-  <summary>cscli collections inspect example</summary>
+  <summary>cscli parsers inspect example</summary>
 
 ```bash
-$ cscli collections inspect crowdsecurity/sshd       
-type: collections
-name: crowdsecurity/sshd
-filename: sshd.yaml
-description: 'sshd support : parser and brute-force detection'
+$ sudo cscli parsers inspect crowdsecurity/sshd-logs     
+type: parsers
+stage: s01-parse
+name: crowdsecurity/sshd-logs
+filename: sshd-logs.yaml
+description: Parse openSSH logs
 author: crowdsecurity
 belongs_to_collections:
-- crowdsecurity/linux
-- crowdsecurity/linux
-remote_path: collections/crowdsecurity/sshd.yaml
+- crowdsecurity/sshd
+remote_path: parsers/s01-parse/crowdsecurity/sshd-logs.yaml
 version: "0.1"
-local_path: /etc/crowdsec/collections/sshd.yaml
+local_path: /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml
 localversion: "0.1"
-localhash: 21159aeb87529efcf1a5033f720413d5321a6451bab679a999f7f01a7aa972b3
+localhash: ecd40cb8cd95e2bad398824ab67b479362cdbf0e1598b8833e2f537ae3ce2f93
 installed: true
 downloaded: true
 uptodate: true
 tainted: false
 local: false
-parsers:
-- crowdsecurity/sshd-logs
-scenarios:
-- crowdsecurity/ssh-bf
 
-Current metrics : 
+Current metrics :
 
- - (Scenario) crowdsecurity/ssh-bf: 
-+---------------+-----------+--------------+--------+---------+
-| CURRENT COUNT | OVERFLOWS | INSTANCIATED | POURED | EXPIRED |
-+---------------+-----------+--------------+--------+---------+
-|             0 |         1 |            2 |     10 |       1 |
-+---------------+-----------+--------------+--------+---------+
+ - (Parser) crowdsecurity/sshd-logs:
++-------------------+-------+--------+----------+
+|      PARSERS      | HITS  | PARSED | UNPARSED |
++-------------------+-------+--------+----------+
+| /var/log/auth.log | 94138 |  42404 |    51734 |
++-------------------+-------+--------+----------+
 
 ```
 

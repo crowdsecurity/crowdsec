@@ -5,30 +5,19 @@ The profiles configuration (`/etc/crowdsec/profiles.yaml`) allow to configure wh
 The configuration file is a yaml file that looks like :
 
 ```yaml
-name: enforce_mfa
-#debug: true
-filters:
- - 'Alert.Remediation == true && Alert.GetScenario() == "crowdsecurity/ssh-enforce-mfa" && Alert.GetScope() == "username"'
-decisions: #remediation vs decision
- - type: enforce_mfa
-   scope: "username"
-   duration: 1h
-on_success: continue
----
 name: default_ip_remediation
 #debug: true
 filters:
-#  try types.Ip here :)
  - Alert.Remediation == true && Alert.GetScope() == "Ip"
 decisions:
  - type: ban
-   duration: 1h
+   duration: 4h
 on_success: break
 ```
 
 Each YAML object in the file contains a list of `models.Decision` that contains :
 
-## Name
+## `name`
 
 ```yaml
 name: foobar
@@ -36,7 +25,7 @@ name: foobar
 
 A label for the profile (used in logging)
 
-## Debug
+## `debug`
 
 ```yaml
 debug: true
@@ -44,7 +33,7 @@ debug: true
 
 A boolean flag that provides contextual debug.
 
-## Filters
+## `filters`
 
 ```yaml
 filters:
@@ -54,7 +43,7 @@ filters:
 
 If any `filter` of the list returns `true`, the profile is elligible and the `decisions` will be applied.
 
-## Decisions
+## `decisions`
 
 ```yaml
 decisions:
@@ -74,7 +63,7 @@ It is a list of `models.Decision` objects. The following fields, when present, a
  - `type` : defines the type of the remediation that will be applied by available {{v1X.bouncers.htmlname}}, for example `ban`, `captcha`
  - `value` : define a hardcoded value for the decision (ie. `1.2.3.4`)
 
-## on_success
+## `on_success`
 
 ```yaml
 on_success: break
@@ -82,7 +71,7 @@ on_success: break
 
 If the profile applies and `on_success` is set to `break`, decisions processing will stop here and it won't evaluate against following profiles.
 
-## on_failure
+## `on_failure`
 
 ```yaml
 on_failure: break

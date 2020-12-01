@@ -15,7 +15,7 @@ It exposes three methods : `GeoIpCity` `GeoIpASN` and `IpToRange` that are used 
 Enrichers can be installed as any other parsers with the following command:
 
 ```
-{{v1X.cli.bin}} install parser crowdsecurity/geoip-enrich
+sudo {{v1X.cli.bin}} parsers install crowdsecurity/geoip-enrich
 ```
 
 Take a tour at the {{v1X.hub.htmlname}} to find them !

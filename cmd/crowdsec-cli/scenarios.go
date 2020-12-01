@@ -35,7 +35,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
 				return
 			}
-			log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
 		},
 	}
 
