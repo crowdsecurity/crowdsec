@@ -405,7 +405,7 @@ format: 2.0
 Running `cscli version` will show you such compatibility matrix :
 
 ```bash
-$ cscli version
+$ sudo cscli version
 2020/11/05 09:35:05 version: v0.3.6-183e34c966c475e0d2cdb3c60d0b7426499aa573
 2020/11/05 09:35:05 Codename: beta
 2020/11/05 09:35:05 BuildDate: 2020-11-04_17:56:46

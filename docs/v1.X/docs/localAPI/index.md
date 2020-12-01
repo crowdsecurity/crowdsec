@@ -7,7 +7,7 @@ The Local API (LAPI) is a core component of {{v1X.crowdsec.name}} and has a few 
  - Allow `cscli` to view add or delete decisions
 
 
-[You can find the swagger documentation here](https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI)
+You can find the swagger documentation [here](https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI).
 
 ## Authentication
 
@@ -23,7 +23,7 @@ There is two kinds of authentication to the local API :
 To register a bouncer to your API, you need to run the following command on the server where the API is installed:
 
 ```bash
-$ cscli bouncers add testBouncer
+$ sudo cscli bouncers add testBouncer
 ```
 
 and keep the generated API token to use it in your {{v1X.bouncers.Name}} configuration file.
@@ -37,7 +37,7 @@ There is two ways to register a crowdsec to a local API.
 * You can create a machine directly on the API server that will be automatically validated, by running the following command on the server where the API is installed:
 
 ```bash
-$ cscli machines add testMachine
+$ sudo cscli machines add testMachine
 ```
 
 If your crowdsec run on the same server that the local API, then your credentials file will be generated automatically, else you will have to copy/paste them in your remote crowdsec credentials file (`/etc/crowdsec/local_api_credentials.yaml`)
@@ -45,13 +45,13 @@ If your crowdsec run on the same server that the local API, then your credential
 * You can use `cscli` to register to the API server:
 
 ```
-cscli lapi register -u <api_url>
+sudo cscli lapi register -u <api_url>
 ```
 
 And validate it with `cscli` on the server where the API is installed:
 
 ```
-cscli machines validate <machineName>
+sudo cscli machines validate <machineName>
 ```
 
 !!! tips
@@ -68,13 +68,18 @@ By default, `crowdsec` and `cscli` use `127.0.0.1:8080` as a default local API. 
 * On the remote crowdsec server, run:
 
 ```
-$ cscli lapi register -u http://<remote_api>:<port>
+$ sudo cscli lapi register -u http://<remote_api>:<port>
 ```
 
 * On the local API server, validate the machine by running the command:
 
+
+```bash
+$ sudo cscli machines list # to get the name of the new registered machine
 ```
-$ cscli machines validate <machineName>
+
+```
+$ sudo cscli machines validate <machineName>
 ```
 
 

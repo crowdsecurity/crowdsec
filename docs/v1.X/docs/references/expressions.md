@@ -23,39 +23,39 @@ If the `debug` is enabled (in the scenario or parser where expr is used), additi
 
 In order to makes its use in {{v1X.crowdsec.name}} more efficient, we added a few helpers that are documented bellow.
 
-## Atof(string) float64
+## `Atof(string) float64`
 
 Parses a string representation of a float number to an actual float number (binding on `strconv.ParseFloat`)
 
 > Atof(evt.Parsed.tcp_port)
 
 
-## JsonExtract(JsonBlob, FieldName) string
+## `JsonExtract(JsonBlob, FieldName) string`
 
 Extract the `FieldName` from the `JsonBlob` and returns it as a string. (binding on [jsonparser](https://github.com/buger/jsonparser/))
 
 > JsonExtract(evt.Parsed.some_json_blob, "foo.bar[0].one_item")
 
-## File(FileName) []string
+## `File(FileName) []string`
 
 Returns the content of `FileName` as an array of string, while providing cache mechanism.
 
 > evt.Parsed.some_field in File('some_patterns.txt')
 > any(File('rdns_seo_bots.txt'), { evt.Enriched.reverse_dns endsWith #})
 
-## RegexpInFile(StringToMatch, FileName) bool
+## `RegexpInFile(StringToMatch, FileName) bool`
 
 Returns `true` if the `StringToMatch` is matched by one of the expressions contained in `FileName` (uses RE2 regexp engine).
 
 > RegexpInFile( evt.Enriched.reverse_dns, 'my_legit_seo_whitelists.txt')
 
-## Upper(string) string
+## `Upper(string) string`
 
 Returns the uppercase version of the string
 
 > Upper("yop")
 
-## IpInRange(IPStr, RangeStr) bool
+## `IpInRange(IPStr, RangeStr) bool`
 
 Returns true if the IP `IPStr` is contained in the IP range `RangeStr` (uses `net.ParseCIDR`)
 

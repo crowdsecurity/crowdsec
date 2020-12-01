@@ -11,7 +11,7 @@ The {{v1X.cli.name}} command `{{v1X.cli.bin}} dashboard setup` will use [docker]
 > Setup and Start crowdsec metabase dashboard
 
 ```bash
-{{v1X.cli.bin}} dashboard setup
+sudo {{v1X.cli.bin}} dashboard setup
 ```
 
 Optional arguments:
@@ -51,14 +51,14 @@ Now you can connect to your dashboard, sign-in with your saved credentials then 
 Dashboard docker image can be managed by {{v1X.cli.name}} and docker cli also. Look at the {{v1X.cli.name}} help command using
 
 ```bash
-{{v1X.cli.bin}} dashboard -h
+sudo {{v1X.cli.bin}} dashboard -h
 ```
 
 ## Remove the dashboard
 > Remove crowdsec metabase dashboard
 
 ```bash
-{{v1X.cli.bin}} dashboard remove [-f]
+sudo {{v1X.cli.bin}} dashboard remove [-f]
 ```
 Optional arguments:
 
@@ -68,13 +68,13 @@ Optional arguments:
 > Stop crowdsec metabase dashboard
 
 ```bash
-{{v1X.cli.bin}} dashboard stop
+sudo {{v1X.cli.bin}} dashboard stop
 ```
 
 ## Start the dashboard
 > Start crowdsec metabase dashboard
 
 ```bash
-{{v1X.cli.bin}} dashboard start
+sudo {{v1X.cli.bin}} dashboard start
 ```
 

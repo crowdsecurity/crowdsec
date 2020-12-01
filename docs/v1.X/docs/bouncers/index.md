@@ -16,7 +16,7 @@ You can explore [available {{v1X.bouncers.name}} on the hub]({{v1X.hub.bouncers_
 To be able for your {{v1X.bouncers.Name}} to communicate with the local API, you have to generate an API token with `cscli` and put it in your {{v1X.bouncers.Name}} configuration file:
 
 ```bash
-$ cscli bouncers add testBouncer
+$ sudo cscli bouncers add testBouncer
 Api key for 'testBouncer':
 
    6dcfe93f18675265e905aef390330a35
