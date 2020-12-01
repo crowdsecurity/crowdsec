@@ -16,7 +16,7 @@ Then, {{v1X.bouncers.htmlname}} can "consume" those decisions (via the very same
 
 ## Crowd sourced aspect
 
- [[References](/Crowdsec/v1/getting_started/crowd-power)]
+ [[References](https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=CAPI)]
 
 Whenever the {{v1X.lapi.htmlname}} receives an alert with associated decisions, the meta information about the alert are shared with our central api :
 
@@ -24,7 +24,16 @@ Whenever the {{v1X.lapi.htmlname}} receives an alert with associated decisions, 
  - The scenario that was triggered
  - The timestamp of the attack
 
-These are the only information that are sent to our API. Those are then processed on our side to be able to redistribute relevant blocklists to all the participants.
+These are the only information that are sent to our API. Those are then processed on our side to be able to redistribute relevant blocklists to all the participants. You can check the central API documentation in the references link to have an exhaustive view of what might be shared between your instance and our services.
+
+## Bouncers
+
+[[References](/Crowdsec/v1/bouncers/)]
+
+Bouncers are standalone software pieces in charge of acting upon IPs that triggered alerts.
+To do so, bouncers are going to query the local API to know if there is an existing decisions against a given IP, range, username etc. [You can find a list of existing bouncers on the hub]({{v1X.bouncers.url}})
+
+
 
 # Configuration items
 

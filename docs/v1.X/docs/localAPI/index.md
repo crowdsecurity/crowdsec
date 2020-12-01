@@ -7,6 +7,8 @@ The Local API (LAPI) is a core component of {{v1X.crowdsec.name}} and has a few 
  - Allow `cscli` to view add or delete decisions
 
 
+[You can find the swagger documentation here](https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI)
+
 ## Authentication
 
 There is two kinds of authentication to the local API :
