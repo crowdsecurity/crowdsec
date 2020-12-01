@@ -42,6 +42,7 @@ cscli hub update # Download list of available configurations from the hub
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			cwhub.DisplaySummary()

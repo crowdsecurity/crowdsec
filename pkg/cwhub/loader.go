@@ -342,7 +342,6 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
-		log.Fatalf("Unable to read downloaded index : %v. Please run update", err)
 	}
 	ret, err := LoadPkgIndex(bidx)
 	if err != nil {
