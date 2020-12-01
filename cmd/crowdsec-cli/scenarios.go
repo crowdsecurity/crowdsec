@@ -48,7 +48,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
 				InstallItem(name, cwhub.SCENARIOS, forceInstall)
@@ -68,7 +68,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			if removeAll {
@@ -93,7 +93,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if upgradeAll {
 				UpgradeConfig(cwhub.SCENARIOS, "", forceUpgrade)
@@ -117,7 +117,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			InspectItem(args[0], cwhub.SCENARIOS)
 		},
@@ -134,7 +134,7 @@ cscli scenarios list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			ListItem(cwhub.SCENARIOS, args)
 		},

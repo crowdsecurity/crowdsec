@@ -44,7 +44,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
 				InstallItem(name, cwhub.COLLECTIONS, forceInstall)
@@ -64,7 +64,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			if removeAll {
@@ -89,7 +89,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if upgradeAll {
 				UpgradeConfig(cwhub.COLLECTIONS, "", forceUpgrade)
@@ -113,7 +113,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
 				InspectItem(name, cwhub.COLLECTIONS)
@@ -132,7 +132,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'cscli hub update' to get the hub index")
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			ListItem(cwhub.COLLECTIONS, args)
 		},
