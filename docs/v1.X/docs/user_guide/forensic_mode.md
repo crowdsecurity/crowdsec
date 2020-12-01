@@ -9,21 +9,21 @@ When doing so, {{v1X.crowdsec.name}} will read the logs, extract timestamps from
 you can run :
 
 ```bash
-crowdsec -c /etc/crowdsec/user.yaml -file /path/to/your/log/file.log -type log_file_type
+sudo crowdsec -c /etc/crowdsec/user.yaml -file /path/to/your/log/file.log -type log_file_type
 ```
 
 Where `-file` points to the log file you want to process, and the `-type` is similar to what you would put in your acquisition's label field, for example :
 
 ```bash
-crowdsec -c /etc/crowdsec/user.yaml -file /var/log/nginx/2019.log -type nginx
-crowdsec -c /etc/crowdsec/user.yaml -file /var/log/sshd-2019.log -type syslog
-crowdsec -c /etc/crowdsec/user.yaml -jfilter "_SYSTEMD_UNIT=ssh.service --since yesterday" -type syslog
+sudo crowdsec -c /etc/crowdsec/user.yaml -file /var/log/nginx/2019.log -type nginx
+sudo crowdsec -c /etc/crowdsec/user.yaml -file /var/log/sshd-2019.log -type syslog
+sudo crowdsec -c /etc/crowdsec/user.yaml -jfilter "_SYSTEMD_UNIT=ssh.service --since yesterday" -type syslog
 ```
 
 When running crowdsec in forensic mode, the alerts will be displayed to stdout, and as well pushed to database :
 
 ```bash
-# crowdsec  -c /etc/crowdsec/user.yaml  -file /var/log/nginx/nginx-2019.log.1  -type nginx
+$ sudo crowdsec -c /etc/crowdsec/user.yaml -file /var/log/nginx/nginx-2019.log.1 -type nginx
 ...
 INFO[13-11-2020 13:05:23] Ip 123.206.50.249 performed 'crowdsecurity/http-probing' (11 events over 6s) at 2019-01-01 01:37:32 +0100 CET 
 INFO[13-11-2020 13:05:23] Ip 123.206.50.249 performed 'crowdsecurity/http-backdoors-attempts' (2 events over 1s) at 2019-01-01 01:37:33 +0100 CET 
@@ -40,7 +40,7 @@ And as these alerts are as well pushed to database, it mean you can view them in
 If you already have a running crowdsec/Local API running and want to inject events into existing database, you can run crowdsec directly :
 
 ```bash
-crowdsec -file ~/logs/nginx/access.log -type nginx --no-api
+sudo crowdsec -file ~/logs/nginx/access.log -type nginx --no-api
 ```
 
 Crowdsec will process `~/logs/nginx/access.log` and push alerts to the Local API configured in your default configuration file (`/etc/crowdsec/config.yaml`, see `api.client.credentials_path`)
@@ -50,7 +50,7 @@ Crowdsec will process `~/logs/nginx/access.log` and push alerts to the Local API
 If you don't have a service currently running, you can run crowdsec directly :
 
 ```bash
-crowdsec -file ~/logs/nginx/access.log -type nginx
+sudo crowdsec -file ~/logs/nginx/access.log -type nginx
 ```
 
 Crowdsec will start a Local API and process `~/logs/nginx/access.log`.
@@ -63,7 +63,7 @@ If you have a local instance running and you don't want to pollute your existing
 Let's copy the existing configuration to edit it :
 
 ```bash
-$ cp /etc/crowdsec/config.yaml ./forensic.yaml
+$ sudo cp /etc/crowdsec/config.yaml ./forensic.yaml
 $ emacs ./forensic.yaml
 ```
 

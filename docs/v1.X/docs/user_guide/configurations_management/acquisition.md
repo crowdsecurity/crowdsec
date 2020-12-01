@@ -54,7 +54,7 @@ This allows you to see how many lines are coming from each source, and if they a
 
 You can see those metrics with the following command:
 ```
-{{v1X.cli.bin}} metrics
+sudo {{v1X.cli.bin}} metrics
 ```
 
 
@@ -62,7 +62,8 @@ You can see those metrics with the following command:
   <summary>{{v1X.cli.name}} metrics example</summary>
 
 ```bash
-## {{v1X.cli.bin}} metrics
+$ sudo {{v1X.cli.bin}} metrics
+...
 ...
 INFO[0000] Acquisition Metrics:     
 +--------------------------------------+------------+--------------+----------------+------------------------+
@@ -71,6 +72,7 @@ INFO[0000] Acquisition Metrics:
 | /tmp/test.log                        |         10 |           10 | -              |                     11 |
 | journalctl-_SYSTEMD_UNIT=ssh.service |         36 |           12 |             24 |                     17 |
 +--------------------------------------+------------+--------------+----------------+------------------------+
+...
 ...
 ```
 

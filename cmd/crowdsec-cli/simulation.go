@@ -112,7 +112,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			if cmd.Name() != "status" {
-				log.Infof("Run 'systemctl reload crowdsec' for the new configuration to be effective.")
+				log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
 			}
 		},
 	}

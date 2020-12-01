@@ -107,7 +107,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
-			log.Warningf("Run 'systemctl reload crowdsec' for the new configuration to be effective")
+			log.Warningf("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective")
 		},
 	}
 	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")

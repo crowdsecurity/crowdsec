@@ -4,14 +4,14 @@
 ## Installing collections
 
 ```bash
-$ cscli collections install crowdsecurity/whitelist-good-actors
+$ sudo cscli collections install crowdsecurity/whitelist-good-actors
 ```
 
 <details>
   <summary>{{v1X.cli.name}} collection install example</summary>
 
 ```bash
-$ cscli collections install crowdsecurity/whitelist-good-actors
+$ sudo cscli collections install crowdsecurity/whitelist-good-actors
 INFO[0000] crowdsecurity/seo-bots-whitelist : OK        
 INFO[0000] downloading data 'https://raw.githubusercontent.com/crowdsecurity/sec-lists/master/whitelists/benign_bots/search_engine_crawlers/rdns_seo_bots.txt' in '/var/lib/crowdsec/data/rdns_seo_bots.txt' 
 INFO[0001] downloading data 'https://raw.githubusercontent.com/crowdsecurity/sec-lists/master/whitelists/benign_bots/search_engine_crawlers/rnds_seo_bots.regex' in '/var/lib/crowdsec/data/rdns_seo_bots.regex' 
@@ -36,14 +36,14 @@ $ systemctl reload crowdsec
 ## Listing installed collections
 
 ```bash
-$ {{v1X.cli.bin}} collections list
+$ sudo {{v1X.cli.bin}} collections list
 ```
 
 <details>
   <summary>cscli collections list example</summary>
 
 ```bash
-$ cscli collections list   
+$ sudo cscli collections list   
 -------------------------------------------------------------------------------------------------------------
  NAME                               📦 STATUS    VERSION  LOCAL PATH                                         
 -------------------------------------------------------------------------------------------------------------
@@ -59,8 +59,8 @@ $ cscli collections list
 ## Upgrading installed collections
 
 ```bash
-$ {{v1X.cli.bin}} hub update
-$ {{v1X.cli.bin}} collections upgrade crowdsecurity/sshd
+$ sudo {{v1X.cli.bin}} hub update
+$ sudo {{v1X.cli.bin}} collections upgrade crowdsecurity/sshd
 ```
 
 Collection upgrade allows you to upgrade an existing collection (and its items) to the latest version.
@@ -70,7 +70,7 @@ Collection upgrade allows you to upgrade an existing collection (and its items) 
   <summary>cscli collections upgrade example</summary>
 
 ```bash
-$ cscli collections upgrade crowdsecurity/sshd  
+$ sudo cscli collections upgrade crowdsecurity/sshd  
 INFO[0000] crowdsecurity/sshd : up-to-date              
 WARN[0000] crowdsecurity/sshd-logs : overwrite          
 WARN[0000] crowdsecurity/ssh-bf : overwrite             
@@ -87,7 +87,7 @@ $ systemctl reload crowdsec
 ## Monitoring collections
 
 ```bash
-$ cscli collections inspect crowdsecurity/sshd
+$ sudo cscli collections inspect crowdsecurity/sshd
 ```
 
 Collections inspect will give you detailed information about a given collection, including versioning information *and* runtime metrics (fetched from prometheus).
@@ -96,7 +96,7 @@ Collections inspect will give you detailed information about a given collection,
   <summary>cscli collections inspect example</summary>
 
 ```bash
-$ cscli collections inspect crowdsecurity/sshd       
+$ sudo cscli collections inspect crowdsecurity/sshd       
 type: collections
 name: crowdsecurity/sshd
 filename: sshd.yaml
@@ -131,7 +131,7 @@ Current metrics :
 
 ```
 
-<details>
+</details>
 
 ## Reference documentation
 
