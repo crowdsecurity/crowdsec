@@ -123,7 +123,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			log.Debugf("alert %s already has decisions, don't apply profiles", *alert.Message)
 			for _, decision := range alert.Decisions {
 				if decision.EndIP != 0 && decision.StartIP != 0 && decision.EndIP < decision.StartIP {
-					gctx.JSON(http.StatusBadRequest, gin.H{"message": "'start_ip' must be lower than 'end_ip' in decisions"})
+					gctx.JSON(http.StatusBadRequest, gin.H{"message": "'start_ip' must be lower or equal than 'end_ip' in decisions"})
 					return
 				}
 			}
