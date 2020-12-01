@@ -41,26 +41,24 @@ You are then ready to [take a tour](/Crowdsec/v1/getting_started/crowdsec-tour/)
 sudo {{v1X.wizard.bin}} --bininstall
 ```
 
-This will deploy a valid/empty {{v1X.crowdsec.name}} configuration files and binaries.
-Beware, in this state, {{v1X.crowdsec.name}} won't monitor/detect anything unless configured.
+This will only deploy the binaries, and some extra installation steps need to be completed for the software to be functional :
 
-```
-cscli install collection crowdsecurity/linux
-```
+ - `sudo cscli hub update` : update the hub index
+ - `sudo cscli machines add -a` : register crowdsec to the local API
+ - `sudo cscli capi register` : register to the central API
+ - `sudo cscli collections install crowdsecurity/linux` : install essential configs (syslog parser, geoip enrichment, date parsers)
+ - configure your sources in your {{v1X.ref.acquis}} : `/etc/crowdsec/acquis.yaml`
 
+You can now start & enable the crowdsec service :
 
-Installing at least the `crowdsecurity/linux` collection will provide you :
+ - `sudo systemctl start crowdsec`
+ - `sudo systemctl enable crowdsec`
 
- - syslog parser
- - geoip enrichment
- - date parsers
+## Using the unattended wizard
 
+If your setup is standard and you've walked through the default installation without issues, you can win some time in case you need to perform a new install : `sudo ./wizard.sh --unattended` 
 
-You will need as well to configure your {{v1X.ref.acquis}} file to feed {{v1X.crowdsec.name}} some logs.
-
-
-
-
+This mode will emulate the interactive mode of the wizard where you answer **yes** to everything and stick with the default options. 
 
 ## From source
 
@@ -75,12 +73,9 @@ Go in {{v1X.crowdsec.name}} folder and build the binaries :
 
 ```bash
 cd crowdsec
-```
-```bash
-make build
+make release
 ```
 
-
-{{v1X.crowdsec.name}} bin will be located in `./cmd/crowdsec/crowdsec` and {{v1X.cli.name}} bin in `cmd/crowdsec-cli/{{v1X.cli.bin}}` 
+This will create you a directory (`crowdsec-vXXX/`) and an archive (`crowdsec-release.tgz`) that are release built from your local code source. 
 
 Now, you can install either with [interactive wizard](#using-the-interactive-wizard) or the [unattended mode](#using-unattended-mode).

@@ -14,7 +14,7 @@ To upgrade {{v1X.crowdsec.name}} from v0.X to v1, we'll follow those steps
 
 #### Backup up configuration
 
-```
+```bash
 sudo cscli backup save /tmp/crowdsec_backup
 sudo cp -R  /etc/crowdsec/config/patterns /tmp/crowdsec_backup
 ```
@@ -23,7 +23,7 @@ sudo cp -R  /etc/crowdsec/config/patterns /tmp/crowdsec_backup
 
 Download latest V1 {{v1X.crowdsec.name}} version [here]({{v1X.crowdsec.download_url}})
 
-```
+```bash
 tar xvzf crowdsec-release.tgz
 cd crowdsec-v1*/
 sudo ./wizard.sh --uninstall
@@ -37,32 +37,52 @@ sudo ./wizard.sh --bininstall
 
 !!! warning
         Before restoring old backup, if you have `local` or `tainted` postoverflows, be aware that they are no longer compatible. You should update the syntax (the community and us are available to help you doing this part).
-```
+```bash
 sudo cscli hub update
 sudo cscli config restore --old-backup /tmp/crowdsec_backup/
 sudo cp -R /tmp/crowdsec_backup/patterns /etc/crowdsec/
+```
+
+### Register crowdsec to local & central API
+
+```bash
+$ sudo cscli machines add -a
+INFO[0000] Machine '...' created successfully 
+INFO[0000] API credentials dumped to '/etc/crowdsec/local_api_credentials.yaml' 
+```
+
+Before starting the services, let's check that we're properly registered :
+
+```bash
+$ sudo cscli capi status
+INFO[0000] Loaded credentials from /etc/crowdsec/online_api_credentials.yaml 
+INFO[0000] Trying to authenticate with username ... on https://api.crowdsec.net/ 
+INFO[0000] You can successfully interact with Central API (CAPI) 
 ```
 
 #### Start & health check
 
 Finally, you will be able to start {{v1X.crowdsec.name}} service. Before that, just check if {{v1X.lapi.name}} and {{v1X.api.name}} are correctly configured.
 
-```
-ubuntu@ip-:~$ sudo cscli lapi status 
+```bash
+$ sudo systemctl enable crowdsec
+$ sudo systemctl start crowdsec
+$ sudo cscli lapi status
 INFO[0000] Loaded credentials from /etc/crowdsec/local_api_credentials.yaml 
-INFO[0000] Trying to authenticate with username 941c3fxxxxxxxxxxxxxxxxxxxxxx on http://localhost:8080/ 
-INFO[0000] You can successfully interact with Local API (LAPI)
-
-ubuntu@ip-:~$ sudo cscli capi status 
+INFO[0000] Trying to authenticate with username ... on http://localhost:8080/ 
+INFO[0000] You can successfully interact with Local API (LAPI) 
+$ sudo cscli capi status
 INFO[0000] Loaded credentials from /etc/crowdsec/online_api_credentials.yaml 
-INFO[0000] Trying to authenticate with username 941c3fxxxxxxxxxxxxxxxxxxxxxxx on https://api.crowdsec.net/ 
-INFO[0000] You can successfully interact with Central API (CAPI)
-
-ubuntu@ip-:~$ sudo systemctl start crowdsec.service
-ubuntu@ip-:~$ sudo systemctl status crowdsec.service
+INFO[0000] Trying to authenticate with username ... on https://api.crowdsec.net/ 
+INFO[0000] You can successfully interact with Central API (CAPI) 
 ```
 
-You can even check logs (located by default here: `/var/log/crowdsec.log` & `/var/log/crowdsec_api.log`).
+!!! warning
+        If you're facing issues with `cscli lapi status`, just re-run `cscli machines add -a`.
+        If you're facing issues with `cscli capi status`, just re-run `cscli capi register`
+
+
+You can check logs (located by default here: `/var/log/crowdsec.log` & `/var/log/crowdsec_api.log`).
 
 You can now navigate documentation to learn new {{v1X.cli.name}} commands to interact with crowdsec.
 

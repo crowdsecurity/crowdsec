@@ -14,4 +14,3 @@ labels:
 filename: /var/log/apache2/*.log
 labels:
   type: apache2
----
