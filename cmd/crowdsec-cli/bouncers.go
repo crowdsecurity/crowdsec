@@ -109,7 +109,7 @@ cscli bouncers add MyBouncerName -l 24`,
 			}
 			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
 			if err != nil {
-				log.Errorf("unable to create blocker: %s", err)
+				log.Errorf("unable to create bouncer: %s", err)
 				return
 			}
 
@@ -143,7 +143,7 @@ cscli bouncers add MyBouncerName -l 24`,
 			}
 			err := dbClient.DeleteBouncer(keyName)
 			if err != nil {
-				log.Errorf("unable to create blocker: %s", err)
+				log.Errorf("unable to delete bouncer: %s", err)
 				return
 			}
 		},

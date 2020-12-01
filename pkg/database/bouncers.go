@@ -34,6 +34,9 @@ func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string) error 
 		SetRevoked(false).
 		Save(c.CTX)
 	if err != nil {
+		if ent.IsConstraintError(err) {
+			return fmt.Errorf("bouncer %s already exists", name)
+		}
 		return fmt.Errorf("unable to save api key in database: %s", err)
 	}
 	return nil
