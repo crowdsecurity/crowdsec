@@ -269,7 +269,7 @@ cscli machines add MyTestMachine --password MyPassword
 			machineID = args[0]
 			err := dbClient.DeleteWatcher(machineID)
 			if err != nil {
-				log.Errorf("unable to create blocker: %s", err)
+				log.Errorf("unable to delete machine: %s", err)
 				return
 			}
 			log.Infof("machine '%s' deleted successfully", machineID)
