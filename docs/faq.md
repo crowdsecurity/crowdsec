@@ -96,6 +96,7 @@ not exactly the same target as the debian named armhf port.
 
 The best way to have a crowdsec version for such an architecture is to
 do:
+
 1. install golang (all versions from 1.13 will do)
 2. `export GOARCH=arm`
 3. `export CGO=1`
