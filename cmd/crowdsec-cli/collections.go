@@ -47,12 +47,12 @@ func NewCollectionsCmd() *cobra.Command {
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.COLLECTIONS, forceInstall)
+				InstallItem(name, cwhub.COLLECTIONS, forceAction)
 			}
 		},
 	}
 	cmdCollectionsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdCollectionsInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdCollectionsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdCollections.AddCommand(cmdCollectionsInstall)
 
 	var cmdCollectionsRemove = &cobra.Command{
@@ -67,17 +67,26 @@ func NewCollectionsCmd() *cobra.Command {
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
-			if removeAll {
+			if all {
 				RemoveMany(cwhub.COLLECTIONS, "")
 			} else {
 				for _, name := range args {
+					if !forceAction {
+						item := cwhub.GetItem(cwhub.COLLECTIONS, name)
+						if len(item.BelongsToCollections) > 0 {
+							log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
+							log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
+							continue
+						}
+					}
 					RemoveMany(cwhub.COLLECTIONS, name)
 				}
 			}
 		},
 	}
-	cmdCollectionsRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file too")
-	cmdCollectionsRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdCollectionsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdCollectionsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
+	cmdCollectionsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the files in selected scope")
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
 	var cmdCollectionsUpgrade = &cobra.Command{
@@ -91,17 +100,17 @@ func NewCollectionsCmd() *cobra.Command {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
-			if upgradeAll {
-				UpgradeConfig(cwhub.COLLECTIONS, "", forceUpgrade)
+			if all {
+				UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.COLLECTIONS, name, forceUpgrade)
+					UpgradeConfig(cwhub.COLLECTIONS, name, forceAction)
 				}
 			}
 		},
 	}
-	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdCollectionsUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdCollectionsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 
 	var cmdCollectionsInspect = &cobra.Command{
@@ -137,7 +146,7 @@ func NewCollectionsCmd() *cobra.Command {
 			ListItem(cwhub.COLLECTIONS, args)
 		},
 	}
-	cmdCollectionsList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
 	cmdCollections.AddCommand(cmdCollectionsList)
 
 	return cmdCollections

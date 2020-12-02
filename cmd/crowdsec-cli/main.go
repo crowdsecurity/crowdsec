@@ -20,12 +20,9 @@ var dbClient *database.Client
 var OutputFormat string
 
 var downloadOnly bool
-var forceInstall bool
-var forceUpgrade bool
-var removeAll bool
-var purgeRemove bool
-var upgradeAll bool
-var listAll bool
+var forceAction bool
+var purge bool
+var all bool
 var restoreOldBackup bool
 
 var prometheusURL string

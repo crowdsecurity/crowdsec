@@ -50,12 +50,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS_OVFLW, forceInstall)
+				InstallItem(name, cwhub.PARSERS_OVFLW, forceAction)
 			}
 		},
 	}
 	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
 
 	var cmdPostOverflowsRemove = &cobra.Command{
@@ -70,7 +70,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
-			if removeAll {
+			if all {
 				RemoveMany(cwhub.PARSERS_OVFLW, "")
 			} else {
 				for _, name := range args {
@@ -79,8 +79,8 @@ func NewPostOverflowsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file in ~/.cscli/hub/ too")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the files in selected scope")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsRemove)
 
 	var cmdPostOverflowsUpgrade = &cobra.Command{
@@ -94,17 +94,17 @@ func NewPostOverflowsCmd() *cobra.Command {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
-			if upgradeAll {
-				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceUpgrade)
+			if all {
+				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceAction)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS_OVFLW, name, forceUpgrade)
+					UpgradeConfig(cwhub.PARSERS_OVFLW, name, forceAction)
 				}
 			}
 		},
 	}
-	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsUpgrade)
 
 	var cmdPostOverflowsInspect = &cobra.Command{
@@ -137,7 +137,7 @@ cscli postoverflows list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS_OVFLW, args)
 		},
 	}
-	cmdPostOverflowsList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsList)
 
 	return cmdPostOverflows

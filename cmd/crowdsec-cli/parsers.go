@@ -51,12 +51,12 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS, forceInstall)
+				InstallItem(name, cwhub.PARSERS, forceAction)
 			}
 		},
 	}
 	cmdParsersInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdParsersInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsersInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdParsers.AddCommand(cmdParsersInstall)
 
 	var cmdParsersRemove = &cobra.Command{
@@ -71,7 +71,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
-			if removeAll {
+			if all {
 				RemoveMany(cwhub.PARSERS, "")
 			} else {
 				for _, name := range args {
@@ -80,8 +80,8 @@ cscli parsers remove crowdsecurity/sshd-logs
 			}
 		},
 	}
-	cmdParsersRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file too")
-	cmdParsersRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the parsers")
+	cmdParsersRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdParsersRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the parsers")
 	cmdParsers.AddCommand(cmdParsersRemove)
 
 	var cmdParsersUpgrade = &cobra.Command{
@@ -95,17 +95,17 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
-			if upgradeAll {
-				UpgradeConfig(cwhub.PARSERS, "", forceUpgrade)
+			if all {
+				UpgradeConfig(cwhub.PARSERS, "", forceAction)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS, name, forceUpgrade)
+					UpgradeConfig(cwhub.PARSERS, name, forceAction)
 				}
 			}
 		},
 	}
-	cmdParsersUpgrade.PersistentFlags().BoolVar(&upgradeAll, "all", false, "Upgrade all the parsers")
-	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsersUpgrade.PersistentFlags().BoolVar(&all, "all", false, "Upgrade all the parsers")
+	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdParsers.AddCommand(cmdParsersUpgrade)
 
 	var cmdParsersInspect = &cobra.Command{
@@ -139,7 +139,7 @@ cscli parser list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS, args)
 		},
 	}
-	cmdParsersList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
 	cmdParsers.AddCommand(cmdParsersList)
 
 	return cmdParsers

@@ -267,7 +267,7 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
 	//Remove
-	item, err := DisableItem(cfg, item, false)
+	item, err := DisableItem(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("failed to disable item : %v", err)
 	}
@@ -285,7 +285,7 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("disable: %s should still be downloaded", item.Name)
 	}
 	//Purge
-	item, err = DisableItem(cfg, item, true)
+	item, err = DisableItem(cfg, item, true, false)
 	if err != nil {
 		t.Fatalf("failed to purge item : %v", err)
 	}

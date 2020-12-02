@@ -99,9 +99,9 @@ func ListItem(itemType string, args []string) {
 	var hubStatus []map[string]string
 
 	if len(args) == 1 {
-		hubStatus = cwhub.HubStatus(itemType, args[0], listAll)
+		hubStatus = cwhub.HubStatus(itemType, args[0], all)
 	} else {
-		hubStatus = cwhub.HubStatus(itemType, "", listAll)
+		hubStatus = cwhub.HubStatus(itemType, "", all)
 	}
 
 	if csConfig.Cscli.Output == "human" {
@@ -142,7 +142,7 @@ func InstallItem(name string, obtype string, force bool) {
 			return
 		}
 	}
-	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, forceInstall)
+	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, force)
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -169,15 +169,15 @@ func RemoveMany(itemType string, name string) {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 		item := *it
-		item, err = cwhub.DisableItem(csConfig.Cscli, item, purgeRemove)
+		item, err = cwhub.DisableItem(csConfig.Cscli, item, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
 		cwhub.AddItem(itemType, item)
 		return
-	} else if name == "" && removeAll {
+	} else if name == "" && all {
 		for _, v := range cwhub.GetItemMap(itemType) {
-			v, err = cwhub.DisableItem(csConfig.Cscli, v, purgeRemove)
+			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge, forceAction)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
@@ -185,7 +185,7 @@ func RemoveMany(itemType string, name string) {
 			disabled++
 		}
 	}
-	if name != "" && !removeAll {
+	if name != "" && !all {
 		log.Errorf("%s not found", name)
 		return
 	}
@@ -220,7 +220,7 @@ func UpgradeConfig(itemType string, name string, force bool) {
 				continue
 			}
 		}
-		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, forceUpgrade)
+		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, force)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -487,7 +487,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if downloadOnly && it.Downloaded && it.UpToDate {
 		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 	}
-	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceInstall)
+	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceAction)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 	}
