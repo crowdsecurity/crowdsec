@@ -81,6 +81,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		},
 	}
 	cmdParsersRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdParsersRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
 	cmdParsersRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the parsers")
 	cmdParsers.AddCommand(cmdParsersRemove)
 

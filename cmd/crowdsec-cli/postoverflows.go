@@ -79,8 +79,9 @@ func NewPostOverflowsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the files in selected scope")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
+	cmdPostOverflowsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the postoverflows")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsRemove)
 
 	var cmdPostOverflowsUpgrade = &cobra.Command{

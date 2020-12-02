@@ -74,9 +74,8 @@ func NewCollectionsCmd() *cobra.Command {
 					if !forceAction {
 						item := cwhub.GetItem(cwhub.COLLECTIONS, name)
 						if len(item.BelongsToCollections) > 0 {
-							log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
+							log.Fatalf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
 							log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
-							continue
 						}
 					}
 					RemoveMany(cwhub.COLLECTIONS, name)
@@ -86,7 +85,7 @@ func NewCollectionsCmd() *cobra.Command {
 	}
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
 	cmdCollectionsRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
-	cmdCollectionsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the files in selected scope")
+	cmdCollectionsRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the collections")
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
 	var cmdCollectionsUpgrade = &cobra.Command{

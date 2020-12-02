@@ -80,8 +80,9 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 		},
 	}
-	cmdScenariosRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdScenariosRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the files in selected scope")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the scenarios")
 	cmdScenarios.AddCommand(cmdScenariosRemove)
 
 	var cmdScenariosUpgrade = &cobra.Command{
