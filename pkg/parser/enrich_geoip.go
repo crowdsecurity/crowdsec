@@ -63,9 +63,9 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}) (map[string]string,
 		log.Errorf("Unable to enrich ip '%s'", field)
 		return nil, nil
 	}
-	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
-	ret["ASNOrg"] = record.AutonomousSystemOrganization
-	log.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])
+	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	ret["ASOrg"] = record.AutonomousSystemOrganization
+	log.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNumber"], ret["ASOrg"])
 	return ret, nil
 }
 

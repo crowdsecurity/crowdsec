@@ -114,7 +114,7 @@ again the expr environment given in parameter
 */
 func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[string]interface{}) {
 	if len(e.expression) == 0 {
-		logger.Debugf("no variable to eval for filter '%s'", e.filter)
+		logger.Tracef("no variable to eval for filter '%s'", e.filter)
 		return
 	}
 	logger.Debugf("eval(%s) = %s", e.filter, strings.ToUpper(strconv.FormatBool(filterResult)))

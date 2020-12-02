@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // type ApiAlerts service
@@ -46,6 +49,10 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 
 	var added_ids models.AddAlertsResponse
 
+	log.Warningf("LALALALALALALA")
+	o, _ := yaml.Marshal(alerts)
+
+	log.Infof("debug object : %s", string(o))
 	u := fmt.Sprintf("%s/alerts", s.client.URLPrefix)
 	req, err := s.client.NewRequest("POST", u, &alerts)
 	if err != nil {
@@ -56,6 +63,7 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 	if err != nil {
 		return nil, resp, err
 	}
+
 	return &added_ids, resp, nil
 }
 

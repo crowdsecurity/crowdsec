@@ -3,6 +3,8 @@ package types
 import (
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -36,6 +38,17 @@ type Event struct {
 	Process       bool         `yaml:"Process,omitempty" json:"Process,omitempty"` //can be set to false to avoid processing line
 	/* Meta is the only part that will make it to the API - it should be normalized */
 	Meta map[string]string `yaml:"Meta,omitempty" json:"Meta,omitempty"`
+}
+
+func (e *Event) GetType() string {
+	if e.Type == OVFLW {
+		return "overflow"
+	} else if e.Type == LOG {
+		return "log"
+	} else {
+		log.Warningf("unknown event type for %+v", e)
+		return "unknown"
+	}
 }
 
 //Move in leakybuckets
