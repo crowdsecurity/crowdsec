@@ -18,12 +18,47 @@ import (
 
 //SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
-	src := models.Source{}
 	srcs := make(map[string]models.Source)
 
+	/*if it's already an overflow, we have properly formatted sources.
+	we can just twitch them to reflect the requested scope*/
 	if evt.Type == types.OVFLW {
-		return evt.Overflow.Sources, nil
+
+		for k, v := range evt.Overflow.Sources {
+
+			/*the scopes are already similar, nothing to do*/
+			if leaky.scopeType.Scope == *v.Scope {
+				srcs[k] = v
+				continue
+			}
+
+			/*The bucket requires a decision on scope Range */
+			if leaky.scopeType.Scope == types.Range {
+				/*the original bucket was target IPs, check that we do have range*/
+				if *v.Scope == types.Ip {
+					if v.Range != "" {
+						src := models.Source{}
+						src.AsName = v.AsName
+						src.AsNumber = v.AsNumber
+						src.Cn = v.Cn
+						src.Latitude = v.Latitude
+						src.Longitude = v.Longitude
+						src.Range = v.Range
+						src.Value = new(string)
+						src.Scope = new(string)
+						*src.Value = v.Range
+						*src.Scope = leaky.scopeType.Scope
+						srcs[*src.Value] = src
+					}
+				} else {
+					log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
+						leaky.Name, *v.Scope, *v.Value)
+				}
+			}
+		}
+		return srcs, nil
 	}
+	src := models.Source{}
 	switch leaky.scopeType.Scope {
 	case types.Range, types.Ip:
 		if v, ok := evt.Meta["source_ip"]; ok {
@@ -74,7 +109,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		} else if leaky.scopeType.Scope == types.Range {
 			src.Value = &src.Range
 		}
-		srcs[src.IP] = src
+		srcs[*src.Value] = src
 	default:
 		if leaky.scopeType.RunTimeFilter != nil {
 			retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
@@ -90,7 +125,6 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			src.Scope = new(string)
 			*src.Scope = leaky.scopeType.Scope
 			srcs[*src.Value] = src
-			log.Debugf("source[%s] - %s = %s", leaky.Name, leaky.scopeType.Scope, *src.Value)
 		} else {
 			return srcs, fmt.Errorf("empty scope information")
 		}
@@ -213,7 +247,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	//Include source info in format string
 	sourceStr := ""
 	if len(sources) > 1 {
-		sourceStr = fmt.Sprintf("%d Sources on scope.", len(sources))
+		sourceStr = fmt.Sprintf("%d sources", len(sources))
 	} else if len(sources) == 1 {
 		for k, _ := range sources {
 			sourceStr = k
