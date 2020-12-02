@@ -47,7 +47,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		*decision.Value = *Alert.Source.Value
 
 		if strings.EqualFold(*decision.Scope, types.Ip) {
-			log.Infof("decision applies to IP")
 			srcAddr := net.ParseIP(Alert.Source.IP)
 			if srcAddr == nil {
 				return nil, fmt.Errorf("can't parse ip %s", Alert.Source.IP)
@@ -55,7 +54,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 			decision.StartIP = int64(types.IP2Int(srcAddr))
 			decision.EndIP = decision.StartIP
 		} else if strings.EqualFold(*decision.Scope, types.Range) {
-			log.Infof("decision applies to scope")
 
 			/*here we're asked to ban a full range. let's keep in mind that it's not always possible :
 			- the alert is about an IP, but the geolite enrichment failed
@@ -85,7 +83,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		}
 		decision.Scenario = new(string)
 		*decision.Scenario = *Alert.Scenario
-		log.Infof("alert(%s) : decision (%s) - scope:%s value:%s duration:%s", *Alert.Scenario, Profile.Name, *decision.Scope, *decision.Value, *decision.Duration)
 		decisions = append(decisions, &decision)
 	}
 	return decisions, nil
@@ -109,13 +106,11 @@ func EvaluateProfiles(Profiles []*csconfig.ProfileCfg, Alert *models.Alert) ([]*
 	}
 
 	if !Alert.Remediation {
-		log.Infof("--> no remediation")
 		return nil, nil
 	}
 PROFILE_LOOP:
 	for _, profile := range Profiles {
 		matched := false
-		//clog.Debugf("evaluating : %s --> %+v", profile.Name, Alert)
 		for eIdx, expression := range profile.RuntimeFilters {
 			output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 			if err != nil {
@@ -126,13 +121,11 @@ PROFILE_LOOP:
 			case bool:
 				if out {
 					matched = true
-					clog.Debugf("matched : %s", profile.Name)
 					/*the expression matched, create the associated decision*/
 					subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
 					if err != nil {
 						return nil, errors.Wrapf(err, "while generating decision from profile %s", profile.Name)
 					}
-					//clog.Debugf("adding decision : %+v", subdecisions)
 
 					decisions = append(decisions, subdecisions...)
 				} else {

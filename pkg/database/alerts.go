@@ -245,7 +245,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		bulk = append(bulk, alertB)
 
 		if len(bulk) == bulkSize {
-			log.Infof("-> inserting alert == %d", bulkSize)
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
 				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
@@ -262,7 +261,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 	}
 
-	log.Infof("-> inserting alert leftover == %d", len(bulk))
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
 		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
