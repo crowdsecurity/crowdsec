@@ -29,7 +29,6 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			/*the scopes are already similar, nothing to do*/
 			if leaky.scopeType.Scope == *v.Scope {
 				srcs[k] = v
-				log.Infof("bucket %s scope (%s) == event scope (%s) - %s", leaky.Name, leaky.scopeType.Scope, *v.Scope, *v.Value)
 				continue
 			}
 
@@ -56,7 +55,6 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 						leaky.Name, *v.Scope, *v.Value)
 				}
 			}
-			log.Printf("type:ovflw %s setting source [%s] (type:%s)", leaky.Name, *v.Value, *v.Scope)
 		}
 		return srcs, nil
 	}
@@ -111,7 +109,6 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		} else if leaky.scopeType.Scope == types.Range {
 			src.Value = &src.Range
 		}
-		log.Printf("type:log %s setting source [%s] (type:%s)", leaky.Name, *src.Value, *src.Scope)
 		srcs[*src.Value] = src
 	default:
 		if leaky.scopeType.RunTimeFilter != nil {
@@ -128,7 +125,6 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			src.Scope = new(string)
 			*src.Scope = leaky.scopeType.Scope
 			srcs[*src.Value] = src
-			log.Debugf("type:log source[%s] - %s = %s", leaky.Name, leaky.scopeType.Scope, *src.Value)
 		} else {
 			return srcs, fmt.Errorf("empty scope information")
 		}
@@ -263,9 +259,6 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
-
-	/*we need to check what is the scope that was specified in the scenario*/
-	//xxxx
 
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
