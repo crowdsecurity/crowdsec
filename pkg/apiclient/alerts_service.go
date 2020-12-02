@@ -56,7 +56,6 @@ func (s *AlertsService) Add(ctx context.Context, alerts models.AddAlertsRequest)
 	if err != nil {
 		return nil, resp, err
 	}
-
 	return &added_ids, resp, nil
 }
 
