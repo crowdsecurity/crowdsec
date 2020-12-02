@@ -115,9 +115,6 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 }
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
-	var decisions []*ent.Decision
-	var metas []*ent.Meta
-	var events []*ent.Event
 
 	ret := []string{}
 	bulkSize := 20
@@ -125,6 +122,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	c.Log.Debugf("writting %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	for i, alertItem := range alertList {
+		var decisions []*ent.Decision
+		var metas []*ent.Meta
+		var events []*ent.Event
+
 		owner, err := c.QueryMachineByID(machineId)
 		if err != nil {
 			if errors.Cause(err) != UserNotExists {
@@ -212,6 +213,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 			}
 		}
+
 		alertB := c.Ent.Alert.
 			Create().
 			SetScenario(*alertItem.Scenario).
@@ -243,9 +245,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		bulk = append(bulk, alertB)
 
 		if len(bulk) == bulkSize {
+			log.Infof("-> inserting alert == %d", bulkSize)
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, errors.Wrapf(BulkError, "creating alert : %s", err)
+				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
 			for _, alert := range alerts {
 				ret = append(ret, strconv.Itoa(alert.ID))
@@ -259,9 +262,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 	}
 
+	log.Infof("-> inserting alert leftover == %d", len(bulk))
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
-		return []string{}, errors.Wrapf(BulkError, "creating alert : %s", err)
+		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
 	for _, alert := range alerts {
