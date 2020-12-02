@@ -51,12 +51,12 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			for _, name := range args {
-				InstallItem(name, cwhub.SCENARIOS, forceInstall)
+				InstallItem(name, cwhub.SCENARIOS, forceAction)
 			}
 		},
 	}
 	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
-	cmdScenariosInstall.PersistentFlags().BoolVar(&forceInstall, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenariosInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdScenarios.AddCommand(cmdScenariosInstall)
 
 	var cmdScenariosRemove = &cobra.Command{
@@ -71,7 +71,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
-			if removeAll {
+			if all {
 				RemoveMany(cwhub.SCENARIOS, "")
 			} else {
 				for _, name := range args {
@@ -80,8 +80,9 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 		},
 	}
-	cmdScenariosRemove.PersistentFlags().BoolVar(&purgeRemove, "purge", false, "Delete source file in ~/.cscli/hub/ too")
-	cmdScenariosRemove.PersistentFlags().BoolVar(&removeAll, "all", false, "Delete all the files in selected scope")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&purge, "purge", false, "Delete source file too")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&forceAction, "force", false, "Force remove : Remove tainted and outdated files")
+	cmdScenariosRemove.PersistentFlags().BoolVar(&all, "all", false, "Delete all the scenarios")
 	cmdScenarios.AddCommand(cmdScenariosRemove)
 
 	var cmdScenariosUpgrade = &cobra.Command{
@@ -95,17 +96,17 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
-			if upgradeAll {
-				UpgradeConfig(cwhub.SCENARIOS, "", forceUpgrade)
+			if all {
+				UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
 			} else {
 				for _, name := range args {
-					UpgradeConfig(cwhub.SCENARIOS, name, forceUpgrade)
+					UpgradeConfig(cwhub.SCENARIOS, name, forceAction)
 				}
 			}
 		},
 	}
-	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&upgradeAll, "download-only", "d", false, "Only download packages, don't enable")
-	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceUpgrade, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdScenarios.AddCommand(cmdScenariosUpgrade)
 
 	var cmdScenariosInspect = &cobra.Command{
@@ -139,7 +140,7 @@ cscli scenarios list crowdsecurity/xxx`,
 			ListItem(cwhub.SCENARIOS, args)
 		},
 	}
-	cmdScenariosList.PersistentFlags().BoolVarP(&listAll, "all", "a", false, "List as well disabled items")
+	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
 	cmdScenarios.AddCommand(cmdScenariosList)
 
 	return cmdScenarios

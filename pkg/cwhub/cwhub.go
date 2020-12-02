@@ -234,7 +234,7 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 }
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
-func HubStatus(itemType string, name string, listAll bool) []map[string]string {
+func HubStatus(itemType string, name string, all bool) []map[string]string {
 	if _, ok := hubIdx[itemType]; !ok {
 		log.Errorf("type %s doesn't exist", itemType)
 
@@ -249,7 +249,7 @@ func HubStatus(itemType string, name string, listAll bool) []map[string]string {
 			continue
 		}
 		//Only enabled items ?
-		if !listAll && !item.Installed {
+		if !all && !item.Installed {
 			continue
 		}
 		//Check the item status

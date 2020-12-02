@@ -11,7 +11,7 @@ import (
 )
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error) {
+func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) (Item, error) {
 	var tdir = cscli.ConfigDir
 	var hdir = cscli.HubDir
 
@@ -30,7 +30,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(cscli, val, purge)
+					hubIdx[ptrtype][p], err = DisableItem(cscli, val, purge, force)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
 					}
@@ -39,13 +39,12 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool) (Item, error
 				}
 			}
 		}
-
 	}
 
 	stat, err := os.Lstat(syml)
 	if os.IsNotExist(err) {
-		if !purge { //we only accept to "delete" non existing items if it's a purge
-			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
+		if !purge && !force { //we only accept to "delete" non existing items if it's a purge
+			return target, fmt.Errorf("%s is tainted, won't remove unless --force", target.Name)
 		}
 	} else {
 		//if it's managed by hub, it's a symlink to csconfig.GConfig.Cscli.HubDir / ...
