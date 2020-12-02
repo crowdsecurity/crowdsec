@@ -105,7 +105,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		},
 	}
 	cmdParsersUpgrade.PersistentFlags().BoolVar(&all, "all", false, "Upgrade all the parsers")
-	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsersUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdParsers.AddCommand(cmdParsersUpgrade)
 
 	var cmdParsersInspect = &cobra.Command{

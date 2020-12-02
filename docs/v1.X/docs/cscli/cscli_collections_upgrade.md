@@ -20,7 +20,7 @@ cscli collections upgrade crowdsec/xxx crowdsec/xyz
 
 ```
   -d, --download-only   Only download packages, don't enable
-      --force           Force install : Overwrite tainted and outdated files
+      --force           Force upgrade : Overwrite tainted and outdated files
   -h, --help            help for upgrade
 ```
 

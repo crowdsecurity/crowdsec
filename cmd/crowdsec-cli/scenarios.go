@@ -105,7 +105,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		},
 	}
 	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
-	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdScenarios.AddCommand(cmdScenariosUpgrade)
 
 	var cmdScenariosInspect = &cobra.Command{

@@ -20,7 +20,7 @@ cscli parsers upgrade crowdsec/xxx crowdsec/xyz
 
 ```
       --all     Upgrade all the parsers
-      --force   Force install : Overwrite tainted and outdated files
+      --force   Force upgrade : Overwrite tainted and outdated files
   -h, --help    help for upgrade
 ```
 
