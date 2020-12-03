@@ -120,7 +120,7 @@ unzip metabase_sqlite.zip
 
 ```bash
 export MB_DB_TYPE=h2
-export MB_DB_FILE=./metabase.db
+export MB_DB_FILE=/absolute/path/to/metabase.db
 ```
 
 - Launch Metabase: 
