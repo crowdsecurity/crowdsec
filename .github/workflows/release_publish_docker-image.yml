@@ -29,9 +29,7 @@ jobs:
             VERSION=pr-${{ github.event.number }}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION}"
-          if [ "${{ github.event_name }}" = "push" ]; then
-            TAGS="$TAGS,${DOCKER_IMAGE}:sha-${GITHUB_SHA::8}"
-          fi
+          TAGS="$TAGS,${DOCKER_IMAGE}:latest"
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
