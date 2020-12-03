@@ -1,9 +1,12 @@
 name: Publish Docker image
 on:
-  release:
-    types:
-      - released
-      - prereleased
+#  release:
+#    types:
+#      - released
+#      - prereleased
+  push:
+    branches:
+      - add_ci_docker_push
 jobs:
   push_to_registry:
     name: Push Docker image to Docker Hub
@@ -26,10 +29,17 @@ jobs:
             VERSION=pr-${{ github.event.number }}
           fi
           TAGS="${DOCKER_IMAGE}:${VERSION}"
-          RE='^v[0-9]\.[0-9]+\.[0-9]+$'
-          [[ $VERSION =~ $RE ]] && TAGS="$TAGS,${DOCKER_IMAGE}:latest"
+          echo ::set-output name=docker_image::${DOCKER_IMAGE}
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
+      - 
+        name: Tag Latest
+        id: prep_tag_latest
+        if: "github.event.release.release"
+        run: |
+          TAGS=${{ steps.prep.outputs.tags }},${{ steps.prep.outputs.docker_image }}:latest
+          echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=version::${{ steps.prep.outputs.version }}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
       - 
         name: Set up Docker Buildx
