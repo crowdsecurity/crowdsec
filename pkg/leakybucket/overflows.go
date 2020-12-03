@@ -49,6 +49,8 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 						*src.Value = v.Range
 						*src.Scope = leaky.scopeType.Scope
 						srcs[*src.Value] = src
+					} else {
+						log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
 					}
 				} else {
 					log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
@@ -277,7 +279,10 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		runtimeAlert.APIAlerts = append(runtimeAlert.APIAlerts, newApiAlert)
 	}
 
-	runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
+	if len(runtimeAlert.APIAlerts) > 0 {
+		runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
+	}
+
 	if leaky.Reprocess {
 		runtimeAlert.Reprocess = true
 	}
