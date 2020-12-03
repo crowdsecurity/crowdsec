@@ -20,6 +20,7 @@ import (
 )
 
 var LAPIURLPrefix string = "v1"
+var lapiUser string
 
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
@@ -45,9 +46,11 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Args: cobra.MinimumNArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			id, err := generateID()
-			if err != nil {
-				log.Fatalf("unable to generate machine id: %s", err)
+			if lapiUser == "" {
+				lapiUser, err = generateID()
+				if err != nil {
+					log.Fatalf("unable to generate machine id: %s", err)
+				}
 			}
 			password := strfmt.Password(generatePassword(passwordLength))
 			if apiURL == "" {
@@ -70,7 +73,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("parsing api url: %s", err)
 			}
 			_, err = apiclient.RegisterClient(&apiclient.Config{
-				MachineID:     id,
+				MachineID:     lapiUser,
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
@@ -90,7 +93,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				dumpFile = ""
 			}
 			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    id,
+				Login:    lapiUser,
 				Password: password.String(),
 				URL:      apiURL,
 			}
@@ -112,6 +115,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	}
 	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
 	cmdLapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmdLapiRegister.Flags().StringVar(&lapiUser, "username", "", "output file destination")
 	cmdLapi.AddCommand(cmdLapiRegister)
 
 	var cmdLapiStatus = &cobra.Command{
