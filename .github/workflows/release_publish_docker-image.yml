@@ -32,6 +32,7 @@ jobs:
           echo ::set-output name=docker_image::${DOCKER_IMAGE}
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
+          echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
       - 
         name: Tag Latest
         id: prep_tag_latest
