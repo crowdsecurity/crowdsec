@@ -23,6 +23,10 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 		return target, fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
 
+	if target.Tainted && !force {
+		return target, fmt.Errorf("%s is tainted, use '--force' to overwrite", target.Name)
+	}
+
 	/*for a COLLECTIONS, disable sub-items*/
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
@@ -44,7 +48,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 	stat, err := os.Lstat(syml)
 	if os.IsNotExist(err) {
 		if !purge && !force { //we only accept to "delete" non existing items if it's a purge
-			return target, fmt.Errorf("%s is tainted, won't remove unless --force", target.Name)
+			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
 		}
 	} else {
 		//if it's managed by hub, it's a symlink to csconfig.GConfig.Cscli.HubDir / ...
