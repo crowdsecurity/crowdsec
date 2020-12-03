@@ -105,6 +105,33 @@ do:
 6. Compile crowdsec using the usual `make` command
 
 
+## How to have a dashboard without docker
+
+`cscli dashboard` rely on [`docker`](https://docs.docker.com/) to launch the `metabase` image. If `docker` is not installed on your machine, here are the step to follow to get crowdsec dashboards without docker:
+
+- Download Metabase `jar` file. See [metabase documentation](https://www.metabase.com/docs/latest/operations-guide/running-the-metabase-jar-file.html).
+- Download the `metabase.db` folder from Crowdsec [here](https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip).
+- Unzip the `zip` file: 
+
+```bash
+unzip metabase_sqlite.zip
+```
+- Run:
+
+```bash
+export MB_DB_TYPE=h2
+export MB_DB_FILE=./metabase.db
+```
+
+- Launch Metabase: 
+
+```bash
+java -jar metabase.jar
+```
+
+!!! warning
+        The default username is `crowdsec@crowdsec.net` and the default password is `!!Cr0wdS3c_M3t4b4s3??`. Please update the password when you will connect to metabase for the first time
+
 <!-- 
 
 ## How to contribute ?
