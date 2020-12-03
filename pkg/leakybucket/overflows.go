@@ -50,7 +50,7 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 						*src.Scope = leaky.scopeType.Scope
 						srcs[*src.Value] = src
 					} else {
-						log.Warningf("bucket %s requires scope Range, but no one was provided", leaky.Name)
+						log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
 					}
 				} else {
 					log.Warningf("bucket %s requires scope Range, but can't extrapolate from %s (%s)",
