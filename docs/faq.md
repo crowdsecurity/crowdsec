@@ -116,17 +116,18 @@ do:
 ```bash
 unzip metabase_sqlite.zip
 ```
-- Run:
+
+- Make crowdsec database reachable from metabase :
 
 ```bash
-export MB_DB_TYPE=h2
-export MB_DB_FILE=/absolute/path/to/metabase.db
+sudo mkdir /metabase-data/
+sudo ln -s /var/lib/crowdsec/data/crowdsec.db /metabase-data/crowdsec.db
 ```
 
 - Launch Metabase: 
 
 ```bash
-java -jar metabase.jar
+sudo MB_DB_TYPE=h2 MB_DB_FILE=<absolute-path>/metabase.db/metabase.db java -jar metabase.jar
 ```
 
 !!! warning
