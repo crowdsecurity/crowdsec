@@ -95,6 +95,12 @@ cd crowdsec-v*
 sudo ./wizard.sh -i
 ```
 
+## :whale2: Docker
+
+You can use docker to run crowdsec, by using [official docker image](https://hub.docker.com/r/crowdsecurity/crowdsec).
+
+You can also build the docker image following [this](https://github.com/crowdsecurity/crowdsec/tree/master/docker#build) 
+
 ## ⚙️ Build it !
 
 If you want to build crowdsec yourself follow these steps:
