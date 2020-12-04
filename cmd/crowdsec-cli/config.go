@@ -109,7 +109,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
 		if _, err = os.Stat(backupMain); err == nil {
 			if csConfig.ConfigPaths != nil && csConfig.ConfigPaths.ConfigDir != "" {
-				if err = types.CopyFile(backupMain, csConfig.ConfigPaths.ConfigDir); err != nil {
+				if err = types.CopyFile(backupMain, fmt.Sprintf("%s/config.yaml", csConfig.ConfigPaths.ConfigDir)); err != nil {
 					return fmt.Errorf("failed copy %s to %s : %s", backupMain, csConfig.ConfigPaths.ConfigDir, err)
 				}
 			}
