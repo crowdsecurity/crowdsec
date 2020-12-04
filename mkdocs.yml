@@ -1,13 +1,15 @@
 site_name: Crowdsec
 nav:
   - Home: index.md
-  - Crowdsec v0: '!include ./docs/v0.3.X/mkdocs.yml'
-  - Crowdsec v1 : '!include ./docs/v1.X/mkdocs.yml'
+  - Crowdsec v0: "!include ./docs/v0.3.X/mkdocs.yml"
+  - Crowdsec v1 : "!include ./docs/v1.X/mkdocs.yml"
   - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
   - Hub : https://hub.crowdsec.net/" target="_blank
   - Releases : https://github.com/crowdsecurity/crowdsec/releases" target="_blank
-  - Contributing: contributing.md
-  - FAQ: faq.md
+  - Contributing:
+    - Guide: contributing.md
+  - FAQ:
+    - Questions: faq.md
 
 
 markdown_extensions:
@@ -24,6 +26,7 @@ theme:
     - navigation.tabs
     - navigation.expand
     - navigation.instant
+    - navigation.section
   palette:
     primary: "#3d85c6" 
   language: en
@@ -38,9 +41,6 @@ plugins:
     - search
     - macros
     - monorepo
-google_analytics:
-    - UA-164365852-3
-    - auto
 
 extra:
     swagger_url: "https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/pkg/models/localapi_swagger.yaml"
