@@ -10,7 +10,7 @@ import (
 var LapiRouteHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_route_requests_total",
-		Help: "Number of calls to each route.",
+		Help: "Number of calls to each route per method.",
 	},
 	[]string{"route", "method"},
 )
@@ -19,7 +19,7 @@ var LapiRouteHits = prometheus.NewCounterVec(
 var LapiMachineHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_machine_requests_total",
-		Help: "Number of calls for each machine.",
+		Help: "Number of calls to each route per method grouped by machines.",
 	},
 	[]string{"machine", "route", "method"},
 )
@@ -28,7 +28,7 @@ var LapiMachineHits = prometheus.NewCounterVec(
 var LapiBouncerHits = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_lapi_bouncer_requests_total",
-		Help: "Number of calls for each bouncer.",
+		Help: "Number of calls to each route per method grouped by bouncers.",
 	},
 	[]string{"bouncer", "route", "method"},
 )
