@@ -2,16 +2,16 @@
 
 ## What is {{v1X.crowdsec.name}} ?
 
-{{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/#what-is-crowdsec)
+{{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/#what-is-crowdsec).
 
 
 ## What language is it written in ?
 
-{{v1X.crowdsec.Name}} is written in [Golang](https://golang.org/) 
+{{v1X.crowdsec.Name}} is written in [Golang](https://golang.org/).
 
 ## What licence is {{v1X.crowdsec.name}} released under ?
 
-{{v1X.crowdsec.Name}} is under [MIT license]({{v1X.crowdsec.url}}/blob/master/LICENSE)
+{{v1X.crowdsec.Name}} is under [MIT license]({{v1X.crowdsec.url}}/blob/master/LICENSE).
 
 ## Which information is sent to the APIs ?
 
@@ -73,7 +73,7 @@ Defaults env_keep += "HTTP_PROXY HTTPS_PROXY NO_PROXY"
 
 ## How to report a bug ?
 
-To report a bug, please open an issue on the [repository]({{v1X.crowdsec.bugreport}})
+To report a bug, please open an issue on the [repository]({{v1X.crowdsec.bugreport}}).
 
 ## What about false positives ?
 
