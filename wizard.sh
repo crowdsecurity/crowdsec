@@ -47,7 +47,6 @@ ACTION=""
 DEBUG_MODE="false"
 
 SUPPORTED_SERVICES='apache2
-httpd
 nginx
 sshd
 mysql
@@ -90,7 +89,12 @@ detect_services () {
     for SVC in ${SUPPORTED_SERVICES} ; do
         log_info "Checking if service '${SVC}' is running (ps+systemd)"
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-            echo ${SRC} | grep ${SVC} >/dev/null
+            if [$SRC != "apache2" ] ; then 
+                echo ${SRC} | grep ${SVC} >/dev/null
+            else 
+                echo "apache2" | grep ${SVC} >/dev/null || echo "httpd" | grep ${SVC} >/dev/null
+            fi;
+
             if [ $? -eq 0 ]; then
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
@@ -122,7 +126,6 @@ detect_services () {
 
 declare -A log_input_tags
 log_input_tags[apache2]='type: apache2'
-log_input_tags[httpd]='type: httpd'
 log_input_tags[nginx]='type: nginx'
 log_input_tags[sshd]='type: syslog'
 log_input_tags[rsyslog]='type: syslog'
@@ -132,8 +135,7 @@ log_input_tags[smb]='type: smb'
 log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
-log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log'
-log_locations[httpd]='/var/log/httpd/*_log'
+log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
 log_locations[nginx]='/var/log/nginx/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
