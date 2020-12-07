@@ -129,7 +129,7 @@ func NewCollectionsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdCollectionsInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdCollectionsInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{

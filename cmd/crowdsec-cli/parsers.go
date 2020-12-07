@@ -120,10 +120,11 @@ cscli parsers remove crowdsecurity/sshd-logs
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
+
 			InspectItem(args[0], cwhub.PARSERS)
 		},
 	}
-	cmdParsersInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdParsersInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
 	cmdParsers.AddCommand(cmdParsersInspect)
 
 	var cmdParsersList = &cobra.Command{

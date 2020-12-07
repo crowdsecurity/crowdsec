@@ -123,7 +123,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			InspectItem(args[0], cwhub.SCENARIOS)
 		},
 	}
-	cmdScenariosInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "http://127.0.0.1:6060/metrics", "Prometheus url")
+	cmdScenariosInspect.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url")
 	cmdScenarios.AddCommand(cmdScenariosInspect)
 
 	var cmdScenariosList = &cobra.Command{
