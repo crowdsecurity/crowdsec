@@ -39,6 +39,14 @@ jobs:
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=version::${{ steps.prep.outputs.version }}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+      - run: echo $ACTION
+        name: debug event.action
+        env:
+          ACTION: ${{ github.event.action }}
+      - run: echo $ACTION
+        name: debug event_name
+        env:
+          ACTION: ${{ github.event_name }}
       - 
         name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
