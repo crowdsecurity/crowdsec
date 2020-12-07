@@ -383,7 +383,7 @@ func NewMetricsCmd() *cobra.Command {
 			}
 
 			if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-				log.Warningf("No prometheus address or port specified, can't show metrics")
+				log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.Self)
 				os.Exit(1)
 			}
 
