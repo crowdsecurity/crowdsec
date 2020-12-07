@@ -388,7 +388,7 @@ func NewMetricsCmd() *cobra.Command {
 			}
 
 			if prometheusURL == "" {
-				log.Debugf("No prometheus URL provied using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+				log.Debugf("No prometheus URL provided using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
 				prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
 			}
 
