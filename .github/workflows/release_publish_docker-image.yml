@@ -35,7 +35,7 @@ jobs:
         id: prep_tag_latest
         if: " github.event.action == 'released' "
         run: |
-          TAGS=${{ steps.prep.outputs.tags }},${{ steps.prep.outputs.docker_image }}:latest
+          TAGS=${{ steps.prep.outputs.docker_image }}:latest
           echo ::set-output name=tags::${TAGS}
           echo ::set-output name=version::${{ steps.prep.outputs.version }}
           echo ::set-output name=created::$(date -u +'%Y-%m-%dT%H:%M:%SZ')
