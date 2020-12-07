@@ -66,6 +66,8 @@ clean:
 	@rm -f $(CROWDSEC_BIN)
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
+	@rm crowdsec-release.tgz
+	@rm -rf crowdsec-v*
 
 cscli:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
@@ -101,7 +103,6 @@ else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
 endif
-
 
 #.PHONY: test
 test:

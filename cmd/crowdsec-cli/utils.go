@@ -257,10 +257,18 @@ func InspectItem(name string, objecitemType string) {
 		log.Fatalf("unable to marshal item : %s", err)
 	}
 	fmt.Printf("%s", string(buff))
-
-	fmt.Printf("\nCurrent metrics : \n\n")
-	ShowMetrics(hubItem)
-
+	if csConfig.Prometheus.Enabled {
+		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
+			log.Warningf("No prometheus address or port specified, can't show metrics")
+			return
+		}
+		if prometheusURL == "" {
+			log.Debugf("No prometheus URL provied using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+			prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+		}
+		fmt.Printf("\nCurrent metrics : \n\n")
+		ShowMetrics(hubItem)
+	}
 }
 
 func ShowMetrics(hubItem *cwhub.Item) {
