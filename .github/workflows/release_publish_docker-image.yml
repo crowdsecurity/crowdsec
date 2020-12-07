@@ -33,7 +33,7 @@ jobs:
       - 
         name: Tag Latest
         id: prep_tag_latest
-        if: " github.event.release.action == 'released' "
+        if: " github.event.action == 'released' "
         run: |
           TAGS=${{ steps.prep.outputs.tags }},${{ steps.prep.outputs.docker_image }}:latest
           echo ::set-output name=tags::${TAGS}
