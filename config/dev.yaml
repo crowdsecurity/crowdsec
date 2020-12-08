@@ -31,7 +31,7 @@ api:
     credentials_path: ./config/local_api_credentials.yaml
   server:
     #insecure_skip_verify: true
-    listen_uri: localhost:8081
+    listen_uri: 127.0.0.1:8081
     profiles_path: ./config/profiles.yaml
     tls:
       #cert_file: ./cert.pem

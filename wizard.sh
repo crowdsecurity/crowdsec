@@ -376,7 +376,7 @@ uninstall_crowdsec() {
     rm -rf /tmp/data/
     ## end tmp
 
-    rm -rf ${CROWDSEC_PATH} || echo ""
+    find /etc/crowdsec -maxdepth 1 -mindepth 1 | grep -v "bouncer" | xargs rm -rf || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
     rm -rf ${CROWDSEC_LIB_DIR} || echo ""

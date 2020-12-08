@@ -47,7 +47,7 @@ api:
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     log_level: info
-    listen_uri: localhost:8080
+    listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
     online_client: # Crowdsec API
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
