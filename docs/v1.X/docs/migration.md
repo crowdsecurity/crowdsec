@@ -69,7 +69,7 @@ $ sudo systemctl enable crowdsec
 $ sudo systemctl start crowdsec
 $ sudo cscli lapi status
 INFO[0000] Loaded credentials from /etc/crowdsec/local_api_credentials.yaml 
-INFO[0000] Trying to authenticate with username ... on http://localhost:8080/ 
+INFO[0000] Trying to authenticate with username ... on http://127.0.0.1:8080/ 
 INFO[0000] You can successfully interact with Local API (LAPI) 
 $ sudo cscli capi status
 INFO[0000] Loaded credentials from /etc/crowdsec/online_api_credentials.yaml 

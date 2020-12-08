@@ -88,7 +88,7 @@ api:
     credentials_path: /tmp/local_api_credentials.yaml
   server:
     # we edit the listen_uri so that it doesn't try to listen on the same port as the existing Local API
-    listen_uri: localhost:8081
+    listen_uri: 127.0.0.1:8081
 ```
 
 With the following edits, we ensure that :
@@ -108,7 +108,7 @@ $ cscli -c forensic.yaml machines add --auto
 INFO[0000] Machine '...' created successfully 
 INFO[0000] API credentials dumped to '/tmp/local_api_credentials.yaml' 
 $ cat /tmp/local_api_credentials.yaml
-url: http://localhost:8081
+url: http://127.0.0.1:8081
 login: ...
 password: ...
 ```

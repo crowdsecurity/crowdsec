@@ -5,7 +5,7 @@ info:
   description: CrowdSec local API
   contact:
     email: contact@crowdsec.net
-host: localhost
+host: 127.0.0.1
 basePath: /v1
 securityDefinitions:
   JWTAuthorizer:

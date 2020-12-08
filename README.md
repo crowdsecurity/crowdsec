@@ -25,7 +25,7 @@
 :speech_balloon: <a href="https://gitter.im/crowdsec-project/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link">Gitter Chat</a>
 </p>
 
-> Crowdsec is in BETA version. It shouldn't, and didn't crash any production so far we know, but some features might be missing or undergo evolutions. IP Blocklists are limited to very-safe-to-ban IPs only (~5% of the global database so far, will grow soon)
+> Crowdsec shouldn't, and didn't crash any production so far we know, but some features might be missing or undergo evolutions. IP Blocklists are limited to very-safe-to-ban IPs only (~5% of the global database so far, will grow soon)
 
 If you want to be notified of software **updates**, <a href="https://docs.google.com/forms/d/e/1FAIpQLSdirOC4OMYtR-HG2c54T8Ubwrq8oPLZ5k-VHOjrANip-O_KfA/viewform">click here</a>
 
@@ -150,9 +150,5 @@ our [documentation](https://doc.crowdsec.net).
 This repository contains the code for the two main components of crowdsec :
  - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristis to logs. This is the component in charge of "detecting" the attacks
  - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
-
-## :warning: Beta version
-
-Please note that crowdsec is currently in beta version, use with caution !
 
 
