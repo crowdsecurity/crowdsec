@@ -30,4 +30,4 @@ If applicable, add screenshots to help explain your problem.
  - Version [e.g. v0.2.0, v0.1.5 ..]
 
 **Additional context**
-Add any other context about the problem here.
+Add any other context about the problem here, for example `/var/log/crowdsec.log` or error messages.
