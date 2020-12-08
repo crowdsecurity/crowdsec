@@ -22,12 +22,6 @@ jobs:
         fetch-depth: 0
     - name: Build release
       run: make release
-    # - name: Cache release
-    #   uses: actions/cache@v2
-    #   id: cache
-    #   with:
-    #     path: crowdsec-xxx
-    #     key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
     - name: clone and build hub CI tool
       run: |
         git clone https://github.com/crowdsecurity/hub-tests.git
@@ -43,19 +37,6 @@ jobs:
         cd crowdsec-${{ steps.crowdsec.outputs.tag }}
         ./test_env.sh
         cd tests
-        for i in `./cscli -c dev.yaml list parsers -a -o json | jq -r ".[].name" ` ; do 
-          ./cscli -c dev.yaml install parser $i ; 
+        for i in `./cscli -c dev.yaml parsers list -a -o json | jq -r ".[].name" ` ; do 
+          ./cscli -c dev.yaml parsers install $i ; 
         done
-    - name: Setup hub ci in crowdsec
-      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
-      run: |
-        cp -R ../../hub-tests/tests .
-        cp ../../hub-tests/main .
-    - name: Run the HUB CI
-      working-directory: ./crowdsec-${{ steps.crowdsec.outputs.tag }}/tests/
-      run: |
-        for i in `find ./tests -mindepth 1 -maxdepth 1 -type d` ; do 
-          echo "::group::Test-${i}" ; 
-          ./main -c dev.yaml $i || (echo "::error file=${i}::Failed test for ${i}" ; diff ${i}"/results.json" ${i}"/results.json.fail") ;
-          echo "::endgroup::" ;
-        done ;
