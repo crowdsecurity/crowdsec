@@ -110,6 +110,10 @@ LOOP:
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing to api : %s", err)
+					//just push back the events to the queue
+					cacheMutex.Lock()
+					cache = append(cache, cachecopy...)
+					cacheMutex.Unlock()
 				}
 			}
 		case <-outputsTomb.Dying():
