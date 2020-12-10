@@ -192,6 +192,8 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		log.Tracef("resp-jwt: %s", string(dump))
 	}
 	if err != nil {
+		/*we had an error, reset the token ?*/
+		t.token = ""
 		return resp, errors.Wrapf(err, "performing jwt auth")
 	}
 	log.Debugf("resp-jwt: %d", resp.StatusCode)
