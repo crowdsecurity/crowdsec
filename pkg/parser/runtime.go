@@ -109,7 +109,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 	//we have a few cases :
 	//(meta||key) + (static||reference||expr)
 	var value string
-	clog := n.logger
+	clog := n.Logger
 
 	for _, static := range statics {
 		value = ""
