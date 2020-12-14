@@ -94,7 +94,6 @@ func NewCollectionsCmd() *cobra.Command {
 		Short:   "Upgrade given collection(s)",
 		Long:    `Fetch and upgrade given collection(s) from hub`,
 		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
@@ -109,7 +108,7 @@ func NewCollectionsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdCollectionsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the collections")
 	cmdCollectionsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 

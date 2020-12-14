@@ -236,10 +236,16 @@ func UpgradeConfig(itemType string, name string, force bool) {
 		}
 		cwhub.AddItem(itemType, v)
 	}
-	if !found {
-		log.Errorf("Didn't find %s", name)
+	if !found && name == "" {
+		log.Infof("No %s installed, nothing to upgrade", itemType)
+	} else if !found {
+		log.Errorf("Item '%s' not found in hub", name)
 	} else if updated == 0 && found {
-		log.Errorf("Nothing to update")
+		if name == "" {
+			log.Infof("All %s are already up-to-date", itemType)
+		} else {
+			log.Infof("Item '%s' is up-to-date", name)
+		}
 	} else if updated != 0 {
 		log.Infof("Upgraded %d items", updated)
 	}
