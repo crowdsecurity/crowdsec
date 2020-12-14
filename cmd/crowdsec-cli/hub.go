@@ -56,7 +56,7 @@ cscli hub update # Download list of available configurations from the hub
 			ListItem(cwhub.PARSERS_OVFLW, args)
 		},
 	}
-	cmdHub.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
 	cmdHub.AddCommand(cmdHubList)
 
 	var cmdHubUpdate = &cobra.Command{
