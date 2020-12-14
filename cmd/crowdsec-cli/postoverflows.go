@@ -89,7 +89,6 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Short:   "Upgrade given postoverflow(s)",
 		Long:    `Fetch and Upgrade given postoverflow(s) from hub`,
 		Example: `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
@@ -104,7 +103,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdPostOverflowsUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the postoverflows")
 	cmdPostOverflowsUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsUpgrade)
 

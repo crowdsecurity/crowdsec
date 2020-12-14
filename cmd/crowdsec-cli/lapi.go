@@ -115,7 +115,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	}
 	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
 	cmdLapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdLapiRegister.Flags().StringVar(&lapiUser, "machine", "", "output file destination")
+	cmdLapiRegister.Flags().StringVar(&lapiUser, "machine", "", "Name of the machine to register with")
 	cmdLapi.AddCommand(cmdLapiRegister)
 
 	var cmdLapiStatus = &cobra.Command{

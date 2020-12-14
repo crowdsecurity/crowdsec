@@ -90,7 +90,6 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Short:   "Upgrade given scenario(s)",
 		Long:    `Fetch and Upgrade given scenario(s) from hub`,
 		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
@@ -105,7 +104,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 		},
 	}
-	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "download-only", "d", false, "Only download packages, don't enable")
+	cmdScenariosUpgrade.PersistentFlags().BoolVarP(&all, "all", "a", false, "Upgrade all the scenarios")
 	cmdScenariosUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")
 	cmdScenarios.AddCommand(cmdScenariosUpgrade)
 
