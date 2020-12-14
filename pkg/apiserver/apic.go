@@ -301,11 +301,15 @@ func (a *apic) Pull() error {
 	var err error
 
 	scenario := a.scenarioList
+	toldOnce := false
 	for {
 		if len(scenario) > 0 {
 			break
 		}
-		log.Warningf("scenario list is empty, will not pull yet")
+		if !toldOnce {
+			log.Warningf("scenario list is empty, will not pull yet")
+			toldOnce = true
+		}
 		time.Sleep(1 * time.Second)
 		scenario, err = a.FetchScenariosListFromDB()
 		if err != nil {
