@@ -66,7 +66,7 @@ clean:
 	@rm -f $(CROWDSEC_BIN)
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
-	@rm crowdsec-release.tgz
+	@rm -f crowdsec-release.tgz
 
 cscli:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
