@@ -239,7 +239,7 @@ func UpgradeConfig(itemType string, name string, force bool) {
 	if !found && name == "" {
 		log.Infof("No %s installed, nothing to upgrade", itemType)
 	} else if !found {
-		log.Errorf("Item '%s' not found in hub")
+		log.Errorf("Item '%s' not found in hub", name)
 	} else if updated == 0 && found {
 		if name == "" {
 			log.Infof("All %s are already up-to-date", itemType)
