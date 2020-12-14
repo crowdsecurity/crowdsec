@@ -21,7 +21,6 @@ cscli hub update [flags]
 ### Options inherited from parent commands
 
 ```
-  -a, --all             List as well disabled items
   -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.

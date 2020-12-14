@@ -23,7 +23,6 @@ cscli hub update # Download list of available configurations from the hub
 ### Options
 
 ```
-  -a, --all    List as well disabled items
   -h, --help   help for hub
 ```
 
