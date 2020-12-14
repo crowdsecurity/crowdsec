@@ -27,8 +27,8 @@ type Node struct {
 	Author      string   `yaml:"author,omitempty"`
 	Description string   `yaml:"description,omitempty"`
 	Rerferences []string `yaml:"references,omitempty"`
-	//if debug is present in the node, keep its specific logger in runtime structure
-	logger *log.Entry `yaml:"-"`
+	//if debug is present in the node, keep its specific Logger in runtime structure
+	Logger *log.Entry `yaml:"-"`
 	//This is mostly a hack to make writting less repetive.
 	//relying on stage, we know which field to parse, and we
 	//can as well promote log to next stage on success
@@ -111,7 +111,7 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 
 func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	var NodeState bool
-	clog := n.logger
+	clog := n.Logger
 
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
@@ -369,21 +369,21 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 			log.Fatalf("While creating bucket-specific logger : %s", err)
 		}
 		clog.SetLevel(log.DebugLevel)
-		n.logger = clog.WithFields(log.Fields{
+		n.Logger = clog.WithFields(log.Fields{
 			"id": n.rn,
 		})
-		n.logger.Infof("%s has debug enabled", n.Name)
+		n.Logger.Infof("%s has debug enabled", n.Name)
 	} else {
 		/* else bind it to the default one (might find something more elegant here)*/
-		n.logger = log.WithFields(log.Fields{
+		n.Logger = log.WithFields(log.Fields{
 			"id": n.rn,
 		})
 	}
 
 	/* display info about top-level nodes, they should be the only one with explicit stage name ?*/
-	n.logger = n.logger.WithFields(log.Fields{"stage": n.Stage, "name": n.Name})
+	n.Logger = n.Logger.WithFields(log.Fields{"stage": n.Stage, "name": n.Name})
 
-	n.logger.Tracef("Compiling : %s", dumpr.Sdump(n))
+	n.Logger.Tracef("Compiling : %s", dumpr.Sdump(n))
 
 	//compile filter if present
 	if n.Filter != "" {
@@ -403,15 +403,15 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 
 	/* handle pattern_syntax and groks */
 	for node, pattern := range n.SubGroks {
-		n.logger.Tracef("Adding subpattern '%s' : '%s'", node, pattern)
+		n.Logger.Tracef("Adding subpattern '%s' : '%s'", node, pattern)
 		if err := pctx.Grok.Add(node, pattern); err != nil {
-			n.logger.Errorf("Unable to compile subpattern %s : %v", node, err)
+			n.Logger.Errorf("Unable to compile subpattern %s : %v", node, err)
 			return err
 		}
 	}
 	/* load grok by name or compile in-place */
 	if n.Grok.RegexpName != "" {
-		n.logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
+		n.Logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Get(n.Grok.RegexpName)
 		if err != nil {
 			return fmt.Errorf("Unable to find grok '%s' : %v", n.Grok.RegexpName, err)
@@ -419,11 +419,11 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		if n.Grok.RunTimeRegexp == nil {
 			return fmt.Errorf("Empty grok '%s'", n.Grok.RegexpName)
 		}
-		n.logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
+		n.Logger.Tracef("%s regexp: %s", n.Grok.RegexpName, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	} else if n.Grok.RegexpValue != "" {
 		if strings.HasSuffix(n.Grok.RegexpValue, "\n") {
-			n.logger.Debugf("Beware, pattern ends with \\n : '%s'", n.Grok.RegexpValue)
+			n.Logger.Debugf("Beware, pattern ends with \\n : '%s'", n.Grok.RegexpValue)
 		}
 		n.Grok.RunTimeRegexp, err = pctx.Grok.Compile(n.Grok.RegexpValue)
 		if err != nil {
@@ -433,7 +433,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 			// We shouldn't be here because compilation succeeded, so regexp shouldn't be nil
 			return fmt.Errorf("Grok compilation failure: %s", n.Grok.RegexpValue)
 		}
-		n.logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
+		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	}
 	/* load grok statics */
@@ -476,7 +476,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		if n.Statics[idx].ExpValue != "" {
 			n.Statics[idx].RunTimeValue, err = expr.Compile(n.Statics[idx].ExpValue, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
-				n.logger.Errorf("Statics Compilation failed %v.", err)
+				n.Logger.Errorf("Statics Compilation failed %v.", err)
 				return err
 			}
 		}
@@ -486,36 +486,36 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	/* compile whitelists if present */
 	for _, v := range n.Whitelist.Ips {
 		n.Whitelist.B_Ips = append(n.Whitelist.B_Ips, net.ParseIP(v))
-		n.logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
+		n.Logger.Debugf("adding ip %s to whitelists", net.ParseIP(v))
 		valid = true
 	}
 	for _, v := range n.Whitelist.Cidrs {
 		_, tnet, err := net.ParseCIDR(v)
 		if err != nil {
-			n.logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
+			n.Logger.Fatalf("Unable to parse cidr whitelist '%s' : %v.", v, err)
 		}
 		n.Whitelist.B_Cidrs = append(n.Whitelist.B_Cidrs, tnet)
-		n.logger.Debugf("adding cidr %s to whitelists", tnet)
+		n.Logger.Debugf("adding cidr %s to whitelists", tnet)
 		valid = true
 	}
 	for _, filter := range n.Whitelist.Exprs {
 		expression := &types.ExprWhitelist{}
 		expression.Filter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			n.logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
+			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
 		}
 		expression.ExprDebugger, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
 		}
 		n.Whitelist.B_Exprs = append(n.Whitelist.B_Exprs, expression)
-		n.logger.Debugf("adding expression %s to whitelists", filter)
+		n.Logger.Debugf("adding expression %s to whitelists", filter)
 		valid = true
 	}
 
 	if !valid {
 		/* node is empty, error force return */
-		n.logger.Infof("Node is empty: %s", spew.Sdump(n))
+		n.Logger.Infof("Node is empty: %s", spew.Sdump(n))
 		n.Stage = ""
 	}
 	if err := n.validate(pctx, ectx); err != nil {
