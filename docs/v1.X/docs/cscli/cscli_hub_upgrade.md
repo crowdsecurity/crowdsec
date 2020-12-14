@@ -1,32 +1,29 @@
-## cscli bouncers add
+## cscli hub upgrade
 
-add bouncer
+Upgrade all configs installed from hub
 
 ### Synopsis
 
-add bouncer
+
+Upgrade all configs installed from Crowdsec Hub. Run 'cscli hub update' if you want the latest versions available.
+
 
 ```
-cscli bouncers add MyBouncerName [--length 16] [flags]
-```
-
-### Examples
-
-```
-cscli bouncers add MyBouncerName
-cscli bouncers add MyBouncerName -l 24
+cscli hub upgrade [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help         help for add
-  -l, --length int   length of the api key (default 16)
+      --force   Force upgrade : Overwrite tainted and outdated files
+  -h, --help    help for upgrade
 ```
 
 ### Options inherited from parent commands
 
 ```
+  -a, --all             List as well disabled items
+  -b, --branch string   Use given branch from hub
   -c, --config string   path to crowdsec config file (default "/etc/crowdsec/config.yaml")
       --debug           Set logging to debug.
       --error           Set logging to error.
@@ -38,6 +35,6 @@ cscli bouncers add MyBouncerName -l 24
 
 ### SEE ALSO
 
-* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
+* [cscli hub](cscli_hub.md)	 - Manage Hub
 
 
