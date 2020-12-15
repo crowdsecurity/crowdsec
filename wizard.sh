@@ -268,7 +268,7 @@ genacquisition() {
 }
 
 detect_cs_install () {
-    if test -f "$CROWDSEC_BIN_INSTALLED"; then
+    if [[ -f "$CROWDSEC_BIN_INSTALLED" ]]; then
         log_warn "Crowdsec is already installed !"
         echo ""
         echo "We recommand to upgrade : sudo ./wizard.sh --upgrade "
@@ -376,7 +376,7 @@ update_full() {
     log_info "Backing up existing configuration"
     ${CSCLI_BIN_INSTALLED} config backup ${BACKUP_DIR}
     log_info "Saving default database content if exist"
-    if test -f "/var/lib/crowdsec/data/crowdsec.db"; then
+    if [[ -f "/var/lib/crowdsec/data/crowdsec.db" ]]; then
         cp /var/lib/crowdsec/data/crowdsec.db ${BACKUP_DIR}/crowdsec.db
     fi
     log_info "Cleanup existing crowdsec configuration"
@@ -387,7 +387,7 @@ update_full() {
     ${CSCLI_BIN_INSTALLED} hub update
     ${CSCLI_BIN_INSTALLED} config restore ${BACKUP_DIR}
     log_info "Restoring saved database if exist"
-    if test -f "${BACKUP_DIR}/crowdsec.db"; then
+    if [[ -f "${BACKUP_DIR}/crowdsec.db" ]]; then
         cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
     fi
     log_info "Finished, restarting"
