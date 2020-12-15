@@ -5,6 +5,7 @@ nav:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
     - Install Crowdsec : getting_started/installation.md
+    - Upgrade Crowdsec: getting_started/upgrades.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
   - User guide:
     - CLI: user_guide/cscli.md
