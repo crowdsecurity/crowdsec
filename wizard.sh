@@ -3,11 +3,11 @@
 set -o pipefail
 #set -x
 
-
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
+YELLOW='\033[1;33m'
+ORANGE='\033[0;33m'
 NC='\033[0m'
 
 SILENT="false"
@@ -24,7 +24,6 @@ CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
-
 
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
@@ -46,6 +45,7 @@ PATTERNS_PATH="${CROWDSEC_CONFIG_PATH}/patterns/"
 ACTION=""
 
 DEBUG_MODE="false"
+FORCE_MODE="false"
 
 SUPPORTED_SERVICES='apache2
 nginx
@@ -58,11 +58,16 @@ smb
 BACKUP_DIR=$(mktemp -d)
 rm -rf $BACKUP_DIR
 
-
 log_info() {
     msg=$1
     date=$(date +%x:%X)
     echo -e "[${date}][${BLUE}INF${NC}] crowdsec_wizard: ${msg}"
+}
+
+log_warn() {
+    msg=$1
+    date=$(date +%x:%X)
+    echo -e "[${date}][${ORANGE}WARN${NC}] crowdsec_wizard: ${msg}"
 }
 
 log_err() {
@@ -70,7 +75,6 @@ log_err() {
     date=$(date +%x:%X)
     echo -e "[${date}][${RED}ERR${NC}] crowdsec_wizard: ${msg}" 1>&2
 }
-
 
 log_dbg() {
     if [[ ${DEBUG_MODE} == "true" ]]; then
@@ -119,7 +123,6 @@ detect_services () {
     fi;
 }
 
-
 declare -A log_input_tags
 log_input_tags[apache2]='type: apache2'
 log_input_tags[nginx]='type: nginx'
@@ -151,7 +154,6 @@ find_logs_for() {
     HMENU=()
     #log_info "Searching logs for ${SVC} : ${log_locations[${SVC}]}"
 
-
     #split the line into an array with ',' separator
     OIFS=${IFS}
     IFS=',' read -r -a a <<< "${log_locations[${SVC}]},"
@@ -178,7 +180,6 @@ find_logs_for() {
         fi;
     fi
 }
-
 
 in_array() {
     str=$1
@@ -228,21 +229,15 @@ install_collection() {
         ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
-
-
     ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
     fi
 
-
     if [[ ${SILENT} == "false" ]]; then
         whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/" 20 50
     fi
-
 }
-
-
 
 #$1 is the service name, $... is the list of candidate logs (from find_logs_for)
 genyaml() {
@@ -272,6 +267,59 @@ genacquisition() {
     done 
 }
 
+detect_cs_install () {
+    if test -f "$CROWDSEC_BIN_INSTALLED"; then
+        log_warn "there is already an existing crowdsec installation !"
+        echo ""
+        echo "We recommand to upgrade : sudo ./wizard.sh --upgrade "
+        echo "If you want to install it anyway, please use '--force'."
+        echo ""
+        echo "Run : sudo ./wizard.sh -i --force"
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            exit 0
+        fi
+    fi
+}
+
+check_cs_version () {
+    CURRENT_CS_VERSION=$(crowdsec -version 2>&1 | grep version | grep -Eio 'v[0-9]+.[0-9]+.[0-9]+' | cut -c 2-)
+    NEW_CS_VERSION=$($CROWDSEC_BIN -version 2>&1 | grep version | grep -Eio 'v[0-9]+.[0-9]+.[0-9]+' | cut -c 2-)
+    CURRENT_MAJOR_VERSION=$(echo $CURRENT_CS_VERSION | cut -d'.' -f1)
+    CURRENT_MINOR_VERSION=$(echo $CURRENT_CS_VERSION | cut -d'.' -f2)
+    CURRENT_PATCH_VERSION=$(echo $CURRENT_CS_VERSION | cut -d'.' -f3)
+    NEW_MAJOR_VERSION=$(echo $NEW_CS_VERSION | cut -d'.' -f1)
+    NEW_MINOR_VERSION=$(echo $NEW_CS_VERSION | cut -d'.' -f2)
+    NEW_PATCH_VERSION=$(echo $NEW_CS_VERSION | cut -d'.' -f3)
+
+    if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
+        log_warn "new version ($NEW_CS_VERSION) is a major, you need to follow documentation to upgrade !"
+        echo ""
+        echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            exit 0
+        fi
+    elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
+        log_warn "new version ($NEW_CS_VERSION) is a patch !"
+        echo ""
+        echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
+        echo "If you want to $ACTION anyway, please use '--force'."
+        echo ""
+        echo "Run : sudo ./wizard.sh --$ACTION --force"
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            exit 0
+        fi
+    elif [[ $NEW_MINOR_VERSION -eq $CURRENT_MINOR_VERSION ]]; then
+        log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
+        echo ""
+        echo "We recommand to $ACTION only if it's an higher version. "
+        echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
+        echo ""
+        echo "Run : sudo ./wizard.sh --$ACTION --force"
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            exit 0
+        fi
+    fi
+}
 
 #install crowdsec and cscli
 install_crowdsec() {
@@ -316,7 +364,6 @@ update_bins() {
     systemctl restart crowdsec
 }
 
-
 update_full() {
 
     if [[ ! -f "$CROWDSEC_BIN" ]]; then
@@ -328,8 +375,10 @@ update_full() {
 
     log_info "Backing up existing configuration"
     ${CSCLI_BIN_INSTALLED} config backup ${BACKUP_DIR}
-    log_info "Saving default database content"
-    cp /var/lib/crowdsec/data/crowdsec.db ${BACKUP_DIR}/crowdsec.db
+    log_info "Saving default database content if exist"
+    if test -f "/var/lib/crowdsec/data/crowdsec.db"; then
+        cp /var/lib/crowdsec/data/crowdsec.db ${BACKUP_DIR}/crowdsec.db
+    fi
     log_info "Cleanup existing crowdsec configuration"
     uninstall_crowdsec
     log_info "Installing crowdsec"
@@ -337,8 +386,10 @@ update_full() {
     log_info "Restoring configuration"
     ${CSCLI_BIN_INSTALLED} hub update
     ${CSCLI_BIN_INSTALLED} config restore ${BACKUP_DIR}
-    log_info "Restoring saved database"
-    cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
+    log_info "Restoring saved database if exist"
+    if test -f "${BACKUP_DIR}/crowdsec.db"; then
+        cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
+    fi
     log_info "Finished, restarting"
     systemctl restart crowdsec || log_err "Failed to restart crowdsec"
 }
@@ -385,8 +436,6 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
-
-
 main() {
     if [[ "$1" == "backup_to_dir" ]];
     then
@@ -410,6 +459,7 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
+        check_cs_version
         update_bins
         return
     fi
@@ -420,6 +470,7 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
+        check_cs_version
         update_full
         return
     fi
@@ -434,7 +485,6 @@ main() {
         return
     fi
 
-
     if [[ "$1" == "bininstall" ]];
     then
         if ! [ $(id -u) = 0 ]; then
@@ -446,14 +496,14 @@ main() {
         return
     fi
 
-
     if [[ "$1" == "install" ]];
     then
         if ! [ $(id -u) = 0 ]; then
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
-
+        log_info "checking existing crowdsec install"
+        detect_cs_install
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
         log_info "installing crowdsec"
         install_crowdsec
@@ -579,6 +629,10 @@ do
         ACTION="install"
         shift
         ;;
+    -f|--force)
+        FORCE_MODE="true"
+        shift
+        ;; 
     -v|--verbose)
         DEBUG_MODE="true"
         shift
@@ -594,6 +648,5 @@ do
         ;;
     esac
 done
-
 
 main ${ACTION}
