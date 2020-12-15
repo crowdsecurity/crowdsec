@@ -276,7 +276,7 @@ detect_cs_install () {
         echo ""
         echo "Run : sudo ./wizard.sh -i --force"
         if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 0
+            exit 1
         fi
     fi
 }
@@ -296,7 +296,7 @@ check_cs_version () {
         echo ""
         echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
         if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 0
+            exit 1
         fi
     elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
         log_warn "new version ($NEW_CS_VERSION) is a patch !"
@@ -306,7 +306,7 @@ check_cs_version () {
         echo ""
         echo "Run : sudo ./wizard.sh --$ACTION --force"
         if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 0
+            exit 1
         fi
     elif [[ $NEW_MINOR_VERSION -eq $CURRENT_MINOR_VERSION ]]; then
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
@@ -316,7 +316,7 @@ check_cs_version () {
         echo ""
         echo "Run : sudo ./wizard.sh --$ACTION --force"
         if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 0
+            exit 1
         fi
     fi
 }
