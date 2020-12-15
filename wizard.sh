@@ -493,8 +493,6 @@ main() {
         fi
         log_info "checking existing crowdsec install"
         detect_cs_install
-        log_info "checking existing crowdsec version"
-        check_cs_version
         log_info "installing crowdsec"
         install_crowdsec
         return
@@ -508,8 +506,6 @@ main() {
         fi
         log_info "checking existing crowdsec install"
         detect_cs_install
-        log_info "checking existing crowdsec version"
-        check_cs_version
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
         log_info "installing crowdsec"
         install_crowdsec
