@@ -552,37 +552,53 @@ func RestoreHub(dirPath string) error {
 				log.Printf("Installed %s : ok", toinstall)
 			}
 		}
+
 		/*restore the local and tainted items*/
 		files, err := ioutil.ReadDir(itemDirectory)
 		if err != nil {
 			return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory, err)
 		}
 		for _, file := range files {
-			//dir are stages, keep track
-			if !file.IsDir() {
+			//this was the upstream data
+			if file.Name() == fmt.Sprintf("upstream-%s.json", itype) {
 				continue
 			}
-			stage := file.Name()
-			stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
-			log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
-			if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
-				return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
-			}
-			/*find items*/
-			ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
-			if err != nil {
-				return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
-			}
-			//finaly copy item
-			for _, tfile := range ifiles {
-				log.Infof("Going to restore local/tainted [%s]", tfile.Name())
-				sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
-				destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
+			if itype == cwhub.PARSERS || itype == cwhub.PARSERS_OVFLW {
+				//we expect a stage here
+				if !file.IsDir() {
+					continue
+				}
+				stage := file.Name()
+				stagedir := fmt.Sprintf("%s/%s/%s/", csConfig.ConfigPaths.ConfigDir, itype, stage)
+				log.Debugf("Found stage %s in %s, target directory : %s", stage, itype, stagedir)
+				if err = os.MkdirAll(stagedir, os.ModePerm); err != nil {
+					return fmt.Errorf("error while creating stage directory %s : %s", stagedir, err)
+				}
+				/*find items*/
+				ifiles, err := ioutil.ReadDir(itemDirectory + "/" + stage + "/")
+				if err != nil {
+					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
+				}
+				//finaly copy item
+				for _, tfile := range ifiles {
+					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
+					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())
+					destinationFile := fmt.Sprintf("%s%s", stagedir, tfile.Name())
+					if err = types.CopyFile(sourceFile, destinationFile); err != nil {
+						return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
+					}
+					log.Infof("restored %s to %s", sourceFile, destinationFile)
+				}
+			} else {
+				log.Infof("Going to restore local/tainted [%s]", file.Name())
+				sourceFile := fmt.Sprintf("%s/%s", itemDirectory, file.Name())
+				destinationFile := fmt.Sprintf("%s/%s/%s", csConfig.ConfigPaths.ConfigDir, itype, file.Name())
 				if err = types.CopyFile(sourceFile, destinationFile); err != nil {
 					return fmt.Errorf("failed copy %s %s to %s : %s", itype, sourceFile, destinationFile, err)
 				}
 				log.Infof("restored %s to %s", sourceFile, destinationFile)
 			}
+
 		}
 	}
 	return nil
@@ -623,7 +639,7 @@ func BackupHub(dirPath string) error {
 						}
 					}
 					clog.Debugf("[%s] : backuping file (tainted:%t local:%t up-to-date:%t)", k, v.Tainted, v.Local, v.UpToDate)
-					tfile := fmt.Sprintf("%s%s%s", itemDirectory, v.Stage, v.FileName)
+					tfile := fmt.Sprintf("%s%s/%s", itemDirectory, v.Stage, v.FileName)
 					if err = types.CopyFile(v.LocalPath, tfile); err != nil {
 						return fmt.Errorf("failed copy %s %s to %s : %s", itemType, v.LocalPath, tfile, err)
 					}
