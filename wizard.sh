@@ -269,7 +269,7 @@ genacquisition() {
 
 detect_cs_install () {
     if test -f "$CROWDSEC_BIN_INSTALLED"; then
-        log_warn "there is already an existing crowdsec installation !"
+        log_warn "Crowdsec is already installed !"
         echo ""
         echo "We recommand to upgrade : sudo ./wizard.sh --upgrade "
         echo "If you want to install it anyway, please use '--force'."
