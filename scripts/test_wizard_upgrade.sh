@@ -8,9 +8,11 @@ NC='\033[0m'
 OK_STR="${GREEN}OK${NC}"
 FAIL_STR="${RED}FAIL${NC}"
 
+CURRENT_FOLDER=$(pwd)
 
 BOUNCER_VERSION="v0.0.6"
 CROWDSEC_VERSION="xxx"
+RELEASE_FOLDER=""
 
 HUB_AVAILABLE_PARSERS="/etc/crowdsec/hub/parsers"
 HUB_AVAILABLE_SCENARIOS="/etc/crowdsec/hub/scenarios"
@@ -38,14 +40,23 @@ MUST_FAIL=0
 
 function init
 {
+    if [[ -z ${RELEASE_FOLDER} ]];
+    then
+      cd ..
+      BUILD_VERSION=${CROWDSEC_VERSION} make release
+      if [ $? != 0 ]; then
+        echo "Unable to make the release, exiting"
+        exit 1
+      fi
+      RELEASE_FOLDER="crowdsec-v${CROWDSEC_VERSION}"
+    else
+      cp -r ${RELEASE_FOLDER} ${CURRENT_FOLDER}
+    fi
+    cd ${CURRENT_FOLDER}
     echo "[*] Installing crowdsec (bininstall)"
-    cd ..
-    BUILD_VERSION=${CROWDSEC_VERSION} make release
-    cp -r crowdsec-${CROWDSEC_VERSION} ./scripts/
-    cd ./scripts/
-    cd ./crowdsec-${CROWDSEC_VERSION}/
+    cd ${RELEASE_FOLDER}/
     ./wizard.sh --bininstall
-    cd ..
+    cd ${CURRENT_FOLDER}
     cscli hub update
     cscli collections install crowdsecurity/sshd
     cscli postoverflows install crowdsecurity/cdn-whitelist
@@ -56,7 +67,7 @@ function init
     tar xzvf cs-firewall-bouncer.tgz
     cd cs-firewall-bouncer-${BOUNCER_VERSION}/
     echo "nftables" | sudo ./install.sh
-    cd ..
+    cd ${CURRENT_FOLDER}
 
     echo "[*] Tainting parser /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml"
     echo "  # test taint parser" >> /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml
@@ -69,7 +80,7 @@ function init
 
 
     echo "[*] Tainting new systemd configuration file"
-    echo "  # test taint systemd file" >> ./crowdsec-${CROWDSEC_VERSION}/config/crowdsec.service
+    echo "  # test taint systemd file" >> ${RELEASE_FOLDER}/config/crowdsec.service
 
     echo "[*] Tainting profile file"
     echo "  # test taint profile file" >> ${PROFILE_FILE}
@@ -109,19 +120,19 @@ function init
 
     echo "[*] Setup done"
     echo "[*] Lauching the upgrade"
-    cd ./crowdsec-${CROWDSEC_VERSION}/
+    cd ${RELEASE_FOLDER}/
     ./wizard.sh --upgrade --force
-    cd ..
+    cd ${CURRENT_FOLDER}
     echo "[*] Upgrade done, checking results"
 }
 
 function down
 {
-  cd crowdsec-${CROWDSEC_VERSION}/
+  cd ${RELEASE_FOLDER}/
   ./wizard.sh --uninstall
-  cd ..
+  cd ${CURRENT_FOLDER}
   rm -rf crowdsec-v*
-  rm -rf cs-firewall-bouncer-${BOUNCER_VERSION}
+  rm -rf cs-firewall-bouncer-*
   rm -f crowdsec-release.tgz
   rm -f cs-firewall-bouncer.tgz
   rm *.md5
@@ -152,6 +163,20 @@ function assert_not_equal
     echo "Details:"
     echo ""
     diff  <(echo "$1" ) <(echo "$2")
+    MUST_FAIL=1
+  fi
+  echo "-----------------------------------------------------------------------"
+}
+
+function assert_folder_exists
+{
+  echo ""
+  if [ -d "${BOUNCER_FOLDER}" ]
+  then
+    echo -e "Status - ${GREEN}OK${NC}"
+  else
+    echo -e "Status - ${RED}FAIL${NC}"
+    echo "Folder '$1' doesn't exist, but should"
     MUST_FAIL=1
   fi
   echo "-----------------------------------------------------------------------"
@@ -254,7 +279,13 @@ function test_systemd_file
   echo $FUNCNAME
   new=$(find ${SYSTEMD_FILE} -type f -exec md5sum "{}" +)
   old=$(cat systemd.md5)
-  assert_equal "$new" "$old"
+  assert_not_equal "$new" "$old"
+}
+
+function test_bouncer_dir
+{
+  echo $FUNCNAME
+  assert_folder_exists ${BOUNCER_FOLDER}
 }
 
 function start_test
@@ -273,7 +304,41 @@ function start_test
   test_simulation_file
   test_db_file
   test_systemd_file
+  test_bouncer_dir
 }
+
+
+usage() {
+      echo "Usage:"
+      echo ""
+      echo "    ./test_wizard_upgrade.sh -h                                   Display this help message."
+      echo "    ./test_wizard_upgrade.sh                                      Run all the testsuite. Go must be available to make the release"
+      echo "    ./test_wizard_upgrade.sh --release <path_to_release_folder>   If go is not installed, please provide a path to the crowdsec-vX.Y.Z release folder"
+      echo ""
+      exit 0  
+}
+
+while [[ $# -gt 0 ]]
+do
+    key="${1}"
+    case ${key} in
+    --release)
+        RELEASE_FOLDER="${2}"
+        shift #past argument
+        shift
+        ;;   
+    -h|--help)
+        usage
+        exit 0
+        ;;
+    *)    # unknown option
+        echo "Unknown argument ${key}."
+        usage
+        exit 1
+        ;;
+    esac
+done
+
 
 init
 start_test
