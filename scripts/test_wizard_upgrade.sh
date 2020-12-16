@@ -48,7 +48,7 @@ function init
         echo "Unable to make the release (make sur you have go installed), exiting"
         exit 1
       fi
-      RELEASE_FOLDER="crowdsec-v${CROWDSEC_VERSION}"
+      RELEASE_FOLDER="crowdsec-${CROWDSEC_VERSION}"
     else
       cp -r ${RELEASE_FOLDER} ${CURRENT_FOLDER}
     fi
