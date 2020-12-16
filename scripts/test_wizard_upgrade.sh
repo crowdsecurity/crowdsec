@@ -85,7 +85,7 @@ function init
     echo "# test taint simulation file" >> ${SIMULATION_FILE}
 
     echo "[*] Adding a decision"
-    echo "[*] cscli decisions add -i 1.2.3.4"
+    cscli decisions add -i 1.2.3.4
 
     find ${HUB_AVAILABLE_PARSERS} -type f -exec md5sum "{}" + >> parsers_available.md5
     find ${HUB_AVAILABLE_SCENARIOS} -type f -exec md5sum "{}" + >> scenarios_available.md5
