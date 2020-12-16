@@ -24,8 +24,8 @@ jobs:
       uses: actions/checkout@v2
     - name: install ipset for bouncer
       run: |
-        apt update
-        apt install ipset
+        sudo apt update
+        sudo apt install ipset
     - name: run tests
       run: |
         cd scripts
