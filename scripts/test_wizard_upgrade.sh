@@ -45,7 +45,7 @@ function init
       cd ..
       BUILD_VERSION=${CROWDSEC_VERSION} make release
       if [ $? != 0 ]; then
-        echo "Unable to make the release, exiting"
+        echo "Unable to make the release (make sur you have go installed), exiting"
         exit 1
       fi
       RELEASE_FOLDER="crowdsec-v${CROWDSEC_VERSION}"
@@ -53,6 +53,8 @@ function init
       cp -r ${RELEASE_FOLDER} ${CURRENT_FOLDER}
     fi
     cd ${CURRENT_FOLDER}
+
+
     echo "[*] Installing crowdsec (bininstall)"
     cd ${RELEASE_FOLDER}/
     ./wizard.sh --bininstall
@@ -62,6 +64,8 @@ function init
     cscli postoverflows install crowdsecurity/cdn-whitelist
     cscli machines add -a
     systemctl start crowdsec
+
+
     echo "[*] Install firewall bouncer"
     wget https://github.com/crowdsecurity/cs-firewall-bouncer/releases/download/${BOUNCER_VERSION}/cs-firewall-bouncer.tgz
     tar xzvf cs-firewall-bouncer.tgz
@@ -77,7 +81,6 @@ function init
 
     echo "[*] Tainting postoverflow /etc/crowdsec/postoverflows/s01-whitelist/cdn-whitelist.yaml"
     echo "  # test taint postoverflow" >> /etc/crowdsec/postoverflows/s01-whitelist/cdn-whitelist.yaml
-
 
     echo "[*] Tainting new systemd configuration file"
     echo "  # test taint systemd file" >> ${RELEASE_FOLDER}/config/crowdsec.service
