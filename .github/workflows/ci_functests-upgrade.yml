@@ -22,6 +22,10 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+    - name: install ipset for bouncer
+      run: |
+        apt update
+        apt install ipset
     - name: run tests
       run: |
         cd scripts

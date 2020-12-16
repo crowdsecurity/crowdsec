@@ -49,9 +49,8 @@ function init
         exit 1
       fi
       RELEASE_FOLDER="crowdsec-${CROWDSEC_VERSION}"
-    else
-      cp -r ${RELEASE_FOLDER} ${CURRENT_FOLDER}
     fi
+    cp -r ${RELEASE_FOLDER} ${CURRENT_FOLDER}
     cd ${CURRENT_FOLDER}
 
 
