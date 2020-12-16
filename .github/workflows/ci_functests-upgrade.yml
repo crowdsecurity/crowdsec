@@ -22,11 +22,6 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-    - name: Build release
-      run: BUILD_VERSION=xxx make release
-    - name: Install release
-      run: |
-        cp -r crowdsec-xxx ./scripts/
     - name: run tests
       run: |
         cd scripts

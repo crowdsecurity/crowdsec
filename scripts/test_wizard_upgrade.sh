@@ -10,7 +10,7 @@ FAIL_STR="${RED}FAIL${NC}"
 
 
 BOUNCER_VERSION="v0.0.6"
-CROWDSEC_VERSION=xxx
+CROWDSEC_VERSION="xxx"
 
 HUB_AVAILABLE_PARSERS="/etc/crowdsec/hub/parsers"
 HUB_AVAILABLE_SCENARIOS="/etc/crowdsec/hub/scenarios"
@@ -34,9 +34,15 @@ SYSTEMD_FILE="/etc/systemd/system/crowdsec.service"
 
 BOUNCER_FOLDER="/etc/crowdsec/cs-firewall-bouncer"
 
+MUST_FAIL=0
+
 function init
 {
-    echo "[*] Installing crowdsec (unattended mode)"
+    echo "[*] Installing crowdsec (bininstall)"
+    cd ..
+    BUILD_VERSION=${CROWDSEC_VERSION} make release
+    cp -r crowdsec-${CROWDSEC_VERSION} ./scripts/
+    cd ./scripts/
     cd ./crowdsec-${CROWDSEC_VERSION}/
     ./wizard.sh --bininstall
     cd ..
@@ -99,6 +105,7 @@ function init
     md5sum ${CONFIG_FILE} >> config.md5
     md5sum ${SIMULATION_FILE} >> simulation.md5
     md5sum ${DB_FILE} >> db.md5
+    md5sum ${SYSTEMD_FILE} >> systemd.md5
 
     echo "[*] Setup done"
     echo "[*] Lauching the upgrade"
@@ -113,8 +120,7 @@ function down
   cd crowdsec-${CROWDSEC_VERSION}/
   ./wizard.sh --uninstall
   cd ..
-
-  #rm -rf crowdsec-v*
+  rm -rf crowdsec-v*
   rm -rf cs-firewall-bouncer-${BOUNCER_VERSION}
   rm -f crowdsec-release.tgz
   rm -f cs-firewall-bouncer.tgz
@@ -130,11 +136,26 @@ function assert_equal
     echo -e "Status - ${RED}FAIL${NC}"
     echo "Details:"
     echo ""
-    diff  <(echo "$1" ) <(echo "$2")  
+    diff  <(echo "$1" ) <(echo "$2")
+    MUST_FAIL=1
   fi
   echo "-----------------------------------------------------------------------"
 }
 
+function assert_not_equal
+{
+  echo ""
+  if [ "$1" != "$2" ]; then
+    echo -e "Status - ${GREEN}OK${NC}"
+  else
+    echo -e "Status - ${RED}FAIL${NC}"
+    echo "Details:"
+    echo ""
+    diff  <(echo "$1" ) <(echo "$2")
+    MUST_FAIL=1
+  fi
+  echo "-----------------------------------------------------------------------"
+}
 
 function test_enabled_parsers
 {
@@ -228,6 +249,14 @@ function test_simulation_file
   assert_equal "$new" "$old"
 }
 
+function test_systemd_file
+{
+  echo $FUNCNAME
+  new=$(find ${SYSTEMD_FILE} -type f -exec md5sum "{}" +)
+  old=$(cat systemd.md5)
+  assert_equal "$new" "$old"
+}
+
 function start_test
 {
   echo ""
@@ -243,8 +272,13 @@ function start_test
   test_profile_file
   test_simulation_file
   test_db_file
+  test_systemd_file
 }
 
 init
 start_test
 down
+if [ ${MUST_FAIL} -eq 1 ]
+then
+  exit 1
+fi
