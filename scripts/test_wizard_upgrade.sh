@@ -70,7 +70,7 @@ function init
     wget https://github.com/crowdsecurity/cs-firewall-bouncer/releases/download/${BOUNCER_VERSION}/cs-firewall-bouncer.tgz
     tar xzvf cs-firewall-bouncer.tgz
     cd cs-firewall-bouncer-${BOUNCER_VERSION}/
-    echo "nftables" | sudo ./install.sh
+    echo "iptables" | sudo ./install.sh
     cd ${CURRENT_FOLDER}
 
     echo "[*] Tainting parser /etc/crowdsec/parsers/s01-parse/sshd-logs.yaml"
