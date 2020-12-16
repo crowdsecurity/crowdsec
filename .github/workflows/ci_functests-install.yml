@@ -1,4 +1,4 @@
-name: Hub-CI
+name: Functionnal tests install
 
 on:
   push:
