@@ -27,10 +27,8 @@ jobs:
     - name: Install release
       run: |
         cp -r crowdsec-xxx ./scripts/
-        cd scripts
     - name: run tests
       run: |
-        pwd
-        ls
+        cd scripts
         sudo test_wizard_upgrade.sh
 
