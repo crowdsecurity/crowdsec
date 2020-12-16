@@ -30,5 +30,7 @@ jobs:
         cd scripts
     - name: run tests
       run: |
+        pwd
+        ls
         sudo test_wizard_upgrade.sh
 
