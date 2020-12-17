@@ -148,7 +148,7 @@ With tor installed, setting `HTTP_PROXY` and `HTTPS_PROXY` environment variables
 ### Running the wizard with tor
 
 ```bash
-$ sudo HTTPS_PROXY=socks5://127.0.0.1:9050  ./wizard.sh --bininstall
+$ sudo HTTPS_PROXY=socks5://127.0.0.1:9050 HTTP_PROXY=socks5://127.0.0.1:9050  ./wizard.sh --bininstall
 ```
 
 !!! warning
@@ -160,12 +160,13 @@ $ sudo HTTPS_PROXY=socks5://127.0.0.1:9050  ./wizard.sh --bininstall
 ```bash
 [Service]
 Environment="HTTPS_PROXY=socks5://127.0.0.1:9050"
+Environment="HTTP_PROXY=socks5://127.0.0.1:9050"
 ...
 ```
 ### Using cscli via tor
 
 ```bash
-$ sudo HTTPS_PROXY=socks5://127.0.0.1:9050 cscli capi register
+$ sudo HTTP_PROXY=socks5://127.0.0.1:9050 HTTPS_PROXY=socks5://127.0.0.1:9050 cscli capi register
 ```
 
 
