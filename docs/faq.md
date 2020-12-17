@@ -53,6 +53,8 @@ SQLite by default as it's suitable for standalone/single-machine setups.
  - Whitelists allows you to "discard" events or overflows
  - Simulation allows you to simply cancel the decision that is going to be taken, but keep track of it
 
+ {{v1X.profiles.htmlname}} allows you to control which decision will be applied to which alert.
+
 ## How to add whitelists ?
 
 You can follow this [guide](/Crowdsec/v1/write_configurations/whitelist/)
@@ -86,7 +88,7 @@ Several initiatives have been taken to tackle the false positives approach as ea
 
 ## I need some help
 
-Feel free to ask for some help to the {{v1X.doc.community}}.
+Feel free to ask for some help to the {{v1X.doc.discourse}} or directly in the {{v1X.doc.gitter}} chat.
 
 ## How to use crowdsec on raspberry pi OS (formerly known as rasbian) 
 
@@ -133,17 +135,43 @@ sudo MB_DB_TYPE=h2 MB_DB_FILE=<absolute-path>/metabase.db/metabase.db java -jar 
 !!! warning
         The default username is `crowdsec@crowdsec.net` and the default password is `!!Cr0wdS3c_M3t4b4s3??`. Please update the password when you will connect to metabase for the first time
 
+## How to configure crowdsec/cscli to use Tor
+
+
+It is possible to configure `cscli` and `crowdsec` to use [tor](https://www.torproject.org/) to anonymously interact with our API.
+All (http) requests made to the central API to go through the [tor network](https://www.torproject.org/).
+
+
+With tor installed, setting `HTTP_PROXY` and `HTTPS_PROXY` environment variables to your socks5 proxy will do the trick.
+
+
+### Running the wizard with tor
+
+```bash
+$ sudo HTTPS_PROXY=socks5://127.0.0.1:9050  ./wizard.sh --bininstall
+```
+
+!!! warning
+        Do not use the wizard in interactive (`-i`) mode if you're concerned, as it will start the service at the end of the setup, leaking your IP address.
+
+
+### Edit crowdsec systemd unit to push/pull via tor
+
+```bash
+[Service]
+Environment="HTTPS_PROXY=socks5://127.0.0.1:9050"
+...
+```
+### Using cscli via tor
+
+```bash
+$ sudo HTTPS_PROXY=socks5://127.0.0.1:9050 cscli capi register
+```
+
+
+
+
 <!-- 
-
-## How to contribute ?
-
-### On {{v1X.crowdsec.Name}}
-
-### On Configurations (Parsers, scenarios)
-
-### On bouncers
-
-
 
 ## What are common use-cases ?
 
