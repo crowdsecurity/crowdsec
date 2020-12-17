@@ -1,4 +1,4 @@
-name: Hub-CI
+name: Functionnal tests install
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: Install generated release and perform basic tests
+    name: Install generated release and perform upgrade tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.13
