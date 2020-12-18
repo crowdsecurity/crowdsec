@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
@@ -63,19 +62,6 @@ var globalCsInfo = prometheus.NewGauge(
 		ConstLabels: prometheus.Labels{"version": cwversion.VersionStr()},
 	},
 )
-
-func dumpMetrics() {
-	var tmpFile string
-	var err error
-
-	if cConfig.Crowdsec.BucketStateDumpDir != "" {
-		log.Infof("!! Dumping buckets state")
-		if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-			log.Fatalf("Failed dumping bucket state : %s", err)
-		}
-		log.Infof("Buckets state dumped to %s", tmpFile)
-	}
-}
 
 func registerPrometheus(config *csconfig.PrometheusCfg) {
 	if !config.Enabled {
