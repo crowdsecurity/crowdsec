@@ -13,6 +13,7 @@ import (
 	"runtime/debug"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -116,6 +117,17 @@ func Clone(a, b interface{}) error {
 func CatchPanic(component string) {
 
 	if r := recover(); r != nil {
+
+		/*mimic gin's behaviour on broken pipe*/
+		var brokenPipe bool
+		if ne, ok := r.(*net.OpError); ok {
+			if se, ok := ne.Err.(*os.SyscallError); ok {
+				if se.Err == syscall.EPIPE || se.Err == syscall.ECONNRESET {
+					brokenPipe = true
+				}
+			}
+		}
+
 		tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
 		if err != nil {
 			log.Fatal(err)
@@ -131,10 +143,16 @@ func CatchPanic(component string) {
 		if err := tmpfile.Close(); err != nil {
 			log.Fatal(err)
 		}
+
 		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
 		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
 		log.Errorf("stacktrace/report is written to %s : please join it to your issue", tmpfile.Name())
-		log.Fatalf("crowdsec stopped")
+
+		/*if it's not a broken pipe error, we don't want to fatal. it can happen from Local API pov*/
+		if !brokenPipe {
+			log.Fatalf("crowdsec stopped")
+		}
+
 	}
 }
 

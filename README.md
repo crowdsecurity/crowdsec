@@ -76,8 +76,6 @@ apt-get install bash gettext whiptail curl wget
 ```
 </details>
 
-Note: `dialog` can be used instead of `whiptail` (it will be automatically detected by the wizard)
-
 <details open>
   <summary>for RedHat based distributions</summary>
 

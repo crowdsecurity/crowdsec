@@ -97,7 +97,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 		if err != nil {
 			return fmt.Errorf("can't update scenario list: %s", err)
 		}
-		log.Infof("scenarios list updated for '%s'", *t.MachineID)
+		log.Debugf("scenarios list updated for '%s'", *t.MachineID)
 	}
 
 	var auth = models.WatcherAuthRequest{
@@ -192,6 +192,8 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 		log.Tracef("resp-jwt: %s", string(dump))
 	}
 	if err != nil {
+		/*we had an error, reset the token ?*/
+		t.token = ""
 		return resp, errors.Wrapf(err, "performing jwt auth")
 	}
 	log.Debugf("resp-jwt: %d", resp.StatusCode)

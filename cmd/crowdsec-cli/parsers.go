@@ -90,7 +90,6 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Short:   "Upgrade given parser(s)",
 		Long:    `Fetch and upgrade given parser(s) from hub`,
 		Example: `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
