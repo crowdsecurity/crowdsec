@@ -47,6 +47,7 @@ ACTION=""
 DEBUG_MODE="false"
 
 SUPPORTED_SERVICES='apache2
+httpd
 nginx
 sshd
 mysql
@@ -89,13 +90,14 @@ detect_services () {
     for SVC in ${SUPPORTED_SERVICES} ; do
         log_info "Checking if service '${SVC}' is running (ps+systemd)"
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
-            if [$SRC != "apache2" ] ; then 
-                echo ${SRC} | grep ${SVC} >/dev/null
-            else 
-                echo "apache2" | grep ${SVC} >/dev/null || echo "httpd" | grep ${SVC} >/dev/null
-            fi;
-
+            echo ${SRC} | grep ${SVC} >/dev/null
             if [ $? -eq 0 ]; then
+    
+                #on centos, apache2 is named httpd                                                                                                                                                                                            
+                if [[ ${SVC} == "httpd" ]] ; then
+                    SVC="apache2";
+                fi
+
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
                 log_info "Found '${SVC}' running"
