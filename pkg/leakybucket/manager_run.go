@@ -228,7 +228,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.Signal = make(chan bool, 1)
 				fresh_bucket.KillSwitch = make(chan bool, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
-				go LeakRoutine(fresh_bucket)
+				holder.tomb.Go(func() error {
+					return LeakRoutine(fresh_bucket)
+				})
+
 				holder.logger.Debugf("Created new bucket %s", buckey)
 				//wait for signal to be opened
 				<-fresh_bucket.Signal

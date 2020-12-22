@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -9,6 +10,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/goombaio/namegenerator"
+	"gopkg.in/tomb.v2"
 
 	//rate "time/rate"
 
@@ -65,6 +67,7 @@ type Leaky struct {
 	scopeType       types.ScopeType
 	hash            string
 	scenarioVersion string
+	tomb            *tomb.Tomb
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -160,6 +163,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		scenarioVersion: bucketFactory.ScenarioVersion,
 		hash:            bucketFactory.hash,
 		Simulated:       bucketFactory.Simulated,
+		tomb:            bucketFactory.tomb,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -174,7 +178,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 
 /* for now mimic a leak routine */
 //LeakRoutine us the life of a bucket. It dies when the bucket underflows or overflows
-func LeakRoutine(leaky *Leaky) {
+func LeakRoutine(leaky *Leaky) error {
 
 	var (
 		durationTicker <-chan time.Time = make(<-chan time.Time)
@@ -197,7 +201,7 @@ func LeakRoutine(leaky *Leaky) {
 		if err != nil {
 			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 			close(leaky.Signal)
-			return
+			return errors.New(fmt.Sprintf("Problem at bucket initializiation. Bail out %T : %v", f, err))
 		}
 	}
 
@@ -230,7 +234,7 @@ func LeakRoutine(leaky *Leaky) {
 			close(leaky.Signal)
 			leaky.logger.Debugf("Bucket externally killed, return")
 			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
-			return
+			return nil
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			close(leaky.Signal)
@@ -255,7 +259,7 @@ func LeakRoutine(leaky *Leaky) {
 			BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
-			return
+			return nil
 			/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
 			var (
@@ -294,7 +298,10 @@ func LeakRoutine(leaky *Leaky) {
 
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
-			return
+			return nil
+		case <-leaky.tomb.Dying():
+			return nil
+
 		}
 	End:
 	}

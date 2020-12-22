@@ -22,6 +22,7 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/goombaio/namegenerator"
+	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -66,6 +67,7 @@ type BucketFactory struct {
 	ScenarioVersion string                    `yaml:"version,omitempty"`
 	hash            string                    `yaml:"-"`
 	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	tomb            *tomb.Tomb                `yaml:"-"`
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -122,7 +124,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
@@ -196,7 +198,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 				}
 			}
 
-			err = LoadBucket(&bucketFactory)
+			err = LoadBucket(&bucketFactory, tomb)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
 				return nil, nil, fmt.Errorf("loading of %s failed : %v", bucketFactory.Name, err)
@@ -209,7 +211,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string) ([]BucketFa
 }
 
 /* Init recursively process yaml files from a directory and loads them as BucketFactory */
-func LoadBucket(bucketFactory *BucketFactory) error {
+func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	var err error
 	if bucketFactory.Debug {
 		var clog = logrus.New()
@@ -322,6 +324,7 @@ func LoadBucket(bucketFactory *BucketFactory) error {
 	if err := ValidateFactory(bucketFactory); err != nil {
 		return fmt.Errorf("invalid bucket from %s : %v", bucketFactory.Filename, err)
 	}
+	bucketFactory.tomb = tomb
 	return nil
 
 }
@@ -368,7 +371,9 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.Ovflw_ts = v.Ovflw_ts
 				tbucket.Total_count = v.Total_count
 				buckets.Bucket_map.Store(k, tbucket)
-				go LeakRoutine(tbucket)
+				h.tomb.Go(func() error {
+					return LeakRoutine(tbucket)
+				})
 				<-tbucket.Signal
 				found = true
 				break
