@@ -25,6 +25,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 
 	l.Total_count += 1
+	l.mutex.Lock()
 	if l.First_ts.IsZero() {
 		l.logger.Debugf("First event, bucket creation time : %s", d)
 		l.First_ts = d
@@ -40,6 +41,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		l.Queue.Add(msg)
 		l.Out <- l.Queue
 	}
+	l.mutex.Unlock()
 }
 
 func NewTimeMachine(g BucketFactory) *Leaky {

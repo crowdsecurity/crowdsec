@@ -273,11 +273,13 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				if err != nil {
 					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 				}
+				bucket.mutex.Lock()
 				if d.After(bucket.Last_ts.Add(bucket.Duration)) {
 					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
 					buckets.Bucket_map.Delete(buckey)
 					continue
 				}
+				bucket.mutex.Unlock()
 			}
 			/*if we're here, let's try to pour */
 
