@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -27,15 +28,17 @@ type TestFile struct {
 }
 
 func TestBucket(t *testing.T) {
-
-	var envSetting = os.Getenv("TEST_ONLY")
+	var (
+		envSetting            = os.Getenv("TEST_ONLY")
+		tomb       *tomb.Tomb = &tomb.Tomb{}
+	)
 	err := exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	if envSetting != "" {
-		if err := testOneBucket(t, envSetting); err != nil {
+		if err := testOneBucket(t, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
@@ -46,21 +49,28 @@ func TestBucket(t *testing.T) {
 		for _, fd := range fds {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
-			if err := testOneBucket(t, fname); err != nil {
-				t.Fatalf("Test '%s' failed : %s", fname, err)
-			}
+			tomb.Go(func() error {
+				if err := testOneBucket(t, fname, tomb); err != nil {
+					t.Fatalf("Test '%s' failed : %s", fname, err)
+				}
+				return nil
+			})
 		}
 	}
 }
 
-func testOneBucket(t *testing.T, dir string) error {
+func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
-	var holders []BucketFactory
+	var (
+		holders []BucketFactory
 
-	var stagefiles []byte
-	var stagecfg string
-	var stages []parser.Stagefile
-	var err error
+		stagefiles []byte
+		stagecfg   string
+		stages     []parser.Stagefile
+		err        error
+		buckets    *Buckets
+	)
+	buckets = NewBuckets()
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
@@ -88,23 +98,21 @@ func testOneBucket(t *testing.T, dir string) error {
 	cscfg := &csconfig.CrowdsecServiceCfg{
 		DataDir: "tests",
 	}
-	holders, response, err := LoadBuckets(cscfg, files)
+	holders, response, err := LoadBuckets(cscfg, files, tomb, buckets)
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
-	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response) {
+	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
 	return nil
 }
 
-func testFile(t *testing.T, file string, bs string, holders []BucketFactory, response chan types.Event) bool {
+func testFile(t *testing.T, file string, bs string, holders []BucketFactory, response chan types.Event, buckets *Buckets) bool {
 
 	var results []types.Event
-	var buckets *Buckets
 	var dump bool
 
-	buckets = NewBuckets()
 	//should we restore
 	if _, err := os.Stat(bs); err == nil {
 		dump = true

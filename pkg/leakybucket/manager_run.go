@@ -23,6 +23,10 @@ var serialized map[string]Leaky
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
+	buckets.wgPour.Wait()
+	buckets.wgDumpState.Add(1)
+	defer buckets.wgDumpState.Done()
+
 	total := 0
 	discard := 0
 	toflush := []string{}
@@ -70,7 +74,11 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 }
 
 func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
-	//var file string
+
+	//synchronize with PourItemtoHolders
+	buckets.wgPour.Wait()
+	buckets.wgDumpState.Add(1)
+	defer buckets.wgDumpState.Done()
 
 	if outputdir == "" {
 		return "", fmt.Errorf("empty output dir for dump bucket state")
@@ -148,6 +156,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		ok, condition, sent bool
 		err                 error
 	)
+	//synchronize with DumpBucketsStateAt
 
 	for idx, holder := range holders {
 
@@ -233,6 +242,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				})
 
 				holder.logger.Debugf("Created new bucket %s", buckey)
+
 				//wait for signal to be opened
 				<-fresh_bucket.Signal
 				continue

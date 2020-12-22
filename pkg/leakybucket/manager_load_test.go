@@ -3,6 +3,8 @@ package leakybucket
 import (
 	"fmt"
 	"testing"
+
+	"gopkg.in/tomb.v2"
 )
 
 type cfgTest struct {
@@ -12,8 +14,9 @@ type cfgTest struct {
 }
 
 func runTest(tests []cfgTest) error {
+	var tomb *tomb.Tomb = &tomb.Tomb{}
 	for idx, cfg := range tests {
-		err := LoadBucket(&cfg.cfg)
+		err := LoadBucket(&cfg.cfg, tomb)
 		if cfg.loadable && err != nil {
 			return fmt.Errorf("expected loadable result (%d/%d), got: %s", idx+1, len(tests), err)
 		}

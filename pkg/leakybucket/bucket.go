@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -68,6 +69,8 @@ type Leaky struct {
 	hash            string
 	scenarioVersion string
 	tomb            *tomb.Tomb
+	wgPour          *sync.WaitGroup
+	wgDumpState     *sync.WaitGroup
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -164,6 +167,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		hash:            bucketFactory.hash,
 		Simulated:       bucketFactory.Simulated,
 		tomb:            bucketFactory.tomb,
+		wgPour:          bucketFactory.wgPour,
+		wgDumpState:     bucketFactory.wgDumpState,
 	}
 	if l.BucketConfig.Capacity > 0 && l.BucketConfig.leakspeed != time.Duration(0) {
 		l.Duration = time.Duration(l.BucketConfig.Capacity+1) * l.BucketConfig.leakspeed
@@ -308,6 +313,9 @@ func LeakRoutine(leaky *Leaky) error {
 }
 
 func Pour(leaky *Leaky, msg types.Event) {
+	leaky.wgDumpState.Wait()
+	leaky.wgPour.Add(1)
+	defer leaky.wgPour.Done()
 
 	leaky.Total_count += 1
 	if leaky.First_ts.IsZero() {
