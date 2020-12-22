@@ -123,14 +123,14 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
 	}
+	buckets = leaky.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb)
+	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
 
 	if err != nil {
 		return fmt.Errorf("Scenario loading failed : %v", err)
 	}
-	buckets = leaky.NewBuckets()
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		for holderIndex := range holders {

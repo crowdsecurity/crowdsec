@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -68,6 +69,8 @@ type BucketFactory struct {
 	hash            string                    `yaml:"-"`
 	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
 	tomb            *tomb.Tomb                `yaml:"-"`
+	wgPour          *sync.WaitGroup           `yaml:"-"`
+	wgDumpState     *sync.WaitGroup           `yaml:"-"`
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -124,7 +127,7 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 	return nil
 }
 
-func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb) ([]BucketFactory, chan types.Event, error) {
+func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.Tomb, buckets *Buckets) ([]BucketFactory, chan types.Event, error) {
 	var (
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
@@ -198,6 +201,8 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 				}
 			}
 
+			bucketFactory.wgDumpState = buckets.wgDumpState
+			bucketFactory.wgPour = buckets.wgPour
 			err = LoadBucket(&bucketFactory, tomb)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)
