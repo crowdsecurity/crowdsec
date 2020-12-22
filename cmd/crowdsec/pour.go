@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
-func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets) error {
+func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *leaky.Buckets, cConfig *csconfig.GlobalConfig) error {
 	var (
 		count int
 	)

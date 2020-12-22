@@ -10,6 +10,7 @@ import (
 	"github.com/coreos/go-systemd/daemon"
 	"github.com/pkg/errors"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ import (
 )
 
 //debugHandler is kept as a dev convenience : it shuts down and serialize internal state
-func debugHandler(sig os.Signal) error {
+func debugHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 	var tmpFile string
 	var err error
 	//stop go routines
@@ -36,7 +37,7 @@ func debugHandler(sig os.Signal) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal) error {
+func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 	var tmpFile string
 	var err error
 
@@ -81,7 +82,7 @@ func reloadHandler(sig os.Signal) error {
 	}
 
 	if !disableAPI {
-		apiServer, err := initAPIServer()
+		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return fmt.Errorf("unable to init api server: %s", err)
 		}
@@ -90,22 +91,20 @@ func reloadHandler(sig os.Signal) error {
 	}
 
 	if !disableAgent {
-		csParsers, err := initCrowdsec()
+		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
 			return fmt.Errorf("unable to init crowdsec: %s", err)
 		}
 		//restore bucket state
 		if tmpFile != "" {
-			log.Warningf("Restoring buckets state from %s", tmpFile)
-			if err := leaky.LoadBucketsState(tmpFile, buckets, holders); err != nil {
-				log.Fatalf("unable to restore buckets : %s", err)
-			}
+			log.Warningf("we are now using %s as a state file", tmpFile)
+			cConfig.Crowdsec.BucketStateFile = tmpFile
 		}
 		//reload the simulation state
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
 		}
-		serveCrowdsec(csParsers)
+		serveCrowdsec(csParsers, cConfig)
 	}
 
 	log.Printf("Reload is finished")
@@ -185,7 +184,7 @@ func termHandler(sig os.Signal) error {
 	return nil
 }
 
-func HandleSignals() {
+func HandleSignals(cConfig *csconfig.GlobalConfig) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
@@ -200,7 +199,7 @@ func HandleSignals() {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warningf("SIGHUP received, reloading")
-				if err := reloadHandler(s); err != nil {
+				if err := reloadHandler(s, cConfig); err != nil {
 					log.Fatalf("Reload handler failure : %s", err)
 				}
 			// kill -SIGTERM XXXX
@@ -219,7 +218,7 @@ func HandleSignals() {
 	os.Exit(code)
 }
 
-func Serve() error {
+func Serve(cConfig *csconfig.GlobalConfig) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -228,7 +227,7 @@ func Serve() error {
 	crowdsecTomb = tomb.Tomb{}
 
 	if !disableAPI {
-		apiServer, err := initAPIServer()
+		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "api server init")
 		}
@@ -238,13 +237,13 @@ func Serve() error {
 	}
 
 	if !disableAgent {
-		csParsers, err := initCrowdsec()
+		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "crowdsec init")
 		}
 		/* if it's just linting, we're done */
 		if !flags.TestMode {
-			serveCrowdsec(csParsers)
+			serveCrowdsec(csParsers, cConfig)
 		}
 	}
 	if flags.TestMode {
@@ -258,7 +257,7 @@ func Serve() error {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
 		/*wait for signals*/
-		HandleSignals()
+		HandleSignals(cConfig)
 	} else {
 		for {
 			select {
