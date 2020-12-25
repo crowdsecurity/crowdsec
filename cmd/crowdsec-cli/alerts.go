@@ -339,7 +339,7 @@ cscli alerts list --type ban`,
 /!\ This command can be use only on the same machine than the local API.`,
 		Example: `cscli alerts delete --ip 1.2.3.4
 cscli alerts delete --range 1.2.3.0/24
-cscli alerts delete -s crowdsecurity/ssh-bf"`,
+cscli alerts delete -s crowdsecurity/ssh-bf`,
 		Args: cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {
