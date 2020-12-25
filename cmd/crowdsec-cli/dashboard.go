@@ -12,24 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	metabaseUser         = "crowdsec@crowdsec.net"
-	metabasePassword     string
-	metabaseDbPath       string
-	metabaseConfigPath   string
-	metabaseConfigFolder = "metabase/"
-	metabaseConfigFile   = "metabase.yaml"
-	metabaseImage        = "metabase/metabase"
-	/**/
-	metabaseListenAddress = "127.0.0.1"
-	metabaseListenPort    = "3000"
-	metabaseContainerID   = "/crowdsec-metabase"
 
-	forceYes bool
-
-	dockerGatewayIPAddr = "172.17.0.1"
-	/*informations needed to setup a random password on user's behalf*/
-)
 
 func NewDashboardCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
@@ -54,6 +37,29 @@ cscli dashboard remove
 	}
 
 	var force bool
+	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
+	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
+	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
+	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
+	cmdDashboard.AddCommand(cmdDashSetup)
+	var (
+		metabaseUser         = "crowdsec@crowdsec.net"
+		metabasePassword     string
+		metabaseDbPath       string
+		metabaseConfigPath   string
+		metabaseConfigFolder = "metabase/"
+		metabaseConfigFile   = "metabase.yaml"
+		metabaseImage        = "metabase/metabase"
+		/**/
+		metabaseListenAddress = "127.0.0.1"
+		metabaseListenPort    = "3000"
+		cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
+		cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+		metabaseContainerID   = "/crowdsec-metabase"
+		forceYes bool
+		dockerGatewayIPAddr = "172.17.0.1"
+		/*informations needed to setup a random password on user's behalf*/
+	)
 	var cmdDashSetup = &cobra.Command{
 		Use:   "setup",
 		Short: "Setup a metabase container.",
@@ -88,15 +94,6 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			fmt.Printf("\tpassword  : '%s'\n", mb.Config.Password)
 		},
 	}
-	cmdDashSetup.Flags().BoolVarP(&force, "force", "f", false, "Force setup : override existing files.")
-	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
-	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
-	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
-	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
-
-	cmdDashboard.AddCommand(cmdDashSetup)
-
 	var cmdDashStart = &cobra.Command{
 		Use:   "start",
 		Short: "Start the metabase container.",
