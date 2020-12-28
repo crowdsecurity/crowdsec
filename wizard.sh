@@ -48,6 +48,7 @@ DEBUG_MODE="false"
 FORCE_MODE="false"
 
 SUPPORTED_SERVICES='apache2
+httpd
 nginx
 sshd
 mysql
@@ -96,6 +97,12 @@ detect_services () {
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
             echo ${SRC} | grep ${SVC} >/dev/null
             if [ $? -eq 0 ]; then
+    
+                #on centos, apache2 is named httpd                                                                                                                                                                                            
+                if [[ ${SVC} == "httpd" ]] ; then
+                    SVC="apache2";
+                fi
+
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
                 log_info "Found '${SVC}' running"
@@ -134,7 +141,7 @@ log_input_tags[smb]='type: smb'
 log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
-log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log'
+log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
 log_locations[nginx]='/var/log/nginx/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
