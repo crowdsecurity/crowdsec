@@ -40,8 +40,7 @@ type Leaky struct {
 	//Leaky buckets are pushing their overflows through a chan
 	Out chan *Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterwards)
-	AllOut     chan types.Event `json:"-"`
-	KillSwitch chan bool        `json:"-"`
+	AllOut chan types.Event `json:"-"`
 	//max capacity (for burst)
 	Capacity int
 	//CacheRatio is the number of elements that should be kept in memory (compared to capacity)
@@ -236,12 +235,6 @@ func LeakRoutine(leaky *Leaky) error {
 			durationTicker = tmp.C
 			leaky.Signal <- true
 			defer tmp.Stop()
-		/*a kill chan to allow externally killing the leaky routines*/
-		case <-leaky.KillSwitch:
-			close(leaky.Signal)
-			leaky.logger.Debugf("Bucket externally killed, return")
-			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
-			return nil
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			close(leaky.Signal)
@@ -307,6 +300,8 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
 		case <-leaky.tomb.Dying():
+			leaky.logger.Debugf("Bucket externally killed, return")
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return nil
 
 		}
