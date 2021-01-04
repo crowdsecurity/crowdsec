@@ -233,7 +233,6 @@ func LeakRoutine(leaky *Leaky) error {
 			//Clear cache on behalf of pour
 			tmp := time.NewTicker(leaky.Duration)
 			durationTicker = tmp.C
-			leaky.Signal <- true
 			defer tmp.Stop()
 		/*we overflowed*/
 		case ofw := <-leaky.Out:

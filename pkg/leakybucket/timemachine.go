@@ -14,7 +14,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		err error
 	)
 	if msg.MarshaledTime == "" {
-		log.Warningf("Trying to time-machine event without timstamp : %s", spew.Sdump(msg))
+		log.Warningf("Trying to time-machine event without timestamp : %s", spew.Sdump(msg))
 		return
 	}
 
