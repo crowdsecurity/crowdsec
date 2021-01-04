@@ -370,7 +370,6 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.In = make(chan types.Event)
 				tbucket.Mapkey = k
 				tbucket.Signal = make(chan bool, 1)
-				tbucket.KillSwitch = make(chan bool, 1)
 				tbucket.First_ts = v.First_ts
 				tbucket.Last_ts = v.Last_ts
 				tbucket.Ovflw_ts = v.Ovflw_ts

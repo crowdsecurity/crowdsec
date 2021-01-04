@@ -39,7 +39,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
-			val.KillSwitch <- true
+			val.tomb.Kill(nil)
 			return true
 		}
 		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
@@ -53,7 +53,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
-			val.KillSwitch <- true
+			val.tomb.Kill(nil)
 			return true
 		} else {
 			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
@@ -144,7 +144,7 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		val.KillSwitch <- true
+		val.tomb.Kill(nil)
 		log.Infof("killed %s", key)
 		return true
 	})
@@ -235,7 +235,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.In = make(chan types.Event)
 				fresh_bucket.Mapkey = buckey
 				fresh_bucket.Signal = make(chan bool, 1)
-				fresh_bucket.KillSwitch = make(chan bool, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
 				holder.tomb.Go(func() error {
 					return LeakRoutine(fresh_bucket)
