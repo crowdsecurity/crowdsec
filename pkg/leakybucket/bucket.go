@@ -236,28 +236,7 @@ func LeakRoutine(leaky *Leaky) error {
 			defer tmp.Stop()
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
-			close(leaky.Signal)
-			alert, err := NewAlert(leaky, ofw)
-			if err != nil {
-				log.Errorf("%s", err)
-			}
-			leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
-			for _, f := range leaky.BucketConfig.processors {
-				alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
-				if ofw == nil {
-					leaky.logger.Debugf("Overflow has been discarded (%T)", f)
-					break
-				}
-			}
-			if leaky.logger.Level >= log.TraceLevel {
-				leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
-			}
-			mt, _ := leaky.Ovflw_ts.MarshalText()
-			leaky.logger.Tracef("overflow time : %s", mt)
-
-			BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
-
-			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
+			leaky.overflow(ofw)
 			return nil
 			/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
@@ -300,6 +279,10 @@ func LeakRoutine(leaky *Leaky) error {
 			return nil
 		case <-leaky.tomb.Dying():
 			leaky.logger.Debugf("Bucket externally killed, return")
+			for len(leaky.Out) > 0 {
+				ofw := <-leaky.Out
+				leaky.overflow(ofw)
+			}
 			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			return nil
 
@@ -326,4 +309,29 @@ func Pour(leaky *Leaky, msg types.Event) {
 		leaky.Queue.Add(msg)
 		leaky.Out <- leaky.Queue
 	}
+}
+
+func (leaky *Leaky) overflow(ofw *Queue) {
+	close(leaky.Signal)
+	alert, err := NewAlert(leaky, ofw)
+	if err != nil {
+		log.Errorf("%s", err)
+	}
+	leaky.logger.Tracef("Overflow hooks time : %v", leaky.BucketConfig.processors)
+	for _, f := range leaky.BucketConfig.processors {
+		alert, ofw = f.OnBucketOverflow(leaky.BucketConfig)(leaky, alert, ofw)
+		if ofw == nil {
+			leaky.logger.Debugf("Overflow has been discarded (%T)", f)
+			break
+		}
+	}
+	if leaky.logger.Level >= log.TraceLevel {
+		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+	}
+	mt, _ := leaky.Ovflw_ts.MarshalText()
+	leaky.logger.Tracef("overflow time : %s", mt)
+
+	BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+
+	leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 }
