@@ -162,6 +162,7 @@ func waitOnTomb() {
 
 			bucketsTomb.Kill(nil)
 			bucketsTomb.Wait()
+			return
 
 		case <-crowdsecTomb.Dying():
 			log.Infof("Crowdsec engine shutting down")
