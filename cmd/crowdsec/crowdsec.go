@@ -42,13 +42,13 @@ func initCrowdsec(cConfig *csconfig.GlobalConfig) (*parser.Parsers, error) {
 }
 
 func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error {
-	var wg *sync.WaitGroup = &sync.WaitGroup{}
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
 	//start go-routines for parsing, buckets pour and ouputs.
+	parserWg := &sync.WaitGroup{}
 	parsersTomb.Go(func() error {
-		wg.Add(1)
+		parserWg.Add(1)
 		for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 			parsersTomb.Go(func() error {
 				defer types.CatchPanic("crowdsec/runParse")
@@ -60,13 +60,14 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 				return nil
 			})
 		}
-		wg.Done()
+		parserWg.Done()
 		return nil
 	})
-	wg.Wait()
+	parserWg.Wait()
 
+	bucketWg := &sync.WaitGroup{}
 	bucketsTomb.Go(func() error {
-		wg.Add(1)
+		bucketWg.Add(1)
 		/*restore as well previous state if present*/
 		if cConfig.Crowdsec.BucketStateFile != "" {
 			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
@@ -86,13 +87,14 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 				return nil
 			})
 		}
-		wg.Done()
+		bucketWg.Done()
 		return nil
 	})
-	wg.Wait()
+	bucketWg.Wait()
 
+	outputWg := &sync.WaitGroup{}
 	outputsTomb.Go(func() error {
-		wg.Add(1)
+		outputWg.Add(1)
 		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 			outputsTomb.Go(func() error {
 				defer types.CatchPanic("crowdsec/runOutput")
@@ -104,10 +106,10 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 				return nil
 			})
 		}
-		wg.Done()
+		outputWg.Done()
 		return nil
 	})
-	wg.Wait()
+	outputWg.Wait()
 	log.Warningf("Starting processing data")
 
 	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
