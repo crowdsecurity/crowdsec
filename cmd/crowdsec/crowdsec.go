@@ -162,8 +162,6 @@ func waitOnTomb() {
 				as some operations (ie. reverse dns or such in post-overflow) can take some time :)
 			*/
 
-			bucketsTomb.Kill(nil)
-			bucketsTomb.Wait()
 			return
 
 		case <-crowdsecTomb.Dying():

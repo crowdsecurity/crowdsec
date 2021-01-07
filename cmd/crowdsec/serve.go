@@ -133,6 +133,7 @@ func ShutdownCrowdsecRoutines() error {
 		log.Warningf("Parsers returned error : %s", err)
 		reterr = err
 	}
+	time.Sleep(1 * time.Second) //ugly workaround for now to ensure PourItemtoholders are finished
 	log.Debugf("parsers is done")
 	bucketsTomb.Kill(nil)
 	if err := bucketsTomb.Wait(); err != nil {
