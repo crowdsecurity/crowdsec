@@ -136,5 +136,5 @@ Sharing your parsers, scenarios and collections on the hub allows other users to
 
 ### How ?
 
-To have your bouncer published on the hub, please simply [open a new issue on the hub](https://github.com/crowdsecurity/hub/issues/new), requesting "parser/scenario inclusion". The configurations will then be reviewed by the team, and then will be published directly on the hub, for everyone to find & use it !
+To have your parser/scenario published on the hub, please simply [open a new issue on the hub](https://github.com/crowdsecurity/hub/issues/new), requesting "parser/scenario inclusion". The configurations will then be reviewed by the team, and then will be published directly on the hub, for everyone to find & use it !
 
