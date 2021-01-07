@@ -235,7 +235,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.In = make(chan types.Event)
 				fresh_bucket.Mapkey = buckey
 				fresh_bucket.Signal = make(chan bool, 1)
-				fresh_bucket.allowGc = make(chan struct{}, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
 				holder.tomb.Go(func() error {
 					return LeakRoutine(fresh_bucket)

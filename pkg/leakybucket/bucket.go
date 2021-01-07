@@ -71,7 +71,6 @@ type Leaky struct {
 	wgPour          *sync.WaitGroup
 	wgDumpState     *sync.WaitGroup
 	mutex           *sync.Mutex //used only for TIMEMACHINE mode to allow garbage collection without races
-	allowGc         chan struct{}
 }
 
 var BucketsPour = prometheus.NewCounterVec(
@@ -222,7 +221,7 @@ func LeakRoutine(leaky *Leaky) error {
 				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
-					continue
+					goto End
 				}
 			}
 			if leaky.logger.Level >= log.TraceLevel {
@@ -234,7 +233,6 @@ func LeakRoutine(leaky *Leaky) error {
 			//Clear cache on behalf of pour
 			tmp := time.NewTicker(leaky.Duration)
 			durationTicker = tmp.C
-			close(leaky.allowGc)
 			defer tmp.Stop()
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
@@ -279,20 +277,17 @@ func LeakRoutine(leaky *Leaky) error {
 			leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW}
 			leaky.logger.Tracef("Returning from leaky routine.")
 			return nil
-		case <-leaky.allowGc:
-			select {
-			case <-leaky.tomb.Dying():
-				leaky.logger.Debugf("Bucket externally killed, return")
-				for len(leaky.Out) > 0 {
-					ofw := <-leaky.Out
-					leaky.overflow(ofw)
-				}
-				leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
-				return nil
-			default:
+		case <-leaky.tomb.Dying():
+			leaky.logger.Debugf("Bucket externally killed, return")
+			for len(leaky.Out) > 0 {
+				ofw := <-leaky.Out
+				leaky.overflow(ofw)
 			}
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
+			return nil
 
 		}
+	End:
 	}
 }
 
