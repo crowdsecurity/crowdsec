@@ -38,7 +38,6 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.1
-	github.com/jamiealquiza/tachymeter v2.0.0+incompatible
 	github.com/jinzhu/gorm v1.9.12
 	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/lib/pq v1.8.0
