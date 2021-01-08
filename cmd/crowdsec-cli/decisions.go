@@ -12,7 +12,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -254,7 +253,6 @@ cscli decisions add --scope username --value foobar
 		/*TBD : fix long and example*/
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			var startIP, endIP int64
 			var err error
 			var ip, ipRange string
 			alerts := models.AddAlertsRequest{}
@@ -285,20 +283,6 @@ cscli decisions add --scope username --value foobar
 				return
 			}
 
-			if addScope == types.Ip {
-				startIP, endIP, err = database.GetIpsFromIpRange(addValue + "/32")
-				if err != nil {
-					log.Fatalf("unable to parse IP : '%s'", addValue)
-				}
-			}
-			if addScope == types.Range {
-				startIP, endIP, err = database.GetIpsFromIpRange(addValue)
-				if err != nil {
-					log.Fatalf("unable to parse Range : '%s'", addValue)
-				}
-				ipRange = addValue
-			}
-
 			if addReason == "" {
 				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
 			}
@@ -310,8 +294,6 @@ cscli decisions add --scope username --value foobar
 				Type:     &addType,
 				Scenario: &addReason,
 				Origin:   &origin,
-				StartIP:  startIP,
-				EndIP:    endIP,
 			}
 			alert := models.Alert{
 				Capacity:        &capacity,
