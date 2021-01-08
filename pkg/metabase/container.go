@@ -105,7 +105,6 @@ func (c *Container) Create() error {
 		Architecture: arch,
 		OS:           os,
 	}
-	log.Infof("OS: %s (%s)", os, arch)
 	log.Infof("creating container '%s'", c.Name)
 	resp, err := c.CLI.ContainerCreate(ctx, dockerConfig, hostConfig, nil, platform, c.Name)
 	if err != nil {
