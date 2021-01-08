@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"runtime"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -11,6 +12,7 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -89,8 +91,23 @@ func (c *Container) Create() error {
 		Env:   env,
 	}
 
+	os := runtime.GOOS
+	switch os {
+	case "linux":
+	case "windows", "darwin":
+		return fmt.Errorf("Mac and Windows are not supported yet")
+	default:
+		return fmt.Errorf("OS '%s' is not supported", os)
+	}
+
+	arch := runtime.GOARCH
+	platform := &v1.Platform{
+		Architecture: arch,
+		OS:           os,
+	}
+	log.Infof("OS: %s (%s)", os, arch)
 	log.Infof("creating container '%s'", c.Name)
-	resp, err := c.CLI.ContainerCreate(ctx, dockerConfig, hostConfig, nil, c.Name)
+	resp, err := c.CLI.ContainerCreate(ctx, dockerConfig, hostConfig, nil, platform, c.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create container : %s", err)
 	}
