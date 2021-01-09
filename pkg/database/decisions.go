@@ -58,16 +58,14 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	}
 
 	if ip_sz == 4 {
-		/*decision contains {start_ip,end_ip}*/
 
-		if contains {
+		if contains { /*decision contains {start_ip,end_ip}*/
 			query = query.Where(decision.And(
 				decision.StartIPLTE(start_ip),
 				decision.EndIPGTE(end_ip),
 				decision.IPSizeEQ(int64(ip_sz)),
 			))
-		} else {
-			/*decision is contained within {start_ip,end_ip}*/
+		} else { /*decision is contained within {start_ip,end_ip}*/
 			query = query.Where(decision.And(
 				decision.StartIPGTE(start_ip),
 				decision.EndIPLTE(end_ip),
@@ -76,9 +74,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 		}
 	} else if ip_sz == 16 {
 
-		/*decision contains {start_ip,end_ip}*/
-
-		if contains {
+		if contains { /*decision contains {start_ip,end_ip}*/
 			query = query.Where(decision.And(
 				//matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
@@ -102,7 +98,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 					),
 				),
 			))
-		} else {
+		} else { /*decision is contained within {start_ip,end_ip}*/
 			query = query.Where(decision.And(
 				//matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
@@ -361,12 +357,6 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 				))
 			}
 		} else if ip_sz == 16 {
-			/*
-				(C.START > D.START OR (C.START == D.START AND C.START_SFX >= D.START_SFX))
-				AND
-				(C.END < D.END OR (C.END == D.END AND C.END_SFX <= D.END_SFX))
-			*/
-
 			/*decision contains {start_ip,end_ip}*/
 			if contains {
 				decisions = decisions.Where(decision.And(

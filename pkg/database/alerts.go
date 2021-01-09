@@ -208,7 +208,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				}
 				log.Infof("sz=%d, start_ip=%d, start_sfx=%d end_ip=%d end_sfx=%d",
 					sz, start_ip, start_sfx, end_ip, end_sfx)
-				decisionBulk[i] = c.Ent.Debug().Decision.Create().
+				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
@@ -382,13 +382,13 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	}
 
 	if ip_sz == 4 {
-		if contains {
+		if contains { /*decision contains {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
 				alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
 				alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 			))
-		} else {
+		} else { /*decision is contained within {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
 				alert.HasDecisionsWith(decision.StartIPGTE(start_ip)),
 				alert.HasDecisionsWith(decision.EndIPLTE(end_ip)),
@@ -397,8 +397,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		}
 	} else if ip_sz == 16 {
 
-		/*decision contains {start_ip,end_ip}*/
-		if contains {
+		if contains { /*decision contains {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
 				//matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
@@ -422,8 +421,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 					),
 				),
 			))
-		} else {
-			/*decision is contained within {start_ip,end_ip}*/
+		} else { /*decision is contained within {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
 				//matching addr size
 				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
@@ -479,7 +477,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
-		alerts := c.Ent.Debug().Alert.Query()
+		alerts := c.Ent.Alert.Query()
 		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
 		if err != nil {
 			return []*ent.Alert{}, err
