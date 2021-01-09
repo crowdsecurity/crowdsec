@@ -336,6 +336,7 @@ cscli alerts list --type ban`,
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
+		Contains:       new(bool),
 	}
 	var cmdAlertsDelete = &cobra.Command{
 		Use: "delete [filters] [--all]",
@@ -384,6 +385,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				if *alertDeleteFilter.RangeEquals == "" {
 					alertDeleteFilter.RangeEquals = nil
 				}
+				*alertDeleteFilter.Contains = !contained
 			} else {
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{}
 			}
@@ -402,6 +404,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
+	cmdAlertsDelete.Flags().BoolVar(&contained, "contained", false, "query decisions contained by range")
 
 	cmdAlerts.AddCommand(cmdAlertsDelete)
 
