@@ -56,13 +56,11 @@ func TestAlertsListAsMachine(t *testing.T) {
 			{"capacity":5,"created_at":"2020-11-28T10:20:47+01:00",
 			 "decisions":[
 				  {"duration":"59m49.264032632s",
-				  "end_ip":16843180,
 				  "id":1,
 				  "origin":"crowdsec",
 				  "scenario":"crowdsecurity/ssh-bf",
 				  "scope":"Ip",
 				  "simulated":false,
-				  "start_ip":16843180,
 				  "type":"ban",
 				  "value":"1.1.1.172"}
 				  ],
@@ -127,14 +125,12 @@ func TestAlertsListAsMachine(t *testing.T) {
 			Decisions: []*models.Decision{
 				&models.Decision{
 					Duration: &tduration,
-					EndIP:    16843180,
 					ID:       1,
 					Origin:   &torigin,
 					Scenario: &tscenario,
 
 					Scope:     &tscope,
 					Simulated: new(bool), //false,
-					StartIP:   16843180,
 					Type:      &ttype,
 					Value:     &tvalue,
 				},
@@ -328,14 +324,12 @@ func TestAlertsGetAsMachine(t *testing.T) {
 		Decisions: []*models.Decision{
 			&models.Decision{
 				Duration: &tduration,
-				EndIP:    16843180,
 				ID:       1,
 				Origin:   &torigin,
 				Scenario: &tscenario,
 
 				Scope:     &tscope,
 				Simulated: new(bool), //false,
-				StartIP:   16843180,
 				Type:      &ttype,
 				Value:     &tvalue,
 			},
