@@ -25,6 +25,14 @@ const (
 	FieldStartIP = "start_ip"
 	// FieldEndIP holds the string denoting the end_ip field in the database.
 	FieldEndIP = "end_ip"
+	// FieldRangeStart holds the string denoting the range_start field in the database.
+	FieldRangeStart = "range_start"
+	// FieldRangeEnd holds the string denoting the range_end field in the database.
+	FieldRangeEnd = "range_end"
+	// FieldSuffixStart holds the string denoting the suffix_start field in the database.
+	FieldSuffixStart = "suffix_start"
+	// FieldSuffixEnd holds the string denoting the suffix_end field in the database.
+	FieldSuffixEnd = "suffix_end"
 	// FieldScope holds the string denoting the scope field in the database.
 	FieldScope = "scope"
 	// FieldValue holds the string denoting the value field in the database.
@@ -58,6 +66,10 @@ var Columns = []string{
 	FieldType,
 	FieldStartIP,
 	FieldEndIP,
+	FieldRangeStart,
+	FieldRangeEnd,
+	FieldSuffixStart,
+	FieldSuffixEnd,
 	FieldScope,
 	FieldValue,
 	FieldOrigin,
@@ -85,10 +97,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultCreatedAt holds the default value on creation for the created_at field.
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
-	// DefaultSimulated holds the default value on creation for the simulated field.
+	// DefaultSimulated holds the default value on creation for the "simulated" field.
 	DefaultSimulated bool
 )

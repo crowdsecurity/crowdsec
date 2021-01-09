@@ -81,6 +81,10 @@ var (
 		{Name: "type", Type: field.TypeString},
 		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
 		{Name: "end_ip", Type: field.TypeInt64, Nullable: true},
+		{Name: "range_start", Type: field.TypeInt64, Nullable: true},
+		{Name: "range_end", Type: field.TypeInt64, Nullable: true},
+		{Name: "suffix_start", Type: field.TypeInt64, Nullable: true},
+		{Name: "suffix_end", Type: field.TypeInt64, Nullable: true},
 		{Name: "scope", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
@@ -95,7 +99,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[12]},
+				Columns: []*schema.Column{DecisionsColumns[16]},
 
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,

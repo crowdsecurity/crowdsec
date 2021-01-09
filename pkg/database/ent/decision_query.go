@@ -22,7 +22,7 @@ type DecisionQuery struct {
 	limit      *int
 	offset     *int
 	order      []OrderFunc
-	unique     []string
+	fields     []string
 	predicates []predicate.Decision
 	// eager-loading edges.
 	withOwner *AlertQuery
@@ -32,7 +32,7 @@ type DecisionQuery struct {
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the DecisionQuery builder.
 func (dq *DecisionQuery) Where(ps ...predicate.Decision) *DecisionQuery {
 	dq.predicates = append(dq.predicates, ps...)
 	return dq
@@ -56,7 +56,7 @@ func (dq *DecisionQuery) Order(o ...OrderFunc) *DecisionQuery {
 	return dq
 }
 
-// QueryOwner chains the current query on the owner edge.
+// QueryOwner chains the current query on the "owner" edge.
 func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 	query := &AlertQuery{config: dq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -78,7 +78,8 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 	return query
 }
 
-// First returns the first Decision entity in the query. Returns *NotFoundError when no decision was found.
+// First returns the first Decision entity from the query.
+// Returns a *NotFoundError when no Decision was found.
 func (dq *DecisionQuery) First(ctx context.Context) (*Decision, error) {
 	nodes, err := dq.Limit(1).All(ctx)
 	if err != nil {
@@ -99,7 +100,8 @@ func (dq *DecisionQuery) FirstX(ctx context.Context) *Decision {
 	return node
 }
 
-// FirstID returns the first Decision id in the query. Returns *NotFoundError when no id was found.
+// FirstID returns the first Decision ID from the query.
+// Returns a *NotFoundError when no Decision ID was found.
 func (dq *DecisionQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = dq.Limit(1).IDs(ctx); err != nil {
@@ -112,8 +114,8 @@ func (dq *DecisionQuery) FirstID(ctx context.Context) (id int, err error) {
 	return ids[0], nil
 }
 
-// FirstXID is like FirstID, but panics if an error occurs.
-func (dq *DecisionQuery) FirstXID(ctx context.Context) int {
+// FirstIDX is like FirstID, but panics if an error occurs.
+func (dq *DecisionQuery) FirstIDX(ctx context.Context) int {
 	id, err := dq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -121,7 +123,9 @@ func (dq *DecisionQuery) FirstXID(ctx context.Context) int {
 	return id
 }
 
-// Only returns the only Decision entity in the query, returns an error if not exactly one entity was returned.
+// Only returns a single Decision entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when exactly one Decision entity is not found.
+// Returns a *NotFoundError when no Decision entities are found.
 func (dq *DecisionQuery) Only(ctx context.Context) (*Decision, error) {
 	nodes, err := dq.Limit(2).All(ctx)
 	if err != nil {
@@ -146,7 +150,9 @@ func (dq *DecisionQuery) OnlyX(ctx context.Context) *Decision {
 	return node
 }
 
-// OnlyID returns the only Decision id in the query, returns an error if not exactly one id was returned.
+// OnlyID is like Only, but returns the only Decision ID in the query.
+// Returns a *NotSingularError when exactly one Decision ID is not found.
+// Returns a *NotFoundError when no entities are found.
 func (dq *DecisionQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = dq.Limit(2).IDs(ctx); err != nil {
@@ -189,7 +195,7 @@ func (dq *DecisionQuery) AllX(ctx context.Context) []*Decision {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Decision ids.
+// IDs executes the query and returns a list of Decision IDs.
 func (dq *DecisionQuery) IDs(ctx context.Context) ([]int, error) {
 	var ids []int
 	if err := dq.Select(decision.FieldID).Scan(ctx, &ids); err != nil {
@@ -241,24 +247,27 @@ func (dq *DecisionQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the query builder, including all associated steps. It can be
+// Clone returns a duplicate of the DecisionQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
 func (dq *DecisionQuery) Clone() *DecisionQuery {
+	if dq == nil {
+		return nil
+	}
 	return &DecisionQuery{
 		config:     dq.config,
 		limit:      dq.limit,
 		offset:     dq.offset,
 		order:      append([]OrderFunc{}, dq.order...),
-		unique:     append([]string{}, dq.unique...),
 		predicates: append([]predicate.Decision{}, dq.predicates...),
+		withOwner:  dq.withOwner.Clone(),
 		// clone intermediate query.
 		sql:  dq.sql.Clone(),
 		path: dq.path,
 	}
 }
 
-//  WithOwner tells the query-builder to eager-loads the nodes that are connected to
-// the "owner" edge. The optional arguments used to configure the query builder of the edge.
+// WithOwner tells the query-builder to eager-load the nodes that are connected to
+// the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (dq *DecisionQuery) WithOwner(opts ...func(*AlertQuery)) *DecisionQuery {
 	query := &AlertQuery{config: dq.config}
 	for _, opt := range opts {
@@ -268,7 +277,7 @@ func (dq *DecisionQuery) WithOwner(opts ...func(*AlertQuery)) *DecisionQuery {
 	return dq
 }
 
-// GroupBy used to group vertices by one or more fields/columns.
+// GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
@@ -295,7 +304,8 @@ func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupB
 	return group
 }
 
-// Select one or more fields from the given query.
+// Select allows the selection one or more fields/columns for the given query,
+// instead of selecting all fields in the entity.
 //
 // Example:
 //
@@ -308,18 +318,16 @@ func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupB
 //		Scan(ctx, &v)
 //
 func (dq *DecisionQuery) Select(field string, fields ...string) *DecisionSelect {
-	selector := &DecisionSelect{config: dq.config}
-	selector.fields = append([]string{field}, fields...)
-	selector.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := dq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return dq.sqlQuery(), nil
-	}
-	return selector
+	dq.fields = append([]string{field}, fields...)
+	return &DecisionSelect{DecisionQuery: dq}
 }
 
 func (dq *DecisionQuery) prepareQuery(ctx context.Context) error {
+	for _, f := range dq.fields {
+		if !decision.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+		}
+	}
 	if dq.path != nil {
 		prev, err := dq.path(ctx)
 		if err != nil {
@@ -345,22 +353,18 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context) ([]*Decision, error) {
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, decision.ForeignKeys...)
 	}
-	_spec.ScanValues = func() []interface{} {
+	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Decision{config: dq.config}
 		nodes = append(nodes, node)
-		values := node.scanValues()
-		if withFKs {
-			values = append(values, node.fkValues()...)
-		}
-		return values
+		return node.scanValues(columns)
 	}
-	_spec.Assign = func(values ...interface{}) error {
+	_spec.Assign = func(columns []string, values []interface{}) error {
 		if len(nodes) == 0 {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
 		node.Edges.loadedTypes = loadedTypes
-		return node.assignValues(values...)
+		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, dq.driver, _spec); err != nil {
 		return nil, err
@@ -423,6 +427,15 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   dq.sql,
 		Unique: true,
 	}
+	if fields := dq.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, decision.FieldID)
+		for i := range fields {
+			if fields[i] != decision.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
+			}
+		}
+	}
 	if ps := dq.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -471,7 +484,7 @@ func (dq *DecisionQuery) sqlQuery() *sql.Selector {
 	return selector
 }
 
-// DecisionGroupBy is the builder for group-by Decision entities.
+// DecisionGroupBy is the group-by builder for Decision entities.
 type DecisionGroupBy struct {
 	config
 	fields []string
@@ -487,7 +500,7 @@ func (dgb *DecisionGroupBy) Aggregate(fns ...AggregateFunc) *DecisionGroupBy {
 	return dgb
 }
 
-// Scan applies the group-by query and scan the result into the given value.
+// Scan applies the group-by query and scans the result into the given value.
 func (dgb *DecisionGroupBy) Scan(ctx context.Context, v interface{}) error {
 	query, err := dgb.path(ctx)
 	if err != nil {
@@ -504,7 +517,8 @@ func (dgb *DecisionGroupBy) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from group-by. It is only allowed when querying group-by with one field.
+// Strings returns list of strings from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Strings(ctx context.Context) ([]string, error) {
 	if len(dgb.fields) > 1 {
 		return nil, errors.New("ent: DecisionGroupBy.Strings is not achievable when grouping more than 1 field")
@@ -525,7 +539,8 @@ func (dgb *DecisionGroupBy) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from group-by. It is only allowed when querying group-by with one field.
+// String returns a single string from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = dgb.Strings(ctx); err != nil {
@@ -551,7 +566,8 @@ func (dgb *DecisionGroupBy) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from group-by. It is only allowed when querying group-by with one field.
+// Ints returns list of ints from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Ints(ctx context.Context) ([]int, error) {
 	if len(dgb.fields) > 1 {
 		return nil, errors.New("ent: DecisionGroupBy.Ints is not achievable when grouping more than 1 field")
@@ -572,7 +588,8 @@ func (dgb *DecisionGroupBy) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from group-by. It is only allowed when querying group-by with one field.
+// Int returns a single int from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = dgb.Ints(ctx); err != nil {
@@ -598,7 +615,8 @@ func (dgb *DecisionGroupBy) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from group-by. It is only allowed when querying group-by with one field.
+// Float64s returns list of float64s from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 	if len(dgb.fields) > 1 {
 		return nil, errors.New("ent: DecisionGroupBy.Float64s is not achievable when grouping more than 1 field")
@@ -619,7 +637,8 @@ func (dgb *DecisionGroupBy) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from group-by. It is only allowed when querying group-by with one field.
+// Float64 returns a single float64 from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = dgb.Float64s(ctx); err != nil {
@@ -645,7 +664,8 @@ func (dgb *DecisionGroupBy) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from group-by. It is only allowed when querying group-by with one field.
+// Bools returns list of bools from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Bools(ctx context.Context) ([]bool, error) {
 	if len(dgb.fields) > 1 {
 		return nil, errors.New("ent: DecisionGroupBy.Bools is not achievable when grouping more than 1 field")
@@ -666,7 +686,8 @@ func (dgb *DecisionGroupBy) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from group-by. It is only allowed when querying group-by with one field.
+// Bool returns a single bool from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (dgb *DecisionGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = dgb.Bools(ctx); err != nil {
@@ -721,22 +742,19 @@ func (dgb *DecisionGroupBy) sqlQuery() *sql.Selector {
 	return selector.Select(columns...).GroupBy(dgb.fields...)
 }
 
-// DecisionSelect is the builder for select fields of Decision entities.
+// DecisionSelect is the builder for selecting fields of Decision entities.
 type DecisionSelect struct {
-	config
-	fields []string
+	*DecisionQuery
 	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	sql *sql.Selector
 }
 
-// Scan applies the selector query and scan the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (ds *DecisionSelect) Scan(ctx context.Context, v interface{}) error {
-	query, err := ds.path(ctx)
-	if err != nil {
+	if err := ds.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ds.sql = query
+	ds.sql = ds.DecisionQuery.sqlQuery()
 	return ds.sqlScan(ctx, v)
 }
 
@@ -747,7 +765,7 @@ func (ds *DecisionSelect) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from selector. It is only allowed when selecting one field.
+// Strings returns list of strings from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Strings(ctx context.Context) ([]string, error) {
 	if len(ds.fields) > 1 {
 		return nil, errors.New("ent: DecisionSelect.Strings is not achievable when selecting more than 1 field")
@@ -768,7 +786,7 @@ func (ds *DecisionSelect) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from selector. It is only allowed when selecting one field.
+// String returns a single string from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = ds.Strings(ctx); err != nil {
@@ -794,7 +812,7 @@ func (ds *DecisionSelect) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from selector. It is only allowed when selecting one field.
+// Ints returns list of ints from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Ints(ctx context.Context) ([]int, error) {
 	if len(ds.fields) > 1 {
 		return nil, errors.New("ent: DecisionSelect.Ints is not achievable when selecting more than 1 field")
@@ -815,7 +833,7 @@ func (ds *DecisionSelect) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from selector. It is only allowed when selecting one field.
+// Int returns a single int from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = ds.Ints(ctx); err != nil {
@@ -841,7 +859,7 @@ func (ds *DecisionSelect) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from selector. It is only allowed when selecting one field.
+// Float64s returns list of float64s from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Float64s(ctx context.Context) ([]float64, error) {
 	if len(ds.fields) > 1 {
 		return nil, errors.New("ent: DecisionSelect.Float64s is not achievable when selecting more than 1 field")
@@ -862,7 +880,7 @@ func (ds *DecisionSelect) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from selector. It is only allowed when selecting one field.
+// Float64 returns a single float64 from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = ds.Float64s(ctx); err != nil {
@@ -888,7 +906,7 @@ func (ds *DecisionSelect) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from selector. It is only allowed when selecting one field.
+// Bools returns list of bools from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Bools(ctx context.Context) ([]bool, error) {
 	if len(ds.fields) > 1 {
 		return nil, errors.New("ent: DecisionSelect.Bools is not achievable when selecting more than 1 field")
@@ -909,7 +927,7 @@ func (ds *DecisionSelect) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from selector. It is only allowed when selecting one field.
+// Bool returns a single bool from a selector. It is only allowed when selecting one field.
 func (ds *DecisionSelect) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = ds.Bools(ctx); err != nil {
@@ -936,11 +954,6 @@ func (ds *DecisionSelect) BoolX(ctx context.Context) bool {
 }
 
 func (ds *DecisionSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range ds.fields {
-		if !decision.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := ds.sqlQuery().Query()
 	if err := ds.driver.Query(ctx, query, args, rows); err != nil {

@@ -272,6 +272,10 @@ func (a *apic) PullTop() error {
 		/*ensure scope makes sense no matter what consensus gives*/
 		if strings.ToLower(*decision.Scope) == "ip" {
 			*decision.Scope = types.Ip
+			sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(*decision.Value)
+			if err != nil {
+				return errors.Wrapf(err, "invalid ip %s", *decision.Value)
+			}
 		} else if strings.ToLower(*decision.Scope) == "range" {
 			*decision.Scope = types.Range
 		}

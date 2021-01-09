@@ -31,6 +31,14 @@ type Decision struct {
 	StartIP int64 `json:"start_ip,omitempty"`
 	// EndIP holds the value of the "end_ip" field.
 	EndIP int64 `json:"end_ip,omitempty"`
+	// RangeStart holds the value of the "range_start" field.
+	RangeStart int64 `json:"range_start,omitempty"`
+	// RangeEnd holds the value of the "range_end" field.
+	RangeEnd int64 `json:"range_end,omitempty"`
+	// SuffixStart holds the value of the "suffix_start" field.
+	SuffixStart int64 `json:"suffix_start,omitempty"`
+	// SuffixEnd holds the value of the "suffix_end" field.
+	SuffixEnd int64 `json:"suffix_end,omitempty"`
 	// Scope holds the value of the "scope" field.
 	Scope string `json:"scope,omitempty"`
 	// Value holds the value of the "value" field.
@@ -69,123 +77,157 @@ func (e DecisionEdges) OwnerOrErr() (*Alert, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Decision) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},  // id
-		&sql.NullTime{},   // created_at
-		&sql.NullTime{},   // updated_at
-		&sql.NullTime{},   // until
-		&sql.NullString{}, // scenario
-		&sql.NullString{}, // type
-		&sql.NullInt64{},  // start_ip
-		&sql.NullInt64{},  // end_ip
-		&sql.NullString{}, // scope
-		&sql.NullString{}, // value
-		&sql.NullString{}, // origin
-		&sql.NullBool{},   // simulated
+func (*Decision) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case decision.FieldSimulated:
+			values[i] = &sql.NullBool{}
+		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldRangeStart, decision.FieldRangeEnd, decision.FieldSuffixStart, decision.FieldSuffixEnd:
+			values[i] = &sql.NullInt64{}
+		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin:
+			values[i] = &sql.NullString{}
+		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
+			values[i] = &sql.NullTime{}
+		case decision.ForeignKeys[0]: // alert_decisions
+			values[i] = &sql.NullInt64{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Decision", columns[i])
+		}
 	}
-}
-
-// fkValues returns the types for scanning foreign-keys values from sql.Rows.
-func (*Decision) fkValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{}, // alert_decisions
-	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Decision fields.
-func (d *Decision) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(decision.Columns); m < n {
+func (d *Decision) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	d.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		d.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		d.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field until", values[2])
-	} else if value.Valid {
-		d.Until = value.Time
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scenario", values[3])
-	} else if value.Valid {
-		d.Scenario = value.String
-	}
-	if value, ok := values[4].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field type", values[4])
-	} else if value.Valid {
-		d.Type = value.String
-	}
-	if value, ok := values[5].(*sql.NullInt64); !ok {
-		return fmt.Errorf("unexpected type %T for field start_ip", values[5])
-	} else if value.Valid {
-		d.StartIP = value.Int64
-	}
-	if value, ok := values[6].(*sql.NullInt64); !ok {
-		return fmt.Errorf("unexpected type %T for field end_ip", values[6])
-	} else if value.Valid {
-		d.EndIP = value.Int64
-	}
-	if value, ok := values[7].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scope", values[7])
-	} else if value.Valid {
-		d.Scope = value.String
-	}
-	if value, ok := values[8].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field value", values[8])
-	} else if value.Valid {
-		d.Value = value.String
-	}
-	if value, ok := values[9].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field origin", values[9])
-	} else if value.Valid {
-		d.Origin = value.String
-	}
-	if value, ok := values[10].(*sql.NullBool); !ok {
-		return fmt.Errorf("unexpected type %T for field simulated", values[10])
-	} else if value.Valid {
-		d.Simulated = value.Bool
-	}
-	values = values[11:]
-	if len(values) == len(decision.ForeignKeys) {
-		if value, ok := values[0].(*sql.NullInt64); !ok {
-			return fmt.Errorf("unexpected type %T for edge-field alert_decisions", value)
-		} else if value.Valid {
-			d.alert_decisions = new(int)
-			*d.alert_decisions = int(value.Int64)
+	for i := range columns {
+		switch columns[i] {
+		case decision.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			d.ID = int(value.Int64)
+		case decision.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				d.CreatedAt = value.Time
+			}
+		case decision.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				d.UpdatedAt = value.Time
+			}
+		case decision.FieldUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field until", values[i])
+			} else if value.Valid {
+				d.Until = value.Time
+			}
+		case decision.FieldScenario:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scenario", values[i])
+			} else if value.Valid {
+				d.Scenario = value.String
+			}
+		case decision.FieldType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				d.Type = value.String
+			}
+		case decision.FieldStartIP:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field start_ip", values[i])
+			} else if value.Valid {
+				d.StartIP = value.Int64
+			}
+		case decision.FieldEndIP:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field end_ip", values[i])
+			} else if value.Valid {
+				d.EndIP = value.Int64
+			}
+		case decision.FieldRangeStart:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field range_start", values[i])
+			} else if value.Valid {
+				d.RangeStart = value.Int64
+			}
+		case decision.FieldRangeEnd:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field range_end", values[i])
+			} else if value.Valid {
+				d.RangeEnd = value.Int64
+			}
+		case decision.FieldSuffixStart:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field suffix_start", values[i])
+			} else if value.Valid {
+				d.SuffixStart = value.Int64
+			}
+		case decision.FieldSuffixEnd:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field suffix_end", values[i])
+			} else if value.Valid {
+				d.SuffixEnd = value.Int64
+			}
+		case decision.FieldScope:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scope", values[i])
+			} else if value.Valid {
+				d.Scope = value.String
+			}
+		case decision.FieldValue:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field value", values[i])
+			} else if value.Valid {
+				d.Value = value.String
+			}
+		case decision.FieldOrigin:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field origin", values[i])
+			} else if value.Valid {
+				d.Origin = value.String
+			}
+		case decision.FieldSimulated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field simulated", values[i])
+			} else if value.Valid {
+				d.Simulated = value.Bool
+			}
+		case decision.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field alert_decisions", value)
+			} else if value.Valid {
+				d.alert_decisions = new(int)
+				*d.alert_decisions = int(value.Int64)
+			}
 		}
 	}
 	return nil
 }
 
-// QueryOwner queries the owner edge of the Decision.
+// QueryOwner queries the "owner" edge of the Decision entity.
 func (d *Decision) QueryOwner() *AlertQuery {
 	return (&DecisionClient{config: d.config}).QueryOwner(d)
 }
 
 // Update returns a builder for updating this Decision.
-// Note that, you need to call Decision.Unwrap() before calling this method, if this Decision
+// Note that you need to call Decision.Unwrap() before calling this method if this Decision
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (d *Decision) Update() *DecisionUpdateOne {
 	return (&DecisionClient{config: d.config}).UpdateOne(d)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Decision entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (d *Decision) Unwrap() *Decision {
 	tx, ok := d.config.driver.(*txDriver)
 	if !ok {
@@ -214,6 +256,14 @@ func (d *Decision) String() string {
 	builder.WriteString(fmt.Sprintf("%v", d.StartIP))
 	builder.WriteString(", end_ip=")
 	builder.WriteString(fmt.Sprintf("%v", d.EndIP))
+	builder.WriteString(", range_start=")
+	builder.WriteString(fmt.Sprintf("%v", d.RangeStart))
+	builder.WriteString(", range_end=")
+	builder.WriteString(fmt.Sprintf("%v", d.RangeEnd))
+	builder.WriteString(", suffix_start=")
+	builder.WriteString(fmt.Sprintf("%v", d.SuffixStart))
+	builder.WriteString(", suffix_end=")
+	builder.WriteString(fmt.Sprintf("%v", d.SuffixEnd))
 	builder.WriteString(", scope=")
 	builder.WriteString(d.Scope)
 	builder.WriteString(", value=")

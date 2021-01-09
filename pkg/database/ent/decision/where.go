@@ -10,7 +10,7 @@ import (
 	"github.com/facebook/ent/dialect/sql/sqlgraph"
 )
 
-// ID filters vertices based on their identifier.
+// ID filters vertices based on their ID field.
 func ID(id int) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldID), id))
@@ -139,6 +139,34 @@ func StartIP(v int64) predicate.Decision {
 func EndIP(v int64) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldEndIP), v))
+	})
+}
+
+// RangeStart applies equality check predicate on the "range_start" field. It's identical to RangeStartEQ.
+func RangeStart(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeEnd applies equality check predicate on the "range_end" field. It's identical to RangeEndEQ.
+func RangeEnd(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRangeEnd), v))
+	})
+}
+
+// SuffixStart applies equality check predicate on the "suffix_start" field. It's identical to SuffixStartEQ.
+func SuffixStart(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixEnd applies equality check predicate on the "suffix_end" field. It's identical to SuffixEndEQ.
+func SuffixEnd(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSuffixEnd), v))
 	})
 }
 
@@ -800,6 +828,366 @@ func EndIPNotNil() predicate.Decision {
 	})
 }
 
+// RangeStartEQ applies the EQ predicate on the "range_start" field.
+func RangeStartEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartNEQ applies the NEQ predicate on the "range_start" field.
+func RangeStartNEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartIn applies the In predicate on the "range_start" field.
+func RangeStartIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldRangeStart), v...))
+	})
+}
+
+// RangeStartNotIn applies the NotIn predicate on the "range_start" field.
+func RangeStartNotIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldRangeStart), v...))
+	})
+}
+
+// RangeStartGT applies the GT predicate on the "range_start" field.
+func RangeStartGT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartGTE applies the GTE predicate on the "range_start" field.
+func RangeStartGTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartLT applies the LT predicate on the "range_start" field.
+func RangeStartLT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartLTE applies the LTE predicate on the "range_start" field.
+func RangeStartLTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldRangeStart), v))
+	})
+}
+
+// RangeStartIsNil applies the IsNil predicate on the "range_start" field.
+func RangeStartIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldRangeStart)))
+	})
+}
+
+// RangeStartNotNil applies the NotNil predicate on the "range_start" field.
+func RangeStartNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldRangeStart)))
+	})
+}
+
+// RangeEndEQ applies the EQ predicate on the "range_end" field.
+func RangeEndEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndNEQ applies the NEQ predicate on the "range_end" field.
+func RangeEndNEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndIn applies the In predicate on the "range_end" field.
+func RangeEndIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldRangeEnd), v...))
+	})
+}
+
+// RangeEndNotIn applies the NotIn predicate on the "range_end" field.
+func RangeEndNotIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldRangeEnd), v...))
+	})
+}
+
+// RangeEndGT applies the GT predicate on the "range_end" field.
+func RangeEndGT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndGTE applies the GTE predicate on the "range_end" field.
+func RangeEndGTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndLT applies the LT predicate on the "range_end" field.
+func RangeEndLT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndLTE applies the LTE predicate on the "range_end" field.
+func RangeEndLTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldRangeEnd), v))
+	})
+}
+
+// RangeEndIsNil applies the IsNil predicate on the "range_end" field.
+func RangeEndIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldRangeEnd)))
+	})
+}
+
+// RangeEndNotNil applies the NotNil predicate on the "range_end" field.
+func RangeEndNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldRangeEnd)))
+	})
+}
+
+// SuffixStartEQ applies the EQ predicate on the "suffix_start" field.
+func SuffixStartEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartNEQ applies the NEQ predicate on the "suffix_start" field.
+func SuffixStartNEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartIn applies the In predicate on the "suffix_start" field.
+func SuffixStartIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldSuffixStart), v...))
+	})
+}
+
+// SuffixStartNotIn applies the NotIn predicate on the "suffix_start" field.
+func SuffixStartNotIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldSuffixStart), v...))
+	})
+}
+
+// SuffixStartGT applies the GT predicate on the "suffix_start" field.
+func SuffixStartGT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartGTE applies the GTE predicate on the "suffix_start" field.
+func SuffixStartGTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartLT applies the LT predicate on the "suffix_start" field.
+func SuffixStartLT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartLTE applies the LTE predicate on the "suffix_start" field.
+func SuffixStartLTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldSuffixStart), v))
+	})
+}
+
+// SuffixStartIsNil applies the IsNil predicate on the "suffix_start" field.
+func SuffixStartIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldSuffixStart)))
+	})
+}
+
+// SuffixStartNotNil applies the NotNil predicate on the "suffix_start" field.
+func SuffixStartNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldSuffixStart)))
+	})
+}
+
+// SuffixEndEQ applies the EQ predicate on the "suffix_end" field.
+func SuffixEndEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndNEQ applies the NEQ predicate on the "suffix_end" field.
+func SuffixEndNEQ(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndIn applies the In predicate on the "suffix_end" field.
+func SuffixEndIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldSuffixEnd), v...))
+	})
+}
+
+// SuffixEndNotIn applies the NotIn predicate on the "suffix_end" field.
+func SuffixEndNotIn(vs ...int64) predicate.Decision {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Decision(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldSuffixEnd), v...))
+	})
+}
+
+// SuffixEndGT applies the GT predicate on the "suffix_end" field.
+func SuffixEndGT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndGTE applies the GTE predicate on the "suffix_end" field.
+func SuffixEndGTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndLT applies the LT predicate on the "suffix_end" field.
+func SuffixEndLT(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndLTE applies the LTE predicate on the "suffix_end" field.
+func SuffixEndLTE(v int64) predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldSuffixEnd), v))
+	})
+}
+
+// SuffixEndIsNil applies the IsNil predicate on the "suffix_end" field.
+func SuffixEndIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldSuffixEnd)))
+	})
+}
+
+// SuffixEndNotNil applies the NotNil predicate on the "suffix_end" field.
+func SuffixEndNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldSuffixEnd)))
+	})
+}
+
 // ScopeEQ applies the EQ predicate on the "scope" field.
 func ScopeEQ(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
@@ -1175,7 +1563,7 @@ func HasOwnerWith(preds ...predicate.Alert) predicate.Decision {
 	})
 }
 
-// And groups list of predicates with the AND operator between them.
+// And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Decision) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s1 := s.Clone().SetP(nil)
@@ -1186,7 +1574,7 @@ func And(predicates ...predicate.Decision) predicate.Decision {
 	})
 }
 
-// Or groups list of predicates with the OR operator between them.
+// Or groups predicates with the OR operator between them.
 func Or(predicates ...predicate.Decision) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s1 := s.Clone().SetP(nil)

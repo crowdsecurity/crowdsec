@@ -21,13 +21,13 @@ type MetaCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (mc *MetaCreate) SetCreatedAt(t time.Time) *MetaCreate {
 	mc.mutation.SetCreatedAt(t)
 	return mc
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (mc *MetaCreate) SetNillableCreatedAt(t *time.Time) *MetaCreate {
 	if t != nil {
 		mc.SetCreatedAt(*t)
@@ -35,13 +35,13 @@ func (mc *MetaCreate) SetNillableCreatedAt(t *time.Time) *MetaCreate {
 	return mc
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (mc *MetaCreate) SetUpdatedAt(t time.Time) *MetaCreate {
 	mc.mutation.SetUpdatedAt(t)
 	return mc
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (mc *MetaCreate) SetNillableUpdatedAt(t *time.Time) *MetaCreate {
 	if t != nil {
 		mc.SetUpdatedAt(*t)
@@ -49,25 +49,25 @@ func (mc *MetaCreate) SetNillableUpdatedAt(t *time.Time) *MetaCreate {
 	return mc
 }
 
-// SetKey sets the key field.
+// SetKey sets the "key" field.
 func (mc *MetaCreate) SetKey(s string) *MetaCreate {
 	mc.mutation.SetKey(s)
 	return mc
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (mc *MetaCreate) SetValue(s string) *MetaCreate {
 	mc.mutation.SetValue(s)
 	return mc
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (mc *MetaCreate) SetOwnerID(id int) *MetaCreate {
 	mc.mutation.SetOwnerID(id)
 	return mc
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (mc *MetaCreate) SetNillableOwnerID(id *int) *MetaCreate {
 	if id != nil {
 		mc = mc.SetOwnerID(*id)
@@ -75,7 +75,7 @@ func (mc *MetaCreate) SetNillableOwnerID(id *int) *MetaCreate {
 	return mc
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (mc *MetaCreate) SetOwner(a *Alert) *MetaCreate {
 	return mc.SetOwnerID(a.ID)
 }
@@ -242,7 +242,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// MetaCreateBulk is the builder for creating a bulk of Meta entities.
+// MetaCreateBulk is the builder for creating many Meta entities in bulk.
 type MetaCreateBulk struct {
 	config
 	builders []*MetaCreate
@@ -300,7 +300,7 @@ func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (mcb *MetaCreateBulk) SaveX(ctx context.Context) []*Meta {
 	v, err := mcb.Save(ctx)
 	if err != nil {
