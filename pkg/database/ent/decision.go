@@ -28,13 +28,13 @@ type Decision struct {
 	// Type holds the value of the "type" field.
 	Type string `json:"type,omitempty"`
 	// StartIP holds the value of the "start_ip" field.
-	StartIP uint64 `json:"start_ip,omitempty"`
+	StartIP int64 `json:"start_ip,omitempty"`
 	// EndIP holds the value of the "end_ip" field.
-	EndIP uint64 `json:"end_ip,omitempty"`
+	EndIP int64 `json:"end_ip,omitempty"`
 	// StartSuffix holds the value of the "start_suffix" field.
-	StartSuffix uint64 `json:"start_suffix,omitempty"`
+	StartSuffix int64 `json:"start_suffix,omitempty"`
 	// EndSuffix holds the value of the "end_suffix" field.
-	EndSuffix uint64 `json:"end_suffix,omitempty"`
+	EndSuffix int64 `json:"end_suffix,omitempty"`
 	// IPSize holds the value of the "ip_size" field.
 	IPSize int64 `json:"ip_size,omitempty"`
 	// Scope holds the value of the "scope" field.
@@ -144,25 +144,25 @@ func (d *Decision) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_ip", values[i])
 			} else if value.Valid {
-				d.StartIP = uint64(value.Int64)
+				d.StartIP = value.Int64
 			}
 		case decision.FieldEndIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_ip", values[i])
 			} else if value.Valid {
-				d.EndIP = uint64(value.Int64)
+				d.EndIP = value.Int64
 			}
 		case decision.FieldStartSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_suffix", values[i])
 			} else if value.Valid {
-				d.StartSuffix = uint64(value.Int64)
+				d.StartSuffix = value.Int64
 			}
 		case decision.FieldEndSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_suffix", values[i])
 			} else if value.Valid {
-				d.EndSuffix = uint64(value.Int64)
+				d.EndSuffix = value.Int64
 			}
 		case decision.FieldIPSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {

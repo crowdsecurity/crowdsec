@@ -268,7 +268,7 @@ func (a *apic) PullTop() error {
 
 	// process new decisions
 	for _, decision := range data.New {
-		var start_ip, start_sfx, end_ip, end_sfx uint64
+		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
 
 		/*if the scope is IP or Range, convert the value to integers */

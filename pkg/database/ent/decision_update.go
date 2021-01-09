@@ -75,49 +75,49 @@ func (du *DecisionUpdate) SetType(s string) *DecisionUpdate {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (du *DecisionUpdate) SetStartIP(u uint64) *DecisionUpdate {
+func (du *DecisionUpdate) SetStartIP(i int64) *DecisionUpdate {
 	du.mutation.ResetStartIP()
-	du.mutation.SetStartIP(u)
+	du.mutation.SetStartIP(i)
 	return du
 }
 
-// AddStartIP adds u to the "start_ip" field.
-func (du *DecisionUpdate) AddStartIP(u uint64) *DecisionUpdate {
-	du.mutation.AddStartIP(u)
+// AddStartIP adds i to the "start_ip" field.
+func (du *DecisionUpdate) AddStartIP(i int64) *DecisionUpdate {
+	du.mutation.AddStartIP(i)
 	return du
 }
 
 // SetEndIP sets the "end_ip" field.
-func (du *DecisionUpdate) SetEndIP(u uint64) *DecisionUpdate {
+func (du *DecisionUpdate) SetEndIP(i int64) *DecisionUpdate {
 	du.mutation.ResetEndIP()
-	du.mutation.SetEndIP(u)
+	du.mutation.SetEndIP(i)
 	return du
 }
 
-// AddEndIP adds u to the "end_ip" field.
-func (du *DecisionUpdate) AddEndIP(u uint64) *DecisionUpdate {
-	du.mutation.AddEndIP(u)
+// AddEndIP adds i to the "end_ip" field.
+func (du *DecisionUpdate) AddEndIP(i int64) *DecisionUpdate {
+	du.mutation.AddEndIP(i)
 	return du
 }
 
 // SetStartSuffix sets the "start_suffix" field.
-func (du *DecisionUpdate) SetStartSuffix(u uint64) *DecisionUpdate {
+func (du *DecisionUpdate) SetStartSuffix(i int64) *DecisionUpdate {
 	du.mutation.ResetStartSuffix()
-	du.mutation.SetStartSuffix(u)
+	du.mutation.SetStartSuffix(i)
 	return du
 }
 
 // SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableStartSuffix(u *uint64) *DecisionUpdate {
-	if u != nil {
-		du.SetStartSuffix(*u)
+func (du *DecisionUpdate) SetNillableStartSuffix(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetStartSuffix(*i)
 	}
 	return du
 }
 
-// AddStartSuffix adds u to the "start_suffix" field.
-func (du *DecisionUpdate) AddStartSuffix(u uint64) *DecisionUpdate {
-	du.mutation.AddStartSuffix(u)
+// AddStartSuffix adds i to the "start_suffix" field.
+func (du *DecisionUpdate) AddStartSuffix(i int64) *DecisionUpdate {
+	du.mutation.AddStartSuffix(i)
 	return du
 }
 
@@ -128,23 +128,23 @@ func (du *DecisionUpdate) ClearStartSuffix() *DecisionUpdate {
 }
 
 // SetEndSuffix sets the "end_suffix" field.
-func (du *DecisionUpdate) SetEndSuffix(u uint64) *DecisionUpdate {
+func (du *DecisionUpdate) SetEndSuffix(i int64) *DecisionUpdate {
 	du.mutation.ResetEndSuffix()
-	du.mutation.SetEndSuffix(u)
+	du.mutation.SetEndSuffix(i)
 	return du
 }
 
 // SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableEndSuffix(u *uint64) *DecisionUpdate {
-	if u != nil {
-		du.SetEndSuffix(*u)
+func (du *DecisionUpdate) SetNillableEndSuffix(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetEndSuffix(*i)
 	}
 	return du
 }
 
-// AddEndSuffix adds u to the "end_suffix" field.
-func (du *DecisionUpdate) AddEndSuffix(u uint64) *DecisionUpdate {
-	du.mutation.AddEndSuffix(u)
+// AddEndSuffix adds i to the "end_suffix" field.
+func (du *DecisionUpdate) AddEndSuffix(i int64) *DecisionUpdate {
+	du.mutation.AddEndSuffix(i)
 	return du
 }
 
@@ -335,69 +335,69 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := du.mutation.StartIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
 	}
 	if value, ok := du.mutation.AddedStartIP(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
 	}
 	if value, ok := du.mutation.EndIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
 	}
 	if value, ok := du.mutation.AddedEndIP(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
 	}
 	if value, ok := du.mutation.StartSuffix(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if value, ok := du.mutation.AddedStartSuffix(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if du.mutation.StartSuffixCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if value, ok := du.mutation.EndSuffix(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndSuffix,
 		})
 	}
 	if value, ok := du.mutation.AddedEndSuffix(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndSuffix,
 		})
 	}
 	if du.mutation.EndSuffixCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Column: decision.FieldEndSuffix,
 		})
 	}
@@ -543,49 +543,49 @@ func (duo *DecisionUpdateOne) SetType(s string) *DecisionUpdateOne {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (duo *DecisionUpdateOne) SetStartIP(u uint64) *DecisionUpdateOne {
+func (duo *DecisionUpdateOne) SetStartIP(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetStartIP()
-	duo.mutation.SetStartIP(u)
+	duo.mutation.SetStartIP(i)
 	return duo
 }
 
-// AddStartIP adds u to the "start_ip" field.
-func (duo *DecisionUpdateOne) AddStartIP(u uint64) *DecisionUpdateOne {
-	duo.mutation.AddStartIP(u)
+// AddStartIP adds i to the "start_ip" field.
+func (duo *DecisionUpdateOne) AddStartIP(i int64) *DecisionUpdateOne {
+	duo.mutation.AddStartIP(i)
 	return duo
 }
 
 // SetEndIP sets the "end_ip" field.
-func (duo *DecisionUpdateOne) SetEndIP(u uint64) *DecisionUpdateOne {
+func (duo *DecisionUpdateOne) SetEndIP(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetEndIP()
-	duo.mutation.SetEndIP(u)
+	duo.mutation.SetEndIP(i)
 	return duo
 }
 
-// AddEndIP adds u to the "end_ip" field.
-func (duo *DecisionUpdateOne) AddEndIP(u uint64) *DecisionUpdateOne {
-	duo.mutation.AddEndIP(u)
+// AddEndIP adds i to the "end_ip" field.
+func (duo *DecisionUpdateOne) AddEndIP(i int64) *DecisionUpdateOne {
+	duo.mutation.AddEndIP(i)
 	return duo
 }
 
 // SetStartSuffix sets the "start_suffix" field.
-func (duo *DecisionUpdateOne) SetStartSuffix(u uint64) *DecisionUpdateOne {
+func (duo *DecisionUpdateOne) SetStartSuffix(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetStartSuffix()
-	duo.mutation.SetStartSuffix(u)
+	duo.mutation.SetStartSuffix(i)
 	return duo
 }
 
 // SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableStartSuffix(u *uint64) *DecisionUpdateOne {
-	if u != nil {
-		duo.SetStartSuffix(*u)
+func (duo *DecisionUpdateOne) SetNillableStartSuffix(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetStartSuffix(*i)
 	}
 	return duo
 }
 
-// AddStartSuffix adds u to the "start_suffix" field.
-func (duo *DecisionUpdateOne) AddStartSuffix(u uint64) *DecisionUpdateOne {
-	duo.mutation.AddStartSuffix(u)
+// AddStartSuffix adds i to the "start_suffix" field.
+func (duo *DecisionUpdateOne) AddStartSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.AddStartSuffix(i)
 	return duo
 }
 
@@ -596,23 +596,23 @@ func (duo *DecisionUpdateOne) ClearStartSuffix() *DecisionUpdateOne {
 }
 
 // SetEndSuffix sets the "end_suffix" field.
-func (duo *DecisionUpdateOne) SetEndSuffix(u uint64) *DecisionUpdateOne {
+func (duo *DecisionUpdateOne) SetEndSuffix(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetEndSuffix()
-	duo.mutation.SetEndSuffix(u)
+	duo.mutation.SetEndSuffix(i)
 	return duo
 }
 
 // SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableEndSuffix(u *uint64) *DecisionUpdateOne {
-	if u != nil {
-		duo.SetEndSuffix(*u)
+func (duo *DecisionUpdateOne) SetNillableEndSuffix(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetEndSuffix(*i)
 	}
 	return duo
 }
 
-// AddEndSuffix adds u to the "end_suffix" field.
-func (duo *DecisionUpdateOne) AddEndSuffix(u uint64) *DecisionUpdateOne {
-	duo.mutation.AddEndSuffix(u)
+// AddEndSuffix adds i to the "end_suffix" field.
+func (duo *DecisionUpdateOne) AddEndSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.AddEndSuffix(i)
 	return duo
 }
 
@@ -801,69 +801,69 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	}
 	if value, ok := duo.mutation.StartIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
 	}
 	if value, ok := duo.mutation.AddedStartIP(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
 	}
 	if value, ok := duo.mutation.EndIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
 	}
 	if value, ok := duo.mutation.AddedEndIP(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
 	}
 	if value, ok := duo.mutation.StartSuffix(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if value, ok := duo.mutation.AddedStartSuffix(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if duo.mutation.StartSuffixCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Column: decision.FieldStartSuffix,
 		})
 	}
 	if value, ok := duo.mutation.EndSuffix(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndSuffix,
 		})
 	}
 	if value, ok := duo.mutation.AddedEndSuffix(); ok {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndSuffix,
 		})
 	}
 	if duo.mutation.EndSuffixCleared() {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Column: decision.FieldEndSuffix,
 		})
 	}

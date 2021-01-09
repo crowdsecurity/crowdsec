@@ -191,7 +191,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
-				var start_ip, start_sfx, end_ip, end_sfx uint64
+				var start_ip, start_sfx, end_ip, end_sfx int64
 				var sz int
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
@@ -206,7 +206,9 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", decisionItem.Value, err)
 					}
 				}
-				decisionBulk[i] = c.Ent.Decision.Create().
+				log.Infof("sz=%d, start_ip=%d, start_sfx=%d end_ip=%d end_sfx=%d",
+					sz, start_ip, start_sfx, end_ip, end_sfx)
+				decisionBulk[i] = c.Ent.Debug().Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
@@ -288,9 +290,13 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	var err error
-	var start_ip, start_sfx, end_ip, end_sfx uint64
+	var start_ip, start_sfx, end_ip, end_sfx int64
 	var hasActiveDecision bool
 	var ip_sz int
+	var contains bool = true
+	/*if contains is true, return bans that *contains* the given value (value is the inner)
+	  else, return bans that are *contained* by the given value (value is the outer)
+	  TODO : expose this via the params*/
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
@@ -374,41 +380,74 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
 		}
 	}
+
 	if ip_sz == 4 {
-		alerts = alerts.Where(alert.And(
-			alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
-			alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
-		))
+		if contains {
+			alerts = alerts.Where(alert.And(
+				alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
+				alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			))
+		} else {
+			alerts = alerts.Where(alert.And(
+				alert.HasDecisionsWith(decision.StartIPGTE(start_ip)),
+				alert.HasDecisionsWith(decision.EndIPLTE(end_ip)),
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+			))
+		}
 	} else if ip_sz == 16 {
-		/*
-			(C.START > D.START OR (C.START == D.START AND C.START_SFX >= D.START_SFX))
-			AND
-			(C.END < D.END OR (C.END == D.END AND C.END_SFX <= D.END_SFX))
-		*/
-		alerts = alerts.Where(alert.And(
-			//matching addr size
-			alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
-			alert.Or(
-				//decision.start_ip < query.start_ip
-				alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
-				alert.And(
-					//decision.start_ip == query.start_ip
-					alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
-					//decision.start_suffix <= query.start_suffix
-					alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
-				)),
-			alert.Or(
-				//decision.end_ip > query.end_ip
-				alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
-				alert.And(
-					//decision.end_ip == query.end_ip
-					alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
-					//decision.end_suffix >= query.end_suffix
-					alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
+
+		/*decision contains {start_ip,end_ip}*/
+		if contains {
+			alerts = alerts.Where(alert.And(
+				//matching addr size
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+				alert.Or(
+					//decision.start_ip < query.start_ip
+					alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
+					alert.And(
+						//decision.start_ip == query.start_ip
+						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+						//decision.start_suffix <= query.start_suffix
+						alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
+					)),
+				alert.Or(
+					//decision.end_ip > query.end_ip
+					alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
+					alert.And(
+						//decision.end_ip == query.end_ip
+						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+						//decision.end_suffix >= query.end_suffix
+						alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
+					),
 				),
-			),
-		))
+			))
+		} else {
+			/*decision is contained within {start_ip,end_ip}*/
+			alerts = alerts.Where(alert.And(
+				//matching addr size
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+				alert.Or(
+					//decision.start_ip > query.start_ip
+					alert.HasDecisionsWith(decision.StartIPGT(start_ip)),
+					alert.And(
+						//decision.start_ip == query.start_ip
+						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+						//decision.start_suffix >= query.start_suffix
+						alert.HasDecisionsWith(decision.StartSuffixGTE(start_sfx)),
+					)),
+				alert.Or(
+					//decision.end_ip < query.end_ip
+					alert.HasDecisionsWith(decision.EndIPLT(end_ip)),
+					alert.And(
+						//decision.end_ip == query.end_ip
+						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+						//decision.end_suffix <= query.end_suffix
+						alert.HasDecisionsWith(decision.EndSuffixLTE(end_sfx)),
+					),
+				),
+			))
+		}
 	} else if ip_sz != 0 {
 		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
@@ -440,7 +479,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	offset := 0
 	ret := make([]*ent.Alert, 0)
 	for {
-		alerts := c.Ent.Alert.Query()
+		alerts := c.Ent.Debug().Alert.Query()
 		alerts, err := BuildAlertRequestFromFilter(alerts, filter)
 		if err != nil {
 			return []*ent.Alert{}, err

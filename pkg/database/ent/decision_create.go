@@ -68,41 +68,41 @@ func (dc *DecisionCreate) SetType(s string) *DecisionCreate {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (dc *DecisionCreate) SetStartIP(u uint64) *DecisionCreate {
-	dc.mutation.SetStartIP(u)
+func (dc *DecisionCreate) SetStartIP(i int64) *DecisionCreate {
+	dc.mutation.SetStartIP(i)
 	return dc
 }
 
 // SetEndIP sets the "end_ip" field.
-func (dc *DecisionCreate) SetEndIP(u uint64) *DecisionCreate {
-	dc.mutation.SetEndIP(u)
+func (dc *DecisionCreate) SetEndIP(i int64) *DecisionCreate {
+	dc.mutation.SetEndIP(i)
 	return dc
 }
 
 // SetStartSuffix sets the "start_suffix" field.
-func (dc *DecisionCreate) SetStartSuffix(u uint64) *DecisionCreate {
-	dc.mutation.SetStartSuffix(u)
+func (dc *DecisionCreate) SetStartSuffix(i int64) *DecisionCreate {
+	dc.mutation.SetStartSuffix(i)
 	return dc
 }
 
 // SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableStartSuffix(u *uint64) *DecisionCreate {
-	if u != nil {
-		dc.SetStartSuffix(*u)
+func (dc *DecisionCreate) SetNillableStartSuffix(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetStartSuffix(*i)
 	}
 	return dc
 }
 
 // SetEndSuffix sets the "end_suffix" field.
-func (dc *DecisionCreate) SetEndSuffix(u uint64) *DecisionCreate {
-	dc.mutation.SetEndSuffix(u)
+func (dc *DecisionCreate) SetEndSuffix(i int64) *DecisionCreate {
+	dc.mutation.SetEndSuffix(i)
 	return dc
 }
 
 // SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableEndSuffix(u *uint64) *DecisionCreate {
-	if u != nil {
-		dc.SetEndSuffix(*u)
+func (dc *DecisionCreate) SetNillableEndSuffix(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetEndSuffix(*i)
 	}
 	return dc
 }
@@ -337,7 +337,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.StartIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
@@ -345,7 +345,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.EndIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
@@ -353,7 +353,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.StartSuffix(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldStartSuffix,
 		})
@@ -361,7 +361,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.EndSuffix(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUint64,
+			Type:   field.TypeInt64,
 			Value:  value,
 			Column: decision.FieldEndSuffix,
 		})

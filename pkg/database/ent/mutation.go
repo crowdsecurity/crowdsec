@@ -3119,14 +3119,14 @@ type DecisionMutation struct {
 	until           *time.Time
 	scenario        *string
 	_type           *string
-	start_ip        *uint64
-	addstart_ip     *uint64
-	end_ip          *uint64
-	addend_ip       *uint64
-	start_suffix    *uint64
-	addstart_suffix *uint64
-	end_suffix      *uint64
-	addend_suffix   *uint64
+	start_ip        *int64
+	addstart_ip     *int64
+	end_ip          *int64
+	addend_ip       *int64
+	start_suffix    *int64
+	addstart_suffix *int64
+	end_suffix      *int64
+	addend_suffix   *int64
 	ip_size         *int64
 	addip_size      *int64
 	scope           *string
@@ -3401,13 +3401,13 @@ func (m *DecisionMutation) ResetType() {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (m *DecisionMutation) SetStartIP(u uint64) {
-	m.start_ip = &u
+func (m *DecisionMutation) SetStartIP(i int64) {
+	m.start_ip = &i
 	m.addstart_ip = nil
 }
 
 // StartIP returns the value of the "start_ip" field in the mutation.
-func (m *DecisionMutation) StartIP() (r uint64, exists bool) {
+func (m *DecisionMutation) StartIP() (r int64, exists bool) {
 	v := m.start_ip
 	if v == nil {
 		return
@@ -3418,7 +3418,7 @@ func (m *DecisionMutation) StartIP() (r uint64, exists bool) {
 // OldStartIP returns the old "start_ip" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldStartIP(ctx context.Context) (v uint64, err error) {
+func (m *DecisionMutation) OldStartIP(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldStartIP is only allowed on UpdateOne operations")
 	}
@@ -3432,17 +3432,17 @@ func (m *DecisionMutation) OldStartIP(ctx context.Context) (v uint64, err error)
 	return oldValue.StartIP, nil
 }
 
-// AddStartIP adds u to the "start_ip" field.
-func (m *DecisionMutation) AddStartIP(u uint64) {
+// AddStartIP adds i to the "start_ip" field.
+func (m *DecisionMutation) AddStartIP(i int64) {
 	if m.addstart_ip != nil {
-		*m.addstart_ip += u
+		*m.addstart_ip += i
 	} else {
-		m.addstart_ip = &u
+		m.addstart_ip = &i
 	}
 }
 
 // AddedStartIP returns the value that was added to the "start_ip" field in this mutation.
-func (m *DecisionMutation) AddedStartIP() (r uint64, exists bool) {
+func (m *DecisionMutation) AddedStartIP() (r int64, exists bool) {
 	v := m.addstart_ip
 	if v == nil {
 		return
@@ -3457,13 +3457,13 @@ func (m *DecisionMutation) ResetStartIP() {
 }
 
 // SetEndIP sets the "end_ip" field.
-func (m *DecisionMutation) SetEndIP(u uint64) {
-	m.end_ip = &u
+func (m *DecisionMutation) SetEndIP(i int64) {
+	m.end_ip = &i
 	m.addend_ip = nil
 }
 
 // EndIP returns the value of the "end_ip" field in the mutation.
-func (m *DecisionMutation) EndIP() (r uint64, exists bool) {
+func (m *DecisionMutation) EndIP() (r int64, exists bool) {
 	v := m.end_ip
 	if v == nil {
 		return
@@ -3474,7 +3474,7 @@ func (m *DecisionMutation) EndIP() (r uint64, exists bool) {
 // OldEndIP returns the old "end_ip" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldEndIP(ctx context.Context) (v uint64, err error) {
+func (m *DecisionMutation) OldEndIP(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldEndIP is only allowed on UpdateOne operations")
 	}
@@ -3488,17 +3488,17 @@ func (m *DecisionMutation) OldEndIP(ctx context.Context) (v uint64, err error) {
 	return oldValue.EndIP, nil
 }
 
-// AddEndIP adds u to the "end_ip" field.
-func (m *DecisionMutation) AddEndIP(u uint64) {
+// AddEndIP adds i to the "end_ip" field.
+func (m *DecisionMutation) AddEndIP(i int64) {
 	if m.addend_ip != nil {
-		*m.addend_ip += u
+		*m.addend_ip += i
 	} else {
-		m.addend_ip = &u
+		m.addend_ip = &i
 	}
 }
 
 // AddedEndIP returns the value that was added to the "end_ip" field in this mutation.
-func (m *DecisionMutation) AddedEndIP() (r uint64, exists bool) {
+func (m *DecisionMutation) AddedEndIP() (r int64, exists bool) {
 	v := m.addend_ip
 	if v == nil {
 		return
@@ -3513,13 +3513,13 @@ func (m *DecisionMutation) ResetEndIP() {
 }
 
 // SetStartSuffix sets the "start_suffix" field.
-func (m *DecisionMutation) SetStartSuffix(u uint64) {
-	m.start_suffix = &u
+func (m *DecisionMutation) SetStartSuffix(i int64) {
+	m.start_suffix = &i
 	m.addstart_suffix = nil
 }
 
 // StartSuffix returns the value of the "start_suffix" field in the mutation.
-func (m *DecisionMutation) StartSuffix() (r uint64, exists bool) {
+func (m *DecisionMutation) StartSuffix() (r int64, exists bool) {
 	v := m.start_suffix
 	if v == nil {
 		return
@@ -3530,7 +3530,7 @@ func (m *DecisionMutation) StartSuffix() (r uint64, exists bool) {
 // OldStartSuffix returns the old "start_suffix" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldStartSuffix(ctx context.Context) (v uint64, err error) {
+func (m *DecisionMutation) OldStartSuffix(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldStartSuffix is only allowed on UpdateOne operations")
 	}
@@ -3544,17 +3544,17 @@ func (m *DecisionMutation) OldStartSuffix(ctx context.Context) (v uint64, err er
 	return oldValue.StartSuffix, nil
 }
 
-// AddStartSuffix adds u to the "start_suffix" field.
-func (m *DecisionMutation) AddStartSuffix(u uint64) {
+// AddStartSuffix adds i to the "start_suffix" field.
+func (m *DecisionMutation) AddStartSuffix(i int64) {
 	if m.addstart_suffix != nil {
-		*m.addstart_suffix += u
+		*m.addstart_suffix += i
 	} else {
-		m.addstart_suffix = &u
+		m.addstart_suffix = &i
 	}
 }
 
 // AddedStartSuffix returns the value that was added to the "start_suffix" field in this mutation.
-func (m *DecisionMutation) AddedStartSuffix() (r uint64, exists bool) {
+func (m *DecisionMutation) AddedStartSuffix() (r int64, exists bool) {
 	v := m.addstart_suffix
 	if v == nil {
 		return
@@ -3583,13 +3583,13 @@ func (m *DecisionMutation) ResetStartSuffix() {
 }
 
 // SetEndSuffix sets the "end_suffix" field.
-func (m *DecisionMutation) SetEndSuffix(u uint64) {
-	m.end_suffix = &u
+func (m *DecisionMutation) SetEndSuffix(i int64) {
+	m.end_suffix = &i
 	m.addend_suffix = nil
 }
 
 // EndSuffix returns the value of the "end_suffix" field in the mutation.
-func (m *DecisionMutation) EndSuffix() (r uint64, exists bool) {
+func (m *DecisionMutation) EndSuffix() (r int64, exists bool) {
 	v := m.end_suffix
 	if v == nil {
 		return
@@ -3600,7 +3600,7 @@ func (m *DecisionMutation) EndSuffix() (r uint64, exists bool) {
 // OldEndSuffix returns the old "end_suffix" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldEndSuffix(ctx context.Context) (v uint64, err error) {
+func (m *DecisionMutation) OldEndSuffix(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldEndSuffix is only allowed on UpdateOne operations")
 	}
@@ -3614,17 +3614,17 @@ func (m *DecisionMutation) OldEndSuffix(ctx context.Context) (v uint64, err erro
 	return oldValue.EndSuffix, nil
 }
 
-// AddEndSuffix adds u to the "end_suffix" field.
-func (m *DecisionMutation) AddEndSuffix(u uint64) {
+// AddEndSuffix adds i to the "end_suffix" field.
+func (m *DecisionMutation) AddEndSuffix(i int64) {
 	if m.addend_suffix != nil {
-		*m.addend_suffix += u
+		*m.addend_suffix += i
 	} else {
-		m.addend_suffix = &u
+		m.addend_suffix = &i
 	}
 }
 
 // AddedEndSuffix returns the value that was added to the "end_suffix" field in this mutation.
-func (m *DecisionMutation) AddedEndSuffix() (r uint64, exists bool) {
+func (m *DecisionMutation) AddedEndSuffix() (r int64, exists bool) {
 	v := m.addend_suffix
 	if v == nil {
 		return
@@ -4066,28 +4066,28 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 		m.SetType(v)
 		return nil
 	case decision.FieldStartIP:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStartIP(v)
 		return nil
 	case decision.FieldEndIP:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEndIP(v)
 		return nil
 	case decision.FieldStartSuffix:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStartSuffix(v)
 		return nil
 	case decision.FieldEndSuffix:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -4179,28 +4179,28 @@ func (m *DecisionMutation) AddedField(name string) (ent.Value, bool) {
 func (m *DecisionMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case decision.FieldStartIP:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddStartIP(v)
 		return nil
 	case decision.FieldEndIP:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddEndIP(v)
 		return nil
 	case decision.FieldStartSuffix:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddStartSuffix(v)
 		return nil
 	case decision.FieldEndSuffix:
-		v, ok := value.(uint64)
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
