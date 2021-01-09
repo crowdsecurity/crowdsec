@@ -68,86 +68,48 @@ func (dc *DecisionCreate) SetType(s string) *DecisionCreate {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (dc *DecisionCreate) SetStartIP(i int64) *DecisionCreate {
-	dc.mutation.SetStartIP(i)
-	return dc
-}
-
-// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableStartIP(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetStartIP(*i)
-	}
+func (dc *DecisionCreate) SetStartIP(u uint64) *DecisionCreate {
+	dc.mutation.SetStartIP(u)
 	return dc
 }
 
 // SetEndIP sets the "end_ip" field.
-func (dc *DecisionCreate) SetEndIP(i int64) *DecisionCreate {
-	dc.mutation.SetEndIP(i)
+func (dc *DecisionCreate) SetEndIP(u uint64) *DecisionCreate {
+	dc.mutation.SetEndIP(u)
 	return dc
 }
 
-// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableEndIP(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetEndIP(*i)
+// SetStartSuffix sets the "start_suffix" field.
+func (dc *DecisionCreate) SetStartSuffix(u uint64) *DecisionCreate {
+	dc.mutation.SetStartSuffix(u)
+	return dc
+}
+
+// SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableStartSuffix(u *uint64) *DecisionCreate {
+	if u != nil {
+		dc.SetStartSuffix(*u)
 	}
 	return dc
 }
 
-// SetRangeStart sets the "range_start" field.
-func (dc *DecisionCreate) SetRangeStart(i int64) *DecisionCreate {
-	dc.mutation.SetRangeStart(i)
+// SetEndSuffix sets the "end_suffix" field.
+func (dc *DecisionCreate) SetEndSuffix(u uint64) *DecisionCreate {
+	dc.mutation.SetEndSuffix(u)
 	return dc
 }
 
-// SetNillableRangeStart sets the "range_start" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableRangeStart(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetRangeStart(*i)
+// SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableEndSuffix(u *uint64) *DecisionCreate {
+	if u != nil {
+		dc.SetEndSuffix(*u)
 	}
 	return dc
 }
 
-// SetRangeEnd sets the "range_end" field.
-func (dc *DecisionCreate) SetRangeEnd(i int64) *DecisionCreate {
-	dc.mutation.SetRangeEnd(i)
-	return dc
-}
-
-// SetNillableRangeEnd sets the "range_end" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableRangeEnd(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetRangeEnd(*i)
-	}
-	return dc
-}
-
-// SetSuffixStart sets the "suffix_start" field.
-func (dc *DecisionCreate) SetSuffixStart(i int64) *DecisionCreate {
-	dc.mutation.SetSuffixStart(i)
-	return dc
-}
-
-// SetNillableSuffixStart sets the "suffix_start" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableSuffixStart(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetSuffixStart(*i)
-	}
-	return dc
-}
-
-// SetSuffixEnd sets the "suffix_end" field.
-func (dc *DecisionCreate) SetSuffixEnd(i int64) *DecisionCreate {
-	dc.mutation.SetSuffixEnd(i)
-	return dc
-}
-
-// SetNillableSuffixEnd sets the "suffix_end" field if the given value is not nil.
-func (dc *DecisionCreate) SetNillableSuffixEnd(i *int64) *DecisionCreate {
-	if i != nil {
-		dc.SetSuffixEnd(*i)
-	}
+// SetIPSize sets the "ip_size" field.
+func (dc *DecisionCreate) SetIPSize(i int64) *DecisionCreate {
+	dc.mutation.SetIPSize(i)
 	return dc
 }
 
@@ -285,6 +247,15 @@ func (dc *DecisionCreate) check() error {
 	if _, ok := dc.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New("ent: missing required field \"type\"")}
 	}
+	if _, ok := dc.mutation.StartIP(); !ok {
+		return &ValidationError{Name: "start_ip", err: errors.New("ent: missing required field \"start_ip\"")}
+	}
+	if _, ok := dc.mutation.EndIP(); !ok {
+		return &ValidationError{Name: "end_ip", err: errors.New("ent: missing required field \"end_ip\"")}
+	}
+	if _, ok := dc.mutation.IPSize(); !ok {
+		return &ValidationError{Name: "ip_size", err: errors.New("ent: missing required field \"ip_size\"")}
+	}
 	if _, ok := dc.mutation.Scope(); !ok {
 		return &ValidationError{Name: "scope", err: errors.New("ent: missing required field \"scope\"")}
 	}
@@ -366,7 +337,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.StartIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
+			Type:   field.TypeUint64,
 			Value:  value,
 			Column: decision.FieldStartIP,
 		})
@@ -374,43 +345,35 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.EndIP(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
+			Type:   field.TypeUint64,
 			Value:  value,
 			Column: decision.FieldEndIP,
 		})
 		_node.EndIP = value
 	}
-	if value, ok := dc.mutation.RangeStart(); ok {
+	if value, ok := dc.mutation.StartSuffix(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
+			Type:   field.TypeUint64,
 			Value:  value,
-			Column: decision.FieldRangeStart,
+			Column: decision.FieldStartSuffix,
 		})
-		_node.RangeStart = value
+		_node.StartSuffix = value
 	}
-	if value, ok := dc.mutation.RangeEnd(); ok {
+	if value, ok := dc.mutation.EndSuffix(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
+			Type:   field.TypeUint64,
 			Value:  value,
-			Column: decision.FieldRangeEnd,
+			Column: decision.FieldEndSuffix,
 		})
-		_node.RangeEnd = value
+		_node.EndSuffix = value
 	}
-	if value, ok := dc.mutation.SuffixStart(); ok {
+	if value, ok := dc.mutation.IPSize(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Value:  value,
-			Column: decision.FieldSuffixStart,
+			Column: decision.FieldIPSize,
 		})
-		_node.SuffixStart = value
-	}
-	if value, ok := dc.mutation.SuffixEnd(); ok {
-		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeInt64,
-			Value:  value,
-			Column: decision.FieldSuffixEnd,
-		})
-		_node.SuffixEnd = value
+		_node.IPSize = value
 	}
 	if value, ok := dc.mutation.Scope(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

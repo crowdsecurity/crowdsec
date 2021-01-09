@@ -79,12 +79,11 @@ var (
 		{Name: "until", Type: field.TypeTime},
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString},
-		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
-		{Name: "end_ip", Type: field.TypeInt64, Nullable: true},
-		{Name: "range_start", Type: field.TypeInt64, Nullable: true},
-		{Name: "range_end", Type: field.TypeInt64, Nullable: true},
-		{Name: "suffix_start", Type: field.TypeInt64, Nullable: true},
-		{Name: "suffix_end", Type: field.TypeInt64, Nullable: true},
+		{Name: "start_ip", Type: field.TypeUint64},
+		{Name: "end_ip", Type: field.TypeUint64},
+		{Name: "start_suffix", Type: field.TypeUint64, Nullable: true},
+		{Name: "end_suffix", Type: field.TypeUint64, Nullable: true},
+		{Name: "ip_size", Type: field.TypeInt64},
 		{Name: "scope", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
@@ -99,7 +98,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[16]},
+				Columns: []*schema.Column{DecisionsColumns[15]},
 
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,

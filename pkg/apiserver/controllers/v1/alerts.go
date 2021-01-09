@@ -78,8 +78,6 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,
 			Type:      &decisionItem.Type,
-			StartIP:   decisionItem.StartIP,
-			EndIP:     decisionItem.EndIP,
 			Scope:     &decisionItem.Scope,
 			Value:     &decisionItem.Value,
 			Origin:    &decisionItem.Origin,

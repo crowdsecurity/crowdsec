@@ -85,7 +85,7 @@ func init() {
 	// decision.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	decision.DefaultUpdatedAt = decisionDescUpdatedAt.Default.(func() time.Time)
 	// decisionDescSimulated is the schema descriptor for simulated field.
-	decisionDescSimulated := decisionFields[14].Descriptor()
+	decisionDescSimulated := decisionFields[13].Descriptor()
 	// decision.DefaultSimulated holds the default value on creation for the simulated field.
 	decision.DefaultSimulated = decisionDescSimulated.Default.(bool)
 	eventFields := schema.Event{}.Fields()

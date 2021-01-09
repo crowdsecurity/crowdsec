@@ -28,17 +28,15 @@ type Decision struct {
 	// Type holds the value of the "type" field.
 	Type string `json:"type,omitempty"`
 	// StartIP holds the value of the "start_ip" field.
-	StartIP int64 `json:"start_ip,omitempty"`
+	StartIP uint64 `json:"start_ip,omitempty"`
 	// EndIP holds the value of the "end_ip" field.
-	EndIP int64 `json:"end_ip,omitempty"`
-	// RangeStart holds the value of the "range_start" field.
-	RangeStart int64 `json:"range_start,omitempty"`
-	// RangeEnd holds the value of the "range_end" field.
-	RangeEnd int64 `json:"range_end,omitempty"`
-	// SuffixStart holds the value of the "suffix_start" field.
-	SuffixStart int64 `json:"suffix_start,omitempty"`
-	// SuffixEnd holds the value of the "suffix_end" field.
-	SuffixEnd int64 `json:"suffix_end,omitempty"`
+	EndIP uint64 `json:"end_ip,omitempty"`
+	// StartSuffix holds the value of the "start_suffix" field.
+	StartSuffix uint64 `json:"start_suffix,omitempty"`
+	// EndSuffix holds the value of the "end_suffix" field.
+	EndSuffix uint64 `json:"end_suffix,omitempty"`
+	// IPSize holds the value of the "ip_size" field.
+	IPSize int64 `json:"ip_size,omitempty"`
 	// Scope holds the value of the "scope" field.
 	Scope string `json:"scope,omitempty"`
 	// Value holds the value of the "value" field.
@@ -83,7 +81,7 @@ func (*Decision) scanValues(columns []string) ([]interface{}, error) {
 		switch columns[i] {
 		case decision.FieldSimulated:
 			values[i] = &sql.NullBool{}
-		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldRangeStart, decision.FieldRangeEnd, decision.FieldSuffixStart, decision.FieldSuffixEnd:
+		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldStartSuffix, decision.FieldEndSuffix, decision.FieldIPSize:
 			values[i] = &sql.NullInt64{}
 		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin:
 			values[i] = &sql.NullString{}
@@ -146,37 +144,31 @@ func (d *Decision) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field start_ip", values[i])
 			} else if value.Valid {
-				d.StartIP = value.Int64
+				d.StartIP = uint64(value.Int64)
 			}
 		case decision.FieldEndIP:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field end_ip", values[i])
 			} else if value.Valid {
-				d.EndIP = value.Int64
+				d.EndIP = uint64(value.Int64)
 			}
-		case decision.FieldRangeStart:
+		case decision.FieldStartSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field range_start", values[i])
+				return fmt.Errorf("unexpected type %T for field start_suffix", values[i])
 			} else if value.Valid {
-				d.RangeStart = value.Int64
+				d.StartSuffix = uint64(value.Int64)
 			}
-		case decision.FieldRangeEnd:
+		case decision.FieldEndSuffix:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field range_end", values[i])
+				return fmt.Errorf("unexpected type %T for field end_suffix", values[i])
 			} else if value.Valid {
-				d.RangeEnd = value.Int64
+				d.EndSuffix = uint64(value.Int64)
 			}
-		case decision.FieldSuffixStart:
+		case decision.FieldIPSize:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field suffix_start", values[i])
+				return fmt.Errorf("unexpected type %T for field ip_size", values[i])
 			} else if value.Valid {
-				d.SuffixStart = value.Int64
-			}
-		case decision.FieldSuffixEnd:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field suffix_end", values[i])
-			} else if value.Valid {
-				d.SuffixEnd = value.Int64
+				d.IPSize = value.Int64
 			}
 		case decision.FieldScope:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -256,14 +248,12 @@ func (d *Decision) String() string {
 	builder.WriteString(fmt.Sprintf("%v", d.StartIP))
 	builder.WriteString(", end_ip=")
 	builder.WriteString(fmt.Sprintf("%v", d.EndIP))
-	builder.WriteString(", range_start=")
-	builder.WriteString(fmt.Sprintf("%v", d.RangeStart))
-	builder.WriteString(", range_end=")
-	builder.WriteString(fmt.Sprintf("%v", d.RangeEnd))
-	builder.WriteString(", suffix_start=")
-	builder.WriteString(fmt.Sprintf("%v", d.SuffixStart))
-	builder.WriteString(", suffix_end=")
-	builder.WriteString(fmt.Sprintf("%v", d.SuffixEnd))
+	builder.WriteString(", start_suffix=")
+	builder.WriteString(fmt.Sprintf("%v", d.StartSuffix))
+	builder.WriteString(", end_suffix=")
+	builder.WriteString(fmt.Sprintf("%v", d.EndSuffix))
+	builder.WriteString(", ip_size=")
+	builder.WriteString(fmt.Sprintf("%v", d.IPSize))
 	builder.WriteString(", scope=")
 	builder.WriteString(d.Scope)
 	builder.WriteString(", value=")

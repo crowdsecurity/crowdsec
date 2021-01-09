@@ -3119,18 +3119,16 @@ type DecisionMutation struct {
 	until           *time.Time
 	scenario        *string
 	_type           *string
-	start_ip        *int64
-	addstart_ip     *int64
-	end_ip          *int64
-	addend_ip       *int64
-	range_start     *int64
-	addrange_start  *int64
-	range_end       *int64
-	addrange_end    *int64
-	suffix_start    *int64
-	addsuffix_start *int64
-	suffix_end      *int64
-	addsuffix_end   *int64
+	start_ip        *uint64
+	addstart_ip     *uint64
+	end_ip          *uint64
+	addend_ip       *uint64
+	start_suffix    *uint64
+	addstart_suffix *uint64
+	end_suffix      *uint64
+	addend_suffix   *uint64
+	ip_size         *int64
+	addip_size      *int64
 	scope           *string
 	value           *string
 	origin          *string
@@ -3403,13 +3401,13 @@ func (m *DecisionMutation) ResetType() {
 }
 
 // SetStartIP sets the "start_ip" field.
-func (m *DecisionMutation) SetStartIP(i int64) {
-	m.start_ip = &i
+func (m *DecisionMutation) SetStartIP(u uint64) {
+	m.start_ip = &u
 	m.addstart_ip = nil
 }
 
 // StartIP returns the value of the "start_ip" field in the mutation.
-func (m *DecisionMutation) StartIP() (r int64, exists bool) {
+func (m *DecisionMutation) StartIP() (r uint64, exists bool) {
 	v := m.start_ip
 	if v == nil {
 		return
@@ -3420,7 +3418,7 @@ func (m *DecisionMutation) StartIP() (r int64, exists bool) {
 // OldStartIP returns the old "start_ip" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldStartIP(ctx context.Context) (v int64, err error) {
+func (m *DecisionMutation) OldStartIP(ctx context.Context) (v uint64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldStartIP is only allowed on UpdateOne operations")
 	}
@@ -3434,17 +3432,17 @@ func (m *DecisionMutation) OldStartIP(ctx context.Context) (v int64, err error) 
 	return oldValue.StartIP, nil
 }
 
-// AddStartIP adds i to the "start_ip" field.
-func (m *DecisionMutation) AddStartIP(i int64) {
+// AddStartIP adds u to the "start_ip" field.
+func (m *DecisionMutation) AddStartIP(u uint64) {
 	if m.addstart_ip != nil {
-		*m.addstart_ip += i
+		*m.addstart_ip += u
 	} else {
-		m.addstart_ip = &i
+		m.addstart_ip = &u
 	}
 }
 
 // AddedStartIP returns the value that was added to the "start_ip" field in this mutation.
-func (m *DecisionMutation) AddedStartIP() (r int64, exists bool) {
+func (m *DecisionMutation) AddedStartIP() (r uint64, exists bool) {
 	v := m.addstart_ip
 	if v == nil {
 		return
@@ -3452,34 +3450,20 @@ func (m *DecisionMutation) AddedStartIP() (r int64, exists bool) {
 	return *v, true
 }
 
-// ClearStartIP clears the value of the "start_ip" field.
-func (m *DecisionMutation) ClearStartIP() {
-	m.start_ip = nil
-	m.addstart_ip = nil
-	m.clearedFields[decision.FieldStartIP] = struct{}{}
-}
-
-// StartIPCleared returns if the "start_ip" field was cleared in this mutation.
-func (m *DecisionMutation) StartIPCleared() bool {
-	_, ok := m.clearedFields[decision.FieldStartIP]
-	return ok
-}
-
 // ResetStartIP resets all changes to the "start_ip" field.
 func (m *DecisionMutation) ResetStartIP() {
 	m.start_ip = nil
 	m.addstart_ip = nil
-	delete(m.clearedFields, decision.FieldStartIP)
 }
 
 // SetEndIP sets the "end_ip" field.
-func (m *DecisionMutation) SetEndIP(i int64) {
-	m.end_ip = &i
+func (m *DecisionMutation) SetEndIP(u uint64) {
+	m.end_ip = &u
 	m.addend_ip = nil
 }
 
 // EndIP returns the value of the "end_ip" field in the mutation.
-func (m *DecisionMutation) EndIP() (r int64, exists bool) {
+func (m *DecisionMutation) EndIP() (r uint64, exists bool) {
 	v := m.end_ip
 	if v == nil {
 		return
@@ -3490,7 +3474,7 @@ func (m *DecisionMutation) EndIP() (r int64, exists bool) {
 // OldEndIP returns the old "end_ip" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldEndIP(ctx context.Context) (v int64, err error) {
+func (m *DecisionMutation) OldEndIP(ctx context.Context) (v uint64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, fmt.Errorf("OldEndIP is only allowed on UpdateOne operations")
 	}
@@ -3504,17 +3488,17 @@ func (m *DecisionMutation) OldEndIP(ctx context.Context) (v int64, err error) {
 	return oldValue.EndIP, nil
 }
 
-// AddEndIP adds i to the "end_ip" field.
-func (m *DecisionMutation) AddEndIP(i int64) {
+// AddEndIP adds u to the "end_ip" field.
+func (m *DecisionMutation) AddEndIP(u uint64) {
 	if m.addend_ip != nil {
-		*m.addend_ip += i
+		*m.addend_ip += u
 	} else {
-		m.addend_ip = &i
+		m.addend_ip = &u
 	}
 }
 
 // AddedEndIP returns the value that was added to the "end_ip" field in this mutation.
-func (m *DecisionMutation) AddedEndIP() (r int64, exists bool) {
+func (m *DecisionMutation) AddedEndIP() (r uint64, exists bool) {
 	v := m.addend_ip
 	if v == nil {
 		return
@@ -3522,304 +3506,206 @@ func (m *DecisionMutation) AddedEndIP() (r int64, exists bool) {
 	return *v, true
 }
 
-// ClearEndIP clears the value of the "end_ip" field.
-func (m *DecisionMutation) ClearEndIP() {
-	m.end_ip = nil
-	m.addend_ip = nil
-	m.clearedFields[decision.FieldEndIP] = struct{}{}
-}
-
-// EndIPCleared returns if the "end_ip" field was cleared in this mutation.
-func (m *DecisionMutation) EndIPCleared() bool {
-	_, ok := m.clearedFields[decision.FieldEndIP]
-	return ok
-}
-
 // ResetEndIP resets all changes to the "end_ip" field.
 func (m *DecisionMutation) ResetEndIP() {
 	m.end_ip = nil
 	m.addend_ip = nil
-	delete(m.clearedFields, decision.FieldEndIP)
 }
 
-// SetRangeStart sets the "range_start" field.
-func (m *DecisionMutation) SetRangeStart(i int64) {
-	m.range_start = &i
-	m.addrange_start = nil
+// SetStartSuffix sets the "start_suffix" field.
+func (m *DecisionMutation) SetStartSuffix(u uint64) {
+	m.start_suffix = &u
+	m.addstart_suffix = nil
 }
 
-// RangeStart returns the value of the "range_start" field in the mutation.
-func (m *DecisionMutation) RangeStart() (r int64, exists bool) {
-	v := m.range_start
+// StartSuffix returns the value of the "start_suffix" field in the mutation.
+func (m *DecisionMutation) StartSuffix() (r uint64, exists bool) {
+	v := m.start_suffix
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldRangeStart returns the old "range_start" field's value of the Decision entity.
+// OldStartSuffix returns the old "start_suffix" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldRangeStart(ctx context.Context) (v int64, err error) {
+func (m *DecisionMutation) OldStartSuffix(ctx context.Context) (v uint64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldRangeStart is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldStartSuffix is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldRangeStart requires an ID field in the mutation")
+		return v, fmt.Errorf("OldStartSuffix requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRangeStart: %w", err)
+		return v, fmt.Errorf("querying old value for OldStartSuffix: %w", err)
 	}
-	return oldValue.RangeStart, nil
+	return oldValue.StartSuffix, nil
 }
 
-// AddRangeStart adds i to the "range_start" field.
-func (m *DecisionMutation) AddRangeStart(i int64) {
-	if m.addrange_start != nil {
-		*m.addrange_start += i
+// AddStartSuffix adds u to the "start_suffix" field.
+func (m *DecisionMutation) AddStartSuffix(u uint64) {
+	if m.addstart_suffix != nil {
+		*m.addstart_suffix += u
 	} else {
-		m.addrange_start = &i
+		m.addstart_suffix = &u
 	}
 }
 
-// AddedRangeStart returns the value that was added to the "range_start" field in this mutation.
-func (m *DecisionMutation) AddedRangeStart() (r int64, exists bool) {
-	v := m.addrange_start
+// AddedStartSuffix returns the value that was added to the "start_suffix" field in this mutation.
+func (m *DecisionMutation) AddedStartSuffix() (r uint64, exists bool) {
+	v := m.addstart_suffix
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearRangeStart clears the value of the "range_start" field.
-func (m *DecisionMutation) ClearRangeStart() {
-	m.range_start = nil
-	m.addrange_start = nil
-	m.clearedFields[decision.FieldRangeStart] = struct{}{}
+// ClearStartSuffix clears the value of the "start_suffix" field.
+func (m *DecisionMutation) ClearStartSuffix() {
+	m.start_suffix = nil
+	m.addstart_suffix = nil
+	m.clearedFields[decision.FieldStartSuffix] = struct{}{}
 }
 
-// RangeStartCleared returns if the "range_start" field was cleared in this mutation.
-func (m *DecisionMutation) RangeStartCleared() bool {
-	_, ok := m.clearedFields[decision.FieldRangeStart]
+// StartSuffixCleared returns if the "start_suffix" field was cleared in this mutation.
+func (m *DecisionMutation) StartSuffixCleared() bool {
+	_, ok := m.clearedFields[decision.FieldStartSuffix]
 	return ok
 }
 
-// ResetRangeStart resets all changes to the "range_start" field.
-func (m *DecisionMutation) ResetRangeStart() {
-	m.range_start = nil
-	m.addrange_start = nil
-	delete(m.clearedFields, decision.FieldRangeStart)
+// ResetStartSuffix resets all changes to the "start_suffix" field.
+func (m *DecisionMutation) ResetStartSuffix() {
+	m.start_suffix = nil
+	m.addstart_suffix = nil
+	delete(m.clearedFields, decision.FieldStartSuffix)
 }
 
-// SetRangeEnd sets the "range_end" field.
-func (m *DecisionMutation) SetRangeEnd(i int64) {
-	m.range_end = &i
-	m.addrange_end = nil
+// SetEndSuffix sets the "end_suffix" field.
+func (m *DecisionMutation) SetEndSuffix(u uint64) {
+	m.end_suffix = &u
+	m.addend_suffix = nil
 }
 
-// RangeEnd returns the value of the "range_end" field in the mutation.
-func (m *DecisionMutation) RangeEnd() (r int64, exists bool) {
-	v := m.range_end
+// EndSuffix returns the value of the "end_suffix" field in the mutation.
+func (m *DecisionMutation) EndSuffix() (r uint64, exists bool) {
+	v := m.end_suffix
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldRangeEnd returns the old "range_end" field's value of the Decision entity.
+// OldEndSuffix returns the old "end_suffix" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldRangeEnd(ctx context.Context) (v int64, err error) {
+func (m *DecisionMutation) OldEndSuffix(ctx context.Context) (v uint64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldRangeEnd is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldEndSuffix is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldRangeEnd requires an ID field in the mutation")
+		return v, fmt.Errorf("OldEndSuffix requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRangeEnd: %w", err)
+		return v, fmt.Errorf("querying old value for OldEndSuffix: %w", err)
 	}
-	return oldValue.RangeEnd, nil
+	return oldValue.EndSuffix, nil
 }
 
-// AddRangeEnd adds i to the "range_end" field.
-func (m *DecisionMutation) AddRangeEnd(i int64) {
-	if m.addrange_end != nil {
-		*m.addrange_end += i
+// AddEndSuffix adds u to the "end_suffix" field.
+func (m *DecisionMutation) AddEndSuffix(u uint64) {
+	if m.addend_suffix != nil {
+		*m.addend_suffix += u
 	} else {
-		m.addrange_end = &i
+		m.addend_suffix = &u
 	}
 }
 
-// AddedRangeEnd returns the value that was added to the "range_end" field in this mutation.
-func (m *DecisionMutation) AddedRangeEnd() (r int64, exists bool) {
-	v := m.addrange_end
+// AddedEndSuffix returns the value that was added to the "end_suffix" field in this mutation.
+func (m *DecisionMutation) AddedEndSuffix() (r uint64, exists bool) {
+	v := m.addend_suffix
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearRangeEnd clears the value of the "range_end" field.
-func (m *DecisionMutation) ClearRangeEnd() {
-	m.range_end = nil
-	m.addrange_end = nil
-	m.clearedFields[decision.FieldRangeEnd] = struct{}{}
+// ClearEndSuffix clears the value of the "end_suffix" field.
+func (m *DecisionMutation) ClearEndSuffix() {
+	m.end_suffix = nil
+	m.addend_suffix = nil
+	m.clearedFields[decision.FieldEndSuffix] = struct{}{}
 }
 
-// RangeEndCleared returns if the "range_end" field was cleared in this mutation.
-func (m *DecisionMutation) RangeEndCleared() bool {
-	_, ok := m.clearedFields[decision.FieldRangeEnd]
+// EndSuffixCleared returns if the "end_suffix" field was cleared in this mutation.
+func (m *DecisionMutation) EndSuffixCleared() bool {
+	_, ok := m.clearedFields[decision.FieldEndSuffix]
 	return ok
 }
 
-// ResetRangeEnd resets all changes to the "range_end" field.
-func (m *DecisionMutation) ResetRangeEnd() {
-	m.range_end = nil
-	m.addrange_end = nil
-	delete(m.clearedFields, decision.FieldRangeEnd)
+// ResetEndSuffix resets all changes to the "end_suffix" field.
+func (m *DecisionMutation) ResetEndSuffix() {
+	m.end_suffix = nil
+	m.addend_suffix = nil
+	delete(m.clearedFields, decision.FieldEndSuffix)
 }
 
-// SetSuffixStart sets the "suffix_start" field.
-func (m *DecisionMutation) SetSuffixStart(i int64) {
-	m.suffix_start = &i
-	m.addsuffix_start = nil
+// SetIPSize sets the "ip_size" field.
+func (m *DecisionMutation) SetIPSize(i int64) {
+	m.ip_size = &i
+	m.addip_size = nil
 }
 
-// SuffixStart returns the value of the "suffix_start" field in the mutation.
-func (m *DecisionMutation) SuffixStart() (r int64, exists bool) {
-	v := m.suffix_start
+// IPSize returns the value of the "ip_size" field in the mutation.
+func (m *DecisionMutation) IPSize() (r int64, exists bool) {
+	v := m.ip_size
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSuffixStart returns the old "suffix_start" field's value of the Decision entity.
+// OldIPSize returns the old "ip_size" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldSuffixStart(ctx context.Context) (v int64, err error) {
+func (m *DecisionMutation) OldIPSize(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldSuffixStart is only allowed on UpdateOne operations")
+		return v, fmt.Errorf("OldIPSize is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldSuffixStart requires an ID field in the mutation")
+		return v, fmt.Errorf("OldIPSize requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSuffixStart: %w", err)
+		return v, fmt.Errorf("querying old value for OldIPSize: %w", err)
 	}
-	return oldValue.SuffixStart, nil
+	return oldValue.IPSize, nil
 }
 
-// AddSuffixStart adds i to the "suffix_start" field.
-func (m *DecisionMutation) AddSuffixStart(i int64) {
-	if m.addsuffix_start != nil {
-		*m.addsuffix_start += i
+// AddIPSize adds i to the "ip_size" field.
+func (m *DecisionMutation) AddIPSize(i int64) {
+	if m.addip_size != nil {
+		*m.addip_size += i
 	} else {
-		m.addsuffix_start = &i
+		m.addip_size = &i
 	}
 }
 
-// AddedSuffixStart returns the value that was added to the "suffix_start" field in this mutation.
-func (m *DecisionMutation) AddedSuffixStart() (r int64, exists bool) {
-	v := m.addsuffix_start
+// AddedIPSize returns the value that was added to the "ip_size" field in this mutation.
+func (m *DecisionMutation) AddedIPSize() (r int64, exists bool) {
+	v := m.addip_size
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ClearSuffixStart clears the value of the "suffix_start" field.
-func (m *DecisionMutation) ClearSuffixStart() {
-	m.suffix_start = nil
-	m.addsuffix_start = nil
-	m.clearedFields[decision.FieldSuffixStart] = struct{}{}
-}
-
-// SuffixStartCleared returns if the "suffix_start" field was cleared in this mutation.
-func (m *DecisionMutation) SuffixStartCleared() bool {
-	_, ok := m.clearedFields[decision.FieldSuffixStart]
-	return ok
-}
-
-// ResetSuffixStart resets all changes to the "suffix_start" field.
-func (m *DecisionMutation) ResetSuffixStart() {
-	m.suffix_start = nil
-	m.addsuffix_start = nil
-	delete(m.clearedFields, decision.FieldSuffixStart)
-}
-
-// SetSuffixEnd sets the "suffix_end" field.
-func (m *DecisionMutation) SetSuffixEnd(i int64) {
-	m.suffix_end = &i
-	m.addsuffix_end = nil
-}
-
-// SuffixEnd returns the value of the "suffix_end" field in the mutation.
-func (m *DecisionMutation) SuffixEnd() (r int64, exists bool) {
-	v := m.suffix_end
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSuffixEnd returns the old "suffix_end" field's value of the Decision entity.
-// If the Decision object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldSuffixEnd(ctx context.Context) (v int64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, fmt.Errorf("OldSuffixEnd is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, fmt.Errorf("OldSuffixEnd requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSuffixEnd: %w", err)
-	}
-	return oldValue.SuffixEnd, nil
-}
-
-// AddSuffixEnd adds i to the "suffix_end" field.
-func (m *DecisionMutation) AddSuffixEnd(i int64) {
-	if m.addsuffix_end != nil {
-		*m.addsuffix_end += i
-	} else {
-		m.addsuffix_end = &i
-	}
-}
-
-// AddedSuffixEnd returns the value that was added to the "suffix_end" field in this mutation.
-func (m *DecisionMutation) AddedSuffixEnd() (r int64, exists bool) {
-	v := m.addsuffix_end
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearSuffixEnd clears the value of the "suffix_end" field.
-func (m *DecisionMutation) ClearSuffixEnd() {
-	m.suffix_end = nil
-	m.addsuffix_end = nil
-	m.clearedFields[decision.FieldSuffixEnd] = struct{}{}
-}
-
-// SuffixEndCleared returns if the "suffix_end" field was cleared in this mutation.
-func (m *DecisionMutation) SuffixEndCleared() bool {
-	_, ok := m.clearedFields[decision.FieldSuffixEnd]
-	return ok
-}
-
-// ResetSuffixEnd resets all changes to the "suffix_end" field.
-func (m *DecisionMutation) ResetSuffixEnd() {
-	m.suffix_end = nil
-	m.addsuffix_end = nil
-	delete(m.clearedFields, decision.FieldSuffixEnd)
+// ResetIPSize resets all changes to the "ip_size" field.
+func (m *DecisionMutation) ResetIPSize() {
+	m.ip_size = nil
+	m.addip_size = nil
 }
 
 // SetScope sets the "scope" field.
@@ -4019,7 +3905,7 @@ func (m *DecisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DecisionMutation) Fields() []string {
-	fields := make([]string, 0, 15)
+	fields := make([]string, 0, 14)
 	if m.created_at != nil {
 		fields = append(fields, decision.FieldCreatedAt)
 	}
@@ -4041,17 +3927,14 @@ func (m *DecisionMutation) Fields() []string {
 	if m.end_ip != nil {
 		fields = append(fields, decision.FieldEndIP)
 	}
-	if m.range_start != nil {
-		fields = append(fields, decision.FieldRangeStart)
+	if m.start_suffix != nil {
+		fields = append(fields, decision.FieldStartSuffix)
 	}
-	if m.range_end != nil {
-		fields = append(fields, decision.FieldRangeEnd)
+	if m.end_suffix != nil {
+		fields = append(fields, decision.FieldEndSuffix)
 	}
-	if m.suffix_start != nil {
-		fields = append(fields, decision.FieldSuffixStart)
-	}
-	if m.suffix_end != nil {
-		fields = append(fields, decision.FieldSuffixEnd)
+	if m.ip_size != nil {
+		fields = append(fields, decision.FieldIPSize)
 	}
 	if m.scope != nil {
 		fields = append(fields, decision.FieldScope)
@@ -4087,14 +3970,12 @@ func (m *DecisionMutation) Field(name string) (ent.Value, bool) {
 		return m.StartIP()
 	case decision.FieldEndIP:
 		return m.EndIP()
-	case decision.FieldRangeStart:
-		return m.RangeStart()
-	case decision.FieldRangeEnd:
-		return m.RangeEnd()
-	case decision.FieldSuffixStart:
-		return m.SuffixStart()
-	case decision.FieldSuffixEnd:
-		return m.SuffixEnd()
+	case decision.FieldStartSuffix:
+		return m.StartSuffix()
+	case decision.FieldEndSuffix:
+		return m.EndSuffix()
+	case decision.FieldIPSize:
+		return m.IPSize()
 	case decision.FieldScope:
 		return m.Scope()
 	case decision.FieldValue:
@@ -4126,14 +4007,12 @@ func (m *DecisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldStartIP(ctx)
 	case decision.FieldEndIP:
 		return m.OldEndIP(ctx)
-	case decision.FieldRangeStart:
-		return m.OldRangeStart(ctx)
-	case decision.FieldRangeEnd:
-		return m.OldRangeEnd(ctx)
-	case decision.FieldSuffixStart:
-		return m.OldSuffixStart(ctx)
-	case decision.FieldSuffixEnd:
-		return m.OldSuffixEnd(ctx)
+	case decision.FieldStartSuffix:
+		return m.OldStartSuffix(ctx)
+	case decision.FieldEndSuffix:
+		return m.OldEndSuffix(ctx)
+	case decision.FieldIPSize:
+		return m.OldIPSize(ctx)
 	case decision.FieldScope:
 		return m.OldScope(ctx)
 	case decision.FieldValue:
@@ -4187,46 +4066,39 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 		m.SetType(v)
 		return nil
 	case decision.FieldStartIP:
-		v, ok := value.(int64)
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStartIP(v)
 		return nil
 	case decision.FieldEndIP:
-		v, ok := value.(int64)
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetEndIP(v)
 		return nil
-	case decision.FieldRangeStart:
-		v, ok := value.(int64)
+	case decision.FieldStartSuffix:
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRangeStart(v)
+		m.SetStartSuffix(v)
 		return nil
-	case decision.FieldRangeEnd:
-		v, ok := value.(int64)
+	case decision.FieldEndSuffix:
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetRangeEnd(v)
+		m.SetEndSuffix(v)
 		return nil
-	case decision.FieldSuffixStart:
+	case decision.FieldIPSize:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSuffixStart(v)
-		return nil
-	case decision.FieldSuffixEnd:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSuffixEnd(v)
+		m.SetIPSize(v)
 		return nil
 	case decision.FieldScope:
 		v, ok := value.(string)
@@ -4270,17 +4142,14 @@ func (m *DecisionMutation) AddedFields() []string {
 	if m.addend_ip != nil {
 		fields = append(fields, decision.FieldEndIP)
 	}
-	if m.addrange_start != nil {
-		fields = append(fields, decision.FieldRangeStart)
+	if m.addstart_suffix != nil {
+		fields = append(fields, decision.FieldStartSuffix)
 	}
-	if m.addrange_end != nil {
-		fields = append(fields, decision.FieldRangeEnd)
+	if m.addend_suffix != nil {
+		fields = append(fields, decision.FieldEndSuffix)
 	}
-	if m.addsuffix_start != nil {
-		fields = append(fields, decision.FieldSuffixStart)
-	}
-	if m.addsuffix_end != nil {
-		fields = append(fields, decision.FieldSuffixEnd)
+	if m.addip_size != nil {
+		fields = append(fields, decision.FieldIPSize)
 	}
 	return fields
 }
@@ -4294,14 +4163,12 @@ func (m *DecisionMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedStartIP()
 	case decision.FieldEndIP:
 		return m.AddedEndIP()
-	case decision.FieldRangeStart:
-		return m.AddedRangeStart()
-	case decision.FieldRangeEnd:
-		return m.AddedRangeEnd()
-	case decision.FieldSuffixStart:
-		return m.AddedSuffixStart()
-	case decision.FieldSuffixEnd:
-		return m.AddedSuffixEnd()
+	case decision.FieldStartSuffix:
+		return m.AddedStartSuffix()
+	case decision.FieldEndSuffix:
+		return m.AddedEndSuffix()
+	case decision.FieldIPSize:
+		return m.AddedIPSize()
 	}
 	return nil, false
 }
@@ -4312,46 +4179,39 @@ func (m *DecisionMutation) AddedField(name string) (ent.Value, bool) {
 func (m *DecisionMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case decision.FieldStartIP:
-		v, ok := value.(int64)
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddStartIP(v)
 		return nil
 	case decision.FieldEndIP:
-		v, ok := value.(int64)
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddEndIP(v)
 		return nil
-	case decision.FieldRangeStart:
-		v, ok := value.(int64)
+	case decision.FieldStartSuffix:
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddRangeStart(v)
+		m.AddStartSuffix(v)
 		return nil
-	case decision.FieldRangeEnd:
-		v, ok := value.(int64)
+	case decision.FieldEndSuffix:
+		v, ok := value.(uint64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddRangeEnd(v)
+		m.AddEndSuffix(v)
 		return nil
-	case decision.FieldSuffixStart:
+	case decision.FieldIPSize:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddSuffixStart(v)
-		return nil
-	case decision.FieldSuffixEnd:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSuffixEnd(v)
+		m.AddIPSize(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Decision numeric field %s", name)
@@ -4361,23 +4221,11 @@ func (m *DecisionMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *DecisionMutation) ClearedFields() []string {
 	var fields []string
-	if m.FieldCleared(decision.FieldStartIP) {
-		fields = append(fields, decision.FieldStartIP)
+	if m.FieldCleared(decision.FieldStartSuffix) {
+		fields = append(fields, decision.FieldStartSuffix)
 	}
-	if m.FieldCleared(decision.FieldEndIP) {
-		fields = append(fields, decision.FieldEndIP)
-	}
-	if m.FieldCleared(decision.FieldRangeStart) {
-		fields = append(fields, decision.FieldRangeStart)
-	}
-	if m.FieldCleared(decision.FieldRangeEnd) {
-		fields = append(fields, decision.FieldRangeEnd)
-	}
-	if m.FieldCleared(decision.FieldSuffixStart) {
-		fields = append(fields, decision.FieldSuffixStart)
-	}
-	if m.FieldCleared(decision.FieldSuffixEnd) {
-		fields = append(fields, decision.FieldSuffixEnd)
+	if m.FieldCleared(decision.FieldEndSuffix) {
+		fields = append(fields, decision.FieldEndSuffix)
 	}
 	return fields
 }
@@ -4393,23 +4241,11 @@ func (m *DecisionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *DecisionMutation) ClearField(name string) error {
 	switch name {
-	case decision.FieldStartIP:
-		m.ClearStartIP()
+	case decision.FieldStartSuffix:
+		m.ClearStartSuffix()
 		return nil
-	case decision.FieldEndIP:
-		m.ClearEndIP()
-		return nil
-	case decision.FieldRangeStart:
-		m.ClearRangeStart()
-		return nil
-	case decision.FieldRangeEnd:
-		m.ClearRangeEnd()
-		return nil
-	case decision.FieldSuffixStart:
-		m.ClearSuffixStart()
-		return nil
-	case decision.FieldSuffixEnd:
-		m.ClearSuffixEnd()
+	case decision.FieldEndSuffix:
+		m.ClearEndSuffix()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision nullable field %s", name)
@@ -4440,17 +4276,14 @@ func (m *DecisionMutation) ResetField(name string) error {
 	case decision.FieldEndIP:
 		m.ResetEndIP()
 		return nil
-	case decision.FieldRangeStart:
-		m.ResetRangeStart()
+	case decision.FieldStartSuffix:
+		m.ResetStartSuffix()
 		return nil
-	case decision.FieldRangeEnd:
-		m.ResetRangeEnd()
+	case decision.FieldEndSuffix:
+		m.ResetEndSuffix()
 		return nil
-	case decision.FieldSuffixStart:
-		m.ResetSuffixStart()
-		return nil
-	case decision.FieldSuffixEnd:
-		m.ResetSuffixEnd()
+	case decision.FieldIPSize:
+		m.ResetIPSize()
 		return nil
 	case decision.FieldScope:
 		m.ResetScope()

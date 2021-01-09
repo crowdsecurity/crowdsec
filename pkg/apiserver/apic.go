@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -269,32 +268,30 @@ func (a *apic) PullTop() error {
 
 	// process new decisions
 	for _, decision := range data.New {
-		/*ensure scope makes sense no matter what consensus gives*/
-		if strings.ToLower(*decision.Scope) == "ip" {
-			*decision.Scope = types.Ip
-			sz, start_ip, start_sfx, end_ip, end_sfx, err := types.Addr2Ints(*decision.Value)
+		var start_ip, start_sfx, end_ip, end_sfx uint64
+		var sz int
+
+		/*if the scope is IP or Range, convert the value to integers */
+		if strings.ToLower(*decision.Scope) == "ip" || strings.ToLower(*decision.Scope) == "range" {
+			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decision.Value)
 			if err != nil {
-				return errors.Wrapf(err, "invalid ip %s", *decision.Value)
+				return errors.Wrapf(err, "invalid ip/range %s", *decision.Value)
 			}
-		} else if strings.ToLower(*decision.Scope) == "range" {
-			*decision.Scope = types.Range
 		}
 
 		duration, err := time.ParseDuration(*decision.Duration)
 		if err != nil {
 			return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
 		}
-		startIP, endIP, err := controllers.GetIpsFromIpRange(*decision.Value)
-		if err != nil {
-			return errors.Wrapf(err, "ip to int '%s':", *decision.Value)
-		}
-
 		_, err = a.dbClient.Ent.Decision.Create().
 			SetUntil(time.Now().Add(duration)).
 			SetScenario(*decision.Scenario).
 			SetType(*decision.Type).
-			SetStartIP(startIP).
-			SetEndIP(endIP).
+			SetIPSize(int64(sz)).
+			SetStartIP(start_ip).
+			SetStartSuffix(start_sfx).
+			SetEndIP(end_ip).
+			SetEndSuffix(end_sfx).
 			SetValue(*decision.Value).
 			SetScope(*decision.Scope).
 			SetOrigin(*decision.Origin).

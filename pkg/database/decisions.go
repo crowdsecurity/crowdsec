@@ -16,7 +16,8 @@ import (
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var err error
-	var startIP, endIP int64
+	var start_ip, start_sfx, end_ip, end_sfx uint64
+	var ip_sz int
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
@@ -42,40 +43,53 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
 			query = query.Where(decision.TypeEQ(value[0]))
-		case "ip":
-			isValidIP := IsIpv4(value[0])
-			if !isValidIP {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to parse '%s': %s", value[0], err)
-			}
-			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+		case "ip", "range":
+			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
-			}
-		case "range":
-			startIP, endIP, err = GetIpsFromIpRange(value[0])
-			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
+				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		default:
 			return query, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
 
-	if startIP != 0 && endIP != 0 {
-		/*the user is checking for a single IP*/
-		if startIP == endIP {
-			//DECISION_START <= IP_Q >= DECISON_END
-			query = query.Where(decision.And(
-				decision.StartIPLTE(startIP),
-				decision.EndIPGTE(endIP),
-			))
-		} else { /*the user is checking for a RANGE */
-			//START_Q >= DECISION_START AND END_Q <= DECISION_END
-			query = query.Where(decision.And(
-				decision.StartIPGTE(startIP),
-				decision.EndIPLTE(endIP),
-			))
-		}
+	if ip_sz == 4 {
+		query = query.Where(decision.And(
+			decision.StartIPLTE(start_ip),
+			decision.EndIPGTE(end_ip),
+			decision.IPSizeEQ(int64(ip_sz)),
+		))
+	} else if ip_sz == 16 {
+		/*
+			(C.START > D.START OR (C.START == D.START AND C.START_SFX >= D.START_SFX))
+			AND
+			(C.END < D.END OR (C.END == D.END AND C.END_SFX <= D.END_SFX))
+		*/
+		query = query.Where(decision.And(
+			//matching addr size
+			decision.IPSizeEQ(int64(ip_sz)),
+			decision.Or(
+				//decision.start_ip < query.start_ip
+				decision.StartIPLT(start_ip),
+				decision.And(
+					//decision.start_ip == query.start_ip
+					decision.StartIPEQ(start_ip),
+					//decision.start_suffix <= query.start_suffix
+					decision.StartSuffixLTE(start_sfx),
+				)),
+			decision.Or(
+				//decision.end_ip > query.end_ip
+				decision.EndIPGT(end_ip),
+				decision.And(
+					//decision.end_ip == query.end_ip
+					decision.EndIPEQ(end_ip),
+					//decision.end_suffix >= query.end_suffix
+					decision.EndSuffixGTE(end_sfx),
+				),
+			),
+		))
+	} else if ip_sz != 0 {
+		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 	return query, nil
 }
@@ -158,7 +172,8 @@ func (c *Client) DeleteDecisionById(decisionId int) error {
 
 func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
-	var startIP, endIP int64
+	var start_ip, start_sfx, end_ip, end_sfx uint64
+	var ip_sz int
 
 	decisions := c.Ent.Decision.Delete()
 
@@ -170,39 +185,52 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 			decisions = decisions.Where(decision.ValueEQ(value[0]))
 		case "type":
 			decisions = decisions.Where(decision.TypeEQ(value[0]))
-		case "ip":
-			isValidIP := IsIpv4(value[0])
-			if !isValidIP {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to parse '%s': %s", value[0], err))
-			}
-			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+		case "ip", "range":
+			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
-			}
-		case "range":
-			startIP, endIP, err = GetIpsFromIpRange(value[0])
-			if err != nil {
-				return "0", errors.Wrap(InvalidIPOrRange, fmt.Sprintf("unable to convert '%s' to int interval: %s", value[0], err))
+				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		default:
 			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
 
-		if startIP != 0 && endIP != 0 {
-			/*the user is checking for a single IP*/
-			if startIP == endIP {
-				//DECISION_START <= IP_Q >= DECISON_END
-				decisions = decisions.Where(decision.And(
-					decision.StartIPLTE(startIP),
-					decision.EndIPGTE(endIP),
-				))
-			} else { /*the user is checking for a RANGE */
-				//START_Q >= DECISION_START AND END_Q <= DECISION_END
-				decisions = decisions.Where(decision.And(
-					decision.StartIPGTE(startIP),
-					decision.EndIPLTE(endIP),
-				))
-			}
+		if ip_sz == 4 {
+			decisions = decisions.Where(decision.And(
+				decision.StartIPLTE(start_ip),
+				decision.EndIPGTE(end_ip),
+				decision.IPSizeEQ(int64(ip_sz)),
+			))
+		} else if ip_sz == 16 {
+			/*
+				(C.START > D.START OR (C.START == D.START AND C.START_SFX >= D.START_SFX))
+				AND
+				(C.END < D.END OR (C.END == D.END AND C.END_SFX <= D.END_SFX))
+			*/
+			decisions = decisions.Where(decision.And(
+				//matching addr size
+				decision.IPSizeEQ(int64(ip_sz)),
+				decision.Or(
+					//decision.start_ip < query.start_ip
+					decision.StartIPLT(start_ip),
+					decision.And(
+						//decision.start_ip == query.start_ip
+						decision.StartIPEQ(start_ip),
+						//decision.start_suffix <= query.start_suffix
+						decision.StartSuffixLTE(start_sfx),
+					)),
+				decision.Or(
+					//decision.end_ip > query.end_ip
+					decision.EndIPGT(end_ip),
+					decision.And(
+						//decision.end_ip == query.end_ip
+						decision.EndIPEQ(end_ip),
+						//decision.end_suffix >= query.end_suffix
+						decision.EndSuffixGTE(end_sfx),
+					),
+				),
+			))
+		} else if ip_sz != 0 {
+			return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 		}
 	}
 
@@ -217,7 +245,8 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 // SoftDeleteDecisionsWithFilter udpate the expiration time to now() for the decisions matching the filter
 func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
-	var startIP, endIP int64
+	var start_ip, start_sfx, end_ip, end_sfx uint64
+	var ip_sz int
 
 	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now()))
 	for param, value := range filter {
@@ -228,39 +257,52 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			decisions = decisions.Where(decision.ValueEQ(value[0]))
 		case "type":
 			decisions = decisions.Where(decision.TypeEQ(value[0]))
-		case "ip":
-			isValidIP := IsIpv4(value[0])
-			if !isValidIP {
-				return "0", errors.Wrapf(InvalidIPOrRange, "unable to parse '%s': %s", value[0], err)
-			}
-			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+		case "ip", "range":
+			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
-			}
-		case "range":
-			startIP, endIP, err = GetIpsFromIpRange(value[0])
-			if err != nil {
-				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
+				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		default:
 			return "0", errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 
-		if startIP != 0 && endIP != 0 {
-			/*the user is checking for a single IP*/
-			if startIP == endIP {
-				//DECISION_START <= IP_Q >= DECISON_END
-				decisions = decisions.Where(decision.And(
-					decision.StartIPLTE(startIP),
-					decision.EndIPGTE(endIP),
-				))
-			} else { /*the user is checking for a RANGE */
-				//START_Q >= DECISION_START AND END_Q <= DECISION_END
-				decisions = decisions.Where(decision.And(
-					decision.StartIPGTE(startIP),
-					decision.EndIPLTE(endIP),
-				))
-			}
+		if ip_sz == 4 {
+			decisions = decisions.Where(decision.And(
+				decision.StartIPLTE(start_ip),
+				decision.EndIPGTE(end_ip),
+				decision.IPSizeEQ(int64(ip_sz)),
+			))
+		} else if ip_sz == 16 {
+			/*
+				(C.START > D.START OR (C.START == D.START AND C.START_SFX >= D.START_SFX))
+				AND
+				(C.END < D.END OR (C.END == D.END AND C.END_SFX <= D.END_SFX))
+			*/
+			decisions = decisions.Where(decision.And(
+				//matching addr size
+				decision.IPSizeEQ(int64(ip_sz)),
+				decision.Or(
+					//decision.start_ip < query.start_ip
+					decision.StartIPLT(start_ip),
+					decision.And(
+						//decision.start_ip == query.start_ip
+						decision.StartIPEQ(start_ip),
+						//decision.start_suffix <= query.start_suffix
+						decision.StartSuffixLTE(start_sfx),
+					)),
+				decision.Or(
+					//decision.end_ip > query.end_ip
+					decision.EndIPGT(end_ip),
+					decision.And(
+						//decision.end_ip == query.end_ip
+						decision.EndIPEQ(end_ip),
+						//decision.end_suffix >= query.end_suffix
+						decision.EndSuffixGTE(end_sfx),
+					),
+				),
+			))
+		} else if ip_sz != 0 {
+			return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 		}
 	}
 	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
