@@ -295,8 +295,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	var ip_sz int
 	var contains bool = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)
-	  TODO : expose this via the params*/
+	  else, return bans that are *contained* by the given value (value is the outer)*/
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
@@ -308,6 +307,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 
 	for param, value := range filter {
 		switch param {
+		case "contains":
+			contains, err = strconv.ParseBool(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+			}
 		case "scope":
 			var scope string = value[0]
 			if strings.ToLower(scope) == "ip" {

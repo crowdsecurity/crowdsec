@@ -21,6 +21,7 @@ import (
 )
 
 var printMachine bool
+var contained bool
 var limit *int
 
 func DecisionsFromAlert(alert *models.Alert) string {
@@ -232,6 +233,7 @@ func NewAlertsCmd() *cobra.Command {
 		Since:          new(string),
 		Until:          new(string),
 		TypeEquals:     new(string),
+		Contains:       new(bool),
 	}
 	limit = new(int)
 	var cmdAlertsList = &cobra.Command{
@@ -300,6 +302,7 @@ cscli alerts list --type ban`,
 			if *alertListFilter.RangeEquals == "" {
 				alertListFilter.RangeEquals = nil
 			}
+			*alertListFilter.Contains = !contained
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
 				log.Fatalf("Unable to list alerts : %v", err.Error())
@@ -320,6 +323,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlertsList.Flags().BoolVar(&contained, "contained", false, "query decisions contained by range")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
 	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)

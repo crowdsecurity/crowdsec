@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func LastAddress(n net.IPNet) net.IP {
@@ -33,6 +34,7 @@ func LastAddress(n net.IPNet) net.IP {
 /*returns a range for any ip or range*/
 func Addr2Ints(any string) (int, int64, int64, int64, int64, error) {
 	if strings.Contains(any, "/") {
+		log.Infof("range ->%s", any)
 		_, net, err := net.ParseCIDR(any)
 		if err != nil {
 			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", any)
@@ -42,7 +44,11 @@ func Addr2Ints(any string) (int, int64, int64, int64, int64, error) {
 		}
 		return Range2Ints(*net)
 	} else {
+		log.Infof("ip ->%s", any)
 		ip := net.ParseIP(any)
+		if ip == nil {
+			return -1, 0, 0, 0, 0, fmt.Errorf("empty/invalid range %s", any)
+		}
 		sz, start, end, err := IP2Ints(ip)
 		if err != nil {
 			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", any)
@@ -89,9 +95,9 @@ func IP2Ints(pip net.IP) (int, int64, int64, error) {
 	pip16 := pip.To16()
 
 	if pip4 != nil {
-		ip_nw32 := binary.BigEndian.Uint64(pip4)
+		ip_nw32 := binary.BigEndian.Uint32(pip4)
 
-		return 4, uint2int(ip_nw32), uint2int(ip_sfx), nil
+		return 4, uint2int(uint64(ip_nw32)), uint2int(ip_sfx), nil
 	} else if pip16 != nil {
 		ip_nw = binary.BigEndian.Uint64(pip16[0:8])
 		ip_sfx = binary.BigEndian.Uint64(pip16[8:16])

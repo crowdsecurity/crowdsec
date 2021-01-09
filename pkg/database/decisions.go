@@ -15,13 +15,14 @@ import (
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
+
+	//func BuildDecisionRequestWithFilter(query *ent.Query, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
 	var contains bool = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)
-	  TODO : expose this via the params*/
+	  else, return bans that are *contained* by the given value (value is the outer)*/
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
@@ -35,6 +36,11 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 
 	for param, value := range filter {
 		switch param {
+		case "contains":
+			contains, err = strconv.ParseBool(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+			}
 		case "scope":
 			var scope string = value[0]
 			if strings.ToLower(scope) == "ip" {
@@ -98,7 +104,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 					),
 				),
 			))
-		} else { /*decision is contained within {start_ip,end_ip}*/
+		} else { /*decision is contained {start_ip,end_ip}*/
 			query = query.Where(decision.And(
 				//matching addr size
 				decision.IPSizeEQ(int64(ip_sz)),
@@ -211,13 +217,17 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	var ip_sz int
 	var contains bool = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)
-	  TODO : expose this via the params*/
+	  else, return bans that are *contained* by the given value (value is the outer) */
 
 	decisions := c.Ent.Decision.Delete()
 
 	for param, value := range filter {
 		switch param {
+		case "contains":
+			contains, err = strconv.ParseBool(value[0])
+			if err != nil {
+				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+			}
 		case "scope":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
 		case "value":
@@ -318,12 +328,16 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 	var contains bool = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
-	  else, return bans that are *contained* by the given value (value is the outer)
-	  TODO : expose this via the params*/
+	  else, return bans that are *contained* by the given value (value is the outer)*/
 
 	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now()))
 	for param, value := range filter {
 		switch param {
+		case "contains":
+			contains, err = strconv.ParseBool(value[0])
+			if err != nil {
+				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+			}
 		case "scope":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
 		case "value":
