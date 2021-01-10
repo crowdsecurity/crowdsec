@@ -66,6 +66,8 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 	}
 	lastAddr := LastAddress(network)
 	szEnd, nwEnd, sfxEnd, err := IP2Ints(lastAddr)
+	log.Infof("%s : %s->%s (%d,%d -> %d,%d)", network, network.IP, lastAddr,
+		nwStart, sfxStart, nwEnd, sfxEnd)
 	if err != nil {
 		return -1, 0, 0, 0, 0, errors.Wrap(err, "transforming last address of range")
 	}
@@ -76,8 +78,13 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 }
 
 func uint2int(u uint64) int64 {
+	log.Printf("u : %d || MAX : %d", u, math.MaxInt64)
 	var ret int64
-	if u > math.MaxInt64 {
+	if u == math.MaxInt64 {
+		return 0
+	} else if u == math.MaxUint64 {
+		return math.MaxInt64
+	} else if u > math.MaxInt64 {
 		u -= math.MaxInt64
 		ret = int64(u)
 	} else {
