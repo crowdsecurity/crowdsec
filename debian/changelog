@@ -2,5 +2,8 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
 
   * Initial release (Closes: #972573).
   * Version some build-deps as earlier versions are known not to work.
+  * Use a local machineid implementation instead of depending on an
+    extra package:
+     + 0001-use-a-local-machineid-implementation.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000
