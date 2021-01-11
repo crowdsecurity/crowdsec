@@ -1,0 +1,5 @@
+crowdsec (1.0.2-1) UNRELEASED; urgency=medium
+
+  * Initial release (Closes: #972573).
+
+ -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000

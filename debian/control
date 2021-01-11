@@ -1,0 +1,97 @@
+Source: crowdsec
+Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
+Uploaders: Cyril Brulebois <cyril@debamax.com>
+Section: golang
+Testsuite: autopkgtest-pkg-go
+Priority: optional
+Build-Depends: debhelper-compat (= 13),
+               dh-golang,
+               golang-any,
+               golang-github-alecaivazis-survey-dev,
+               golang-github-antonmedv-expr-dev,
+               golang-github-appleboy-gin-jwt-dev,
+               golang-github-buger-jsonparser-dev,
+               golang-github-coreos-go-systemd-dev,
+               golang-github-davecgh-go-spew-dev,
+               golang-github-dghubble-sling-dev,
+               golang-github-docker-docker-dev,
+               golang-github-docker-go-connections-dev,
+               golang-github-enescakir-emoji-dev,
+               golang-github-facebook-ent-dev,
+               golang-github-gin-gonic-gin-dev,
+               golang-github-go-co-op-gocron-dev,
+               golang-github-go-openapi-errors-dev,
+               golang-github-go-openapi-strfmt-dev,
+               golang-github-go-openapi-swag-dev,
+               golang-github-go-openapi-validate-dev,
+               golang-github-go-sql-driver-mysql-dev,
+               golang-github-google-go-querystring-dev,
+               golang-github-goombaio-namegenerator-dev,
+               golang-github-hashicorp-go-version-dev,
+               golang-github-logrusorgru-grokky-dev,
+               golang-github-mattn-go-sqlite3-dev,
+               golang-github-mohae-deepcopy-dev,
+               golang-github-nxadm-tail-dev,
+               golang-github-olekukonko-tablewriter-dev,
+               golang-github-opencontainers-image-spec-dev,
+               golang-github-oschwald-geoip2-golang-dev,
+               golang-github-oschwald-maxminddb-golang-dev,
+               golang-github-pkg-errors-dev,
+               golang-github-prometheus-client-model-dev,
+               golang-github-prometheus-prom2json-dev,
+               golang-github-spf13-cobra-dev,
+               golang-github-stretchr-testify-dev,
+               golang-golang-x-crypto-dev,
+               golang-golang-x-mod-dev,
+               golang-golang-x-sys-dev,
+               golang-gopkg-natefinch-lumberjack.v2-dev,
+               golang-gopkg-tomb.v2-dev,
+               golang-logrus-dev,
+               golang-pq-dev,
+               golang-prometheus-client-dev,
+               golang-yaml.v2-dev
+Standards-Version: 4.5.0
+Vcs-Browser: https://salsa.debian.org/go-team/packages/crowdsec
+Vcs-Git: https://salsa.debian.org/go-team/packages/crowdsec.git
+Homepage: https://github.com/crowdsecurity/crowdsec
+Rules-Requires-Root: no
+XS-Go-Import-Path: github.com/crowdsecurity/crowdsec
+
+Package: crowdsec
+Architecture: any
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
+Built-Using: ${misc:Built-Using}
+Description: lightweight and collaborative security engine
+ Crowdsec is a lightweight security engine, able to detect and remedy
+ aggressive network behaviour. It can leverage and also enrich a
+ global community-wide IP reputation database, to help fight online
+ cybersec aggressions in a collaborative manner.
+ .
+ Crowdsec can read many log sources, parse and also enrich them, in
+ order to detect specific scenarios, that usually represent malevolent
+ behaviour. Parsers, Enrichers, and Scenarios are YAML files that can
+ shared and downloaded through a specific hub, as well as be created
+ or adapted locally.
+ .
+ Detection results are available for crowdsec, its CLI tools and
+ bouncers via an HTTP API. Triggered scenarios lead to an alert, which
+ often results in a decision (e.g. IP banner for 4 hours) that can be
+ consumed by bouncers (software components enforcing a decision, such
+ as an iptables ban, an nginx lua script, or any custom user script).
+ .
+ The CLI allows users to deploy a metabase Docker image to provide
+ simple-to-deploy dashboards of ongoing activity. The crowdsec daemon
+ is also instrumented with prometheus to provide observability.
+ .
+ Crowdsec can be used against live logs (“a la fail2ban”), but can
+ also work on cold logs to help in a forensic context, to build an
+ analysis for past events.
+ .
+ On top of that, crowdsec aims at sharing detection signals amongst
+ all participants, to pre-emptively allow users to block likely
+ attackers. To achieve this, minimal meta-information about the attack
+ is shared with the CrowdSec organization for further retribution.
+ .
+ Users can also decide not to take part into the collective effort via
+ the central API, and to register on a local API instead.
