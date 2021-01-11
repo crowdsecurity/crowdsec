@@ -77,6 +77,17 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 	return szStart, nwStart, sfxStart, nwEnd, sfxEnd, nil
 }
 
+/*
+	unsigned int :  0  10
+	signed int   : -5  5
+
+	U =
+
+	U == 10 -> I = 5
+	U == 0  -> I = -5
+	U == 5  -> I = 0
+
+*/
 func uint2int(u uint64) int64 {
 	log.Printf("u : %d || MAX : %d", u, math.MaxInt64)
 	var ret int64

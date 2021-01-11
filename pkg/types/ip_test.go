@@ -17,7 +17,9 @@ func TestAdd2Int(t *testing.T) {
 		exp_error     string
 	}{
 		{
-			in_addr:       "::/0",
+			in_addr: "::/0",
+			/*:: -> ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff*/
+
 			exp_sz:        16,
 			exp_start_ip:  -math.MaxInt64,
 			exp_start_sfx: -math.MaxInt64,
@@ -25,7 +27,8 @@ func TestAdd2Int(t *testing.T) {
 			exp_end_sfx:   math.MaxInt64,
 		},
 		{
-			in_addr:       "::/64",
+			in_addr: "::/64",
+			/*:: -> 0000:0000:0000:0000:ffff:ffff:ffff:ffff*/
 			exp_sz:        16,
 			exp_start_ip:  -math.MaxInt64,
 			exp_start_sfx: -math.MaxInt64,
@@ -33,15 +36,17 @@ func TestAdd2Int(t *testing.T) {
 			exp_end_sfx:   math.MaxInt64,
 		},
 		{
-			in_addr:       "2001:db8::/109",
+			in_addr: "2001:db8::/109",
+			/*2001:db8:: -> 2001:db8:0000:0000:0000:0000:0007:ffff*/
 			exp_sz:        16,
-			exp_start_ip:  -math.MaxInt64,
+			exp_start_ip:  -math.MaxInt64 + 0x20010DB800000000,
 			exp_start_sfx: -math.MaxInt64,
-			exp_end_ip:    -math.MaxInt64,
-			exp_end_sfx:   math.MaxInt64,
+			exp_end_ip:    -math.MaxInt64 + 0x20010DB800000000,
+			exp_end_sfx:   -math.MaxInt64 + 0x7FFFF,
 		},
 		{
-			in_addr:       "0.0.0.0/0",
+			in_addr: "0.0.0.0/0",
+			/*0.0.0.0 -> 255.255.255.255*/
 			exp_sz:        4,
 			exp_start_ip:  -math.MaxInt64,
 			exp_start_sfx: 0,
@@ -49,7 +54,8 @@ func TestAdd2Int(t *testing.T) {
 			exp_end_sfx:   0,
 		},
 		{
-			in_addr:       "0.0.0.0/16",
+			in_addr: "0.0.0.0/16",
+			/*0.0.0.0 -> 0.0.255.255*/
 			exp_sz:        4,
 			exp_start_ip:  -math.MaxInt64,
 			exp_start_sfx: 0,
@@ -57,11 +63,21 @@ func TestAdd2Int(t *testing.T) {
 			exp_end_sfx:   0,
 		},
 		{
-			in_addr:       "255.255.0.0/16",
+			in_addr: "255.255.0.0/16",
+			/*255.255.0.0 -> 255.255.255.255*/
 			exp_sz:        4,
 			exp_start_ip:  -math.MaxInt64 + 0xFFFF0000,
 			exp_start_sfx: 0,
 			exp_end_ip:    -math.MaxInt64 + 0xFFFFFFFF,
+			exp_end_sfx:   0,
+		},
+		{
+			in_addr: "1.2.3.0/24",
+			/*1.2.3.0 -> 1.2.3.255*/
+			exp_sz:        4,
+			exp_start_ip:  -math.MaxInt64 + 0x01020300,
+			exp_start_sfx: 0,
+			exp_end_ip:    -math.MaxInt64 + 0x010203FF,
 			exp_end_sfx:   0,
 		},
 	}
@@ -97,6 +113,4 @@ func TestAdd2Int(t *testing.T) {
 		}
 
 	}
-	// Addr2Ints(any string) (int, int64, int64, int64, int64, error)
-
 }
