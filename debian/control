@@ -49,7 +49,8 @@ Build-Depends: debhelper-compat (= 13),
                golang-logrus-dev,
                golang-pq-dev,
                golang-prometheus-client-dev,
-               golang-yaml.v2-dev
+               golang-yaml.v2-dev,
+               systemd
 Standards-Version: 4.5.0
 Vcs-Browser: https://salsa.debian.org/go-team/packages/crowdsec
 Vcs-Git: https://salsa.debian.org/go-team/packages/crowdsec.git

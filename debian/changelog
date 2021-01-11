@@ -13,5 +13,7 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
      + 1001-fix-docker-container-creation-for-metabase-563.patch
   * Install all files in the build directory so that the testsuite finds
     required test data that's scattered all over the place.
+  * Add systemd to Build-Depends for the testsuite, so that it finds
+    the journalctl binary.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000
