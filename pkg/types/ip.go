@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func LastAddress(n net.IPNet) net.IP {
@@ -34,20 +33,15 @@ func LastAddress(n net.IPNet) net.IP {
 /*returns a range for any ip or range*/
 func Addr2Ints(any string) (int, int64, int64, int64, int64, error) {
 	if strings.Contains(any, "/") {
-		log.Infof("range ->%s", any)
 		_, net, err := net.ParseCIDR(any)
 		if err != nil {
 			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", any)
 		}
-		if net == nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("empty/invalid range %s", any)
-		}
 		return Range2Ints(*net)
 	} else {
-		log.Infof("ip ->%s", any)
 		ip := net.ParseIP(any)
 		if ip == nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("empty/invalid range %s", any)
+			return -1, 0, 0, 0, 0, fmt.Errorf("invalid address")
 		}
 		sz, start, end, err := IP2Ints(ip)
 		if err != nil {
@@ -66,8 +60,6 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 	}
 	lastAddr := LastAddress(network)
 	szEnd, nwEnd, sfxEnd, err := IP2Ints(lastAddr)
-	log.Infof("%s : %s->%s (%d,%d -> %d,%d)", network, network.IP, lastAddr,
-		nwStart, sfxStart, nwEnd, sfxEnd)
 	if err != nil {
 		return -1, 0, 0, 0, 0, errors.Wrap(err, "transforming last address of range")
 	}
@@ -77,24 +69,12 @@ func Range2Ints(network net.IPNet) (int, int64, int64, int64, int64, error) {
 	return szStart, nwStart, sfxStart, nwEnd, sfxEnd, nil
 }
 
-/*
-	unsigned int :  0  10
-	signed int   : -5  5
-
-	U =
-
-	U == 10 -> I = 5
-	U == 0  -> I = -5
-	U == 5  -> I = 0
-
-*/
 func uint2int(u uint64) int64 {
-	log.Printf("u : %d || MAX : %d", u, math.MaxInt64)
 	var ret int64
 	if u == math.MaxInt64 {
-		return 0
+		ret = 0
 	} else if u == math.MaxUint64 {
-		return math.MaxInt64
+		ret = math.MaxInt64
 	} else if u > math.MaxInt64 {
 		u -= math.MaxInt64
 		ret = int64(u)
