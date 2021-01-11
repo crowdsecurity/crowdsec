@@ -8,5 +8,7 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
   * Backport upstream fix for golang-github-docker-docker-dev version
     currently in unstable:
      + 1001-fix-docker-container-creation-for-metabase-563.patch
+  * Install all files in the build directory so that the testsuite finds
+    required test data that's scattered all over the place.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000
