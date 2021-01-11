@@ -1,0 +1,28 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Fri, 8 Jan 2021 17:27:15 +0000
+Subject: Use _foreign_keys=1 instead of _fk=1
+
+The _foreign_keys=1 syntax is widely supported but the _fk=1 alias for
+it was only added in version 1.8.0 of the sqlite3 driver. Avoid using
+the alias for the time being (the freeze is near).
+
+---
+ pkg/database/database.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/pkg/database/database.go b/pkg/database/database.go
+index 07e2820..3561a89 100644
+--- a/pkg/database/database.go
++++ b/pkg/database/database.go
+@@ -30,7 +30,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
+ 	}
+ 	switch config.Type {
+ 	case "sqlite":
+-		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
++		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_foreign_keys=1", config.DbPath))
+ 		if err != nil {
+ 			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
+ 		}
+-- 
+2.30.0
+

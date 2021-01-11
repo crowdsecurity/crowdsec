@@ -5,6 +5,9 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
   * Use a local machineid implementation instead of depending on an
     extra package:
      + 0001-use-a-local-machineid-implementation.patch
+  * Use a syntax that's compatible with version 1.6.0 of the sqlite3
+    driver:
+     + 0002-add-compatibility-for-older-sqlite-driver.patch
   * Backport upstream fix for golang-github-docker-docker-dev version
     currently in unstable:
      + 1001-fix-docker-container-creation-for-metabase-563.patch

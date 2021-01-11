@@ -1,2 +1,3 @@
 0001-use-a-local-machineid-implementation.patch
+0002-add-compatibility-for-older-sqlite-driver.patch
 1001-fix-docker-container-creation-for-metabase-563.patch
