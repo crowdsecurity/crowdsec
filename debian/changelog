@@ -1,6 +1,8 @@
 crowdsec (1.0.2-1) UNRELEASED; urgency=medium
 
-  * Initial release (Closes: #972573).
+  * Initial release (Closes: #972573): start by shipping binaries,
+    while better integration is being worked on with upstream:
+    documentation and assisted configuration are coming up.
   * Version some build-deps as earlier versions are known not to work.
   * Use a local machineid implementation instead of depending on an
     extra package:
