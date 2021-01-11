@@ -18,3 +18,4 @@
 # crowdsec binaries
 cmd/crowdsec-cli/cscli
 cmd/crowdsec/crowdsec
+.pc
