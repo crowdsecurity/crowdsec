@@ -3450,10 +3450,24 @@ func (m *DecisionMutation) AddedStartIP() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearStartIP clears the value of the "start_ip" field.
+func (m *DecisionMutation) ClearStartIP() {
+	m.start_ip = nil
+	m.addstart_ip = nil
+	m.clearedFields[decision.FieldStartIP] = struct{}{}
+}
+
+// StartIPCleared returns if the "start_ip" field was cleared in this mutation.
+func (m *DecisionMutation) StartIPCleared() bool {
+	_, ok := m.clearedFields[decision.FieldStartIP]
+	return ok
+}
+
 // ResetStartIP resets all changes to the "start_ip" field.
 func (m *DecisionMutation) ResetStartIP() {
 	m.start_ip = nil
 	m.addstart_ip = nil
+	delete(m.clearedFields, decision.FieldStartIP)
 }
 
 // SetEndIP sets the "end_ip" field.
@@ -3506,10 +3520,24 @@ func (m *DecisionMutation) AddedEndIP() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearEndIP clears the value of the "end_ip" field.
+func (m *DecisionMutation) ClearEndIP() {
+	m.end_ip = nil
+	m.addend_ip = nil
+	m.clearedFields[decision.FieldEndIP] = struct{}{}
+}
+
+// EndIPCleared returns if the "end_ip" field was cleared in this mutation.
+func (m *DecisionMutation) EndIPCleared() bool {
+	_, ok := m.clearedFields[decision.FieldEndIP]
+	return ok
+}
+
 // ResetEndIP resets all changes to the "end_ip" field.
 func (m *DecisionMutation) ResetEndIP() {
 	m.end_ip = nil
 	m.addend_ip = nil
+	delete(m.clearedFields, decision.FieldEndIP)
 }
 
 // SetStartSuffix sets the "start_suffix" field.
@@ -3702,10 +3730,24 @@ func (m *DecisionMutation) AddedIPSize() (r int64, exists bool) {
 	return *v, true
 }
 
+// ClearIPSize clears the value of the "ip_size" field.
+func (m *DecisionMutation) ClearIPSize() {
+	m.ip_size = nil
+	m.addip_size = nil
+	m.clearedFields[decision.FieldIPSize] = struct{}{}
+}
+
+// IPSizeCleared returns if the "ip_size" field was cleared in this mutation.
+func (m *DecisionMutation) IPSizeCleared() bool {
+	_, ok := m.clearedFields[decision.FieldIPSize]
+	return ok
+}
+
 // ResetIPSize resets all changes to the "ip_size" field.
 func (m *DecisionMutation) ResetIPSize() {
 	m.ip_size = nil
 	m.addip_size = nil
+	delete(m.clearedFields, decision.FieldIPSize)
 }
 
 // SetScope sets the "scope" field.
@@ -4221,11 +4263,20 @@ func (m *DecisionMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *DecisionMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(decision.FieldStartIP) {
+		fields = append(fields, decision.FieldStartIP)
+	}
+	if m.FieldCleared(decision.FieldEndIP) {
+		fields = append(fields, decision.FieldEndIP)
+	}
 	if m.FieldCleared(decision.FieldStartSuffix) {
 		fields = append(fields, decision.FieldStartSuffix)
 	}
 	if m.FieldCleared(decision.FieldEndSuffix) {
 		fields = append(fields, decision.FieldEndSuffix)
+	}
+	if m.FieldCleared(decision.FieldIPSize) {
+		fields = append(fields, decision.FieldIPSize)
 	}
 	return fields
 }
@@ -4241,11 +4292,20 @@ func (m *DecisionMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *DecisionMutation) ClearField(name string) error {
 	switch name {
+	case decision.FieldStartIP:
+		m.ClearStartIP()
+		return nil
+	case decision.FieldEndIP:
+		m.ClearEndIP()
+		return nil
 	case decision.FieldStartSuffix:
 		m.ClearStartSuffix()
 		return nil
 	case decision.FieldEndSuffix:
 		m.ClearEndSuffix()
+		return nil
+	case decision.FieldIPSize:
+		m.ClearIPSize()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision nullable field %s", name)

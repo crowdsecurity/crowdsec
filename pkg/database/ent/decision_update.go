@@ -81,9 +81,23 @@ func (du *DecisionUpdate) SetStartIP(i int64) *DecisionUpdate {
 	return du
 }
 
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableStartIP(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetStartIP(*i)
+	}
+	return du
+}
+
 // AddStartIP adds i to the "start_ip" field.
 func (du *DecisionUpdate) AddStartIP(i int64) *DecisionUpdate {
 	du.mutation.AddStartIP(i)
+	return du
+}
+
+// ClearStartIP clears the value of the "start_ip" field.
+func (du *DecisionUpdate) ClearStartIP() *DecisionUpdate {
+	du.mutation.ClearStartIP()
 	return du
 }
 
@@ -94,9 +108,23 @@ func (du *DecisionUpdate) SetEndIP(i int64) *DecisionUpdate {
 	return du
 }
 
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableEndIP(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetEndIP(*i)
+	}
+	return du
+}
+
 // AddEndIP adds i to the "end_ip" field.
 func (du *DecisionUpdate) AddEndIP(i int64) *DecisionUpdate {
 	du.mutation.AddEndIP(i)
+	return du
+}
+
+// ClearEndIP clears the value of the "end_ip" field.
+func (du *DecisionUpdate) ClearEndIP() *DecisionUpdate {
+	du.mutation.ClearEndIP()
 	return du
 }
 
@@ -161,9 +189,23 @@ func (du *DecisionUpdate) SetIPSize(i int64) *DecisionUpdate {
 	return du
 }
 
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableIPSize(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetIPSize(*i)
+	}
+	return du
+}
+
 // AddIPSize adds i to the "ip_size" field.
 func (du *DecisionUpdate) AddIPSize(i int64) *DecisionUpdate {
 	du.mutation.AddIPSize(i)
+	return du
+}
+
+// ClearIPSize clears the value of the "ip_size" field.
+func (du *DecisionUpdate) ClearIPSize() *DecisionUpdate {
+	du.mutation.ClearIPSize()
 	return du
 }
 
@@ -347,6 +389,12 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldStartIP,
 		})
 	}
+	if du.mutation.StartIPCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldStartIP,
+		})
+	}
 	if value, ok := du.mutation.EndIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
@@ -358,6 +406,12 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Value:  value,
+			Column: decision.FieldEndIP,
+		})
+	}
+	if du.mutation.EndIPCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
 			Column: decision.FieldEndIP,
 		})
 	}
@@ -412,6 +466,12 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if du.mutation.IPSizeCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
 			Column: decision.FieldIPSize,
 		})
 	}
@@ -549,9 +609,23 @@ func (duo *DecisionUpdateOne) SetStartIP(i int64) *DecisionUpdateOne {
 	return duo
 }
 
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableStartIP(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetStartIP(*i)
+	}
+	return duo
+}
+
 // AddStartIP adds i to the "start_ip" field.
 func (duo *DecisionUpdateOne) AddStartIP(i int64) *DecisionUpdateOne {
 	duo.mutation.AddStartIP(i)
+	return duo
+}
+
+// ClearStartIP clears the value of the "start_ip" field.
+func (duo *DecisionUpdateOne) ClearStartIP() *DecisionUpdateOne {
+	duo.mutation.ClearStartIP()
 	return duo
 }
 
@@ -562,9 +636,23 @@ func (duo *DecisionUpdateOne) SetEndIP(i int64) *DecisionUpdateOne {
 	return duo
 }
 
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableEndIP(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetEndIP(*i)
+	}
+	return duo
+}
+
 // AddEndIP adds i to the "end_ip" field.
 func (duo *DecisionUpdateOne) AddEndIP(i int64) *DecisionUpdateOne {
 	duo.mutation.AddEndIP(i)
+	return duo
+}
+
+// ClearEndIP clears the value of the "end_ip" field.
+func (duo *DecisionUpdateOne) ClearEndIP() *DecisionUpdateOne {
+	duo.mutation.ClearEndIP()
 	return duo
 }
 
@@ -629,9 +717,23 @@ func (duo *DecisionUpdateOne) SetIPSize(i int64) *DecisionUpdateOne {
 	return duo
 }
 
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableIPSize(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetIPSize(*i)
+	}
+	return duo
+}
+
 // AddIPSize adds i to the "ip_size" field.
 func (duo *DecisionUpdateOne) AddIPSize(i int64) *DecisionUpdateOne {
 	duo.mutation.AddIPSize(i)
+	return duo
+}
+
+// ClearIPSize clears the value of the "ip_size" field.
+func (duo *DecisionUpdateOne) ClearIPSize() *DecisionUpdateOne {
+	duo.mutation.ClearIPSize()
 	return duo
 }
 
@@ -813,6 +915,12 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Column: decision.FieldStartIP,
 		})
 	}
+	if duo.mutation.StartIPCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldStartIP,
+		})
+	}
 	if value, ok := duo.mutation.EndIP(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
@@ -824,6 +932,12 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Value:  value,
+			Column: decision.FieldEndIP,
+		})
+	}
+	if duo.mutation.EndIPCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
 			Column: decision.FieldEndIP,
 		})
 	}
@@ -878,6 +992,12 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if duo.mutation.IPSizeCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
 			Column: decision.FieldIPSize,
 		})
 	}

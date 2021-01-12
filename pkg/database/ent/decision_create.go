@@ -73,9 +73,25 @@ func (dc *DecisionCreate) SetStartIP(i int64) *DecisionCreate {
 	return dc
 }
 
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableStartIP(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetStartIP(*i)
+	}
+	return dc
+}
+
 // SetEndIP sets the "end_ip" field.
 func (dc *DecisionCreate) SetEndIP(i int64) *DecisionCreate {
 	dc.mutation.SetEndIP(i)
+	return dc
+}
+
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableEndIP(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetEndIP(*i)
+	}
 	return dc
 }
 
@@ -110,6 +126,14 @@ func (dc *DecisionCreate) SetNillableEndSuffix(i *int64) *DecisionCreate {
 // SetIPSize sets the "ip_size" field.
 func (dc *DecisionCreate) SetIPSize(i int64) *DecisionCreate {
 	dc.mutation.SetIPSize(i)
+	return dc
+}
+
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableIPSize(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetIPSize(*i)
+	}
 	return dc
 }
 
@@ -246,15 +270,6 @@ func (dc *DecisionCreate) check() error {
 	}
 	if _, ok := dc.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New("ent: missing required field \"type\"")}
-	}
-	if _, ok := dc.mutation.StartIP(); !ok {
-		return &ValidationError{Name: "start_ip", err: errors.New("ent: missing required field \"start_ip\"")}
-	}
-	if _, ok := dc.mutation.EndIP(); !ok {
-		return &ValidationError{Name: "end_ip", err: errors.New("ent: missing required field \"end_ip\"")}
-	}
-	if _, ok := dc.mutation.IPSize(); !ok {
-		return &ValidationError{Name: "ip_size", err: errors.New("ent: missing required field \"ip_size\"")}
 	}
 	if _, ok := dc.mutation.Scope(); !ok {
 		return &ValidationError{Name: "scope", err: errors.New("ent: missing required field \"scope\"")}

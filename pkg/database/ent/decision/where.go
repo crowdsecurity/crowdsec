@@ -717,6 +717,20 @@ func StartIPLTE(v int64) predicate.Decision {
 	})
 }
 
+// StartIPIsNil applies the IsNil predicate on the "start_ip" field.
+func StartIPIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldStartIP)))
+	})
+}
+
+// StartIPNotNil applies the NotNil predicate on the "start_ip" field.
+func StartIPNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldStartIP)))
+	})
+}
+
 // EndIPEQ applies the EQ predicate on the "end_ip" field.
 func EndIPEQ(v int64) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
@@ -790,6 +804,20 @@ func EndIPLT(v int64) predicate.Decision {
 func EndIPLTE(v int64) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldEndIP), v))
+	})
+}
+
+// EndIPIsNil applies the IsNil predicate on the "end_ip" field.
+func EndIPIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldEndIP)))
+	})
+}
+
+// EndIPNotNil applies the NotNil predicate on the "end_ip" field.
+func EndIPNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldEndIP)))
 	})
 }
 
@@ -1046,6 +1074,20 @@ func IPSizeLT(v int64) predicate.Decision {
 func IPSizeLTE(v int64) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldIPSize), v))
+	})
+}
+
+// IPSizeIsNil applies the IsNil predicate on the "ip_size" field.
+func IPSizeIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldIPSize)))
+	})
+}
+
+// IPSizeNotNil applies the NotNil predicate on the "ip_size" field.
+func IPSizeNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldIPSize)))
 	})
 }
 
