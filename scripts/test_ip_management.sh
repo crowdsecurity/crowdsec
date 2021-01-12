@@ -13,11 +13,17 @@ CSCLI_BIN="./cscli"
 CSCLI="${CSCLI_BIN} -c dev.yaml"
 JQ="jq -e"
 CROWDSEC_API_URL="http://localhost:8081"
+CROWDSEC_VERSION=""
 API_KEY=""
 
 RELEASE_FOLDER_FULL=""
 FAILED="false"
 MUST_FAIL="false"
+
+
+get_latest_release() {
+  CROWDSEC_VERSION=$(curl --silent "https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+}
 
 ### Helpers
 function docurl
