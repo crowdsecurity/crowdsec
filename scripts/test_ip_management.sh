@@ -367,9 +367,9 @@ function reset
     cd ${RELEASE_FOLDER_FULL}/tests/
     rm data/crowdsec.db > /dev/null 2>&1 || echo ""
     killall crowdsec > /dev/null 2>&1 || echo ""
+    ${CSCLI} hub update
     ${CSCLI} machines add -a
     API_KEY=`${CSCLI} bouncers add TestingBouncer -o=raw`
-    ${CSCLI} hub update
     ./crowdsec -c dev.yaml> crowdsec-out.log 2>&1  &
     sleep 2
 }
