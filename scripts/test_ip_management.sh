@@ -65,6 +65,7 @@ function init
     if [[ ! -d ${RELEASE_FOLDER} ]];
     then
       cd ..
+      get_latest_release
       BUILD_VERSION=${CROWDSEC_VERSION} make release
       if [ $? != 0 ]; then
         echo "Unable to make the release (make sur you have go installed), exiting"
