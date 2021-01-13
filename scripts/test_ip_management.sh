@@ -330,11 +330,11 @@ function test_ipv6_range
     docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48&contains=false" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in aaaa:2222:3333:4444:5555:6666:7777:8888/48"
 
-    ${CSCLI} decisions list -r aaaa:2222:3333:4445:5555:6666:7777:8888/48 -o json --contained | ${JQ} '. == null' > /dev/null || fail
-    cscli_echo "getting decisions for ip/range aaa:2222:3333:4445:5555:6666:7777:8888/48"
+    ${CSCLI} decisions list -r aaaa:2222:3333:4445:5555:6666:7777:8888/48 -o json | ${JQ} '. == null' > /dev/null || fail
+    cscli_echo "getting decisions for ip/range aaaa:2222:3333:4445:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=aaa:2222:3333:4445:5555:6666:7777:8888/48&contains=false" | ${JQ} '. == null' > /dev/null || fail
-    bouncer_echo "getting decisions for ip/range in aaa:2222:3333:4445:5555:6666:7777:8888/48"
+    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4445:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
+    bouncer_echo "getting decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48"
 
     #bbbb:db8:: -> bbbb:db8:0000:0000:0000:7fff:ffff:ffff
     ${CSCLI} decisions add -r bbbb:db8::/81 > /dev/null 2>&1
