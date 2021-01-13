@@ -3,11 +3,9 @@ name: Functionnal tests for IP management
 on:
   push:
     branches:
-      - fix_ipv6-rangeOps
       - master
   pull_request:
     branches:
-      - fix_ipv6-rangeOps
       - master
 
 jobs:
