@@ -124,204 +124,216 @@ func (e AlertEdges) MetasOrErr() ([]*Meta, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Alert) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},   // id
-		&sql.NullTime{},    // created_at
-		&sql.NullTime{},    // updated_at
-		&sql.NullString{},  // scenario
-		&sql.NullString{},  // bucketId
-		&sql.NullString{},  // message
-		&sql.NullInt64{},   // eventsCount
-		&sql.NullTime{},    // startedAt
-		&sql.NullTime{},    // stoppedAt
-		&sql.NullString{},  // sourceIp
-		&sql.NullString{},  // sourceRange
-		&sql.NullString{},  // sourceAsNumber
-		&sql.NullString{},  // sourceAsName
-		&sql.NullString{},  // sourceCountry
-		&sql.NullFloat64{}, // sourceLatitude
-		&sql.NullFloat64{}, // sourceLongitude
-		&sql.NullString{},  // sourceScope
-		&sql.NullString{},  // sourceValue
-		&sql.NullInt64{},   // capacity
-		&sql.NullString{},  // leakSpeed
-		&sql.NullString{},  // scenarioVersion
-		&sql.NullString{},  // scenarioHash
-		&sql.NullBool{},    // simulated
+func (*Alert) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case alert.FieldSimulated:
+			values[i] = &sql.NullBool{}
+		case alert.FieldSourceLatitude, alert.FieldSourceLongitude:
+			values[i] = &sql.NullFloat64{}
+		case alert.FieldID, alert.FieldEventsCount, alert.FieldCapacity:
+			values[i] = &sql.NullInt64{}
+		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash:
+			values[i] = &sql.NullString{}
+		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
+			values[i] = &sql.NullTime{}
+		case alert.ForeignKeys[0]: // machine_alerts
+			values[i] = &sql.NullInt64{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Alert", columns[i])
+		}
 	}
-}
-
-// fkValues returns the types for scanning foreign-keys values from sql.Rows.
-func (*Alert) fkValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{}, // machine_alerts
-	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Alert fields.
-func (a *Alert) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(alert.Columns); m < n {
+func (a *Alert) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	a.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		a.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		a.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scenario", values[2])
-	} else if value.Valid {
-		a.Scenario = value.String
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field bucketId", values[3])
-	} else if value.Valid {
-		a.BucketId = value.String
-	}
-	if value, ok := values[4].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field message", values[4])
-	} else if value.Valid {
-		a.Message = value.String
-	}
-	if value, ok := values[5].(*sql.NullInt64); !ok {
-		return fmt.Errorf("unexpected type %T for field eventsCount", values[5])
-	} else if value.Valid {
-		a.EventsCount = int32(value.Int64)
-	}
-	if value, ok := values[6].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field startedAt", values[6])
-	} else if value.Valid {
-		a.StartedAt = value.Time
-	}
-	if value, ok := values[7].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field stoppedAt", values[7])
-	} else if value.Valid {
-		a.StoppedAt = value.Time
-	}
-	if value, ok := values[8].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceIp", values[8])
-	} else if value.Valid {
-		a.SourceIp = value.String
-	}
-	if value, ok := values[9].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceRange", values[9])
-	} else if value.Valid {
-		a.SourceRange = value.String
-	}
-	if value, ok := values[10].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceAsNumber", values[10])
-	} else if value.Valid {
-		a.SourceAsNumber = value.String
-	}
-	if value, ok := values[11].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceAsName", values[11])
-	} else if value.Valid {
-		a.SourceAsName = value.String
-	}
-	if value, ok := values[12].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceCountry", values[12])
-	} else if value.Valid {
-		a.SourceCountry = value.String
-	}
-	if value, ok := values[13].(*sql.NullFloat64); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceLatitude", values[13])
-	} else if value.Valid {
-		a.SourceLatitude = float32(value.Float64)
-	}
-	if value, ok := values[14].(*sql.NullFloat64); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceLongitude", values[14])
-	} else if value.Valid {
-		a.SourceLongitude = float32(value.Float64)
-	}
-	if value, ok := values[15].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceScope", values[15])
-	} else if value.Valid {
-		a.SourceScope = value.String
-	}
-	if value, ok := values[16].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field sourceValue", values[16])
-	} else if value.Valid {
-		a.SourceValue = value.String
-	}
-	if value, ok := values[17].(*sql.NullInt64); !ok {
-		return fmt.Errorf("unexpected type %T for field capacity", values[17])
-	} else if value.Valid {
-		a.Capacity = int32(value.Int64)
-	}
-	if value, ok := values[18].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field leakSpeed", values[18])
-	} else if value.Valid {
-		a.LeakSpeed = value.String
-	}
-	if value, ok := values[19].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scenarioVersion", values[19])
-	} else if value.Valid {
-		a.ScenarioVersion = value.String
-	}
-	if value, ok := values[20].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scenarioHash", values[20])
-	} else if value.Valid {
-		a.ScenarioHash = value.String
-	}
-	if value, ok := values[21].(*sql.NullBool); !ok {
-		return fmt.Errorf("unexpected type %T for field simulated", values[21])
-	} else if value.Valid {
-		a.Simulated = value.Bool
-	}
-	values = values[22:]
-	if len(values) == len(alert.ForeignKeys) {
-		if value, ok := values[0].(*sql.NullInt64); !ok {
-			return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
-		} else if value.Valid {
-			a.machine_alerts = new(int)
-			*a.machine_alerts = int(value.Int64)
+	for i := range columns {
+		switch columns[i] {
+		case alert.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			a.ID = int(value.Int64)
+		case alert.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				a.CreatedAt = value.Time
+			}
+		case alert.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				a.UpdatedAt = value.Time
+			}
+		case alert.FieldScenario:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scenario", values[i])
+			} else if value.Valid {
+				a.Scenario = value.String
+			}
+		case alert.FieldBucketId:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field bucketId", values[i])
+			} else if value.Valid {
+				a.BucketId = value.String
+			}
+		case alert.FieldMessage:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field message", values[i])
+			} else if value.Valid {
+				a.Message = value.String
+			}
+		case alert.FieldEventsCount:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field eventsCount", values[i])
+			} else if value.Valid {
+				a.EventsCount = int32(value.Int64)
+			}
+		case alert.FieldStartedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field startedAt", values[i])
+			} else if value.Valid {
+				a.StartedAt = value.Time
+			}
+		case alert.FieldStoppedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field stoppedAt", values[i])
+			} else if value.Valid {
+				a.StoppedAt = value.Time
+			}
+		case alert.FieldSourceIp:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceIp", values[i])
+			} else if value.Valid {
+				a.SourceIp = value.String
+			}
+		case alert.FieldSourceRange:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceRange", values[i])
+			} else if value.Valid {
+				a.SourceRange = value.String
+			}
+		case alert.FieldSourceAsNumber:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceAsNumber", values[i])
+			} else if value.Valid {
+				a.SourceAsNumber = value.String
+			}
+		case alert.FieldSourceAsName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceAsName", values[i])
+			} else if value.Valid {
+				a.SourceAsName = value.String
+			}
+		case alert.FieldSourceCountry:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceCountry", values[i])
+			} else if value.Valid {
+				a.SourceCountry = value.String
+			}
+		case alert.FieldSourceLatitude:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceLatitude", values[i])
+			} else if value.Valid {
+				a.SourceLatitude = float32(value.Float64)
+			}
+		case alert.FieldSourceLongitude:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceLongitude", values[i])
+			} else if value.Valid {
+				a.SourceLongitude = float32(value.Float64)
+			}
+		case alert.FieldSourceScope:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceScope", values[i])
+			} else if value.Valid {
+				a.SourceScope = value.String
+			}
+		case alert.FieldSourceValue:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field sourceValue", values[i])
+			} else if value.Valid {
+				a.SourceValue = value.String
+			}
+		case alert.FieldCapacity:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field capacity", values[i])
+			} else if value.Valid {
+				a.Capacity = int32(value.Int64)
+			}
+		case alert.FieldLeakSpeed:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field leakSpeed", values[i])
+			} else if value.Valid {
+				a.LeakSpeed = value.String
+			}
+		case alert.FieldScenarioVersion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scenarioVersion", values[i])
+			} else if value.Valid {
+				a.ScenarioVersion = value.String
+			}
+		case alert.FieldScenarioHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scenarioHash", values[i])
+			} else if value.Valid {
+				a.ScenarioHash = value.String
+			}
+		case alert.FieldSimulated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field simulated", values[i])
+			} else if value.Valid {
+				a.Simulated = value.Bool
+			}
+		case alert.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
+			} else if value.Valid {
+				a.machine_alerts = new(int)
+				*a.machine_alerts = int(value.Int64)
+			}
 		}
 	}
 	return nil
 }
 
-// QueryOwner queries the owner edge of the Alert.
+// QueryOwner queries the "owner" edge of the Alert entity.
 func (a *Alert) QueryOwner() *MachineQuery {
 	return (&AlertClient{config: a.config}).QueryOwner(a)
 }
 
-// QueryDecisions queries the decisions edge of the Alert.
+// QueryDecisions queries the "decisions" edge of the Alert entity.
 func (a *Alert) QueryDecisions() *DecisionQuery {
 	return (&AlertClient{config: a.config}).QueryDecisions(a)
 }
 
-// QueryEvents queries the events edge of the Alert.
+// QueryEvents queries the "events" edge of the Alert entity.
 func (a *Alert) QueryEvents() *EventQuery {
 	return (&AlertClient{config: a.config}).QueryEvents(a)
 }
 
-// QueryMetas queries the metas edge of the Alert.
+// QueryMetas queries the "metas" edge of the Alert entity.
 func (a *Alert) QueryMetas() *MetaQuery {
 	return (&AlertClient{config: a.config}).QueryMetas(a)
 }
 
 // Update returns a builder for updating this Alert.
-// Note that, you need to call Alert.Unwrap() before calling this method, if this Alert
+// Note that you need to call Alert.Unwrap() before calling this method if this Alert
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (a *Alert) Update() *AlertUpdateOne {
 	return (&AlertClient{config: a.config}).UpdateOne(a)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Alert entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (a *Alert) Unwrap() *Alert {
 	tx, ok := a.config.driver.(*txDriver)
 	if !ok {

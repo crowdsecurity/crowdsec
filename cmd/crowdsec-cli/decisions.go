@@ -139,6 +139,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
+		Contains:       new(bool),
 	}
 	NoSimu := new(bool)
 	var cmdDecisionsList = &cobra.Command{
@@ -208,6 +209,7 @@ cscli decisions list -t ban
 			if *filter.RangeEquals == "" {
 				filter.RangeEquals = nil
 			}
+			*filter.Contains = !contained
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
 				log.Fatalf("Unable to list decisions : %v", err.Error())
@@ -230,6 +232,8 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	cmdDecisionsList.Flags().BoolVar(&contained, "contained", false, "query decisions contained by range")
+
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
 	var (
@@ -346,6 +350,7 @@ cscli decisions add --scope username --value foobar
 		TypeEquals:  new(string),
 		IPEquals:    new(string),
 		RangeEquals: new(string),
+		Contains:    new(bool),
 	}
 	var delDecisionId string
 	var delDecisionAll bool
@@ -396,7 +401,7 @@ cscli decisions delete --type captcha
 			if *delFilter.RangeEquals == "" {
 				delFilter.RangeEquals = nil
 			}
-
+			*delFilter.Contains = !contained
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
@@ -419,6 +424,8 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
+	cmdDecisionsDelete.Flags().BoolVar(&contained, "contained", false, "query decisions contained by range")
+
 	cmdDecisions.AddCommand(cmdDecisionsDelete)
 
 	return cmdDecisions

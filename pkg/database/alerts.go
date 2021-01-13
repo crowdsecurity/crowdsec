@@ -191,17 +191,32 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
+				var start_ip, start_sfx, end_ip, end_sfx int64
+				var sz int
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
 					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
 				}
+
+				/*if the scope is IP or Range, convert the value to integers */
+				if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+					sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+					if err != nil {
+						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", decisionItem.Value, err)
+					}
+				}
+				log.Infof("sz=%d, start_ip=%d, start_sfx=%d end_ip=%d end_sfx=%d",
+					sz, start_ip, start_sfx, end_ip, end_sfx)
 				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
-					SetStartIP(decisionItem.StartIP).
-					SetEndIP(decisionItem.EndIP).
+					SetStartIP(start_ip).
+					SetStartSuffix(start_sfx).
+					SetEndIP(end_ip).
+					SetEndSuffix(end_sfx).
+					SetIPSize(int64(sz)).
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
@@ -275,8 +290,12 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
 	var err error
-	var startIP, endIP int64
+	var start_ip, start_sfx, end_ip, end_sfx int64
 	var hasActiveDecision bool
+	var ip_sz int
+	var contains bool = true
+	/*if contains is true, return bans that *contains* the given value (value is the inner)
+	  else, return bans that are *contained* by the given value (value is the outer)*/
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
 	if v, ok := filter["simulated"]; ok {
@@ -288,6 +307,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 
 	for param, value := range filter {
 		switch param {
+		case "contains":
+			contains, err = strconv.ParseBool(value[0])
+			if err != nil {
+				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+			}
 		case "scope":
 			var scope string = value[0]
 			if strings.ToLower(scope) == "ip" {
@@ -300,19 +324,10 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
 		case "scenario":
 			alerts = alerts.Where(alert.ScenarioEQ(value[0]))
-		case "ip":
-			isValidIP := IsIpv4(value[0])
-			if !isValidIP {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to parse '%s': %s", value[0], err)
-			}
-			startIP, endIP, err = GetIpsFromIpRange(value[0] + "/32")
+		case "ip", "range":
+			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
-			}
-		case "range":
-			startIP, endIP, err = GetIpsFromIpRange(value[0])
-			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int interval: %s", value[0], err)
+				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		case "since":
 			duration, err := types.ParseDuration(value[0])
@@ -369,21 +384,74 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
 		}
 	}
-	if startIP != 0 && endIP != 0 {
-		/*the user is checking for a single IP*/
-		if startIP == endIP {
-			//DECISION_START <= IP_Q >= DECISON_END
+
+	if ip_sz == 4 {
+		if contains { /*decision contains {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
-				alert.HasDecisionsWith(decision.StartIPLTE(startIP)),
-				alert.HasDecisionsWith(decision.EndIPGTE(endIP)),
+				alert.HasDecisionsWith(decision.StartIPLTE(start_ip)),
+				alert.HasDecisionsWith(decision.EndIPGTE(end_ip)),
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 			))
-		} else { /*the user is checking for a RANGE */
-			//START_Q >= DECISION_START AND END_Q <= DECISION_END
+		} else { /*decision is contained within {start_ip,end_ip}*/
 			alerts = alerts.Where(alert.And(
-				alert.HasDecisionsWith(decision.StartIPGTE(startIP)),
-				alert.HasDecisionsWith(decision.EndIPLTE(endIP)),
+				alert.HasDecisionsWith(decision.StartIPGTE(start_ip)),
+				alert.HasDecisionsWith(decision.EndIPLTE(end_ip)),
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
 			))
 		}
+	} else if ip_sz == 16 {
+
+		if contains { /*decision contains {start_ip,end_ip}*/
+			alerts = alerts.Where(alert.And(
+				//matching addr size
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+				alert.Or(
+					//decision.start_ip < query.start_ip
+					alert.HasDecisionsWith(decision.StartIPLT(start_ip)),
+					alert.And(
+						//decision.start_ip == query.start_ip
+						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+						//decision.start_suffix <= query.start_suffix
+						alert.HasDecisionsWith(decision.StartSuffixLTE(start_sfx)),
+					)),
+				alert.Or(
+					//decision.end_ip > query.end_ip
+					alert.HasDecisionsWith(decision.EndIPGT(end_ip)),
+					alert.And(
+						//decision.end_ip == query.end_ip
+						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+						//decision.end_suffix >= query.end_suffix
+						alert.HasDecisionsWith(decision.EndSuffixGTE(end_sfx)),
+					),
+				),
+			))
+		} else { /*decision is contained within {start_ip,end_ip}*/
+			alerts = alerts.Where(alert.And(
+				//matching addr size
+				alert.HasDecisionsWith(decision.IPSizeEQ(int64(ip_sz))),
+				alert.Or(
+					//decision.start_ip > query.start_ip
+					alert.HasDecisionsWith(decision.StartIPGT(start_ip)),
+					alert.And(
+						//decision.start_ip == query.start_ip
+						alert.HasDecisionsWith(decision.StartIPEQ(start_ip)),
+						//decision.start_suffix >= query.start_suffix
+						alert.HasDecisionsWith(decision.StartSuffixGTE(start_sfx)),
+					)),
+				alert.Or(
+					//decision.end_ip < query.end_ip
+					alert.HasDecisionsWith(decision.EndIPLT(end_ip)),
+					alert.And(
+						//decision.end_ip == query.end_ip
+						alert.HasDecisionsWith(decision.EndIPEQ(end_ip)),
+						//decision.end_suffix <= query.end_suffix
+						alert.HasDecisionsWith(decision.EndSuffixLTE(end_sfx)),
+					),
+				),
+			))
+		}
+	} else if ip_sz != 0 {
+		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 	return alerts, nil
 }

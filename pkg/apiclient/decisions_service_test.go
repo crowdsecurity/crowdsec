@@ -57,12 +57,10 @@ func TestDecisionsList(t *testing.T) {
 	expected := &models.GetDecisionsResponse{
 		&models.Decision{
 			Duration: &tduration,
-			EndIP:    16909060,
 			ID:       4,
 			Origin:   &torigin,
 			Scenario: &tscenario,
 			Scope:    &tscope,
-			StartIP:  16909060,
 			Type:     &ttype,
 			Value:    &tvalue,
 		},
@@ -150,12 +148,10 @@ func TestDecisionsStream(t *testing.T) {
 		New: models.GetDecisionsResponse{
 			&models.Decision{
 				Duration: &tduration,
-				EndIP:    16909060,
 				ID:       4,
 				Origin:   &torigin,
 				Scenario: &tscenario,
 				Scope:    &tscope,
-				StartIP:  16909060,
 				Type:     &ttype,
 				Value:    &tvalue,
 			},

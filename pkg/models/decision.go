@@ -21,9 +21,6 @@ type Decision struct {
 	// Required: true
 	Duration *string `json:"duration"`
 
-	// (only relevant for GET ops) when the value is an IP or range, its numeric representation
-	EndIP int64 `json:"end_ip,omitempty"`
-
 	// (only relevant for GET ops) the unique id
 	// Read Only: true
 	ID int64 `json:"id,omitempty"`
@@ -43,9 +40,6 @@ type Decision struct {
 	// true if the decision result from a scenario in simulation mode
 	// Read Only: true
 	Simulated *bool `json:"simulated,omitempty"`
-
-	// (only relevant for GET ops) when the value is an IP or range, its numeric representation
-	StartIP int64 `json:"start_ip,omitempty"`
 
 	// the type of decision, might be 'ban', 'captcha' or something custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL.
 	// Required: true
