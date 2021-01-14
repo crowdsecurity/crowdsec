@@ -1,6 +1,6 @@
 Source: crowdsec
-Maintainer: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
-Uploaders: Cyril Brulebois <cyril@debamax.com>
+Maintainer: Cyril Brulebois <cyril@debamax.com>
+Uploaders: Debian Go Packaging Team <team+pkg-go@tracker.debian.org>
 Section: golang
 Testsuite: autopkgtest-pkg-go
 Priority: optional
