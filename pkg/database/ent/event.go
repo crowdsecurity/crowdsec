@@ -55,81 +55,89 @@ func (e EventEdges) OwnerOrErr() (*Alert, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Event) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},  // id
-		&sql.NullTime{},   // created_at
-		&sql.NullTime{},   // updated_at
-		&sql.NullTime{},   // time
-		&sql.NullString{}, // serialized
+func (*Event) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case event.FieldID:
+			values[i] = &sql.NullInt64{}
+		case event.FieldSerialized:
+			values[i] = &sql.NullString{}
+		case event.FieldCreatedAt, event.FieldUpdatedAt, event.FieldTime:
+			values[i] = &sql.NullTime{}
+		case event.ForeignKeys[0]: // alert_events
+			values[i] = &sql.NullInt64{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Event", columns[i])
+		}
 	}
-}
-
-// fkValues returns the types for scanning foreign-keys values from sql.Rows.
-func (*Event) fkValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{}, // alert_events
-	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Event fields.
-func (e *Event) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(event.Columns); m < n {
+func (e *Event) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	e.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		e.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		e.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field time", values[2])
-	} else if value.Valid {
-		e.Time = value.Time
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field serialized", values[3])
-	} else if value.Valid {
-		e.Serialized = value.String
-	}
-	values = values[4:]
-	if len(values) == len(event.ForeignKeys) {
-		if value, ok := values[0].(*sql.NullInt64); !ok {
-			return fmt.Errorf("unexpected type %T for edge-field alert_events", value)
-		} else if value.Valid {
-			e.alert_events = new(int)
-			*e.alert_events = int(value.Int64)
+	for i := range columns {
+		switch columns[i] {
+		case event.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			e.ID = int(value.Int64)
+		case event.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				e.CreatedAt = value.Time
+			}
+		case event.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				e.UpdatedAt = value.Time
+			}
+		case event.FieldTime:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field time", values[i])
+			} else if value.Valid {
+				e.Time = value.Time
+			}
+		case event.FieldSerialized:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field serialized", values[i])
+			} else if value.Valid {
+				e.Serialized = value.String
+			}
+		case event.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field alert_events", value)
+			} else if value.Valid {
+				e.alert_events = new(int)
+				*e.alert_events = int(value.Int64)
+			}
 		}
 	}
 	return nil
 }
 
-// QueryOwner queries the owner edge of the Event.
+// QueryOwner queries the "owner" edge of the Event entity.
 func (e *Event) QueryOwner() *AlertQuery {
 	return (&EventClient{config: e.config}).QueryOwner(e)
 }
 
 // Update returns a builder for updating this Event.
-// Note that, you need to call Event.Unwrap() before calling this method, if this Event
+// Note that you need to call Event.Unwrap() before calling this method if this Event
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (e *Event) Update() *EventUpdateOne {
 	return (&EventClient{config: e.config}).UpdateOne(e)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Event entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (e *Event) Unwrap() *Event {
 	tx, ok := e.config.driver.(*txDriver)
 	if !ok {

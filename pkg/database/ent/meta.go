@@ -55,81 +55,89 @@ func (e MetaEdges) OwnerOrErr() (*Alert, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Meta) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},  // id
-		&sql.NullTime{},   // created_at
-		&sql.NullTime{},   // updated_at
-		&sql.NullString{}, // key
-		&sql.NullString{}, // value
+func (*Meta) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case meta.FieldID:
+			values[i] = &sql.NullInt64{}
+		case meta.FieldKey, meta.FieldValue:
+			values[i] = &sql.NullString{}
+		case meta.FieldCreatedAt, meta.FieldUpdatedAt:
+			values[i] = &sql.NullTime{}
+		case meta.ForeignKeys[0]: // alert_metas
+			values[i] = &sql.NullInt64{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Meta", columns[i])
+		}
 	}
-}
-
-// fkValues returns the types for scanning foreign-keys values from sql.Rows.
-func (*Meta) fkValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{}, // alert_metas
-	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Meta fields.
-func (m *Meta) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(meta.Columns); m < n {
+func (m *Meta) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	m.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		m.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		m.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field key", values[2])
-	} else if value.Valid {
-		m.Key = value.String
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field value", values[3])
-	} else if value.Valid {
-		m.Value = value.String
-	}
-	values = values[4:]
-	if len(values) == len(meta.ForeignKeys) {
-		if value, ok := values[0].(*sql.NullInt64); !ok {
-			return fmt.Errorf("unexpected type %T for edge-field alert_metas", value)
-		} else if value.Valid {
-			m.alert_metas = new(int)
-			*m.alert_metas = int(value.Int64)
+	for i := range columns {
+		switch columns[i] {
+		case meta.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			m.ID = int(value.Int64)
+		case meta.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				m.CreatedAt = value.Time
+			}
+		case meta.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				m.UpdatedAt = value.Time
+			}
+		case meta.FieldKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field key", values[i])
+			} else if value.Valid {
+				m.Key = value.String
+			}
+		case meta.FieldValue:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field value", values[i])
+			} else if value.Valid {
+				m.Value = value.String
+			}
+		case meta.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field alert_metas", value)
+			} else if value.Valid {
+				m.alert_metas = new(int)
+				*m.alert_metas = int(value.Int64)
+			}
 		}
 	}
 	return nil
 }
 
-// QueryOwner queries the owner edge of the Meta.
+// QueryOwner queries the "owner" edge of the Meta entity.
 func (m *Meta) QueryOwner() *AlertQuery {
 	return (&MetaClient{config: m.config}).QueryOwner(m)
 }
 
 // Update returns a builder for updating this Meta.
-// Note that, you need to call Meta.Unwrap() before calling this method, if this Meta
+// Note that you need to call Meta.Unwrap() before calling this method if this Meta
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (m *Meta) Update() *MetaUpdateOne {
 	return (&MetaClient{config: m.config}).UpdateOne(m)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Meta entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (m *Meta) Unwrap() *Meta {
 	tx, ok := m.config.driver.(*txDriver)
 	if !ok {

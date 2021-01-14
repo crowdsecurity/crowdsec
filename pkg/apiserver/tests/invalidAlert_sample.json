@@ -7,8 +7,6 @@
             {
                 "id": 1,
                 "duration": "1h",
-                "start_ip": 2130706433,
-                "end_ip": 2130706433,
                 "origin": "test",
                 "scenario": "crowdsecurity/test",
                 "scope": "ip",

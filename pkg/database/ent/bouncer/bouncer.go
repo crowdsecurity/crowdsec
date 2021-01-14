@@ -62,14 +62,14 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultCreatedAt holds the default value on creation for the created_at field.
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
-	// DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
-	// DefaultIPAddress holds the default value on creation for the ip_address field.
+	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
-	// DefaultUntil holds the default value on creation for the until field.
+	// DefaultUntil holds the default value on creation for the "until" field.
 	DefaultUntil func() time.Time
-	// DefaultLastPull holds the default value on creation for the last_pull field.
+	// DefaultLastPull holds the default value on creation for the "last_pull" field.
 	DefaultLastPull func() time.Time
 )

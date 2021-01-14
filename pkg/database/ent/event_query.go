@@ -22,7 +22,7 @@ type EventQuery struct {
 	limit      *int
 	offset     *int
 	order      []OrderFunc
-	unique     []string
+	fields     []string
 	predicates []predicate.Event
 	// eager-loading edges.
 	withOwner *AlertQuery
@@ -32,7 +32,7 @@ type EventQuery struct {
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the EventQuery builder.
 func (eq *EventQuery) Where(ps ...predicate.Event) *EventQuery {
 	eq.predicates = append(eq.predicates, ps...)
 	return eq
@@ -56,7 +56,7 @@ func (eq *EventQuery) Order(o ...OrderFunc) *EventQuery {
 	return eq
 }
 
-// QueryOwner chains the current query on the owner edge.
+// QueryOwner chains the current query on the "owner" edge.
 func (eq *EventQuery) QueryOwner() *AlertQuery {
 	query := &AlertQuery{config: eq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -78,7 +78,8 @@ func (eq *EventQuery) QueryOwner() *AlertQuery {
 	return query
 }
 
-// First returns the first Event entity in the query. Returns *NotFoundError when no event was found.
+// First returns the first Event entity from the query.
+// Returns a *NotFoundError when no Event was found.
 func (eq *EventQuery) First(ctx context.Context) (*Event, error) {
 	nodes, err := eq.Limit(1).All(ctx)
 	if err != nil {
@@ -99,7 +100,8 @@ func (eq *EventQuery) FirstX(ctx context.Context) *Event {
 	return node
 }
 
-// FirstID returns the first Event id in the query. Returns *NotFoundError when no id was found.
+// FirstID returns the first Event ID from the query.
+// Returns a *NotFoundError when no Event ID was found.
 func (eq *EventQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = eq.Limit(1).IDs(ctx); err != nil {
@@ -112,8 +114,8 @@ func (eq *EventQuery) FirstID(ctx context.Context) (id int, err error) {
 	return ids[0], nil
 }
 
-// FirstXID is like FirstID, but panics if an error occurs.
-func (eq *EventQuery) FirstXID(ctx context.Context) int {
+// FirstIDX is like FirstID, but panics if an error occurs.
+func (eq *EventQuery) FirstIDX(ctx context.Context) int {
 	id, err := eq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -121,7 +123,9 @@ func (eq *EventQuery) FirstXID(ctx context.Context) int {
 	return id
 }
 
-// Only returns the only Event entity in the query, returns an error if not exactly one entity was returned.
+// Only returns a single Event entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when exactly one Event entity is not found.
+// Returns a *NotFoundError when no Event entities are found.
 func (eq *EventQuery) Only(ctx context.Context) (*Event, error) {
 	nodes, err := eq.Limit(2).All(ctx)
 	if err != nil {
@@ -146,7 +150,9 @@ func (eq *EventQuery) OnlyX(ctx context.Context) *Event {
 	return node
 }
 
-// OnlyID returns the only Event id in the query, returns an error if not exactly one id was returned.
+// OnlyID is like Only, but returns the only Event ID in the query.
+// Returns a *NotSingularError when exactly one Event ID is not found.
+// Returns a *NotFoundError when no entities are found.
 func (eq *EventQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = eq.Limit(2).IDs(ctx); err != nil {
@@ -189,7 +195,7 @@ func (eq *EventQuery) AllX(ctx context.Context) []*Event {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Event ids.
+// IDs executes the query and returns a list of Event IDs.
 func (eq *EventQuery) IDs(ctx context.Context) ([]int, error) {
 	var ids []int
 	if err := eq.Select(event.FieldID).Scan(ctx, &ids); err != nil {
@@ -241,24 +247,27 @@ func (eq *EventQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the query builder, including all associated steps. It can be
+// Clone returns a duplicate of the EventQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
 func (eq *EventQuery) Clone() *EventQuery {
+	if eq == nil {
+		return nil
+	}
 	return &EventQuery{
 		config:     eq.config,
 		limit:      eq.limit,
 		offset:     eq.offset,
 		order:      append([]OrderFunc{}, eq.order...),
-		unique:     append([]string{}, eq.unique...),
 		predicates: append([]predicate.Event{}, eq.predicates...),
+		withOwner:  eq.withOwner.Clone(),
 		// clone intermediate query.
 		sql:  eq.sql.Clone(),
 		path: eq.path,
 	}
 }
 
-//  WithOwner tells the query-builder to eager-loads the nodes that are connected to
-// the "owner" edge. The optional arguments used to configure the query builder of the edge.
+// WithOwner tells the query-builder to eager-load the nodes that are connected to
+// the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (eq *EventQuery) WithOwner(opts ...func(*AlertQuery)) *EventQuery {
 	query := &AlertQuery{config: eq.config}
 	for _, opt := range opts {
@@ -268,7 +277,7 @@ func (eq *EventQuery) WithOwner(opts ...func(*AlertQuery)) *EventQuery {
 	return eq
 }
 
-// GroupBy used to group vertices by one or more fields/columns.
+// GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
@@ -295,7 +304,8 @@ func (eq *EventQuery) GroupBy(field string, fields ...string) *EventGroupBy {
 	return group
 }
 
-// Select one or more fields from the given query.
+// Select allows the selection one or more fields/columns for the given query,
+// instead of selecting all fields in the entity.
 //
 // Example:
 //
@@ -308,18 +318,16 @@ func (eq *EventQuery) GroupBy(field string, fields ...string) *EventGroupBy {
 //		Scan(ctx, &v)
 //
 func (eq *EventQuery) Select(field string, fields ...string) *EventSelect {
-	selector := &EventSelect{config: eq.config}
-	selector.fields = append([]string{field}, fields...)
-	selector.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := eq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return eq.sqlQuery(), nil
-	}
-	return selector
+	eq.fields = append([]string{field}, fields...)
+	return &EventSelect{EventQuery: eq}
 }
 
 func (eq *EventQuery) prepareQuery(ctx context.Context) error {
+	for _, f := range eq.fields {
+		if !event.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+		}
+	}
 	if eq.path != nil {
 		prev, err := eq.path(ctx)
 		if err != nil {
@@ -345,22 +353,18 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, event.ForeignKeys...)
 	}
-	_spec.ScanValues = func() []interface{} {
+	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Event{config: eq.config}
 		nodes = append(nodes, node)
-		values := node.scanValues()
-		if withFKs {
-			values = append(values, node.fkValues()...)
-		}
-		return values
+		return node.scanValues(columns)
 	}
-	_spec.Assign = func(values ...interface{}) error {
+	_spec.Assign = func(columns []string, values []interface{}) error {
 		if len(nodes) == 0 {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
 		node.Edges.loadedTypes = loadedTypes
-		return node.assignValues(values...)
+		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, eq.driver, _spec); err != nil {
 		return nil, err
@@ -423,6 +427,15 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   eq.sql,
 		Unique: true,
 	}
+	if fields := eq.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, event.FieldID)
+		for i := range fields {
+			if fields[i] != event.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
+			}
+		}
+	}
 	if ps := eq.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -471,7 +484,7 @@ func (eq *EventQuery) sqlQuery() *sql.Selector {
 	return selector
 }
 
-// EventGroupBy is the builder for group-by Event entities.
+// EventGroupBy is the group-by builder for Event entities.
 type EventGroupBy struct {
 	config
 	fields []string
@@ -487,7 +500,7 @@ func (egb *EventGroupBy) Aggregate(fns ...AggregateFunc) *EventGroupBy {
 	return egb
 }
 
-// Scan applies the group-by query and scan the result into the given value.
+// Scan applies the group-by query and scans the result into the given value.
 func (egb *EventGroupBy) Scan(ctx context.Context, v interface{}) error {
 	query, err := egb.path(ctx)
 	if err != nil {
@@ -504,7 +517,8 @@ func (egb *EventGroupBy) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from group-by. It is only allowed when querying group-by with one field.
+// Strings returns list of strings from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Strings(ctx context.Context) ([]string, error) {
 	if len(egb.fields) > 1 {
 		return nil, errors.New("ent: EventGroupBy.Strings is not achievable when grouping more than 1 field")
@@ -525,7 +539,8 @@ func (egb *EventGroupBy) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from group-by. It is only allowed when querying group-by with one field.
+// String returns a single string from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = egb.Strings(ctx); err != nil {
@@ -551,7 +566,8 @@ func (egb *EventGroupBy) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from group-by. It is only allowed when querying group-by with one field.
+// Ints returns list of ints from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Ints(ctx context.Context) ([]int, error) {
 	if len(egb.fields) > 1 {
 		return nil, errors.New("ent: EventGroupBy.Ints is not achievable when grouping more than 1 field")
@@ -572,7 +588,8 @@ func (egb *EventGroupBy) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from group-by. It is only allowed when querying group-by with one field.
+// Int returns a single int from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = egb.Ints(ctx); err != nil {
@@ -598,7 +615,8 @@ func (egb *EventGroupBy) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from group-by. It is only allowed when querying group-by with one field.
+// Float64s returns list of float64s from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 	if len(egb.fields) > 1 {
 		return nil, errors.New("ent: EventGroupBy.Float64s is not achievable when grouping more than 1 field")
@@ -619,7 +637,8 @@ func (egb *EventGroupBy) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from group-by. It is only allowed when querying group-by with one field.
+// Float64 returns a single float64 from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = egb.Float64s(ctx); err != nil {
@@ -645,7 +664,8 @@ func (egb *EventGroupBy) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from group-by. It is only allowed when querying group-by with one field.
+// Bools returns list of bools from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Bools(ctx context.Context) ([]bool, error) {
 	if len(egb.fields) > 1 {
 		return nil, errors.New("ent: EventGroupBy.Bools is not achievable when grouping more than 1 field")
@@ -666,7 +686,8 @@ func (egb *EventGroupBy) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from group-by. It is only allowed when querying group-by with one field.
+// Bool returns a single bool from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (egb *EventGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = egb.Bools(ctx); err != nil {
@@ -721,22 +742,19 @@ func (egb *EventGroupBy) sqlQuery() *sql.Selector {
 	return selector.Select(columns...).GroupBy(egb.fields...)
 }
 
-// EventSelect is the builder for select fields of Event entities.
+// EventSelect is the builder for selecting fields of Event entities.
 type EventSelect struct {
-	config
-	fields []string
+	*EventQuery
 	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	sql *sql.Selector
 }
 
-// Scan applies the selector query and scan the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (es *EventSelect) Scan(ctx context.Context, v interface{}) error {
-	query, err := es.path(ctx)
-	if err != nil {
+	if err := es.prepareQuery(ctx); err != nil {
 		return err
 	}
-	es.sql = query
+	es.sql = es.EventQuery.sqlQuery()
 	return es.sqlScan(ctx, v)
 }
 
@@ -747,7 +765,7 @@ func (es *EventSelect) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from selector. It is only allowed when selecting one field.
+// Strings returns list of strings from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Strings(ctx context.Context) ([]string, error) {
 	if len(es.fields) > 1 {
 		return nil, errors.New("ent: EventSelect.Strings is not achievable when selecting more than 1 field")
@@ -768,7 +786,7 @@ func (es *EventSelect) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from selector. It is only allowed when selecting one field.
+// String returns a single string from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = es.Strings(ctx); err != nil {
@@ -794,7 +812,7 @@ func (es *EventSelect) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from selector. It is only allowed when selecting one field.
+// Ints returns list of ints from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Ints(ctx context.Context) ([]int, error) {
 	if len(es.fields) > 1 {
 		return nil, errors.New("ent: EventSelect.Ints is not achievable when selecting more than 1 field")
@@ -815,7 +833,7 @@ func (es *EventSelect) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from selector. It is only allowed when selecting one field.
+// Int returns a single int from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = es.Ints(ctx); err != nil {
@@ -841,7 +859,7 @@ func (es *EventSelect) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from selector. It is only allowed when selecting one field.
+// Float64s returns list of float64s from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Float64s(ctx context.Context) ([]float64, error) {
 	if len(es.fields) > 1 {
 		return nil, errors.New("ent: EventSelect.Float64s is not achievable when selecting more than 1 field")
@@ -862,7 +880,7 @@ func (es *EventSelect) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from selector. It is only allowed when selecting one field.
+// Float64 returns a single float64 from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = es.Float64s(ctx); err != nil {
@@ -888,7 +906,7 @@ func (es *EventSelect) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from selector. It is only allowed when selecting one field.
+// Bools returns list of bools from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Bools(ctx context.Context) ([]bool, error) {
 	if len(es.fields) > 1 {
 		return nil, errors.New("ent: EventSelect.Bools is not achievable when selecting more than 1 field")
@@ -909,7 +927,7 @@ func (es *EventSelect) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from selector. It is only allowed when selecting one field.
+// Bool returns a single bool from a selector. It is only allowed when selecting one field.
 func (es *EventSelect) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = es.Bools(ctx); err != nil {
@@ -936,11 +954,6 @@ func (es *EventSelect) BoolX(ctx context.Context) bool {
 }
 
 func (es *EventSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range es.fields {
-		if !event.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := es.sqlQuery().Query()
 	if err := es.driver.Query(ctx, query, args, rows); err != nil {

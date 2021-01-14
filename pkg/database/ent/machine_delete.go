@@ -16,14 +16,13 @@ import (
 // MachineDelete is the builder for deleting a Machine entity.
 type MachineDelete struct {
 	config
-	hooks      []Hook
-	mutation   *MachineMutation
-	predicates []predicate.Machine
+	hooks    []Hook
+	mutation *MachineMutation
 }
 
-// Where adds a new predicate to the delete builder.
+// Where adds a new predicate to the MachineDelete builder.
 func (md *MachineDelete) Where(ps ...predicate.Machine) *MachineDelete {
-	md.predicates = append(md.predicates, ps...)
+	md.mutation.predicates = append(md.mutation.predicates, ps...)
 	return md
 }
 
@@ -75,7 +74,7 @@ func (md *MachineDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
-	if ps := md.predicates; len(ps) > 0 {
+	if ps := md.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

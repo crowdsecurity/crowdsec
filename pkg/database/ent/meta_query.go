@@ -22,7 +22,7 @@ type MetaQuery struct {
 	limit      *int
 	offset     *int
 	order      []OrderFunc
-	unique     []string
+	fields     []string
 	predicates []predicate.Meta
 	// eager-loading edges.
 	withOwner *AlertQuery
@@ -32,7 +32,7 @@ type MetaQuery struct {
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the MetaQuery builder.
 func (mq *MetaQuery) Where(ps ...predicate.Meta) *MetaQuery {
 	mq.predicates = append(mq.predicates, ps...)
 	return mq
@@ -56,7 +56,7 @@ func (mq *MetaQuery) Order(o ...OrderFunc) *MetaQuery {
 	return mq
 }
 
-// QueryOwner chains the current query on the owner edge.
+// QueryOwner chains the current query on the "owner" edge.
 func (mq *MetaQuery) QueryOwner() *AlertQuery {
 	query := &AlertQuery{config: mq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -78,7 +78,8 @@ func (mq *MetaQuery) QueryOwner() *AlertQuery {
 	return query
 }
 
-// First returns the first Meta entity in the query. Returns *NotFoundError when no meta was found.
+// First returns the first Meta entity from the query.
+// Returns a *NotFoundError when no Meta was found.
 func (mq *MetaQuery) First(ctx context.Context) (*Meta, error) {
 	nodes, err := mq.Limit(1).All(ctx)
 	if err != nil {
@@ -99,7 +100,8 @@ func (mq *MetaQuery) FirstX(ctx context.Context) *Meta {
 	return node
 }
 
-// FirstID returns the first Meta id in the query. Returns *NotFoundError when no id was found.
+// FirstID returns the first Meta ID from the query.
+// Returns a *NotFoundError when no Meta ID was found.
 func (mq *MetaQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = mq.Limit(1).IDs(ctx); err != nil {
@@ -112,8 +114,8 @@ func (mq *MetaQuery) FirstID(ctx context.Context) (id int, err error) {
 	return ids[0], nil
 }
 
-// FirstXID is like FirstID, but panics if an error occurs.
-func (mq *MetaQuery) FirstXID(ctx context.Context) int {
+// FirstIDX is like FirstID, but panics if an error occurs.
+func (mq *MetaQuery) FirstIDX(ctx context.Context) int {
 	id, err := mq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -121,7 +123,9 @@ func (mq *MetaQuery) FirstXID(ctx context.Context) int {
 	return id
 }
 
-// Only returns the only Meta entity in the query, returns an error if not exactly one entity was returned.
+// Only returns a single Meta entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when exactly one Meta entity is not found.
+// Returns a *NotFoundError when no Meta entities are found.
 func (mq *MetaQuery) Only(ctx context.Context) (*Meta, error) {
 	nodes, err := mq.Limit(2).All(ctx)
 	if err != nil {
@@ -146,7 +150,9 @@ func (mq *MetaQuery) OnlyX(ctx context.Context) *Meta {
 	return node
 }
 
-// OnlyID returns the only Meta id in the query, returns an error if not exactly one id was returned.
+// OnlyID is like Only, but returns the only Meta ID in the query.
+// Returns a *NotSingularError when exactly one Meta ID is not found.
+// Returns a *NotFoundError when no entities are found.
 func (mq *MetaQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = mq.Limit(2).IDs(ctx); err != nil {
@@ -189,7 +195,7 @@ func (mq *MetaQuery) AllX(ctx context.Context) []*Meta {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Meta ids.
+// IDs executes the query and returns a list of Meta IDs.
 func (mq *MetaQuery) IDs(ctx context.Context) ([]int, error) {
 	var ids []int
 	if err := mq.Select(meta.FieldID).Scan(ctx, &ids); err != nil {
@@ -241,24 +247,27 @@ func (mq *MetaQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the query builder, including all associated steps. It can be
+// Clone returns a duplicate of the MetaQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
 func (mq *MetaQuery) Clone() *MetaQuery {
+	if mq == nil {
+		return nil
+	}
 	return &MetaQuery{
 		config:     mq.config,
 		limit:      mq.limit,
 		offset:     mq.offset,
 		order:      append([]OrderFunc{}, mq.order...),
-		unique:     append([]string{}, mq.unique...),
 		predicates: append([]predicate.Meta{}, mq.predicates...),
+		withOwner:  mq.withOwner.Clone(),
 		// clone intermediate query.
 		sql:  mq.sql.Clone(),
 		path: mq.path,
 	}
 }
 
-//  WithOwner tells the query-builder to eager-loads the nodes that are connected to
-// the "owner" edge. The optional arguments used to configure the query builder of the edge.
+// WithOwner tells the query-builder to eager-load the nodes that are connected to
+// the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (mq *MetaQuery) WithOwner(opts ...func(*AlertQuery)) *MetaQuery {
 	query := &AlertQuery{config: mq.config}
 	for _, opt := range opts {
@@ -268,7 +277,7 @@ func (mq *MetaQuery) WithOwner(opts ...func(*AlertQuery)) *MetaQuery {
 	return mq
 }
 
-// GroupBy used to group vertices by one or more fields/columns.
+// GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
@@ -295,7 +304,8 @@ func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
 	return group
 }
 
-// Select one or more fields from the given query.
+// Select allows the selection one or more fields/columns for the given query,
+// instead of selecting all fields in the entity.
 //
 // Example:
 //
@@ -308,18 +318,16 @@ func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
 //		Scan(ctx, &v)
 //
 func (mq *MetaQuery) Select(field string, fields ...string) *MetaSelect {
-	selector := &MetaSelect{config: mq.config}
-	selector.fields = append([]string{field}, fields...)
-	selector.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := mq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return mq.sqlQuery(), nil
-	}
-	return selector
+	mq.fields = append([]string{field}, fields...)
+	return &MetaSelect{MetaQuery: mq}
 }
 
 func (mq *MetaQuery) prepareQuery(ctx context.Context) error {
+	for _, f := range mq.fields {
+		if !meta.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+		}
+	}
 	if mq.path != nil {
 		prev, err := mq.path(ctx)
 		if err != nil {
@@ -345,22 +353,18 @@ func (mq *MetaQuery) sqlAll(ctx context.Context) ([]*Meta, error) {
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, meta.ForeignKeys...)
 	}
-	_spec.ScanValues = func() []interface{} {
+	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Meta{config: mq.config}
 		nodes = append(nodes, node)
-		values := node.scanValues()
-		if withFKs {
-			values = append(values, node.fkValues()...)
-		}
-		return values
+		return node.scanValues(columns)
 	}
-	_spec.Assign = func(values ...interface{}) error {
+	_spec.Assign = func(columns []string, values []interface{}) error {
 		if len(nodes) == 0 {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
 		node.Edges.loadedTypes = loadedTypes
-		return node.assignValues(values...)
+		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, mq.driver, _spec); err != nil {
 		return nil, err
@@ -423,6 +427,15 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   mq.sql,
 		Unique: true,
 	}
+	if fields := mq.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
+		for i := range fields {
+			if fields[i] != meta.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
+			}
+		}
+	}
 	if ps := mq.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -471,7 +484,7 @@ func (mq *MetaQuery) sqlQuery() *sql.Selector {
 	return selector
 }
 
-// MetaGroupBy is the builder for group-by Meta entities.
+// MetaGroupBy is the group-by builder for Meta entities.
 type MetaGroupBy struct {
 	config
 	fields []string
@@ -487,7 +500,7 @@ func (mgb *MetaGroupBy) Aggregate(fns ...AggregateFunc) *MetaGroupBy {
 	return mgb
 }
 
-// Scan applies the group-by query and scan the result into the given value.
+// Scan applies the group-by query and scans the result into the given value.
 func (mgb *MetaGroupBy) Scan(ctx context.Context, v interface{}) error {
 	query, err := mgb.path(ctx)
 	if err != nil {
@@ -504,7 +517,8 @@ func (mgb *MetaGroupBy) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from group-by. It is only allowed when querying group-by with one field.
+// Strings returns list of strings from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Strings(ctx context.Context) ([]string, error) {
 	if len(mgb.fields) > 1 {
 		return nil, errors.New("ent: MetaGroupBy.Strings is not achievable when grouping more than 1 field")
@@ -525,7 +539,8 @@ func (mgb *MetaGroupBy) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from group-by. It is only allowed when querying group-by with one field.
+// String returns a single string from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = mgb.Strings(ctx); err != nil {
@@ -551,7 +566,8 @@ func (mgb *MetaGroupBy) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from group-by. It is only allowed when querying group-by with one field.
+// Ints returns list of ints from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Ints(ctx context.Context) ([]int, error) {
 	if len(mgb.fields) > 1 {
 		return nil, errors.New("ent: MetaGroupBy.Ints is not achievable when grouping more than 1 field")
@@ -572,7 +588,8 @@ func (mgb *MetaGroupBy) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from group-by. It is only allowed when querying group-by with one field.
+// Int returns a single int from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = mgb.Ints(ctx); err != nil {
@@ -598,7 +615,8 @@ func (mgb *MetaGroupBy) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from group-by. It is only allowed when querying group-by with one field.
+// Float64s returns list of float64s from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 	if len(mgb.fields) > 1 {
 		return nil, errors.New("ent: MetaGroupBy.Float64s is not achievable when grouping more than 1 field")
@@ -619,7 +637,8 @@ func (mgb *MetaGroupBy) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from group-by. It is only allowed when querying group-by with one field.
+// Float64 returns a single float64 from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = mgb.Float64s(ctx); err != nil {
@@ -645,7 +664,8 @@ func (mgb *MetaGroupBy) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from group-by. It is only allowed when querying group-by with one field.
+// Bools returns list of bools from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Bools(ctx context.Context) ([]bool, error) {
 	if len(mgb.fields) > 1 {
 		return nil, errors.New("ent: MetaGroupBy.Bools is not achievable when grouping more than 1 field")
@@ -666,7 +686,8 @@ func (mgb *MetaGroupBy) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from group-by. It is only allowed when querying group-by with one field.
+// Bool returns a single bool from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (mgb *MetaGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = mgb.Bools(ctx); err != nil {
@@ -721,22 +742,19 @@ func (mgb *MetaGroupBy) sqlQuery() *sql.Selector {
 	return selector.Select(columns...).GroupBy(mgb.fields...)
 }
 
-// MetaSelect is the builder for select fields of Meta entities.
+// MetaSelect is the builder for selecting fields of Meta entities.
 type MetaSelect struct {
-	config
-	fields []string
+	*MetaQuery
 	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	sql *sql.Selector
 }
 
-// Scan applies the selector query and scan the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (ms *MetaSelect) Scan(ctx context.Context, v interface{}) error {
-	query, err := ms.path(ctx)
-	if err != nil {
+	if err := ms.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ms.sql = query
+	ms.sql = ms.MetaQuery.sqlQuery()
 	return ms.sqlScan(ctx, v)
 }
 
@@ -747,7 +765,7 @@ func (ms *MetaSelect) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from selector. It is only allowed when selecting one field.
+// Strings returns list of strings from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Strings(ctx context.Context) ([]string, error) {
 	if len(ms.fields) > 1 {
 		return nil, errors.New("ent: MetaSelect.Strings is not achievable when selecting more than 1 field")
@@ -768,7 +786,7 @@ func (ms *MetaSelect) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from selector. It is only allowed when selecting one field.
+// String returns a single string from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = ms.Strings(ctx); err != nil {
@@ -794,7 +812,7 @@ func (ms *MetaSelect) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from selector. It is only allowed when selecting one field.
+// Ints returns list of ints from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Ints(ctx context.Context) ([]int, error) {
 	if len(ms.fields) > 1 {
 		return nil, errors.New("ent: MetaSelect.Ints is not achievable when selecting more than 1 field")
@@ -815,7 +833,7 @@ func (ms *MetaSelect) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from selector. It is only allowed when selecting one field.
+// Int returns a single int from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = ms.Ints(ctx); err != nil {
@@ -841,7 +859,7 @@ func (ms *MetaSelect) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from selector. It is only allowed when selecting one field.
+// Float64s returns list of float64s from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Float64s(ctx context.Context) ([]float64, error) {
 	if len(ms.fields) > 1 {
 		return nil, errors.New("ent: MetaSelect.Float64s is not achievable when selecting more than 1 field")
@@ -862,7 +880,7 @@ func (ms *MetaSelect) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from selector. It is only allowed when selecting one field.
+// Float64 returns a single float64 from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = ms.Float64s(ctx); err != nil {
@@ -888,7 +906,7 @@ func (ms *MetaSelect) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from selector. It is only allowed when selecting one field.
+// Bools returns list of bools from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Bools(ctx context.Context) ([]bool, error) {
 	if len(ms.fields) > 1 {
 		return nil, errors.New("ent: MetaSelect.Bools is not achievable when selecting more than 1 field")
@@ -909,7 +927,7 @@ func (ms *MetaSelect) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from selector. It is only allowed when selecting one field.
+// Bool returns a single bool from a selector. It is only allowed when selecting one field.
 func (ms *MetaSelect) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = ms.Bools(ctx); err != nil {
@@ -936,11 +954,6 @@ func (ms *MetaSelect) BoolX(ctx context.Context) bool {
 }
 
 func (ms *MetaSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range ms.fields {
-		if !meta.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := ms.sqlQuery().Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {

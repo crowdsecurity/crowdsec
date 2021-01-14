@@ -18,7 +18,7 @@ require (
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/enescakir/emoji v1.0.0
-	github.com/facebook/ent v0.5.0
+	github.com/facebook/ent v0.5.4
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-co-op/gocron v0.3.3
 	github.com/go-openapi/analysis v0.19.12 // indirect
@@ -35,7 +35,7 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.1
-	github.com/lib/pq v1.8.0
+	github.com/lib/pq v1.9.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
@@ -56,11 +56,11 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.6.1
-	github.com/ugorji/go/codec v1.2.0 // indirect
+	github.com/ugorji/go v1.2.0 // indirect
 	github.com/vjeantet/grok v1.0.1 // indirect
 	go.mongodb.org/mongo-driver v1.4.3 // indirect
 	golang.org/x/crypto v0.0.0-20201116153603-4be66e5b6582
-	golang.org/x/mod v0.3.0
+	golang.org/x/mod v0.4.0
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/sys v0.0.0-20201116161645-c061ba923fbb
 	golang.org/x/text v0.3.4 // indirect
