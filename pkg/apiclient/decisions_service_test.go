@@ -26,7 +26,7 @@ func TestDecisionsList(t *testing.T) {
 			assert.Equal(t, r.URL.RawQuery, "ip=1.2.3.4")
 			assert.Equal(t, r.Header.Get("X-Api-Key"), "ixu")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`[{"duration":"3h59m55.756182786s","end_ip":16909060,"id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","start_ip":16909060,"type":"ban","value":"1.2.3.4"}]`))
+			w.Write([]byte(`[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]`))
 		} else {
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(`null`))
@@ -108,7 +108,7 @@ func TestDecisionsStream(t *testing.T) {
 
 			if r.URL.RawQuery == "startup=true" {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","end_ip":16909060,"id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","start_ip":16909060,"type":"ban","value":"1.2.3.4"}]}`))
+				w.Write([]byte(`{"deleted":null,"new":[{"duration":"3h59m55.756182786s","id":4,"origin":"cscli","scenario":"manual 'ban' from '82929df7ee394b73b81252fe3b4e50203yaT2u6nXiaN7Ix9'","scope":"Ip","type":"ban","value":"1.2.3.4"}]}`))
 			} else {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"deleted":null,"new":null}`))
