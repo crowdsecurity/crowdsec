@@ -232,7 +232,6 @@ func NewAlertsCmd() *cobra.Command {
 		Since:          new(string),
 		Until:          new(string),
 		TypeEquals:     new(string),
-		Contains:       new(bool),
 	}
 	limit = new(int)
 	contained := new(bool)
@@ -303,7 +302,7 @@ cscli alerts list --type ban`,
 				alertListFilter.RangeEquals = nil
 			}
 			if contained != nil && *contained {
-				*alertListFilter.Contains = false
+				alertListFilter.Contains = new(bool)
 			}
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
@@ -338,7 +337,6 @@ cscli alerts list --type ban`,
 		ScenarioEquals: new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
-		Contains:       new(bool),
 	}
 	var cmdAlertsDelete = &cobra.Command{
 		Use: "delete [filters] [--all]",
@@ -388,7 +386,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 					alertDeleteFilter.RangeEquals = nil
 				}
 				if contained != nil && *contained {
-					*alertListFilter.Contains = false
+					alertListFilter.Contains = new(bool)
 				}
 			} else {
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{}

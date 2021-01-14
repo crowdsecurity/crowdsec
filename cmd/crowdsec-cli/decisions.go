@@ -139,7 +139,6 @@ func NewDecisionsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
-		Contains:       new(bool),
 	}
 	NoSimu := new(bool)
 	contained := new(bool)
@@ -161,7 +160,7 @@ cscli decisions list -t ban
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
 			if NoSimu != nil && *NoSimu {
-				*filter.IncludeSimulated = false
+				filter.IncludeSimulated = new(bool)
 			}
 			/*nulify the empty entries to avoid bad filter*/
 			if *filter.Until == "" {
@@ -212,7 +211,7 @@ cscli decisions list -t ban
 			}
 
 			if contained != nil && *contained {
-				*filter.Contains = false
+				filter.Contains = new(bool)
 			}
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
@@ -355,7 +354,6 @@ cscli decisions add --scope username --value foobar
 		TypeEquals:  new(string),
 		IPEquals:    new(string),
 		RangeEquals: new(string),
-		Contains:    new(bool),
 	}
 	var delDecisionId string
 	var delDecisionAll bool
@@ -407,7 +405,7 @@ cscli decisions delete --type captcha
 				delFilter.RangeEquals = nil
 			}
 			if contained != nil && *contained {
-				*filter.Contains = false
+				filter.Contains = new(bool)
 			}
 
 			if delDecisionId == "" {
