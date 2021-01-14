@@ -72,12 +72,12 @@ Description: lightweight and collaborative security engine
  Crowdsec can read many log sources, parse and also enrich them, in
  order to detect specific scenarios, that usually represent malevolent
  behaviour. Parsers, Enrichers, and Scenarios are YAML files that can
- shared and downloaded through a specific hub, as well as be created
+ be shared and downloaded through a specific hub, as well as be created
  or adapted locally.
  .
  Detection results are available for crowdsec, its CLI tools and
  bouncers via an HTTP API. Triggered scenarios lead to an alert, which
- often results in a decision (e.g. IP banner for 4 hours) that can be
+ often results in a decision (e.g. IP banned for 4 hours) that can be
  consumed by bouncers (software components enforcing a decision, such
  as an iptables ban, an nginx lua script, or any custom user script).
  .
