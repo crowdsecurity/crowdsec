@@ -179,8 +179,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : type filter
 	w = httptest.NewRecorder()
@@ -189,8 +189,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : scope/value
 	w = httptest.NewRecorder()
@@ -199,8 +199,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
-	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : ip filter
 	w = httptest.NewRecorder()
@@ -209,8 +209,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
-	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get decision : by range
 	w = httptest.NewRecorder()
@@ -219,8 +219,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 }
 
 func TestGetDecision(t *testing.T) {
