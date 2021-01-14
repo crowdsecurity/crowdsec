@@ -58,7 +58,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 
 	// delete by range
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=true", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -214,7 +214,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get decision : by range
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
@@ -277,7 +277,7 @@ func TestGetDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
 }
 
@@ -449,5 +449,5 @@ func TestStreamDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
 }
