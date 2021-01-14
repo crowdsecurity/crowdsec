@@ -206,8 +206,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
-				log.Infof("sz=%d, start_ip=%d, start_sfx=%d end_ip=%d end_sfx=%d",
-					sz, start_ip, start_sfx, end_ip, end_sfx)
 				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).

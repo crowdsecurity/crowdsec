@@ -58,7 +58,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 
 	// delete by range
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=true", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
