@@ -4,11 +4,9 @@ go 1.13
 
 require (
 	github.com/AlecAivazis/survey/v2 v2.2.1
-	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
 	github.com/antonmedv/expr v1.8.9
 	github.com/appleboy/gin-jwt/v2 v2.6.4
-	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
 	github.com/buger/jsonparser v1.0.0
 	github.com/containerd/containerd v1.3.4 // indirect
@@ -44,6 +42,7 @@ require (
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
+	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/nxadm/tail v1.4.4
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
@@ -53,15 +52,13 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/client_model v0.2.0
-	github.com/prometheus/common v0.15.0
+	github.com/prometheus/common v0.15.0 // indirect
 	github.com/prometheus/prom2json v1.3.0
-	github.com/rogpeppe/godef v1.1.2 // indirect
-	github.com/sevlyar/go-daemon v0.1.5
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.6.1
-	github.com/ugorji/go v1.2.0 // indirect
-	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
+	github.com/ugorji/go/codec v1.2.0 // indirect
+	github.com/vjeantet/grok v1.0.1 // indirect
 	go.mongodb.org/mongo-driver v1.4.3 // indirect
 	golang.org/x/crypto v0.0.0-20201116153603-4be66e5b6582
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
@@ -75,6 +72,8 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.3.0
+	gotest.tools v2.2.0+incompatible // indirect
+	gotest.tools/v3 v3.0.3 // indirect
 )
 
 replace golang.org/x/time/rate => github.com/crowdsecurity/crowdsec/pkg/time/rate v0.0.0
