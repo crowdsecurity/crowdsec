@@ -203,7 +203,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 					sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 					if err != nil {
-						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", decisionItem.Value, err)
+						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
 				log.Infof("sz=%d, start_ip=%d, start_sfx=%d end_ip=%d end_sfx=%d",
