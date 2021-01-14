@@ -420,7 +420,6 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	} else if ip_sz != 0 {
 		return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
-	log.Infof("adzazdazdaad QUERY")
 	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
 	if err != nil {
 		log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
