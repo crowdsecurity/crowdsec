@@ -305,18 +305,35 @@ check_cs_version () {
         if [[ ${FORCE_MODE} == "false" ]]; then
             exit 1
         fi
+    elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
+        log_warn "new version ($NEW_CS_VERSION) is a minor upgrade !"
+
+        if [[ $ACTION != "upgrade" ]] ; then 
+            echo ""
+            echo "We recommand to upgrade with : sudo ./wizard.sh --upgrade "
+            echo "If you want to $ACTION anyway, please use '--force'."
+            echo ""
+            echo "Run : sudo ./wizard.sh --$ACTION --force"
+            if [[ ${FORCE_MODE} == "false" ]]; then
+                exit 1
+            fi
+        fi
     elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
         log_warn "new version ($NEW_CS_VERSION) is a patch !"
-        echo ""
-        echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
-        echo "If you want to $ACTION anyway, please use '--force'."
-        echo ""
-        echo "Run : sudo ./wizard.sh --$ACTION --force"
-        if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 1
+
+        if [[ $ACTION != "binupgrade" ]] ; then 
+            echo ""
+            echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
+            echo "If you want to $ACTION anyway, please use '--force'."
+            echo ""
+            echo "Run : sudo ./wizard.sh --$ACTION --force"
+            if [[ ${FORCE_MODE} == "false" ]]; then
+                exit 1
+            fi
         fi
     elif [[ $NEW_MINOR_VERSION -eq $CURRENT_MINOR_VERSION ]]; then
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
+
         echo ""
         echo "We recommand to $ACTION only if it's an higher version. "
         echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
