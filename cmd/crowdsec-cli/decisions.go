@@ -405,7 +405,7 @@ cscli decisions delete --type captcha
 				delFilter.RangeEquals = nil
 			}
 			if contained != nil && *contained {
-				filter.Contains = new(bool)
+				delFilter.Contains = new(bool)
 			}
 
 			if delDecisionId == "" {

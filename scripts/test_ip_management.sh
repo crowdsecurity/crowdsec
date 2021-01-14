@@ -260,6 +260,20 @@ function test_ipv6_ip
     docurl ${APIK} "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64&&contains=false" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64"
 
+    cscli_echo "adding decision for ip 1111:2222:3333:4444:5555:6666:7777:8889"
+    ${CSCLI} decisions add -i 1111:2222:3333:4444:5555:6666:7777:8889 > /dev/null 2>&1
+
+    cscli_echo "deleting decision for ip 1111:2222:3333:4444:5555:6666:7777:8889"
+    ${CSCLI} decisions delete -i 1111:2222:3333:4444:5555:6666:7777:8889
+
+    ${CSCLI} decisions list -i 1111:2222:3333:4444:5555:6666:7777:8889 -o json | ${JQ} '. == null' > /dev/null || fail
+    cscli_echo "getting decisions for ip 1111:2222:3333:4444:5555:6666:7777:8889 after delete"
+
+    cscli_echo "deleting decision for range 1111:2222:3333:4444:5555:6666:7777:8888/64"
+    ${CSCLI} decisions delete -r 1111:2222:3333:4444:5555:6666:7777:8888/64 --contained
+
+    ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/64 -o json --contained #| ${JQ} '. == null'  > /dev/null || fail
+    cscli_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64 after delete"
 }
 
 function test_ipv6_range
