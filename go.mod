@@ -35,12 +35,11 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.1
-	github.com/jinzhu/gorm v1.9.12
-	github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0 // indirect
 	github.com/lib/pq v1.9.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
 	github.com/mailru/easyjson v0.7.6 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/nxadm/tail v1.4.4
@@ -61,13 +60,10 @@ require (
 	github.com/vjeantet/grok v1.0.1 // indirect
 	go.mongodb.org/mongo-driver v1.4.3 // indirect
 	golang.org/x/crypto v0.0.0-20201116153603-4be66e5b6582
-	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/mod v0.4.0
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
 	golang.org/x/sys v0.0.0-20201116161645-c061ba923fbb
 	golang.org/x/text v0.3.4 // indirect
-	golang.org/x/time v0.0.0-20191024005414-555d28b269f0
-	golang.org/x/tools v0.0.0-20210108195828-e2f9c7f1fc8e // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
