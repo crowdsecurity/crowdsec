@@ -1,4 +1,4 @@
-crowdsec (1.0.2-1) UNRELEASED; urgency=medium
+crowdsec (1.0.2-1) unstable; urgency=medium
 
   * Initial release (Closes: #972573): start by shipping binaries,
     while better integration is being worked on with upstream:
@@ -20,4 +20,4 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
   * Add lintian overrides for the hardening-no-pie warnings: PIE is not
     relevant for Go packages.
 
- -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000
+ -- Cyril Brulebois <cyril@debamax.com>  Thu, 14 Jan 2021 02:46:18 +0000
