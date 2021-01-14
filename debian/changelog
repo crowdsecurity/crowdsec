@@ -17,5 +17,7 @@ crowdsec (1.0.2-1) UNRELEASED; urgency=medium
     required test data that's scattered all over the place.
   * Add systemd to Build-Depends for the testsuite, so that it finds
     the journalctl binary.
+  * Add lintian overrides for the hardening-no-pie warnings: PIE is not
+    relevant for Go packages.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 11 Jan 2021 15:17:55 +0000
