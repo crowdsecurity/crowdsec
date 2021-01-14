@@ -272,7 +272,7 @@ function test_ipv6_ip
     cscli_echo "deleting decision for range 1111:2222:3333:4444:5555:6666:7777:8888/64"
     ${CSCLI} decisions delete -r 1111:2222:3333:4444:5555:6666:7777:8888/64 --contained
 
-    ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/64 -o json --contained #| ${JQ} '. == null'  > /dev/null || fail
+    ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/64 -o json --contained | ${JQ} '. == null'  > /dev/null || fail
     cscli_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64 after delete"
 }
 
@@ -287,10 +287,10 @@ function test_ipv6_range
     cscli_echo "adding decision for range aaaa:2222:3333:4444::/64"
     ${CSCLI} decisions add -r aaaa:2222:3333:4444::/64 > /dev/null 2>&1 || fail
      
-    ${CSCLI} decisions list -o json | ${JQ} '.[0].decisions[0].value == "aaaa:2222:3333:4444::/64", .[1].decisions[0].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
+    ${CSCLI} decisions list -o json | ${JQ} '.[0].decisions[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     cscli_echo "getting all decision"
 
-    docurl ${APIK} "/v1/decisions" | ${JQ} '.[0].value == "1111:2222:3333:4444:5555:6666:7777:8888", .[1].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
+    docurl ${APIK} "/v1/decisions" | ${JQ} '.[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting all decision"
 
     #check ip within/out of range
@@ -366,6 +366,23 @@ function test_ipv6_range
     docurl ${APIK} "/v1/decisions?ip=bbbb:db8:0000:0000:0000:8fff:ffff:ffff" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip in bbbb:db8:0000:0000:0000:8fff:ffff:ffff"
 
+    cscli_echo "deleting decision for range aaaa:2222:3333:4444:5555:6666:7777:8888/48"
+    ${CSCLI} decisions delete -r aaaa:2222:3333:4444:5555:6666:7777:8888/48 --contained > /dev/null 2>&1 || fail
+    
+    ${CSCLI} decisions list -o json -r aaaa:2222:3333:4444::/64 | ${JQ} '. == null' > /dev/null || fail
+    cscli_echo "getting decisions for range aaaa:2222:3333:4444::/64 after delete"
+
+    cscli_echo "adding decision for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff"
+    ${CSCLI} decisions add -i bbbb:db8:0000:0000:0000:8fff:ffff:ffff > /dev/null 2>&1 || fail
+    cscli_echo "adding decision for ip bbbb:db8:0000:0000:0000:6fff:ffff:ffff"
+    ${CSCLI} decisions add -i bbbb:db8:0000:0000:0000:6fff:ffff:ffff > /dev/null 2>&1 || fail
+
+    cscli_echo "deleting decision for range bbbb:db8::/81"
+    ${CSCLI} decisions delete -r bbbb:db8::/81 --contained > /dev/null 2>&1 || fail
+    
+    ${CSCLI} decisions list -o json | ${JQ} '.[].decisions[0].value == "bbbb:db8:0000:0000:0000:8fff:ffff:ffff"' > /dev/null || fail
+    cscli_echo "getting all decisions"
+
 }
 
 
@@ -386,8 +403,8 @@ function start_test
 function reset 
 {
     cd ${RELEASE_FOLDER_FULL}/tests/
-    rm data/crowdsec.db > /dev/null 2>&1 || echo ""
     killall crowdsec > /dev/null 2>&1 || echo ""
+    rm data/crowdsec.db > /dev/null 2>&1 || echo ""
     ${CSCLI} hub update
     ${CSCLI} machines add -a
     API_KEY=`${CSCLI} bouncers add TestingBouncer -o=raw`
@@ -440,7 +457,7 @@ init
 start_test
 down
 
-if [[ ${MUST_FAIL} == "true" ]];
+if [[ "${MUST_FAIL}" == "true" ]];
 then
     echo ""
     echo "One or more tests have failed !"
