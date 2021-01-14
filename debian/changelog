@@ -3,7 +3,7 @@ crowdsec (1.0.2-2) UNRELEASED; urgency=medium
   * Swap Maintainer/Uploaders: the current plan is for me to keep in touch
     with upstream to coordinate packaging work in Debian. Help from fellow
     members of the Debian Go Packaging Team is very welcome, though!
-  * Fix typos in the long description.
+  * Fix typos in the long description, and merge upstream's review.
 
  -- Cyril Brulebois <cyril@debamax.com>  Thu, 14 Jan 2021 03:38:15 +0000
 

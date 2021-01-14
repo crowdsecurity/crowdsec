@@ -64,35 +64,35 @@ Depends: ${misc:Depends},
          ${shlibs:Depends}
 Built-Using: ${misc:Built-Using}
 Description: lightweight and collaborative security engine
- Crowdsec is a lightweight security engine, able to detect and remedy
- aggressive network behaviour. It can leverage and also enrich a
+ CrowdSec is a lightweight security engine, able to detect and remedy
+ aggressive network behavior. It can leverage and also enrich a
  global community-wide IP reputation database, to help fight online
  cybersec aggressions in a collaborative manner.
  .
- Crowdsec can read many log sources, parse and also enrich them, in
+ CrowdSec can read many log sources, parse and also enrich them, in
  order to detect specific scenarios, that usually represent malevolent
- behaviour. Parsers, Enrichers, and Scenarios are YAML files that can
- be shared and downloaded through a specific hub, as well as be created
+ behavior. Parsers, Enrichers, and Scenarios are YAML files that can
+ be shared and downloaded through a specific Hub, as well as be created
  or adapted locally.
  .
- Detection results are available for crowdsec, its CLI tools and
+ Detection results are available for CrowdSec, its CLI tools and
  bouncers via an HTTP API. Triggered scenarios lead to an alert, which
  often results in a decision (e.g. IP banned for 4 hours) that can be
  consumed by bouncers (software components enforcing a decision, such
  as an iptables ban, an nginx lua script, or any custom user script).
  .
- The CLI allows users to deploy a metabase Docker image to provide
- simple-to-deploy dashboards of ongoing activity. The crowdsec daemon
- is also instrumented with prometheus to provide observability.
+ The CLI allows users to deploy a Metabase Docker image to provide
+ simple-to-deploy dashboards of ongoing activity. The CrowdSec daemon
+ is also instrumented with Prometheus to provide observability.
  .
- Crowdsec can be used against live logs (“a la fail2ban”), but can
- also work on cold logs to help in a forensic context, to build an
+ CrowdSec can be used against live logs (“à la fail2ban”), but can
+ also work on cold logs to help, in a forensic context, to build an
  analysis for past events.
  .
- On top of that, crowdsec aims at sharing detection signals amongst
+ On top of that, CrowdSec aims at sharing detection signals amongst
  all participants, to pre-emptively allow users to block likely
  attackers. To achieve this, minimal meta-information about the attack
  is shared with the CrowdSec organization for further retribution.
  .
  Users can also decide not to take part into the collective effort via
- the central API, and to register on a local API instead.
+ the central API, but to register on a local API instead.
