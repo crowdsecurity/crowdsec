@@ -457,8 +457,6 @@ check_running_bouncers() {
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
 
-    check_running_bouncers
-
     systemctl stop crowdsec.service
     systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard remove -f -y
@@ -522,6 +520,7 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
+        check_running_bouncers
         uninstall_crowdsec
         return
     fi
