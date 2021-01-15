@@ -194,7 +194,7 @@ Supported units:
  - `d`: days
 
 
-# Behind the scenes
+## Database schema
 
 {{v1X.crowdsec.name}} uses the [ent framework](https://entgo.io/) to manage the database.
 
