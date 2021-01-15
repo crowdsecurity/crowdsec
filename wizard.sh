@@ -445,7 +445,7 @@ check_running_bouncers() {
     BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=json | jq '. | length')
     if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
         if [[ ${FORCE_MODE} == "false" ]]; then
-            echo "WARNING : You have at least one bouncer running."
+            echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
             echo "WARNING : Uninstalling crowdsec with a running bouncer will let it in an unpredictable state."
             echo "WARNING : If you want to uninstall crowdsec, you should first uninstall the bouncers."
             echo "Specify --force to bypass this restriction."
