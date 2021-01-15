@@ -1,7 +1,6 @@
 package leakybucket
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -207,7 +206,7 @@ func LeakRoutine(leaky *Leaky) error {
 		if err != nil {
 			leaky.logger.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 			close(leaky.Signal)
-			return errors.New(fmt.Sprintf("Problem at bucket initializiation. Bail out %T : %v", f, err))
+			return fmt.Errorf("Problem at bucket initializiation. Bail out %T : %v", f, err)
 		}
 	}
 
