@@ -189,7 +189,7 @@ func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	resp, err := t.transport().RoundTrip(req)
 	if log.GetLevel() >= log.TraceLevel {
 		dump, _ := httputil.DumpResponse(resp, true)
-		log.Tracef("resp-jwt: %s (err:%s)", string(dump), err)
+		log.Tracef("resp-jwt: %s (err:%v)", string(dump), err)
 	}
 	if err != nil || resp.StatusCode == 401 {
 		/*we had an error (network error for example, or 401 because token is refused), reset the token ?*/
