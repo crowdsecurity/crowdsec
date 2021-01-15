@@ -242,7 +242,7 @@ install_collection() {
     fi
 
     if [[ ${SILENT} == "false" ]]; then
-        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/" 20 50
+        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/browse/#bouncers" 20 50
     fi
 }
 
@@ -460,6 +460,17 @@ uninstall_crowdsec() {
     log_info "crowdsec successfully uninstalled"
 }
 
+
+function show_link {
+    echo ""
+    echo "Useful links to start with Crowdsec:"
+    echo ""
+    echo "  - Documentation : https://docs.crowdsec.net/"
+    echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
+    echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
+    echo ""
+}
+
 main() {
     if [[ "$1" == "backup_to_dir" ]];
     then
@@ -519,6 +530,8 @@ main() {
         detect_cs_install
         log_info "installing crowdsec"
         install_crowdsec
+
+        show_link
         return
     fi
 
@@ -567,7 +580,7 @@ main() {
         systemctl enable crowdsec
         systemctl start crowdsec
         log_info "Enabling and starting crowdsec daemon"
-
+        show_link
         return
     fi
 
