@@ -1,6 +1,7 @@
 [Unit]
-Description=Crowdsec agent
+Description=Crowdsec agent. Log are stored in /var/log/crowdsec.log
 After=syslog.target network.target remote-fs.target nss-lookup.target
+Documentation=https://docs.crowdsec.net/
 
 [Service]
 Type=notify
