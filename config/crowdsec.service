@@ -1,5 +1,5 @@
 [Unit]
-Description=Crowdsec agent. Log are stored in /var/log/crowdsec.log
+Description=Crowdsec agent. Logs are stored in /var/log/crowdsec.log
 After=syslog.target network.target remote-fs.target nss-lookup.target
 Documentation=https://docs.crowdsec.net/
 
