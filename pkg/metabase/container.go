@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -100,13 +99,8 @@ func (c *Container) Create() error {
 		return fmt.Errorf("OS '%s' is not supported", os)
 	}
 
-	arch := runtime.GOARCH
-	platform := &v1.Platform{
-		Architecture: arch,
-		OS:           os,
-	}
 	log.Infof("creating container '%s'", c.Name)
-	resp, err := c.CLI.ContainerCreate(ctx, dockerConfig, hostConfig, nil, platform, c.Name)
+	resp, err := c.CLI.ContainerCreate(ctx, dockerConfig, hostConfig, nil, nil, c.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create container : %s", err)
 	}
