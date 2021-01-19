@@ -58,95 +58,112 @@ func (e MachineEdges) AlertsOrErr() ([]*Alert, error) {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Machine) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},  // id
-		&sql.NullTime{},   // created_at
-		&sql.NullTime{},   // updated_at
-		&sql.NullString{}, // machineId
-		&sql.NullString{}, // password
-		&sql.NullString{}, // ipAddress
-		&sql.NullString{}, // scenarios
-		&sql.NullString{}, // version
-		&sql.NullBool{},   // isValidated
-		&sql.NullString{}, // status
+func (*Machine) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case machine.FieldIsValidated:
+			values[i] = &sql.NullBool{}
+		case machine.FieldID:
+			values[i] = &sql.NullInt64{}
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus:
+			values[i] = &sql.NullString{}
+		case machine.FieldCreatedAt, machine.FieldUpdatedAt:
+			values[i] = &sql.NullTime{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Machine", columns[i])
+		}
 	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Machine fields.
-func (m *Machine) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(machine.Columns); m < n {
+func (m *Machine) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	m.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		m.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		m.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field machineId", values[2])
-	} else if value.Valid {
-		m.MachineId = value.String
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field password", values[3])
-	} else if value.Valid {
-		m.Password = value.String
-	}
-	if value, ok := values[4].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field ipAddress", values[4])
-	} else if value.Valid {
-		m.IpAddress = value.String
-	}
-	if value, ok := values[5].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field scenarios", values[5])
-	} else if value.Valid {
-		m.Scenarios = value.String
-	}
-	if value, ok := values[6].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field version", values[6])
-	} else if value.Valid {
-		m.Version = value.String
-	}
-	if value, ok := values[7].(*sql.NullBool); !ok {
-		return fmt.Errorf("unexpected type %T for field isValidated", values[7])
-	} else if value.Valid {
-		m.IsValidated = value.Bool
-	}
-	if value, ok := values[8].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field status", values[8])
-	} else if value.Valid {
-		m.Status = value.String
+	for i := range columns {
+		switch columns[i] {
+		case machine.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			m.ID = int(value.Int64)
+		case machine.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				m.CreatedAt = value.Time
+			}
+		case machine.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				m.UpdatedAt = value.Time
+			}
+		case machine.FieldMachineId:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field machineId", values[i])
+			} else if value.Valid {
+				m.MachineId = value.String
+			}
+		case machine.FieldPassword:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field password", values[i])
+			} else if value.Valid {
+				m.Password = value.String
+			}
+		case machine.FieldIpAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field ipAddress", values[i])
+			} else if value.Valid {
+				m.IpAddress = value.String
+			}
+		case machine.FieldScenarios:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field scenarios", values[i])
+			} else if value.Valid {
+				m.Scenarios = value.String
+			}
+		case machine.FieldVersion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field version", values[i])
+			} else if value.Valid {
+				m.Version = value.String
+			}
+		case machine.FieldIsValidated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field isValidated", values[i])
+			} else if value.Valid {
+				m.IsValidated = value.Bool
+			}
+		case machine.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				m.Status = value.String
+			}
+		}
 	}
 	return nil
 }
 
-// QueryAlerts queries the alerts edge of the Machine.
+// QueryAlerts queries the "alerts" edge of the Machine entity.
 func (m *Machine) QueryAlerts() *AlertQuery {
 	return (&MachineClient{config: m.config}).QueryAlerts(m)
 }
 
 // Update returns a builder for updating this Machine.
-// Note that, you need to call Machine.Unwrap() before calling this method, if this Machine
+// Note that you need to call Machine.Unwrap() before calling this method if this Machine
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (m *Machine) Update() *MachineUpdateOne {
 	return (&MachineClient{config: m.config}).UpdateOne(m)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Machine entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (m *Machine) Unwrap() *Machine {
 	tx, ok := m.config.driver.(*txDriver)
 	if !ok {

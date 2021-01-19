@@ -58,7 +58,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 
 	// delete by range
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
@@ -179,8 +179,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : type filter
 	w = httptest.NewRecorder()
@@ -189,8 +189,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : scope/value
 	w = httptest.NewRecorder()
@@ -199,8 +199,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
-	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get Decision : ip filter
 	w = httptest.NewRecorder()
@@ -209,18 +209,18 @@ func TestGetDecisionFilters(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
-	assert.NotContains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get decision : by range
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676915,"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676915,"type":"ban","value":"91.121.79.179"`)
-	assert.Contains(t, w.Body.String(), `"end_ip":1534676914,"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","start_ip":1534676914,"type":"ban","value":"91.121.79.178"`)
+	assert.Contains(t, w.Body.String(), `"id":1,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.179"`)
+	assert.Contains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 }
 
 func TestGetDecision(t *testing.T) {
@@ -277,7 +277,7 @@ func TestGetDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
 }
 
@@ -449,5 +449,5 @@ func TestStreamDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"end_ip\":2130706433,\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"start_ip\":2130706433,\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
 }

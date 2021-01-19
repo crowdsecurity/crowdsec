@@ -16,14 +16,13 @@ import (
 // AlertDelete is the builder for deleting a Alert entity.
 type AlertDelete struct {
 	config
-	hooks      []Hook
-	mutation   *AlertMutation
-	predicates []predicate.Alert
+	hooks    []Hook
+	mutation *AlertMutation
 }
 
-// Where adds a new predicate to the delete builder.
+// Where adds a new predicate to the AlertDelete builder.
 func (ad *AlertDelete) Where(ps ...predicate.Alert) *AlertDelete {
-	ad.predicates = append(ad.predicates, ps...)
+	ad.mutation.predicates = append(ad.mutation.predicates, ps...)
 	return ad
 }
 
@@ -75,7 +74,7 @@ func (ad *AlertDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
-	if ps := ad.predicates; len(ps) > 0 {
+	if ps := ad.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

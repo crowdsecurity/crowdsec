@@ -86,6 +86,8 @@ docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
     --name crowdsec <built-image-tag>
 ```
 
+If you want to be able to restart/stop your container and keep the same DB `-v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db` you need to add a volume on local_api_credentials.yaml `-v /path/local_api_credentials.yaml:/etc/crowdsec/local_api_credentials.yaml`
+
 ### Environment Variables
 
 * `COLLECTIONS`             - Collections to install from the [hub](https://hub.crowdsec.net/browse/#collections), separated by space : `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"`

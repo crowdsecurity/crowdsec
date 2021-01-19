@@ -18,24 +18,23 @@ import (
 // EventUpdate is the builder for updating Event entities.
 type EventUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *EventMutation
-	predicates []predicate.Event
+	hooks    []Hook
+	mutation *EventMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the EventUpdate builder.
 func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
-	eu.predicates = append(eu.predicates, ps...)
+	eu.mutation.predicates = append(eu.mutation.predicates, ps...)
 	return eu
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetCreatedAt(t)
 	return eu
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (eu *EventUpdate) SetNillableCreatedAt(t *time.Time) *EventUpdate {
 	if t != nil {
 		eu.SetCreatedAt(*t)
@@ -43,13 +42,13 @@ func (eu *EventUpdate) SetNillableCreatedAt(t *time.Time) *EventUpdate {
 	return eu
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
 	eu.mutation.SetUpdatedAt(t)
 	return eu
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (eu *EventUpdate) SetNillableUpdatedAt(t *time.Time) *EventUpdate {
 	if t != nil {
 		eu.SetUpdatedAt(*t)
@@ -57,25 +56,25 @@ func (eu *EventUpdate) SetNillableUpdatedAt(t *time.Time) *EventUpdate {
 	return eu
 }
 
-// SetTime sets the time field.
+// SetTime sets the "time" field.
 func (eu *EventUpdate) SetTime(t time.Time) *EventUpdate {
 	eu.mutation.SetTime(t)
 	return eu
 }
 
-// SetSerialized sets the serialized field.
+// SetSerialized sets the "serialized" field.
 func (eu *EventUpdate) SetSerialized(s string) *EventUpdate {
 	eu.mutation.SetSerialized(s)
 	return eu
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (eu *EventUpdate) SetOwnerID(id int) *EventUpdate {
 	eu.mutation.SetOwnerID(id)
 	return eu
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (eu *EventUpdate) SetNillableOwnerID(id *int) *EventUpdate {
 	if id != nil {
 		eu = eu.SetOwnerID(*id)
@@ -83,7 +82,7 @@ func (eu *EventUpdate) SetNillableOwnerID(id *int) *EventUpdate {
 	return eu
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (eu *EventUpdate) SetOwner(a *Alert) *EventUpdate {
 	return eu.SetOwnerID(a.ID)
 }
@@ -93,13 +92,13 @@ func (eu *EventUpdate) Mutation() *EventMutation {
 	return eu.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (eu *EventUpdate) ClearOwner() *EventUpdate {
 	eu.mutation.ClearOwner()
 	return eu
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -177,7 +176,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := eu.predicates; len(ps) > 0 {
+	if ps := eu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -265,13 +264,13 @@ type EventUpdateOne struct {
 	mutation *EventMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (euo *EventUpdateOne) SetCreatedAt(t time.Time) *EventUpdateOne {
 	euo.mutation.SetCreatedAt(t)
 	return euo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (euo *EventUpdateOne) SetNillableCreatedAt(t *time.Time) *EventUpdateOne {
 	if t != nil {
 		euo.SetCreatedAt(*t)
@@ -279,13 +278,13 @@ func (euo *EventUpdateOne) SetNillableCreatedAt(t *time.Time) *EventUpdateOne {
 	return euo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
 	euo.mutation.SetUpdatedAt(t)
 	return euo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (euo *EventUpdateOne) SetNillableUpdatedAt(t *time.Time) *EventUpdateOne {
 	if t != nil {
 		euo.SetUpdatedAt(*t)
@@ -293,25 +292,25 @@ func (euo *EventUpdateOne) SetNillableUpdatedAt(t *time.Time) *EventUpdateOne {
 	return euo
 }
 
-// SetTime sets the time field.
+// SetTime sets the "time" field.
 func (euo *EventUpdateOne) SetTime(t time.Time) *EventUpdateOne {
 	euo.mutation.SetTime(t)
 	return euo
 }
 
-// SetSerialized sets the serialized field.
+// SetSerialized sets the "serialized" field.
 func (euo *EventUpdateOne) SetSerialized(s string) *EventUpdateOne {
 	euo.mutation.SetSerialized(s)
 	return euo
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (euo *EventUpdateOne) SetOwnerID(id int) *EventUpdateOne {
 	euo.mutation.SetOwnerID(id)
 	return euo
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (euo *EventUpdateOne) SetNillableOwnerID(id *int) *EventUpdateOne {
 	if id != nil {
 		euo = euo.SetOwnerID(*id)
@@ -319,7 +318,7 @@ func (euo *EventUpdateOne) SetNillableOwnerID(id *int) *EventUpdateOne {
 	return euo
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (euo *EventUpdateOne) SetOwner(a *Alert) *EventUpdateOne {
 	return euo.SetOwnerID(a.ID)
 }
@@ -329,13 +328,13 @@ func (euo *EventUpdateOne) Mutation() *EventMutation {
 	return euo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
 	euo.mutation.ClearOwner()
 	return euo
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Event entity.
 func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 	var (
 		err  error
@@ -483,7 +482,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	_node = &Event{config: euo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, euo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}

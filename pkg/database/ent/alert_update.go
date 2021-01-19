@@ -21,24 +21,23 @@ import (
 // AlertUpdate is the builder for updating Alert entities.
 type AlertUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *AlertMutation
-	predicates []predicate.Alert
+	hooks    []Hook
+	mutation *AlertMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the AlertUpdate builder.
 func (au *AlertUpdate) Where(ps ...predicate.Alert) *AlertUpdate {
-	au.predicates = append(au.predicates, ps...)
+	au.mutation.predicates = append(au.mutation.predicates, ps...)
 	return au
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (au *AlertUpdate) SetCreatedAt(t time.Time) *AlertUpdate {
 	au.mutation.SetCreatedAt(t)
 	return au
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableCreatedAt(t *time.Time) *AlertUpdate {
 	if t != nil {
 		au.SetCreatedAt(*t)
@@ -46,13 +45,13 @@ func (au *AlertUpdate) SetNillableCreatedAt(t *time.Time) *AlertUpdate {
 	return au
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (au *AlertUpdate) SetUpdatedAt(t time.Time) *AlertUpdate {
 	au.mutation.SetUpdatedAt(t)
 	return au
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableUpdatedAt(t *time.Time) *AlertUpdate {
 	if t != nil {
 		au.SetUpdatedAt(*t)
@@ -60,19 +59,19 @@ func (au *AlertUpdate) SetNillableUpdatedAt(t *time.Time) *AlertUpdate {
 	return au
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (au *AlertUpdate) SetScenario(s string) *AlertUpdate {
 	au.mutation.SetScenario(s)
 	return au
 }
 
-// SetBucketId sets the bucketId field.
+// SetBucketId sets the "bucketId" field.
 func (au *AlertUpdate) SetBucketId(s string) *AlertUpdate {
 	au.mutation.SetBucketId(s)
 	return au
 }
 
-// SetNillableBucketId sets the bucketId field if the given value is not nil.
+// SetNillableBucketId sets the "bucketId" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableBucketId(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetBucketId(*s)
@@ -80,19 +79,19 @@ func (au *AlertUpdate) SetNillableBucketId(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearBucketId clears the value of bucketId.
+// ClearBucketId clears the value of the "bucketId" field.
 func (au *AlertUpdate) ClearBucketId() *AlertUpdate {
 	au.mutation.ClearBucketId()
 	return au
 }
 
-// SetMessage sets the message field.
+// SetMessage sets the "message" field.
 func (au *AlertUpdate) SetMessage(s string) *AlertUpdate {
 	au.mutation.SetMessage(s)
 	return au
 }
 
-// SetNillableMessage sets the message field if the given value is not nil.
+// SetNillableMessage sets the "message" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableMessage(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetMessage(*s)
@@ -100,20 +99,20 @@ func (au *AlertUpdate) SetNillableMessage(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearMessage clears the value of message.
+// ClearMessage clears the value of the "message" field.
 func (au *AlertUpdate) ClearMessage() *AlertUpdate {
 	au.mutation.ClearMessage()
 	return au
 }
 
-// SetEventsCount sets the eventsCount field.
+// SetEventsCount sets the "eventsCount" field.
 func (au *AlertUpdate) SetEventsCount(i int32) *AlertUpdate {
 	au.mutation.ResetEventsCount()
 	au.mutation.SetEventsCount(i)
 	return au
 }
 
-// SetNillableEventsCount sets the eventsCount field if the given value is not nil.
+// SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableEventsCount(i *int32) *AlertUpdate {
 	if i != nil {
 		au.SetEventsCount(*i)
@@ -121,25 +120,25 @@ func (au *AlertUpdate) SetNillableEventsCount(i *int32) *AlertUpdate {
 	return au
 }
 
-// AddEventsCount adds i to eventsCount.
+// AddEventsCount adds i to the "eventsCount" field.
 func (au *AlertUpdate) AddEventsCount(i int32) *AlertUpdate {
 	au.mutation.AddEventsCount(i)
 	return au
 }
 
-// ClearEventsCount clears the value of eventsCount.
+// ClearEventsCount clears the value of the "eventsCount" field.
 func (au *AlertUpdate) ClearEventsCount() *AlertUpdate {
 	au.mutation.ClearEventsCount()
 	return au
 }
 
-// SetStartedAt sets the startedAt field.
+// SetStartedAt sets the "startedAt" field.
 func (au *AlertUpdate) SetStartedAt(t time.Time) *AlertUpdate {
 	au.mutation.SetStartedAt(t)
 	return au
 }
 
-// SetNillableStartedAt sets the startedAt field if the given value is not nil.
+// SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableStartedAt(t *time.Time) *AlertUpdate {
 	if t != nil {
 		au.SetStartedAt(*t)
@@ -147,19 +146,19 @@ func (au *AlertUpdate) SetNillableStartedAt(t *time.Time) *AlertUpdate {
 	return au
 }
 
-// ClearStartedAt clears the value of startedAt.
+// ClearStartedAt clears the value of the "startedAt" field.
 func (au *AlertUpdate) ClearStartedAt() *AlertUpdate {
 	au.mutation.ClearStartedAt()
 	return au
 }
 
-// SetStoppedAt sets the stoppedAt field.
+// SetStoppedAt sets the "stoppedAt" field.
 func (au *AlertUpdate) SetStoppedAt(t time.Time) *AlertUpdate {
 	au.mutation.SetStoppedAt(t)
 	return au
 }
 
-// SetNillableStoppedAt sets the stoppedAt field if the given value is not nil.
+// SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableStoppedAt(t *time.Time) *AlertUpdate {
 	if t != nil {
 		au.SetStoppedAt(*t)
@@ -167,19 +166,19 @@ func (au *AlertUpdate) SetNillableStoppedAt(t *time.Time) *AlertUpdate {
 	return au
 }
 
-// ClearStoppedAt clears the value of stoppedAt.
+// ClearStoppedAt clears the value of the "stoppedAt" field.
 func (au *AlertUpdate) ClearStoppedAt() *AlertUpdate {
 	au.mutation.ClearStoppedAt()
 	return au
 }
 
-// SetSourceIp sets the sourceIp field.
+// SetSourceIp sets the "sourceIp" field.
 func (au *AlertUpdate) SetSourceIp(s string) *AlertUpdate {
 	au.mutation.SetSourceIp(s)
 	return au
 }
 
-// SetNillableSourceIp sets the sourceIp field if the given value is not nil.
+// SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceIp(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceIp(*s)
@@ -187,19 +186,19 @@ func (au *AlertUpdate) SetNillableSourceIp(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceIp clears the value of sourceIp.
+// ClearSourceIp clears the value of the "sourceIp" field.
 func (au *AlertUpdate) ClearSourceIp() *AlertUpdate {
 	au.mutation.ClearSourceIp()
 	return au
 }
 
-// SetSourceRange sets the sourceRange field.
+// SetSourceRange sets the "sourceRange" field.
 func (au *AlertUpdate) SetSourceRange(s string) *AlertUpdate {
 	au.mutation.SetSourceRange(s)
 	return au
 }
 
-// SetNillableSourceRange sets the sourceRange field if the given value is not nil.
+// SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceRange(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceRange(*s)
@@ -207,19 +206,19 @@ func (au *AlertUpdate) SetNillableSourceRange(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceRange clears the value of sourceRange.
+// ClearSourceRange clears the value of the "sourceRange" field.
 func (au *AlertUpdate) ClearSourceRange() *AlertUpdate {
 	au.mutation.ClearSourceRange()
 	return au
 }
 
-// SetSourceAsNumber sets the sourceAsNumber field.
+// SetSourceAsNumber sets the "sourceAsNumber" field.
 func (au *AlertUpdate) SetSourceAsNumber(s string) *AlertUpdate {
 	au.mutation.SetSourceAsNumber(s)
 	return au
 }
 
-// SetNillableSourceAsNumber sets the sourceAsNumber field if the given value is not nil.
+// SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceAsNumber(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceAsNumber(*s)
@@ -227,19 +226,19 @@ func (au *AlertUpdate) SetNillableSourceAsNumber(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceAsNumber clears the value of sourceAsNumber.
+// ClearSourceAsNumber clears the value of the "sourceAsNumber" field.
 func (au *AlertUpdate) ClearSourceAsNumber() *AlertUpdate {
 	au.mutation.ClearSourceAsNumber()
 	return au
 }
 
-// SetSourceAsName sets the sourceAsName field.
+// SetSourceAsName sets the "sourceAsName" field.
 func (au *AlertUpdate) SetSourceAsName(s string) *AlertUpdate {
 	au.mutation.SetSourceAsName(s)
 	return au
 }
 
-// SetNillableSourceAsName sets the sourceAsName field if the given value is not nil.
+// SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceAsName(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceAsName(*s)
@@ -247,19 +246,19 @@ func (au *AlertUpdate) SetNillableSourceAsName(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceAsName clears the value of sourceAsName.
+// ClearSourceAsName clears the value of the "sourceAsName" field.
 func (au *AlertUpdate) ClearSourceAsName() *AlertUpdate {
 	au.mutation.ClearSourceAsName()
 	return au
 }
 
-// SetSourceCountry sets the sourceCountry field.
+// SetSourceCountry sets the "sourceCountry" field.
 func (au *AlertUpdate) SetSourceCountry(s string) *AlertUpdate {
 	au.mutation.SetSourceCountry(s)
 	return au
 }
 
-// SetNillableSourceCountry sets the sourceCountry field if the given value is not nil.
+// SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceCountry(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceCountry(*s)
@@ -267,20 +266,20 @@ func (au *AlertUpdate) SetNillableSourceCountry(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceCountry clears the value of sourceCountry.
+// ClearSourceCountry clears the value of the "sourceCountry" field.
 func (au *AlertUpdate) ClearSourceCountry() *AlertUpdate {
 	au.mutation.ClearSourceCountry()
 	return au
 }
 
-// SetSourceLatitude sets the sourceLatitude field.
+// SetSourceLatitude sets the "sourceLatitude" field.
 func (au *AlertUpdate) SetSourceLatitude(f float32) *AlertUpdate {
 	au.mutation.ResetSourceLatitude()
 	au.mutation.SetSourceLatitude(f)
 	return au
 }
 
-// SetNillableSourceLatitude sets the sourceLatitude field if the given value is not nil.
+// SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceLatitude(f *float32) *AlertUpdate {
 	if f != nil {
 		au.SetSourceLatitude(*f)
@@ -288,26 +287,26 @@ func (au *AlertUpdate) SetNillableSourceLatitude(f *float32) *AlertUpdate {
 	return au
 }
 
-// AddSourceLatitude adds f to sourceLatitude.
+// AddSourceLatitude adds f to the "sourceLatitude" field.
 func (au *AlertUpdate) AddSourceLatitude(f float32) *AlertUpdate {
 	au.mutation.AddSourceLatitude(f)
 	return au
 }
 
-// ClearSourceLatitude clears the value of sourceLatitude.
+// ClearSourceLatitude clears the value of the "sourceLatitude" field.
 func (au *AlertUpdate) ClearSourceLatitude() *AlertUpdate {
 	au.mutation.ClearSourceLatitude()
 	return au
 }
 
-// SetSourceLongitude sets the sourceLongitude field.
+// SetSourceLongitude sets the "sourceLongitude" field.
 func (au *AlertUpdate) SetSourceLongitude(f float32) *AlertUpdate {
 	au.mutation.ResetSourceLongitude()
 	au.mutation.SetSourceLongitude(f)
 	return au
 }
 
-// SetNillableSourceLongitude sets the sourceLongitude field if the given value is not nil.
+// SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceLongitude(f *float32) *AlertUpdate {
 	if f != nil {
 		au.SetSourceLongitude(*f)
@@ -315,25 +314,25 @@ func (au *AlertUpdate) SetNillableSourceLongitude(f *float32) *AlertUpdate {
 	return au
 }
 
-// AddSourceLongitude adds f to sourceLongitude.
+// AddSourceLongitude adds f to the "sourceLongitude" field.
 func (au *AlertUpdate) AddSourceLongitude(f float32) *AlertUpdate {
 	au.mutation.AddSourceLongitude(f)
 	return au
 }
 
-// ClearSourceLongitude clears the value of sourceLongitude.
+// ClearSourceLongitude clears the value of the "sourceLongitude" field.
 func (au *AlertUpdate) ClearSourceLongitude() *AlertUpdate {
 	au.mutation.ClearSourceLongitude()
 	return au
 }
 
-// SetSourceScope sets the sourceScope field.
+// SetSourceScope sets the "sourceScope" field.
 func (au *AlertUpdate) SetSourceScope(s string) *AlertUpdate {
 	au.mutation.SetSourceScope(s)
 	return au
 }
 
-// SetNillableSourceScope sets the sourceScope field if the given value is not nil.
+// SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceScope(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceScope(*s)
@@ -341,19 +340,19 @@ func (au *AlertUpdate) SetNillableSourceScope(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceScope clears the value of sourceScope.
+// ClearSourceScope clears the value of the "sourceScope" field.
 func (au *AlertUpdate) ClearSourceScope() *AlertUpdate {
 	au.mutation.ClearSourceScope()
 	return au
 }
 
-// SetSourceValue sets the sourceValue field.
+// SetSourceValue sets the "sourceValue" field.
 func (au *AlertUpdate) SetSourceValue(s string) *AlertUpdate {
 	au.mutation.SetSourceValue(s)
 	return au
 }
 
-// SetNillableSourceValue sets the sourceValue field if the given value is not nil.
+// SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSourceValue(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetSourceValue(*s)
@@ -361,20 +360,20 @@ func (au *AlertUpdate) SetNillableSourceValue(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearSourceValue clears the value of sourceValue.
+// ClearSourceValue clears the value of the "sourceValue" field.
 func (au *AlertUpdate) ClearSourceValue() *AlertUpdate {
 	au.mutation.ClearSourceValue()
 	return au
 }
 
-// SetCapacity sets the capacity field.
+// SetCapacity sets the "capacity" field.
 func (au *AlertUpdate) SetCapacity(i int32) *AlertUpdate {
 	au.mutation.ResetCapacity()
 	au.mutation.SetCapacity(i)
 	return au
 }
 
-// SetNillableCapacity sets the capacity field if the given value is not nil.
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableCapacity(i *int32) *AlertUpdate {
 	if i != nil {
 		au.SetCapacity(*i)
@@ -382,25 +381,25 @@ func (au *AlertUpdate) SetNillableCapacity(i *int32) *AlertUpdate {
 	return au
 }
 
-// AddCapacity adds i to capacity.
+// AddCapacity adds i to the "capacity" field.
 func (au *AlertUpdate) AddCapacity(i int32) *AlertUpdate {
 	au.mutation.AddCapacity(i)
 	return au
 }
 
-// ClearCapacity clears the value of capacity.
+// ClearCapacity clears the value of the "capacity" field.
 func (au *AlertUpdate) ClearCapacity() *AlertUpdate {
 	au.mutation.ClearCapacity()
 	return au
 }
 
-// SetLeakSpeed sets the leakSpeed field.
+// SetLeakSpeed sets the "leakSpeed" field.
 func (au *AlertUpdate) SetLeakSpeed(s string) *AlertUpdate {
 	au.mutation.SetLeakSpeed(s)
 	return au
 }
 
-// SetNillableLeakSpeed sets the leakSpeed field if the given value is not nil.
+// SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableLeakSpeed(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetLeakSpeed(*s)
@@ -408,19 +407,19 @@ func (au *AlertUpdate) SetNillableLeakSpeed(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearLeakSpeed clears the value of leakSpeed.
+// ClearLeakSpeed clears the value of the "leakSpeed" field.
 func (au *AlertUpdate) ClearLeakSpeed() *AlertUpdate {
 	au.mutation.ClearLeakSpeed()
 	return au
 }
 
-// SetScenarioVersion sets the scenarioVersion field.
+// SetScenarioVersion sets the "scenarioVersion" field.
 func (au *AlertUpdate) SetScenarioVersion(s string) *AlertUpdate {
 	au.mutation.SetScenarioVersion(s)
 	return au
 }
 
-// SetNillableScenarioVersion sets the scenarioVersion field if the given value is not nil.
+// SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableScenarioVersion(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetScenarioVersion(*s)
@@ -428,19 +427,19 @@ func (au *AlertUpdate) SetNillableScenarioVersion(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearScenarioVersion clears the value of scenarioVersion.
+// ClearScenarioVersion clears the value of the "scenarioVersion" field.
 func (au *AlertUpdate) ClearScenarioVersion() *AlertUpdate {
 	au.mutation.ClearScenarioVersion()
 	return au
 }
 
-// SetScenarioHash sets the scenarioHash field.
+// SetScenarioHash sets the "scenarioHash" field.
 func (au *AlertUpdate) SetScenarioHash(s string) *AlertUpdate {
 	au.mutation.SetScenarioHash(s)
 	return au
 }
 
-// SetNillableScenarioHash sets the scenarioHash field if the given value is not nil.
+// SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableScenarioHash(s *string) *AlertUpdate {
 	if s != nil {
 		au.SetScenarioHash(*s)
@@ -448,19 +447,19 @@ func (au *AlertUpdate) SetNillableScenarioHash(s *string) *AlertUpdate {
 	return au
 }
 
-// ClearScenarioHash clears the value of scenarioHash.
+// ClearScenarioHash clears the value of the "scenarioHash" field.
 func (au *AlertUpdate) ClearScenarioHash() *AlertUpdate {
 	au.mutation.ClearScenarioHash()
 	return au
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (au *AlertUpdate) SetSimulated(b bool) *AlertUpdate {
 	au.mutation.SetSimulated(b)
 	return au
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
 	if b != nil {
 		au.SetSimulated(*b)
@@ -468,13 +467,13 @@ func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
 	return au
 }
 
-// SetOwnerID sets the owner edge to Machine by id.
+// SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (au *AlertUpdate) SetOwnerID(id int) *AlertUpdate {
 	au.mutation.SetOwnerID(id)
 	return au
 }
 
-// SetNillableOwnerID sets the owner edge to Machine by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
 func (au *AlertUpdate) SetNillableOwnerID(id *int) *AlertUpdate {
 	if id != nil {
 		au = au.SetOwnerID(*id)
@@ -482,18 +481,18 @@ func (au *AlertUpdate) SetNillableOwnerID(id *int) *AlertUpdate {
 	return au
 }
 
-// SetOwner sets the owner edge to Machine.
+// SetOwner sets the "owner" edge to the Machine entity.
 func (au *AlertUpdate) SetOwner(m *Machine) *AlertUpdate {
 	return au.SetOwnerID(m.ID)
 }
 
-// AddDecisionIDs adds the decisions edge to Decision by ids.
+// AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
 func (au *AlertUpdate) AddDecisionIDs(ids ...int) *AlertUpdate {
 	au.mutation.AddDecisionIDs(ids...)
 	return au
 }
 
-// AddDecisions adds the decisions edges to Decision.
+// AddDecisions adds the "decisions" edges to the Decision entity.
 func (au *AlertUpdate) AddDecisions(d ...*Decision) *AlertUpdate {
 	ids := make([]int, len(d))
 	for i := range d {
@@ -502,13 +501,13 @@ func (au *AlertUpdate) AddDecisions(d ...*Decision) *AlertUpdate {
 	return au.AddDecisionIDs(ids...)
 }
 
-// AddEventIDs adds the events edge to Event by ids.
+// AddEventIDs adds the "events" edge to the Event entity by IDs.
 func (au *AlertUpdate) AddEventIDs(ids ...int) *AlertUpdate {
 	au.mutation.AddEventIDs(ids...)
 	return au
 }
 
-// AddEvents adds the events edges to Event.
+// AddEvents adds the "events" edges to the Event entity.
 func (au *AlertUpdate) AddEvents(e ...*Event) *AlertUpdate {
 	ids := make([]int, len(e))
 	for i := range e {
@@ -517,13 +516,13 @@ func (au *AlertUpdate) AddEvents(e ...*Event) *AlertUpdate {
 	return au.AddEventIDs(ids...)
 }
 
-// AddMetaIDs adds the metas edge to Meta by ids.
+// AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
 func (au *AlertUpdate) AddMetaIDs(ids ...int) *AlertUpdate {
 	au.mutation.AddMetaIDs(ids...)
 	return au
 }
 
-// AddMetas adds the metas edges to Meta.
+// AddMetas adds the "metas" edges to the Meta entity.
 func (au *AlertUpdate) AddMetas(m ...*Meta) *AlertUpdate {
 	ids := make([]int, len(m))
 	for i := range m {
@@ -537,25 +536,25 @@ func (au *AlertUpdate) Mutation() *AlertMutation {
 	return au.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Machine.
+// ClearOwner clears the "owner" edge to the Machine entity.
 func (au *AlertUpdate) ClearOwner() *AlertUpdate {
 	au.mutation.ClearOwner()
 	return au
 }
 
-// ClearDecisions clears all "decisions" edges to type Decision.
+// ClearDecisions clears all "decisions" edges to the Decision entity.
 func (au *AlertUpdate) ClearDecisions() *AlertUpdate {
 	au.mutation.ClearDecisions()
 	return au
 }
 
-// RemoveDecisionIDs removes the decisions edge to Decision by ids.
+// RemoveDecisionIDs removes the "decisions" edge to Decision entities by IDs.
 func (au *AlertUpdate) RemoveDecisionIDs(ids ...int) *AlertUpdate {
 	au.mutation.RemoveDecisionIDs(ids...)
 	return au
 }
 
-// RemoveDecisions removes decisions edges to Decision.
+// RemoveDecisions removes "decisions" edges to Decision entities.
 func (au *AlertUpdate) RemoveDecisions(d ...*Decision) *AlertUpdate {
 	ids := make([]int, len(d))
 	for i := range d {
@@ -564,19 +563,19 @@ func (au *AlertUpdate) RemoveDecisions(d ...*Decision) *AlertUpdate {
 	return au.RemoveDecisionIDs(ids...)
 }
 
-// ClearEvents clears all "events" edges to type Event.
+// ClearEvents clears all "events" edges to the Event entity.
 func (au *AlertUpdate) ClearEvents() *AlertUpdate {
 	au.mutation.ClearEvents()
 	return au
 }
 
-// RemoveEventIDs removes the events edge to Event by ids.
+// RemoveEventIDs removes the "events" edge to Event entities by IDs.
 func (au *AlertUpdate) RemoveEventIDs(ids ...int) *AlertUpdate {
 	au.mutation.RemoveEventIDs(ids...)
 	return au
 }
 
-// RemoveEvents removes events edges to Event.
+// RemoveEvents removes "events" edges to Event entities.
 func (au *AlertUpdate) RemoveEvents(e ...*Event) *AlertUpdate {
 	ids := make([]int, len(e))
 	for i := range e {
@@ -585,19 +584,19 @@ func (au *AlertUpdate) RemoveEvents(e ...*Event) *AlertUpdate {
 	return au.RemoveEventIDs(ids...)
 }
 
-// ClearMetas clears all "metas" edges to type Meta.
+// ClearMetas clears all "metas" edges to the Meta entity.
 func (au *AlertUpdate) ClearMetas() *AlertUpdate {
 	au.mutation.ClearMetas()
 	return au
 }
 
-// RemoveMetaIDs removes the metas edge to Meta by ids.
+// RemoveMetaIDs removes the "metas" edge to Meta entities by IDs.
 func (au *AlertUpdate) RemoveMetaIDs(ids ...int) *AlertUpdate {
 	au.mutation.RemoveMetaIDs(ids...)
 	return au
 }
 
-// RemoveMetas removes metas edges to Meta.
+// RemoveMetas removes "metas" edges to Meta entities.
 func (au *AlertUpdate) RemoveMetas(m ...*Meta) *AlertUpdate {
 	ids := make([]int, len(m))
 	for i := range m {
@@ -606,7 +605,7 @@ func (au *AlertUpdate) RemoveMetas(m ...*Meta) *AlertUpdate {
 	return au.RemoveMetaIDs(ids...)
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (au *AlertUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -668,7 +667,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := au.predicates; len(ps) > 0 {
+	if ps := au.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -1180,13 +1179,13 @@ type AlertUpdateOne struct {
 	mutation *AlertMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (auo *AlertUpdateOne) SetCreatedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetCreatedAt(t)
 	return auo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableCreatedAt(t *time.Time) *AlertUpdateOne {
 	if t != nil {
 		auo.SetCreatedAt(*t)
@@ -1194,13 +1193,13 @@ func (auo *AlertUpdateOne) SetNillableCreatedAt(t *time.Time) *AlertUpdateOne {
 	return auo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (auo *AlertUpdateOne) SetUpdatedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetUpdatedAt(t)
 	return auo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableUpdatedAt(t *time.Time) *AlertUpdateOne {
 	if t != nil {
 		auo.SetUpdatedAt(*t)
@@ -1208,19 +1207,19 @@ func (auo *AlertUpdateOne) SetNillableUpdatedAt(t *time.Time) *AlertUpdateOne {
 	return auo
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (auo *AlertUpdateOne) SetScenario(s string) *AlertUpdateOne {
 	auo.mutation.SetScenario(s)
 	return auo
 }
 
-// SetBucketId sets the bucketId field.
+// SetBucketId sets the "bucketId" field.
 func (auo *AlertUpdateOne) SetBucketId(s string) *AlertUpdateOne {
 	auo.mutation.SetBucketId(s)
 	return auo
 }
 
-// SetNillableBucketId sets the bucketId field if the given value is not nil.
+// SetNillableBucketId sets the "bucketId" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableBucketId(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetBucketId(*s)
@@ -1228,19 +1227,19 @@ func (auo *AlertUpdateOne) SetNillableBucketId(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearBucketId clears the value of bucketId.
+// ClearBucketId clears the value of the "bucketId" field.
 func (auo *AlertUpdateOne) ClearBucketId() *AlertUpdateOne {
 	auo.mutation.ClearBucketId()
 	return auo
 }
 
-// SetMessage sets the message field.
+// SetMessage sets the "message" field.
 func (auo *AlertUpdateOne) SetMessage(s string) *AlertUpdateOne {
 	auo.mutation.SetMessage(s)
 	return auo
 }
 
-// SetNillableMessage sets the message field if the given value is not nil.
+// SetNillableMessage sets the "message" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableMessage(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetMessage(*s)
@@ -1248,20 +1247,20 @@ func (auo *AlertUpdateOne) SetNillableMessage(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearMessage clears the value of message.
+// ClearMessage clears the value of the "message" field.
 func (auo *AlertUpdateOne) ClearMessage() *AlertUpdateOne {
 	auo.mutation.ClearMessage()
 	return auo
 }
 
-// SetEventsCount sets the eventsCount field.
+// SetEventsCount sets the "eventsCount" field.
 func (auo *AlertUpdateOne) SetEventsCount(i int32) *AlertUpdateOne {
 	auo.mutation.ResetEventsCount()
 	auo.mutation.SetEventsCount(i)
 	return auo
 }
 
-// SetNillableEventsCount sets the eventsCount field if the given value is not nil.
+// SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableEventsCount(i *int32) *AlertUpdateOne {
 	if i != nil {
 		auo.SetEventsCount(*i)
@@ -1269,25 +1268,25 @@ func (auo *AlertUpdateOne) SetNillableEventsCount(i *int32) *AlertUpdateOne {
 	return auo
 }
 
-// AddEventsCount adds i to eventsCount.
+// AddEventsCount adds i to the "eventsCount" field.
 func (auo *AlertUpdateOne) AddEventsCount(i int32) *AlertUpdateOne {
 	auo.mutation.AddEventsCount(i)
 	return auo
 }
 
-// ClearEventsCount clears the value of eventsCount.
+// ClearEventsCount clears the value of the "eventsCount" field.
 func (auo *AlertUpdateOne) ClearEventsCount() *AlertUpdateOne {
 	auo.mutation.ClearEventsCount()
 	return auo
 }
 
-// SetStartedAt sets the startedAt field.
+// SetStartedAt sets the "startedAt" field.
 func (auo *AlertUpdateOne) SetStartedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetStartedAt(t)
 	return auo
 }
 
-// SetNillableStartedAt sets the startedAt field if the given value is not nil.
+// SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableStartedAt(t *time.Time) *AlertUpdateOne {
 	if t != nil {
 		auo.SetStartedAt(*t)
@@ -1295,19 +1294,19 @@ func (auo *AlertUpdateOne) SetNillableStartedAt(t *time.Time) *AlertUpdateOne {
 	return auo
 }
 
-// ClearStartedAt clears the value of startedAt.
+// ClearStartedAt clears the value of the "startedAt" field.
 func (auo *AlertUpdateOne) ClearStartedAt() *AlertUpdateOne {
 	auo.mutation.ClearStartedAt()
 	return auo
 }
 
-// SetStoppedAt sets the stoppedAt field.
+// SetStoppedAt sets the "stoppedAt" field.
 func (auo *AlertUpdateOne) SetStoppedAt(t time.Time) *AlertUpdateOne {
 	auo.mutation.SetStoppedAt(t)
 	return auo
 }
 
-// SetNillableStoppedAt sets the stoppedAt field if the given value is not nil.
+// SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableStoppedAt(t *time.Time) *AlertUpdateOne {
 	if t != nil {
 		auo.SetStoppedAt(*t)
@@ -1315,19 +1314,19 @@ func (auo *AlertUpdateOne) SetNillableStoppedAt(t *time.Time) *AlertUpdateOne {
 	return auo
 }
 
-// ClearStoppedAt clears the value of stoppedAt.
+// ClearStoppedAt clears the value of the "stoppedAt" field.
 func (auo *AlertUpdateOne) ClearStoppedAt() *AlertUpdateOne {
 	auo.mutation.ClearStoppedAt()
 	return auo
 }
 
-// SetSourceIp sets the sourceIp field.
+// SetSourceIp sets the "sourceIp" field.
 func (auo *AlertUpdateOne) SetSourceIp(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceIp(s)
 	return auo
 }
 
-// SetNillableSourceIp sets the sourceIp field if the given value is not nil.
+// SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceIp(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceIp(*s)
@@ -1335,19 +1334,19 @@ func (auo *AlertUpdateOne) SetNillableSourceIp(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceIp clears the value of sourceIp.
+// ClearSourceIp clears the value of the "sourceIp" field.
 func (auo *AlertUpdateOne) ClearSourceIp() *AlertUpdateOne {
 	auo.mutation.ClearSourceIp()
 	return auo
 }
 
-// SetSourceRange sets the sourceRange field.
+// SetSourceRange sets the "sourceRange" field.
 func (auo *AlertUpdateOne) SetSourceRange(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceRange(s)
 	return auo
 }
 
-// SetNillableSourceRange sets the sourceRange field if the given value is not nil.
+// SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceRange(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceRange(*s)
@@ -1355,19 +1354,19 @@ func (auo *AlertUpdateOne) SetNillableSourceRange(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceRange clears the value of sourceRange.
+// ClearSourceRange clears the value of the "sourceRange" field.
 func (auo *AlertUpdateOne) ClearSourceRange() *AlertUpdateOne {
 	auo.mutation.ClearSourceRange()
 	return auo
 }
 
-// SetSourceAsNumber sets the sourceAsNumber field.
+// SetSourceAsNumber sets the "sourceAsNumber" field.
 func (auo *AlertUpdateOne) SetSourceAsNumber(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceAsNumber(s)
 	return auo
 }
 
-// SetNillableSourceAsNumber sets the sourceAsNumber field if the given value is not nil.
+// SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceAsNumber(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceAsNumber(*s)
@@ -1375,19 +1374,19 @@ func (auo *AlertUpdateOne) SetNillableSourceAsNumber(s *string) *AlertUpdateOne 
 	return auo
 }
 
-// ClearSourceAsNumber clears the value of sourceAsNumber.
+// ClearSourceAsNumber clears the value of the "sourceAsNumber" field.
 func (auo *AlertUpdateOne) ClearSourceAsNumber() *AlertUpdateOne {
 	auo.mutation.ClearSourceAsNumber()
 	return auo
 }
 
-// SetSourceAsName sets the sourceAsName field.
+// SetSourceAsName sets the "sourceAsName" field.
 func (auo *AlertUpdateOne) SetSourceAsName(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceAsName(s)
 	return auo
 }
 
-// SetNillableSourceAsName sets the sourceAsName field if the given value is not nil.
+// SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceAsName(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceAsName(*s)
@@ -1395,19 +1394,19 @@ func (auo *AlertUpdateOne) SetNillableSourceAsName(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceAsName clears the value of sourceAsName.
+// ClearSourceAsName clears the value of the "sourceAsName" field.
 func (auo *AlertUpdateOne) ClearSourceAsName() *AlertUpdateOne {
 	auo.mutation.ClearSourceAsName()
 	return auo
 }
 
-// SetSourceCountry sets the sourceCountry field.
+// SetSourceCountry sets the "sourceCountry" field.
 func (auo *AlertUpdateOne) SetSourceCountry(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceCountry(s)
 	return auo
 }
 
-// SetNillableSourceCountry sets the sourceCountry field if the given value is not nil.
+// SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceCountry(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceCountry(*s)
@@ -1415,20 +1414,20 @@ func (auo *AlertUpdateOne) SetNillableSourceCountry(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceCountry clears the value of sourceCountry.
+// ClearSourceCountry clears the value of the "sourceCountry" field.
 func (auo *AlertUpdateOne) ClearSourceCountry() *AlertUpdateOne {
 	auo.mutation.ClearSourceCountry()
 	return auo
 }
 
-// SetSourceLatitude sets the sourceLatitude field.
+// SetSourceLatitude sets the "sourceLatitude" field.
 func (auo *AlertUpdateOne) SetSourceLatitude(f float32) *AlertUpdateOne {
 	auo.mutation.ResetSourceLatitude()
 	auo.mutation.SetSourceLatitude(f)
 	return auo
 }
 
-// SetNillableSourceLatitude sets the sourceLatitude field if the given value is not nil.
+// SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceLatitude(f *float32) *AlertUpdateOne {
 	if f != nil {
 		auo.SetSourceLatitude(*f)
@@ -1436,26 +1435,26 @@ func (auo *AlertUpdateOne) SetNillableSourceLatitude(f *float32) *AlertUpdateOne
 	return auo
 }
 
-// AddSourceLatitude adds f to sourceLatitude.
+// AddSourceLatitude adds f to the "sourceLatitude" field.
 func (auo *AlertUpdateOne) AddSourceLatitude(f float32) *AlertUpdateOne {
 	auo.mutation.AddSourceLatitude(f)
 	return auo
 }
 
-// ClearSourceLatitude clears the value of sourceLatitude.
+// ClearSourceLatitude clears the value of the "sourceLatitude" field.
 func (auo *AlertUpdateOne) ClearSourceLatitude() *AlertUpdateOne {
 	auo.mutation.ClearSourceLatitude()
 	return auo
 }
 
-// SetSourceLongitude sets the sourceLongitude field.
+// SetSourceLongitude sets the "sourceLongitude" field.
 func (auo *AlertUpdateOne) SetSourceLongitude(f float32) *AlertUpdateOne {
 	auo.mutation.ResetSourceLongitude()
 	auo.mutation.SetSourceLongitude(f)
 	return auo
 }
 
-// SetNillableSourceLongitude sets the sourceLongitude field if the given value is not nil.
+// SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceLongitude(f *float32) *AlertUpdateOne {
 	if f != nil {
 		auo.SetSourceLongitude(*f)
@@ -1463,25 +1462,25 @@ func (auo *AlertUpdateOne) SetNillableSourceLongitude(f *float32) *AlertUpdateOn
 	return auo
 }
 
-// AddSourceLongitude adds f to sourceLongitude.
+// AddSourceLongitude adds f to the "sourceLongitude" field.
 func (auo *AlertUpdateOne) AddSourceLongitude(f float32) *AlertUpdateOne {
 	auo.mutation.AddSourceLongitude(f)
 	return auo
 }
 
-// ClearSourceLongitude clears the value of sourceLongitude.
+// ClearSourceLongitude clears the value of the "sourceLongitude" field.
 func (auo *AlertUpdateOne) ClearSourceLongitude() *AlertUpdateOne {
 	auo.mutation.ClearSourceLongitude()
 	return auo
 }
 
-// SetSourceScope sets the sourceScope field.
+// SetSourceScope sets the "sourceScope" field.
 func (auo *AlertUpdateOne) SetSourceScope(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceScope(s)
 	return auo
 }
 
-// SetNillableSourceScope sets the sourceScope field if the given value is not nil.
+// SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceScope(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceScope(*s)
@@ -1489,19 +1488,19 @@ func (auo *AlertUpdateOne) SetNillableSourceScope(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceScope clears the value of sourceScope.
+// ClearSourceScope clears the value of the "sourceScope" field.
 func (auo *AlertUpdateOne) ClearSourceScope() *AlertUpdateOne {
 	auo.mutation.ClearSourceScope()
 	return auo
 }
 
-// SetSourceValue sets the sourceValue field.
+// SetSourceValue sets the "sourceValue" field.
 func (auo *AlertUpdateOne) SetSourceValue(s string) *AlertUpdateOne {
 	auo.mutation.SetSourceValue(s)
 	return auo
 }
 
-// SetNillableSourceValue sets the sourceValue field if the given value is not nil.
+// SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSourceValue(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetSourceValue(*s)
@@ -1509,20 +1508,20 @@ func (auo *AlertUpdateOne) SetNillableSourceValue(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearSourceValue clears the value of sourceValue.
+// ClearSourceValue clears the value of the "sourceValue" field.
 func (auo *AlertUpdateOne) ClearSourceValue() *AlertUpdateOne {
 	auo.mutation.ClearSourceValue()
 	return auo
 }
 
-// SetCapacity sets the capacity field.
+// SetCapacity sets the "capacity" field.
 func (auo *AlertUpdateOne) SetCapacity(i int32) *AlertUpdateOne {
 	auo.mutation.ResetCapacity()
 	auo.mutation.SetCapacity(i)
 	return auo
 }
 
-// SetNillableCapacity sets the capacity field if the given value is not nil.
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableCapacity(i *int32) *AlertUpdateOne {
 	if i != nil {
 		auo.SetCapacity(*i)
@@ -1530,25 +1529,25 @@ func (auo *AlertUpdateOne) SetNillableCapacity(i *int32) *AlertUpdateOne {
 	return auo
 }
 
-// AddCapacity adds i to capacity.
+// AddCapacity adds i to the "capacity" field.
 func (auo *AlertUpdateOne) AddCapacity(i int32) *AlertUpdateOne {
 	auo.mutation.AddCapacity(i)
 	return auo
 }
 
-// ClearCapacity clears the value of capacity.
+// ClearCapacity clears the value of the "capacity" field.
 func (auo *AlertUpdateOne) ClearCapacity() *AlertUpdateOne {
 	auo.mutation.ClearCapacity()
 	return auo
 }
 
-// SetLeakSpeed sets the leakSpeed field.
+// SetLeakSpeed sets the "leakSpeed" field.
 func (auo *AlertUpdateOne) SetLeakSpeed(s string) *AlertUpdateOne {
 	auo.mutation.SetLeakSpeed(s)
 	return auo
 }
 
-// SetNillableLeakSpeed sets the leakSpeed field if the given value is not nil.
+// SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableLeakSpeed(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetLeakSpeed(*s)
@@ -1556,19 +1555,19 @@ func (auo *AlertUpdateOne) SetNillableLeakSpeed(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearLeakSpeed clears the value of leakSpeed.
+// ClearLeakSpeed clears the value of the "leakSpeed" field.
 func (auo *AlertUpdateOne) ClearLeakSpeed() *AlertUpdateOne {
 	auo.mutation.ClearLeakSpeed()
 	return auo
 }
 
-// SetScenarioVersion sets the scenarioVersion field.
+// SetScenarioVersion sets the "scenarioVersion" field.
 func (auo *AlertUpdateOne) SetScenarioVersion(s string) *AlertUpdateOne {
 	auo.mutation.SetScenarioVersion(s)
 	return auo
 }
 
-// SetNillableScenarioVersion sets the scenarioVersion field if the given value is not nil.
+// SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableScenarioVersion(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetScenarioVersion(*s)
@@ -1576,19 +1575,19 @@ func (auo *AlertUpdateOne) SetNillableScenarioVersion(s *string) *AlertUpdateOne
 	return auo
 }
 
-// ClearScenarioVersion clears the value of scenarioVersion.
+// ClearScenarioVersion clears the value of the "scenarioVersion" field.
 func (auo *AlertUpdateOne) ClearScenarioVersion() *AlertUpdateOne {
 	auo.mutation.ClearScenarioVersion()
 	return auo
 }
 
-// SetScenarioHash sets the scenarioHash field.
+// SetScenarioHash sets the "scenarioHash" field.
 func (auo *AlertUpdateOne) SetScenarioHash(s string) *AlertUpdateOne {
 	auo.mutation.SetScenarioHash(s)
 	return auo
 }
 
-// SetNillableScenarioHash sets the scenarioHash field if the given value is not nil.
+// SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableScenarioHash(s *string) *AlertUpdateOne {
 	if s != nil {
 		auo.SetScenarioHash(*s)
@@ -1596,19 +1595,19 @@ func (auo *AlertUpdateOne) SetNillableScenarioHash(s *string) *AlertUpdateOne {
 	return auo
 }
 
-// ClearScenarioHash clears the value of scenarioHash.
+// ClearScenarioHash clears the value of the "scenarioHash" field.
 func (auo *AlertUpdateOne) ClearScenarioHash() *AlertUpdateOne {
 	auo.mutation.ClearScenarioHash()
 	return auo
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (auo *AlertUpdateOne) SetSimulated(b bool) *AlertUpdateOne {
 	auo.mutation.SetSimulated(b)
 	return auo
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
 	if b != nil {
 		auo.SetSimulated(*b)
@@ -1616,13 +1615,13 @@ func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
 	return auo
 }
 
-// SetOwnerID sets the owner edge to Machine by id.
+// SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
 	auo.mutation.SetOwnerID(id)
 	return auo
 }
 
-// SetNillableOwnerID sets the owner edge to Machine by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
 func (auo *AlertUpdateOne) SetNillableOwnerID(id *int) *AlertUpdateOne {
 	if id != nil {
 		auo = auo.SetOwnerID(*id)
@@ -1630,18 +1629,18 @@ func (auo *AlertUpdateOne) SetNillableOwnerID(id *int) *AlertUpdateOne {
 	return auo
 }
 
-// SetOwner sets the owner edge to Machine.
+// SetOwner sets the "owner" edge to the Machine entity.
 func (auo *AlertUpdateOne) SetOwner(m *Machine) *AlertUpdateOne {
 	return auo.SetOwnerID(m.ID)
 }
 
-// AddDecisionIDs adds the decisions edge to Decision by ids.
+// AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
 func (auo *AlertUpdateOne) AddDecisionIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.AddDecisionIDs(ids...)
 	return auo
 }
 
-// AddDecisions adds the decisions edges to Decision.
+// AddDecisions adds the "decisions" edges to the Decision entity.
 func (auo *AlertUpdateOne) AddDecisions(d ...*Decision) *AlertUpdateOne {
 	ids := make([]int, len(d))
 	for i := range d {
@@ -1650,13 +1649,13 @@ func (auo *AlertUpdateOne) AddDecisions(d ...*Decision) *AlertUpdateOne {
 	return auo.AddDecisionIDs(ids...)
 }
 
-// AddEventIDs adds the events edge to Event by ids.
+// AddEventIDs adds the "events" edge to the Event entity by IDs.
 func (auo *AlertUpdateOne) AddEventIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.AddEventIDs(ids...)
 	return auo
 }
 
-// AddEvents adds the events edges to Event.
+// AddEvents adds the "events" edges to the Event entity.
 func (auo *AlertUpdateOne) AddEvents(e ...*Event) *AlertUpdateOne {
 	ids := make([]int, len(e))
 	for i := range e {
@@ -1665,13 +1664,13 @@ func (auo *AlertUpdateOne) AddEvents(e ...*Event) *AlertUpdateOne {
 	return auo.AddEventIDs(ids...)
 }
 
-// AddMetaIDs adds the metas edge to Meta by ids.
+// AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
 func (auo *AlertUpdateOne) AddMetaIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.AddMetaIDs(ids...)
 	return auo
 }
 
-// AddMetas adds the metas edges to Meta.
+// AddMetas adds the "metas" edges to the Meta entity.
 func (auo *AlertUpdateOne) AddMetas(m ...*Meta) *AlertUpdateOne {
 	ids := make([]int, len(m))
 	for i := range m {
@@ -1685,25 +1684,25 @@ func (auo *AlertUpdateOne) Mutation() *AlertMutation {
 	return auo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Machine.
+// ClearOwner clears the "owner" edge to the Machine entity.
 func (auo *AlertUpdateOne) ClearOwner() *AlertUpdateOne {
 	auo.mutation.ClearOwner()
 	return auo
 }
 
-// ClearDecisions clears all "decisions" edges to type Decision.
+// ClearDecisions clears all "decisions" edges to the Decision entity.
 func (auo *AlertUpdateOne) ClearDecisions() *AlertUpdateOne {
 	auo.mutation.ClearDecisions()
 	return auo
 }
 
-// RemoveDecisionIDs removes the decisions edge to Decision by ids.
+// RemoveDecisionIDs removes the "decisions" edge to Decision entities by IDs.
 func (auo *AlertUpdateOne) RemoveDecisionIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.RemoveDecisionIDs(ids...)
 	return auo
 }
 
-// RemoveDecisions removes decisions edges to Decision.
+// RemoveDecisions removes "decisions" edges to Decision entities.
 func (auo *AlertUpdateOne) RemoveDecisions(d ...*Decision) *AlertUpdateOne {
 	ids := make([]int, len(d))
 	for i := range d {
@@ -1712,19 +1711,19 @@ func (auo *AlertUpdateOne) RemoveDecisions(d ...*Decision) *AlertUpdateOne {
 	return auo.RemoveDecisionIDs(ids...)
 }
 
-// ClearEvents clears all "events" edges to type Event.
+// ClearEvents clears all "events" edges to the Event entity.
 func (auo *AlertUpdateOne) ClearEvents() *AlertUpdateOne {
 	auo.mutation.ClearEvents()
 	return auo
 }
 
-// RemoveEventIDs removes the events edge to Event by ids.
+// RemoveEventIDs removes the "events" edge to Event entities by IDs.
 func (auo *AlertUpdateOne) RemoveEventIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.RemoveEventIDs(ids...)
 	return auo
 }
 
-// RemoveEvents removes events edges to Event.
+// RemoveEvents removes "events" edges to Event entities.
 func (auo *AlertUpdateOne) RemoveEvents(e ...*Event) *AlertUpdateOne {
 	ids := make([]int, len(e))
 	for i := range e {
@@ -1733,19 +1732,19 @@ func (auo *AlertUpdateOne) RemoveEvents(e ...*Event) *AlertUpdateOne {
 	return auo.RemoveEventIDs(ids...)
 }
 
-// ClearMetas clears all "metas" edges to type Meta.
+// ClearMetas clears all "metas" edges to the Meta entity.
 func (auo *AlertUpdateOne) ClearMetas() *AlertUpdateOne {
 	auo.mutation.ClearMetas()
 	return auo
 }
 
-// RemoveMetaIDs removes the metas edge to Meta by ids.
+// RemoveMetaIDs removes the "metas" edge to Meta entities by IDs.
 func (auo *AlertUpdateOne) RemoveMetaIDs(ids ...int) *AlertUpdateOne {
 	auo.mutation.RemoveMetaIDs(ids...)
 	return auo
 }
 
-// RemoveMetas removes metas edges to Meta.
+// RemoveMetas removes "metas" edges to Meta entities.
 func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
 	ids := make([]int, len(m))
 	for i := range m {
@@ -1754,7 +1753,7 @@ func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
 	return auo.RemoveMetaIDs(ids...)
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Alert entity.
 func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
 	var (
 		err  error
@@ -2310,7 +2309,7 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 	}
 	_node = &Alert{config: auo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, auo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}

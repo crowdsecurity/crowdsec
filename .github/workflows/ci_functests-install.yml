@@ -1,4 +1,4 @@
-name: Hub-CI
+name: Functionnal tests install
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    name: Install generated release and perform basic tests
+    name: Install generated release and perform upgrade tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.13
@@ -53,7 +53,7 @@ jobs:
       run: |
         sudo cscli decisions list
         sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
-        sudo cscli decisions list -r 1.1.1.0/24 -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
+        sudo cscli decisions list -r 1.1.1.0/24 -o=json --contained | jq -e '.[].decisions[0].value == "1.1.1.172"'
         sudo cscli decisions list -r 1.1.2.0/24 -o=json | jq -e '. == null'
         sudo cscli decisions list -i 1.1.1.172 -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
         sudo cscli decisions list -i 1.1.1.173 -o=json | jq -e '. == null'
