@@ -440,8 +440,23 @@ delete_bins() {
     rm -f ${CSCLI_BIN_INSTALLED}   
 }
 
+check_running_bouncers() {
+    #when uninstalling, check if user still has bouncers
+    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=json | jq '. | length')
+    if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
+            echo "WARNING : Uninstalling crowdsec with a running bouncer will let it in an unpredictable state."
+            echo "WARNING : If you want to uninstall crowdsec, you should first uninstall the bouncers."
+            echo "Specify --force to bypass this restriction."
+            exit 1
+        fi;
+    fi
+}
+
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
+
     systemctl stop crowdsec.service
     systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard remove -f -y
@@ -516,6 +531,7 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
+        check_running_bouncers
         uninstall_crowdsec
         return
     fi
