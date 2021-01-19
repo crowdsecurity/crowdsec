@@ -8,6 +8,9 @@
 > In the current example, we'll write a parser for the logs produced by `iptables` (netfilter) with the `-j LOG` target.
 > This document aims at detailing the process of writing and testing new parsers.
 
+!!! tips "Exported fields"
+    You can view some of the extracted fields of existing parsers in the [Hub](https://hub.crowdsec.net/fields)
+
 ## Base parser file
 
 The most simple parser can be defined as :
