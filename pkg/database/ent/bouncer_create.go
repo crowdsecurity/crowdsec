@@ -20,13 +20,13 @@ type BouncerCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (bc *BouncerCreate) SetCreatedAt(t time.Time) *BouncerCreate {
 	bc.mutation.SetCreatedAt(t)
 	return bc
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableCreatedAt(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetCreatedAt(*t)
@@ -34,13 +34,13 @@ func (bc *BouncerCreate) SetNillableCreatedAt(t *time.Time) *BouncerCreate {
 	return bc
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (bc *BouncerCreate) SetUpdatedAt(t time.Time) *BouncerCreate {
 	bc.mutation.SetUpdatedAt(t)
 	return bc
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableUpdatedAt(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetUpdatedAt(*t)
@@ -48,31 +48,31 @@ func (bc *BouncerCreate) SetNillableUpdatedAt(t *time.Time) *BouncerCreate {
 	return bc
 }
 
-// SetName sets the name field.
+// SetName sets the "name" field.
 func (bc *BouncerCreate) SetName(s string) *BouncerCreate {
 	bc.mutation.SetName(s)
 	return bc
 }
 
-// SetAPIKey sets the api_key field.
+// SetAPIKey sets the "api_key" field.
 func (bc *BouncerCreate) SetAPIKey(s string) *BouncerCreate {
 	bc.mutation.SetAPIKey(s)
 	return bc
 }
 
-// SetRevoked sets the revoked field.
+// SetRevoked sets the "revoked" field.
 func (bc *BouncerCreate) SetRevoked(b bool) *BouncerCreate {
 	bc.mutation.SetRevoked(b)
 	return bc
 }
 
-// SetIPAddress sets the ip_address field.
+// SetIPAddress sets the "ip_address" field.
 func (bc *BouncerCreate) SetIPAddress(s string) *BouncerCreate {
 	bc.mutation.SetIPAddress(s)
 	return bc
 }
 
-// SetNillableIPAddress sets the ip_address field if the given value is not nil.
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableIPAddress(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetIPAddress(*s)
@@ -80,13 +80,13 @@ func (bc *BouncerCreate) SetNillableIPAddress(s *string) *BouncerCreate {
 	return bc
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (bc *BouncerCreate) SetType(s string) *BouncerCreate {
 	bc.mutation.SetType(s)
 	return bc
 }
 
-// SetNillableType sets the type field if the given value is not nil.
+// SetNillableType sets the "type" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableType(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetType(*s)
@@ -94,13 +94,13 @@ func (bc *BouncerCreate) SetNillableType(s *string) *BouncerCreate {
 	return bc
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (bc *BouncerCreate) SetVersion(s string) *BouncerCreate {
 	bc.mutation.SetVersion(s)
 	return bc
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
 	if s != nil {
 		bc.SetVersion(*s)
@@ -108,13 +108,13 @@ func (bc *BouncerCreate) SetNillableVersion(s *string) *BouncerCreate {
 	return bc
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (bc *BouncerCreate) SetUntil(t time.Time) *BouncerCreate {
 	bc.mutation.SetUntil(t)
 	return bc
 }
 
-// SetNillableUntil sets the until field if the given value is not nil.
+// SetNillableUntil sets the "until" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableUntil(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetUntil(*t)
@@ -122,13 +122,13 @@ func (bc *BouncerCreate) SetNillableUntil(t *time.Time) *BouncerCreate {
 	return bc
 }
 
-// SetLastPull sets the last_pull field.
+// SetLastPull sets the "last_pull" field.
 func (bc *BouncerCreate) SetLastPull(t time.Time) *BouncerCreate {
 	bc.mutation.SetLastPull(t)
 	return bc
 }
 
-// SetNillableLastPull sets the last_pull field if the given value is not nil.
+// SetNillableLastPull sets the "last_pull" field if the given value is not nil.
 func (bc *BouncerCreate) SetNillableLastPull(t *time.Time) *BouncerCreate {
 	if t != nil {
 		bc.SetLastPull(*t)
@@ -340,7 +340,7 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// BouncerCreateBulk is the builder for creating a bulk of Bouncer entities.
+// BouncerCreateBulk is the builder for creating many Bouncer entities in bulk.
 type BouncerCreateBulk struct {
 	config
 	builders []*BouncerCreate
@@ -398,7 +398,7 @@ func (bcb *BouncerCreateBulk) Save(ctx context.Context) ([]*Bouncer, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (bcb *BouncerCreateBulk) SaveX(ctx context.Context) []*Bouncer {
 	v, err := bcb.Save(ctx)
 	if err != nil {

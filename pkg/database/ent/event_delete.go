@@ -16,14 +16,13 @@ import (
 // EventDelete is the builder for deleting a Event entity.
 type EventDelete struct {
 	config
-	hooks      []Hook
-	mutation   *EventMutation
-	predicates []predicate.Event
+	hooks    []Hook
+	mutation *EventMutation
 }
 
-// Where adds a new predicate to the delete builder.
+// Where adds a new predicate to the EventDelete builder.
 func (ed *EventDelete) Where(ps ...predicate.Event) *EventDelete {
-	ed.predicates = append(ed.predicates, ps...)
+	ed.mutation.predicates = append(ed.mutation.predicates, ps...)
 	return ed
 }
 
@@ -75,7 +74,7 @@ func (ed *EventDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
-	if ps := ed.predicates; len(ps) > 0 {
+	if ps := ed.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

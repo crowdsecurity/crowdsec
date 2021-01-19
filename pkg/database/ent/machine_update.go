@@ -18,24 +18,23 @@ import (
 // MachineUpdate is the builder for updating Machine entities.
 type MachineUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *MachineMutation
-	predicates []predicate.Machine
+	hooks    []Hook
+	mutation *MachineMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the MachineUpdate builder.
 func (mu *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
-	mu.predicates = append(mu.predicates, ps...)
+	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
 	return mu
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (mu *MachineUpdate) SetCreatedAt(t time.Time) *MachineUpdate {
 	mu.mutation.SetCreatedAt(t)
 	return mu
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableCreatedAt(t *time.Time) *MachineUpdate {
 	if t != nil {
 		mu.SetCreatedAt(*t)
@@ -43,13 +42,13 @@ func (mu *MachineUpdate) SetNillableCreatedAt(t *time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (mu *MachineUpdate) SetUpdatedAt(t time.Time) *MachineUpdate {
 	mu.mutation.SetUpdatedAt(t)
 	return mu
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableUpdatedAt(t *time.Time) *MachineUpdate {
 	if t != nil {
 		mu.SetUpdatedAt(*t)
@@ -57,31 +56,31 @@ func (mu *MachineUpdate) SetNillableUpdatedAt(t *time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetMachineId sets the machineId field.
+// SetMachineId sets the "machineId" field.
 func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
 	mu.mutation.SetMachineId(s)
 	return mu
 }
 
-// SetPassword sets the password field.
+// SetPassword sets the "password" field.
 func (mu *MachineUpdate) SetPassword(s string) *MachineUpdate {
 	mu.mutation.SetPassword(s)
 	return mu
 }
 
-// SetIpAddress sets the ipAddress field.
+// SetIpAddress sets the "ipAddress" field.
 func (mu *MachineUpdate) SetIpAddress(s string) *MachineUpdate {
 	mu.mutation.SetIpAddress(s)
 	return mu
 }
 
-// SetScenarios sets the scenarios field.
+// SetScenarios sets the "scenarios" field.
 func (mu *MachineUpdate) SetScenarios(s string) *MachineUpdate {
 	mu.mutation.SetScenarios(s)
 	return mu
 }
 
-// SetNillableScenarios sets the scenarios field if the given value is not nil.
+// SetNillableScenarios sets the "scenarios" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableScenarios(s *string) *MachineUpdate {
 	if s != nil {
 		mu.SetScenarios(*s)
@@ -89,19 +88,19 @@ func (mu *MachineUpdate) SetNillableScenarios(s *string) *MachineUpdate {
 	return mu
 }
 
-// ClearScenarios clears the value of scenarios.
+// ClearScenarios clears the value of the "scenarios" field.
 func (mu *MachineUpdate) ClearScenarios() *MachineUpdate {
 	mu.mutation.ClearScenarios()
 	return mu
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (mu *MachineUpdate) SetVersion(s string) *MachineUpdate {
 	mu.mutation.SetVersion(s)
 	return mu
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableVersion(s *string) *MachineUpdate {
 	if s != nil {
 		mu.SetVersion(*s)
@@ -109,19 +108,19 @@ func (mu *MachineUpdate) SetNillableVersion(s *string) *MachineUpdate {
 	return mu
 }
 
-// ClearVersion clears the value of version.
+// ClearVersion clears the value of the "version" field.
 func (mu *MachineUpdate) ClearVersion() *MachineUpdate {
 	mu.mutation.ClearVersion()
 	return mu
 }
 
-// SetIsValidated sets the isValidated field.
+// SetIsValidated sets the "isValidated" field.
 func (mu *MachineUpdate) SetIsValidated(b bool) *MachineUpdate {
 	mu.mutation.SetIsValidated(b)
 	return mu
 }
 
-// SetNillableIsValidated sets the isValidated field if the given value is not nil.
+// SetNillableIsValidated sets the "isValidated" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableIsValidated(b *bool) *MachineUpdate {
 	if b != nil {
 		mu.SetIsValidated(*b)
@@ -129,13 +128,13 @@ func (mu *MachineUpdate) SetNillableIsValidated(b *bool) *MachineUpdate {
 	return mu
 }
 
-// SetStatus sets the status field.
+// SetStatus sets the "status" field.
 func (mu *MachineUpdate) SetStatus(s string) *MachineUpdate {
 	mu.mutation.SetStatus(s)
 	return mu
 }
 
-// SetNillableStatus sets the status field if the given value is not nil.
+// SetNillableStatus sets the "status" field if the given value is not nil.
 func (mu *MachineUpdate) SetNillableStatus(s *string) *MachineUpdate {
 	if s != nil {
 		mu.SetStatus(*s)
@@ -143,19 +142,19 @@ func (mu *MachineUpdate) SetNillableStatus(s *string) *MachineUpdate {
 	return mu
 }
 
-// ClearStatus clears the value of status.
+// ClearStatus clears the value of the "status" field.
 func (mu *MachineUpdate) ClearStatus() *MachineUpdate {
 	mu.mutation.ClearStatus()
 	return mu
 }
 
-// AddAlertIDs adds the alerts edge to Alert by ids.
+// AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mu *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.AddAlertIDs(ids...)
 	return mu
 }
 
-// AddAlerts adds the alerts edges to Alert.
+// AddAlerts adds the "alerts" edges to the Alert entity.
 func (mu *MachineUpdate) AddAlerts(a ...*Alert) *MachineUpdate {
 	ids := make([]int, len(a))
 	for i := range a {
@@ -169,19 +168,19 @@ func (mu *MachineUpdate) Mutation() *MachineMutation {
 	return mu.mutation
 }
 
-// ClearAlerts clears all "alerts" edges to type Alert.
+// ClearAlerts clears all "alerts" edges to the Alert entity.
 func (mu *MachineUpdate) ClearAlerts() *MachineUpdate {
 	mu.mutation.ClearAlerts()
 	return mu
 }
 
-// RemoveAlertIDs removes the alerts edge to Alert by ids.
+// RemoveAlertIDs removes the "alerts" edge to Alert entities by IDs.
 func (mu *MachineUpdate) RemoveAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.RemoveAlertIDs(ids...)
 	return mu
 }
 
-// RemoveAlerts removes alerts edges to Alert.
+// RemoveAlerts removes "alerts" edges to Alert entities.
 func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
 	ids := make([]int, len(a))
 	for i := range a {
@@ -190,7 +189,7 @@ func (mu *MachineUpdate) RemoveAlerts(a ...*Alert) *MachineUpdate {
 	return mu.RemoveAlertIDs(ids...)
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -268,7 +267,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := mu.predicates; len(ps) > 0 {
+	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -428,13 +427,13 @@ type MachineUpdateOne struct {
 	mutation *MachineMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (muo *MachineUpdateOne) SetCreatedAt(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetCreatedAt(t)
 	return muo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableCreatedAt(t *time.Time) *MachineUpdateOne {
 	if t != nil {
 		muo.SetCreatedAt(*t)
@@ -442,13 +441,13 @@ func (muo *MachineUpdateOne) SetNillableCreatedAt(t *time.Time) *MachineUpdateOn
 	return muo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetUpdatedAt(t)
 	return muo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableUpdatedAt(t *time.Time) *MachineUpdateOne {
 	if t != nil {
 		muo.SetUpdatedAt(*t)
@@ -456,31 +455,31 @@ func (muo *MachineUpdateOne) SetNillableUpdatedAt(t *time.Time) *MachineUpdateOn
 	return muo
 }
 
-// SetMachineId sets the machineId field.
+// SetMachineId sets the "machineId" field.
 func (muo *MachineUpdateOne) SetMachineId(s string) *MachineUpdateOne {
 	muo.mutation.SetMachineId(s)
 	return muo
 }
 
-// SetPassword sets the password field.
+// SetPassword sets the "password" field.
 func (muo *MachineUpdateOne) SetPassword(s string) *MachineUpdateOne {
 	muo.mutation.SetPassword(s)
 	return muo
 }
 
-// SetIpAddress sets the ipAddress field.
+// SetIpAddress sets the "ipAddress" field.
 func (muo *MachineUpdateOne) SetIpAddress(s string) *MachineUpdateOne {
 	muo.mutation.SetIpAddress(s)
 	return muo
 }
 
-// SetScenarios sets the scenarios field.
+// SetScenarios sets the "scenarios" field.
 func (muo *MachineUpdateOne) SetScenarios(s string) *MachineUpdateOne {
 	muo.mutation.SetScenarios(s)
 	return muo
 }
 
-// SetNillableScenarios sets the scenarios field if the given value is not nil.
+// SetNillableScenarios sets the "scenarios" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableScenarios(s *string) *MachineUpdateOne {
 	if s != nil {
 		muo.SetScenarios(*s)
@@ -488,19 +487,19 @@ func (muo *MachineUpdateOne) SetNillableScenarios(s *string) *MachineUpdateOne {
 	return muo
 }
 
-// ClearScenarios clears the value of scenarios.
+// ClearScenarios clears the value of the "scenarios" field.
 func (muo *MachineUpdateOne) ClearScenarios() *MachineUpdateOne {
 	muo.mutation.ClearScenarios()
 	return muo
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (muo *MachineUpdateOne) SetVersion(s string) *MachineUpdateOne {
 	muo.mutation.SetVersion(s)
 	return muo
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableVersion(s *string) *MachineUpdateOne {
 	if s != nil {
 		muo.SetVersion(*s)
@@ -508,19 +507,19 @@ func (muo *MachineUpdateOne) SetNillableVersion(s *string) *MachineUpdateOne {
 	return muo
 }
 
-// ClearVersion clears the value of version.
+// ClearVersion clears the value of the "version" field.
 func (muo *MachineUpdateOne) ClearVersion() *MachineUpdateOne {
 	muo.mutation.ClearVersion()
 	return muo
 }
 
-// SetIsValidated sets the isValidated field.
+// SetIsValidated sets the "isValidated" field.
 func (muo *MachineUpdateOne) SetIsValidated(b bool) *MachineUpdateOne {
 	muo.mutation.SetIsValidated(b)
 	return muo
 }
 
-// SetNillableIsValidated sets the isValidated field if the given value is not nil.
+// SetNillableIsValidated sets the "isValidated" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableIsValidated(b *bool) *MachineUpdateOne {
 	if b != nil {
 		muo.SetIsValidated(*b)
@@ -528,13 +527,13 @@ func (muo *MachineUpdateOne) SetNillableIsValidated(b *bool) *MachineUpdateOne {
 	return muo
 }
 
-// SetStatus sets the status field.
+// SetStatus sets the "status" field.
 func (muo *MachineUpdateOne) SetStatus(s string) *MachineUpdateOne {
 	muo.mutation.SetStatus(s)
 	return muo
 }
 
-// SetNillableStatus sets the status field if the given value is not nil.
+// SetNillableStatus sets the "status" field if the given value is not nil.
 func (muo *MachineUpdateOne) SetNillableStatus(s *string) *MachineUpdateOne {
 	if s != nil {
 		muo.SetStatus(*s)
@@ -542,19 +541,19 @@ func (muo *MachineUpdateOne) SetNillableStatus(s *string) *MachineUpdateOne {
 	return muo
 }
 
-// ClearStatus clears the value of status.
+// ClearStatus clears the value of the "status" field.
 func (muo *MachineUpdateOne) ClearStatus() *MachineUpdateOne {
 	muo.mutation.ClearStatus()
 	return muo
 }
 
-// AddAlertIDs adds the alerts edge to Alert by ids.
+// AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (muo *MachineUpdateOne) AddAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.AddAlertIDs(ids...)
 	return muo
 }
 
-// AddAlerts adds the alerts edges to Alert.
+// AddAlerts adds the "alerts" edges to the Alert entity.
 func (muo *MachineUpdateOne) AddAlerts(a ...*Alert) *MachineUpdateOne {
 	ids := make([]int, len(a))
 	for i := range a {
@@ -568,19 +567,19 @@ func (muo *MachineUpdateOne) Mutation() *MachineMutation {
 	return muo.mutation
 }
 
-// ClearAlerts clears all "alerts" edges to type Alert.
+// ClearAlerts clears all "alerts" edges to the Alert entity.
 func (muo *MachineUpdateOne) ClearAlerts() *MachineUpdateOne {
 	muo.mutation.ClearAlerts()
 	return muo
 }
 
-// RemoveAlertIDs removes the alerts edge to Alert by ids.
+// RemoveAlertIDs removes the "alerts" edge to Alert entities by IDs.
 func (muo *MachineUpdateOne) RemoveAlertIDs(ids ...int) *MachineUpdateOne {
 	muo.mutation.RemoveAlertIDs(ids...)
 	return muo
 }
 
-// RemoveAlerts removes alerts edges to Alert.
+// RemoveAlerts removes "alerts" edges to Alert entities.
 func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 	ids := make([]int, len(a))
 	for i := range a {
@@ -589,7 +588,7 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 	return muo.RemoveAlertIDs(ids...)
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Machine entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 	var (
 		err  error
@@ -809,7 +808,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	_node = &Machine{config: muo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}

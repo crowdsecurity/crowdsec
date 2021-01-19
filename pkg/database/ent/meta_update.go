@@ -18,24 +18,23 @@ import (
 // MetaUpdate is the builder for updating Meta entities.
 type MetaUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *MetaMutation
-	predicates []predicate.Meta
+	hooks    []Hook
+	mutation *MetaMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the MetaUpdate builder.
 func (mu *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
-	mu.predicates = append(mu.predicates, ps...)
+	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
 	return mu
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (mu *MetaUpdate) SetCreatedAt(t time.Time) *MetaUpdate {
 	mu.mutation.SetCreatedAt(t)
 	return mu
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (mu *MetaUpdate) SetNillableCreatedAt(t *time.Time) *MetaUpdate {
 	if t != nil {
 		mu.SetCreatedAt(*t)
@@ -43,13 +42,13 @@ func (mu *MetaUpdate) SetNillableCreatedAt(t *time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (mu *MetaUpdate) SetUpdatedAt(t time.Time) *MetaUpdate {
 	mu.mutation.SetUpdatedAt(t)
 	return mu
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (mu *MetaUpdate) SetNillableUpdatedAt(t *time.Time) *MetaUpdate {
 	if t != nil {
 		mu.SetUpdatedAt(*t)
@@ -57,25 +56,25 @@ func (mu *MetaUpdate) SetNillableUpdatedAt(t *time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetKey sets the key field.
+// SetKey sets the "key" field.
 func (mu *MetaUpdate) SetKey(s string) *MetaUpdate {
 	mu.mutation.SetKey(s)
 	return mu
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (mu *MetaUpdate) SetValue(s string) *MetaUpdate {
 	mu.mutation.SetValue(s)
 	return mu
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (mu *MetaUpdate) SetOwnerID(id int) *MetaUpdate {
 	mu.mutation.SetOwnerID(id)
 	return mu
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (mu *MetaUpdate) SetNillableOwnerID(id *int) *MetaUpdate {
 	if id != nil {
 		mu = mu.SetOwnerID(*id)
@@ -83,7 +82,7 @@ func (mu *MetaUpdate) SetNillableOwnerID(id *int) *MetaUpdate {
 	return mu
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (mu *MetaUpdate) SetOwner(a *Alert) *MetaUpdate {
 	return mu.SetOwnerID(a.ID)
 }
@@ -93,13 +92,13 @@ func (mu *MetaUpdate) Mutation() *MetaMutation {
 	return mu.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (mu *MetaUpdate) ClearOwner() *MetaUpdate {
 	mu.mutation.ClearOwner()
 	return mu
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -177,7 +176,7 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := mu.predicates; len(ps) > 0 {
+	if ps := mu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -265,13 +264,13 @@ type MetaUpdateOne struct {
 	mutation *MetaMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (muo *MetaUpdateOne) SetCreatedAt(t time.Time) *MetaUpdateOne {
 	muo.mutation.SetCreatedAt(t)
 	return muo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (muo *MetaUpdateOne) SetNillableCreatedAt(t *time.Time) *MetaUpdateOne {
 	if t != nil {
 		muo.SetCreatedAt(*t)
@@ -279,13 +278,13 @@ func (muo *MetaUpdateOne) SetNillableCreatedAt(t *time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (muo *MetaUpdateOne) SetUpdatedAt(t time.Time) *MetaUpdateOne {
 	muo.mutation.SetUpdatedAt(t)
 	return muo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (muo *MetaUpdateOne) SetNillableUpdatedAt(t *time.Time) *MetaUpdateOne {
 	if t != nil {
 		muo.SetUpdatedAt(*t)
@@ -293,25 +292,25 @@ func (muo *MetaUpdateOne) SetNillableUpdatedAt(t *time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetKey sets the key field.
+// SetKey sets the "key" field.
 func (muo *MetaUpdateOne) SetKey(s string) *MetaUpdateOne {
 	muo.mutation.SetKey(s)
 	return muo
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (muo *MetaUpdateOne) SetValue(s string) *MetaUpdateOne {
 	muo.mutation.SetValue(s)
 	return muo
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (muo *MetaUpdateOne) SetOwnerID(id int) *MetaUpdateOne {
 	muo.mutation.SetOwnerID(id)
 	return muo
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (muo *MetaUpdateOne) SetNillableOwnerID(id *int) *MetaUpdateOne {
 	if id != nil {
 		muo = muo.SetOwnerID(*id)
@@ -319,7 +318,7 @@ func (muo *MetaUpdateOne) SetNillableOwnerID(id *int) *MetaUpdateOne {
 	return muo
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (muo *MetaUpdateOne) SetOwner(a *Alert) *MetaUpdateOne {
 	return muo.SetOwnerID(a.ID)
 }
@@ -329,13 +328,13 @@ func (muo *MetaUpdateOne) Mutation() *MetaMutation {
 	return muo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
 	muo.mutation.ClearOwner()
 	return muo
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Meta entity.
 func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 	var (
 		err  error
@@ -483,7 +482,7 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 	}
 	_node = &Meta{config: muo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}

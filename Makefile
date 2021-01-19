@@ -8,7 +8,8 @@ CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
 CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
-BUILD_CMD="build"
+BUILD_CMD = "build"
+MAKE = "make"
 
 GOARCH=amd64
 GOOS=linux
@@ -61,8 +62,8 @@ hubci:
 	@cd ./crowdsec-xxx/tests/ && bash ../../hub-tests/run_tests.sh
 
 clean:
-	@make -C $(CROWDSEC_FOLDER) clean --no-print-directory
-	@make -C $(CSCLI_FOLDER) clean --no-print-directory
+	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
+	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
 	@rm -f $(CROWDSEC_BIN)
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
@@ -70,7 +71,7 @@ clean:
 
 cscli:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@make -C $(CSCLI_FOLDER) build --no-print-directory
+	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -79,7 +80,7 @@ endif
 
 crowdsec:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@make -C $(CROWDSEC_FOLDER) build --no-print-directory
+	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -88,7 +89,7 @@ endif
 
 cscli_static:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@make -C $(CSCLI_FOLDER) static --no-print-directory
+	@$(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -97,7 +98,7 @@ endif
 
 crowdsec_static:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@make -C $(CROWDSEC_FOLDER) static --no-print-directory
+	@$(MAKE) -C $(CROWDSEC_FOLDER) static --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -106,7 +107,7 @@ endif
 #.PHONY: test
 test:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@make -C $(CROWDSEC_FOLDER) test --no-print-directory
+	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;

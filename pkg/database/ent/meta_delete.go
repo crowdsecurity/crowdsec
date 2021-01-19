@@ -16,14 +16,13 @@ import (
 // MetaDelete is the builder for deleting a Meta entity.
 type MetaDelete struct {
 	config
-	hooks      []Hook
-	mutation   *MetaMutation
-	predicates []predicate.Meta
+	hooks    []Hook
+	mutation *MetaMutation
 }
 
-// Where adds a new predicate to the delete builder.
+// Where adds a new predicate to the MetaDelete builder.
 func (md *MetaDelete) Where(ps ...predicate.Meta) *MetaDelete {
-	md.predicates = append(md.predicates, ps...)
+	md.mutation.predicates = append(md.mutation.predicates, ps...)
 	return md
 }
 
@@ -75,7 +74,7 @@ func (md *MetaDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
-	if ps := md.predicates; len(ps) > 0 {
+	if ps := md.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

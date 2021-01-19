@@ -147,19 +147,23 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 		secret []byte
 	)
 
+	//Please be aware that brute force HS256 is possible.
+	//PLEASE choose a STRONG secret
 	secret_string := os.Getenv("CS_LAPI_SECRET")
-
 	if secret_string == "" {
-		secret = make([]byte, 8)
-		if n, err := rand.Reader.Read(secret); err != nil {
-			log.Fatalf("Unable to generate a new random seed for JWT generation")
+		secret = make([]byte, 64)
+		if n, err := rand.Read(secret); err != nil {
+			log.Fatalf("unable to generate a new random seed for JWT generation")
 		} else {
-			if n != 8 {
-				log.Errorf("Not enough entropy at random seed generation for JWT generation")
+			if n != 64 {
+				log.Fatalf("not enough entropy at random seed generation for JWT generation")
 			}
 		}
 	} else {
 		secret = []byte(secret_string)
+		if len(secret) < 64 {
+			log.Fatalf("secret not strong enough")
+		}
 	}
 
 	jwtMiddleware := &JWT{

@@ -98,7 +98,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	}, nil
 }
 
-// BeginTx returns a transactional client with options.
+// BeginTx returns a transactional client with specified options.
 func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) {
 	if _, ok := c.driver.(*txDriver); ok {
 		return nil, fmt.Errorf("ent: cannot start a transaction within a transaction")
@@ -174,7 +174,7 @@ func (c *AlertClient) Create() *AlertCreate {
 	return &AlertCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Alert entities.
+// CreateBulk returns a builder for creating a bulk of Alert entities.
 func (c *AlertClient) CreateBulk(builders ...*AlertCreate) *AlertCreateBulk {
 	return &AlertCreateBulk{config: c.config, builders: builders}
 }
@@ -326,7 +326,7 @@ func (c *BouncerClient) Create() *BouncerCreate {
 	return &BouncerCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Bouncer entities.
+// CreateBulk returns a builder for creating a bulk of Bouncer entities.
 func (c *BouncerClient) CreateBulk(builders ...*BouncerCreate) *BouncerCreateBulk {
 	return &BouncerCreateBulk{config: c.config, builders: builders}
 }
@@ -414,7 +414,7 @@ func (c *DecisionClient) Create() *DecisionCreate {
 	return &DecisionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Decision entities.
+// CreateBulk returns a builder for creating a bulk of Decision entities.
 func (c *DecisionClient) CreateBulk(builders ...*DecisionCreate) *DecisionCreateBulk {
 	return &DecisionCreateBulk{config: c.config, builders: builders}
 }
@@ -518,7 +518,7 @@ func (c *EventClient) Create() *EventCreate {
 	return &EventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Event entities.
+// CreateBulk returns a builder for creating a bulk of Event entities.
 func (c *EventClient) CreateBulk(builders ...*EventCreate) *EventCreateBulk {
 	return &EventCreateBulk{config: c.config, builders: builders}
 }
@@ -622,7 +622,7 @@ func (c *MachineClient) Create() *MachineCreate {
 	return &MachineCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Machine entities.
+// CreateBulk returns a builder for creating a bulk of Machine entities.
 func (c *MachineClient) CreateBulk(builders ...*MachineCreate) *MachineCreateBulk {
 	return &MachineCreateBulk{config: c.config, builders: builders}
 }
@@ -726,7 +726,7 @@ func (c *MetaClient) Create() *MetaCreate {
 	return &MetaCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// BulkCreate returns a builder for creating a bulk of Meta entities.
+// CreateBulk returns a builder for creating a bulk of Meta entities.
 func (c *MetaClient) CreateBulk(builders ...*MetaCreate) *MetaCreateBulk {
 	return &MetaCreateBulk{config: c.config, builders: builders}
 }
