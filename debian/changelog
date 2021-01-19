@@ -7,6 +7,8 @@ crowdsec (1.0.4-1) UNRELEASED; urgency=medium
   * Fix typos in the long description, and merge upstream's review.
   * Refresh patch:
      + 0001-use-a-local-machineid-implementation.patch
+  * Drop patch (merged upstream):
+     + 1001-fix-docker-container-creation-for-metabase-563.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Thu, 14 Jan 2021 03:38:15 +0000
 
