@@ -5,6 +5,8 @@ crowdsec (1.0.4-1) UNRELEASED; urgency=medium
     with upstream to coordinate packaging work in Debian. Help from fellow
     members of the Debian Go Packaging Team is very welcome, though!
   * Fix typos in the long description, and merge upstream's review.
+  * Refresh patch:
+     + 0001-use-a-local-machineid-implementation.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Thu, 14 Jan 2021 03:38:15 +0000
 

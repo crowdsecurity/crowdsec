@@ -16,8 +16,6 @@ Signed-off-by: Cyril Brulebois <cyril@debamax.com>
  4 files changed, 30 insertions(+), 4 deletions(-)
  create mode 100644 pkg/machineid/machineid.go
 
-diff --git a/cmd/crowdsec-cli/machines.go b/cmd/crowdsec-cli/machines.go
-index e5df013..b7c39e2 100644
 --- a/cmd/crowdsec-cli/machines.go
 +++ b/cmd/crowdsec-cli/machines.go
 @@ -12,7 +12,7 @@ import (
@@ -29,34 +27,16 @@ index e5df013..b7c39e2 100644
  	"github.com/enescakir/emoji"
  	"github.com/go-openapi/strfmt"
  	"github.com/olekukonko/tablewriter"
-diff --git a/go.mod b/go.mod
-index 9df0cc9..798c24b 100644
 --- a/go.mod
 +++ b/go.mod
-@@ -14,7 +14,6 @@ require (
+@@ -12,7 +12,6 @@ require (
  	github.com/containerd/containerd v1.3.4 // indirect
  	github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
  	github.com/davecgh/go-spew v1.1.1
 -	github.com/denisbrodbeck/machineid v1.0.1
  	github.com/dghubble/sling v1.3.0
  	github.com/docker/distribution v2.7.1+incompatible // indirect
- 	github.com/docker/docker v17.12.0-ce-rc1.0.20200419140219-55e6d7d36faf+incompatible
-diff --git a/go.sum b/go.sum
-index af6b6c8..088cb87 100644
---- a/go.sum
-+++ b/go.sum
-@@ -111,8 +111,6 @@ github.com/davecgh/go-spew v0.0.0-20161028175848-04cdfd42973b/go.mod h1:J7Y8YcW2
- github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
- github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
- github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
--github.com/denisbrodbeck/machineid v1.0.1 h1:geKr9qtkB876mXguW2X6TU4ZynleN6ezuMSRhl4D7AQ=
--github.com/denisbrodbeck/machineid v1.0.1/go.mod h1:dJUwb7PTidGDeYyUBmXZ2GphQBbjJCrnectwCyxcUSI=
- github.com/denisenkom/go-mssqldb v0.0.0-20191124224453-732737034ffd/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
- github.com/dghubble/sling v1.3.0 h1:pZHjCJq4zJvc6qVQ5wN1jo5oNZlNE0+8T/h0XeXBUKU=
- github.com/dghubble/sling v1.3.0/go.mod h1:XXShWaBWKzNLhu2OxikSNFrlsvowtz4kyRuXUG7oQKY=
-diff --git a/pkg/machineid/machineid.go b/pkg/machineid/machineid.go
-new file mode 100644
-index 0000000..c0b3277
+ 	github.com/docker/docker v20.10.2+incompatible
 --- /dev/null
 +++ b/pkg/machineid/machineid.go
 @@ -0,0 +1,29 @@
@@ -89,6 +69,14 @@ index 0000000..c0b3277
 +	}
 +	return strings.TrimSpace(string(id)), nil
 +}
--- 
-2.30.0
-
+--- a/go.sum
++++ b/go.sum
+@@ -109,8 +109,6 @@ github.com/davecgh/go-spew v0.0.0-201610
+ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+-github.com/denisbrodbeck/machineid v1.0.1 h1:geKr9qtkB876mXguW2X6TU4ZynleN6ezuMSRhl4D7AQ=
+-github.com/denisbrodbeck/machineid v1.0.1/go.mod h1:dJUwb7PTidGDeYyUBmXZ2GphQBbjJCrnectwCyxcUSI=
+ github.com/dghubble/sling v1.3.0 h1:pZHjCJq4zJvc6qVQ5wN1jo5oNZlNE0+8T/h0XeXBUKU=
+ github.com/dghubble/sling v1.3.0/go.mod h1:XXShWaBWKzNLhu2OxikSNFrlsvowtz4kyRuXUG7oQKY=
+ github.com/dgrijalva/jwt-go v3.2.0+incompatible h1:7qlOGliEKZXTDg6OTjfoBKDXWrumCAMpl/TFQ4/5kLM=
