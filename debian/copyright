@@ -4,7 +4,7 @@ Upstream-Contact: contact@crowdsec.net
 Source: https://github.com/crowdsecurity/crowdsec
 
 Files: *
-Copyright: 2020 crowdsecurity
+Copyright: 2020-2021 crowdsecurity
 License: Expat
 
 Files: pkg/time
