@@ -1,5 +1,6 @@
-crowdsec (1.0.2-2) UNRELEASED; urgency=medium
+crowdsec (1.0.4-1) UNRELEASED; urgency=medium
 
+  * New upstream release.
   * Swap Maintainer/Uploaders: the current plan is for me to keep in touch
     with upstream to coordinate packaging work in Debian. Help from fellow
     members of the Debian Go Packaging Team is very welcome, though!
