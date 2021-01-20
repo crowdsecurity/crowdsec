@@ -213,7 +213,7 @@ install_collection() {
             #in case we're not in interactive mode, assume defaults
             COLLECTION_TO_INSTALL+=(${collection})
         else
-            if [[ ${collection} == "linux" ]]; then
+            if [[ ${collection} == "linux" ]] || [[ ${collection} == "geoip" ]]; then
                 HMENU+=("${collection}" "${description}" "ON")
                 #in case we're not in interactive mode, assume defaults
                 COLLECTION_TO_INSTALL+=(${collection})
@@ -386,6 +386,22 @@ update_bins() {
     install_bins
     log_info "Upgrade finished"
     systemctl restart crowdsec
+}
+
+geoip_workaround() {
+    if [[ ${CSCLI_BIN_INSTALLED} collections list -o raw -a | grep -q geoip ]]; then
+	return
+    fi
+
+    if [[ ${CSCLI_BIN_INSTALLED} collections list -o raw -a | grep -q "crowdsecurity/linux" ]]; then
+	PATH=$(${CSCLI_BIN_INSTALLED} collections list)|awk -F" " '{print $6}'
+	if [[ grep -q $PATH geoip ]]; then
+	    return
+	else
+	    cscli hub upgrade
+	    cscli collections install crowdsecurity/geoip
+	return
+    fi
 }
 
 update_full() {
