@@ -389,21 +389,21 @@ update_bins() {
 }
 
 geoip_workaround() {
-    OUTPUT=$(${CSCLI_BIN_INSTALLED} collections list --branch geoip)
+    OUTPUT=$(${CSCLI_BIN_INSTALLED} collections list )
     if printf '%s' "${OUTPUT}" | grep -q geoip; then
 	    log_info "Prout "
 	return
     fi
-    OUTPUT=$(${CSCLI_BIN_INSTALLED} --branch geoip collections list -o raw)
+    OUTPUT=$(${CSCLI_BIN_INSTALLED}  collections list -o raw)
     if  printf '%s' "${OUTPUT}" |grep -q "linux.yaml" ; then
-	PATH=$(${CSCLI_BIN_INSTALLED} --branch geoip collections list)|awk -F" " '{print $6}'
+	PATH=$(${CSCLI_BIN_INSTALLED}  collections list)|awk -F" " '{print $6}'
 	if grep -q $PATH geoip ; then
 	    log_info "Prout 3"
 	    return
 	else
 	    log_info "Prout 4"
-	    cscli --branch geoip hub upgrade
-	    cscli --branch geoip collections install crowdsecurity/geoip
+	    cscli  hub upgrade
+	    cscli  collections install crowdsecurity/geoip
 	    return
 	fi
     fi
@@ -429,8 +429,8 @@ update_full() {
     log_info "Installing crowdsec"
     install_crowdsec
     log_info "Restoring configuration"
-    ${CSCLI_BIN_INSTALLED} --branch geoip hub update
-    ${CSCLI_BIN_INSTALLED} --branch geoip config restore ${BACKUP_DIR}
+    ${CSCLI_BIN_INSTALLED}  hub update
+    ${CSCLI_BIN_INSTALLED}  config restore ${BACKUP_DIR}
     log_info "Checking and fixing geoip stuff"
     geoip_workaround
     log_info "Restoring saved database if exist"
