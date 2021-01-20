@@ -18,24 +18,23 @@ import (
 // DecisionUpdate is the builder for updating Decision entities.
 type DecisionUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *DecisionMutation
-	predicates []predicate.Decision
+	hooks    []Hook
+	mutation *DecisionMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the DecisionUpdate builder.
 func (du *DecisionUpdate) Where(ps ...predicate.Decision) *DecisionUpdate {
-	du.predicates = append(du.predicates, ps...)
+	du.mutation.predicates = append(du.mutation.predicates, ps...)
 	return du
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (du *DecisionUpdate) SetCreatedAt(t time.Time) *DecisionUpdate {
 	du.mutation.SetCreatedAt(t)
 	return du
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (du *DecisionUpdate) SetNillableCreatedAt(t *time.Time) *DecisionUpdate {
 	if t != nil {
 		du.SetCreatedAt(*t)
@@ -43,13 +42,13 @@ func (du *DecisionUpdate) SetNillableCreatedAt(t *time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (du *DecisionUpdate) SetUpdatedAt(t time.Time) *DecisionUpdate {
 	du.mutation.SetUpdatedAt(t)
 	return du
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (du *DecisionUpdate) SetNillableUpdatedAt(t *time.Time) *DecisionUpdate {
 	if t != nil {
 		du.SetUpdatedAt(*t)
@@ -57,32 +56,32 @@ func (du *DecisionUpdate) SetNillableUpdatedAt(t *time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (du *DecisionUpdate) SetUntil(t time.Time) *DecisionUpdate {
 	du.mutation.SetUntil(t)
 	return du
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (du *DecisionUpdate) SetScenario(s string) *DecisionUpdate {
 	du.mutation.SetScenario(s)
 	return du
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (du *DecisionUpdate) SetType(s string) *DecisionUpdate {
 	du.mutation.SetType(s)
 	return du
 }
 
-// SetStartIP sets the start_ip field.
+// SetStartIP sets the "start_ip" field.
 func (du *DecisionUpdate) SetStartIP(i int64) *DecisionUpdate {
 	du.mutation.ResetStartIP()
 	du.mutation.SetStartIP(i)
 	return du
 }
 
-// SetNillableStartIP sets the start_ip field if the given value is not nil.
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
 func (du *DecisionUpdate) SetNillableStartIP(i *int64) *DecisionUpdate {
 	if i != nil {
 		du.SetStartIP(*i)
@@ -90,26 +89,26 @@ func (du *DecisionUpdate) SetNillableStartIP(i *int64) *DecisionUpdate {
 	return du
 }
 
-// AddStartIP adds i to start_ip.
+// AddStartIP adds i to the "start_ip" field.
 func (du *DecisionUpdate) AddStartIP(i int64) *DecisionUpdate {
 	du.mutation.AddStartIP(i)
 	return du
 }
 
-// ClearStartIP clears the value of start_ip.
+// ClearStartIP clears the value of the "start_ip" field.
 func (du *DecisionUpdate) ClearStartIP() *DecisionUpdate {
 	du.mutation.ClearStartIP()
 	return du
 }
 
-// SetEndIP sets the end_ip field.
+// SetEndIP sets the "end_ip" field.
 func (du *DecisionUpdate) SetEndIP(i int64) *DecisionUpdate {
 	du.mutation.ResetEndIP()
 	du.mutation.SetEndIP(i)
 	return du
 }
 
-// SetNillableEndIP sets the end_ip field if the given value is not nil.
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
 func (du *DecisionUpdate) SetNillableEndIP(i *int64) *DecisionUpdate {
 	if i != nil {
 		du.SetEndIP(*i)
@@ -117,43 +116,124 @@ func (du *DecisionUpdate) SetNillableEndIP(i *int64) *DecisionUpdate {
 	return du
 }
 
-// AddEndIP adds i to end_ip.
+// AddEndIP adds i to the "end_ip" field.
 func (du *DecisionUpdate) AddEndIP(i int64) *DecisionUpdate {
 	du.mutation.AddEndIP(i)
 	return du
 }
 
-// ClearEndIP clears the value of end_ip.
+// ClearEndIP clears the value of the "end_ip" field.
 func (du *DecisionUpdate) ClearEndIP() *DecisionUpdate {
 	du.mutation.ClearEndIP()
 	return du
 }
 
-// SetScope sets the scope field.
+// SetStartSuffix sets the "start_suffix" field.
+func (du *DecisionUpdate) SetStartSuffix(i int64) *DecisionUpdate {
+	du.mutation.ResetStartSuffix()
+	du.mutation.SetStartSuffix(i)
+	return du
+}
+
+// SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableStartSuffix(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetStartSuffix(*i)
+	}
+	return du
+}
+
+// AddStartSuffix adds i to the "start_suffix" field.
+func (du *DecisionUpdate) AddStartSuffix(i int64) *DecisionUpdate {
+	du.mutation.AddStartSuffix(i)
+	return du
+}
+
+// ClearStartSuffix clears the value of the "start_suffix" field.
+func (du *DecisionUpdate) ClearStartSuffix() *DecisionUpdate {
+	du.mutation.ClearStartSuffix()
+	return du
+}
+
+// SetEndSuffix sets the "end_suffix" field.
+func (du *DecisionUpdate) SetEndSuffix(i int64) *DecisionUpdate {
+	du.mutation.ResetEndSuffix()
+	du.mutation.SetEndSuffix(i)
+	return du
+}
+
+// SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableEndSuffix(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetEndSuffix(*i)
+	}
+	return du
+}
+
+// AddEndSuffix adds i to the "end_suffix" field.
+func (du *DecisionUpdate) AddEndSuffix(i int64) *DecisionUpdate {
+	du.mutation.AddEndSuffix(i)
+	return du
+}
+
+// ClearEndSuffix clears the value of the "end_suffix" field.
+func (du *DecisionUpdate) ClearEndSuffix() *DecisionUpdate {
+	du.mutation.ClearEndSuffix()
+	return du
+}
+
+// SetIPSize sets the "ip_size" field.
+func (du *DecisionUpdate) SetIPSize(i int64) *DecisionUpdate {
+	du.mutation.ResetIPSize()
+	du.mutation.SetIPSize(i)
+	return du
+}
+
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableIPSize(i *int64) *DecisionUpdate {
+	if i != nil {
+		du.SetIPSize(*i)
+	}
+	return du
+}
+
+// AddIPSize adds i to the "ip_size" field.
+func (du *DecisionUpdate) AddIPSize(i int64) *DecisionUpdate {
+	du.mutation.AddIPSize(i)
+	return du
+}
+
+// ClearIPSize clears the value of the "ip_size" field.
+func (du *DecisionUpdate) ClearIPSize() *DecisionUpdate {
+	du.mutation.ClearIPSize()
+	return du
+}
+
+// SetScope sets the "scope" field.
 func (du *DecisionUpdate) SetScope(s string) *DecisionUpdate {
 	du.mutation.SetScope(s)
 	return du
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (du *DecisionUpdate) SetValue(s string) *DecisionUpdate {
 	du.mutation.SetValue(s)
 	return du
 }
 
-// SetOrigin sets the origin field.
+// SetOrigin sets the "origin" field.
 func (du *DecisionUpdate) SetOrigin(s string) *DecisionUpdate {
 	du.mutation.SetOrigin(s)
 	return du
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (du *DecisionUpdate) SetSimulated(b bool) *DecisionUpdate {
 	du.mutation.SetSimulated(b)
 	return du
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (du *DecisionUpdate) SetNillableSimulated(b *bool) *DecisionUpdate {
 	if b != nil {
 		du.SetSimulated(*b)
@@ -161,13 +241,13 @@ func (du *DecisionUpdate) SetNillableSimulated(b *bool) *DecisionUpdate {
 	return du
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (du *DecisionUpdate) SetOwnerID(id int) *DecisionUpdate {
 	du.mutation.SetOwnerID(id)
 	return du
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (du *DecisionUpdate) SetNillableOwnerID(id *int) *DecisionUpdate {
 	if id != nil {
 		du = du.SetOwnerID(*id)
@@ -175,7 +255,7 @@ func (du *DecisionUpdate) SetNillableOwnerID(id *int) *DecisionUpdate {
 	return du
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (du *DecisionUpdate) SetOwner(a *Alert) *DecisionUpdate {
 	return du.SetOwnerID(a.ID)
 }
@@ -185,13 +265,13 @@ func (du *DecisionUpdate) Mutation() *DecisionMutation {
 	return du.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (du *DecisionUpdate) ClearOwner() *DecisionUpdate {
 	du.mutation.ClearOwner()
 	return du
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -253,7 +333,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := du.predicates; len(ps) > 0 {
+	if ps := du.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -333,6 +413,66 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeInt64,
 			Column: decision.FieldEndIP,
+		})
+	}
+	if value, ok := du.mutation.StartSuffix(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if value, ok := du.mutation.AddedStartSuffix(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if du.mutation.StartSuffixCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if value, ok := du.mutation.EndSuffix(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if value, ok := du.mutation.AddedEndSuffix(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if du.mutation.EndSuffixCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if value, ok := du.mutation.IPSize(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if value, ok := du.mutation.AddedIPSize(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if du.mutation.IPSizeCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldIPSize,
 		})
 	}
 	if value, ok := du.mutation.Scope(); ok {
@@ -416,13 +556,13 @@ type DecisionUpdateOne struct {
 	mutation *DecisionMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (duo *DecisionUpdateOne) SetCreatedAt(t time.Time) *DecisionUpdateOne {
 	duo.mutation.SetCreatedAt(t)
 	return duo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableCreatedAt(t *time.Time) *DecisionUpdateOne {
 	if t != nil {
 		duo.SetCreatedAt(*t)
@@ -430,13 +570,13 @@ func (duo *DecisionUpdateOne) SetNillableCreatedAt(t *time.Time) *DecisionUpdate
 	return duo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (duo *DecisionUpdateOne) SetUpdatedAt(t time.Time) *DecisionUpdateOne {
 	duo.mutation.SetUpdatedAt(t)
 	return duo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableUpdatedAt(t *time.Time) *DecisionUpdateOne {
 	if t != nil {
 		duo.SetUpdatedAt(*t)
@@ -444,32 +584,32 @@ func (duo *DecisionUpdateOne) SetNillableUpdatedAt(t *time.Time) *DecisionUpdate
 	return duo
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (duo *DecisionUpdateOne) SetUntil(t time.Time) *DecisionUpdateOne {
 	duo.mutation.SetUntil(t)
 	return duo
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (duo *DecisionUpdateOne) SetScenario(s string) *DecisionUpdateOne {
 	duo.mutation.SetScenario(s)
 	return duo
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (duo *DecisionUpdateOne) SetType(s string) *DecisionUpdateOne {
 	duo.mutation.SetType(s)
 	return duo
 }
 
-// SetStartIP sets the start_ip field.
+// SetStartIP sets the "start_ip" field.
 func (duo *DecisionUpdateOne) SetStartIP(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetStartIP()
 	duo.mutation.SetStartIP(i)
 	return duo
 }
 
-// SetNillableStartIP sets the start_ip field if the given value is not nil.
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableStartIP(i *int64) *DecisionUpdateOne {
 	if i != nil {
 		duo.SetStartIP(*i)
@@ -477,26 +617,26 @@ func (duo *DecisionUpdateOne) SetNillableStartIP(i *int64) *DecisionUpdateOne {
 	return duo
 }
 
-// AddStartIP adds i to start_ip.
+// AddStartIP adds i to the "start_ip" field.
 func (duo *DecisionUpdateOne) AddStartIP(i int64) *DecisionUpdateOne {
 	duo.mutation.AddStartIP(i)
 	return duo
 }
 
-// ClearStartIP clears the value of start_ip.
+// ClearStartIP clears the value of the "start_ip" field.
 func (duo *DecisionUpdateOne) ClearStartIP() *DecisionUpdateOne {
 	duo.mutation.ClearStartIP()
 	return duo
 }
 
-// SetEndIP sets the end_ip field.
+// SetEndIP sets the "end_ip" field.
 func (duo *DecisionUpdateOne) SetEndIP(i int64) *DecisionUpdateOne {
 	duo.mutation.ResetEndIP()
 	duo.mutation.SetEndIP(i)
 	return duo
 }
 
-// SetNillableEndIP sets the end_ip field if the given value is not nil.
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableEndIP(i *int64) *DecisionUpdateOne {
 	if i != nil {
 		duo.SetEndIP(*i)
@@ -504,43 +644,124 @@ func (duo *DecisionUpdateOne) SetNillableEndIP(i *int64) *DecisionUpdateOne {
 	return duo
 }
 
-// AddEndIP adds i to end_ip.
+// AddEndIP adds i to the "end_ip" field.
 func (duo *DecisionUpdateOne) AddEndIP(i int64) *DecisionUpdateOne {
 	duo.mutation.AddEndIP(i)
 	return duo
 }
 
-// ClearEndIP clears the value of end_ip.
+// ClearEndIP clears the value of the "end_ip" field.
 func (duo *DecisionUpdateOne) ClearEndIP() *DecisionUpdateOne {
 	duo.mutation.ClearEndIP()
 	return duo
 }
 
-// SetScope sets the scope field.
+// SetStartSuffix sets the "start_suffix" field.
+func (duo *DecisionUpdateOne) SetStartSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.ResetStartSuffix()
+	duo.mutation.SetStartSuffix(i)
+	return duo
+}
+
+// SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableStartSuffix(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetStartSuffix(*i)
+	}
+	return duo
+}
+
+// AddStartSuffix adds i to the "start_suffix" field.
+func (duo *DecisionUpdateOne) AddStartSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.AddStartSuffix(i)
+	return duo
+}
+
+// ClearStartSuffix clears the value of the "start_suffix" field.
+func (duo *DecisionUpdateOne) ClearStartSuffix() *DecisionUpdateOne {
+	duo.mutation.ClearStartSuffix()
+	return duo
+}
+
+// SetEndSuffix sets the "end_suffix" field.
+func (duo *DecisionUpdateOne) SetEndSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.ResetEndSuffix()
+	duo.mutation.SetEndSuffix(i)
+	return duo
+}
+
+// SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableEndSuffix(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetEndSuffix(*i)
+	}
+	return duo
+}
+
+// AddEndSuffix adds i to the "end_suffix" field.
+func (duo *DecisionUpdateOne) AddEndSuffix(i int64) *DecisionUpdateOne {
+	duo.mutation.AddEndSuffix(i)
+	return duo
+}
+
+// ClearEndSuffix clears the value of the "end_suffix" field.
+func (duo *DecisionUpdateOne) ClearEndSuffix() *DecisionUpdateOne {
+	duo.mutation.ClearEndSuffix()
+	return duo
+}
+
+// SetIPSize sets the "ip_size" field.
+func (duo *DecisionUpdateOne) SetIPSize(i int64) *DecisionUpdateOne {
+	duo.mutation.ResetIPSize()
+	duo.mutation.SetIPSize(i)
+	return duo
+}
+
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableIPSize(i *int64) *DecisionUpdateOne {
+	if i != nil {
+		duo.SetIPSize(*i)
+	}
+	return duo
+}
+
+// AddIPSize adds i to the "ip_size" field.
+func (duo *DecisionUpdateOne) AddIPSize(i int64) *DecisionUpdateOne {
+	duo.mutation.AddIPSize(i)
+	return duo
+}
+
+// ClearIPSize clears the value of the "ip_size" field.
+func (duo *DecisionUpdateOne) ClearIPSize() *DecisionUpdateOne {
+	duo.mutation.ClearIPSize()
+	return duo
+}
+
+// SetScope sets the "scope" field.
 func (duo *DecisionUpdateOne) SetScope(s string) *DecisionUpdateOne {
 	duo.mutation.SetScope(s)
 	return duo
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (duo *DecisionUpdateOne) SetValue(s string) *DecisionUpdateOne {
 	duo.mutation.SetValue(s)
 	return duo
 }
 
-// SetOrigin sets the origin field.
+// SetOrigin sets the "origin" field.
 func (duo *DecisionUpdateOne) SetOrigin(s string) *DecisionUpdateOne {
 	duo.mutation.SetOrigin(s)
 	return duo
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (duo *DecisionUpdateOne) SetSimulated(b bool) *DecisionUpdateOne {
 	duo.mutation.SetSimulated(b)
 	return duo
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableSimulated(b *bool) *DecisionUpdateOne {
 	if b != nil {
 		duo.SetSimulated(*b)
@@ -548,13 +769,13 @@ func (duo *DecisionUpdateOne) SetNillableSimulated(b *bool) *DecisionUpdateOne {
 	return duo
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (duo *DecisionUpdateOne) SetOwnerID(id int) *DecisionUpdateOne {
 	duo.mutation.SetOwnerID(id)
 	return duo
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (duo *DecisionUpdateOne) SetNillableOwnerID(id *int) *DecisionUpdateOne {
 	if id != nil {
 		duo = duo.SetOwnerID(*id)
@@ -562,7 +783,7 @@ func (duo *DecisionUpdateOne) SetNillableOwnerID(id *int) *DecisionUpdateOne {
 	return duo
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (duo *DecisionUpdateOne) SetOwner(a *Alert) *DecisionUpdateOne {
 	return duo.SetOwnerID(a.ID)
 }
@@ -572,13 +793,13 @@ func (duo *DecisionUpdateOne) Mutation() *DecisionMutation {
 	return duo.mutation
 }
 
-// ClearOwner clears the "owner" edge to type Alert.
+// ClearOwner clears the "owner" edge to the Alert entity.
 func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 	duo.mutation.ClearOwner()
 	return duo
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Decision entity.
 func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 	var (
 		err  error
@@ -720,6 +941,66 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Column: decision.FieldEndIP,
 		})
 	}
+	if value, ok := duo.mutation.StartSuffix(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if value, ok := duo.mutation.AddedStartSuffix(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if duo.mutation.StartSuffixCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldStartSuffix,
+		})
+	}
+	if value, ok := duo.mutation.EndSuffix(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if value, ok := duo.mutation.AddedEndSuffix(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if duo.mutation.EndSuffixCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldEndSuffix,
+		})
+	}
+	if value, ok := duo.mutation.IPSize(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if value, ok := duo.mutation.AddedIPSize(); ok {
+		_spec.Fields.Add = append(_spec.Fields.Add, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+	}
+	if duo.mutation.IPSizeCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Column: decision.FieldIPSize,
+		})
+	}
 	if value, ok := duo.mutation.Scope(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -785,7 +1066,7 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	}
 	_node = &Decision{config: duo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, duo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}

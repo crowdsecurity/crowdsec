@@ -17,24 +17,23 @@ import (
 // BouncerUpdate is the builder for updating Bouncer entities.
 type BouncerUpdate struct {
 	config
-	hooks      []Hook
-	mutation   *BouncerMutation
-	predicates []predicate.Bouncer
+	hooks    []Hook
+	mutation *BouncerMutation
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the BouncerUpdate builder.
 func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
-	bu.predicates = append(bu.predicates, ps...)
+	bu.mutation.predicates = append(bu.mutation.predicates, ps...)
 	return bu
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetCreatedAt(t)
 	return bu
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetCreatedAt(*t)
@@ -42,13 +41,13 @@ func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
 	return bu
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUpdatedAt(t)
 	return bu
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableUpdatedAt(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetUpdatedAt(*t)
@@ -56,31 +55,31 @@ func (bu *BouncerUpdate) SetNillableUpdatedAt(t *time.Time) *BouncerUpdate {
 	return bu
 }
 
-// SetName sets the name field.
+// SetName sets the "name" field.
 func (bu *BouncerUpdate) SetName(s string) *BouncerUpdate {
 	bu.mutation.SetName(s)
 	return bu
 }
 
-// SetAPIKey sets the api_key field.
+// SetAPIKey sets the "api_key" field.
 func (bu *BouncerUpdate) SetAPIKey(s string) *BouncerUpdate {
 	bu.mutation.SetAPIKey(s)
 	return bu
 }
 
-// SetRevoked sets the revoked field.
+// SetRevoked sets the "revoked" field.
 func (bu *BouncerUpdate) SetRevoked(b bool) *BouncerUpdate {
 	bu.mutation.SetRevoked(b)
 	return bu
 }
 
-// SetIPAddress sets the ip_address field.
+// SetIPAddress sets the "ip_address" field.
 func (bu *BouncerUpdate) SetIPAddress(s string) *BouncerUpdate {
 	bu.mutation.SetIPAddress(s)
 	return bu
 }
 
-// SetNillableIPAddress sets the ip_address field if the given value is not nil.
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableIPAddress(s *string) *BouncerUpdate {
 	if s != nil {
 		bu.SetIPAddress(*s)
@@ -88,19 +87,19 @@ func (bu *BouncerUpdate) SetNillableIPAddress(s *string) *BouncerUpdate {
 	return bu
 }
 
-// ClearIPAddress clears the value of ip_address.
+// ClearIPAddress clears the value of the "ip_address" field.
 func (bu *BouncerUpdate) ClearIPAddress() *BouncerUpdate {
 	bu.mutation.ClearIPAddress()
 	return bu
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (bu *BouncerUpdate) SetType(s string) *BouncerUpdate {
 	bu.mutation.SetType(s)
 	return bu
 }
 
-// SetNillableType sets the type field if the given value is not nil.
+// SetNillableType sets the "type" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableType(s *string) *BouncerUpdate {
 	if s != nil {
 		bu.SetType(*s)
@@ -108,19 +107,19 @@ func (bu *BouncerUpdate) SetNillableType(s *string) *BouncerUpdate {
 	return bu
 }
 
-// ClearType clears the value of type.
+// ClearType clears the value of the "type" field.
 func (bu *BouncerUpdate) ClearType() *BouncerUpdate {
 	bu.mutation.ClearType()
 	return bu
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (bu *BouncerUpdate) SetVersion(s string) *BouncerUpdate {
 	bu.mutation.SetVersion(s)
 	return bu
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableVersion(s *string) *BouncerUpdate {
 	if s != nil {
 		bu.SetVersion(*s)
@@ -128,19 +127,19 @@ func (bu *BouncerUpdate) SetNillableVersion(s *string) *BouncerUpdate {
 	return bu
 }
 
-// ClearVersion clears the value of version.
+// ClearVersion clears the value of the "version" field.
 func (bu *BouncerUpdate) ClearVersion() *BouncerUpdate {
 	bu.mutation.ClearVersion()
 	return bu
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (bu *BouncerUpdate) SetUntil(t time.Time) *BouncerUpdate {
 	bu.mutation.SetUntil(t)
 	return bu
 }
 
-// SetNillableUntil sets the until field if the given value is not nil.
+// SetNillableUntil sets the "until" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableUntil(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetUntil(*t)
@@ -148,19 +147,19 @@ func (bu *BouncerUpdate) SetNillableUntil(t *time.Time) *BouncerUpdate {
 	return bu
 }
 
-// ClearUntil clears the value of until.
+// ClearUntil clears the value of the "until" field.
 func (bu *BouncerUpdate) ClearUntil() *BouncerUpdate {
 	bu.mutation.ClearUntil()
 	return bu
 }
 
-// SetLastPull sets the last_pull field.
+// SetLastPull sets the "last_pull" field.
 func (bu *BouncerUpdate) SetLastPull(t time.Time) *BouncerUpdate {
 	bu.mutation.SetLastPull(t)
 	return bu
 }
 
-// SetNillableLastPull sets the last_pull field if the given value is not nil.
+// SetNillableLastPull sets the "last_pull" field if the given value is not nil.
 func (bu *BouncerUpdate) SetNillableLastPull(t *time.Time) *BouncerUpdate {
 	if t != nil {
 		bu.SetLastPull(*t)
@@ -173,7 +172,7 @@ func (bu *BouncerUpdate) Mutation() *BouncerMutation {
 	return bu.mutation
 }
 
-// Save executes the query and returns the number of rows/vertices matched by this operation.
+// Save executes the query and returns the number of nodes affected by the update operation.
 func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
 	var (
 		err      error
@@ -235,7 +234,7 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			},
 		},
 	}
-	if ps := bu.predicates; len(ps) > 0 {
+	if ps := bu.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)
@@ -354,13 +353,13 @@ type BouncerUpdateOne struct {
 	mutation *BouncerMutation
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetCreatedAt(t)
 	return buo
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetCreatedAt(*t)
@@ -368,13 +367,13 @@ func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOn
 	return buo
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUpdatedAt(t)
 	return buo
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetUpdatedAt(*t)
@@ -382,31 +381,31 @@ func (buo *BouncerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BouncerUpdateOn
 	return buo
 }
 
-// SetName sets the name field.
+// SetName sets the "name" field.
 func (buo *BouncerUpdateOne) SetName(s string) *BouncerUpdateOne {
 	buo.mutation.SetName(s)
 	return buo
 }
 
-// SetAPIKey sets the api_key field.
+// SetAPIKey sets the "api_key" field.
 func (buo *BouncerUpdateOne) SetAPIKey(s string) *BouncerUpdateOne {
 	buo.mutation.SetAPIKey(s)
 	return buo
 }
 
-// SetRevoked sets the revoked field.
+// SetRevoked sets the "revoked" field.
 func (buo *BouncerUpdateOne) SetRevoked(b bool) *BouncerUpdateOne {
 	buo.mutation.SetRevoked(b)
 	return buo
 }
 
-// SetIPAddress sets the ip_address field.
+// SetIPAddress sets the "ip_address" field.
 func (buo *BouncerUpdateOne) SetIPAddress(s string) *BouncerUpdateOne {
 	buo.mutation.SetIPAddress(s)
 	return buo
 }
 
-// SetNillableIPAddress sets the ip_address field if the given value is not nil.
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableIPAddress(s *string) *BouncerUpdateOne {
 	if s != nil {
 		buo.SetIPAddress(*s)
@@ -414,19 +413,19 @@ func (buo *BouncerUpdateOne) SetNillableIPAddress(s *string) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearIPAddress clears the value of ip_address.
+// ClearIPAddress clears the value of the "ip_address" field.
 func (buo *BouncerUpdateOne) ClearIPAddress() *BouncerUpdateOne {
 	buo.mutation.ClearIPAddress()
 	return buo
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (buo *BouncerUpdateOne) SetType(s string) *BouncerUpdateOne {
 	buo.mutation.SetType(s)
 	return buo
 }
 
-// SetNillableType sets the type field if the given value is not nil.
+// SetNillableType sets the "type" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableType(s *string) *BouncerUpdateOne {
 	if s != nil {
 		buo.SetType(*s)
@@ -434,19 +433,19 @@ func (buo *BouncerUpdateOne) SetNillableType(s *string) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearType clears the value of type.
+// ClearType clears the value of the "type" field.
 func (buo *BouncerUpdateOne) ClearType() *BouncerUpdateOne {
 	buo.mutation.ClearType()
 	return buo
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (buo *BouncerUpdateOne) SetVersion(s string) *BouncerUpdateOne {
 	buo.mutation.SetVersion(s)
 	return buo
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableVersion(s *string) *BouncerUpdateOne {
 	if s != nil {
 		buo.SetVersion(*s)
@@ -454,19 +453,19 @@ func (buo *BouncerUpdateOne) SetNillableVersion(s *string) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearVersion clears the value of version.
+// ClearVersion clears the value of the "version" field.
 func (buo *BouncerUpdateOne) ClearVersion() *BouncerUpdateOne {
 	buo.mutation.ClearVersion()
 	return buo
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (buo *BouncerUpdateOne) SetUntil(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetUntil(t)
 	return buo
 }
 
-// SetNillableUntil sets the until field if the given value is not nil.
+// SetNillableUntil sets the "until" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableUntil(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetUntil(*t)
@@ -474,19 +473,19 @@ func (buo *BouncerUpdateOne) SetNillableUntil(t *time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// ClearUntil clears the value of until.
+// ClearUntil clears the value of the "until" field.
 func (buo *BouncerUpdateOne) ClearUntil() *BouncerUpdateOne {
 	buo.mutation.ClearUntil()
 	return buo
 }
 
-// SetLastPull sets the last_pull field.
+// SetLastPull sets the "last_pull" field.
 func (buo *BouncerUpdateOne) SetLastPull(t time.Time) *BouncerUpdateOne {
 	buo.mutation.SetLastPull(t)
 	return buo
 }
 
-// SetNillableLastPull sets the last_pull field if the given value is not nil.
+// SetNillableLastPull sets the "last_pull" field if the given value is not nil.
 func (buo *BouncerUpdateOne) SetNillableLastPull(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetLastPull(*t)
@@ -499,7 +498,7 @@ func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
 }
 
-// Save executes the query and returns the updated entity.
+// Save executes the query and returns the updated Bouncer entity.
 func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 	var (
 		err  error
@@ -662,7 +661,7 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	_node = &Bouncer{config: buo.config}
 	_spec.Assign = _node.assignValues
-	_spec.ScanValues = _node.scanValues()
+	_spec.ScanValues = _node.scanValues
 	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}

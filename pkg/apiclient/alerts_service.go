@@ -26,6 +26,7 @@ type AlertsListOpts struct {
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	IncludeCAPI          *bool   `url:"include_capi,omitempty"`
 	Limit                *int    `url:"limit,omitempty"`
+	Contains             *bool   `url:"contains,omitempty"`
 	ListOpts
 }
 
@@ -39,6 +40,7 @@ type AlertsDeleteOpts struct {
 	Until                *string `url:"until,omitempty"`
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	SourceEquals         *string `url:"alert_source,omitempty"`
+	Contains             *bool   `url:"contains,omitempty"`
 	ListOpts
 }
 

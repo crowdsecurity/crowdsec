@@ -21,13 +21,13 @@ type DecisionCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (dc *DecisionCreate) SetCreatedAt(t time.Time) *DecisionCreate {
 	dc.mutation.SetCreatedAt(t)
 	return dc
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (dc *DecisionCreate) SetNillableCreatedAt(t *time.Time) *DecisionCreate {
 	if t != nil {
 		dc.SetCreatedAt(*t)
@@ -35,13 +35,13 @@ func (dc *DecisionCreate) SetNillableCreatedAt(t *time.Time) *DecisionCreate {
 	return dc
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (dc *DecisionCreate) SetUpdatedAt(t time.Time) *DecisionCreate {
 	dc.mutation.SetUpdatedAt(t)
 	return dc
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (dc *DecisionCreate) SetNillableUpdatedAt(t *time.Time) *DecisionCreate {
 	if t != nil {
 		dc.SetUpdatedAt(*t)
@@ -49,31 +49,31 @@ func (dc *DecisionCreate) SetNillableUpdatedAt(t *time.Time) *DecisionCreate {
 	return dc
 }
 
-// SetUntil sets the until field.
+// SetUntil sets the "until" field.
 func (dc *DecisionCreate) SetUntil(t time.Time) *DecisionCreate {
 	dc.mutation.SetUntil(t)
 	return dc
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (dc *DecisionCreate) SetScenario(s string) *DecisionCreate {
 	dc.mutation.SetScenario(s)
 	return dc
 }
 
-// SetType sets the type field.
+// SetType sets the "type" field.
 func (dc *DecisionCreate) SetType(s string) *DecisionCreate {
 	dc.mutation.SetType(s)
 	return dc
 }
 
-// SetStartIP sets the start_ip field.
+// SetStartIP sets the "start_ip" field.
 func (dc *DecisionCreate) SetStartIP(i int64) *DecisionCreate {
 	dc.mutation.SetStartIP(i)
 	return dc
 }
 
-// SetNillableStartIP sets the start_ip field if the given value is not nil.
+// SetNillableStartIP sets the "start_ip" field if the given value is not nil.
 func (dc *DecisionCreate) SetNillableStartIP(i *int64) *DecisionCreate {
 	if i != nil {
 		dc.SetStartIP(*i)
@@ -81,13 +81,13 @@ func (dc *DecisionCreate) SetNillableStartIP(i *int64) *DecisionCreate {
 	return dc
 }
 
-// SetEndIP sets the end_ip field.
+// SetEndIP sets the "end_ip" field.
 func (dc *DecisionCreate) SetEndIP(i int64) *DecisionCreate {
 	dc.mutation.SetEndIP(i)
 	return dc
 }
 
-// SetNillableEndIP sets the end_ip field if the given value is not nil.
+// SetNillableEndIP sets the "end_ip" field if the given value is not nil.
 func (dc *DecisionCreate) SetNillableEndIP(i *int64) *DecisionCreate {
 	if i != nil {
 		dc.SetEndIP(*i)
@@ -95,31 +95,73 @@ func (dc *DecisionCreate) SetNillableEndIP(i *int64) *DecisionCreate {
 	return dc
 }
 
-// SetScope sets the scope field.
+// SetStartSuffix sets the "start_suffix" field.
+func (dc *DecisionCreate) SetStartSuffix(i int64) *DecisionCreate {
+	dc.mutation.SetStartSuffix(i)
+	return dc
+}
+
+// SetNillableStartSuffix sets the "start_suffix" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableStartSuffix(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetStartSuffix(*i)
+	}
+	return dc
+}
+
+// SetEndSuffix sets the "end_suffix" field.
+func (dc *DecisionCreate) SetEndSuffix(i int64) *DecisionCreate {
+	dc.mutation.SetEndSuffix(i)
+	return dc
+}
+
+// SetNillableEndSuffix sets the "end_suffix" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableEndSuffix(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetEndSuffix(*i)
+	}
+	return dc
+}
+
+// SetIPSize sets the "ip_size" field.
+func (dc *DecisionCreate) SetIPSize(i int64) *DecisionCreate {
+	dc.mutation.SetIPSize(i)
+	return dc
+}
+
+// SetNillableIPSize sets the "ip_size" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableIPSize(i *int64) *DecisionCreate {
+	if i != nil {
+		dc.SetIPSize(*i)
+	}
+	return dc
+}
+
+// SetScope sets the "scope" field.
 func (dc *DecisionCreate) SetScope(s string) *DecisionCreate {
 	dc.mutation.SetScope(s)
 	return dc
 }
 
-// SetValue sets the value field.
+// SetValue sets the "value" field.
 func (dc *DecisionCreate) SetValue(s string) *DecisionCreate {
 	dc.mutation.SetValue(s)
 	return dc
 }
 
-// SetOrigin sets the origin field.
+// SetOrigin sets the "origin" field.
 func (dc *DecisionCreate) SetOrigin(s string) *DecisionCreate {
 	dc.mutation.SetOrigin(s)
 	return dc
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (dc *DecisionCreate) SetSimulated(b bool) *DecisionCreate {
 	dc.mutation.SetSimulated(b)
 	return dc
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (dc *DecisionCreate) SetNillableSimulated(b *bool) *DecisionCreate {
 	if b != nil {
 		dc.SetSimulated(*b)
@@ -127,13 +169,13 @@ func (dc *DecisionCreate) SetNillableSimulated(b *bool) *DecisionCreate {
 	return dc
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (dc *DecisionCreate) SetOwnerID(id int) *DecisionCreate {
 	dc.mutation.SetOwnerID(id)
 	return dc
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (dc *DecisionCreate) SetNillableOwnerID(id *int) *DecisionCreate {
 	if id != nil {
 		dc = dc.SetOwnerID(*id)
@@ -141,7 +183,7 @@ func (dc *DecisionCreate) SetNillableOwnerID(id *int) *DecisionCreate {
 	return dc
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (dc *DecisionCreate) SetOwner(a *Alert) *DecisionCreate {
 	return dc.SetOwnerID(a.ID)
 }
@@ -324,6 +366,30 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 		})
 		_node.EndIP = value
 	}
+	if value, ok := dc.mutation.StartSuffix(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldStartSuffix,
+		})
+		_node.StartSuffix = value
+	}
+	if value, ok := dc.mutation.EndSuffix(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldEndSuffix,
+		})
+		_node.EndSuffix = value
+	}
+	if value, ok := dc.mutation.IPSize(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeInt64,
+			Value:  value,
+			Column: decision.FieldIPSize,
+		})
+		_node.IPSize = value
+	}
 	if value, ok := dc.mutation.Scope(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -378,7 +444,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// DecisionCreateBulk is the builder for creating a bulk of Decision entities.
+// DecisionCreateBulk is the builder for creating many Decision entities in bulk.
 type DecisionCreateBulk struct {
 	config
 	builders []*DecisionCreate
@@ -436,7 +502,7 @@ func (dcb *DecisionCreateBulk) Save(ctx context.Context) ([]*Decision, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (dcb *DecisionCreateBulk) SaveX(ctx context.Context) []*Decision {
 	v, err := dcb.Save(ctx)
 	if err != nil {

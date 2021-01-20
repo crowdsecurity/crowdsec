@@ -21,8 +21,6 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
 			Duration: &duration,
-			EndIP:    dbDecision.EndIP,
-			StartIP:  dbDecision.StartIP,
 			Scenario: &dbDecision.Scenario,
 			Scope:    &dbDecision.Scope,
 			Value:    &dbDecision.Value,

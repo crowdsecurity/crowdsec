@@ -40,3 +40,9 @@ For major upgrades (ie. `0.3.X` to `1.0.X`), `wizard` won't do the trick, and yo
 
  - Migrating from `0.3.X` to `1.0.X` :  [documentation](Crowdsec/v1/migration/)
 
+
+## General warning
+
+We **strongly** advise you against running crowdsec and LAPI in different versions.
+When upgrading existing setup, we suggest you to upgrade both crowdsec, cscli and LAPI.
+

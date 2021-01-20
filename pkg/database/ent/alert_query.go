@@ -26,7 +26,7 @@ type AlertQuery struct {
 	limit      *int
 	offset     *int
 	order      []OrderFunc
-	unique     []string
+	fields     []string
 	predicates []predicate.Alert
 	// eager-loading edges.
 	withOwner     *MachineQuery
@@ -39,7 +39,7 @@ type AlertQuery struct {
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the builder.
+// Where adds a new predicate for the AlertQuery builder.
 func (aq *AlertQuery) Where(ps ...predicate.Alert) *AlertQuery {
 	aq.predicates = append(aq.predicates, ps...)
 	return aq
@@ -63,7 +63,7 @@ func (aq *AlertQuery) Order(o ...OrderFunc) *AlertQuery {
 	return aq
 }
 
-// QueryOwner chains the current query on the owner edge.
+// QueryOwner chains the current query on the "owner" edge.
 func (aq *AlertQuery) QueryOwner() *MachineQuery {
 	query := &MachineQuery{config: aq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -85,7 +85,7 @@ func (aq *AlertQuery) QueryOwner() *MachineQuery {
 	return query
 }
 
-// QueryDecisions chains the current query on the decisions edge.
+// QueryDecisions chains the current query on the "decisions" edge.
 func (aq *AlertQuery) QueryDecisions() *DecisionQuery {
 	query := &DecisionQuery{config: aq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -107,7 +107,7 @@ func (aq *AlertQuery) QueryDecisions() *DecisionQuery {
 	return query
 }
 
-// QueryEvents chains the current query on the events edge.
+// QueryEvents chains the current query on the "events" edge.
 func (aq *AlertQuery) QueryEvents() *EventQuery {
 	query := &EventQuery{config: aq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -129,7 +129,7 @@ func (aq *AlertQuery) QueryEvents() *EventQuery {
 	return query
 }
 
-// QueryMetas chains the current query on the metas edge.
+// QueryMetas chains the current query on the "metas" edge.
 func (aq *AlertQuery) QueryMetas() *MetaQuery {
 	query := &MetaQuery{config: aq.config}
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
@@ -151,7 +151,8 @@ func (aq *AlertQuery) QueryMetas() *MetaQuery {
 	return query
 }
 
-// First returns the first Alert entity in the query. Returns *NotFoundError when no alert was found.
+// First returns the first Alert entity from the query.
+// Returns a *NotFoundError when no Alert was found.
 func (aq *AlertQuery) First(ctx context.Context) (*Alert, error) {
 	nodes, err := aq.Limit(1).All(ctx)
 	if err != nil {
@@ -172,7 +173,8 @@ func (aq *AlertQuery) FirstX(ctx context.Context) *Alert {
 	return node
 }
 
-// FirstID returns the first Alert id in the query. Returns *NotFoundError when no id was found.
+// FirstID returns the first Alert ID from the query.
+// Returns a *NotFoundError when no Alert ID was found.
 func (aq *AlertQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = aq.Limit(1).IDs(ctx); err != nil {
@@ -185,8 +187,8 @@ func (aq *AlertQuery) FirstID(ctx context.Context) (id int, err error) {
 	return ids[0], nil
 }
 
-// FirstXID is like FirstID, but panics if an error occurs.
-func (aq *AlertQuery) FirstXID(ctx context.Context) int {
+// FirstIDX is like FirstID, but panics if an error occurs.
+func (aq *AlertQuery) FirstIDX(ctx context.Context) int {
 	id, err := aq.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -194,7 +196,9 @@ func (aq *AlertQuery) FirstXID(ctx context.Context) int {
 	return id
 }
 
-// Only returns the only Alert entity in the query, returns an error if not exactly one entity was returned.
+// Only returns a single Alert entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when exactly one Alert entity is not found.
+// Returns a *NotFoundError when no Alert entities are found.
 func (aq *AlertQuery) Only(ctx context.Context) (*Alert, error) {
 	nodes, err := aq.Limit(2).All(ctx)
 	if err != nil {
@@ -219,7 +223,9 @@ func (aq *AlertQuery) OnlyX(ctx context.Context) *Alert {
 	return node
 }
 
-// OnlyID returns the only Alert id in the query, returns an error if not exactly one id was returned.
+// OnlyID is like Only, but returns the only Alert ID in the query.
+// Returns a *NotSingularError when exactly one Alert ID is not found.
+// Returns a *NotFoundError when no entities are found.
 func (aq *AlertQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = aq.Limit(2).IDs(ctx); err != nil {
@@ -262,7 +268,7 @@ func (aq *AlertQuery) AllX(ctx context.Context) []*Alert {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Alert ids.
+// IDs executes the query and returns a list of Alert IDs.
 func (aq *AlertQuery) IDs(ctx context.Context) ([]int, error) {
 	var ids []int
 	if err := aq.Select(alert.FieldID).Scan(ctx, &ids); err != nil {
@@ -314,24 +320,30 @@ func (aq *AlertQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the query builder, including all associated steps. It can be
+// Clone returns a duplicate of the AlertQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
 func (aq *AlertQuery) Clone() *AlertQuery {
+	if aq == nil {
+		return nil
+	}
 	return &AlertQuery{
-		config:     aq.config,
-		limit:      aq.limit,
-		offset:     aq.offset,
-		order:      append([]OrderFunc{}, aq.order...),
-		unique:     append([]string{}, aq.unique...),
-		predicates: append([]predicate.Alert{}, aq.predicates...),
+		config:        aq.config,
+		limit:         aq.limit,
+		offset:        aq.offset,
+		order:         append([]OrderFunc{}, aq.order...),
+		predicates:    append([]predicate.Alert{}, aq.predicates...),
+		withOwner:     aq.withOwner.Clone(),
+		withDecisions: aq.withDecisions.Clone(),
+		withEvents:    aq.withEvents.Clone(),
+		withMetas:     aq.withMetas.Clone(),
 		// clone intermediate query.
 		sql:  aq.sql.Clone(),
 		path: aq.path,
 	}
 }
 
-//  WithOwner tells the query-builder to eager-loads the nodes that are connected to
-// the "owner" edge. The optional arguments used to configure the query builder of the edge.
+// WithOwner tells the query-builder to eager-load the nodes that are connected to
+// the "owner" edge. The optional arguments are used to configure the query builder of the edge.
 func (aq *AlertQuery) WithOwner(opts ...func(*MachineQuery)) *AlertQuery {
 	query := &MachineQuery{config: aq.config}
 	for _, opt := range opts {
@@ -341,8 +353,8 @@ func (aq *AlertQuery) WithOwner(opts ...func(*MachineQuery)) *AlertQuery {
 	return aq
 }
 
-//  WithDecisions tells the query-builder to eager-loads the nodes that are connected to
-// the "decisions" edge. The optional arguments used to configure the query builder of the edge.
+// WithDecisions tells the query-builder to eager-load the nodes that are connected to
+// the "decisions" edge. The optional arguments are used to configure the query builder of the edge.
 func (aq *AlertQuery) WithDecisions(opts ...func(*DecisionQuery)) *AlertQuery {
 	query := &DecisionQuery{config: aq.config}
 	for _, opt := range opts {
@@ -352,8 +364,8 @@ func (aq *AlertQuery) WithDecisions(opts ...func(*DecisionQuery)) *AlertQuery {
 	return aq
 }
 
-//  WithEvents tells the query-builder to eager-loads the nodes that are connected to
-// the "events" edge. The optional arguments used to configure the query builder of the edge.
+// WithEvents tells the query-builder to eager-load the nodes that are connected to
+// the "events" edge. The optional arguments are used to configure the query builder of the edge.
 func (aq *AlertQuery) WithEvents(opts ...func(*EventQuery)) *AlertQuery {
 	query := &EventQuery{config: aq.config}
 	for _, opt := range opts {
@@ -363,8 +375,8 @@ func (aq *AlertQuery) WithEvents(opts ...func(*EventQuery)) *AlertQuery {
 	return aq
 }
 
-//  WithMetas tells the query-builder to eager-loads the nodes that are connected to
-// the "metas" edge. The optional arguments used to configure the query builder of the edge.
+// WithMetas tells the query-builder to eager-load the nodes that are connected to
+// the "metas" edge. The optional arguments are used to configure the query builder of the edge.
 func (aq *AlertQuery) WithMetas(opts ...func(*MetaQuery)) *AlertQuery {
 	query := &MetaQuery{config: aq.config}
 	for _, opt := range opts {
@@ -374,7 +386,7 @@ func (aq *AlertQuery) WithMetas(opts ...func(*MetaQuery)) *AlertQuery {
 	return aq
 }
 
-// GroupBy used to group vertices by one or more fields/columns.
+// GroupBy is used to group vertices by one or more fields/columns.
 // It is often used with aggregate functions, like: count, max, mean, min, sum.
 //
 // Example:
@@ -401,7 +413,8 @@ func (aq *AlertQuery) GroupBy(field string, fields ...string) *AlertGroupBy {
 	return group
 }
 
-// Select one or more fields from the given query.
+// Select allows the selection one or more fields/columns for the given query,
+// instead of selecting all fields in the entity.
 //
 // Example:
 //
@@ -414,18 +427,16 @@ func (aq *AlertQuery) GroupBy(field string, fields ...string) *AlertGroupBy {
 //		Scan(ctx, &v)
 //
 func (aq *AlertQuery) Select(field string, fields ...string) *AlertSelect {
-	selector := &AlertSelect{config: aq.config}
-	selector.fields = append([]string{field}, fields...)
-	selector.path = func(ctx context.Context) (prev *sql.Selector, err error) {
-		if err := aq.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		return aq.sqlQuery(), nil
-	}
-	return selector
+	aq.fields = append([]string{field}, fields...)
+	return &AlertSelect{AlertQuery: aq}
 }
 
 func (aq *AlertQuery) prepareQuery(ctx context.Context) error {
+	for _, f := range aq.fields {
+		if !alert.ValidColumn(f) {
+			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+		}
+	}
 	if aq.path != nil {
 		prev, err := aq.path(ctx)
 		if err != nil {
@@ -454,22 +465,18 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 	if withFKs {
 		_spec.Node.Columns = append(_spec.Node.Columns, alert.ForeignKeys...)
 	}
-	_spec.ScanValues = func() []interface{} {
+	_spec.ScanValues = func(columns []string) ([]interface{}, error) {
 		node := &Alert{config: aq.config}
 		nodes = append(nodes, node)
-		values := node.scanValues()
-		if withFKs {
-			values = append(values, node.fkValues()...)
-		}
-		return values
+		return node.scanValues(columns)
 	}
-	_spec.Assign = func(values ...interface{}) error {
+	_spec.Assign = func(columns []string, values []interface{}) error {
 		if len(nodes) == 0 {
 			return fmt.Errorf("ent: Assign called without calling ScanValues")
 		}
 		node := nodes[len(nodes)-1]
 		node.Edges.loadedTypes = loadedTypes
-		return node.assignValues(values...)
+		return node.assignValues(columns, values)
 	}
 	if err := sqlgraph.QueryNodes(ctx, aq.driver, _spec); err != nil {
 		return nil, err
@@ -509,6 +516,7 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		for i := range nodes {
 			fks = append(fks, nodes[i].ID)
 			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Decisions = []*Decision{}
 		}
 		query.withFKs = true
 		query.Where(predicate.Decision(func(s *sql.Selector) {
@@ -537,6 +545,7 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		for i := range nodes {
 			fks = append(fks, nodes[i].ID)
 			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Events = []*Event{}
 		}
 		query.withFKs = true
 		query.Where(predicate.Event(func(s *sql.Selector) {
@@ -565,6 +574,7 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		for i := range nodes {
 			fks = append(fks, nodes[i].ID)
 			nodeids[nodes[i].ID] = nodes[i]
+			nodes[i].Edges.Metas = []*Meta{}
 		}
 		query.withFKs = true
 		query.Where(predicate.Meta(func(s *sql.Selector) {
@@ -616,6 +626,15 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   aq.sql,
 		Unique: true,
 	}
+	if fields := aq.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, alert.FieldID)
+		for i := range fields {
+			if fields[i] != alert.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
+			}
+		}
+	}
 	if ps := aq.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -664,7 +683,7 @@ func (aq *AlertQuery) sqlQuery() *sql.Selector {
 	return selector
 }
 
-// AlertGroupBy is the builder for group-by Alert entities.
+// AlertGroupBy is the group-by builder for Alert entities.
 type AlertGroupBy struct {
 	config
 	fields []string
@@ -680,7 +699,7 @@ func (agb *AlertGroupBy) Aggregate(fns ...AggregateFunc) *AlertGroupBy {
 	return agb
 }
 
-// Scan applies the group-by query and scan the result into the given value.
+// Scan applies the group-by query and scans the result into the given value.
 func (agb *AlertGroupBy) Scan(ctx context.Context, v interface{}) error {
 	query, err := agb.path(ctx)
 	if err != nil {
@@ -697,7 +716,8 @@ func (agb *AlertGroupBy) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from group-by. It is only allowed when querying group-by with one field.
+// Strings returns list of strings from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Strings(ctx context.Context) ([]string, error) {
 	if len(agb.fields) > 1 {
 		return nil, errors.New("ent: AlertGroupBy.Strings is not achievable when grouping more than 1 field")
@@ -718,7 +738,8 @@ func (agb *AlertGroupBy) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from group-by. It is only allowed when querying group-by with one field.
+// String returns a single string from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = agb.Strings(ctx); err != nil {
@@ -744,7 +765,8 @@ func (agb *AlertGroupBy) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from group-by. It is only allowed when querying group-by with one field.
+// Ints returns list of ints from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Ints(ctx context.Context) ([]int, error) {
 	if len(agb.fields) > 1 {
 		return nil, errors.New("ent: AlertGroupBy.Ints is not achievable when grouping more than 1 field")
@@ -765,7 +787,8 @@ func (agb *AlertGroupBy) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from group-by. It is only allowed when querying group-by with one field.
+// Int returns a single int from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = agb.Ints(ctx); err != nil {
@@ -791,7 +814,8 @@ func (agb *AlertGroupBy) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from group-by. It is only allowed when querying group-by with one field.
+// Float64s returns list of float64s from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Float64s(ctx context.Context) ([]float64, error) {
 	if len(agb.fields) > 1 {
 		return nil, errors.New("ent: AlertGroupBy.Float64s is not achievable when grouping more than 1 field")
@@ -812,7 +836,8 @@ func (agb *AlertGroupBy) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from group-by. It is only allowed when querying group-by with one field.
+// Float64 returns a single float64 from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = agb.Float64s(ctx); err != nil {
@@ -838,7 +863,8 @@ func (agb *AlertGroupBy) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from group-by. It is only allowed when querying group-by with one field.
+// Bools returns list of bools from group-by.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Bools(ctx context.Context) ([]bool, error) {
 	if len(agb.fields) > 1 {
 		return nil, errors.New("ent: AlertGroupBy.Bools is not achievable when grouping more than 1 field")
@@ -859,7 +885,8 @@ func (agb *AlertGroupBy) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from group-by. It is only allowed when querying group-by with one field.
+// Bool returns a single bool from a group-by query.
+// It is only allowed when executing a group-by query with one field.
 func (agb *AlertGroupBy) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = agb.Bools(ctx); err != nil {
@@ -914,22 +941,19 @@ func (agb *AlertGroupBy) sqlQuery() *sql.Selector {
 	return selector.Select(columns...).GroupBy(agb.fields...)
 }
 
-// AlertSelect is the builder for select fields of Alert entities.
+// AlertSelect is the builder for selecting fields of Alert entities.
 type AlertSelect struct {
-	config
-	fields []string
+	*AlertQuery
 	// intermediate query (i.e. traversal path).
-	sql  *sql.Selector
-	path func(context.Context) (*sql.Selector, error)
+	sql *sql.Selector
 }
 
-// Scan applies the selector query and scan the result into the given value.
+// Scan applies the selector query and scans the result into the given value.
 func (as *AlertSelect) Scan(ctx context.Context, v interface{}) error {
-	query, err := as.path(ctx)
-	if err != nil {
+	if err := as.prepareQuery(ctx); err != nil {
 		return err
 	}
-	as.sql = query
+	as.sql = as.AlertQuery.sqlQuery()
 	return as.sqlScan(ctx, v)
 }
 
@@ -940,7 +964,7 @@ func (as *AlertSelect) ScanX(ctx context.Context, v interface{}) {
 	}
 }
 
-// Strings returns list of strings from selector. It is only allowed when selecting one field.
+// Strings returns list of strings from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Strings(ctx context.Context) ([]string, error) {
 	if len(as.fields) > 1 {
 		return nil, errors.New("ent: AlertSelect.Strings is not achievable when selecting more than 1 field")
@@ -961,7 +985,7 @@ func (as *AlertSelect) StringsX(ctx context.Context) []string {
 	return v
 }
 
-// String returns a single string from selector. It is only allowed when selecting one field.
+// String returns a single string from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) String(ctx context.Context) (_ string, err error) {
 	var v []string
 	if v, err = as.Strings(ctx); err != nil {
@@ -987,7 +1011,7 @@ func (as *AlertSelect) StringX(ctx context.Context) string {
 	return v
 }
 
-// Ints returns list of ints from selector. It is only allowed when selecting one field.
+// Ints returns list of ints from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Ints(ctx context.Context) ([]int, error) {
 	if len(as.fields) > 1 {
 		return nil, errors.New("ent: AlertSelect.Ints is not achievable when selecting more than 1 field")
@@ -1008,7 +1032,7 @@ func (as *AlertSelect) IntsX(ctx context.Context) []int {
 	return v
 }
 
-// Int returns a single int from selector. It is only allowed when selecting one field.
+// Int returns a single int from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Int(ctx context.Context) (_ int, err error) {
 	var v []int
 	if v, err = as.Ints(ctx); err != nil {
@@ -1034,7 +1058,7 @@ func (as *AlertSelect) IntX(ctx context.Context) int {
 	return v
 }
 
-// Float64s returns list of float64s from selector. It is only allowed when selecting one field.
+// Float64s returns list of float64s from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Float64s(ctx context.Context) ([]float64, error) {
 	if len(as.fields) > 1 {
 		return nil, errors.New("ent: AlertSelect.Float64s is not achievable when selecting more than 1 field")
@@ -1055,7 +1079,7 @@ func (as *AlertSelect) Float64sX(ctx context.Context) []float64 {
 	return v
 }
 
-// Float64 returns a single float64 from selector. It is only allowed when selecting one field.
+// Float64 returns a single float64 from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Float64(ctx context.Context) (_ float64, err error) {
 	var v []float64
 	if v, err = as.Float64s(ctx); err != nil {
@@ -1081,7 +1105,7 @@ func (as *AlertSelect) Float64X(ctx context.Context) float64 {
 	return v
 }
 
-// Bools returns list of bools from selector. It is only allowed when selecting one field.
+// Bools returns list of bools from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Bools(ctx context.Context) ([]bool, error) {
 	if len(as.fields) > 1 {
 		return nil, errors.New("ent: AlertSelect.Bools is not achievable when selecting more than 1 field")
@@ -1102,7 +1126,7 @@ func (as *AlertSelect) BoolsX(ctx context.Context) []bool {
 	return v
 }
 
-// Bool returns a single bool from selector. It is only allowed when selecting one field.
+// Bool returns a single bool from a selector. It is only allowed when selecting one field.
 func (as *AlertSelect) Bool(ctx context.Context) (_ bool, err error) {
 	var v []bool
 	if v, err = as.Bools(ctx); err != nil {
@@ -1129,11 +1153,6 @@ func (as *AlertSelect) BoolX(ctx context.Context) bool {
 }
 
 func (as *AlertSelect) sqlScan(ctx context.Context, v interface{}) error {
-	for _, f := range as.fields {
-		if !alert.ValidColumn(f) {
-			return &ValidationError{Name: f, err: fmt.Errorf("invalid field %q for selection", f)}
-		}
-	}
 	rows := &sql.Rows{}
 	query, args := as.sqlQuery().Query()
 	if err := as.driver.Query(ctx, query, args, rows); err != nil {

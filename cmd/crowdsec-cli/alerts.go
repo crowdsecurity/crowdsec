@@ -234,6 +234,7 @@ func NewAlertsCmd() *cobra.Command {
 		TypeEquals:     new(string),
 	}
 	limit = new(int)
+	contained := new(bool)
 	var cmdAlertsList = &cobra.Command{
 		Use:   "list [filters]",
 		Short: "List alerts",
@@ -300,6 +301,9 @@ cscli alerts list --type ban`,
 			if *alertListFilter.RangeEquals == "" {
 				alertListFilter.RangeEquals = nil
 			}
+			if contained != nil && *contained {
+				alertListFilter.Contains = new(bool)
+			}
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
 				log.Fatalf("Unable to list alerts : %v", err.Error())
@@ -320,6 +324,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.TypeEquals, "type", "", "restrict to alerts with given decision type (ie. ban, captcha)")
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
+	cmdAlertsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
 	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
@@ -380,6 +385,9 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 				if *alertDeleteFilter.RangeEquals == "" {
 					alertDeleteFilter.RangeEquals = nil
 				}
+				if contained != nil && *contained {
+					alertDeleteFilter.Contains = new(bool)
+				}
 			} else {
 				alertDeleteFilter = apiclient.AlertsDeleteOpts{}
 			}
@@ -398,6 +406,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.IPEquals, "ip", "i", "", "Source ip (shorthand for --scope ip --value <IP>)")
 	cmdAlertsDelete.Flags().StringVarP(alertDeleteFilter.RangeEquals, "range", "r", "", "Range source ip (shorthand for --scope range --value <RANGE>)")
 	cmdAlertsDelete.Flags().BoolVarP(&AlertDeleteAll, "all", "a", false, "delete all alerts")
+	cmdAlertsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	cmdAlerts.AddCommand(cmdAlertsDelete)
 

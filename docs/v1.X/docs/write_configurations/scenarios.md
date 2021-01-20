@@ -15,6 +15,9 @@
 > If you're writing scenario for existing logs, [take a look at the taxonomy](https://hub.crowdsec.net/fields) to find your way !
 
 
+!!! tips "Exported fields"
+    You can view some of the extracted fields of existing parsers in the [Hub](https://hub.crowdsec.net/fields)
+
 ## Base scenario file
 
 

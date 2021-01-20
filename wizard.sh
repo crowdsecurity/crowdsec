@@ -242,7 +242,7 @@ install_collection() {
     fi
 
     if [[ ${SILENT} == "false" ]]; then
-        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/" 20 50
+        whiptail --msgbox "CrowdSec alone will not block any IP address. If you want to block them, you must use a bouncer. You can find them on https://hub.crowdsec.net/browse/#bouncers" 20 50
     fi
 }
 
@@ -305,18 +305,35 @@ check_cs_version () {
         if [[ ${FORCE_MODE} == "false" ]]; then
             exit 1
         fi
+    elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
+        log_warn "new version ($NEW_CS_VERSION) is a minor upgrade !"
+
+        if [[ $ACTION != "upgrade" ]] ; then 
+            echo ""
+            echo "We recommand to upgrade with : sudo ./wizard.sh --upgrade "
+            echo "If you want to $ACTION anyway, please use '--force'."
+            echo ""
+            echo "Run : sudo ./wizard.sh --$ACTION --force"
+            if [[ ${FORCE_MODE} == "false" ]]; then
+                exit 1
+            fi
+        fi
     elif [[ $NEW_PATCH_VERSION -gt $CURRENT_PATCH_VERSION ]] ; then
         log_warn "new version ($NEW_CS_VERSION) is a patch !"
-        echo ""
-        echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
-        echo "If you want to $ACTION anyway, please use '--force'."
-        echo ""
-        echo "Run : sudo ./wizard.sh --$ACTION --force"
-        if [[ ${FORCE_MODE} == "false" ]]; then
-            exit 1
+
+        if [[ $ACTION != "binupgrade" ]] ; then 
+            echo ""
+            echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
+            echo "If you want to $ACTION anyway, please use '--force'."
+            echo ""
+            echo "Run : sudo ./wizard.sh --$ACTION --force"
+            if [[ ${FORCE_MODE} == "false" ]]; then
+                exit 1
+            fi
         fi
     elif [[ $NEW_MINOR_VERSION -eq $CURRENT_MINOR_VERSION ]]; then
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
+
         echo ""
         echo "We recommand to $ACTION only if it's an higher version. "
         echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
@@ -423,8 +440,23 @@ delete_bins() {
     rm -f ${CSCLI_BIN_INSTALLED}   
 }
 
+check_running_bouncers() {
+    #when uninstalling, check if user still has bouncers
+    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=json | jq '. | length')
+    if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
+        if [[ ${FORCE_MODE} == "false" ]]; then
+            echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."
+            echo "WARNING : Uninstalling crowdsec with a running bouncer will let it in an unpredictable state."
+            echo "WARNING : If you want to uninstall crowdsec, you should first uninstall the bouncers."
+            echo "Specify --force to bypass this restriction."
+            exit 1
+        fi;
+    fi
+}
+
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
+
     systemctl stop crowdsec.service
     systemctl disable crowdsec.service
     ${CSCLI_BIN} dashboard remove -f -y
@@ -441,6 +473,17 @@ uninstall_crowdsec() {
     rm -rf ${CROWDSEC_USR_DIR} || echo ""
     rm -f ${SYSTEMD_PATH_FILE} || echo ""
     log_info "crowdsec successfully uninstalled"
+}
+
+
+function show_link {
+    echo ""
+    echo "Useful links to start with Crowdsec:"
+    echo ""
+    echo "  - Documentation : https://docs.crowdsec.net/"
+    echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
+    echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
+    echo ""
 }
 
 main() {
@@ -488,6 +531,7 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
+        check_running_bouncers
         uninstall_crowdsec
         return
     fi
@@ -502,6 +546,8 @@ main() {
         detect_cs_install
         log_info "installing crowdsec"
         install_crowdsec
+
+        show_link
         return
     fi
 
@@ -550,7 +596,7 @@ main() {
         systemctl enable crowdsec
         systemctl start crowdsec
         log_info "Enabling and starting crowdsec daemon"
-
+        show_link
         return
     fi
 
