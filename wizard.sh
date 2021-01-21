@@ -388,20 +388,17 @@ update_bins() {
     systemctl restart crowdsec
 }
 
-geoip_workaround() {
+ensure_geoip_is_installed() {
     OUTPUT=$(${CSCLI_BIN_INSTALLED} collections list )
     if printf '%s' "${OUTPUT}" | grep -q geoip; then
-	    log_info "Prout "
 	return
     fi
     OUTPUT=$(${CSCLI_BIN_INSTALLED}  collections list -o raw)
     if  printf '%s' "${OUTPUT}" |grep -q "linux.yaml" ; then
 	PATH=$(${CSCLI_BIN_INSTALLED}  collections list)|awk -F" " '{print $6}'
 	if grep -q $PATH geoip ; then
-	    log_info "Prout 3"
 	    return
 	else
-	    log_info "Prout 4"
 	    cscli  hub upgrade
 	    cscli  collections install crowdsecurity/geoip
 	    return
@@ -432,7 +429,7 @@ update_full() {
     ${CSCLI_BIN_INSTALLED}  hub update
     ${CSCLI_BIN_INSTALLED}  config restore ${BACKUP_DIR}
     log_info "Checking and fixing geoip stuff"
-    geoip_workaround
+    ensure_geoip_is_installed
     log_info "Restoring saved database if exist"
     if [[ -f "${BACKUP_DIR}/crowdsec.db" ]]; then
         cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
