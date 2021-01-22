@@ -10,6 +10,9 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Ship crowdsec.service without enabling or starting it, some config is
     required beforehand.
   * Really add lintian overrides for hardening-no-pie warnings.
+  * Ship patterns below /etc/crowdsec/patterns: they're supposed to be
+    stable over time, and it's advised not to modify them, but let's allow
+    for some configurability.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 

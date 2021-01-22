@@ -1,1 +1,2 @@
+config/patterns/*       etc/crowdsec/patterns
 config/crowdsec.service lib/systemd/system
