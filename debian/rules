@@ -40,6 +40,11 @@ override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
 
 
+### Maintainer targets:
+
 generate_hub_tarball:
 	cd $(HUB_DIR) && git archive $(HUB_BRANCH) | gzip -9 > ../crowdsec_$(U_VERSION).orig-hub$(HUB_ID).tar.gz \
 	&& echo "Generated hub tarball from branch $(HUB_BRANCH), at commit `git show $(HUB_BRANCH) | awk '/^commit / {print $$2; quit}' | cut -b -10`"
+
+extract_hub_tarball:
+	mkdir -p hub$(HUB_ID) && tar xf ../crowdsec_$(VERSION).orig-hub$(HUB_ID).tar.gz -C hub$(HUB_ID)
