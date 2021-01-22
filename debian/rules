@@ -20,7 +20,10 @@ export LD_FLAGS        := -ldflags '-s -w             \
 # Use 1 for a new upstream release, and bump it when an update of the
 # hub data is desired while the upstream version doesn't change. See
 # below for the generate_hub_tarball target:
-export HUB_ID = 1
+export HUB_ID     := 1
+export HUB_BRANCH := master
+export HUB_DIR    := ../hub
+export U_VERSION  := $(shell dpkg-parsechangelog -SVersion|sed 's/-.*//')
 
 %:
 	dh $@ --builddirectory=_build --buildsystem=golang --with=golang
@@ -36,9 +39,7 @@ override_dh_auto_install:
 override_dh_installsystemd:
 	dh_installsystemd --no-enable --no-start
 
-generate_hub_tarball: BRANCH  := master
-generate_hub_tarball: HUB_DIR := ../hub
-generate_hub_tarball: VERSION := $(shell dpkg-parsechangelog -SVersion|sed 's/-.*//')
+
 generate_hub_tarball:
-	cd $(HUB_DIR) && git archive $(BRANCH) | gzip -9 > ../crowdsec_$(VERSION).orig-hub$(HUB_ID).tar.gz \
-	&& echo "Generated hub tarball from branch $(BRANCH), at commit `git show $(BRANCH) | awk '/^commit / {print $$2; quit}' | cut -b -10`"
+	cd $(HUB_DIR) && git archive $(HUB_BRANCH) | gzip -9 > ../crowdsec_$(U_VERSION).orig-hub$(HUB_ID).tar.gz \
+	&& echo "Generated hub tarball from branch $(HUB_BRANCH), at commit `git show $(HUB_BRANCH) | awk '/^commit / {print $$2; quit}' | cut -b -10`"
