@@ -17,6 +17,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     69183f2271: hub1. Further updates for a given crowdsec upstream
     version will be numbered hubN. After a while, they will be generated
     from a dedicated vX.Y.Z branch instead of from master.
+  * Implement a generate_hub_tarball target in debian/rules to automate
+    generating a tarball for hub data.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
