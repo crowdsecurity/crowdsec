@@ -1,0 +1,24 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Fri, 22 Jan 2021 13:25:54 +0000
+Subject: Adjust systemd unit
+
+- Drop PIDFile (that uses an obsolete path, and doesn't seem to be
+  used at all).
+- Adjust paths for the packaged crowdsec binary (/usr/bin).
+- Drop commented out ExecStartPost entirely.
+
+--- a/config/crowdsec.service
++++ b/config/crowdsec.service
+@@ -5,10 +5,8 @@ After=syslog.target network.target remot
+ [Service]
+ Type=notify
+ Environment=LC_ALL=C LANG=C
+-PIDFile=/var/run/crowdsec.pid
+-ExecStartPre=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml -t
+-ExecStart=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml
+-#ExecStartPost=/bin/sleep 0.1
++ExecStartPre=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t
++ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
+ ExecReload=/bin/kill -HUP $MAINPID
+ 
+ [Install]

@@ -5,6 +5,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
      + 0001-use-a-local-machineid-implementation.patch (unfuzzy)
      + 0002-add-compatibility-for-older-sqlite-driver.patch
   * Set cwversion variables through debian/rules (build metadata).
+  * Add patch so that upstream's crowdsec.service is correct on Debian:
+     + 0003-adjust-systemd-unit.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
