@@ -1,6 +1,7 @@
 #!/usr/bin/make -f
 
 export DH_GOLANG_INSTALL_ALL := 1
+export DH_GOLANG_EXCLUDES := hub\d+
 
 export BUILD_VERSION   := $(shell dpkg-parsechangelog -SVersion)
 export BUILD_TAG       := debian
