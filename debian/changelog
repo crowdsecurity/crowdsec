@@ -9,6 +9,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
      + 0003-adjust-systemd-unit.patch
   * Ship crowdsec.service without enabling or starting it, some config is
     required beforehand.
+  * Really add lintian overrides for hardening-no-pie warnings.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
