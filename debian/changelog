@@ -22,6 +22,9 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Add patch to disable geoip-enrich in the hub data as it requires
     downloading some files from the network:
      + 0004-disable-geoip-enrich.patch
+  * Ship a selection of hub data in /usr/share/crowdsec/hub so that
+    crowdsec can be set up without having to download data from the
+    collaborative hub (https://hub.crowdsec.net/).
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
