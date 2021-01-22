@@ -24,3 +24,8 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
+
+# Let the postinst enable/start the unit when the initial
+# configuration has happened:
+override_dh_installsystemd:
+	dh_installsystemd --no-enable --no-start
