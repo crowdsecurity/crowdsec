@@ -2,12 +2,12 @@ From: Cyril Brulebois <cyril@debamax.com>
 Date: Fri, 22 Jan 2021 13:25:54 +0000
 Subject: Adjust systemd unit
 
-- Drop PIDFile (that uses an obsolete path, and doesn't seem to be
-  used at all).
-- Adjust paths for the packaged crowdsec binary (/usr/bin).
-- Drop commented out ExecStartPost entirely.
-- Drop syslog.target dependency, it's socket-activated (thanks to the
-  systemd-service-file-refers-to-obsolete-target lintian tag).
+ - Drop PIDFile (that uses an obsolete path, and doesn't seem to be
+   used at all).
+ - Adjust paths for the packaged crowdsec binary (/usr/bin).
+ - Drop commented out ExecStartPost entirely.
+ - Drop syslog.target dependency, it's socket-activated (thanks to the
+   systemd-service-file-refers-to-obsolete-target lintian tag).
 
 --- a/config/crowdsec.service
 +++ b/config/crowdsec.service
