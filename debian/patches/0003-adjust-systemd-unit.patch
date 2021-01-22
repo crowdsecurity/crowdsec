@@ -6,10 +6,17 @@ Subject: Adjust systemd unit
   used at all).
 - Adjust paths for the packaged crowdsec binary (/usr/bin).
 - Drop commented out ExecStartPost entirely.
+- Drop syslog.target dependency, it's socket-activated (thanks to the
+  systemd-service-file-refers-to-obsolete-target lintian tag).
 
 --- a/config/crowdsec.service
 +++ b/config/crowdsec.service
-@@ -5,10 +5,8 @@ After=syslog.target network.target remot
+@@ -1,14 +1,12 @@
+ [Unit]
+ Description=Crowdsec agent
+-After=syslog.target network.target remote-fs.target nss-lookup.target
++After=network.target remote-fs.target nss-lookup.target
+ 
  [Service]
  Type=notify
  Environment=LC_ALL=C LANG=C
