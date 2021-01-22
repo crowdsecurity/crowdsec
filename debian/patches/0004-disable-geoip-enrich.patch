@@ -1,0 +1,57 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Fri, 22 Jan 2021 14:35:42 +0000
+Subject: Disable geoip-enrich in the hub data
+
+It would download GeoLite2*.mmdb files from the network. Let users
+enable the hub and enable it by themselves if they want to use it.
+
+--- a/hub1/.index.json
++++ b/hub1/.index.json
+@@ -85,12 +85,11 @@
+    },
+    "long_description": "Kipjb3JlIHBhY2thZ2UgZm9yIGxpbnV4KioKCmNvbnRhaW5zIHN1cHBvcnQgZm9yIHN5c2xvZywgZG8gbm90IHJlbW92ZS4K",
+    "content": "cGFyc2VyczoKICAtIGNyb3dkc2VjdXJpdHkvc3lzbG9nLWxvZ3MKICAtIGNyb3dkc2VjdXJpdHkvZ2VvaXAtZW5yaWNoCiAgLSBjcm93ZHNlY3VyaXR5L2RhdGVwYXJzZS1lbnJpY2gKY29sbGVjdGlvbnM6CiAgLSBjcm93ZHNlY3VyaXR5L3NzaGQKZGVzY3JpcHRpb246ICJjb3JlIGxpbnV4IHN1cHBvcnQgOiBzeXNsb2crZ2VvaXArc3NoIgphdXRob3I6IGNyb3dkc2VjdXJpdHkKdGFnczoKICAtIGxpbnV4Cgo=",
+-   "description": "core linux support : syslog+geoip+ssh",
++   "description": "core linux support : syslog+ssh",
+    "author": "crowdsecurity",
+    "labels": null,
+    "parsers": [
+     "crowdsecurity/syslog-logs",
+-    "crowdsecurity/geoip-enrich",
+     "crowdsecurity/dateparse-enrich"
+    ],
+    "collections": [
+@@ -348,26 +347,6 @@
+    "author": "crowdsecurity",
+    "labels": null
+   },
+-  "crowdsecurity/geoip-enrich": {
+-   "path": "parsers/s02-enrich/crowdsecurity/geoip-enrich.yaml",
+-   "stage": "s02-enrich",
+-   "version": "0.2",
+-   "versions": {
+-    "0.1": {
+-     "digest": "c0718adfc71ad462ad90485ad5c490e5de0e54d8af425bff552994e114443ab6",
+-     "deprecated": false
+-    },
+-    "0.2": {
+-     "digest": "ab327e6044a32de7d2f3780cbc8e0c4af0c11716f353023d2dc7b986571bb765",
+-     "deprecated": false
+-    }
+-   },
+-   "long_description": "VGhlIEdlb0lQIG1vZHVsZSByZWxpZXMgb24gZ2VvbGl0ZSBkYXRhYmFzZSB0byBwcm92aWRlIGVucmljaG1lbnQgb24gc291cmNlIGlwIDoKIC0gSXNvQ29kZSA6IHRoZSB0d28tbGV0dGVycyBjb3VudHJ5IGNvZGUKIC0gQVNOTnVtYmVyIDogdGhlIEFTIE51bWJlcgogLSBBU05PcmcgOiB0aGUgZnVsbCBuYW1lIG9mIEFTIG9yZ2FuaXphdGlvbgoKVGhpcyBjb25maWd1cmF0aW9uIGluY2x1ZGVzIEdlb0xpdGUyIGRhdGEgY3JlYXRlZCBieSBNYXhNaW5kIGF2YWlsYWJsZSBmcm9tIFtodHRwczovL3d3dy5tYXhtaW5kLmNvbV0oaHR0cHM6Ly93d3cubWF4bWluZC5jb20pLCBpdCBpbmNsdWRlcyB0d28gZGF0YSBmaWxlczogCiogW0dlb0xpdGUyLUNpdHkubW1kYl0oaHR0cHM6Ly9jcm93ZHNlYy1zdGF0aWNzLWFzc2V0cy5zMy1ldS13ZXN0LTEuYW1hem9uYXdzLmNvbS9HZW9MaXRlMi1DaXR5Lm1tZGIpCiogW0dlb0xpdGUyLUFTTi5tbWRiXShodHRwczovL2Nyb3dkc2VjLXN0YXRpY3MtYXNzZXRzLnMzLWV1LXdlc3QtMS5hbWF6b25hd3MuY29tL0dlb0xpdGUyLUFTTi5tbWRiKQoK",
+-   "content": "ZmlsdGVyOiAiJ3NvdXJjZV9pcCcgaW4gZXZ0Lk1ldGEiCm5hbWU6IGNyb3dkc2VjdXJpdHkvZ2VvaXAtZW5yaWNoCmRlc2NyaXB0aW9uOiAiUG9wdWxhdGUgZXZlbnQgd2l0aCBnZW9sb2MgaW5mbyA6IGFzLCBjb3VudHJ5LCBjb29yZHMsIHNvdXJjZSByYW5nZS4iCmRhdGE6CiAgLSBzb3VyY2VfdXJsOiBodHRwczovL2Nyb3dkc2VjLXN0YXRpY3MtYXNzZXRzLnMzLWV1LXdlc3QtMS5hbWF6b25hd3MuY29tL0dlb0xpdGUyLUNpdHkubW1kYgogICAgZGVzdF9maWxlOiBHZW9MaXRlMi1DaXR5Lm1tZGIKICAtIHNvdXJjZV91cmw6IGh0dHBzOi8vY3Jvd2RzZWMtc3RhdGljcy1hc3NldHMuczMtZXUtd2VzdC0xLmFtYXpvbmF3cy5jb20vR2VvTGl0ZTItQVNOLm1tZGIKICAgIGRlc3RfZmlsZTogR2VvTGl0ZTItQVNOLm1tZGIKc3RhdGljczoKICAtIG1ldGhvZDogR2VvSXBDaXR5CiAgICBleHByZXNzaW9uOiBldnQuTWV0YS5zb3VyY2VfaXAKICAtIG1ldGE6IElzb0NvZGUKICAgIGV4cHJlc3Npb246IGV2dC5FbnJpY2hlZC5Jc29Db2RlCiAgLSBtZXRhOiBJc0luRVUKICAgIGV4cHJlc3Npb246IGV2dC5FbnJpY2hlZC5Jc0luRVUKICAtIG1ldGE6IEdlb0Nvb3JkcwogICAgZXhwcmVzc2lvbjogZXZ0LkVucmljaGVkLkdlb0Nvb3JkcwogIC0gbWV0aG9kOiBHZW9JcEFTTgogICAgZXhwcmVzc2lvbjogZXZ0Lk1ldGEuc291cmNlX2lwCiAgLSBtZXRhOiBBU05OdW1iZXIKICAgIGV4cHJlc3Npb246IGV2dC5FbnJpY2hlZC5BU05OdW1iZXIKICAtIG1ldGE6IEFTTk9yZwogICAgZXhwcmVzc2lvbjogZXZ0LkVucmljaGVkLkFTTk9yZwogIC0gbWV0aG9kOiBJcFRvUmFuZ2UKICAgIGV4cHJlc3Npb246IGV2dC5NZXRhLnNvdXJjZV9pcAogIC0gbWV0YTogU291cmNlUmFuZ2UKICAgIGV4cHJlc3Npb246IGV2dC5FbnJpY2hlZC5Tb3VyY2VSYW5nZQo=",
+-   "description": "Populate event with geoloc info : as, country, coords, source range.",
+-   "author": "crowdsecurity",
+-   "labels": null
+-  },
+   "crowdsecurity/http-logs": {
+    "path": "parsers/s02-enrich/crowdsecurity/http-logs.yaml",
+    "stage": "s02-enrich",
+@@ -1133,4 +1112,4 @@
+    }
+   }
+  }
+-}
+\ No newline at end of file
++}

@@ -1,3 +1,4 @@
 0001-use-a-local-machineid-implementation.patch
 0002-add-compatibility-for-older-sqlite-driver.patch
 0003-adjust-systemd-unit.patch
+0004-disable-geoip-enrich.patch
