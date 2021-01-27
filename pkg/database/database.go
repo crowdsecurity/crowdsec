@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -33,6 +34,10 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
+		}
+		/*ensure file perms*/
+		if err := os.Chmod(config.DbPath, 0600); err != nil {
+			return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 		}
 	case "mysql":
 		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName))
