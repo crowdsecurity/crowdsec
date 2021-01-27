@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"math/big"
-	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -46,25 +44,17 @@ const (
 
 func generatePassword(length int) string {
 
-	seed, err := saferand.Int(saferand.Reader, big.NewInt(math.MaxInt64))
-	if err != nil {
-		log.Fatalf("failed getting data from prng for password generation : %s", err)
-	}
-
-	rand.Seed(seed.Int64())
 	charset := upper + lower + digits
+	charsetLength := len(charset)
 
 	buf := make([]byte, length)
-	buf[0] = digits[rand.Intn(len(digits))]
-	buf[1] = upper[rand.Intn(len(upper))]
-	buf[2] = lower[rand.Intn(len(lower))]
-
-	for i := 3; i < length; i++ {
-		buf[i] = charset[rand.Intn(len(charset))]
+	for i := 0; i < length; i++ {
+		rInt, err := saferand.Int(saferand.Reader, big.NewInt(int64(charsetLength)))
+		if err != nil {
+			log.Fatalf("failed getting data from prng for password generation : %s", err)
+		}
+		buf[i] = charset[rInt.Int64()]
 	}
-	rand.Shuffle(len(buf), func(i, j int) {
-		buf[i], buf[j] = buf[j], buf[i]
-	})
 
 	return string(buf)
 }
