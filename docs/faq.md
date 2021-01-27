@@ -4,6 +4,11 @@
 
 {{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/#what-is-crowdsec).
 
+## I've installed crowdsec, it detects attacks but doesn't block anything ?!
+
+Yes, {{v1X.crowdsec.Name}} is in charge of detecting attacks, and {{v1X.bouncers.htmlname}} are applying decisions.
+If you want to block the detected IPs, you should deploy a bouncer, such as the ones found on the [hub](https://hub.crowdsec.net/browse/#bouncers) !
+
 
 ## What language is it written in ?
 
