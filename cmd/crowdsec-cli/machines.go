@@ -1,9 +1,12 @@
 package main
 
 import (
+	saferand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/big"
 	"math/rand"
 	"os"
 	"strings"
@@ -42,7 +45,13 @@ const (
 )
 
 func generatePassword(length int) string {
-	rand.Seed(time.Now().UnixNano())
+
+	seed, err := saferand.Int(saferand.Reader, big.NewInt(math.MaxInt64))
+	if err != nil {
+		log.Fatalf("failed getting data from prng for password generation : %s", err)
+	}
+
+	rand.Seed(seed.Int64())
 	charset := upper + lower + digits
 
 	buf := make([]byte, length)
