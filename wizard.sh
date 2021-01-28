@@ -30,7 +30,12 @@ LAPI_SECRETS="online_api_credentials.yaml"
 
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
-CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
+
+if [[ -f "/usr/bin/cscli" ]] ; then
+    CSCLI_BIN_INSTALLED="/usr/bin/cscli"
+else
+    CSCLI_BIN_INSTALLED="${BIN_INSTALL_PATH}/cscli"
+fi
 
 ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
@@ -97,12 +102,10 @@ detect_services () {
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
             echo ${SRC} | grep ${SVC} >/dev/null
             if [ $? -eq 0 ]; then
-    
                 #on centos, apache2 is named httpd                                                                                                                                                                                            
                 if [[ ${SVC} == "httpd" ]] ; then
                     SVC="apache2";
                 fi
-
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
                 log_info "Found '${SVC}' running"
@@ -525,6 +528,26 @@ main() {
         return
     fi
 
+    if [[ "$1" == "configure" ]];
+    then
+        if ! [ $(id -u) = 0 ]; then
+            log_err "Please run the wizard as root or with sudo"
+            exit 1
+        fi
+        detect_services
+        ${CSCLI_BIN_INSTALLED} hub update
+        install_collection
+        genacquisition
+        mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
+
+        return
+    fi
+
+    if [[ "$1" == "noop" ]];
+    then
+        return
+    fi
+   
     if [[ "$1" == "uninstall" ]];
     then
         if ! [ $(id -u) = 0 ]; then
@@ -630,6 +653,7 @@ usage() {
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
       echo "    ./wizard.sh -r|--restore                     Restore saved configurations from ${BACKUP_DIR} to ${CROWDSEC_CONFIG_PATH}"
       echo "    ./wizard.sh -b|--backup                      Backup existing configurations to ${BACKUP_DIR}"
+      echo "    ./wizard.sh -n|--noop                        Do nothing"
 
       exit 0  
 }
@@ -675,8 +699,16 @@ do
         ACTION="restore_from_dir"
         shift # past argument
         ;;
+    -c|--configure)
+        ACTION="configure"
+        shift # past argument
+        ;;
     -d|--detect)
         ACTION="detect"
+        shift # past argument
+        ;;
+    -n|--noop)
+        ACTION="noop"
         shift # past argument
         ;;
     --unattended)
