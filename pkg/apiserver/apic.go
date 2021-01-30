@@ -260,7 +260,7 @@ func (a *apic) PullTop() error {
 	alertCreated, err := a.dbClient.Ent.Alert.
 		Create().
 		SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
-		SetSourceScope("Comunity blocklist").
+		SetSourceScope("Community blocklist").
 		Save(a.dbClient.CTX)
 	if err != nil {
 		return errors.Wrap(err, "create alert from crowdsec-api")
