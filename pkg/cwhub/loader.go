@@ -20,7 +20,7 @@ import (
 )
 
 /*the walk/parser_visit function can't receive extra args*/
-var hubdir, installdir, indexpath string
+var hubdir, localhubdir, installdir, indexpath string
 
 func parser_visit(path string, f os.FileInfo, err error) error {
 
@@ -72,6 +72,20 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		///.../config/postoverflow/stage/file.yaml
 		///.../config/scenarios/scenar.yaml
 		///.../config/collections/linux.yaml //file is empty
+		fname = subs[len(subs)-1]
+		stage = subs[len(subs)-2]
+		ftype = subs[len(subs)-3]
+		fauthor = ""
+	} else if strings.HasPrefix(path, localhubdir) { /*we're in user local/unmanaged hub, read-only for us*/
+		log.Tracef("in localhub dir")
+		target.LocalHub = true
+		if len(subs) < 3 {
+			log.Fatalf("path is too short : %s (%d)", path, len(subs))
+		}
+		///.../localhub/parser/stage/file.yaml
+		///.../localhub/postoverflow/stage/file.yaml
+		///.../localhub/scenarios/scenar.yaml
+		///.../localhub/collections/linux.yaml //file is empty
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
@@ -296,6 +310,7 @@ func CollecDepsCheck(v *Item) error {
 
 func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
 	hubdir = cscli.HubDir
+	localhubdir = cscli.LocalHubDir
 	installdir = cscli.ConfigDir
 	indexpath = cscli.HubIndexFile
 
@@ -326,7 +341,7 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
+	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir, cscli.LocalHubDir} {
 		log.Debugf("scanning %s", dir)
 		if err := SyncDir(cscli, dir); err != nil {
 			return fmt.Errorf("failed to scan %s : %s", dir, err)

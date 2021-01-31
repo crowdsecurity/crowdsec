@@ -107,6 +107,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
 		c.Cscli.DataDir = c.ConfigPaths.DataDir
 		c.Cscli.HubDir = c.ConfigPaths.HubDir
+		c.Cscli.LocalHubDir = c.ConfigPaths.LocalHubDir
 		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
 	}
 

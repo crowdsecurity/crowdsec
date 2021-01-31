@@ -7,6 +7,7 @@ type CscliCfg struct {
 	SimulationConfig   *SimulationConfig `yaml:"-"`
 	DbConfig           *DatabaseCfg      `yaml:"-"`
 	HubDir             string            `yaml:"-"`
+	LocalHubDir        string            `yaml:"-"`
 	DataDir            string            `yaml:"-"`
 	ConfigDir          string            `yaml:"-"`
 	HubIndexFile       string            `yaml:"-"`

@@ -629,8 +629,10 @@ func BackupHub(dirPath string) error {
 					continue
 				}
 
-				//for the local/tainted ones, we backup the full file
-				if v.Tainted || v.Local || !v.UpToDate {
+				if v.LocalHub { //don't interact with local hub
+					clog.Debugf("[%s] : in local hub, skip", k)
+					continue
+				} else if v.Tainted || v.Local || !v.UpToDate { //for the local/tainted ones, we backup the full file
 					//we need to backup stages for parsers
 					if itemType == cwhub.PARSERS || itemType == cwhub.PARSERS_OVFLW {
 						fstagedir := fmt.Sprintf("%s%s", itemDirectory, v.Stage)

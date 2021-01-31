@@ -6,4 +6,5 @@ type ConfigurationPaths struct {
 	SimulationFilePath string `yaml:"simulation_path,omitempty"`
 	HubIndexFile       string `yaml:"index_path,omitempty"` //path of the .index.json
 	HubDir             string `yaml:"hub_dir,omitempty"`
+	LocalHubDir        string `yaml:"local_hub_dir,omitempty"`
 }

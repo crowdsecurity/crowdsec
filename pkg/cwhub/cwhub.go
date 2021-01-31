@@ -54,15 +54,19 @@ type Item struct {
 	Versions   map[string]ItemVersion `json:"versions" yaml:"-"`                 //the list of existing versions
 
 	/*local (deployed) infos*/
-	LocalPath string `yaml:"local_path,omitempty"` //the local path relative to ${CFG_DIR}
-	//LocalHubPath string
+	LocalPath    string `yaml:"local_path,omitempty"` //the local path relative to ${CFG_DIR}
 	LocalVersion string
 	LocalHash    string //the local meow
 	Installed    bool
 	Downloaded   bool
 	UpToDate     bool
 	Tainted      bool //has it been locally modified
-	Local        bool //if it's a non versioned control one
+	/*user can have its own local files in the installation directory,
+		and they are dealt with during config save/restore (upgrade process)
+	 people suggested (https://github.com/crowdsecurity/crowdsec/issues/334)
+	 	having unmanaged directory, which makes sense. */
+	Local    bool //if it's a non versioned control one
+	LocalHub bool //if the file is in user's local hub
 
 	/*if it's a collection, it not a single file*/
 	Parsers       []string `yaml:"parsers,omitempty"`
@@ -260,8 +264,10 @@ func HubStatus(itemType string, name string, all bool) []map[string]string {
 		tmp["local_version"] = item.LocalVersion
 		tmp["local_path"] = item.LocalPath
 		tmp["description"] = item.Description
-		if !managed || !item.Installed {
+		if !item.Installed {
 			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
+		} else if !managed {
+			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.ComputerDisk, status)
 		} else if warning {
 			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Warning, status)
 		} else if ok {

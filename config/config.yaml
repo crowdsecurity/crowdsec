@@ -10,6 +10,7 @@ config_paths:
   data_dir: /var/lib/crowdsec/data/
   simulation_path: /etc/crowdsec/simulation.yaml
   hub_dir: /etc/crowdsec/hub/
+  #local_hub_dir: /tmp/myhub
   index_path: /etc/crowdsec/hub/.index.json
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
