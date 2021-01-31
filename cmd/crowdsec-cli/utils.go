@@ -201,6 +201,10 @@ func UpgradeConfig(itemType string, name string, force bool) {
 		if name != "" && name != v.Name {
 			continue
 		}
+		if v.LocalHub {
+			log.Infof("%v %s is local", emoji.Prohibited, v.Name)
+			continue
+		}
 		if !v.Installed {
 			log.Tracef("skip %s, not installed", v.Name)
 			if !force {
