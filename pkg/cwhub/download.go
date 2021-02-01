@@ -164,7 +164,7 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 	if err != nil {
 		return target, errors.Wrapf(err, "Abs error on %s", tdir+"/"+target.RemotePath)
 	}
-	if !strings.Contains(finalPath, tdir) {
+	if !strings.HasPrefix(finalPath, tdir) {
 		return target, fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
 	}
 	/*check dir*/
