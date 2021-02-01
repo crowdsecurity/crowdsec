@@ -110,7 +110,7 @@ make build
 ```
 
 For more details read the chapter 
-[Installation from source](https://doc.crowdsec.net/getting_started/installation/#from-source) in 
+[Installation from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#from-source) in 
 our [documentation](https://doc.crowdsec.net).
 
 ## :tada: Key points
