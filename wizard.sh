@@ -234,6 +234,11 @@ install_collection() {
         fi;
     fi;
 
+    in_array "crowdsecurity/core" "${COLLECTION_TO_INSTALL[@]}"
+    if [[ $? -ne 0 ]]; then
+        COLLECTION_TO_INSTALL+=("crowdsecurity/core")
+    fi;
+
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
         ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
