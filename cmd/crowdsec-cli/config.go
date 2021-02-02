@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -35,11 +38,13 @@ func backupConfigToDirectory(dirPath string) error {
 		return fmt.Errorf("directory path can't be empty")
 	}
 	log.Infof("Starting configuration backup")
-	_, err = os.Stat(dirPath)
-	if err == nil {
-		return fmt.Errorf("%s already exists", dirPath)
+	/*if parent directory doesn't exist, bail out. create final dir with Mkdir*/
+	parentDir := filepath.Dir(dirPath)
+	if _, err := os.Stat(parentDir); err != nil {
+		return errors.Wrapf(err, "while checking parent directory %s existence", parentDir)
 	}
-	if err = os.MkdirAll(dirPath, os.ModePerm); err != nil {
+
+	if err = os.Mkdir(dirPath, 0600); err != nil {
 		return fmt.Errorf("error while creating %s : %s", dirPath, err)
 	}
 

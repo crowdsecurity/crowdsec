@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"path/filepath"
 
 	//"errors"
 	"github.com/pkg/errors"
@@ -127,7 +128,6 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 			return target, nil
 		}
 	}
-
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
@@ -159,6 +159,14 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 	tmpdirs := strings.Split(tdir+"/"+target.RemotePath, "/")
 	parent_dir := strings.Join(tmpdirs[:len(tmpdirs)-1], "/")
 
+	/*ensure that target file is within target dir*/
+	finalPath, err := filepath.Abs(tdir + "/" + target.RemotePath)
+	if err != nil {
+		return target, errors.Wrapf(err, "Abs error on %s", tdir+"/"+target.RemotePath)
+	}
+	if !strings.HasPrefix(finalPath, tdir) {
+		return target, fmt.Errorf("path %s escapes %s, abort", target.RemotePath, tdir)
+	}
 	/*check dir*/
 	if _, err = os.Stat(parent_dir); os.IsNotExist(err) {
 		log.Debugf("%s doesn't exist, create", parent_dir)
@@ -167,7 +175,7 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, 
 		}
 	}
 	/*check actual file*/
-	if _, err = os.Stat(tdir + "/" + target.RemotePath); !os.IsNotExist(err) {
+	if _, err = os.Stat(finalPath); !os.IsNotExist(err) {
 		log.Warningf("%s : overwrite", target.Name)
 		log.Debugf("target: %s/%s", tdir, target.RemotePath)
 	} else {

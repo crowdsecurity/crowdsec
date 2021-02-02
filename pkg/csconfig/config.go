@@ -125,7 +125,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			}
 		}
 		if c.API.Client.InsecureSkipVerify == nil {
-			apiclient.InsecureSkipVerify = true
+			apiclient.InsecureSkipVerify = false
 		} else {
 			apiclient.InsecureSkipVerify = *c.API.Client.InsecureSkipVerify
 		}
