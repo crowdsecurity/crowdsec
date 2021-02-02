@@ -44,7 +44,7 @@ Processing is done in 5 steps:
  4. *(ONLY)* The aggressive IP, the scenario name triggered and a timestamp is then sent to our curation platform (to avoid poisoning & false positives)
  5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (which is used as an enrichment source in step1)
 
-By detecting, blocking and sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
+By detecting, blocking & sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
 (*) CrowdSec ships by default with scenario (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the [hub](https://hub.crowdsec.net). It is also very easy to adapt an existing one or create one yourself.
 
