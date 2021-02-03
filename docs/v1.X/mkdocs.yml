@@ -5,6 +5,7 @@ nav:
 #    - Glossary: getting_started/glossary.md
     - Concepts : getting_started/concepts.md
     - Install Crowdsec : getting_started/installation.md
+    - Upgrade Crowdsec: getting_started/upgrades.md
     - Crowdsec Tour: getting_started/crowdsec-tour.md
   - User guide:
     - CLI: user_guide/cscli.md
@@ -14,7 +15,6 @@ nav:
       - Parsers: user_guide/configurations_management/parsers.md
       - Enrichers: user_guide/configurations_management/enrichers.md
       - Scenarios: user_guide/configurations_management/scenarios.md
-      - Managing local/custom configuration: user_guide/configurations_management/local-configurations.md
     - Decisions Management: user_guide/decision_management.md
     - Bouncers & machines management: user_guide/bouncer_machine_management.md
     - Databases: user_guide/database.md
@@ -72,8 +72,5 @@ nav:
     - Parsers: write_configurations/parsers.md
     - Scenarios: write_configurations/scenarios.md
     - Whitelists: write_configurations/whitelist.md
-  - Admin Guide:
-    - Services Configuration: admin_guide/services_configuration.md
-    - Architecture: admin_guide/architecture.md
   - Upgrade V0.X to V1.X: migration.md
 

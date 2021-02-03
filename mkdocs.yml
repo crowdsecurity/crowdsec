@@ -48,7 +48,7 @@ extra:
       doc:
           new_issue: "[new documentation issue](https://github.com/crowdsecurity/crowdsec/issues/new)"
           discourse: "[CrowdSecurity discourse](http://discourse.crowdsec.net)"
-          community: "[community](http://discourse.crowdsec.net)"
+          gitter: "[Crowdsec gitter](http://discourse.crowdsec.net)"
       hub:
           name: Crowdsec Hub
           htmlname: "[Crowdsec Hub](https://hub.crowdsec.net/)"

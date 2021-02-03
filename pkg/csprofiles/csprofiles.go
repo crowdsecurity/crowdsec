@@ -2,8 +2,6 @@ package csprofiles
 
 import (
 	"fmt"
-	"net"
-	"strings"
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -45,37 +43,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		/*for the others, let's populate it from the alert and its source*/
 		decision.Value = new(string)
 		*decision.Value = *Alert.Source.Value
-
-		if strings.EqualFold(*decision.Scope, types.Ip) {
-			srcAddr := net.ParseIP(Alert.Source.IP)
-			if srcAddr == nil {
-				return nil, fmt.Errorf("can't parse ip %s", Alert.Source.IP)
-			}
-			decision.StartIP = int64(types.IP2Int(srcAddr))
-			decision.EndIP = decision.StartIP
-		} else if strings.EqualFold(*decision.Scope, types.Range) {
-
-			/*here we're asked to ban a full range. let's keep in mind that it's not always possible :
-			- the alert is about an IP, but the geolite enrichment failed
-			- the alert is about an IP, but the geolite enrichment isn't present
-			- the alert is about a range, in this case it should succeed
-			*/
-			if Alert.Source.Range != "" {
-				srcAddr, srcRange, err := net.ParseCIDR(Alert.Source.Range)
-				if err != nil {
-					log.Warningf("Profile [%s] requires IP decision, but can't parse '%s' from '%s'",
-						Profile.Name, *Alert.Source.Value, *Alert.Scenario)
-					continue
-				}
-				decision.StartIP = int64(types.IP2Int(srcAddr))
-				decision.EndIP = int64(types.IP2Int(types.LastAddress(srcRange)))
-				decision.Value = new(string)
-				*decision.Value = Alert.Source.Range
-			} else {
-				log.Warningf("Profile [%s] requires scope decision, but information is missing from %s", Profile.Name, *Alert.Scenario)
-				continue
-			}
-		}
 		decision.Origin = new(string)
 		*decision.Origin = "crowdsec"
 		if refDecision.Origin != nil {

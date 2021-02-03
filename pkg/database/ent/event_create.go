@@ -21,13 +21,13 @@ type EventCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (ec *EventCreate) SetCreatedAt(t time.Time) *EventCreate {
 	ec.mutation.SetCreatedAt(t)
 	return ec
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (ec *EventCreate) SetNillableCreatedAt(t *time.Time) *EventCreate {
 	if t != nil {
 		ec.SetCreatedAt(*t)
@@ -35,13 +35,13 @@ func (ec *EventCreate) SetNillableCreatedAt(t *time.Time) *EventCreate {
 	return ec
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (ec *EventCreate) SetUpdatedAt(t time.Time) *EventCreate {
 	ec.mutation.SetUpdatedAt(t)
 	return ec
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (ec *EventCreate) SetNillableUpdatedAt(t *time.Time) *EventCreate {
 	if t != nil {
 		ec.SetUpdatedAt(*t)
@@ -49,25 +49,25 @@ func (ec *EventCreate) SetNillableUpdatedAt(t *time.Time) *EventCreate {
 	return ec
 }
 
-// SetTime sets the time field.
+// SetTime sets the "time" field.
 func (ec *EventCreate) SetTime(t time.Time) *EventCreate {
 	ec.mutation.SetTime(t)
 	return ec
 }
 
-// SetSerialized sets the serialized field.
+// SetSerialized sets the "serialized" field.
 func (ec *EventCreate) SetSerialized(s string) *EventCreate {
 	ec.mutation.SetSerialized(s)
 	return ec
 }
 
-// SetOwnerID sets the owner edge to Alert by id.
+// SetOwnerID sets the "owner" edge to the Alert entity by ID.
 func (ec *EventCreate) SetOwnerID(id int) *EventCreate {
 	ec.mutation.SetOwnerID(id)
 	return ec
 }
 
-// SetNillableOwnerID sets the owner edge to Alert by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Alert entity by ID if the given value is not nil.
 func (ec *EventCreate) SetNillableOwnerID(id *int) *EventCreate {
 	if id != nil {
 		ec = ec.SetOwnerID(*id)
@@ -75,7 +75,7 @@ func (ec *EventCreate) SetNillableOwnerID(id *int) *EventCreate {
 	return ec
 }
 
-// SetOwner sets the owner edge to Alert.
+// SetOwner sets the "owner" edge to the Alert entity.
 func (ec *EventCreate) SetOwner(a *Alert) *EventCreate {
 	return ec.SetOwnerID(a.ID)
 }
@@ -242,7 +242,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// EventCreateBulk is the builder for creating a bulk of Event entities.
+// EventCreateBulk is the builder for creating many Event entities in bulk.
 type EventCreateBulk struct {
 	config
 	builders []*EventCreate
@@ -300,7 +300,7 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (ecb *EventCreateBulk) SaveX(ctx context.Context) []*Event {
 	v, err := ecb.Save(ctx)
 	if err != nil {

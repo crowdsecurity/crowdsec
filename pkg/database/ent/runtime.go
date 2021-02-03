@@ -14,8 +14,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/schema"
 )
 
-// The init function reads all schema descriptors with runtime
-// code (default values, validators or hooks) and stitches it
+// The init function reads all schema descriptors with runtime code
+// (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
 	alertFields := schema.Alert{}.Fields()
@@ -85,7 +85,7 @@ func init() {
 	// decision.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	decision.DefaultUpdatedAt = decisionDescUpdatedAt.Default.(func() time.Time)
 	// decisionDescSimulated is the schema descriptor for simulated field.
-	decisionDescSimulated := decisionFields[10].Descriptor()
+	decisionDescSimulated := decisionFields[13].Descriptor()
 	// decision.DefaultSimulated holds the default value on creation for the simulated field.
 	decision.DefaultSimulated = decisionDescSimulated.Default.(bool)
 	eventFields := schema.Event{}.Fields()

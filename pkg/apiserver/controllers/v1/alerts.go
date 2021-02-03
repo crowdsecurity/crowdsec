@@ -78,8 +78,6 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,
 			Type:      &decisionItem.Type,
-			StartIP:   decisionItem.StartIP,
-			EndIP:     decisionItem.EndIP,
 			Scope:     &decisionItem.Scope,
 			Value:     &decisionItem.Value,
 			Origin:    &decisionItem.Origin,
@@ -119,15 +117,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
-		if len(alert.Decisions) > 0 {
-			log.Debugf("alert %s already has decisions, don't apply profiles", *alert.Message)
-			for _, decision := range alert.Decisions {
-				if decision.EndIP != 0 && decision.StartIP != 0 && decision.EndIP < decision.StartIP {
-					gctx.JSON(http.StatusBadRequest, gin.H{"message": "'start_ip' must be lower than or equal to 'end_ip' in decisions"})
-					return
-				}
-			}
-		} else {
+		if len(alert.Decisions) == 0 {
 			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

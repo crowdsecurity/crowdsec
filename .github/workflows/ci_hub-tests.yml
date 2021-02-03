@@ -32,7 +32,7 @@ jobs:
       with:
         owner: crowdsecurity
         repo: crowdsec
-        excludes: prerelease, draft
+        excludes: draft
     - name: Create crowdsec test env with all parsers from the release
       run: |
         cd crowdsec-${{ steps.keydb.outputs.release }}

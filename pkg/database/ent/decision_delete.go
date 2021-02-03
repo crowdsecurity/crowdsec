@@ -16,14 +16,13 @@ import (
 // DecisionDelete is the builder for deleting a Decision entity.
 type DecisionDelete struct {
 	config
-	hooks      []Hook
-	mutation   *DecisionMutation
-	predicates []predicate.Decision
+	hooks    []Hook
+	mutation *DecisionMutation
 }
 
-// Where adds a new predicate to the delete builder.
+// Where adds a new predicate to the DecisionDelete builder.
 func (dd *DecisionDelete) Where(ps ...predicate.Decision) *DecisionDelete {
-	dd.predicates = append(dd.predicates, ps...)
+	dd.mutation.predicates = append(dd.mutation.predicates, ps...)
 	return dd
 }
 
@@ -75,7 +74,7 @@ func (dd *DecisionDelete) sqlExec(ctx context.Context) (int, error) {
 			},
 		},
 	}
-	if ps := dd.predicates; len(ps) > 0 {
+	if ps := dd.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
 				ps[i](selector)

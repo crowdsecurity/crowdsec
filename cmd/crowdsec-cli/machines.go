@@ -71,8 +71,8 @@ func generateID() (string, error) {
 			return "", errors.Wrap(err, "generating machine id")
 		}
 		id = string(bID)
-		id = strings.ReplaceAll(id, "-", "")[:32]
 	}
+	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))
 	return id, nil
 }

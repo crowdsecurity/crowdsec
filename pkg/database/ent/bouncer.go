@@ -39,96 +39,113 @@ type Bouncer struct {
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Bouncer) scanValues() []interface{} {
-	return []interface{}{
-		&sql.NullInt64{},  // id
-		&sql.NullTime{},   // created_at
-		&sql.NullTime{},   // updated_at
-		&sql.NullString{}, // name
-		&sql.NullString{}, // api_key
-		&sql.NullBool{},   // revoked
-		&sql.NullString{}, // ip_address
-		&sql.NullString{}, // type
-		&sql.NullString{}, // version
-		&sql.NullTime{},   // until
-		&sql.NullTime{},   // last_pull
+func (*Bouncer) scanValues(columns []string) ([]interface{}, error) {
+	values := make([]interface{}, len(columns))
+	for i := range columns {
+		switch columns[i] {
+		case bouncer.FieldRevoked:
+			values[i] = &sql.NullBool{}
+		case bouncer.FieldID:
+			values[i] = &sql.NullInt64{}
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion:
+			values[i] = &sql.NullString{}
+		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
+			values[i] = &sql.NullTime{}
+		default:
+			return nil, fmt.Errorf("unexpected column %q for type Bouncer", columns[i])
+		}
 	}
+	return values, nil
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
 // to the Bouncer fields.
-func (b *Bouncer) assignValues(values ...interface{}) error {
-	if m, n := len(values), len(bouncer.Columns); m < n {
+func (b *Bouncer) assignValues(columns []string, values []interface{}) error {
+	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
-	value, ok := values[0].(*sql.NullInt64)
-	if !ok {
-		return fmt.Errorf("unexpected type %T for field id", value)
-	}
-	b.ID = int(value.Int64)
-	values = values[1:]
-	if value, ok := values[0].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field created_at", values[0])
-	} else if value.Valid {
-		b.CreatedAt = value.Time
-	}
-	if value, ok := values[1].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field updated_at", values[1])
-	} else if value.Valid {
-		b.UpdatedAt = value.Time
-	}
-	if value, ok := values[2].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field name", values[2])
-	} else if value.Valid {
-		b.Name = value.String
-	}
-	if value, ok := values[3].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field api_key", values[3])
-	} else if value.Valid {
-		b.APIKey = value.String
-	}
-	if value, ok := values[4].(*sql.NullBool); !ok {
-		return fmt.Errorf("unexpected type %T for field revoked", values[4])
-	} else if value.Valid {
-		b.Revoked = value.Bool
-	}
-	if value, ok := values[5].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field ip_address", values[5])
-	} else if value.Valid {
-		b.IPAddress = value.String
-	}
-	if value, ok := values[6].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field type", values[6])
-	} else if value.Valid {
-		b.Type = value.String
-	}
-	if value, ok := values[7].(*sql.NullString); !ok {
-		return fmt.Errorf("unexpected type %T for field version", values[7])
-	} else if value.Valid {
-		b.Version = value.String
-	}
-	if value, ok := values[8].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field until", values[8])
-	} else if value.Valid {
-		b.Until = value.Time
-	}
-	if value, ok := values[9].(*sql.NullTime); !ok {
-		return fmt.Errorf("unexpected type %T for field last_pull", values[9])
-	} else if value.Valid {
-		b.LastPull = value.Time
+	for i := range columns {
+		switch columns[i] {
+		case bouncer.FieldID:
+			value, ok := values[i].(*sql.NullInt64)
+			if !ok {
+				return fmt.Errorf("unexpected type %T for field id", value)
+			}
+			b.ID = int(value.Int64)
+		case bouncer.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				b.CreatedAt = value.Time
+			}
+		case bouncer.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				b.UpdatedAt = value.Time
+			}
+		case bouncer.FieldName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field name", values[i])
+			} else if value.Valid {
+				b.Name = value.String
+			}
+		case bouncer.FieldAPIKey:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field api_key", values[i])
+			} else if value.Valid {
+				b.APIKey = value.String
+			}
+		case bouncer.FieldRevoked:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field revoked", values[i])
+			} else if value.Valid {
+				b.Revoked = value.Bool
+			}
+		case bouncer.FieldIPAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field ip_address", values[i])
+			} else if value.Valid {
+				b.IPAddress = value.String
+			}
+		case bouncer.FieldType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field type", values[i])
+			} else if value.Valid {
+				b.Type = value.String
+			}
+		case bouncer.FieldVersion:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field version", values[i])
+			} else if value.Valid {
+				b.Version = value.String
+			}
+		case bouncer.FieldUntil:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field until", values[i])
+			} else if value.Valid {
+				b.Until = value.Time
+			}
+		case bouncer.FieldLastPull:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_pull", values[i])
+			} else if value.Valid {
+				b.LastPull = value.Time
+			}
+		}
 	}
 	return nil
 }
 
 // Update returns a builder for updating this Bouncer.
-// Note that, you need to call Bouncer.Unwrap() before calling this method, if this Bouncer
+// Note that you need to call Bouncer.Unwrap() before calling this method if this Bouncer
 // was returned from a transaction, and the transaction was committed or rolled back.
 func (b *Bouncer) Update() *BouncerUpdateOne {
 	return (&BouncerClient{config: b.config}).UpdateOne(b)
 }
 
-// Unwrap unwraps the entity that was returned from a transaction after it was closed,
-// so that all next queries will be executed through the driver which created the transaction.
+// Unwrap unwraps the Bouncer entity that was returned from a transaction after it was closed,
+// so that all future queries will be executed through the driver which created the transaction.
 func (b *Bouncer) Unwrap() *Bouncer {
 	tx, ok := b.config.driver.(*txDriver)
 	if !ok {

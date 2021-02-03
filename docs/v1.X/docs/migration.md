@@ -27,6 +27,7 @@ Download latest V1 {{v1X.crowdsec.name}} version [here]({{v1X.crowdsec.download_
 tar xvzf crowdsec-release.tgz
 cd crowdsec-v1*/
 sudo ./wizard.sh --uninstall
+sudo rm /etc/cron.d/crowdsec_pull
 sudo ./wizard.sh --bininstall
 ```
 

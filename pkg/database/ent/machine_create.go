@@ -21,13 +21,13 @@ type MachineCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (mc *MachineCreate) SetCreatedAt(t time.Time) *MachineCreate {
 	mc.mutation.SetCreatedAt(t)
 	return mc
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableCreatedAt(t *time.Time) *MachineCreate {
 	if t != nil {
 		mc.SetCreatedAt(*t)
@@ -35,13 +35,13 @@ func (mc *MachineCreate) SetNillableCreatedAt(t *time.Time) *MachineCreate {
 	return mc
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (mc *MachineCreate) SetUpdatedAt(t time.Time) *MachineCreate {
 	mc.mutation.SetUpdatedAt(t)
 	return mc
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableUpdatedAt(t *time.Time) *MachineCreate {
 	if t != nil {
 		mc.SetUpdatedAt(*t)
@@ -49,31 +49,31 @@ func (mc *MachineCreate) SetNillableUpdatedAt(t *time.Time) *MachineCreate {
 	return mc
 }
 
-// SetMachineId sets the machineId field.
+// SetMachineId sets the "machineId" field.
 func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
 	mc.mutation.SetMachineId(s)
 	return mc
 }
 
-// SetPassword sets the password field.
+// SetPassword sets the "password" field.
 func (mc *MachineCreate) SetPassword(s string) *MachineCreate {
 	mc.mutation.SetPassword(s)
 	return mc
 }
 
-// SetIpAddress sets the ipAddress field.
+// SetIpAddress sets the "ipAddress" field.
 func (mc *MachineCreate) SetIpAddress(s string) *MachineCreate {
 	mc.mutation.SetIpAddress(s)
 	return mc
 }
 
-// SetScenarios sets the scenarios field.
+// SetScenarios sets the "scenarios" field.
 func (mc *MachineCreate) SetScenarios(s string) *MachineCreate {
 	mc.mutation.SetScenarios(s)
 	return mc
 }
 
-// SetNillableScenarios sets the scenarios field if the given value is not nil.
+// SetNillableScenarios sets the "scenarios" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableScenarios(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetScenarios(*s)
@@ -81,13 +81,13 @@ func (mc *MachineCreate) SetNillableScenarios(s *string) *MachineCreate {
 	return mc
 }
 
-// SetVersion sets the version field.
+// SetVersion sets the "version" field.
 func (mc *MachineCreate) SetVersion(s string) *MachineCreate {
 	mc.mutation.SetVersion(s)
 	return mc
 }
 
-// SetNillableVersion sets the version field if the given value is not nil.
+// SetNillableVersion sets the "version" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableVersion(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetVersion(*s)
@@ -95,13 +95,13 @@ func (mc *MachineCreate) SetNillableVersion(s *string) *MachineCreate {
 	return mc
 }
 
-// SetIsValidated sets the isValidated field.
+// SetIsValidated sets the "isValidated" field.
 func (mc *MachineCreate) SetIsValidated(b bool) *MachineCreate {
 	mc.mutation.SetIsValidated(b)
 	return mc
 }
 
-// SetNillableIsValidated sets the isValidated field if the given value is not nil.
+// SetNillableIsValidated sets the "isValidated" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableIsValidated(b *bool) *MachineCreate {
 	if b != nil {
 		mc.SetIsValidated(*b)
@@ -109,13 +109,13 @@ func (mc *MachineCreate) SetNillableIsValidated(b *bool) *MachineCreate {
 	return mc
 }
 
-// SetStatus sets the status field.
+// SetStatus sets the "status" field.
 func (mc *MachineCreate) SetStatus(s string) *MachineCreate {
 	mc.mutation.SetStatus(s)
 	return mc
 }
 
-// SetNillableStatus sets the status field if the given value is not nil.
+// SetNillableStatus sets the "status" field if the given value is not nil.
 func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetStatus(*s)
@@ -123,13 +123,13 @@ func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
 	return mc
 }
 
-// AddAlertIDs adds the alerts edge to Alert by ids.
+// AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mc *MachineCreate) AddAlertIDs(ids ...int) *MachineCreate {
 	mc.mutation.AddAlertIDs(ids...)
 	return mc
 }
 
-// AddAlerts adds the alerts edges to Alert.
+// AddAlerts adds the "alerts" edges to the Alert entity.
 func (mc *MachineCreate) AddAlerts(a ...*Alert) *MachineCreate {
 	ids := make([]int, len(a))
 	for i := range a {
@@ -350,7 +350,7 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// MachineCreateBulk is the builder for creating a bulk of Machine entities.
+// MachineCreateBulk is the builder for creating many Machine entities in bulk.
 type MachineCreateBulk struct {
 	config
 	builders []*MachineCreate
@@ -408,7 +408,7 @@ func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (mcb *MachineCreateBulk) SaveX(ctx context.Context) []*Machine {
 	v, err := mcb.Save(ctx)
 	if err != nil {

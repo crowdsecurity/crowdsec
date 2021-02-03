@@ -12,7 +12,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -142,6 +141,7 @@ func NewDecisionsCmd() *cobra.Command {
 		IncludeCAPI:    new(bool),
 	}
 	NoSimu := new(bool)
+	contained := new(bool)
 	var cmdDecisionsList = &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
@@ -160,7 +160,7 @@ cscli decisions list -t ban
 			filter.ActiveDecisionEquals = new(bool)
 			*filter.ActiveDecisionEquals = true
 			if NoSimu != nil && *NoSimu {
-				*filter.IncludeSimulated = false
+				filter.IncludeSimulated = new(bool)
 			}
 			/*nulify the empty entries to avoid bad filter*/
 			if *filter.Until == "" {
@@ -209,6 +209,11 @@ cscli decisions list -t ban
 			if *filter.RangeEquals == "" {
 				filter.RangeEquals = nil
 			}
+
+			if contained != nil && *contained {
+				filter.Contains = new(bool)
+			}
+
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
 				log.Fatalf("Unable to list decisions : %v", err.Error())
@@ -231,6 +236,8 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+
 	cmdDecisions.AddCommand(cmdDecisionsList)
 
 	var (
@@ -254,7 +261,6 @@ cscli decisions add --scope username --value foobar
 		/*TBD : fix long and example*/
 		Args: cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			var startIP, endIP int64
 			var err error
 			var ip, ipRange string
 			alerts := models.AddAlertsRequest{}
@@ -285,20 +291,6 @@ cscli decisions add --scope username --value foobar
 				return
 			}
 
-			if addScope == types.Ip {
-				startIP, endIP, err = database.GetIpsFromIpRange(addValue + "/32")
-				if err != nil {
-					log.Fatalf("unable to parse IP : '%s'", addValue)
-				}
-			}
-			if addScope == types.Range {
-				startIP, endIP, err = database.GetIpsFromIpRange(addValue)
-				if err != nil {
-					log.Fatalf("unable to parse Range : '%s'", addValue)
-				}
-				ipRange = addValue
-			}
-
 			if addReason == "" {
 				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
 			}
@@ -310,8 +302,6 @@ cscli decisions add --scope username --value foobar
 				Type:     &addType,
 				Scenario: &addReason,
 				Origin:   &origin,
-				StartIP:  startIP,
-				EndIP:    endIP,
 			}
 			alert := models.Alert{
 				Capacity:        &capacity,
@@ -414,6 +404,9 @@ cscli decisions delete --type captcha
 			if *delFilter.RangeEquals == "" {
 				delFilter.RangeEquals = nil
 			}
+			if contained != nil && *contained {
+				delFilter.Contains = new(bool)
+			}
 
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
@@ -437,6 +430,8 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.TypeEquals, "type", "t", "", "the decision type (ie. ban,captcha)")
 	cmdDecisionsDelete.Flags().StringVarP(delFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdDecisionsDelete.Flags().BoolVar(&delDecisionAll, "all", false, "delete all decisions")
+	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
+
 	cmdDecisions.AddCommand(cmdDecisionsDelete)
 
 	return cmdDecisions

@@ -24,13 +24,13 @@ type AlertCreate struct {
 	hooks    []Hook
 }
 
-// SetCreatedAt sets the created_at field.
+// SetCreatedAt sets the "created_at" field.
 func (ac *AlertCreate) SetCreatedAt(t time.Time) *AlertCreate {
 	ac.mutation.SetCreatedAt(t)
 	return ac
 }
 
-// SetNillableCreatedAt sets the created_at field if the given value is not nil.
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableCreatedAt(t *time.Time) *AlertCreate {
 	if t != nil {
 		ac.SetCreatedAt(*t)
@@ -38,13 +38,13 @@ func (ac *AlertCreate) SetNillableCreatedAt(t *time.Time) *AlertCreate {
 	return ac
 }
 
-// SetUpdatedAt sets the updated_at field.
+// SetUpdatedAt sets the "updated_at" field.
 func (ac *AlertCreate) SetUpdatedAt(t time.Time) *AlertCreate {
 	ac.mutation.SetUpdatedAt(t)
 	return ac
 }
 
-// SetNillableUpdatedAt sets the updated_at field if the given value is not nil.
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableUpdatedAt(t *time.Time) *AlertCreate {
 	if t != nil {
 		ac.SetUpdatedAt(*t)
@@ -52,19 +52,19 @@ func (ac *AlertCreate) SetNillableUpdatedAt(t *time.Time) *AlertCreate {
 	return ac
 }
 
-// SetScenario sets the scenario field.
+// SetScenario sets the "scenario" field.
 func (ac *AlertCreate) SetScenario(s string) *AlertCreate {
 	ac.mutation.SetScenario(s)
 	return ac
 }
 
-// SetBucketId sets the bucketId field.
+// SetBucketId sets the "bucketId" field.
 func (ac *AlertCreate) SetBucketId(s string) *AlertCreate {
 	ac.mutation.SetBucketId(s)
 	return ac
 }
 
-// SetNillableBucketId sets the bucketId field if the given value is not nil.
+// SetNillableBucketId sets the "bucketId" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableBucketId(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetBucketId(*s)
@@ -72,13 +72,13 @@ func (ac *AlertCreate) SetNillableBucketId(s *string) *AlertCreate {
 	return ac
 }
 
-// SetMessage sets the message field.
+// SetMessage sets the "message" field.
 func (ac *AlertCreate) SetMessage(s string) *AlertCreate {
 	ac.mutation.SetMessage(s)
 	return ac
 }
 
-// SetNillableMessage sets the message field if the given value is not nil.
+// SetNillableMessage sets the "message" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableMessage(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetMessage(*s)
@@ -86,13 +86,13 @@ func (ac *AlertCreate) SetNillableMessage(s *string) *AlertCreate {
 	return ac
 }
 
-// SetEventsCount sets the eventsCount field.
+// SetEventsCount sets the "eventsCount" field.
 func (ac *AlertCreate) SetEventsCount(i int32) *AlertCreate {
 	ac.mutation.SetEventsCount(i)
 	return ac
 }
 
-// SetNillableEventsCount sets the eventsCount field if the given value is not nil.
+// SetNillableEventsCount sets the "eventsCount" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableEventsCount(i *int32) *AlertCreate {
 	if i != nil {
 		ac.SetEventsCount(*i)
@@ -100,13 +100,13 @@ func (ac *AlertCreate) SetNillableEventsCount(i *int32) *AlertCreate {
 	return ac
 }
 
-// SetStartedAt sets the startedAt field.
+// SetStartedAt sets the "startedAt" field.
 func (ac *AlertCreate) SetStartedAt(t time.Time) *AlertCreate {
 	ac.mutation.SetStartedAt(t)
 	return ac
 }
 
-// SetNillableStartedAt sets the startedAt field if the given value is not nil.
+// SetNillableStartedAt sets the "startedAt" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableStartedAt(t *time.Time) *AlertCreate {
 	if t != nil {
 		ac.SetStartedAt(*t)
@@ -114,13 +114,13 @@ func (ac *AlertCreate) SetNillableStartedAt(t *time.Time) *AlertCreate {
 	return ac
 }
 
-// SetStoppedAt sets the stoppedAt field.
+// SetStoppedAt sets the "stoppedAt" field.
 func (ac *AlertCreate) SetStoppedAt(t time.Time) *AlertCreate {
 	ac.mutation.SetStoppedAt(t)
 	return ac
 }
 
-// SetNillableStoppedAt sets the stoppedAt field if the given value is not nil.
+// SetNillableStoppedAt sets the "stoppedAt" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableStoppedAt(t *time.Time) *AlertCreate {
 	if t != nil {
 		ac.SetStoppedAt(*t)
@@ -128,13 +128,13 @@ func (ac *AlertCreate) SetNillableStoppedAt(t *time.Time) *AlertCreate {
 	return ac
 }
 
-// SetSourceIp sets the sourceIp field.
+// SetSourceIp sets the "sourceIp" field.
 func (ac *AlertCreate) SetSourceIp(s string) *AlertCreate {
 	ac.mutation.SetSourceIp(s)
 	return ac
 }
 
-// SetNillableSourceIp sets the sourceIp field if the given value is not nil.
+// SetNillableSourceIp sets the "sourceIp" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceIp(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceIp(*s)
@@ -142,13 +142,13 @@ func (ac *AlertCreate) SetNillableSourceIp(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceRange sets the sourceRange field.
+// SetSourceRange sets the "sourceRange" field.
 func (ac *AlertCreate) SetSourceRange(s string) *AlertCreate {
 	ac.mutation.SetSourceRange(s)
 	return ac
 }
 
-// SetNillableSourceRange sets the sourceRange field if the given value is not nil.
+// SetNillableSourceRange sets the "sourceRange" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceRange(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceRange(*s)
@@ -156,13 +156,13 @@ func (ac *AlertCreate) SetNillableSourceRange(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceAsNumber sets the sourceAsNumber field.
+// SetSourceAsNumber sets the "sourceAsNumber" field.
 func (ac *AlertCreate) SetSourceAsNumber(s string) *AlertCreate {
 	ac.mutation.SetSourceAsNumber(s)
 	return ac
 }
 
-// SetNillableSourceAsNumber sets the sourceAsNumber field if the given value is not nil.
+// SetNillableSourceAsNumber sets the "sourceAsNumber" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceAsNumber(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceAsNumber(*s)
@@ -170,13 +170,13 @@ func (ac *AlertCreate) SetNillableSourceAsNumber(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceAsName sets the sourceAsName field.
+// SetSourceAsName sets the "sourceAsName" field.
 func (ac *AlertCreate) SetSourceAsName(s string) *AlertCreate {
 	ac.mutation.SetSourceAsName(s)
 	return ac
 }
 
-// SetNillableSourceAsName sets the sourceAsName field if the given value is not nil.
+// SetNillableSourceAsName sets the "sourceAsName" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceAsName(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceAsName(*s)
@@ -184,13 +184,13 @@ func (ac *AlertCreate) SetNillableSourceAsName(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceCountry sets the sourceCountry field.
+// SetSourceCountry sets the "sourceCountry" field.
 func (ac *AlertCreate) SetSourceCountry(s string) *AlertCreate {
 	ac.mutation.SetSourceCountry(s)
 	return ac
 }
 
-// SetNillableSourceCountry sets the sourceCountry field if the given value is not nil.
+// SetNillableSourceCountry sets the "sourceCountry" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceCountry(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceCountry(*s)
@@ -198,13 +198,13 @@ func (ac *AlertCreate) SetNillableSourceCountry(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceLatitude sets the sourceLatitude field.
+// SetSourceLatitude sets the "sourceLatitude" field.
 func (ac *AlertCreate) SetSourceLatitude(f float32) *AlertCreate {
 	ac.mutation.SetSourceLatitude(f)
 	return ac
 }
 
-// SetNillableSourceLatitude sets the sourceLatitude field if the given value is not nil.
+// SetNillableSourceLatitude sets the "sourceLatitude" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceLatitude(f *float32) *AlertCreate {
 	if f != nil {
 		ac.SetSourceLatitude(*f)
@@ -212,13 +212,13 @@ func (ac *AlertCreate) SetNillableSourceLatitude(f *float32) *AlertCreate {
 	return ac
 }
 
-// SetSourceLongitude sets the sourceLongitude field.
+// SetSourceLongitude sets the "sourceLongitude" field.
 func (ac *AlertCreate) SetSourceLongitude(f float32) *AlertCreate {
 	ac.mutation.SetSourceLongitude(f)
 	return ac
 }
 
-// SetNillableSourceLongitude sets the sourceLongitude field if the given value is not nil.
+// SetNillableSourceLongitude sets the "sourceLongitude" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceLongitude(f *float32) *AlertCreate {
 	if f != nil {
 		ac.SetSourceLongitude(*f)
@@ -226,13 +226,13 @@ func (ac *AlertCreate) SetNillableSourceLongitude(f *float32) *AlertCreate {
 	return ac
 }
 
-// SetSourceScope sets the sourceScope field.
+// SetSourceScope sets the "sourceScope" field.
 func (ac *AlertCreate) SetSourceScope(s string) *AlertCreate {
 	ac.mutation.SetSourceScope(s)
 	return ac
 }
 
-// SetNillableSourceScope sets the sourceScope field if the given value is not nil.
+// SetNillableSourceScope sets the "sourceScope" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceScope(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceScope(*s)
@@ -240,13 +240,13 @@ func (ac *AlertCreate) SetNillableSourceScope(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSourceValue sets the sourceValue field.
+// SetSourceValue sets the "sourceValue" field.
 func (ac *AlertCreate) SetSourceValue(s string) *AlertCreate {
 	ac.mutation.SetSourceValue(s)
 	return ac
 }
 
-// SetNillableSourceValue sets the sourceValue field if the given value is not nil.
+// SetNillableSourceValue sets the "sourceValue" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSourceValue(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetSourceValue(*s)
@@ -254,13 +254,13 @@ func (ac *AlertCreate) SetNillableSourceValue(s *string) *AlertCreate {
 	return ac
 }
 
-// SetCapacity sets the capacity field.
+// SetCapacity sets the "capacity" field.
 func (ac *AlertCreate) SetCapacity(i int32) *AlertCreate {
 	ac.mutation.SetCapacity(i)
 	return ac
 }
 
-// SetNillableCapacity sets the capacity field if the given value is not nil.
+// SetNillableCapacity sets the "capacity" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableCapacity(i *int32) *AlertCreate {
 	if i != nil {
 		ac.SetCapacity(*i)
@@ -268,13 +268,13 @@ func (ac *AlertCreate) SetNillableCapacity(i *int32) *AlertCreate {
 	return ac
 }
 
-// SetLeakSpeed sets the leakSpeed field.
+// SetLeakSpeed sets the "leakSpeed" field.
 func (ac *AlertCreate) SetLeakSpeed(s string) *AlertCreate {
 	ac.mutation.SetLeakSpeed(s)
 	return ac
 }
 
-// SetNillableLeakSpeed sets the leakSpeed field if the given value is not nil.
+// SetNillableLeakSpeed sets the "leakSpeed" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableLeakSpeed(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetLeakSpeed(*s)
@@ -282,13 +282,13 @@ func (ac *AlertCreate) SetNillableLeakSpeed(s *string) *AlertCreate {
 	return ac
 }
 
-// SetScenarioVersion sets the scenarioVersion field.
+// SetScenarioVersion sets the "scenarioVersion" field.
 func (ac *AlertCreate) SetScenarioVersion(s string) *AlertCreate {
 	ac.mutation.SetScenarioVersion(s)
 	return ac
 }
 
-// SetNillableScenarioVersion sets the scenarioVersion field if the given value is not nil.
+// SetNillableScenarioVersion sets the "scenarioVersion" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableScenarioVersion(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetScenarioVersion(*s)
@@ -296,13 +296,13 @@ func (ac *AlertCreate) SetNillableScenarioVersion(s *string) *AlertCreate {
 	return ac
 }
 
-// SetScenarioHash sets the scenarioHash field.
+// SetScenarioHash sets the "scenarioHash" field.
 func (ac *AlertCreate) SetScenarioHash(s string) *AlertCreate {
 	ac.mutation.SetScenarioHash(s)
 	return ac
 }
 
-// SetNillableScenarioHash sets the scenarioHash field if the given value is not nil.
+// SetNillableScenarioHash sets the "scenarioHash" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableScenarioHash(s *string) *AlertCreate {
 	if s != nil {
 		ac.SetScenarioHash(*s)
@@ -310,13 +310,13 @@ func (ac *AlertCreate) SetNillableScenarioHash(s *string) *AlertCreate {
 	return ac
 }
 
-// SetSimulated sets the simulated field.
+// SetSimulated sets the "simulated" field.
 func (ac *AlertCreate) SetSimulated(b bool) *AlertCreate {
 	ac.mutation.SetSimulated(b)
 	return ac
 }
 
-// SetNillableSimulated sets the simulated field if the given value is not nil.
+// SetNillableSimulated sets the "simulated" field if the given value is not nil.
 func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
 	if b != nil {
 		ac.SetSimulated(*b)
@@ -324,13 +324,13 @@ func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
 	return ac
 }
 
-// SetOwnerID sets the owner edge to Machine by id.
+// SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (ac *AlertCreate) SetOwnerID(id int) *AlertCreate {
 	ac.mutation.SetOwnerID(id)
 	return ac
 }
 
-// SetNillableOwnerID sets the owner edge to Machine by id if the given value is not nil.
+// SetNillableOwnerID sets the "owner" edge to the Machine entity by ID if the given value is not nil.
 func (ac *AlertCreate) SetNillableOwnerID(id *int) *AlertCreate {
 	if id != nil {
 		ac = ac.SetOwnerID(*id)
@@ -338,18 +338,18 @@ func (ac *AlertCreate) SetNillableOwnerID(id *int) *AlertCreate {
 	return ac
 }
 
-// SetOwner sets the owner edge to Machine.
+// SetOwner sets the "owner" edge to the Machine entity.
 func (ac *AlertCreate) SetOwner(m *Machine) *AlertCreate {
 	return ac.SetOwnerID(m.ID)
 }
 
-// AddDecisionIDs adds the decisions edge to Decision by ids.
+// AddDecisionIDs adds the "decisions" edge to the Decision entity by IDs.
 func (ac *AlertCreate) AddDecisionIDs(ids ...int) *AlertCreate {
 	ac.mutation.AddDecisionIDs(ids...)
 	return ac
 }
 
-// AddDecisions adds the decisions edges to Decision.
+// AddDecisions adds the "decisions" edges to the Decision entity.
 func (ac *AlertCreate) AddDecisions(d ...*Decision) *AlertCreate {
 	ids := make([]int, len(d))
 	for i := range d {
@@ -358,13 +358,13 @@ func (ac *AlertCreate) AddDecisions(d ...*Decision) *AlertCreate {
 	return ac.AddDecisionIDs(ids...)
 }
 
-// AddEventIDs adds the events edge to Event by ids.
+// AddEventIDs adds the "events" edge to the Event entity by IDs.
 func (ac *AlertCreate) AddEventIDs(ids ...int) *AlertCreate {
 	ac.mutation.AddEventIDs(ids...)
 	return ac
 }
 
-// AddEvents adds the events edges to Event.
+// AddEvents adds the "events" edges to the Event entity.
 func (ac *AlertCreate) AddEvents(e ...*Event) *AlertCreate {
 	ids := make([]int, len(e))
 	for i := range e {
@@ -373,13 +373,13 @@ func (ac *AlertCreate) AddEvents(e ...*Event) *AlertCreate {
 	return ac.AddEventIDs(ids...)
 }
 
-// AddMetaIDs adds the metas edge to Meta by ids.
+// AddMetaIDs adds the "metas" edge to the Meta entity by IDs.
 func (ac *AlertCreate) AddMetaIDs(ids ...int) *AlertCreate {
 	ac.mutation.AddMetaIDs(ids...)
 	return ac
 }
 
-// AddMetas adds the metas edges to Meta.
+// AddMetas adds the "metas" edges to the Meta entity.
 func (ac *AlertCreate) AddMetas(m ...*Meta) *AlertCreate {
 	ids := make([]int, len(m))
 	for i := range m {
@@ -770,7 +770,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
-// AlertCreateBulk is the builder for creating a bulk of Alert entities.
+// AlertCreateBulk is the builder for creating many Alert entities in bulk.
 type AlertCreateBulk struct {
 	config
 	builders []*AlertCreate
@@ -828,7 +828,7 @@ func (acb *AlertCreateBulk) Save(ctx context.Context) ([]*Alert, error) {
 	return nodes, nil
 }
 
-// SaveX calls Save and panics if Save returns an error.
+// SaveX is like Save, but panics if an error occurs.
 func (acb *AlertCreateBulk) SaveX(ctx context.Context) []*Alert {
 	v, err := acb.Save(ctx)
 	if err != nil {
