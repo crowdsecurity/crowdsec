@@ -94,10 +94,19 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 						}
 					}
-					hubIdx[ptrtype][p], err = DownloadItem(cscli, val, overwrite)
+					item, err := DownloadItem(cscli, val, overwrite)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
+
+					// We need to enable an item when it has been added to a collection since latest release of the collection.
+					// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+					if !item.Installed && !val.Downloaded {
+						if item, err = EnableItem(cscli, item); err != nil {
+							return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+						}
+					}
+					hubIdx[ptrtype][p] = item
 				} else {
 					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
