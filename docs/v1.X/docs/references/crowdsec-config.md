@@ -4,6 +4,11 @@
 
 ## Configuration example
 
+!!! tips "Environement variables"
+    You can set a configuration value based on an enrivonement variables
+
+    **Note**: you need to be `root` or put the environment variable in `/etc/environement`
+
 <details>
   <summary>Default configuration</summary>
 
