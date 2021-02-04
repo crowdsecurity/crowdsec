@@ -4,6 +4,7 @@
 
 ## Configuration example
 
+
 <details>
   <summary>Default configuration</summary>
 
@@ -63,6 +64,30 @@ prometheus:
 
 </details>
 
+## Environment variable
+
+It is possible to set a configuration value based on an enrivonement variables.
+
+For example, if you don't want to store your database password in the configuration file, you can do this:
+
+```yaml
+db_config:
+  type:     mysql
+  user:     database_user
+  password: ${DB_PASSWORD}  
+  db_name:  db_name
+  host:     192.168.0.2   
+  port:     3306 
+```
+
+And export the environment variable such as:
+
+```bash
+export DB_PASSWORD="<db_password>"
+```
+
+!!! warning 
+    **Note**: you need to be `root` or put the environment variable in `/etc/environement`
 
 ## Configuration format
 

@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -40,7 +41,8 @@ func (c *GlobalConfig) LoadConfigurationFile(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "failed to read config file")
 	}
-	err = yaml.UnmarshalStrict(fcontent, c)
+	configData := os.ExpandEnv(string(fcontent))
+	err = yaml.UnmarshalStrict([]byte(configData), c)
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshaling config")
 	}
