@@ -82,7 +82,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err == nil {
 				groupExist = true
 			}
-			if !forceYes {
+			if !forceYes && !groupExist {
 				prompt := &survey.Confirm{
 					Message: fmt.Sprintf("We need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
 					Default: true,
