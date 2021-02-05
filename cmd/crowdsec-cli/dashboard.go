@@ -86,7 +86,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 					log.Fatalf("unable to ask to force: %s", err)
 				}
 			}
-			if !answer {
+			if !answer && !forceYes {
 				log.Fatalf("unable to continue without creating '%s' group", crowdsecGroup)
 			}
 
@@ -221,17 +221,16 @@ cscli dashboard remove --force
 				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
 					log.Warningf("failed to remove metabase internal db : %s", err)
 				}
-				if force {
-					log.Debugf("Removing image %s", metabaseImage)
-					if err := metabase.RemoveImageContainer(metabaseImage); err != nil {
-						log.Warningf("Failed to remove metabase container %s : %s", metabaseImage, err)
+				if purge {
+					if err := metabase.RemoveImageContainer(); err != nil {
+						log.Fatalf("removing docker image: %s", err)
 
 					}
 				}
 			}
 		},
 	}
-	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Force remove : stop the container if running and remove.")
+	cmdDashRemove.Flags().BoolVarP(&purge, "purge", "p", false, "Remove also the metabase image")
 	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	cmdDashboard.AddCommand(cmdDashRemove)
 
