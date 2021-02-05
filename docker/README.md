@@ -31,17 +31,15 @@ The container is built with specific docker [configuration](https://github.com/c
 You should apply following configuration before starting it :
 
 * Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
-* Mount volumes to specify your configuration
 * Mount volumes to specify your log files that should be ingested by crowdsec (set up in acquis.yaml)
 * Mount other volumes : if you want to share the database for example
 
 ```shell
-docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
-    -v acquis.yaml:/etc/crowdsec/acquis.yaml \
+docker run -d -v acquis.yaml:/etc/crowdsec/acquis.yaml \
     -e COLLECTIONS="crowdsecurity/sshd"
     -v /var/log/auth.log:/var/log/auth.log \
     -v /path/mycustom.log:/var/log/mycustom.log \
-    --name crowdsec <built-image-tag>
+    --name crowdsec crowdsecurity/crowdsec
 ```
 
 #### Example
@@ -83,8 +81,10 @@ docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
     -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db \
     -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd" \
     -p 8080:8080 -p 6060:6060 \
-    --name crowdsec <built-image-tag>
+    --name crowdsec crowdsecurity/crowdsec
 ```
+
+If you want to be able to restart/stop your container and keep the same DB `-v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db` you need to add a volume on local_api_credentials.yaml `-v /path/local_api_credentials.yaml:/etc/crowdsec/local_api_credentials.yaml`.
 
 ### Environment Variables
 
@@ -99,7 +99,7 @@ docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
 * `TEST_MODE`               - Only test configs (default: `false`) : `-e TEST_MODE="<true|false>"`
 * `DISABLE_AGENT`           - Only test configs (default: `false`) : `-e DISABLE_AGENT="<true|false>"`
 * `DISABLE_LOCAL_API`       - Disable local API (default: `false`) : `-e DISABLE_API="<true|false>"`
-* `REGISTER_TO_ONLINE_API`  - Register to Online API (default: `false`) : `-e REGISTER_TO_ONLINE_API="<true|false>"`
+* `DISABLE_ONLINE_API`      - Disable Online API registration for signal sharing (default: `false`) : `-e DISABLE_ONLINE_API="<true|false>"`
 * `LEVEL_TRACE`             - Trace-level (VERY verbose) on stdout (default: `false`) : `-e LEVEL_TRACE="<true|false>"`
 * `LEVEL_DEBUG`             - Debug-level on stdout (default: `false`) : `-e LEVEL_DEBUG="<true|false>"`
 * `LEVEL_INFO`              - Info-level on stdout (default: `false`) : `-e LEVEL_INFO="<true|false>"`
