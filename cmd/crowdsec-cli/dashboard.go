@@ -224,7 +224,7 @@ cscli dashboard remove --force
 				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
 					log.Warningf("failed to remove metabase internal db : %s", err)
 				}
-				if purge {
+				if force {
 					if err := metabase.RemoveImageContainer(); err != nil {
 						log.Fatalf("removing docker image: %s", err)
 
@@ -233,7 +233,7 @@ cscli dashboard remove --force
 			}
 		},
 	}
-	cmdDashRemove.Flags().BoolVarP(&purge, "purge", "p", false, "Remove also the metabase image")
+	cmdDashRemove.Flags().BoolVarP(&force, "force", "p", false, "Remove also the metabase image")
 	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	cmdDashboard.AddCommand(cmdDashRemove)
 
