@@ -233,7 +233,7 @@ cscli dashboard remove --force
 			}
 		},
 	}
-	cmdDashRemove.Flags().BoolVarP(&force, "force", "p", false, "Remove also the metabase image")
+	cmdDashRemove.Flags().BoolVarP(&force, "force", "f", false, "Remove also the metabase image")
 	cmdDashRemove.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	cmdDashboard.AddCommand(cmdDashRemove)
 
