@@ -61,10 +61,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
-	/*related to https://github.com/gin-gonic/gin/pull/2474
-	Gin team doesn't seem to be willing to have a opt-in/opt-out on the trusted proxies.
-	For now, let's not trust that. 	*/
-	router.ForwardedByClientIP = false
+	router.ForwardedByClientIP = config.UseForwardedForHeaders
 
 	/*The logger that will be used by handlers*/
 	clog := log.New()
