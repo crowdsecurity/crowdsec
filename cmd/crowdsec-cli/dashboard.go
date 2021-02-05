@@ -77,6 +77,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				metabasePassword = generatePassword(16)
 			}
 			var answer bool
+			groupExist := false
+			dockerGroup, err := user.LookupGroup(crowdsecGroup)
+			if err == nil {
+				groupExist = true
+			}
 			if !forceYes {
 				prompt := &survey.Confirm{
 					Message: fmt.Sprintf("We need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
@@ -89,9 +94,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if !answer && !forceYes {
 				log.Fatalf("unable to continue without creating '%s' group", crowdsecGroup)
 			}
-
-			dockerGroup, err := user.LookupGroup(crowdsecGroup)
-			if err != nil {
+			if !groupExist {
 				groupAddCmd, err := exec.LookPath("groupadd")
 				if err != nil {
 					log.Fatalf("unable to find 'groupadd' command, can't continue")
