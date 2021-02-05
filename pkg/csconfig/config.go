@@ -16,14 +16,16 @@ import (
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
 type GlobalConfig struct {
 	//just a path to ourself :p
-	Self        *string             `yaml:"-"`
-	Common      *CommonCfg          `yaml:"common,omitempty"`
-	Prometheus  *PrometheusCfg      `yaml:"prometheus,omitempty"`
-	Crowdsec    *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
-	Cscli       *CscliCfg           `yaml:"cscli,omitempty"`
-	DbConfig    *DatabaseCfg        `yaml:"db_config,omitempty"`
-	API         *APICfg             `yaml:"api,omitempty"`
-	ConfigPaths *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	Self         *string             `yaml:"-"`
+	Common       *CommonCfg          `yaml:"common,omitempty"`
+	Prometheus   *PrometheusCfg      `yaml:"prometheus,omitempty"`
+	Crowdsec     *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
+	Cscli        *CscliCfg           `yaml:"cscli,omitempty"`
+	DbConfig     *DatabaseCfg        `yaml:"db_config,omitempty"`
+	API          *APICfg             `yaml:"api,omitempty"`
+	ConfigPaths  *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	DisableAPI   bool                `yaml:"-"`
+	DisableAgent bool                `yaml:"-"`
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -35,8 +37,9 @@ func (c *GlobalConfig) Dump() error {
 	return nil
 }
 
-func (c *GlobalConfig) LoadConfigurationFile(path string) error {
-
+func (c *GlobalConfig) LoadConfigurationFile(path string, disableAPI bool, disableAgent bool) error {
+	c.DisableAPI = disableAPI
+	c.DisableAgent = disableAgent
 	fcontent, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "failed to read config file")
@@ -112,7 +115,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
 	}
 
-	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" {
+	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
 		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
@@ -133,7 +136,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		}
 	}
 
-	if c.API.Server != nil {
+	if c.API.Server != nil && !c.DisableAPI {
 		c.API.Server.DbConfig = c.DbConfig
 		c.API.Server.LogDir = c.Common.LogDir
 		if err := c.API.Server.LoadProfiles(); err != nil {
