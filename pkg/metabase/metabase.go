@@ -28,13 +28,14 @@ type Metabase struct {
 }
 
 type Config struct {
-	Database   *csconfig.DatabaseCfg `yaml:"database"`
-	ListenAddr string                `yaml:"listen_addr"`
-	ListenPort string                `yaml:"listen_port"`
-	ListenURL  string                `yaml:"listen_url"`
-	Username   string                `yaml:"username"`
-	Password   string                `yaml:"password"`
-	DBPath     string                `yaml:"metabase_db_path"`
+	Database      *csconfig.DatabaseCfg `yaml:"database"`
+	ListenAddr    string                `yaml:"listen_addr"`
+	ListenPort    string                `yaml:"listen_port"`
+	ListenURL     string                `yaml:"listen_url"`
+	Username      string                `yaml:"username"`
+	Password      string                `yaml:"password"`
+	DBPath        string                `yaml:"metabase_db_path"`
+	DockerGroupID string                `yaml:"-"`
 }
 
 var (
@@ -70,7 +71,7 @@ func (m *Metabase) Init() error {
 	}
 	m.Database, err = NewDatabase(m.Config.Database, m.Client, remoteDBAddr)
 
-	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI)
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
 		return errors.Wrap(err, "container init")
 	}
@@ -123,16 +124,17 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
-			Database:   dbConfig,
-			ListenAddr: listenAddr,
-			ListenPort: listenPort,
-			Username:   username,
-			Password:   password,
-			ListenURL:  fmt.Sprintf("http://%s:%s", listenAddr, listenPort),
-			DBPath:     mbDBPath,
+			Database:      dbConfig,
+			ListenAddr:    listenAddr,
+			ListenPort:    listenPort,
+			Username:      username,
+			Password:      password,
+			ListenURL:     fmt.Sprintf("http://%s:%s", listenAddr, listenPort),
+			DBPath:        mbDBPath,
+			DockerGroupID: dockerGroupID,
 		},
 	}
 	if err := metabase.Init(); err != nil {

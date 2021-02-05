@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
@@ -24,6 +27,7 @@ var (
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
 	metabaseContainerID   = "/crowdsec-metabase"
+	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
 
@@ -72,7 +76,45 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if metabasePassword == "" {
 				metabasePassword = generatePassword(16)
 			}
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath)
+			var answer bool
+			if !forceYes {
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("We need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					log.Fatalf("unable to ask to force: %s", err)
+				}
+			}
+			if !answer {
+				log.Fatalf("unable to continue without creating '%s' group", crowdsecGroup)
+			}
+
+			dockerGroup, err := user.LookupGroup(crowdsecGroup)
+			if err != nil {
+				groupAddCmd, err := exec.LookPath("groupadd")
+				if err != nil {
+					log.Fatalf("unable to find 'groupadd' command, can't continue")
+				}
+
+				groupAdd := &exec.Cmd{Path: groupAddCmd, Args: []string{groupAddCmd, crowdsecGroup}}
+				if err := groupAdd.Run(); err != nil {
+					log.Fatalf("unable to add group '%s': %s", dockerGroup, err)
+				}
+				dockerGroup, err = user.LookupGroup(crowdsecGroup)
+				if err != nil {
+					log.Fatalf("unable to lookup '%s' group: %+v", dockerGroup, err)
+				}
+			}
+			intID, err := strconv.Atoi(dockerGroup.Gid)
+			if err != nil {
+				log.Fatalf("unable to convert group ID to int: %s", err)
+			}
+			if err := os.Chown(csConfig.DbConfig.DbPath, 0, intID); err != nil {
+				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
+			}
+
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -92,6 +134,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashSetup.Flags().StringVarP(&metabaseDbPath, "dir", "d", "", "Shared directory with metabase container.")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenAddress, "listen", "l", metabaseListenAddress, "Listen address of container")
 	cmdDashSetup.Flags().StringVarP(&metabaseListenPort, "port", "p", metabaseListenPort, "Listen port of container")
+	cmdDashSetup.Flags().BoolVarP(&forceYes, "yes", "y", false, "force  yes")
 	//cmdDashSetup.Flags().StringVarP(&metabaseUser, "user", "u", "crowdsec@crowdsec.net", "metabase user")
 	cmdDashSetup.Flags().StringVar(&metabasePassword, "password", "", "metabase password")
 
@@ -149,6 +192,18 @@ cscli dashboard remove --force
 					log.Fatalf("unable to ask to force: %s", err)
 				}
 			}
+			dockerGroup, err := user.LookupGroup(crowdsecGroup)
+			if err == nil { // if group exist, remove it
+				groupDelCmd, err := exec.LookPath("groupdel")
+				if err != nil {
+					log.Fatalf("unable to find 'groupdel' command, can't continue")
+				}
+
+				groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
+				if err := groupDel.Run(); err != nil {
+					log.Fatalf("unable to delete group '%s': %s", dockerGroup, err)
+				}
+			}
 
 			if answer {
 				if metabase.IsContainerExist(metabaseContainerID) {
@@ -169,7 +224,7 @@ cscli dashboard remove --force
 				if force {
 					log.Debugf("Removing image %s", metabaseImage)
 					if err := metabase.RemoveImageContainer(metabaseImage); err != nil {
-            log.Warningf("Failed to remove metabase container %s : %s", metabaseImage, err)
+						log.Warningf("Failed to remove metabase container %s : %s", metabaseImage, err)
 
 					}
 				}
