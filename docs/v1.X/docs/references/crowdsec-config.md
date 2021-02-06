@@ -50,6 +50,7 @@ api:
     log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
+    use_forwarded_for_headers: false
     online_client: # Crowdsec API
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
 #    tls:
@@ -132,6 +133,7 @@ api:
     log_level: (error|info|debug|trace>)
     listen_uri: <listen_uri> # host:port
     profiles_path: <path_to_profile_file>
+    use_forwarded_for_headers: <true|false>
     online_client:
       credentials_path: <path_to_crowdsec_api_client_credential_file>
     tls:
@@ -304,6 +306,7 @@ api:
     log_level: (error|info|debug|trace>)
     listen_uri: <listen_uri> # host:port
     profiles_path: <path_to_profile_file>
+    use_forwarded_for_headers: (true|false)
     online_client:
       credentials_path: <path_to_crowdsec_api_client_credential_file>
     tls:
@@ -340,6 +343,7 @@ server:
   log_level: (error|info|debug|trace)
   listen_uri: <listen_uri> # host:port
   profiles_path: <path_to_profile_file>
+  use_forwarded_for_headers: (true|false)
   online_client:
     credentials_path: <path_to_crowdsec_api_client_credential_file>
   tls:
@@ -356,6 +360,11 @@ Address and port listen configuration, the form `host:port`.
 > string
 
 The path to the {{v1X.profiles.htmlname}} configuration.
+
+#### `use_forwarded_for_headers`
+> string
+
+Allow the usage of `X-Forwarded-For` or `X-Real-IP` to get the client IP address. Do not enable if you are not running the LAPI behind a trusted reverse-proxy or LB.
 
 #### `online_client`
 
