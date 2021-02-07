@@ -47,6 +47,10 @@ func initConfig() {
 	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
 		log.Fatalf(err.Error())
 	}
+	if csConfig.Cscli == nil {
+		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
+	}
+
 	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
 		cwhub.HubBranch = csConfig.Cscli.HubBranch
 	}
