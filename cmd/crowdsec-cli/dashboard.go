@@ -84,14 +84,14 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			}
 			if !forceYes && !groupExist {
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("We need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
+					Message: fmt.Sprintf("For metabase docker to be able to access SQLite file we need to add a new group called '%s' to the system, is it ok for you ?", crowdsecGroup),
 					Default: true,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					log.Fatalf("unable to ask to force: %s", err)
 				}
 			}
-			if !answer && !forceYes {
+			if !answer && !forceYes && !groupExist {
 				log.Fatalf("unable to continue without creating '%s' group", crowdsecGroup)
 			}
 			if !groupExist {
