@@ -204,7 +204,7 @@ cscli dashboard remove --force
 
 				groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
 				if err := groupDel.Run(); err != nil {
-					log.Fatalf("unable to delete group '%s': %s", dockerGroup, err)
+					log.Errorf("unable to delete group '%s': %s", dockerGroup, err)
 				}
 			}
 
