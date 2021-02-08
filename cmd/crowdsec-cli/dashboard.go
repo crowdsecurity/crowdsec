@@ -195,24 +195,23 @@ cscli dashboard remove --force
 					log.Fatalf("unable to ask to force: %s", err)
 				}
 			}
-			dockerGroup, err := user.LookupGroup(crowdsecGroup)
-			if err == nil { // if group exist, remove it
-				groupDelCmd, err := exec.LookPath("groupdel")
-				if err != nil {
-					log.Fatalf("unable to find 'groupdel' command, can't continue")
-				}
-
-				groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
-				if err := groupDel.Run(); err != nil {
-					log.Errorf("unable to delete group '%s': %s", dockerGroup, err)
-				}
-			}
-
 			if answer {
 				if metabase.IsContainerExist(metabaseContainerID) {
 					log.Debugf("Stopping container %s", metabaseContainerID)
 					if err := metabase.StopContainer(metabaseContainerID); err != nil {
 						log.Warningf("unable to stop container '%s': %s", metabaseContainerID, err)
+					}
+					dockerGroup, err := user.LookupGroup(crowdsecGroup)
+					if err == nil { // if group exist, remove it
+						groupDelCmd, err := exec.LookPath("groupdel")
+						if err != nil {
+							log.Fatalf("unable to find 'groupdel' command, can't continue")
+						}
+
+						groupDel := &exec.Cmd{Path: groupDelCmd, Args: []string{groupDelCmd, crowdsecGroup}}
+						if err := groupDel.Run(); err != nil {
+							log.Errorf("unable to delete group '%s': %s", dockerGroup, err)
+						}
 					}
 					log.Debugf("Removing container %s", metabaseContainerID)
 					if err := metabase.RemoveContainer(metabaseContainerID); err != nil {
@@ -220,7 +219,7 @@ cscli dashboard remove --force
 					}
 					log.Infof("container %s stopped & removed", metabaseContainerID)
 				}
-				log.Debugf("Removing database %s", csConfig.ConfigPaths.DataDir)
+				log.Debugf("Removing metabase db %s", csConfig.ConfigPaths.DataDir)
 				if err := metabase.RemoveDatabase(csConfig.ConfigPaths.DataDir); err != nil {
 					log.Warningf("failed to remove metabase internal db : %s", err)
 				}
