@@ -61,10 +61,13 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
-	/*related to https://github.com/gin-gonic/gin/pull/2474
-	Gin team doesn't seem to be willing to have a opt-in/opt-out on the trusted proxies.
-	For now, let's not trust that. 	*/
-	router.ForwardedByClientIP = false
+	/* See https://github.com/gin-gonic/gin/pull/2474:
+	Gin does not handle safely X-Forwarded-For or X-Real-IP.
+	We do not trust them by default, but the user can opt-in
+	if they host LAPI behind a trusted proxy which sanitize
+	X-Forwarded-For and X-Real-IP.
+	*/
+	router.ForwardedByClientIP = config.UseForwardedForHeaders
 
 	/*The logger that will be used by handlers*/
 	clog := log.New()

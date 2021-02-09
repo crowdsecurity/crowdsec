@@ -57,8 +57,52 @@ func LoadTestConfig() csconfig.GlobalConfig {
 	return config
 }
 
+func LoadTestConfigForwardedFor() csconfig.GlobalConfig {
+	config := csconfig.GlobalConfig{}
+	maxAge := "1h"
+	flushConfig := csconfig.FlushDBCfg{
+		MaxAge: &maxAge,
+	}
+	dbconfig := csconfig.DatabaseCfg{
+		Type:   "sqlite",
+		DbPath: "./ent",
+		Flush:  &flushConfig,
+	}
+	apiServerConfig := csconfig.LocalApiServerCfg{
+		ListenURI:              "http://127.0.0.1:8080",
+		DbConfig:               &dbconfig,
+		ProfilesPath:           "./tests/profiles.yaml",
+		UseForwardedForHeaders: true,
+	}
+	apiConfig := csconfig.APICfg{
+		Server: &apiServerConfig,
+	}
+	config.API = &apiConfig
+	if err := config.API.Server.LoadProfiles(); err != nil {
+		log.Fatalf("failed to load profiles: %s", err)
+	}
+	return config
+}
+
 func NewAPITest() (*gin.Engine, error) {
 	config := LoadTestConfig()
+
+	os.Remove("./ent")
+	apiServer, err := NewServer(config.API.Server)
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
+	log.Printf("Creating new API server")
+	gin.SetMode(gin.TestMode)
+	router, err := apiServer.Router()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
+	return router, nil
+}
+
+func NewAPITestForwardedFor() (*gin.Engine, error) {
+	config := LoadTestConfigForwardedFor()
 
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
@@ -84,6 +128,24 @@ func ValidateMachine(machineID string) error {
 		return fmt.Errorf("unable to validate machine: %s", err)
 	}
 	return nil
+}
+
+func GetMachineIP(machineID string) (string, error) {
+	config := LoadTestConfig()
+	dbClient, err := database.NewClient(config.API.Server.DbConfig)
+	if err != nil {
+		return "", fmt.Errorf("unable to create new database client: %s", err)
+	}
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return "", fmt.Errorf("Unable to list machines: %s", err)
+	}
+	for _, machine := range machines {
+		if machine.MachineId == machineID {
+			return machine.IpAddress, nil
+		}
+	}
+	return "", nil
 }
 
 func CreateTestMachine(router *gin.Engine) (string, error) {
