@@ -490,22 +490,6 @@ function show_link {
 }
 
 main() {
-    if [[ "$1" == "backup_to_dir" ]];
-    then
-        backup_to_dir
-        return
-    fi
-    
-    if [[ "$1" == "restore_from_dir" ]];
-    then
-        if ! [ $(id -u) = 0 ]; then
-            log_err "Please run the wizard as root or with sudo"
-            exit 1
-        fi
-        restore_from_dir
-        return
-    fi
-
     if [[ "$1" == "binupgrade" ]];
     then
         if ! [ $(id -u) = 0 ]; then
@@ -651,8 +635,6 @@ usage() {
       echo "    ./wizard.sh --upgrade                        Perform a full upgrade and try to migrate configs"
       echo "    ./wizard.sh --unattended                     Install in unattended mode, no question will be asked and defaults will be followed"
       echo "    ./wizard.sh --docker-mode                    Will install crowdsec without systemd and generate random machine-id"
-      echo "    ./wizard.sh -r|--restore                     Restore saved configurations from ${BACKUP_DIR} to ${CROWDSEC_CONFIG_PATH}"
-      echo "    ./wizard.sh -b|--backup                      Backup existing configurations to ${BACKUP_DIR}"
       echo "    ./wizard.sh -n|--noop                        Do nothing"
 
       exit 0  
@@ -689,14 +671,6 @@ do
     --docker-mode)
         DOCKER_MODE="true"
         ACTION="bininstall"
-        shift # past argument
-        ;;
-    -b|--backup)
-        ACTION="backup_to_dir"
-        shift # past argument
-        ;;
-    -r|--restore)
-        ACTION="restore_from_dir"
         shift # past argument
         ;;
     -c|--configure)
