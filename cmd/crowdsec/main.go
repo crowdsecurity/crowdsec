@@ -201,17 +201,15 @@ func (f *Flags) Parse() {
 
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(config *csconfig.GlobalConfig) error {
-
+	disableAPI = flags.DisableAPI
+	disableAgent = flags.DisableAgent
 	if flags.ConfigFile != "" {
-		if err := config.LoadConfigurationFile(flags.ConfigFile); err != nil {
+		if err := config.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
 			return fmt.Errorf("while loading configuration : %s", err)
 		}
 	} else {
 		log.Warningf("no configuration file provided")
 	}
-	disableAPI = flags.DisableAPI
-	disableAgent = flags.DisableAgent
-
 	if !disableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
 		log.Errorf("no API server configuration found, will not start the local API")
 		disableAPI = true

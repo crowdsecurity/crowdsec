@@ -337,7 +337,9 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 }
 
 func GetHubIdx(cscli *csconfig.CscliCfg) error {
-
+	if cscli == nil {
+		return fmt.Errorf("no configuration found for cscli")
+	}
 	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
 	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
 	if err != nil {

@@ -44,7 +44,7 @@ func initConfig() {
 	csConfig = csconfig.NewConfig()
 
 	log.Debugf("Using %s as configuration file", ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
+	if err := csConfig.LoadConfigurationFile(ConfigFilePath, csConfig.DisableAPI, csConfig.DisableAgent); err != nil {
 		log.Fatalf(err.Error())
 	}
 	if csConfig.Cscli == nil {
