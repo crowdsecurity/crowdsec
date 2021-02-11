@@ -32,6 +32,7 @@ type LocalApiServerCfg struct {
 	TLS                    *TLSCfg             `yaml:"tls"`
 	DbConfig               *DatabaseCfg        `yaml:"-"`
 	LogDir                 string              `yaml:"-"`
+	LogMedia               string              `yaml:"-"`
 	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
 	Profiles               []*ProfileCfg       `yaml:"-"`
