@@ -139,6 +139,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	if c.API.Server != nil && !c.DisableAPI {
 		c.API.Server.DbConfig = c.DbConfig
 		c.API.Server.LogDir = c.Common.LogDir
+		c.API.Server.LogMedia = c.Common.LogMedia
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
