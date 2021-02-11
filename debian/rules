@@ -2,8 +2,25 @@
 
 export DH_GOLANG_INSTALL_ALL := 1
 
+export BUILD_VERSION   := $(shell dpkg-parsechangelog -SVersion)
+export BUILD_TAG       := debian
+export BUILD_CODENAME  := $(shell awk '/CodeName/ { gsub(/\"/, "", $$2); print $$2 }' RELEASE.json)
+export BUILD_GOVERSION := $(shell go version | awk '{ gsub(/^go/, "", $$3); print $$3 }')
+export BUILD_DATE      := $(shell TZ=Etc/UTC date +'%F_%T' -d @$(SOURCE_DATE_EPOCH))
+export set_cwversion   := -X github.com/crowdsecurity/crowdsec/pkg/cwversion
+export LD_FLAGS        := -ldflags '-s -w             \
+	$(set_cwversion).Version=$(BUILD_VERSION)     \
+	$(set_cwversion).Tag=$(BUILD_TAG)             \
+	$(set_cwversion).Codename=$(BUILD_CODENAME)   \
+	$(set_cwversion).GoVersion=$(BUILD_GOVERSION) \
+	$(set_cwversion).BuildDate=$(BUILD_DATE)      \
+'
+
 %:
 	dh $@ --builddirectory=_build --buildsystem=golang --with=golang
+
+override_dh_auto_build:
+	dh_auto_build -- $(LD_FLAGS)
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
