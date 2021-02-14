@@ -16,19 +16,19 @@ import (
 func TestConfigLoading(t *testing.T) {
 	//bad filename
 	cfg := csconfig.CrowdsecServiceCfg{
-		AcquisitionFilePath: "./tests/xxx.yaml",
+		AcquisitionFiles: []string{"./tests/xxx.yaml"},
 	}
 	_, err := LoadAcquisitionFromFile(&cfg)
 	assert.Contains(t, fmt.Sprintf("%s", err), "can't open ./tests/xxx.yaml: open ./tests/xxx.yaml: no such file or directory")
 	//bad config file
 	cfg = csconfig.CrowdsecServiceCfg{
-		AcquisitionFilePath: "./tests/test.log",
+		AcquisitionFiles: []string{"./tests/test.log"},
 	}
 	_, err = LoadAcquisitionFromFile(&cfg)
 	assert.Contains(t, fmt.Sprintf("%s", err), "failed to yaml decode ./tests/test.log: yaml: unmarshal errors")
 	//correct config file
 	cfg = csconfig.CrowdsecServiceCfg{
-		AcquisitionFilePath: "./tests/acquis_test.yaml",
+		AcquisitionFiles: []string{"./tests/acquis_test.yaml"},
 	}
 	srcs, err := LoadAcquisitionFromFile(&cfg)
 	if err != nil {
