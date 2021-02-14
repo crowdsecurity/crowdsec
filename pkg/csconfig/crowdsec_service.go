@@ -2,7 +2,10 @@ package csconfig
 
 /*Configurations needed for crowdsec to load parser/scenarios/... + acquisition*/
 type CrowdsecServiceCfg struct {
-	AcquisitionFilePath  string            `yaml:"acquisition_path,omitempty"`
+	AcquisitionFilePath string `yaml:"acquisition_path,omitempty"`
+	AcquisitionDirPath  string `yaml:"acquisition_dir,omitempty"`
+
+	AcquisitionFiles     []string          `yaml:"-"`
 	ParserRoutinesCount  int               `yaml:"parser_routines"`
 	BucketsRoutinesCount int               `yaml:"buckets_routines"`
 	OutputRoutinesCount  int               `yaml:"output_routines"`

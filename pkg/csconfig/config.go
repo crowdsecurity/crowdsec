@@ -84,8 +84,22 @@ func (c *GlobalConfig) LoadConfiguration() error {
 
 	if c.Crowdsec != nil {
 		if c.Crowdsec.AcquisitionFilePath == "" {
-			c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+			defaultAcquis := filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+			if _, err := os.Stat(defaultAcquis); err == nil {
+				c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, defaultAcquis)
+			}
+		} else {
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 		}
+
+		if c.Crowdsec.AcquisitionDirPath != "" {
+			files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
+			if err != nil {
+				return errors.Wrap(err, "while globing acquis_dir")
+			}
+		}
+
 		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 		c.Crowdsec.HubDir = c.ConfigPaths.HubDir
