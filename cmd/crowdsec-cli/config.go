@@ -55,13 +55,40 @@ func backupConfigToDirectory(dirPath string) error {
 		}
 		log.Infof("Saved simulation to %s", backupSimulation)
 	}
+
+	/*
+	   - backup AcquisitionFilePath
+	   - backup the other files of acquisition directory
+	*/
 	if csConfig.Crowdsec != nil && csConfig.Crowdsec.AcquisitionFilePath != "" {
 		backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
 		if err = types.CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
 		}
-		log.Infof("Saved acquis to %s", backupAcquisition)
 	}
+
+	acquisBackupDir := dirPath + "/acquis/"
+	if err = os.Mkdir(acquisBackupDir, 0600); err != nil {
+		return fmt.Errorf("error while creating %s : %s", acquisBackupDir, err)
+	}
+
+	if csConfig.Crowdsec != nil && len(csConfig.Crowdsec.AcquisitionFiles) > 0 {
+		for _, acquisFile := range csConfig.Crowdsec.AcquisitionFiles {
+			/*if it was the default one, it was already backup'ed*/
+			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
+				continue
+			}
+			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			if err != nil {
+				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
+			}
+			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+			}
+			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)
+		}
+	}
+
 	if ConfigFilePath != "" {
 		backupMain := fmt.Sprintf("%s/config.yaml", dirPath)
 		if err = types.CopyFile(ConfigFilePath, backupMain); err != nil {
@@ -186,10 +213,54 @@ func restoreConfigFromDirectory(dirPath string) error {
 		}
 	}
 
+	/*if there is a acquisition dir, restore its content*/
+	if csConfig.Crowdsec.AcquisitionDirPath != "" {
+		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0600); err != nil {
+			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
+		}
+
+	}
+
+	//if there was a single one
 	backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
 	if _, err = os.Stat(backupAcquisition); err == nil {
+		log.Debugf("restoring backup'ed %s", backupAcquisition)
 		if err = types.CopyFile(backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", backupAcquisition, csConfig.Crowdsec.AcquisitionFilePath, err)
+		}
+	}
+
+	//if there is files in the acquis backup dir, restore them
+	acquisBackupDir := dirPath + "/acquis/*.yaml"
+	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
+		for _, acquisFile := range acquisFiles {
+			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
+			if err != nil {
+				return errors.Wrapf(err, "while saving %s to %s", acquisFile, targetFname)
+			}
+			log.Debugf("restoring %s to %s", acquisFile, targetFname)
+			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+			}
+		}
+	}
+
+	if csConfig.Crowdsec != nil && len(csConfig.Crowdsec.AcquisitionFiles) > 0 {
+		for _, acquisFile := range csConfig.Crowdsec.AcquisitionFiles {
+			log.Infof("backup filepath from dir -> %s", acquisFile)
+			/*if it was the default one, it was already backup'ed*/
+			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
+				log.Infof("skip this one")
+				continue
+			}
+			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			if err != nil {
+				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
+			}
+			if err = types.CopyFile(acquisFile, targetFname); err != nil {
+				return fmt.Errorf("failed copy %s to %s : %s", acquisFile, targetFname, err)
+			}
+			log.Infof("Saved acquis %s to %s", acquisFile, targetFname)
 		}
 	}
 
