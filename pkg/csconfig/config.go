@@ -83,12 +83,11 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	}
 
 	if c.Crowdsec != nil {
-		if c.Crowdsec.AcquisitionFilePath == "" {
-			defaultAcquis := filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
-			if _, err := os.Stat(defaultAcquis); err == nil {
-				c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, defaultAcquis)
+		if c.Crowdsec.AcquisitionFilePath != "" {
+			log.Infof("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
+			if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
+				return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
 			}
-		} else {
 			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 		}
 
@@ -283,6 +282,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Common.WorkingDir,
 		}
 		for _, k := range CommonCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -295,6 +297,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Crowdsec.AcquisitionFilePath,
 		}
 		for _, k := range crowdsecCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -311,6 +316,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.ConfigPaths.SimulationFilePath,
 		}
 		for _, k := range configPathsCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
