@@ -90,13 +90,15 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			}
 			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 		}
-
 		if c.Crowdsec.AcquisitionDirPath != "" {
 			files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
 			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 			if err != nil {
 				return errors.Wrap(err, "while globing acquis_dir")
 			}
+		}
+		if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
+			return fmt.Errorf("no acquisition_path nor acquisition_dir")
 		}
 
 		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
