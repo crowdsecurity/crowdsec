@@ -8,7 +8,7 @@ prometheus:
   enabled: true
   level: full
 crowdsec_service:
-#  acquisition_path: ./config/acquis.yaml
+  acquisition_path: ./tests/acquis.yaml
   parser_routines: 1
 cscli:
   output: human
