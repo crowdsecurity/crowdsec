@@ -83,9 +83,24 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	}
 
 	if c.Crowdsec != nil {
-		if c.Crowdsec.AcquisitionFilePath == "" {
-			c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+		if c.Crowdsec.AcquisitionFilePath != "" {
+			log.Infof("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
+			if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
+				return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
+			}
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 		}
+		if c.Crowdsec.AcquisitionDirPath != "" {
+			files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
+			if err != nil {
+				return errors.Wrap(err, "while globing acquis_dir")
+			}
+		}
+		if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
+			return fmt.Errorf("no acquisition_path nor acquisition_dir")
+		}
+
 		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 		c.Crowdsec.HubDir = c.ConfigPaths.HubDir
@@ -276,6 +291,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Common.WorkingDir,
 		}
 		for _, k := range CommonCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -288,6 +306,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Crowdsec.AcquisitionFilePath,
 		}
 		for _, k := range crowdsecCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -304,6 +325,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.ConfigPaths.SimulationFilePath,
 		}
 		for _, k := range configPathsCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")

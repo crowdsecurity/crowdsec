@@ -11,7 +11,7 @@ config_paths:
   #hub_dir: /etc/crowdsec/hub/
   #index_path: ./config/hub/.index.json
 crowdsec_service:
-  #acquisition_path: ./config/acquis.yaml
+  acquisition_path: ./config/acquis.yaml
   parser_routines: 1
 cscli:
   output: human
