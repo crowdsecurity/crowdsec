@@ -382,17 +382,16 @@ func NewMetricsCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-				log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.Self)
-				os.Exit(1)
+			if prometheusURL == "" {
+				prometheusURL = csConfig.Cscli.PrometheusUrl
 			}
 
 			if prometheusURL == "" {
-				log.Debugf("No prometheus URL provided using: %s:%d", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
-				prometheusURL = fmt.Sprintf("http://%s:%d/metrics", csConfig.Prometheus.ListenAddr, csConfig.Prometheus.ListenPort)
+				log.Errorf("No prometheus url, please specify in %s or via -u", *csConfig.Self)
+				os.Exit(1)
 			}
 
-			ShowPrometheus(prometheusURL)
+			ShowPrometheus(prometheusURL + "/metrics")
 		},
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
