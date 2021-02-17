@@ -1,6 +1,6 @@
 # Acquisition format
 
-The `crowdsec_service` section of configuration supports `acquisition_path` and `acquisition_dir`.
+The `crowdsec_service` section of configuration supports `acquisition_path` and `acquisition_dir` (>1.0.7).
 
 The default setting is to have `acquisition_path` pointing to `/etc/crowdsec/acquis.yaml`.
 
