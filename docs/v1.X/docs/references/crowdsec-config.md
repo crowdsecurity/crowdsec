@@ -24,6 +24,7 @@ config_paths:
   index_path: /etc/crowdsec/hub/.index.json
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
+  #acquisition_dir: /etc/crowdsec/acquis/
   parser_routines: 1
   buckets_routines: 1
   output_routines: 1
@@ -108,6 +109,7 @@ config_paths:
   index_path: <path_to_hub_index_file>
 crowdsec_service:
   acquisition_path: <acqusition_file_path>
+  acquisition_dir: <acquisition_dir_path>
   parser_routines: <number_of_parser_routines>
   buckets_routines: <number_of_buckets_routines>
   output_routines: <number_of_output_routines>
@@ -242,6 +244,7 @@ This section is only used by crowdsec agent.
 ```yaml
 crowdsec_service:
   acquisition_path: <acqusition_file_path>
+  acquisition_dir: <acqusition_dir_path>
   parser_routines: <number_of_parser_routines>
   buckets_routines: <number_of_buckets_routines>
   output_routines: <number_of_output_routines>
@@ -267,6 +270,11 @@ Number of dedicated goroutines for pushing data to local api.
 > string
 
 Path to the yaml file containing logs that needs to be read.
+
+#### `acquisition_dir`
+> string
+
+Path to a directory where each yaml is considered as a acquisition configuration file containing logs that needs to be read.
 
 
 ### `cscli`
