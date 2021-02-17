@@ -11,4 +11,5 @@ type CscliCfg struct {
 	ConfigDir          string            `yaml:"-"`
 	HubIndexFile       string            `yaml:"-"`
 	SimulationFilePath string            `yaml:"-"`
+	PrometheusUrl      string            `yaml:"prometheus_uri"`
 }

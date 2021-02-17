@@ -113,6 +113,13 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Cscli.DataDir = c.ConfigPaths.DataDir
 		c.Cscli.HubDir = c.ConfigPaths.HubDir
 		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+		if c.Cscli.PrometheusUrl == "" {
+			port := 6060
+			if c.Prometheus.ListenPort != 0 {
+				port = c.Prometheus.ListenPort
+			}
+			c.Cscli.PrometheusUrl = fmt.Sprintf("http://127.0.0.1:%d/", port)
+		}
 	}
 
 	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
