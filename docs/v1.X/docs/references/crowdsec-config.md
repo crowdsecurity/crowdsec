@@ -293,7 +293,7 @@ The git branch on which `cscli` is going to fetch configurations.
 #### `prometheus_uri`
 > uri
 
-An uri (without the trailing `/metrics`) that will be used by `cscli metrics` command, ie. `http://127.0.0.1:6060/`
+(>1.0.7) An uri (without the trailing `/metrics`) that will be used by `cscli metrics` command, ie. `http://127.0.0.1:6060/`
 
 ## `db_config`
 
