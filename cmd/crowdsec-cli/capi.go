@@ -132,6 +132,9 @@ func NewCapiCmd() *cobra.Command {
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}
+			if len(scenarios) == 0 {
+				log.Fatalf("no scenarios installed, abort")
+			}
 
 			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
 			if err != nil {
