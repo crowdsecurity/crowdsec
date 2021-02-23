@@ -24,6 +24,9 @@ services:
     environment:
       COLLECTIONS: "crowdsecurity/nginx"
       GID: "${GID-1000}"
+    ports:
+      - 8081:8081
+      - 6060:6060
     depends_on:
       - 'reverse-proxy'
     volumes:
