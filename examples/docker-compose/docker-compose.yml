@@ -30,7 +30,6 @@ services:
     depends_on:
       - 'reverse-proxy'
     volumes:
-      - /home/hess/cs/crowdsec/docker/docker_start.sh:/docker_start.sh
       - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
       - logs:/var/log/nginx
       - crowdsec-db:/var/lib/crowdsec/data/
