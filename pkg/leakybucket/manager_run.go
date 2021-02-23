@@ -268,8 +268,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			/*let's see if this time-bucket should have expired */
 			if bucket.Mode == TIMEMACHINE {
 				bucket.mutex.Lock()
+				ts := bucket.First_ts
+				bucket.mutex.Unlock()
 
-				if !bucket.First_ts.IsZero() {
+				if !ts.IsZero() {
 					var d time.Time
 					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 					if err != nil {
@@ -281,7 +283,6 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 						continue
 					}
 				}
-				bucket.mutex.Unlock()
 			}
 			/*if we're here, let's try to pour */
 
