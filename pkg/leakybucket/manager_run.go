@@ -268,17 +268,18 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			/*let's see if this time-bucket should have expired */
 			if bucket.Mode == TIMEMACHINE {
 				bucket.mutex.Lock()
-				ts := bucket.First_ts
+				firstTs := bucket.First_ts
+				lastTs := bucket.Last_ts
 				bucket.mutex.Unlock()
 
-				if !ts.IsZero() {
+				if !firstTs.IsZero() {
 					var d time.Time
 					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
 					if err != nil {
 						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
 					}
-					if d.After(bucket.Last_ts.Add(bucket.Duration)) {
-						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
+					if d.After(lastTs.Add(bucket.Duration)) {
+						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
 						buckets.Bucket_map.Delete(buckey)
 						continue
 					}
