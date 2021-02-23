@@ -1,0 +1,4 @@
+filenames:
+ - /var/log/nginx/example.*.log
+labels:
+  type: nginx

@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  app:
+    image: httpd:alpine
+    restart: always
+    volumes:
+      - ./app/:/usr/local/apache2/htdocs/
+
+  reverse-proxy:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - 8000:80
+    depends_on:
+      - 'app'
+    volumes:
+      - ./reverse-proxy/nginx.conf:/etc/nginx/nginx.conf
+      - logs:/var/log/nginx
+  
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.0.7
+    #build: ../..
+    environment:
+      COLLECTIONS: "crowdsecurity/nginx"
+      GID: "${GID-1000}"
+    depends_on:
+      - 'reverse-proxy'
+    volumes:
+      - /home/hess/cs/crowdsec/docker/docker_start.sh:/docker_start.sh
+      - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
+      - logs:/var/log/nginx
+      - crowdsec-db:/var/lib/crowdsec/data/
+      - crowdsec-config:/etc/crowdsec/
+  
+  dashboard:
+    build: ./crowdsec/dashboard
+    ports:
+      - 3003:3000
+    environment:
+      MB_DB_FILE: /data/metabase.db
+      MGID: "${GID-1000}"
+    depends_on:
+      - 'crowdsec'
+    volumes:
+      - crowdsec-db:/metabase-data/
+    links:
+      - crowdsec
+
+volumes:
+  logs:
+  crowdsec-db:
+  crowdsec-config:
