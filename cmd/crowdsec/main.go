@@ -38,6 +38,9 @@ var (
 
 	flags *Flags
 
+	/*global crowdsec config*/
+	cConfig *csconfig.GlobalConfig
+
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
