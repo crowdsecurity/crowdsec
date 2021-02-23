@@ -8,7 +8,7 @@ services:
       - ./app/:/usr/local/apache2/htdocs/
     networks:
       crowdsec_test:
-        ipv4_address: 172.18.0.2
+        ipv4_address: 172.20.0.2
 
   reverse-proxy:
     image: nginx:alpine
@@ -22,32 +22,32 @@ services:
       - logs:/var/log/nginx
     networks:
       crowdsec_test:
-        ipv4_address: 172.18.0.3
+        ipv4_address: 172.20.0.3
   
   crowdsec:
     image: crowdsecurity/crowdsec:v1.0.7
     #build: ../..
+    restart: always
     environment:
       COLLECTIONS: "crowdsecurity/nginx"
       GID: "${GID-1000}"
-    ports:
-      - 8081:8081
-      - 6060:6060
     depends_on:
       - 'reverse-proxy'
     volumes:
+      - /home/hess/cs/crowdsec/docker/docker_start.sh:/docker_start.sh
       - ./crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml
       - logs:/var/log/nginx
       - crowdsec-db:/var/lib/crowdsec/data/
       - crowdsec-config:/etc/crowdsec/
     networks:
       crowdsec_test:
-        ipv4_address: 172.18.0.4
+        ipv4_address: 172.20.0.4
   
   dashboard:
     build: ./crowdsec/dashboard
+    restart: always
     ports:
-      - 3003:3000
+      - 3000:3000
     environment:
       MB_DB_FILE: /data/metabase.db
       MGID: "${GID-1000}"
@@ -57,7 +57,7 @@ services:
       - crowdsec-db:/metabase-data/
     networks:
       crowdsec_test:
-        ipv4_address: 172.18.0.5
+        ipv4_address: 172.20.0.5
 
 volumes:
   logs:
@@ -69,4 +69,4 @@ networks:
     ipam:
       driver: default
       config:
-        - subnet: 172.18.0.0/24
+        - subnet: 172.20.0.0/24
