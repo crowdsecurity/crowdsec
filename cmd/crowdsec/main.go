@@ -194,11 +194,11 @@ func (f *Flags) Parse() {
 }
 
 // LoadConfig return configuration parsed from configuration file
-func LoadConfig(config *csconfig.GlobalConfig) error {
+func LoadConfig(cConfig *csconfig.GlobalConfig) error {
 	disableAPI = flags.DisableAPI
 	disableAgent = flags.DisableAgent
 	if flags.ConfigFile != "" {
-		if err := config.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
+		if err := cConfig.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
 			return fmt.Errorf("while loading configuration : %s", err)
 		}
 	} else {
