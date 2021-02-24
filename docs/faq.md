@@ -53,12 +53,16 @@ SQLite by default as it's suitable for standalone/single-machine setups.
 
 ## How to control granularity of actions ? (whitelists, simulation etc.)
 
-{{v1X.crowdsec.name}} support both [whitelists]((/Crowdsec/v1/write_configurations/whitelist/) and [simulation](/Crowdsec/v1/references/simulation/) :
+{{v1X.crowdsec.name}} support both [whitelists](/Crowdsec/v1/write_configurations/whitelist/) and [simulation](/Crowdsec/v1/references/simulation/) :
 
  - Whitelists allows you to "discard" events or overflows
  - Simulation allows you to simply cancel the decision that is going to be taken, but keep track of it
 
  {{v1X.profiles.htmlname}} allows you to control which decision will be applied to which alert.
+
+## How to know if my setup is working correctly ?
+
+One of the easiest way is take a look at your `cscli metrics` [and understand what do they mean](/Crowdsec/v1/getting_started/crowdsec-tour/#reading-metrics)
 
 ## How to add whitelists ?
 

@@ -190,6 +190,26 @@ INFO[0000] Local Api Bouncers Metrics:
 
 </details>
 
+### Reading metrics
+
+Those metrics are a great way to know if your configuration is correct :
+
+The `Acquisition Metrics` is a great way to know if your parsers are setup correctly :
+
+ - If you have 0 **LINES PARSED** for a source : You are probably *missing* a parser, or you have a custom log format that prevents the parser from understanding your logs.
+ - However, it's perfectly OK to have a lot of **LINES UNPARSED** : Crowdsec is not a SIEM, and only parses the logs that are relevant to its scenarios. For example, [ssh parser](https://hub.crowdsec.net/author/crowdsecurity/configurations/sshd-logs),  only cares about failed authentication events (at the time of writting).
+ - **LINES POURED TO BUCKET** tell you that your scenarios are matching your log sources : it means that some events from this log source made all their way to an actual scenario
+
+
+The `Parser Metrics` will let you troubleshoot eventual parser misconfigurations :
+ - **HITS** is how many events where fed to this specific parser
+ - **PARSED** and **UNPARSED** indicate how many events successfully come out of the parser
+
+For example, if you have a custom log format in nginx that is not supported by the default parser, you will end up seeing a lot of **UNPARSED** for this specific parser, and 0 for **PARSED**.
+
+For more advanced metrics understanding, [take a look at the dedicated prometheus documentation](/Crowdsec/v1/observability/prometheus/).
+
+
 ## Deploy dashboard
 
 ```bash
