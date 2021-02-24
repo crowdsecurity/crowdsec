@@ -620,11 +620,11 @@ main() {
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
-        log_info "Crowdsec LAPI registered" || log_fatal "unable to register to the local API"
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
+        log_dbg "Crowdsec LAPI registered" 
         
-        ${CSCLI_BIN_INSTALLED} capi register
-        log_info "Crowdsec CAPI registered" || log_fatal "unable to register to the Central API"
+        ${CSCLI_BIN_INSTALLED} capi register || log_fatal "unable to register to the Central API"
+        log_dbg "Crowdsec CAPI registered" 
        
         systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
         systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
