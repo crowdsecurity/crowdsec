@@ -74,7 +74,7 @@ cs_node_hits_ko_total{name="crowdsecurity/http-logs",source="/var/log/nginx/erro
 
  - `cs_lapi_route_requests_total` : number of calls to each route per method
  - `cs_lapi_machine_requests_total` : number of calls to each route per method grouped by machines
- - `cs_lapi_bouncer_requests_total` : number of of calls to each route per method grouped by bouncers
+ - `cs_lapi_bouncer_requests_total` : number of calls to each route per method grouped by bouncers
  - `cs_lapi_decisions_ko_total` : number of unsuccessfully responses when bouncers ask for an IP.
  - `cs_lapi_decisions_ok_total` : number of successfully responses when bouncers ask for an IP.
 

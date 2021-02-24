@@ -84,6 +84,8 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("api client register: %s", err)
 			}
 
+			log.Printf("Successfully registered to Local API (LAPI)")
+
 			var dumpFile string
 			if outputFile != "" {
 				dumpFile = outputFile

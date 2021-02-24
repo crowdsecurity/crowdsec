@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
@@ -225,8 +226,9 @@ cscli dashboard remove --force
 				}
 				if force {
 					if err := metabase.RemoveImageContainer(); err != nil {
-						log.Fatalf("removing docker image: %s", err)
-
+						if !strings.Contains(err.Error(), "No such image") {
+							log.Fatalf("removing docker image: %s", err)
+						}
 					}
 				}
 			}
