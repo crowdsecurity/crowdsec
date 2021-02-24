@@ -65,8 +65,10 @@ func initConfig() {
 		csConfig.Cscli.Output = "human"
 	}
 
-	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
+		log.SetLevel(log.ErrorLevel)
+	} else if csConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}
 
