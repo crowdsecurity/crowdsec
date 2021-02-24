@@ -60,9 +60,12 @@ SQLite by default as it's suitable for standalone/single-machine setups.
 
  {{v1X.profiles.htmlname}} allows you to control which decision will be applied to which alert.
 
-## How to know if my setup is working correctly ?
+## How to know if my setup is working correctly ? Some of my logs are unparsed, is it normal ?
 
-One of the easiest way is take a look at your `cscli metrics` [and understand what do they mean](/Crowdsec/v1/getting_started/crowdsec-tour/#reading-metrics)
+Yes, crowdsec parsers only parse the logs that are relevant for scenarios :)
+
+Take a look at `cscli metrics` [and understand what do they mean](/Crowdsec/v1/getting_started/crowdsec-tour/#reading-metrics) to know if your setup is correct.
+
 
 ## How to add whitelists ?
 

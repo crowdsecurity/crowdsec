@@ -237,3 +237,11 @@ sudo cscli collections install crowdsecurity/nginx
 Collections are bundles of parsers/scenarios that form a coherent ensemble to analyze/detect attacks for a specific service. It is the most common way to deploy configurations.
 
 They can be found and browsed on the {{v1X.hub.htmlname}}
+
+## Scalability
+
+Crowdsec uses go-routines for parsing and enriching logs, pouring events to buckets and manage outputs.
+
+By default, one routine of each exists (should be enough to handle ~1K EP/s), and can be changed in `crowdsec_service` of the main configuration file via the [parser_routines](/Crowdsec/v1/references/crowdsec-config/#parser_routines), [buckets_routines](/Crowdsec/v1/references/crowdsec-config/#buckets_routines) and [output_routines](/Crowdsec/v1/references/crowdsec-config/#output_routines) directives.
+
+Please keep in mind that thanks to the [http API]({{v1X.lapi.swagger}}), the workload of log parsing can be splitted amongst several agents pushing to a single {{v1X.lapi.Htmlname}}.
