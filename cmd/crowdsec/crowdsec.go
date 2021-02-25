@@ -52,8 +52,7 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 		for i := 0; i < cConfig.Crowdsec.ParserRoutinesCount; i++ {
 			parsersTomb.Go(func() error {
 				defer types.CatchPanic("crowdsec/runParse")
-				err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes)
-				if err != nil { //this error will never happen as parser.Parse is not able to return errors
+				if err := runParse(inputLineChan, inputEventChan, *parsers.Ctx, parsers.Nodes); err != nil { //this error will never happen as parser.Parse is not able to return errors
 					log.Fatalf("starting parse error : %s", err)
 					return err
 				}
@@ -79,8 +78,7 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 		for i := 0; i < cConfig.Crowdsec.BucketsRoutinesCount; i++ {
 			bucketsTomb.Go(func() error {
 				defer types.CatchPanic("crowdsec/runPour")
-				err := runPour(inputEventChan, holders, buckets, cConfig)
-				if err != nil {
+				if err := runPour(inputEventChan, holders, buckets, cConfig); err != nil {
 					log.Fatalf("starting pour error : %s", err)
 					return err
 				}
@@ -98,8 +96,7 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 		for i := 0; i < cConfig.Crowdsec.OutputRoutinesCount; i++ {
 			outputsTomb.Go(func() error {
 				defer types.CatchPanic("crowdsec/runOutput")
-				err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials)
-				if err != nil {
+				if err := runOutput(inputEventChan, outputEventChan, buckets, *parsers.Povfwctx, parsers.Povfwnodes, *cConfig.API.Client.Credentials); err != nil {
 					log.Fatalf("starting outputs error : %s", err)
 					return err
 				}
@@ -125,7 +122,9 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.GlobalConfig) {
 		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
 			defer types.CatchPanic("crowdsec/runCrowdsec")
-			runCrowdsec(cConfig, parsers)
+			if err := runCrowdsec(cConfig, parsers); err != nil {
+				log.Fatalf("unable to start crowdsec routines: %s", err)
+			}
 		}()
 
 		/*we should stop in two cases :
