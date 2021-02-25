@@ -16,6 +16,15 @@ if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
     fi
 fi
 
+# crowdsec sqlite database permissions
+if [ "$GID" != "" ]; then
+    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' /etc/crowdsec/config.yaml)
+    DB_PATH=$(yq eval '.db_config.db_path' /etc/crowdsec/config.yaml)
+    if [ "$IS_SQLITE" == "true" ]; then
+        chown :$GID $DB_PATH
+    fi
+fi
+
 ## Install collections, parsers & scenarios
 cscli hub update
 cscli collections upgrade crowdsecurity/linux
