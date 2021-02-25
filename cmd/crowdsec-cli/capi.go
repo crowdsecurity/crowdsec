@@ -91,7 +91,7 @@ func NewCapiCmd() *cobra.Command {
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
-				log.Printf("API credentials dumped to '%s'", dumpFile)
+				log.Printf("Central API credentials dumped to '%s'", dumpFile)
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}

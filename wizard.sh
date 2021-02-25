@@ -3,6 +3,7 @@
 set -o pipefail
 #set -x
 
+
 RED='\033[0;31m'
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
@@ -67,19 +68,26 @@ rm -rf $BACKUP_DIR
 log_info() {
     msg=$1
     date=$(date +%x:%X)
-    echo -e "[${date}][${BLUE}INF${NC}] crowdsec_wizard: ${msg}"
+    echo -e "${BLUE}INFO${NC}[${date}] crowdsec_wizard: ${msg}"
+}
+
+log_fatal() {
+    msg=$1
+    date=$(date +%x:%X)
+    echo -e "${RED}FATA${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2 
+    exit 1
 }
 
 log_warn() {
     msg=$1
     date=$(date +%x:%X)
-    echo -e "[${date}][${ORANGE}WARN${NC}] crowdsec_wizard: ${msg}"
+    echo -e "${ORANGE}WARN${NC}[${date}] crowdsec_wizard: ${msg}"
 }
 
 log_err() {
     msg=$1
     date=$(date +%x:%X)
-    echo -e "[${date}][${RED}ERR${NC}] crowdsec_wizard: ${msg}" 1>&2
+    echo -e "${RED}ERR${NC}[${date}] crowdsec_wizard: ${msg}" 1>&2
 }
 
 log_dbg() {
@@ -98,7 +106,7 @@ detect_services () {
     #raw ps
     PSAX=`ps ax -o comm=`
     for SVC in ${SUPPORTED_SERVICES} ; do
-        log_info "Checking if service '${SVC}' is running (ps+systemd)"
+        log_dbg "Checking if service '${SVC}' is running (ps+systemd)"
         for SRC in "${SYSTEMD_SERVICES}" "${PSAX}" ; do
             echo ${SRC} | grep ${SVC} >/dev/null
             if [ $? -eq 0 ]; then
@@ -108,7 +116,7 @@ detect_services () {
                 fi
                 DETECTED_SERVICES+=(${SVC})
                 HMENU+=(${SVC} "on")
-                log_info "Found '${SVC}' running"
+                log_dbg "Found '${SVC}' running"
                 break;
             fi;
         done;
@@ -127,9 +135,9 @@ detect_services () {
             log_err "user bailed out at services selection"
             exit 1;
         fi;
-        echo "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
+        log_dbg "Detected services (interactive) : ${DETECTED_SERVICES[@]}"
     else
-        echo "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
+        log_dbg "Detected services (unattended) : ${DETECTED_SERVICES[@]}"
     fi;
 }
 
@@ -176,7 +184,7 @@ find_logs_for() {
 	    candidates=`find "${path}" -type f -mtime -5 -ctime -5 -name "$fname"`
 	    #We have some candidates, add them
 	    for final_file in ${candidates} ; do
-	        log_info "Found logs file for '${SVC}': ${final_file}"
+	        log_dbg "Found logs file for '${SVC}': ${final_file}"
 	        DETECTED_LOGFILES+=(${final_file})
             HMENU+=(${final_file} "on")
 	    done;
@@ -264,15 +272,16 @@ genyaml() {
     echo "labels:"  >> ${TMP_ACQUIS_FILE}
     echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
     echo "---"  >> ${TMP_ACQUIS_FILE}
-    log_info "Acquisition file generated"
+    log_dbg "tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
 }
 
 genacquisition() {
-    log_info "Found following services : "${DETECTED_SERVICES[@]}
+    log_dbg "Found following services : "${DETECTED_SERVICES[@]}
     for PSVG in ${DETECTED_SERVICES[@]} ; do
         find_logs_for ${PSVG}
         if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
-        	genyaml ${PSVG} ${DETECTED_LOGFILES[@]}
+            log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
+            genyaml ${PSVG} ${DETECTED_LOGFILES[@]}
         fi;
     done 
 }
@@ -357,21 +366,22 @@ install_crowdsec() {
     #tmp
     mkdir -p /tmp/data
     mkdir -p /etc/crowdsec/hub/
-    install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 600 -D "./config/${CLIENT_SECRETS}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 600 -D "./config/${LAPI_SECRETS}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
 
     ## end tmp
 
-    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" || exit
-    install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" || exit
+    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+
     mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml"
+    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}"
+        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
@@ -385,7 +395,7 @@ update_bins() {
     delete_bins
     install_bins
     log_info "Upgrade finished"
-    systemctl restart crowdsec
+    systemctl restart crowdsec || log_fatal "unable to restart crowdsec with systemctl"
 }
 
 update_full() {
@@ -415,13 +425,13 @@ update_full() {
         cp ${BACKUP_DIR}/crowdsec.db /var/lib/crowdsec/data/crowdsec.db
     fi
     log_info "Finished, restarting"
-    systemctl restart crowdsec || log_err "Failed to restart crowdsec"
+    systemctl restart crowdsec || log_fatal "Failed to restart crowdsec"
 }
 
 install_bins() {
-    log_info "Installing crowdsec binaries"
-    install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" || exit
-    install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" || exit
+    log_dbg "Installing crowdsec binaries"
+    install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
+    install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
     symlink_bins
 }
 
@@ -456,10 +466,9 @@ check_running_bouncers() {
 
 # uninstall crowdsec and cscli
 uninstall_crowdsec() {
-
-    systemctl stop crowdsec.service
-    systemctl disable crowdsec.service
-    ${CSCLI_BIN} dashboard remove -f -y
+    systemctl stop crowdsec.service 1>/dev/null
+    systemctl disable -q crowdsec.service 1>/dev/null
+    ${CSCLI_BIN} dashboard remove -f -y >/dev/null
     delete_bins
 
     # tmp
@@ -480,13 +489,33 @@ function show_link {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
-    echo "  - Documentation : https://docs.crowdsec.net/"
+    echo "  - Documentation : https://docs.crowdsec.net/Crowdsec/v1/getting_started/crowdsec-tour/"
     echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
     echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
+    echo ""
+    echo "Useful commands to start with Crowdsec:"
+    echo ""
+    echo "  - sudo cscli metrics             : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_metrics/"
+    echo "  - sudo cscli decisions list      : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_decisions_list/"
+    echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
+    echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
     echo ""
 }
 
 main() {
+    if [ "$1" == "install" ] || [ "$1" == "configure" ]; then
+        if [ "${SILENT}" == "false" ]; then
+            which whiptail > /dev/null
+            if [ $? -ne 0 ]; then
+                log_fatal "whiptail binary is needed to use the wizard in interactive mode, exiting ..."
+            fi
+        fi
+        which envsubst > /dev/null
+        if [ $? -ne 0 ]; then
+            log_fatal "envsubst binary is needed to use do a full install with the wizard, exiting ..."
+        fi
+    fi
+
     if [[ "$1" == "binupgrade" ]];
     then
         if ! [ $(id -u) = 0 ]; then
@@ -561,12 +590,12 @@ main() {
             log_err "Please run the wizard as root or with sudo"
             exit 1
         fi
-        log_info "checking existing crowdsec install"
+        log_info "checking if crowdsec is installed"
         detect_cs_install
         ## Do make build before installing (as non--root) in order to have the binary and then install crowdsec as root
         log_info "installing crowdsec"
         install_crowdsec
-        log_info "configuring  ${CSCLI_BIN_INSTALLED}"
+        log_dbg "configuring ${CSCLI_BIN_INSTALLED}"
         ${CSCLI_BIN_INSTALLED} hub update > /dev/null 2>&1 || (log_err "fail to update crowdsec hub. exiting" && exit 1)
 
         # detect running services
@@ -579,27 +608,27 @@ main() {
         # Generate acquisition file and move it to the right folder
         genacquisition
         mv "${TMP_ACQUIS_FILE}" "${ACQUIS_TARGET}"
-
+        log_info "acquisition file path: ${ACQUIS_TARGET}"
         # Install collections according to detected services
-        log_info "Installing needed collections ..."
+        log_dbg "Installing needed collections ..."
         install_collection
 
         # install patterns/ folder
-        log_info "Installing patterns"
+        log_dbg "Installing patterns"
         mkdir -p "${PATTERNS_PATH}"
         cp "./${PATTERNS_FOLDER}/"* "${PATTERNS_PATH}/"
 
 
         # api register
-        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}"
-        log_info "Crowdsec LAPI registered"
+        ${CSCLI_BIN_INSTALLED} machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)" -f "${CROWDSEC_CONFIG_PATH}/${CLIENT_SECRETS}" || log_fatal "unable to add machine to the local API"
+        log_dbg "Crowdsec LAPI registered" 
         
-        ${CSCLI_BIN_INSTALLED} capi register
-        log_info "Crowdsec CAPI registered"
+        ${CSCLI_BIN_INSTALLED} capi register || log_fatal "unable to register to the Central API"
+        log_dbg "Crowdsec CAPI registered" 
        
-        systemctl enable crowdsec
-        systemctl start crowdsec
-        log_info "Enabling and starting crowdsec daemon"
+        systemctl enable -q crowdsec >/dev/null || log_fatal "unable to enable crowdsec"
+        systemctl start crowdsec >/dev/null || log_fatal "unable to start crowdsec"
+        log_info "enabling and starting crowdsec daemon"
         show_link
         return
     fi

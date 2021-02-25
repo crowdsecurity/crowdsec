@@ -84,7 +84,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 
 	if c.Crowdsec != nil {
 		if c.Crowdsec.AcquisitionFilePath != "" {
-			log.Infof("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
+			log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
 			if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
 				return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
 			}

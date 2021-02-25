@@ -213,7 +213,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
-			log.Infof("Machine '%s' created successfully", machineID)
+			log.Infof("Machine '%s' successfully added to the local API", machineID)
 
 			if apiURL == "" {
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {

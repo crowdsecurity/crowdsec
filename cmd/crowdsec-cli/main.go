@@ -40,7 +40,8 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
 	csConfig = csconfig.NewConfig()
 
 	log.Debugf("Using %s as configuration file", ConfigFilePath)
@@ -65,8 +66,8 @@ func initConfig() {
 	}
 
 	if csConfig.Cscli.Output == "json" {
-		log.SetLevel(log.WarnLevel)
 		log.SetFormatter(&log.JSONFormatter{})
+		log.SetLevel(log.ErrorLevel)
 	} else if csConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}

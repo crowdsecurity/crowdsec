@@ -41,10 +41,8 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	if logLevel >= log.InfoLevel {
-		logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
-		log.SetFormatter(logFormatter)
-	}
+	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
 
 	return nil
 }
