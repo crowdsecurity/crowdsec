@@ -1,0 +1,12 @@
+foo
+
+#toto
+
+
+bar
+
+
+
+
+
+baz
