@@ -23,6 +23,10 @@ var serialized map[string]Leaky
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
 Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
+	buckets.wgPour.Wait()
+	buckets.wgDumpState.Add(1)
+	defer buckets.wgDumpState.Done()
+
 	total := 0
 	discard := 0
 	toflush := []string{}
@@ -35,7 +39,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
-			val.KillSwitch <- true
+			val.tomb.Kill(nil)
 			return true
 		}
 		/*FIXME : sometimes the gettokenscountat has some rounding issues when we try to
@@ -49,7 +53,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
-			val.KillSwitch <- true
+			val.tomb.Kill(nil)
 			return true
 		} else {
 			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
@@ -70,7 +74,11 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 }
 
 func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) (string, error) {
-	//var file string
+
+	//synchronize with PourItemtoHolders
+	buckets.wgPour.Wait()
+	buckets.wgDumpState.Add(1)
+	defer buckets.wgDumpState.Done()
 
 	if outputdir == "" {
 		return "", fmt.Errorf("empty output dir for dump bucket state")
@@ -136,7 +144,7 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
-		val.KillSwitch <- true
+		val.tomb.Kill(nil)
 		log.Infof("killed %s", key)
 		return true
 	})
@@ -148,6 +156,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		ok, condition, sent bool
 		err                 error
 	)
+	//synchronize with DumpBucketsStateAt
 
 	for idx, holder := range holders {
 
@@ -226,10 +235,13 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.In = make(chan types.Event)
 				fresh_bucket.Mapkey = buckey
 				fresh_bucket.Signal = make(chan bool, 1)
-				fresh_bucket.KillSwitch = make(chan bool, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
-				go LeakRoutine(fresh_bucket)
+				holder.tomb.Go(func() error {
+					return LeakRoutine(fresh_bucket)
+				})
+
 				holder.logger.Debugf("Created new bucket %s", buckey)
+
 				//wait for signal to be opened
 				<-fresh_bucket.Signal
 				continue
@@ -254,16 +266,23 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 			}
 			/*let's see if this time-bucket should have expired */
-			if bucket.Mode == TIMEMACHINE && !bucket.First_ts.IsZero() {
-				var d time.Time
-				err = d.UnmarshalText([]byte(parsed.MarshaledTime))
-				if err != nil {
-					holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
-				}
-				if d.After(bucket.Last_ts.Add(bucket.Duration)) {
-					bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, bucket.Last_ts.Add(bucket.Duration))
-					buckets.Bucket_map.Delete(buckey)
-					continue
+			if bucket.Mode == TIMEMACHINE {
+				bucket.mutex.Lock()
+				firstTs := bucket.First_ts
+				lastTs := bucket.Last_ts
+				bucket.mutex.Unlock()
+
+				if !firstTs.IsZero() {
+					var d time.Time
+					err = d.UnmarshalText([]byte(parsed.MarshaledTime))
+					if err != nil {
+						holder.logger.Warningf("Failed unmarshaling event time (%s) : %v", parsed.MarshaledTime, err)
+					}
+					if d.After(lastTs.Add(bucket.Duration)) {
+						bucket.logger.Tracef("bucket is expired (curr event: %s, bucket deadline: %s), kill", d, lastTs.Add(bucket.Duration))
+						buckets.Bucket_map.Delete(buckey)
+						continue
+					}
 				}
 			}
 			/*if we're here, let's try to pour */

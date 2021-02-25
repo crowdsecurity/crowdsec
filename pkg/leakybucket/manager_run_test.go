@@ -7,6 +7,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 )
 
 func expectBucketCount(buckets *Buckets, expected int) error {
@@ -23,19 +24,53 @@ func expectBucketCount(buckets *Buckets, expected int) error {
 }
 
 func TestGCandDump(t *testing.T) {
-	var buckets *Buckets = NewBuckets()
+	var (
+		buckets *Buckets   = NewBuckets()
+		tomb    *tomb.Tomb = &tomb.Tomb{}
+	)
 
 	var Holders = []BucketFactory{
 		//one overflowing soon + bh
-		BucketFactory{Name: "test_counter_fast", Description: "test_counter_fast", Debug: true, Type: "counter", Capacity: -1, Duration: "0.5s", Blackhole: "1m", Filter: "true"},
+		BucketFactory{
+			Name:        "test_counter_fast",
+			Description: "test_counter_fast",
+			Debug:       true,
+			Type:        "counter",
+			Capacity:    -1,
+			Duration:    "0.5s",
+			Blackhole:   "1m",
+			Filter:      "true",
+			wgDumpState: buckets.wgDumpState,
+			wgPour:      buckets.wgPour,
+		},
 		//one long counter
-		BucketFactory{Name: "test_counter_slow", Description: "test_counter_slow", Debug: true, Type: "counter", Capacity: -1, Duration: "10m", Filter: "true"},
+		BucketFactory{
+			Name:        "test_counter_slow",
+			Description: "test_counter_slow",
+			Debug:       true,
+			Type:        "counter",
+			Capacity:    -1,
+			Duration:    "10m",
+			Filter:      "true",
+			wgDumpState: buckets.wgDumpState,
+			wgPour:      buckets.wgPour,
+		},
 		//slow leaky
-		BucketFactory{Name: "test_leaky_slow", Description: "test_leaky_slow", Debug: true, Type: "leaky", Capacity: 5, LeakSpeed: "10m", Filter: "true"},
+		BucketFactory{
+			Name:        "test_leaky_slow",
+			Description: "test_leaky_slow",
+			Debug:       true,
+			Type:        "leaky",
+			Capacity:    5,
+			LeakSpeed:   "10m",
+			Filter:      "true",
+			wgDumpState: buckets.wgDumpState,
+			wgPour:      buckets.wgPour,
+		},
 	}
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx]); err != nil {
+		if err := LoadBucket(&Holders[idx], tomb); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 		if err := ValidateFactory(&Holders[idx]); err != nil {
@@ -79,16 +114,39 @@ func TestGCandDump(t *testing.T) {
 }
 
 func TestShutdownBuckets(t *testing.T) {
-	var buckets *Buckets = NewBuckets()
-	var Holders = []BucketFactory{
-		//one long counter
-		BucketFactory{Name: "test_counter_slow", Description: "test_counter_slow", Debug: true, Type: "counter", Capacity: -1, Duration: "10m", Filter: "true"},
-		//slow leaky
-		BucketFactory{Name: "test_leaky_slow", Description: "test_leaky_slow", Debug: true, Type: "leaky", Capacity: 5, LeakSpeed: "10m", Filter: "true"},
-	}
+	var (
+		buckets *Buckets = NewBuckets()
+		Holders          = []BucketFactory{
+			//one long counter
+			BucketFactory{
+				Name:        "test_counter_slow",
+				Description: "test_counter_slow",
+				Debug:       true,
+				Type:        "counter",
+				Capacity:    -1,
+				Duration:    "10m",
+				Filter:      "true",
+				wgDumpState: buckets.wgDumpState,
+				wgPour:      buckets.wgPour,
+			},
+			//slow leaky
+			BucketFactory{
+				Name:        "test_leaky_slow",
+				Description: "test_leaky_slow",
+				Debug:       true,
+				Type:        "leaky",
+				Capacity:    5,
+				LeakSpeed:   "10m",
+				Filter:      "true",
+				wgDumpState: buckets.wgDumpState,
+				wgPour:      buckets.wgPour,
+			},
+		}
+		tomb *tomb.Tomb = &tomb.Tomb{}
+	)
 
 	for idx := range Holders {
-		if err := LoadBucket(&Holders[idx]); err != nil {
+		if err := LoadBucket(&Holders[idx], tomb); err != nil {
 			t.Fatalf("while loading (%d/%d): %s", idx, len(Holders), err)
 		}
 		if err := ValidateFactory(&Holders[idx]); err != nil {

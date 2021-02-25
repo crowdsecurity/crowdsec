@@ -38,8 +38,6 @@ var (
 
 	flags *Flags
 
-	/*global crowdsec config*/
-	cConfig *csconfig.GlobalConfig
 	/*the state of acquisition*/
 	dataSources []acquisition.DataSource
 	/*the state of the buckets*/
@@ -125,22 +123,15 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 			files = append(files, hubScenarioItem.LocalPath)
 		}
 	}
+	buckets = leaky.NewBuckets()
 
 	log.Infof("Loading %d scenario files", len(files))
-	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files)
+	holders, outputEventChan, err = leaky.LoadBuckets(cConfig.Crowdsec, files, &bucketsTomb, buckets)
 
 	if err != nil {
 		return fmt.Errorf("Scenario loading failed : %v", err)
 	}
-	buckets = leaky.NewBuckets()
 
-	/*restore as well previous state if present*/
-	if cConfig.Crowdsec.BucketStateFile != "" {
-		log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
-		if err := leaky.LoadBucketsState(cConfig.Crowdsec.BucketStateFile, buckets, holders); err != nil {
-			return fmt.Errorf("unable to restore buckets : %s", err)
-		}
-	}
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		for holderIndex := range holders {
 			holders[holderIndex].Profiling = true
@@ -200,11 +191,11 @@ func (f *Flags) Parse() {
 }
 
 // LoadConfig return configuration parsed from configuration file
-func LoadConfig(config *csconfig.GlobalConfig) error {
+func LoadConfig(cConfig *csconfig.GlobalConfig) error {
 	disableAPI = flags.DisableAPI
 	disableAgent = flags.DisableAgent
 	if flags.ConfigFile != "" {
-		if err := config.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
+		if err := cConfig.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
 			return fmt.Errorf("while loading configuration : %s", err)
 		}
 	} else {
@@ -242,29 +233,29 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 
 	if flags.DebugLevel {
 		logLevel := log.DebugLevel
-		config.Common.LogLevel = &logLevel
+		cConfig.Common.LogLevel = &logLevel
 	}
-	if flags.InfoLevel || config.Common.LogLevel == nil {
+	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
 		logLevel := log.InfoLevel
-		config.Common.LogLevel = &logLevel
+		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.TraceLevel {
 		logLevel := log.TraceLevel
-		config.Common.LogLevel = &logLevel
+		cConfig.Common.LogLevel = &logLevel
 	}
 
 	if flags.TestMode && !disableAgent {
-		config.Crowdsec.LintOnly = true
+		cConfig.Crowdsec.LintOnly = true
 	}
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
-		config.API.Server.OnlineClient = nil
+		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if disableAPI {
-			config.Common.Daemonize = false
+			cConfig.Common.Daemonize = false
 		}
-		config.Common.LogMedia = "stdout"
-		log.Infof("single file mode : log_media=%s daemonize=%t", config.Common.LogMedia, config.Common.Daemonize)
+		cConfig.Common.LogMedia = "stdout"
+		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
 	}
 
 	return nil
@@ -272,7 +263,8 @@ func LoadConfig(config *csconfig.GlobalConfig) error {
 
 func main() {
 	var (
-		err error
+		cConfig *csconfig.GlobalConfig
+		err     error
 	)
 
 	defer types.CatchPanic("crowdsec/main")
@@ -314,7 +306,7 @@ func main() {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
-	if err := Serve(); err != nil {
+	if err := Serve(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
 

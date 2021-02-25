@@ -45,7 +45,7 @@ require (
 	github.com/nxadm/tail v1.4.6
 	github.com/olekukonko/tablewriter v0.0.4
 	github.com/opencontainers/go-digest v1.0.0 // indirect
-	github.com/opencontainers/image-spec v1.0.1
+	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/oschwald/maxminddb-golang v1.8.0
 	github.com/pkg/errors v0.9.1
