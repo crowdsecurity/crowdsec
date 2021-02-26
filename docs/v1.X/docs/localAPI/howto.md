@@ -2,9 +2,9 @@
 
 !!! info
 
-    This page explains how to interract with the local API exposed by crowdsec.
+    This page explains how to interact with the local API exposed by crowdsec.
 
-    It's meant to be useful for system administrators, or users that want to create they own bouncers.
+    It's meant to be useful for system administrators, or users that want to create their own bouncers.
 
 
 
