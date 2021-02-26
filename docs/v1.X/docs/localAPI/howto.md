@@ -15,7 +15,7 @@ This documentation only covers the API usage from the bouncer POV :
  - Authentication via API token (rather than JWT as crowdsec/cscli)
  - Reading decisions
 
-This guide will assume that you alredy have crowdsec running locally.
+This guide will assume that you already have crowdsec running locally.
 
 ## Authentication
 
@@ -159,7 +159,7 @@ INFO[0000] Decision successfully added
 [{"duration":"3h57m59.021170481s","id":2338,"origin":"cscli","scenario":"manual 'enforce_mfa' from '939972095cf1459c8b22cc608eff85daEb4yoi2wiTD7Y3fA'","scope":"username","type":"enforce_mfa","value":"myuser"}]
 ```
 
-> Query a given decision type/user
+> Query a decision on a given user
 
 ```bash
 ▶ curl  -H "X-Api-Key: 837be58e22a28738066de1be8f53636b"  http://localhost:8080/v1/decisions\?scope\=username\&value\=myuser
