@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 export DH_GOLANG_INSTALL_ALL := 1
-export DH_GOLANG_EXCLUDES := hub\d+
+export DH_GOLANG_EXCLUDES := hub\d+ data\d+
 
 export BUILD_VERSION   := $(shell dpkg-parsechangelog -SVersion)
 export BUILD_TAG       := debian
@@ -20,6 +20,7 @@ export LD_FLAGS        := -ldflags '-s -w             \
 # Use 1 for a new upstream release, and bump it when an update of the
 # hub data is desired while the upstream version doesn't change. See
 # below for the generate_hub_tarball target:
+export DATA_ID    := 1
 export HUB_ID     := 1
 export HUB_BRANCH := master
 export HUB_DIR    := ../hub
@@ -52,3 +53,6 @@ generate_hub_tarball:
 extract_hub_tarball:
 	tar xf ../crowdsec_$(U_VERSION).orig-hub$(HUB_ID).tar.gz
 	find hub$(HUB_ID) -depth -name '.tests' -exec rm -rf '{}' ';'
+
+extract_data_tarball:
+	tar xf ../crowdsec_$(U_VERSION).orig-data$(HUB_ID).tar.gz
