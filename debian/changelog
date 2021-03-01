@@ -29,6 +29,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     hub into the build directory.
   * Implement an extract_hub_tarball target in debian/rules to automate
     extracting hub data from the tarball.
+  * Ship crowdsec-cli (automated Golang naming) as cscli (upstream's
+    preference).
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 

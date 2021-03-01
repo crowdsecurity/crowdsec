@@ -33,6 +33,9 @@ override_dh_auto_build:
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
+	# Switch from Golang naming to upstream-desired naming:
+	mv debian/crowdsec/usr/bin/crowdsec-cli \
+		debian/crowdsec/usr/bin/cscli
 
 # Let the postinst enable/start the unit when the initial
 # configuration has happened:
