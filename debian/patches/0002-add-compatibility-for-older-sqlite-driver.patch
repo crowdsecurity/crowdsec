@@ -10,19 +10,14 @@ the alias for the time being (the freeze is near).
  pkg/database/database.go | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/pkg/database/database.go b/pkg/database/database.go
-index 07e2820..3561a89 100644
 --- a/pkg/database/database.go
 +++ b/pkg/database/database.go
-@@ -30,7 +30,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
- 	}
- 	switch config.Type {
- 	case "sqlite":
+@@ -46,7 +46,7 @@ func NewClient(config *csconfig.Database
+ 				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
+ 			}
+ 		}
 -		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
 +		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_foreign_keys=1", config.DbPath))
  		if err != nil {
  			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
  		}
--- 
-2.30.0
-
