@@ -3,7 +3,27 @@ CrowdSec for Debian
 
 # Local API and Central API
 
-**TODO**
+There are multiple ways to configure `crowdsec`, leveraging a Local
+API (LAPI) and/or the Central API (CAPI).
+
+
+At the moment, the default configuration does the following:
+
+ 1. Set up a Local API locally, that doesn't listen on the
+    network. This can be adjusted by following the
+	[upstream local API documentation](https://doc.crowdsec.net/Crowdsec/v1/localAPI/).
+
+ 1. Register to the Central API by default, to take part in the
+    collective effort. If that's not desired, it is possible to create
+    a `/etc/crowdsec/online_api_credentials.yaml` file before
+    installing the package, that contains a comment (e.g.
+    `# no thanks`). In this case, the registration is skipped, and
+    this file is also left behind in case the package is purged, so as
+    to respective the admin's wishes if later reinstalled. If one
+    reconsiders, it's sufficient to empty this file and run the
+    following command manually:
+
+        cscli capi register
 
 
 # Configuration management
