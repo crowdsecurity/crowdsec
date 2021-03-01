@@ -64,6 +64,8 @@ if [ "$1" = configure ]; then
   # offline hub + enabling everything per upstream recommendation:
   if [ ! -e /var/lib/crowdsec/hub/.index.json ]; then
     disable_online_hub
+
+    # Symlinks:
     find /var/lib/crowdsec/hub/*/ -name '*yaml' | \
       while read target; do
 	source=${target##/var/lib/crowdsec/hub/}
@@ -73,6 +75,9 @@ if [ "$1" = configure ]; then
 	mkdir -p /etc/crowdsec/$(dirname $source)
 	ln -s $target /etc/crowdsec/$source
       done
+
+    # Initial copy of data files:
+    cp /usr/share/crowdsec/data/* /var/lib/crowdsec/data/
   fi
 fi
 
