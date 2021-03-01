@@ -33,6 +33,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     preference).
   * Add patch to adjust the default config:
      + 0005-adjust-config.patch
+  * Ship config/config.yaml accordingly.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 

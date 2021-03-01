@@ -1,3 +1,4 @@
+config/config.yaml      etc/crowdsec/
 config/patterns/*       etc/crowdsec/patterns
 config/crowdsec.service lib/systemd/system
 hub*/blockers           usr/share/crowdsec/hub
