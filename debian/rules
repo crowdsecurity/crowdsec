@@ -42,6 +42,8 @@ override_dh_install:
 		debian/crowdsec/usr/bin/cscli
 	# Adjust the hub branch according to the upstream version:
 	sed "s/\(.*hub_branch:\) master/\1 v$(U_VERSION)/" -i debian/crowdsec/etc/crowdsec/config.yaml
+	# Drop unit tests from the hub:
+	find debian/crowdsec/usr/share/crowdsec/hub -depth -name '.tests' -exec rm -rf '{}' ';'
 
 
 ### Maintainer targets:
@@ -52,7 +54,6 @@ generate_hub_tarball:
 
 extract_hub_tarball:
 	tar xf ../crowdsec_$(U_VERSION).orig-hub$(HUB_ID).tar.gz
-	find hub$(HUB_ID) -depth -name '.tests' -exec rm -rf '{}' ';'
 
 extract_data_tarball:
 	tar xf ../crowdsec_$(U_VERSION).orig-data$(HUB_ID).tar.gz
