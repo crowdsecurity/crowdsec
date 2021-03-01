@@ -1,9 +1,9 @@
 From: Cyril Brulebois <cyril@debamax.com>
 Date: Fri, 22 Jan 2021 14:35:42 +0000
-Subject: Disable geoip-enrich in the hub data
+Subject: Disable geoip-enrich in the hub files
 
 It would download GeoLite2*.mmdb files from the network. Let users
-enable the hub and enable it by themselves if they want to use it.
+enable the hub by themselves if they want to use it.
 
 --- a/hub1/.index.json
 +++ b/hub1/.index.json
