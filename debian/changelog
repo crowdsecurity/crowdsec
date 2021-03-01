@@ -63,6 +63,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
      + 0007-automatically-enable-online-hub.patch
   * Add lintian override accordingly: uses-dpkg-database-directly.
   * Add ca-certificates to Depends for the CAPI registration.
+  * Create /etc/machine-id if it doesn't exist already (e.g. in piuparts
+    environments).
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 

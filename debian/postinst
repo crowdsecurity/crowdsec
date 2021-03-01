@@ -46,6 +46,13 @@ if [ "$1" = configure ]; then
     touch "$LAPI"
     # This is required as of 1.0.8 at least:
     touch "$CAPI"
+
+    # Minimal environments (e.g. piuparts):
+    if [ ! -f /etc/machine-id ]; then
+      echo "W: Missing /etc/machine-id, initializing"
+      sed 's/-//g' < /proc/sys/kernel/random/uuid > /etc/machine-id
+    fi
+
     cscli machines add --force "$(cat /etc/machine-id)" --password "$(tr -dc 'a-zA-Z0-9' < /dev/urandom | fold -w 32 | head -n 1)"
   fi
 
