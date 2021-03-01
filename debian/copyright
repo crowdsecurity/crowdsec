@@ -17,6 +17,11 @@ Files: data*/bad_user_agents.txt
 Copyright: 2017 Mitchell Krog <mitchellkrog@gmail.com>
 License: Expat
 
+Files: hub*/parsers/s01-parse/crowdsecurity/postfix-logs.yaml
+Copyright: 2014, 2015 Rudy Gevaert
+           2020 Crowdsec
+License: Expat
+
 Files: debian/*
 Copyright: 2020-2021 Cyril Brulebois <cyril@debamax.com>
 License: Expat
