@@ -46,10 +46,11 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     disabled by creating a /etc/crowdsec/online_api_credentials.yaml file
     containing a comment (e.g. “# no thanks”) before installing this
     package.
-  * Implement purge in postrm to remove credentials files. Keep
-    /etc/crowdsec/online_api_credentials.yaml intact if it doesn't contain
-    the CAPI URL (an admin is likely to have prevented CAPI registration).
-    Also remove everything below /var/lib/crowdsec/{data,hub}.
+  * Implement purge in postrm. Drop all of /etc/crowdsec except
+    online_api_credentials.yaml if this file doesn't seem to have been
+    created during CAPI registration (likely because an admin created the
+    file in advance to prevent it). Also remove everything below
+    /var/lib/crowdsec/{data,hub}, along with log files.
   * Implement custom enable-online-hub and disable-online-hub actions in
     postinst. The latter is called once automatically to make sure the
     offline hub is ready to use. See README.Debian for details.
