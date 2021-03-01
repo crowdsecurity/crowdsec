@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+
+if [ "$1" = purge ]; then
+  rm -f /etc/crowdsec/local_api_credentials.yaml
+  rm -f /etc/crowdsec/online_api_credentials.yaml
+  rmdir /etc/crowdsec || true
+fi
+
+#DEBHELPER#
