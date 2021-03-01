@@ -13,6 +13,10 @@ Copyright: 2009-2015 The Go Authors
 License: BSD-3
 Comment: improved version of x/time/rate
 
+Files: data*/bad_user_agents.txt
+Copyright: 2017 Mitchell Krog <mitchellkrog@gmail.com>
+License: Expat
+
 Files: debian/*
 Copyright: 2020-2021 Cyril Brulebois <cyril@debamax.com>
 License: Expat
