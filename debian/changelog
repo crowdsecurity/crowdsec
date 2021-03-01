@@ -14,7 +14,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     stable over time, and it's advised not to modify them, but let's allow
     for some configurability.
   * Include a snapshot of hub data from the master branch, at commit
-    69183f2271: hub1. Further updates for a given crowdsec upstream
+    d8a8509bdf: hub1. Further updates for a given crowdsec upstream
     version will be numbered hubN. After a while, they will be generated
     from a dedicated vX.Y.Z branch instead of from master.
   * Implement a generate_hub_tarball target in debian/rules to automate
