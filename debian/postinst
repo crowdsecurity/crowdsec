@@ -60,9 +60,19 @@ if [ "$1" = configure ]; then
     cscli capi register
   fi
 
-  # Missing index means initial install, let's go for offline hub:
+  # Missing index means initial install, let's go for setting up
+  # offline hub + enabling everything per upstream recommendation:
   if [ ! -e /var/lib/crowdsec/hub/.index.json ]; then
     disable_online_hub
+    find /var/lib/crowdsec/hub/*/ -name '*yaml'|grep -v '/\.tests/' | \
+      while read target; do
+	source=${target##/var/lib/crowdsec/hub/}
+	# Code as of 1.0.8 is picky about the number of
+	# (sub)directories, so the vendor must be stripped:
+	source=$(echo "$source"|sed 's,crowdsecurity/,,')
+	mkdir -p $(dirname $source)
+	ln -s $target $source
+      done
   fi
 fi
 
