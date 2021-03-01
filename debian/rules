@@ -51,3 +51,4 @@ generate_hub_tarball:
 
 extract_hub_tarball:
 	tar xf ../crowdsec_$(U_VERSION).orig-hub$(HUB_ID).tar.gz
+	find hub$(HUB_ID) -depth -name '.tests' -exec rm -rf '{}' ';'
