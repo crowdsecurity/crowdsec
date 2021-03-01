@@ -2,4 +2,4 @@
 # $built_with_golang variable is the one that's not set properly
 # for this package, meaning this tag is emitted regardless):
 crowdsec: hardening-no-pie usr/bin/crowdsec
-crowdsec: hardening-no-pie usr/bin/crowdsec-cli
+crowdsec: hardening-no-pie usr/bin/cscli
