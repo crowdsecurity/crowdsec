@@ -31,6 +31,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     extracting hub data from the tarball.
   * Ship crowdsec-cli (automated Golang naming) as cscli (upstream's
     preference).
+  * Add patch to adjust the default config:
+     + 0005-adjust-config.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 

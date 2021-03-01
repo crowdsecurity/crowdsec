@@ -1,0 +1,21 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Mon, 01 Mar 2021 14:11:36 +0000
+Subject: Adjust default config
+
+Let's have all hub-related data under /var/lib/crowdsec/hub instead of
+the default /etc/crowdsec/hub directory.
+
+Signed-off-by: Cyril Brulebois <cyril@debamax.com>
+--- a/config/config.yaml
++++ b/config/config.yaml
+@@ -9,8 +9,8 @@ config_paths:
+   config_dir: /etc/crowdsec/
+   data_dir: /var/lib/crowdsec/data/
+   simulation_path: /etc/crowdsec/simulation.yaml
+-  hub_dir: /etc/crowdsec/hub/
+-  index_path: /etc/crowdsec/hub/.index.json
++  hub_dir: /var/lib/crowdsec/hub/
++  index_path: /var/lib/crowdsec/hub/.index.json
+ crowdsec_service:
+   acquisition_path: /etc/crowdsec/acquis.yaml
+   parser_routines: 1
