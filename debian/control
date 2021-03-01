@@ -60,7 +60,8 @@ XS-Go-Import-Path: github.com/crowdsecurity/crowdsec
 
 Package: crowdsec
 Architecture: any
-Depends: ${misc:Depends},
+Depends: ca-certificates,
+         ${misc:Depends},
          ${shlibs:Depends}
 Built-Using: ${misc:Built-Using}
 Description: lightweight and collaborative security engine
