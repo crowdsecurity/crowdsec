@@ -8,14 +8,18 @@ Subject: Adjust systemd unit
  - Drop commented out ExecStartPost entirely.
  - Drop syslog.target dependency, it's socket-activated (thanks to the
    systemd-service-file-refers-to-obsolete-target lintian tag).
+ - Ensure both local and online API credentials have been defined.
 
 --- a/config/crowdsec.service
 +++ b/config/crowdsec.service
-@@ -1,14 +1,12 @@
+@@ -1,14 +1,15 @@
  [Unit]
  Description=Crowdsec agent
 -After=syslog.target network.target remote-fs.target nss-lookup.target
 +After=network.target remote-fs.target nss-lookup.target
++# Ensure configuration happened:
++ConditionPathExists=/etc/crowdsec/local_api_credentials.yaml
++ConditionPathExists=/etc/crowdsec/online_api_credentials.yaml
  
  [Service]
  Type=notify
