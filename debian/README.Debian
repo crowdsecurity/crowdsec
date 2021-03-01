@@ -19,6 +19,10 @@ the purpose of this document, let's call this copy the “offline hub”.
 Those items will automatically be updated when the `crowdsec` package
 gets updated, without user intervention.
 
+During initial configuration, all available items are enabled. That is
+achieved by creating symlinks below the `/etc/crowdsec` directories,
+for collections, parsers, postoverflows, and scenarios.
+
 
 ## Online hub
 
@@ -42,6 +46,10 @@ automatically when calling `cscli hub update` the first time,
 but it might remove items that were available on the online hub, but
 that are not on the offline hub. One might want to double check the
 state of all configured collections afterward.
+
+Once that has happened, don't forget to restart the crowdsec unit:
+
+    systemctl restart crowdsec.service
 
 
 ## Implementation details
