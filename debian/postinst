@@ -64,7 +64,7 @@ if [ "$1" = configure ]; then
   # offline hub + enabling everything per upstream recommendation:
   if [ ! -e /var/lib/crowdsec/hub/.index.json ]; then
     disable_online_hub
-    find /var/lib/crowdsec/hub/*/ -name '*yaml'|grep -v '/\.tests/' | \
+    find /var/lib/crowdsec/hub/*/ -name '*yaml' | \
       while read target; do
 	source=${target##/var/lib/crowdsec/hub/}
 	# Code as of 1.0.8 is picky about the number of
