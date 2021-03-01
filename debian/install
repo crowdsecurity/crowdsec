@@ -13,3 +13,4 @@ hub*/parsers            usr/share/crowdsec/hub
 hub*/postoverflows      usr/share/crowdsec/hub
 hub*/scenarios          usr/share/crowdsec/hub
 hub*/.index.json        usr/share/crowdsec/hub
+data*/*                 usr/share/crowdsec/data
