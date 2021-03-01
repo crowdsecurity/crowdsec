@@ -16,6 +16,10 @@ if [ "$1" = purge ]; then
   fi
 
   rmdir /etc/crowdsec 2>/dev/null || true
+
+  # Local config and hub:
+  rm -rf /var/lib/crowdsec/data
+  rm -rf /var/lib/crowdsec/hub
 fi
 
 #DEBHELPER#

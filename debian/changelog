@@ -43,6 +43,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Implement purge in postrm to remove credentials files. Keep
     /etc/crowdsec/online_api_credentials.yaml intact if it doesn't contain
     the CAPI URL (an admin is likely to have prevented CAPI registration).
+    Also remove everything below /var/lib/crowdsec/{data,hub}.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
