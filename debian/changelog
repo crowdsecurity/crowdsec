@@ -33,6 +33,8 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
      + 0005-adjust-config.patch
   * Ship config/config.yaml accordingly, along with the config files it
     references.
+  * Also adjust the hub_branch variable in config.yaml, pointing to the
+    branch related to the current upstream release instead of master.
   * Create /var/lib/crowdsec/{data,hub} directories.
   * Implement configure in postinst to generate credentials files:
     Implement a simple agent setup with a Local API (LAPI), and with an

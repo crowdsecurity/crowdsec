@@ -39,6 +39,8 @@ override_dh_install:
 	# Switch from Golang naming to upstream-desired naming:
 	mv debian/crowdsec/usr/bin/crowdsec-cli \
 		debian/crowdsec/usr/bin/cscli
+	# Adjust the hub branch according to the upstream version:
+	sed "s/\(.*hub_branch:\) master/\1 v$(U_VERSION)/" -i debian/crowdsec/etc/crowdsec/config.yaml
 
 
 ### Maintainer targets:
