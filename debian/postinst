@@ -1,6 +1,43 @@
 #!/bin/sh
 set -e
 
+# See README.Debian for the distinction between online and offline
+# hubs:
+OFFLINE_HUB=/usr/share/crowdsec/hub
+LIVE_HUB=/var/lib/crowdsec/hub
+ITEMS="blockers collections parsers postoverflows scenarios .index.json"
+
+# Offline hub = symlinks are in place, so that an updated Debian
+# package ships updated items from the hub:
+disable_online_hub() {
+  echo "I: Setting up offline hub (see README.Debian)"
+  rm -rf "$LIVE_HUB"
+  mkdir "$LIVE_HUB"
+  for item in $ITEMS; do
+    ln -s "$OFFLINE_HUB/$item" "$LIVE_HUB"
+  done
+}
+
+# Online hub = we replace symlinks with a copy of the items they point
+# to, so that enabled items (symlinks from /etc) aren't disabled
+# because of dangling symlinks. Let `cscli hub upgrade` replace the
+# original copy as required:
+enable_online_hub() {
+  # Idempotence: once this function has been called once, .index.json
+  # should no longer be a symlink, so it can be called each time
+  # `cscli hub update` is called:
+  if [ -L "$LIVE_HUB/.index.json" ]; then
+    echo "I: Switching from offline hub to online hub (see README.Debian)"
+    for item in $ITEMS; do
+      if [ -L "$LIVE_HUB/$item" ]; then
+	rm -f "$LIVE_HUB/$item"
+	cp -r "$OFFLINE_HUB/$item" "$LIVE_HUB"
+      fi
+    done
+  fi
+}
+
+
 CAPI=/etc/crowdsec/online_api_credentials.yaml
 LAPI=/etc/crowdsec/local_api_credentials.yaml
 
@@ -22,6 +59,21 @@ if [ "$1" = configure ]; then
     echo "I: Registering to CAPI ($CAPI)"
     cscli capi register
   fi
+
+  # Missing index means initial install, let's go for offline hub:
+  if [ ! -e /var/lib/crowdsec/hub/.index.json ]; then
+    disable_online_hub
+  fi
 fi
+
+case "$1" in
+  disable-online-hub)
+    disable_online_hub
+    ;;
+  enable-online-hub)
+    enable_online_hub
+    ;;
+esac
+
 
 #DEBHELPER#
