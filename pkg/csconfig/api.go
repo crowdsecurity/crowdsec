@@ -28,14 +28,16 @@ type LocalApiClientCfg struct {
 
 /*local api service configuration*/
 type LocalApiServerCfg struct {
-	ListenURI    string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
-	TLS          *TLSCfg             `yaml:"tls"`
-	DbConfig     *DatabaseCfg        `yaml:"-"`
-	LogDir       string              `yaml:"-"`
-	OnlineClient *OnlineApiClientCfg `yaml:"online_client"`
-	ProfilesPath string              `yaml:"profiles_path,omitempty"`
-	Profiles     []*ProfileCfg       `yaml:"-"`
-	LogLevel     *log.Level          `yaml:"log_level"`
+	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
+	TLS                    *TLSCfg             `yaml:"tls"`
+	DbConfig               *DatabaseCfg        `yaml:"-"`
+	LogDir                 string              `yaml:"-"`
+	LogMedia               string              `yaml:"-"`
+	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
+	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	Profiles               []*ProfileCfg       `yaml:"-"`
+	LogLevel               *log.Level          `yaml:"log_level"`
+	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
 }
 
 type TLSCfg struct {

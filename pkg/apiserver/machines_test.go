@@ -52,6 +52,96 @@ func TestCreateMachine(t *testing.T) {
 
 }
 
+func TestCreateMachineWithForwardedFor(t *testing.T) {
+	router, err := NewAPITestForwardedFor()
+	if err != nil {
+		log.Fatalf("unable to run local API: %s", err)
+	}
+
+	// Create machine
+	b, err := json.Marshal(MachineTest)
+	if err != nil {
+		log.Fatalf("unable to marshal MachineTest")
+	}
+	body := string(b)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Real-IP", "1.1.1.1")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 201, w.Code)
+	assert.Equal(t, "", w.Body.String())
+
+	ip, err := GetMachineIP(*MachineTest.MachineID)
+	if err != nil {
+		log.Fatalf("Could not get machine IP : %s", err)
+	}
+	assert.Equal(t, "1.1.1.1", ip)
+}
+
+func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
+	router, err := NewAPITest()
+	if err != nil {
+		log.Fatalf("unable to run local API: %s", err)
+	}
+
+	// Create machine
+	b, err := json.Marshal(MachineTest)
+	if err != nil {
+		log.Fatalf("unable to marshal MachineTest")
+	}
+	body := string(b)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	req.Header.Add("X-Real-IP", "1.1.1.1")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 201, w.Code)
+	assert.Equal(t, "", w.Body.String())
+
+	ip, err := GetMachineIP(*MachineTest.MachineID)
+	if err != nil {
+		log.Fatalf("Could not get machine IP : %s", err)
+	}
+	//For some reason, the IP is empty when running tests
+	//if no forwarded-for headers are present
+	assert.Equal(t, "", ip)
+}
+
+func TestCreateMachineWithoutForwardedFor(t *testing.T) {
+	router, err := NewAPITestForwardedFor()
+	if err != nil {
+		log.Fatalf("unable to run local API: %s", err)
+	}
+
+	// Create machine
+	b, err := json.Marshal(MachineTest)
+	if err != nil {
+		log.Fatalf("unable to marshal MachineTest")
+	}
+	body := string(b)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
+	req.Header.Add("User-Agent", UserAgent)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 201, w.Code)
+	assert.Equal(t, "", w.Body.String())
+
+	ip, err := GetMachineIP(*MachineTest.MachineID)
+	if err != nil {
+		log.Fatalf("Could not get machine IP : %s", err)
+	}
+	//For some reason, the IP is empty when running tests
+	//if no forwarded-for headers are present
+	assert.Equal(t, "", ip)
+}
+
 func TestCreateMachineAlreadyExist(t *testing.T) {
 	router, err := NewAPITest()
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	InsecureSkipVerify = true
+	InsecureSkipVerify = false
 )
 
 type ApiClient struct {

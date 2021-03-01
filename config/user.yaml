@@ -27,7 +27,7 @@ db_config:
   port: 3306
 api:
   client:
-    insecure_skip_verify: true # default true
+    insecure_skip_verify: false # default true
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     #log_level: info

@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -30,6 +31,21 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	}
 	switch config.Type {
 	case "sqlite":
+
+		/*if it's the first startup, we want to touch and chmod file*/
+		if _, err := os.Stat(config.DbPath); os.IsNotExist(err) {
+			f, err := os.OpenFile(config.DbPath, os.O_CREATE|os.O_RDWR, 0600)
+			if err != nil {
+				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
+			}
+			if err := f.Close(); err != nil {
+				return &Client{}, errors.Wrapf(err, "failed to create SQLite database file %q", config.DbPath)
+			}
+		} else { /*ensure file perms*/
+			if err := os.Chmod(config.DbPath, 0660); err != nil {
+				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
+			}
+		}
 		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)

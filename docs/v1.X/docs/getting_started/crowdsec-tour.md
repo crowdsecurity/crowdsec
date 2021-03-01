@@ -190,6 +190,26 @@ INFO[0000] Local Api Bouncers Metrics:
 
 </details>
 
+### Reading metrics
+
+Those metrics are a great way to know if your configuration is correct :
+
+The `Acquisition Metrics` is a great way to know if your parsers are setup correctly :
+
+ - If you have 0 **LINES PARSED** for a source : You are probably *missing* a parser, or you have a custom log format that prevents the parser from understanding your logs.
+ - However, it's perfectly OK to have a lot of **LINES UNPARSED** : Crowdsec is not a SIEM, and only parses the logs that are relevant to its scenarios. For example, [ssh parser](https://hub.crowdsec.net/author/crowdsecurity/configurations/sshd-logs),  only cares about failed authentication events (at the time of writting).
+ - **LINES POURED TO BUCKET** tell you that your scenarios are matching your log sources : it means that some events from this log source made all their way to an actual scenario
+
+
+The `Parser Metrics` will let you troubleshoot eventual parser misconfigurations :
+ - **HITS** is how many events where fed to this specific parser
+ - **PARSED** and **UNPARSED** indicate how many events successfully come out of the parser
+
+For example, if you have a custom log format in nginx that is not supported by the default parser, you will end up seeing a lot of **UNPARSED** for this specific parser, and 0 for **PARSED**.
+
+For more advanced metrics understanding, [take a look at the dedicated prometheus documentation](/Crowdsec/v1/observability/prometheus/).
+
+
 ## Deploy dashboard
 
 ```bash
@@ -217,3 +237,11 @@ sudo cscli collections install crowdsecurity/nginx
 Collections are bundles of parsers/scenarios that form a coherent ensemble to analyze/detect attacks for a specific service. It is the most common way to deploy configurations.
 
 They can be found and browsed on the {{v1X.hub.htmlname}}
+
+## Scalability
+
+Crowdsec uses go-routines for parsing and enriching logs, pouring events to buckets and manage outputs.
+
+By default, one routine of each exists (should be enough to handle ~1K EP/s), and can be changed in `crowdsec_service` of the main configuration file via the [parser_routines](/Crowdsec/v1/references/crowdsec-config/#parser_routines), [buckets_routines](/Crowdsec/v1/references/crowdsec-config/#buckets_routines) and [output_routines](/Crowdsec/v1/references/crowdsec-config/#output_routines) directives.
+
+Please keep in mind that thanks to the [http API]({{v1X.lapi.swagger}}), the workload of log parsing can be splitted amongst several agents pushing to a single {{v1X.lapi.Htmlname}}.

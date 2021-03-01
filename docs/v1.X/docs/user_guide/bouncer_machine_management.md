@@ -1,10 +1,10 @@
 # Bouncers & Machines management
 
-Crowdsec is composed of different components, that communicate via a local API.
+Crowdsec is composed of different components that communicate via a local API.
 To access this API, the various components (crowdsec agent, cscli and bouncers) need to be authenticated.
 
 !!! info
-        This documentation should be relevant mostly for administrators that want to setup distributed architectures. Single machine setup users can likely this part.
+        This documentation should be relevant mostly for administrators that would like to setup distributed architectures. Single machine setup users can likely skip this part.
 
 
 There are two kind of access to the local api :
@@ -15,7 +15,7 @@ There are two kind of access to the local api :
 ## Bouncers authentication
 
 !!! warning
-        The `cscli bouncers` command interacts directly with the database (bouncers add and delete are not implemented in API), and thus it must have correct database configuration.
+        The `cscli bouncers` command interacts directly with the database (bouncers add and delete are not implemented in the API), and thus it must have the correct database configuration.
 
 ```bash
 $ sudo cscli bouncers list
@@ -71,7 +71,7 @@ $ sudo cscli bouncers list
 ## Machines authentication
 
 !!! warning
-        The `cscli machines` command interacts directly with the database (machines add and delete are not implemented in API), and thus it must have correct database configuration.
+        The `cscli machines` command interacts directly with the database (machines add and delete are not implemented in the API), and thus it must have the correct database configuration.
 
 ```bash
 $ cscli machines list

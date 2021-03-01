@@ -14,7 +14,7 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 		err error
 	)
 	if msg.MarshaledTime == "" {
-		log.Warningf("Trying to time-machine event without timstamp : %s", spew.Sdump(msg))
+		log.Warningf("Trying to time-machine event without timestamp : %s", spew.Sdump(msg))
 		return
 	}
 
@@ -25,11 +25,13 @@ func TimeMachinePour(l *Leaky, msg types.Event) {
 	}
 
 	l.Total_count += 1
+	l.mutex.Lock()
 	if l.First_ts.IsZero() {
 		l.logger.Debugf("First event, bucket creation time : %s", d)
 		l.First_ts = d
 	}
 	l.Last_ts = d
+	l.mutex.Unlock()
 
 	if l.Limiter.AllowN(d, 1) {
 		l.logger.Tracef("Time-Pouring event %s (tokens:%f)", d, l.Limiter.GetTokensCount())

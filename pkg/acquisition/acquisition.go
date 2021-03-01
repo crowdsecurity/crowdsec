@@ -108,30 +108,35 @@ func DataSourceConfigure(config DataSourceCfg) (DataSource, error) {
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
 
 	var sources []DataSource
+	var acquisSources = config.AcquisitionFiles
 
-	yamlFile, err := os.Open(config.AcquisitionFilePath)
-	if err != nil {
-		return nil, errors.Wrapf(err, "can't open %s", config.AcquisitionFilePath)
-	}
-	dec := yaml.NewDecoder(yamlFile)
-	dec.SetStrict(true)
-	for {
-		sub := DataSourceCfg{}
-		err = dec.Decode(&sub)
+	for _, acquisFile := range acquisSources {
+		log.Infof("loading acquisition file : %s", acquisFile)
+		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
-			if err == io.EOF {
-				log.Tracef("End of yaml file")
-				break
+			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
+		}
+		dec := yaml.NewDecoder(yamlFile)
+		dec.SetStrict(true)
+		for {
+			sub := DataSourceCfg{}
+			err = dec.Decode(&sub)
+			if err != nil {
+				if err == io.EOF {
+					log.Tracef("End of yaml file")
+					break
+				}
+				return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", acquisFile))
 			}
-			return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", config.AcquisitionFilePath))
+			src, err := DataSourceConfigure(sub)
+			if err != nil {
+				log.Warningf("while configuring datasource : %s", err)
+				continue
+			}
+			sources = append(sources, src)
 		}
-		src, err := DataSourceConfigure(sub)
-		if err != nil {
-			log.Warningf("while configuring datasource : %s", err)
-			continue
-		}
-		sources = append(sources, src)
 	}
+
 	return sources, nil
 }
 

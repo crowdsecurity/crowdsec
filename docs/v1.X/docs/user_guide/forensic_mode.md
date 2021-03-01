@@ -35,6 +35,10 @@ INFO[13-11-2020 13:05:24] (14baeedafc1e44c08b806fc0c1cd92c4/crowdsec) crowdsecur
 And as these alerts are as well pushed to database, it mean you can view them in metabase, or using cscli !
 
 
+!!! warning
+    To work in forensic mode, crowdsec-agent relies on [crowdsecurity/dateparse-enrich](https://hub.crowdsec.net/author/crowdsecurity/configurations/dateparse-enrich) to parse date formats. See dedicated hub page for supported formats.
+    
+
 ## Injecting alerts into existing database
 
 If you already have a running crowdsec/Local API running and want to inject events into existing database, you can run crowdsec directly :

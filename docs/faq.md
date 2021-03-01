@@ -4,6 +4,11 @@
 
 {{v1X.crowdsec.Name}} is a security open-source software. See the [overview](/#what-is-crowdsec).
 
+## I've installed crowdsec, it detects attacks but doesn't block anything ?!
+
+Yes, {{v1X.crowdsec.Name}} is in charge of detecting attacks, and {{v1X.bouncers.htmlname}} are applying decisions.
+If you want to block the detected IPs, you should deploy a bouncer, such as the ones found on the [hub](https://hub.crowdsec.net/browse/#bouncers) !
+
 
 ## What language is it written in ?
 
@@ -48,12 +53,19 @@ SQLite by default as it's suitable for standalone/single-machine setups.
 
 ## How to control granularity of actions ? (whitelists, simulation etc.)
 
-{{v1X.crowdsec.name}} support both [whitelists]((/Crowdsec/v1/write_configurations/whitelist/) and [simulation](/Crowdsec/v1/references/simulation/) :
+{{v1X.crowdsec.name}} support both [whitelists](/Crowdsec/v1/write_configurations/whitelist/) and [simulation](/Crowdsec/v1/references/simulation/) :
 
  - Whitelists allows you to "discard" events or overflows
  - Simulation allows you to simply cancel the decision that is going to be taken, but keep track of it
 
  {{v1X.profiles.htmlname}} allows you to control which decision will be applied to which alert.
+
+## How to know if my setup is working correctly ? Some of my logs are unparsed, is it normal ?
+
+Yes, crowdsec parsers only parse the logs that are relevant for scenarios :)
+
+Take a look at `cscli metrics` [and understand what do they mean](/Crowdsec/v1/getting_started/crowdsec-tour/#reading-metrics) to know if your setup is correct.
+
 
 ## How to add whitelists ?
 
