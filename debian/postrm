@@ -20,6 +20,10 @@ if [ "$1" = purge ]; then
   # Local config and hub:
   rm -rf /var/lib/crowdsec/data
   rm -rf /var/lib/crowdsec/hub
+
+  # Logs:
+  rm -f /var/log/crowdsec.log
+  rm -f /var/log/crowdsec_api.log
 fi
 
 #DEBHELPER#
