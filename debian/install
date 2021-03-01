@@ -1,4 +1,10 @@
+# Main config:
 config/config.yaml      etc/crowdsec/
+# Referenced configs:
+config/acquis.yaml      etc/crowdsec/
+config/profiles.yaml    etc/crowdsec/
+config/simulation.yaml  etc/crowdsec/
+
 config/patterns/*       etc/crowdsec/patterns
 config/crowdsec.service lib/systemd/system
 hub*/blockers           usr/share/crowdsec/hub
