@@ -35,6 +35,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
      + 0005-adjust-config.patch
   * Ship config/config.yaml accordingly, along with the config files it
     references.
+  * Create /var/lib/crowdsec/{data,hub} directories.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
