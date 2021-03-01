@@ -8,10 +8,17 @@ if [ "$1" = configure ]; then
   if [ ! -f "$LAPI" ]; then
     echo "I: Registering to LAPI ($LAPI)"
     touch "$LAPI"
+    # This is required as of 1.0.8 at least:
+    touch "$CAPI"
     cscli machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
   fi
 
-  if [ ! -f "$CAPI" ]; then
+  # Heuristics: if the file is empty, it's probably been just created
+  # by the touch call above, and we want to register. Otherwise,
+  # either the user has created a file in advance to disable CAPI
+  # registration, or we've already registered to CAPI in a previous
+  # configure run (in both cases, don't do anything):
+  if [ ! -s "$CAPI" ]; then
     echo "I: Registering to CAPI ($CAPI)"
     cscli capi register
   fi
