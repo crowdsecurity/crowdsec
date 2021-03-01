@@ -1,0 +1,38 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Mon, 01 Mar 2021 20:40:04 +0000
+Subject: Automatically enable the online hub
+
+By default, crowdsec comes with an offline copy of the hub (see
+README.Debian). When running `cscli hub update`, ensure switching from
+this offline copy to the online hub.
+
+To ensure cscli doesn't disable anything that was configured (due to
+symlinks from /etc/crowdsec becoming dangling all of a sudden), copy the
+offline hub in the live directory (/var/lib/crowdsec/hub), and let
+further operations (`cscli hub upgrade`, or `cscli <type> install`)
+update the live directory as required.
+
+Signed-off-by: Cyril Brulebois <cyril@debamax.com>
+--- a/cmd/crowdsec-cli/hub.go
++++ b/cmd/crowdsec-cli/hub.go
+@@ -2,6 +2,7 @@ package main
+ 
+ import (
+ 	"fmt"
++	"os/exec"
+ 
+ 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+ 
+@@ -77,6 +78,12 @@ Fetches the [.index.json](https://github
+ 			return nil
+ 		},
+ 		Run: func(cmd *cobra.Command, args []string) {
++			/* Make sure to move away from the offline hub (see README.Debian) */
++			command := exec.Command("/var/lib/dpkg/info/crowdsec.postinst", "enable-online-hub")
++			if err := command.Run(); err != nil {
++				log.Printf("Enabling Online Hub failed with error: %v", err)
++			}
++
+ 			if err := cwhub.UpdateHubIdx(csConfig.Cscli); err != nil {
+ 				log.Fatalf("Failed to get Hub index : %v", err)
+ 			}

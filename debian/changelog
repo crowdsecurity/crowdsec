@@ -53,6 +53,9 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Add patch advertising `systemctl restart crowdsec` when updating the
     configuration: reload doesn't work at the moment (#656 upstream).
      + 0006-prefer-systemctl-restart.patch
+  * Add patch automating switching from the offline hub to the online hub
+    when `cscli hub update` is called:
+     + 0007-automatically-enable-online-hub.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
