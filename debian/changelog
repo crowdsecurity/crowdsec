@@ -11,22 +11,26 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Ship patterns below /etc/crowdsec/patterns: they're supposed to be
     stable over time, and it's advised not to modify them, but let's allow
     for some configurability.
-  * Include a snapshot of hub data from the master branch, at commit
+  * Include a snapshot of hub files from the master branch, at commit
     d8a8509bdf: hub1. Further updates for a given crowdsec upstream
     version will be numbered hubN. After a while, they will be generated
     from a dedicated vX.Y.Z branch instead of from master.
   * Implement a generate_hub_tarball target in debian/rules to automate
-    generating a tarball for hub data.
-  * Add patch to disable geoip-enrich in the hub data as it requires
-    downloading some files from the network:
+    generating a tarball for hub files.
+  * Add patch to disable geoip-enrich in the hub files as it requires
+    downloading some files from the network that aren't under the usual
+    MIT license:
      + 0004-disable-geoip-enrich.patch
-  * Ship a selection of hub data in /usr/share/crowdsec/hub so that
+  * Ship a selection of hub files in /usr/share/crowdsec/hub so that
     crowdsec can be set up without having to download data from the
     collaborative hub (https://hub.crowdsec.net/).
+  * Ditto for some data files (in /usr/share/crowdsec/data).
   * Use DH_GOLANG_EXCLUDES to avoid including extra Go files from the
     hub into the build directory.
   * Implement an extract_hub_tarball target in debian/rules to automate
-    extracting hub data from the tarball.
+    extracting hub files from the tarball.
+  * Implement an extract_data_tarball target in debian/rules to automate
+    extracting data files from the tarball.
   * Ship crowdsec-cli (automated Golang naming) as cscli (upstream's
     preference).
   * Add patch to adjust the default config:
