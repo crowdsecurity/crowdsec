@@ -48,10 +48,3 @@ enable the hub and enable it by themselves if they want to use it.
    "crowdsecurity/http-logs": {
     "path": "parsers/s02-enrich/crowdsecurity/http-logs.yaml",
     "stage": "s02-enrich",
-@@ -1228,4 +1207,4 @@
-    }
-   }
-  }
--}
-\ No newline at end of file
-+}
