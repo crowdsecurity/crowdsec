@@ -1,0 +1,20 @@
+#!/bin/sh
+set -e
+
+CAPI=/etc/crowdsec/online_api_credentials.yaml
+LAPI=/etc/crowdsec/local_api_credentials.yaml
+
+if [ "$1" = configure ]; then
+  if [ ! -f "$LAPI" ]; then
+    echo "I: Registering to LAPI ($LAPI)"
+    touch "$LAPI"
+    cscli machines add --force "$(cat /etc/machine-id)" --password "$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)"
+  fi
+
+  if [ ! -f "$CAPI" ]; then
+    echo "I: Registering to CAPI ($CAPI)"
+    cscli capi register
+  fi
+fi
+
+#DEBHELPER#

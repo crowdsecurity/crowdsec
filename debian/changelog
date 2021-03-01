@@ -35,6 +35,12 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     references.
   * Create /var/lib/crowdsec/{data,hub} directories.
   * Implement purge in postrm to remove credentials files.
+  * Implement configure in postinst to generate credentials files:
+    Implement a simple agent setup with a Local API (LAPI), and with an
+    automatic registration to the Central API (CAPI). The latter can be
+    disabled by creating a /etc/crowdsec/online_api_credentials.yaml file
+    (either empty or containing comments, e.g. “# no thanks”) before
+    installing this package.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
