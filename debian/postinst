@@ -10,7 +10,6 @@ ITEMS="blockers collections parsers postoverflows scenarios .index.json"
 # Offline hub = symlinks are in place, so that an updated Debian
 # package ships updated items from the hub:
 disable_online_hub() {
-  echo "I: Setting up offline hub (see README.Debian)"
   rm -rf "$LIVE_HUB"
   mkdir "$LIVE_HUB"
   for item in $ITEMS; do
@@ -63,9 +62,11 @@ if [ "$1" = configure ]; then
   # Missing index means initial install, let's go for setting up
   # offline hub + enabling everything per upstream recommendation:
   if [ ! -e /var/lib/crowdsec/hub/.index.json ]; then
+    echo "I: Setting up offline hub (see README.Debian)"
     disable_online_hub
 
     # Symlinks:
+    echo "I: Enabling all items (via symlinks from /etc/crowdsec)"
     find /var/lib/crowdsec/hub/*/ -name '*yaml' | \
       while read target; do
 	source=${target##/var/lib/crowdsec/hub/}
@@ -84,6 +85,7 @@ fi
 case "$1" in
   disable-online-hub)
     disable_online_hub
+    echo "I: Don't forget to inspect the config, and run 'systemctl restart crowdsec' afterward"
     ;;
   enable-online-hub)
     enable_online_hub
