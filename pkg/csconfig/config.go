@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -15,14 +16,16 @@ import (
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
 type GlobalConfig struct {
 	//just a path to ourself :p
-	Self        *string             `yaml:"-"`
-	Common      *CommonCfg          `yaml:"common,omitempty"`
-	Prometheus  *PrometheusCfg      `yaml:"prometheus,omitempty"`
-	Crowdsec    *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
-	Cscli       *CscliCfg           `yaml:"cscli,omitempty"`
-	DbConfig    *DatabaseCfg        `yaml:"db_config,omitempty"`
-	API         *APICfg             `yaml:"api,omitempty"`
-	ConfigPaths *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	Self         *string             `yaml:"-"`
+	Common       *CommonCfg          `yaml:"common,omitempty"`
+	Prometheus   *PrometheusCfg      `yaml:"prometheus,omitempty"`
+	Crowdsec     *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
+	Cscli        *CscliCfg           `yaml:"cscli,omitempty"`
+	DbConfig     *DatabaseCfg        `yaml:"db_config,omitempty"`
+	API          *APICfg             `yaml:"api,omitempty"`
+	ConfigPaths  *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	DisableAPI   bool                `yaml:"-"`
+	DisableAgent bool                `yaml:"-"`
 }
 
 func (c *GlobalConfig) Dump() error {
@@ -34,13 +37,15 @@ func (c *GlobalConfig) Dump() error {
 	return nil
 }
 
-func (c *GlobalConfig) LoadConfigurationFile(path string) error {
-
+func (c *GlobalConfig) LoadConfigurationFile(path string, disableAPI bool, disableAgent bool) error {
+	c.DisableAPI = disableAPI
+	c.DisableAgent = disableAgent
 	fcontent, err := ioutil.ReadFile(path)
 	if err != nil {
 		return errors.Wrap(err, "failed to read config file")
 	}
-	err = yaml.UnmarshalStrict(fcontent, c)
+	configData := os.ExpandEnv(string(fcontent))
+	err = yaml.UnmarshalStrict([]byte(configData), c)
 	if err != nil {
 		return errors.Wrap(err, "failed unmarshaling config")
 	}
@@ -78,9 +83,24 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	}
 
 	if c.Crowdsec != nil {
-		if c.Crowdsec.AcquisitionFilePath == "" {
-			c.Crowdsec.AcquisitionFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/acquis.yaml")
+		if c.Crowdsec.AcquisitionFilePath != "" {
+			log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
+			if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
+				return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
+			}
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 		}
+		if c.Crowdsec.AcquisitionDirPath != "" {
+			files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
+			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
+			if err != nil {
+				return errors.Wrap(err, "while globing acquis_dir")
+			}
+		}
+		if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
+			return fmt.Errorf("no acquisition_path nor acquisition_dir")
+		}
+
 		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
 		c.Crowdsec.HubDir = c.ConfigPaths.HubDir
@@ -108,9 +128,16 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Cscli.DataDir = c.ConfigPaths.DataDir
 		c.Cscli.HubDir = c.ConfigPaths.HubDir
 		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+		if c.Cscli.PrometheusUrl == "" {
+			port := 6060
+			if c.Prometheus.ListenPort != 0 {
+				port = c.Prometheus.ListenPort
+			}
+			c.Cscli.PrometheusUrl = fmt.Sprintf("http://127.0.0.1:%d/", port)
+		}
 	}
 
-	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" {
+	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
 		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)
 		if err != nil {
 			return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
@@ -125,15 +152,16 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			}
 		}
 		if c.API.Client.InsecureSkipVerify == nil {
-			apiclient.InsecureSkipVerify = true
+			apiclient.InsecureSkipVerify = false
 		} else {
 			apiclient.InsecureSkipVerify = *c.API.Client.InsecureSkipVerify
 		}
 	}
 
-	if c.API.Server != nil {
+	if c.API.Server != nil && !c.DisableAPI {
 		c.API.Server.DbConfig = c.DbConfig
 		c.API.Server.LogDir = c.Common.LogDir
+		c.API.Server.LogMedia = c.Common.LogMedia
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
@@ -227,7 +255,8 @@ func NewDefaultConfig() *GlobalConfig {
 			CredentialsFilePath: "/etc/crowdsec/config/lapi-secrets.yaml",
 		},
 		Server: &LocalApiServerCfg{
-			ListenURI: "127.0.0.1:8080",
+			ListenURI:              "127.0.0.1:8080",
+			UseForwardedForHeaders: false,
 			OnlineClient: &OnlineApiClientCfg{
 				CredentialsFilePath: "/etc/crowdsec/config/online-api-secrets.yaml",
 			},
@@ -262,6 +291,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Common.WorkingDir,
 		}
 		for _, k := range CommonCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -274,6 +306,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.Crowdsec.AcquisitionFilePath,
 		}
 		for _, k := range crowdsecCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")
@@ -290,6 +325,9 @@ func (c *GlobalConfig) CleanupPaths() error {
 			&c.ConfigPaths.SimulationFilePath,
 		}
 		for _, k := range configPathsCleanup {
+			if *k == "" {
+				continue
+			}
 			*k, err = filepath.Abs(*k)
 			if err != nil {
 				return errors.Wrap(err, "failed to clean path")

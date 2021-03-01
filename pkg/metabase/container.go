@@ -16,29 +16,31 @@ import (
 )
 
 type Container struct {
-	ListenAddr   string
-	ListenPort   string
-	SharedFolder string
-	Image        string
-	Name         string
-	ID           string
-	CLI          *client.Client
-	MBDBUri      string
+	ListenAddr    string
+	ListenPort    string
+	SharedFolder  string
+	Image         string
+	Name          string
+	ID            string
+	CLI           *client.Client
+	MBDBUri       string
+	DockerGroupID string
 }
 
-func NewContainer(listenAddr string, listenPort string, sharedFolder string, name string, image string, mbDBURI string) (*Container, error) {
+func NewContainer(listenAddr string, listenPort string, sharedFolder string, name string, image string, mbDBURI string, dockerGroupID string) (*Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client : %s", err)
 	}
 	return &Container{
-		ListenAddr:   listenAddr,
-		ListenPort:   listenPort,
-		SharedFolder: sharedFolder,
-		Image:        image,
-		Name:         name,
-		CLI:          cli,
-		MBDBUri:      mbDBURI,
+		ListenAddr:    listenAddr,
+		ListenPort:    listenPort,
+		SharedFolder:  sharedFolder,
+		Image:         image,
+		Name:          name,
+		CLI:           cli,
+		MBDBUri:       mbDBURI,
+		DockerGroupID: dockerGroupID,
 	}, nil
 }
 
@@ -84,12 +86,12 @@ func (c *Container) Create() error {
 		env = append(env, c.MBDBUri)
 	}
 
+	env = append(env, fmt.Sprintf("MGID=%s", c.DockerGroupID))
 	dockerConfig := &container.Config{
 		Image: c.Image,
 		Tty:   true,
 		Env:   env,
 	}
-
 	os := runtime.GOOS
 	switch os {
 	case "linux":
@@ -158,15 +160,15 @@ func RemoveContainer(name string) error {
 	return nil
 }
 
-func RemoveImageContainer(image string) error {
+func RemoveImageContainer() error {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return fmt.Errorf("failed to create docker client : %s", err)
 	}
 	ctx := context.Background()
-	log.Printf("Removing docker metabase %s", image)
-	if err := cli.ContainerRemove(ctx, image, types.ContainerRemoveOptions{}); err != nil {
-		return fmt.Errorf("failed remove container %s : %s", image, err)
+	log.Printf("Removing docker image '%s'", metabaseImage)
+	if _, err := cli.ImageRemove(ctx, metabaseImage, types.ImageRemoveOptions{}); err != nil {
+		return fmt.Errorf("failed remove image container %s : %s", metabaseImage, err)
 	}
 	return nil
 }

@@ -4,11 +4,12 @@ import (
 	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
-func initAPIServer() (*apiserver.APIServer, error) {
+func initAPIServer(cConfig *csconfig.GlobalConfig) (*apiserver.APIServer, error) {
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)

@@ -179,6 +179,12 @@ func TestFileInit(t *testing.T) {
 			result:   3,
 		},
 		{
+			name:     "file with type:string and empty lines + commentaries",
+			filename: "test_empty_line.txt",
+			types:    "string",
+			result:   3,
+		},
+		{
 			name:     "file with type:re",
 			filename: "test_data_re.txt",
 			types:    "regex",

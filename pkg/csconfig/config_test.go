@@ -17,19 +17,19 @@ func TestDefaultConfig(t *testing.T) {
 func TestNormalLoad(t *testing.T) {
 
 	x := NewConfig()
-	err := x.LoadConfigurationFile("./tests/config.yaml")
+	err := x.LoadConfigurationFile("./tests/config.yaml", false, false)
 	if err != nil {
 		t.Fatalf("unexpected error %s", err)
 	}
 
 	x = NewConfig()
-	err = x.LoadConfigurationFile("./tests/xxx.yaml")
+	err = x.LoadConfigurationFile("./tests/xxx.yaml", false, false)
 	if fmt.Sprintf("%s", err) != "failed to read config file: open ./tests/xxx.yaml: no such file or directory" {
 		t.Fatalf("unexpected error %s", err)
 	}
 
 	x = NewConfig()
-	err = x.LoadConfigurationFile("./tests/simulation.yaml")
+	err = x.LoadConfigurationFile("./tests/simulation.yaml", false, false)
 	if !strings.HasPrefix(fmt.Sprintf("%s", err), "failed unmarshaling config: yaml: unmarshal error") {
 		t.Fatalf("unexpected error %s", err)
 	}

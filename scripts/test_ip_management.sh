@@ -403,7 +403,7 @@ function start_test
 function reset 
 {
     cd ${RELEASE_FOLDER_FULL}/tests/
-    killall crowdsec > /dev/null 2>&1 || echo ""
+    killall -w crowdsec > /dev/null 2>&1 || echo ""
     rm data/crowdsec.db > /dev/null 2>&1 || echo ""
     ${CSCLI} hub update
     ${CSCLI} machines add -a

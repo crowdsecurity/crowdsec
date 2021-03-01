@@ -40,13 +40,18 @@ func initConfig() {
 	} else if err_lvl {
 		log.SetLevel(log.ErrorLevel)
 	}
-
+	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
+	log.SetFormatter(logFormatter)
 	csConfig = csconfig.NewConfig()
 
 	log.Debugf("Using %s as configuration file", ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(ConfigFilePath); err != nil {
+	if err := csConfig.LoadConfigurationFile(ConfigFilePath, csConfig.DisableAPI, csConfig.DisableAgent); err != nil {
 		log.Fatalf(err.Error())
 	}
+	if csConfig.Cscli == nil {
+		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
+	}
+
 	if cwhub.HubBranch == "" && csConfig.Cscli.HubBranch != "" {
 		cwhub.HubBranch = csConfig.Cscli.HubBranch
 	}
@@ -61,8 +66,8 @@ func initConfig() {
 	}
 
 	if csConfig.Cscli.Output == "json" {
-		log.SetLevel(log.WarnLevel)
 		log.SetFormatter(&log.JSONFormatter{})
+		log.SetLevel(log.ErrorLevel)
 	} else if csConfig.Cscli.Output == "raw" {
 		log.SetLevel(log.ErrorLevel)
 	}

@@ -6,11 +6,22 @@ if [ $? == 1 ]; then
     cscli machines add --force --auto -f /etc/crowdsec/local_api_credentials.yaml
 fi
 
-if [ "$REGISTER_TO_ONLINE_API" == "true" ] || [ "$REGISTER_TO_ONLINE_API" == "TRUE" ] && [ "$CONFIG_FILE" == "" ] ; then
-    cat /etc/crowdsec/config.yaml | grep online_api_credentials.yaml
-    if [ $? == 1 ]; then
-        sed -ri 's/^(\s*)(#credentials_path\s*:\s*$)/\1credentials_path: \/etc\/crowdsec\/online_api_credentials.yaml/' /etc/crowdsec/config.yaml
+# registration to online API for signal push
+if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
+    CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' /etc/crowdsec/config.yaml)
+    if [ "$CONFIG_EXIST" != "true" ]; then
+        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' /etc/crowdsec/config.yaml > /etc/crowdsec/config2.yaml
+        mv /etc/crowdsec/config2.yaml /etc/crowdsec/config.yaml
         cscli capi register > /etc/crowdsec/online_api_credentials.yaml
+    fi
+fi
+
+# crowdsec sqlite database permissions
+if [ "$GID" != "" ]; then
+    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' /etc/crowdsec/config.yaml)
+    DB_PATH=$(yq eval '.db_config.db_path' /etc/crowdsec/config.yaml)
+    if [ "$IS_SQLITE" == "true" ]; then
+        chown :$GID $DB_PATH
     fi
 fi
 

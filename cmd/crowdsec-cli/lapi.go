@@ -84,6 +84,8 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("api client register: %s", err)
 			}
 
+			log.Printf("Successfully registered to Local API (LAPI)")
+
 			var dumpFile string
 			if outputFile != "" {
 				dumpFile = outputFile
@@ -106,7 +108,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
-				log.Printf("API credentials dumped to '%s'", dumpFile)
+				log.Printf("Local API credentials dumped to '%s'", dumpFile)
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}

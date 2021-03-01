@@ -4,6 +4,7 @@
 
 ## Configuration example
 
+
 <details>
   <summary>Default configuration</summary>
 
@@ -23,6 +24,7 @@ config_paths:
   index_path: /etc/crowdsec/hub/.index.json
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
+  #acquisition_dir: /etc/crowdsec/acquis/
   parser_routines: 1
   buckets_routines: 1
   output_routines: 1
@@ -43,12 +45,13 @@ db_config:
     max_age: 7d
 api:
   client:
-    insecure_skip_verify: true
+    insecure_skip_verify: false
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
+    use_forwarded_for_headers: false
     online_client: # Crowdsec API
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
 #    tls:
@@ -63,6 +66,30 @@ prometheus:
 
 </details>
 
+## Environment variable
+
+It is possible to set a configuration value based on an enrivonement variables.
+
+For example, if you don't want to store your database password in the configuration file, you can do this:
+
+```yaml
+db_config:
+  type:     mysql
+  user:     database_user
+  password: ${DB_PASSWORD}  
+  db_name:  db_name
+  host:     192.168.0.2   
+  port:     3306 
+```
+
+And export the environment variable such as:
+
+```bash
+export DB_PASSWORD="<db_password>"
+```
+
+!!! warning 
+    **Note**: you need to be `root` or put the environment variable in `/etc/environement`
 
 ## Configuration format
 
@@ -82,6 +109,7 @@ config_paths:
   index_path: <path_to_hub_index_file>
 crowdsec_service:
   acquisition_path: <acqusition_file_path>
+  acquisition_dir: <acquisition_dir_path>
   parser_routines: <number_of_parser_routines>
   buckets_routines: <number_of_buckets_routines>
   output_routines: <number_of_output_routines>
@@ -107,6 +135,7 @@ api:
     log_level: (error|info|debug|trace>)
     listen_uri: <listen_uri> # host:port
     profiles_path: <path_to_profile_file>
+    use_forwarded_for_headers: <true|false>
     online_client:
       credentials_path: <path_to_crowdsec_api_client_credential_file>
     tls:
@@ -215,6 +244,7 @@ This section is only used by crowdsec agent.
 ```yaml
 crowdsec_service:
   acquisition_path: <acqusition_file_path>
+  acquisition_dir: <acqusition_dir_path>
   parser_routines: <number_of_parser_routines>
   buckets_routines: <number_of_buckets_routines>
   output_routines: <number_of_output_routines>
@@ -241,6 +271,11 @@ Number of dedicated goroutines for pushing data to local api.
 
 Path to the yaml file containing logs that needs to be read.
 
+#### `acquisition_dir`
+> string
+
+(>1.0.7) Path to a directory where each yaml is considered as a acquisition configuration file containing logs that needs to be read.
+
 
 ### `cscli`
 
@@ -250,6 +285,7 @@ This section is only used by `cscli`.
 cscli:
   output: (human|json|raw)
   hub_branch: <hub_branch>
+  prometheus_uri: <uri>
 ```
 
 #### `output`
@@ -261,6 +297,11 @@ The default output format (human, json or raw).
 > string
 
 The git branch on which `cscli` is going to fetch configurations.
+
+#### `prometheus_uri`
+> uri
+
+(>1.0.7) An uri (without the trailing `/metrics`) that will be used by `cscli metrics` command, ie. `http://127.0.0.1:6060/`
 
 ## `db_config`
 
@@ -279,6 +320,7 @@ api:
     log_level: (error|info|debug|trace>)
     listen_uri: <listen_uri> # host:port
     profiles_path: <path_to_profile_file>
+    use_forwarded_for_headers: (true|false)
     online_client:
       credentials_path: <path_to_crowdsec_api_client_credential_file>
     tls:
@@ -315,6 +357,7 @@ server:
   log_level: (error|info|debug|trace)
   listen_uri: <listen_uri> # host:port
   profiles_path: <path_to_profile_file>
+  use_forwarded_for_headers: (true|false)
   online_client:
     credentials_path: <path_to_crowdsec_api_client_credential_file>
   tls:
@@ -331,6 +374,11 @@ Address and port listen configuration, the form `host:port`.
 > string
 
 The path to the {{v1X.profiles.htmlname}} configuration.
+
+#### `use_forwarded_for_headers`
+> string
+
+Allow the usage of `X-Forwarded-For` or `X-Real-IP` to get the client IP address. Do not enable if you are not running the LAPI behind a trusted reverse-proxy or LB.
 
 #### `online_client`
 

@@ -31,7 +31,7 @@ db_config:
     max_age: 7d
 api:
   client:
-    insecure_skip_verify: true
+    insecure_skip_verify: false
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     log_level: info

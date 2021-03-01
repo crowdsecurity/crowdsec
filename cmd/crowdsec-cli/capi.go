@@ -91,7 +91,7 @@ func NewCapiCmd() *cobra.Command {
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
 				}
-				log.Printf("API credentials dumped to '%s'", dumpFile)
+				log.Printf("Central API credentials dumped to '%s'", dumpFile)
 			} else {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
@@ -131,6 +131,9 @@ func NewCapiCmd() *cobra.Command {
 			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
+			}
+			if len(scenarios) == 0 {
+				log.Fatalf("no scenarios installed, abort")
 			}
 
 			Client, err = apiclient.NewDefaultClient(apiurl, CAPIURLPrefix, fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()), nil)
