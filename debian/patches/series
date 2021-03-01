@@ -3,3 +3,4 @@
 0003-adjust-systemd-unit.patch
 0004-disable-geoip-enrich.patch
 0005-adjust-config.patch
+0006-prefer-systemctl-restart.patch

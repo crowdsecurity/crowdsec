@@ -1,0 +1,88 @@
+From: Cyril Brulebois <cyril@debamax.com>
+Date: Mon, 01 Mar 2021 20:40:04 +0000
+Subject: Prefer `systemctl restart crowdsec` to `systemctl reload crowdsec`
+
+As of version 1.0.8, reloading doesn't work due to failures to reopen
+the database:
+  https://github.com/crowdsecurity/crowdsec/issues/656
+
+Until this is fixed, advertise `systemctl restart crowdsec` instead.
+
+Signed-off-by: Cyril Brulebois <cyril@debamax.com>
+--- a/cmd/crowdsec-cli/capi.go
++++ b/cmd/crowdsec-cli/capi.go
+@@ -96,7 +96,7 @@ func NewCapiCmd() *cobra.Command {
+ 				fmt.Printf("%s\n", string(apiConfigDump))
+ 			}
+ 
+-			log.Warningf("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective")
++			log.Warningf("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective")
+ 		},
+ 	}
+ 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+--- a/cmd/crowdsec-cli/collections.go
++++ b/cmd/crowdsec-cli/collections.go
+@@ -31,7 +31,7 @@ func NewCollectionsCmd() *cobra.Command
+ 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
+ 				return
+ 			}
+-			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
++			log.Infof("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective.")
+ 		},
+ 	}
+ 
+--- a/cmd/crowdsec-cli/lapi.go
++++ b/cmd/crowdsec-cli/lapi.go
+@@ -112,7 +112,7 @@ Keep in mind the machine needs to be val
+ 			} else {
+ 				fmt.Printf("%s\n", string(apiConfigDump))
+ 			}
+-			log.Warningf("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective")
++			log.Warningf("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective")
+ 		},
+ 	}
+ 	cmdLapiRegister.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the API (ie. http://127.0.0.1)")
+--- a/cmd/crowdsec-cli/parsers.go
++++ b/cmd/crowdsec-cli/parsers.go
+@@ -35,7 +35,7 @@ cscli parsers remove crowdsecurity/sshd-
+ 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
+ 				return
+ 			}
+-			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
++			log.Infof("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective.")
+ 		},
+ 	}
+ 
+--- a/cmd/crowdsec-cli/postoverflows.go
++++ b/cmd/crowdsec-cli/postoverflows.go
+@@ -34,7 +34,7 @@ func NewPostOverflowsCmd() *cobra.Comman
+ 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
+ 				return
+ 			}
+-			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
++			log.Infof("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective.")
+ 		},
+ 	}
+ 
+--- a/cmd/crowdsec-cli/scenarios.go
++++ b/cmd/crowdsec-cli/scenarios.go
+@@ -35,7 +35,7 @@ cscli scenarios remove crowdsecurity/ssh
+ 			if cmd.Name() == "inspect" || cmd.Name() == "list" {
+ 				return
+ 			}
+-			log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
++			log.Infof("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective.")
+ 		},
+ 	}
+ 
+--- a/cmd/crowdsec-cli/simulation.go
++++ b/cmd/crowdsec-cli/simulation.go
+@@ -112,7 +112,7 @@ cscli simulation disable crowdsecurity/s
+ 		},
+ 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+ 			if cmd.Name() != "status" {
+-				log.Infof("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective.")
++				log.Infof("Run 'sudo systemctl restart crowdsec' for the new configuration to be effective.")
+ 			}
+ 		},
+ 	}

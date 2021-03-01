@@ -50,6 +50,9 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
     postinst. The latter is called once automatically to make sure the
     offline hub is ready to use. See README.Debian for details.
   * Also enable all items using the offline hub on fresh installation.
+  * Add patch advertising `systemctl restart crowdsec` when updating the
+    configuration: reload doesn't work at the moment (#656 upstream).
+     + 0006-prefer-systemctl-restart.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
