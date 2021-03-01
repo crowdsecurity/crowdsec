@@ -3,3 +3,7 @@
 # for this package, meaning this tag is emitted regardless):
 crowdsec: hardening-no-pie usr/bin/crowdsec
 crowdsec: hardening-no-pie usr/bin/cscli
+
+# The postinst script implements custom actions, sharing code with the
+# "configure" one:
+crowdsec: uses-dpkg-database-directly usr/bin/cscli

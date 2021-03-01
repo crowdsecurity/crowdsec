@@ -60,6 +60,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Add patch automating switching from the offline hub to the online hub
     when `cscli hub update` is called:
      + 0007-automatically-enable-online-hub.patch
+  * Add lintian override accordingly: uses-dpkg-database-directly.
 
  -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
 
