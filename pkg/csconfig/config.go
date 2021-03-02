@@ -81,7 +81,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 	if err := c.LoadSimulation(); err != nil {
 		return err
 	}
-
 	if c.Crowdsec != nil {
 		if c.Crowdsec.AcquisitionFilePath != "" {
 			log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
@@ -157,7 +156,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			apiclient.InsecureSkipVerify = *c.API.Client.InsecureSkipVerify
 		}
 	}
-
 	if c.API.Server != nil && !c.DisableAPI {
 		c.API.Server.DbConfig = c.DbConfig
 		c.API.Server.LogDir = c.Common.LogDir
@@ -175,9 +173,13 @@ func (c *GlobalConfig) LoadConfiguration() error {
 			if err != nil {
 				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
 			}
-			if c.API.Server.OnlineClient.Credentials == nil {
-				log.Debugf("online credentials not found in '%s', will not use crowdsec api", c.API.Server.OnlineClient.CredentialsFilePath)
+			if c.API.Server.OnlineClient.Credentials.Login == "" || c.API.Server.OnlineClient.Credentials.Password == "" || c.API.Server.OnlineClient.Credentials.URL == "" {
+				log.Debugf("can't load CAPI credentials from '%s' (missing field)", c.API.Server.OnlineClient.CredentialsFilePath)
+				c.API.Server.OnlineClient.Credentials = nil
 			}
+		}
+		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+			log.Printf("push and pull to crowdsec API disabled")
 		}
 	}
 
