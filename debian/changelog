@@ -1,4 +1,4 @@
-crowdsec (1.0.8-1) UNRELEASED; urgency=medium
+crowdsec (1.0.8-1) unstable; urgency=medium
 
   * New upstream stable release.
   * Refresh patches:
@@ -66,7 +66,7 @@ crowdsec (1.0.8-1) UNRELEASED; urgency=medium
   * Create /etc/machine-id if it doesn't exist already (e.g. in piuparts
     environments).
 
- -- Cyril Brulebois <cyril@debamax.com>  Mon, 01 Mar 2021 12:40:15 +0000
+ -- Cyril Brulebois <cyril@debamax.com>  Tue, 02 Mar 2021 00:25:48 +0000
 
 crowdsec (1.0.4-1) unstable; urgency=medium
 
