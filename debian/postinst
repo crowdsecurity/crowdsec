@@ -79,7 +79,7 @@ if [ "$1" = configure ]; then
 	source=${target##/var/lib/crowdsec/hub/}
 	# Code as of 1.0.8 is picky about the number of
 	# (sub)directories, so the vendor must be stripped:
-	source=$(echo "$source"|sed 's,crowdsecurity/,,')
+	source=$(echo "$source"|sed 's,crowdsecurity/\|ltsich/,,')
 	mkdir -p /etc/crowdsec/$(dirname "$source")
 	ln -s "$target" "/etc/crowdsec/$source"
       done

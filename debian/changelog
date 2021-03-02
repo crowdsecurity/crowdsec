@@ -1,3 +1,11 @@
+crowdsec (1.0.8-2) UNRELEASED; urgency=medium
+
+  * Update postinst to also strip ltsich/ when installing symlinks
+    initially (new vendor in recent hub files, in addition to the usual
+    crowdsecurity/).
+
+ -- Cyril Brulebois <cyril@debamax.com>  Tue, 02 Mar 2021 01:26:44 +0000
+
 crowdsec (1.0.8-1) unstable; urgency=medium
 
   * New upstream stable release.
