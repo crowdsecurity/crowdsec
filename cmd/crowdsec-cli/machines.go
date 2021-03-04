@@ -156,6 +156,7 @@ To list/add/delete/register/validate machines
 cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
+cscli machines add MyTestMachine -f ./credentials.yaml
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -194,7 +195,7 @@ cscli machines add MyTestMachine --password MyPassword
 
 			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
-				if !autoAdd {
+				if !autoAdd && outputFile == "" {
 					err = cmd.Help()
 					if err != nil {
 						log.Fatalf("unable to print help(): %s", err)
