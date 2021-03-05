@@ -84,3 +84,16 @@ CISCOFW733100 \[\s*%{DATA:drop_type}\s*\] drop %{DATA:drop_rate_id} exceeded. Cu
 # Shorewall firewall logs
 SHOREWALL (%{SYSLOGTIMESTAMP:timestamp}) (%{WORD:nf_host}) kernel:.*Shorewall:(%{WORD:nf_action1})?:(%{WORD:nf_action2})?.*IN=(%{USERNAME:nf_in_interface})?.*(OUT= *MAC=(%{COMMONMAC:nf_dst_mac}):(%{COMMONMAC:nf_src_mac})?|OUT=%{USERNAME:nf_out_interface}).*SRC=(%{IPV4:nf_src_ip}).*DST=(%{IPV4:nf_dst_ip}).*LEN=(%{WORD:nf_len}).*?TOS=(%{WORD:nf_tos}).*?PREC=(%{WORD:nf_prec}).*?TTL=(%{INT:nf_ttl}).*?ID=(%{INT:nf_id}).*?PROTO=(%{WORD:nf_protocol}).*?SPT=(%{INT:nf_src_port}?.*DPT=%{INT:nf_dst_port}?.*)
 #== End Shorewall
+
+# Packet Filter logs
+# Sample filter log message 9,,,1000000103,vtnet0,match,block,in,4,0x0,,247,37753,0,none,6,tcp,40,192.168.9.56,10.93.1.12,59696,3074,0,S,717201087,,61538,,
+PF_UDP_DATA %{INT:src_port},%{INT:dest_port},%{INT:data_length}
+PF_TCP_DATA %{PF_UDP_DATA},%{WORD:tcp_flags},%{INT:sequence_number},%{INT:ack_number},%{INT:tcp_window},%{DATA:urg_data},%{DATA:tcp_options}
+PF_PROTOCOL_DATA (%{PF_TCP_DATA}|%{PF_UDP_DATA})
+PF_IP_DATA %{INT:length},%{IP:src_ip},%{IP:dest_ip},
+PF_IPv4_DATA %{BASE16NUM:ip4_tos},,%{INT:ip4_ttl},%{INT:ip4_id},%{INT:ip4_offset},%{WORD:ip4_flags},%{INT:ip4_proto_id},%{WORD:ip4_proto},
+PF_IPv6_DATA %{BASE16NUM:ip6_class},%{DATA:ip6_flow_label},%{INT:ip6_hop_limit},%{WORD:ip6_proto},%{INT:ip6_proto_id},
+PF_IP_SPECIFIC_DATA (%{PF_IPv4_DATA}|%{PF_IPv6_DATA})
+PF_LOG_DATA %{INT:rule},(%{INT:sub_rule})?,,%{INT:tracker},%{DATA:iface},%{WORD:reason},%{WORD:action},%{WORD:direction},%{INT:ip_ver},
+PF_FILTERLOG %{PF_LOG_DATA}%{PF_IP_SPECIFIC_DATA}%{PF_IP_DATA}%{PF_PROTOCOL_DATA}
+# == End Packet Filter
