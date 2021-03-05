@@ -3,9 +3,11 @@ ARG GOVERSION=1.14
 FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
-COPY . .
 
 RUN apk update && apk add git jq gcc libc-dev make bash gettext
+
+COPY . .
+
 RUN BUILD_VERSION="$(git describe --tags `git rev-list --tags --max-count=1`)-docker" make release
 RUN /bin/bash wizard.sh --docker-mode
 RUN cscli hub update && cscli collections install crowdsecurity/linux
