@@ -305,7 +305,7 @@ Adding `remediation: true` into the labels tells {{v1X.crowdsec.name}} that we s
 
 Let's try :
 
- - I copied the yaml file to a production system (`/etc/crowdsec/crowdsec/scenarios/mytest.yaml`)
+ - I copied the yaml file to a production system (`/etc/crowdsec/scenarios/mytest.yaml`)
  - I restart {{v1X.crowdsec.name}} (`systemctl reload crowdsec`)
 
 Let's check if it seems correctly enabled :
