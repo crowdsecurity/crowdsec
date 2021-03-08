@@ -75,15 +75,15 @@ $ {{v1X.cli.bin}} ban list
 
 ### Create the whitelist by IP
 
-Let's create a `/etc/crowdsec/crowdsec/parsers/s02-enrich/mywhitelists.yaml` file with the following content :
+Let's create a `/etc/crowdsec/parsers/s02-enrich/mywhitelists.yaml` file with the following content :
 
 ```yaml
 name: crowdsecurity/whitelists
 description: "Whitelist events from my ip addresses"
 whitelist:
   reason: "my ip ranges"
-    ip:
-        - "80.x.x.x"
+  ip:
+    - "80.x.x.x"
 ```
 
 and reload {{v1X.crowdsec.name}} : `sudo systemctl reload crowdsec`
