@@ -80,6 +80,10 @@ sudo {{v1X.cli.bin}} decisions delete --ip 1.2.3.4
 sudo {{v1X.cli.bin}} decisions delete --range 1.2.3.0/24
 ```
 
+!!! warning
+      Please note that `cscli decisions list` will show you only the latest alert per given ip/scope.
+      However, several decisions targetting the same IP can exist. If you want to be sure to clear all decisions for a given ip/scope, use `cscli decisions delete -i XXXX`
+
 
 
 
