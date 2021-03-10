@@ -22,6 +22,8 @@ CROWDSEC_DB_PATH="${CROWDSEC_DATA_DIR}/crowdsec.db"
 CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
+LAPI_LOG_FILE="/var/log/crowdsec_api.log"
+
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -477,6 +479,7 @@ uninstall_crowdsec() {
 
     find /etc/crowdsec -maxdepth 1 -mindepth 1 | grep -v "bouncer" | xargs rm -rf || echo ""
     rm -f ${CROWDSEC_LOG_FILE} || echo ""
+    rm -f ${LAPI_LOG_FILE} || echo ""
     rm -f ${CROWDSEC_DB_PATH} || echo ""
     rm -rf ${CROWDSEC_LIB_DIR} || echo ""
     rm -rf ${CROWDSEC_USR_DIR} || echo ""
