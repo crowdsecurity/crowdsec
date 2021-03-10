@@ -185,7 +185,7 @@ $ sudo HTTP_PROXY=socks5://127.0.0.1:9050 HTTPS_PROXY=socks5://127.0.0.1:9050 cs
 
 ## Why prometheus exporter default port change from 6060 to 9810
 
-We didn't notice that there is a exporter port to choose to avoid collision with others exporters. So we follow [prometheus guideline](https://github.com/prometheus/prometheus/wiki/Default-port-allocations) and we select our default port in available ports list.
+We didn't notice that there is a exporter port to choose to avoid collision with other exporters. So we followed [prometheus guideline](https://github.com/prometheus/prometheus/wiki/Default-port-allocations) and selected our default port in available ports list.
 
 
 
