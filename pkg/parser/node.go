@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
+	yaml "gopkg.in/yaml.v2"
 
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
@@ -48,7 +49,8 @@ type Node struct {
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
 	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
-	SubGroks map[string]string `yaml:"pattern_syntax,omitempty"`
+	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
+
 	//Holds a grok pattern
 	Grok types.GrokPattern `yaml:"grok,omitempty"`
 	//Statics can be present in any type of node and is executed last
@@ -402,13 +404,14 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	}
 
 	/* handle pattern_syntax and groks */
-	for node, pattern := range n.SubGroks {
-		n.Logger.Tracef("Adding subpattern '%s' : '%s'", node, pattern)
-		if err := pctx.Grok.Add(node, pattern); err != nil {
-			n.Logger.Errorf("Unable to compile subpattern %s : %v", node, err)
+	for _, pattern := range n.SubGroks {
+		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
+		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
+			n.Logger.Errorf("Unable to compile subpattern %s : %v", pattern.Key, err)
 			return err
 		}
 	}
+
 	/* load grok by name or compile in-place */
 	if n.Grok.RegexpName != "" {
 		n.Logger.Tracef("+ Regexp Compilation '%s'", n.Grok.RegexpName)
