@@ -70,7 +70,9 @@ func (m *Metabase) Init() error {
 		return err
 	}
 	m.Database, err = NewDatabase(m.Config.Database, m.Client, remoteDBAddr)
-
+	if err != nil {
+		return err
+	}
 	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
 		return errors.Wrap(err, "container init")
