@@ -90,7 +90,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx)
 				log.Fatalf("Failed to check version : %s", err)
 			}
 			if !ok {
-				log.Errorf("%s doesn't satisfy parser format %s, skip", node.FormatVersion, cwversion.Constraint_parser)
+				log.Errorf("%s : %s doesn't satisfy parser format %s, skip", node.Name, node.FormatVersion, cwversion.Constraint_parser)
 				continue
 			}
 
