@@ -69,7 +69,7 @@ So, I want to run crowdsec with :
 * Ingested my path logs specified in acquis.yaml
 * Share the crowdsec sqlite database with my host (You need to create empty file first, otherwise docker will create a directory instead of simple file)
 * Expose local API through host (listen by default on `8080`)
-* Expose prometheus handler through host (listen by default on `6060`)
+* Expose prometheus handler through host (listen by default on `9810`)
 
 ```shell
 touch /path/myDatabase.db
@@ -80,7 +80,7 @@ docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
     -v /var/log/apache:/logs/apache \
     -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db \
     -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd" \
-    -p 8080:8080 -p 6060:6060 \
+    -p 8080:8080 -p 9810:9810 \
     --name crowdsec crowdsecurity/crowdsec
 ```
 

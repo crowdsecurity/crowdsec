@@ -1,4 +1,4 @@
-{{v1X.crowdsec.name}} can expose a {{v1X.prometheus.htmlname}} endpoint for collection (on `http://127.0.0.1:6060/metrics` by default).
+{{v1X.crowdsec.name}} can expose a {{v1X.prometheus.htmlname}} endpoint for collection (on `http://127.0.0.1:9810/metrics` by default).
 
 The goal of this endpoint, besides the usual resources consumption monitoring, aims at offering a view of {{v1X.crowdsec.name}} "applicative" behavior :
 

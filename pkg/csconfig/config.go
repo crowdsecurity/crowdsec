@@ -128,7 +128,7 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.Cscli.HubDir = c.ConfigPaths.HubDir
 		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
 		if c.Cscli.PrometheusUrl == "" {
-			port := 6060
+			port := 9810
 			if c.Prometheus.ListenPort != 0 {
 				port = c.Prometheus.ListenPort
 			}
