@@ -32,7 +32,7 @@ jobs:
       run: BUILD_VERSION=${{ steps.keydb.outputs.release }} make release
     - name: Install release
       run: |
-        cd crowdsec-xxx
+        cd crowdsec-${{ steps.keydb.outputs.release }}
         sudo bash -x ./wizard.sh --bininstall
         sudo cscli machines add -a
     - name: Post-installation check
