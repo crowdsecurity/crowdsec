@@ -11,7 +11,7 @@ FAIL_STR="${RED}FAIL${NC}"
 CURRENT_FOLDER=$(pwd)
 
 BOUNCER_VERSION="v0.0.6"
-CROWDSEC_VERSION="$(git describe --tags `git rev-list --tags --max-count=1`)"
+CROWDSEC_VERSION=$(git describe --tags `git rev-list --tags --max-count=1`)
 RELEASE_FOLDER=""
 
 HUB_AVAILABLE_PARSERS="/etc/crowdsec/hub/parsers"
