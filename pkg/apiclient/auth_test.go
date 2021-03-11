@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestApiAuth(t *testing.T) {
@@ -46,6 +47,7 @@ func TestApiAuth(t *testing.T) {
 	alert := DecisionsListOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	_, resp, err := newcli.Decisions.List(context.Background(), alert)
+	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -76,6 +78,7 @@ func TestApiAuth(t *testing.T) {
 	}
 
 	_, resp, err = newcli.Decisions.List(context.Background(), alert)
+	require.Error(t, err)
 
 	log.Infof("--> %s", err)
 	assert.Contains(t, err.Error(), "APIKey is empty")
