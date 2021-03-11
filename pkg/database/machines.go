@@ -70,8 +70,7 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 func (c *Client) ListMachines() ([]*ent.Machine, error) {
 	machines, err := c.Ent.Machine.Query().All(c.CTX)
 	if err != nil {
-		log.Warningf("ListMachines : %s", err)
-		return []*ent.Machine{}, errors.Wrap(UpdateFail, "setting machine status")
+		return []*ent.Machine{}, errors.Wrapf(QueryFail, "listing machines: %s", err)
 	}
 	return machines, nil
 }
@@ -79,8 +78,7 @@ func (c *Client) ListMachines() ([]*ent.Machine, error) {
 func (c *Client) ValidateMachine(machineID string) error {
 	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
 	if err != nil {
-		log.Warningf("ValidateMachine : %s", err)
-		return errors.Wrap(UpdateFail, "setting machine status")
+		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
 	}
 	return nil
 }
@@ -92,7 +90,7 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 	machines, err = c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(c.CTX)
 	if err != nil {
 		log.Warningf("QueryPendingMachine : %s", err)
-		return []*ent.Machine{}, errors.Wrap(UpdateFail, "setting machine status")
+		return []*ent.Machine{}, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
 	}
 	return machines, nil
 }

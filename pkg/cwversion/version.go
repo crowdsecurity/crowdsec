@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	version "github.com/hashicorp/go-version"
 )
@@ -55,6 +56,11 @@ func Show() {
 
 func VersionStr() string {
 	return fmt.Sprintf("%s-%s", Version, Tag)
+}
+
+func VersionStrip() string {
+	version := strings.Split(Version, "-")
+	return version[0]
 }
 
 func Statisfies(strvers string, constraint string) (bool, error) {

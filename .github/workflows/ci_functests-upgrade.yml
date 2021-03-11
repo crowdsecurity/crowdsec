@@ -25,9 +25,15 @@ jobs:
     - name: install ipset for bouncer
       run: |
         sudo apt update
-        sudo apt install ipset
+        sudo apt install ipset git
+    - id: keydb
+      uses: pozetroninc/github-action-get-latest-release@master
+      with:
+        owner: crowdsecurity
+        repo: crowdsec
+        excludes: draft
     - name: run tests
       run: |
         cd scripts
-        sudo ./test_wizard_upgrade.sh
+        sudo ./test_wizard_upgrade.sh --version ${{ steps.keydb.outputs.release }}
 

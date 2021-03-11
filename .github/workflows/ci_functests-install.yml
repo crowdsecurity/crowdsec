@@ -22,11 +22,17 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+    - id: keydb
+      uses: pozetroninc/github-action-get-latest-release@master
+      with:
+        owner: crowdsecurity
+        repo: crowdsec
+        excludes: draft
     - name: Build release
-      run: BUILD_VERSION=xxx make release
+      run: BUILD_VERSION=${{ steps.keydb.outputs.release }} make release
     - name: Install release
       run: |
-        cd crowdsec-xxx
+        cd crowdsec-${{ steps.keydb.outputs.release }}
         sudo bash -x ./wizard.sh --bininstall
         sudo cscli machines add -a
     - name: Post-installation check

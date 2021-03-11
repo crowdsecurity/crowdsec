@@ -11,7 +11,6 @@ FAIL_STR="${RED}FAIL${NC}"
 CURRENT_FOLDER=$(pwd)
 
 BOUNCER_VERSION="v0.0.6"
-CROWDSEC_VERSION="xxx"
 RELEASE_FOLDER=""
 
 HUB_AVAILABLE_PARSERS="/etc/crowdsec/hub/parsers"
@@ -40,6 +39,10 @@ MUST_FAIL=0
 
 function init
 {
+    which git > /dev/null
+    if [ $? -ne 0 ]; then
+        echo "git is needed this test, exiting ..."
+    fi
     if [[ -z ${RELEASE_FOLDER} ]];
     then
       cd ..
@@ -324,7 +327,12 @@ while [[ $# -gt 0 ]]
 do
     key="${1}"
     case ${key} in
-    --release)
+    --version|-v)
+        CROWDSEC_VERSION="${2}"
+        shift #past argument
+        shift
+        ;;   
+    --release|-r)
         RELEASE_FOLDER="${2}"
         shift #past argument
         shift
