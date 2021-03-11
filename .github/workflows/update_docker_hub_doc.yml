@@ -9,7 +9,7 @@ on:
       - 'docker/README.md'
 
 jobs:
-  build:
+  update-docker-hub-readme:
     runs-on: ubuntu-latest
     steps:
       - 
