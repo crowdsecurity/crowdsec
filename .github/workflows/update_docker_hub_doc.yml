@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - update_docker_hub_readme
     paths:
       - 'docker/README.md'
 
