@@ -12,6 +12,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - 
+        name: Check out the repo
+        uses: actions/checkout@v2
       -
         name: Update docker hub README
         uses: ms-jpq/sync-dockerhub-readme@v1
