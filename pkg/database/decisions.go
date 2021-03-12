@@ -11,7 +11,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -159,7 +158,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldOrigin,
 	).Scan(c.CTX, &data)
 	if err != nil {
-		log.Warningf("QueryDecisionWithFilter : %s", err)
+		c.Log.Warningf("QueryDecisionWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
 	}
 
@@ -169,7 +168,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now())).All(c.CTX)
 	if err != nil {
-		log.Warningf("QueryAllDecisions : %s", err)
+		c.Log.Warningf("QueryAllDecisions : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions")
 	}
 	return data, nil
@@ -178,7 +177,7 @@ func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
 func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).All(c.CTX)
 	if err != nil {
-		log.Warningf("QueryExpiredDecisions : %s", err)
+		c.Log.Warningf("QueryExpiredDecisions : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
 	return data, nil
@@ -187,7 +186,7 @@ func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
 func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since)).All(c.CTX)
 	if err != nil {
-		log.Warningf("QueryExpiredDecisionsSince : %s", err)
+		c.Log.Warningf("QueryExpiredDecisionsSince : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
 	return data, nil
@@ -196,7 +195,7 @@ func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, e
 func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error) {
 	data, err := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
 	if err != nil {
-		log.Warningf("QueryNewDecisionsSince : %s", err)
+		c.Log.Warningf("QueryNewDecisionsSince : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
 	return data, nil
@@ -205,7 +204,7 @@ func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error
 func (c *Client) DeleteDecisionById(decisionId int) error {
 	err := c.Ent.Decision.DeleteOneID(decisionId).Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteDecisionById : %s", err)
+		c.Log.Warningf("DeleteDecisionById : %s", err)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
 	}
 	return nil
@@ -312,7 +311,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 
 	nbDeleted, err := decisions.Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteDecisionsWithFilter : %s", err)
+		c.Log.Warningf("DeleteDecisionsWithFilter : %s", err)
 		return "0", errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 	return strconv.Itoa(nbDeleted), nil
@@ -422,7 +421,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	}
 	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
 	if err != nil {
-		log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
+		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
 		return "0", errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
 	}
 	return strconv.Itoa(nbDeleted), nil
@@ -432,7 +431,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
-		log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
+		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 

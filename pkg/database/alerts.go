@@ -131,7 +131,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			if errors.Cause(err) != UserNotExists {
 				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
 			}
-			log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
+			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
 			owner = nil
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
@@ -145,7 +145,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
-			log.Info(disp)
+			c.Log.Info(disp)
 		}
 
 		if len(alertItem.Events) > 0 {
@@ -185,7 +185,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
+			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
 			ts = time.Now()
 		}
 		if len(alertItem.Decisions) > 0 {
@@ -462,7 +462,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	sort := "DESC" // we sort by desc by default
 	if val, ok := filter["sort"]; ok {
 		if val[0] != "ASC" && val[0] != "DESC" {
-			log.Errorf("invalid 'sort' parameter: %s", val)
+			c.Log.Errorf("invalid 'sort' parameter: %s", val)
 		} else {
 			sort = val[0]
 		}
@@ -507,7 +507,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
-				log.Debugf("Pagination done, %d < %d", len(result), diff)
+				c.Log.Debugf("Pagination done, %d < %d", len(result), diff)
 				break
 			}
 			ret = append(ret, result[0:diff]...)
@@ -515,7 +515,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			ret = append(ret, result...)
 		}
 		if len(ret) == limit || len(ret) == 0 {
-			log.Debugf("Pagination done len(ret) = %d", len(ret))
+			c.Log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}
 		offset += paginationSize
@@ -529,7 +529,7 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	_, err := c.Ent.Event.Delete().
 		Where(event.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
 	}
 
@@ -537,7 +537,7 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	_, err = c.Ent.Meta.Delete().
 		Where(meta.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "meta with alert ID '%d'", alertItem.ID)
 	}
 
@@ -545,14 +545,14 @@ func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	_, err = c.Ent.Decision.Delete().
 		Where(decision.HasOwnerWith(alert.IDEQ(alertItem.ID))).Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "decision with alert ID '%d'", alertItem.ID)
 	}
 
 	// delete the alert
 	err = c.Ent.Alert.DeleteOne(alertItem).Exec(c.CTX)
 	if err != nil {
-		log.Warningf("DeleteAlertGraph : %s", err)
+		c.Log.Warningf("DeleteAlertGraph : %s", err)
 		return errors.Wrapf(DeleteFail, "alert with ID '%d'", alertItem.ID)
 	}
 
@@ -568,7 +568,7 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) 
 	for _, alertItem := range alertsToDelete {
 		err = c.DeleteAlertGraph(alertItem)
 		if err != nil {
-			log.Warningf("DeleteAlertWithFilter : %s", err)
+			c.Log.Warningf("DeleteAlertWithFilter : %s", err)
 			return 0, errors.Wrapf(DeleteFail, "event with alert ID '%d'", alertItem.ID)
 		}
 	}
@@ -582,7 +582,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var err error
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
-		log.Warningf("FlushAlerts (max items count) : %s", err)
+		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
 		return errors.Wrap(err, "unable to get alerts count")
 	}
 	if MaxAge != "" {
@@ -591,7 +591,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 		nbDeleted, err := c.DeleteAlertWithFilter(filter)
 		if err != nil {
-			log.Warningf("FlushAlerts (max age) : %s", err)
+			c.Log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
 		deletedByAge = nbDeleted
@@ -604,14 +604,14 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 				"limit": {strconv.Itoa(nbToDelete)},
 			}) // we want to delete older alerts if we reach the max number of items
 			if err != nil {
-				log.Warningf("FlushAlerts (max items query) : %s", err)
+				c.Log.Warningf("FlushAlerts (max items query) : %s", err)
 				return errors.Wrap(err, "unable to get all alerts")
 			}
 			for itemNb, alert := range alerts {
 				if itemNb < nbToDelete {
 					err := c.DeleteAlertGraph(alert)
 					if err != nil {
-						log.Warningf("FlushAlerts : %s", err)
+						c.Log.Warningf("FlushAlerts : %s", err)
 						return errors.Wrap(err, "unable to flush alert")
 					}
 					deletedByNbItem++
@@ -620,10 +620,10 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 		}
 	}
 	if deletedByNbItem > 0 {
-		log.Infof("flushed %d/%d alerts because max number of alerts has been reached (%d max)", deletedByNbItem, totalAlerts, MaxItems)
+		c.Log.Infof("flushed %d/%d alerts because max number of alerts has been reached (%d max)", deletedByNbItem, totalAlerts, MaxItems)
 	}
 	if deletedByAge > 0 {
-		log.Infof("flushed %d/%d alerts because they were created %s ago or more", deletedByAge, totalAlerts, MaxAge)
+		c.Log.Infof("flushed %d/%d alerts because they were created %s ago or more", deletedByAge, totalAlerts, MaxAge)
 	}
 	return nil
 }
@@ -636,7 +636,7 @@ func (c *Client) GetAlertByID(alertID int) (*ent.Alert, error) {
 			log.Warningf("GetAlertByID (not found): %s", err)
 			return &ent.Alert{}, ItemNotFound
 		}
-		log.Warningf("GetAlertByID : %s", err)
+		c.Log.Warningf("GetAlertByID : %s", err)
 		return &ent.Alert{}, QueryFail
 	}
 	return alert, nil
