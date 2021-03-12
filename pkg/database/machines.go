@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
@@ -16,7 +15,7 @@ import (
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Warningf("CreateMachine : %s", err)
+		c.Log.Warningf("CreateMachine : %s", err)
 		return 0, errors.Wrap(HashError, "")
 	}
 
@@ -31,7 +30,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		if force {
 			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
 			if err != nil {
-				log.Warningf("CreateMachine : %s", err)
+				c.Log.Warningf("CreateMachine : %s", err)
 				return 0, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
 			}
 			return 1, nil
@@ -48,7 +47,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Save(c.CTX)
 
 	if err != nil {
-		log.Warningf("CreateMachine : %s", err)
+		c.Log.Warningf("CreateMachine : %s", err)
 		return 0, errors.Wrapf(InsertFail, "creating machine '%s'", *machineID)
 	}
 
@@ -61,7 +60,7 @@ func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {
 		Where(machine.MachineIdEQ(machineID)).
 		Only(c.CTX)
 	if err != nil {
-		log.Warningf("QueryMachineByID : %s", err)
+		c.Log.Warningf("QueryMachineByID : %s", err)
 		return &ent.Machine{}, errors.Wrapf(UserNotExists, "user '%s'", machineID)
 	}
 	return machine, nil
@@ -89,7 +88,7 @@ func (c *Client) QueryPendingMachine() ([]*ent.Machine, error) {
 
 	machines, err = c.Ent.Machine.Query().Where(machine.IsValidatedEQ(false)).All(c.CTX)
 	if err != nil {
-		log.Warningf("QueryPendingMachine : %s", err)
+		c.Log.Warningf("QueryPendingMachine : %s", err)
 		return []*ent.Machine{}, errors.Wrapf(QueryFail, "querying pending machines: %s", err)
 	}
 	return machines, nil
