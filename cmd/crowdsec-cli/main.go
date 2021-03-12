@@ -74,6 +74,13 @@ func initConfig() {
 
 }
 
+var validArgs = []string{
+	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines", "metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard", "config", "completion", "version",
+}
+var validAliases = []string{
+	"scenario", "parser", "collection", "capi", "lapi", "postoverflow", "machine", "metric", "bouncer", "alert", "decision", "simulation", "hub", "dashboard", "config", "completion", "version",
+}
+
 func main() {
 
 	var rootCmd = &cobra.Command{
@@ -81,8 +88,15 @@ func main() {
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
+		ValidArgs:  validArgs,
+		ArgAliases: validAliases,
 		/*TBD examples*/
 	}
+
+	rootCmd.RegisterFlagCompletionFunc("output", func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"json", "humain", "raw"}, cobra.ShellCompDirectiveFilterDirs
+	})
+
 	var cmdDocGen = &cobra.Command{
 		Use:    "doc",
 		Short:  "Generate the documentation in `./doc/`. Directory must exist.",
@@ -97,10 +111,9 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdDocGen)
 	/*usage*/
 	var cmdVersion = &cobra.Command{
-		Use:    "version",
-		Short:  "Display version and exit.",
-		Args:   cobra.ExactArgs(0),
-		Hidden: true,
+		Use:   "version",
+		Short: "Display version and exit.",
+		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			cwversion.Show()
 		},
@@ -140,6 +153,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewPostOverflowsCmd())
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())
+	rootCmd.AddCommand(NewCompletionCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
