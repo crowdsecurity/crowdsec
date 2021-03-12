@@ -14,7 +14,7 @@ You can install crowdsec in different ways :
 
 
 !!! info
-    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writting. Documentation will be updated once those packages are published.
+    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writting. Documentation will be updated once those packages are published & functional.
 
 # Install using crowdsec repository
 
