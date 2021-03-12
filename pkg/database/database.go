@@ -70,7 +70,6 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		return nil, errors.Wrap(err, "while configuring db logger")
 	}
 	log.Infof("Log level: %+v", config.LogLevel)
-	ent.Log(func(clog *log.Logger) { clog.Debugf() })
 	if config.LogLevel != nil {
 		clog.SetLevel(*config.LogLevel)
 		if *config.LogLevel >= log.DebugLevel {
