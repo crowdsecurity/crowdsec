@@ -14,11 +14,11 @@ You can install crowdsec in different ways :
 
 
 !!! info
-    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writting. Documentation will be updated once those packages are published & functional.
+    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writing. Documentation will be updated once those packages are published & functional.
 
 # Install using crowdsec repository
 
-Crowdsec distributes their own pragmatic debian packages that closely follow the developpement stream (packages are automatically published on release), and are suitable for those that want to keep up with latest changes of crowdsec.
+Crowdsec distributes their own pragmatic debian packages that closely follow the development stream (packages are automatically published on release), and are suitable for those that want to keep up with the latest changes of crowdsec.
 
 ## setup the repository
 
@@ -42,7 +42,7 @@ The following debian suites / architectures are available :
 sudo apt-get install crowdsec
 ```
 
-## compatbility matrix
+## compatibility matrix
 
 <center>
 
@@ -74,7 +74,7 @@ Crowdsec is available for [bullseye & sid](https://packages.debian.org/search?se
 sudo apt-get install crowdsec
 ```
 
-# Install from release tarball
+# Install from the release tarball
 
 Fetch {{v1X.crowdsec.name}}'s latest version [here]({{v1X.crowdsec.download_url}}).
 
