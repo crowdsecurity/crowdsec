@@ -97,10 +97,9 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdDocGen)
 	/*usage*/
 	var cmdVersion = &cobra.Command{
-		Use:    "version",
-		Short:  "Display version and exit.",
-		Args:   cobra.ExactArgs(0),
-		Hidden: true,
+		Use:   "version",
+		Short: "Display version and exit.",
+		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
 			cwversion.Show()
 		},
