@@ -1,4 +1,80 @@
-# Installation
+
+# Installation methods
+
+You can install crowdsec in different ways :
+
+ - Most users [set up crowdsec's repositories](/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository) and install from them, for ease of installation and upgrade
+ - Some users [use debian's official crowdsec packages](/Crowdsec/v1/getting_started/installation/#install-using-debian-official-packages)
+ - Some users download the DEB package directly and [install it manually](/Crowdsec/v1/getting_started/installation/#manually-install-the-debian-package)
+ - Some users download the tarball directly and [install it manually](/Crowdsec/v1/getting_started/installation/#install-from-release-tarball)
+ - Some users use the [docker hub image](https://hub.docker.com/r/crowdsecurity/crowdsec)
+ - And the most adventurous might want to [build & install from source](/Crowdsec/v1/getting_started/installation/#install-from-source)
+ - And some might even want to [build their own docker image](/Crowdsec/v1/getting_started/installation/#build-docker-image)
+ - Or use it with [docker-compose](https://github.com/crowdsecurity/example-docker-compose)
+
+
+!!! info
+    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writing. Documentation will be updated once those packages are published & functional.
+
+# Install using crowdsec repository
+
+Crowdsec distributes their own pragmatic debian packages that closely follow the development stream (packages are automatically published on release), and are suitable for those that want to keep up with the latest changes of crowdsec.
+
+## setup the repository
+
+<details>
+  <summary>pre-requisites to add custom repositories on debian</summary>
+```bash
+sudo apt install software-properties-common
+```
+</details>
+
+```bash
+wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && sudo apt-add-repository "https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main"
+sudo apt-get update
+```
+
+The following debian suites / architectures are available :
+
+## install crowdsec
+
+```bash
+sudo apt-get install crowdsec
+```
+
+## compatibility matrix
+
+<center>
+
+| Suite       | Architecture     |
+| :------------- | :----------: | 
+|  bionic | amd64, arm64, i386   |
+| bullseye   | amd64, i386 |
+| buster | amd64, arm64, i386 |
+| focal |  amd64, arm64, i386 | 
+| sid | amd64, i386 |
+| stretch | amd64, arm64, i386 | 
+| xenial | amd64, arm64, i386 | 
+
+</center>
+
+# Manually install the debian package
+
+Fetch your package from the [public repository](https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/), and install it manually :
+
+```bash
+sudo dpkg -i ./crowdsec_1.0.7-4_amd64.deb
+```
+
+# Install using debian official packages
+
+Crowdsec is available for [bullseye & sid](https://packages.debian.org/search?searchon=names&keywords=crowdsec) and can be installed simply :
+
+```bash
+sudo apt-get install crowdsec
+```
+
+# Install from the release tarball
 
 Fetch {{v1X.crowdsec.name}}'s latest version [here]({{v1X.crowdsec.download_url}}).
 
@@ -60,7 +136,7 @@ If your setup is standard and you've walked through the default installation wit
 
 This mode will emulate the interactive mode of the wizard where you answer **yes** to everything and stick with the default options. 
 
-## From source
+# Install from source
 
 !!! warning "Requirements"
     
@@ -79,3 +155,12 @@ make release
 This will create you a directory (`crowdsec-vXXX/`) and an archive (`crowdsec-release.tgz`) that are release built from your local code source. 
 
 Now, you can install either with [interactive wizard](#using-the-interactive-wizard) or the [unattended mode](#using-unattended-mode).
+
+# Build docker image
+
+Crowdsec provides a docker image and can simply built like this :
+
+```bash
+git clone https://github.com/crowdsecurity/crowdsec.git && cd crowdsec
+docker build -t crowdsec .
+```
