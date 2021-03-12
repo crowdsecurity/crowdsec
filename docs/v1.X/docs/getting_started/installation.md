@@ -7,9 +7,14 @@ You can install crowdsec in different ways :
  - Some users [use debian's official crowdsec packages](/Crowdsec/v1/getting_started/installation/#install-using-debian-official-packages)
  - Some users download the DEB package directly and [install it manually](/Crowdsec/v1/getting_started/installation/#manually-install-the-debian-package)
  - Some users download the tarball directly and [install it manually](/Crowdsec/v1/getting_started/installation/#install-from-release-tarball)
- - Some users run it on [docker](/Crowdsec/v1/docker/)
+ - Some users use the [docker hub image](https://hub.docker.com/r/crowdsecurity/crowdsec)
  - And the most adventurous might want to [build & install from source](/Crowdsec/v1/getting_started/installation/#install-from-source)
+ - And some might even want to [build their own docker image](/Crowdsec/v1/getting_started/installation/#build-docker-image)
+ - Or use it with [docker-compose](https://github.com/crowdsecurity/example-docker-compose)
 
+
+!!! info
+    Packaging for FreeBSD and RedHat/CentOS are WIP at the time of writting. Documentation will be updated once those packages are published.
 
 # Install using crowdsec repository
 
@@ -150,3 +155,12 @@ make release
 This will create you a directory (`crowdsec-vXXX/`) and an archive (`crowdsec-release.tgz`) that are release built from your local code source. 
 
 Now, you can install either with [interactive wizard](#using-the-interactive-wizard) or the [unattended mode](#using-unattended-mode).
+
+# Build docker image
+
+Crowdsec provides a docker image and can simply built like this :
+
+```bash
+git clone https://github.com/crowdsecurity/crowdsec.git && cd crowdsec
+docker build -t crowdsec .
+```
