@@ -6,24 +6,6 @@ Crowdsec - An open-source, lightweight agent to detect and respond to bad behavi
 
 Before starting using docker image, we suggest you to read our documentation to understand all [crowdsec concepts](https://docs.crowdsec.net/).
 
-### Prerequisities
-
-
-In order to run this container you'll need docker installed.
-
-* [Windows](https://docs.docker.com/windows/started)
-* [OS X](https://docs.docker.com/mac/started/)
-* [Linux](https://docs.docker.com/linux/started/)
-
-### How to use ?
-
-#### Build
-
-```shell
-git clone https://github.com/crowdsecurity/crowdsec.git && cd crowdsec
-docker build -t crowdsec .
-```
-
 #### Run
 
 The container is built with specific docker [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml) :

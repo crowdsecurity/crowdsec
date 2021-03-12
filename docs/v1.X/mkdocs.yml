@@ -21,7 +21,6 @@ nav:
     - Simulation Management: user_guide/simulation_mode.md
     - Crowdsec forensic mode: user_guide/forensic_mode.md
     - Debugging: user_guide/debugging_configs.md
-    - Docker: docker/README.md
   - CLI:
     - Cscli: cscli/cscli.md
     - Alerts: cscli/cscli_alerts.md
