@@ -147,6 +147,8 @@ sudo MB_DB_TYPE=h2 MB_DB_FILE=<absolute-path>/metabase.db/metabase.db java -jar 
 !!! warning
         The default username is `crowdsec@crowdsec.net` and the default password is `!!Cr0wdS3c_M3t4b4s3??`. Please update the password when you will connect to metabase for the first time
 
+You can as well check [liberodark's helper script for it](https://github.com/liberodark/crowdsec-dashboard).
+
 ## How to configure crowdsec/cscli to use Tor
 
 

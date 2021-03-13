@@ -3,7 +3,7 @@ nav:
   - Home: index.md
   - Crowdsec v0: "!include ./docs/v0.3.X/mkdocs.yml"
   - Crowdsec v1 : "!include ./docs/v1.X/mkdocs.yml"
-  - Developers : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
+  - API Swagger : https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
   - Hub : https://hub.crowdsec.net/" target="_blank
   - Releases : https://github.com/crowdsecurity/crowdsec/releases" target="_blank
   - Contributing:

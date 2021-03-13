@@ -26,10 +26,10 @@ produces:
 paths:
   /decisions/stream:
     get:
-      description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
       summary: getDecisionsStream
       tags:
-        - blockers
+        - bouncers
       operationId: getDecisionsStream
       deprecated: false
       produces:
@@ -39,7 +39,7 @@ paths:
           in: query
           required: false
           type: boolean
-          description: 'If true, means that the blocker is starting and a full list must be provided'
+          description: 'If true, means that the bouncers is starting and a full list must be provided'
       responses:
         '200':
           description: successful operation
@@ -53,10 +53,10 @@ paths:
       security:
       - APIKeyAuthorizer: []
     head:
-      description: Returns a list of new/expired decisions. Intended for blockers that need to "stream" decisions
+      description: Returns a list of new/expired decisions. Intended for bouncers that need to "stream" decisions
       summary: GetDecisionsStream
       tags:
-        - blockers
+        - bouncers
       operationId: headDecisionsStream
       deprecated: false
       produces:
@@ -66,7 +66,7 @@ paths:
           in: query
           required: false
           type: boolean
-          description: 'If true, means that the blocker is starting and a full list must be provided'
+          description: 'If true, means that the bouncer is starting and a full list must be provided'
       responses:
         '200':
           description: successful operation
@@ -80,7 +80,7 @@ paths:
       description: Returns information about existing decisions
       summary: getDecisions
       tags:
-        - blockers
+        - bouncers
       operationId: getDecisions
       deprecated: false
       produces:
@@ -111,11 +111,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
-        - name: simulated
+        - name: contains
           in: query
           required: false
           type: boolean
-          description: if set to true, decisions in simulation mode will be returned as well
+          description: indicate if you're looking for a decision that contains the value, or that is contained within the value
       responses:
         '200':
           description: "successful operation"
@@ -129,7 +129,7 @@ paths:
       description: Returns information about existing decisions
       summary: GetDecisions
       tags:
-        - blockers
+        - bouncers
       operationId: headDecisions
       deprecated: false
       produces:
@@ -160,11 +160,11 @@ paths:
           required: false
           type: string
           description: range to search for (shorthand for scope=range&value=)
-        - name: simulated
+        - name: contains
           in: query
           required: false
           type: boolean
-          description: if set to true, decisions in simulation mode will be returned as well
+          description: indicate if you're looking for a decision that contains the value, or that is contained within the value
       responses:
         '200':
           description: "successful operation"
@@ -933,7 +933,7 @@ definitions:
         type: "string"
     title: "Signal"
 tags:
-  - name: blockers
+  - name: bouncers
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
   - name: watchers
     description: 'Operations about watchers : cscli & crowdsec'
