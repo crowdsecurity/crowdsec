@@ -1,0 +1,65 @@
+From e601f44760ce6310ca4df3904c96883edf80d366 Mon Sep 17 00:00:00 2001
+From: "Thibault \"bui\" Koechlin" <thibault@crowdsec.net>
+Date: Fri, 12 Mar 2021 16:01:53 +0100
+Subject: [PATCH] remove broken scenario `ban-report-ssh_bf_report` (#181)
+
+* remove broken scenario
+
+* Update index
+
+Co-authored-by: GitHub Action <action@github.com>
+---
+ .index.json                                   | 21 -------------------
+ .../crowdsecurity/ban-report-ssh_bf_report.md |  1 -
+ .../ban-report-ssh_bf_report.yaml             | 10 ---------
+ 3 files changed, 32 deletions(-)
+ delete mode 100644 scenarios/crowdsecurity/ban-report-ssh_bf_report.md
+ delete mode 100644 scenarios/crowdsecurity/ban-report-ssh_bf_report.yaml
+
+--- a/hub1/.index.json
++++ b/hub1/.index.json
+@@ -732,27 +732,6 @@
+     "remediation": "true"
+    }
+   },
+-  "crowdsecurity/ban-report-ssh_bf_report": {
+-   "path": "scenarios/crowdsecurity/ban-report-ssh_bf_report.yaml",
+-   "version": "0.2",
+-   "versions": {
+-    "0.1": {
+-     "digest": "0a7bc501a12b4a8aff250d95d3a08dd0f53ad9eb874ac523ba9c628302749c4d",
+-     "deprecated": false
+-    },
+-    "0.2": {
+-     "digest": "34d80ea3e271c1c1735e55076610063b137a2311a11d51fecff93715b9a4ac39",
+-     "deprecated": false
+-    }
+-   },
+-   "long_description": "Q291bnQgdGhlIG51bWJlciBvZiB1bmlxdWUgaXBzIHRoYXQgcGVyZm9ybWVkIHNzaF9icnV0ZWZvcmNlcywgcmVwb3J0IGV2ZXJ5IDEwIG1pbnV0ZXMuCg==",
+-   "content": "dHlwZTogY291bnRlcgpuYW1lOiBjcm93ZHNlY3VyaXR5L2Jhbi1yZXBvcnRzLXNzaF9iZl9yZXBvcnQKZGVzY3JpcHRpb246ICJDb3VudCB1bmlxdWUgaXBzIHBlcmZvcm1pbmcgc3NoIGJydXRlZm9yY2UiCiNkZWJ1ZzogdHJ1ZQpmaWx0ZXI6ICJldnQuT3ZlcmZsb3cuQWxlcnQuU2NlbmFyaW8gPT0gJ3NzaF9icnV0ZWZvcmNlJyIKZGlzdGluY3Q6ICJldnQuT3ZlcmZsb3cuQWxlcnQuU291cmNlLklQIgpjYXBhY2l0eTogLTEKZHVyYXRpb246IDEwbQpsYWJlbHM6CiAgc2VydmljZTogc3NoCg==",
+-   "description": "Count unique ips performing ssh bruteforce",
+-   "author": "crowdsecurity",
+-   "labels": {
+-    "service": "ssh"
+-   }
+-  },
+   "crowdsecurity/dovecot-spam": {
+    "path": "scenarios/crowdsecurity/dovecot-spam.yaml",
+    "version": "0.1",
+--- a/hub1/scenarios/crowdsecurity/ban-report-ssh_bf_report.md
++++ /dev/null
+@@ -1 +0,0 @@
+-Count the number of unique ips that performed ssh_bruteforces, report every 10 minutes.
+--- a/hub1/scenarios/crowdsecurity/ban-report-ssh_bf_report.yaml
++++ /dev/null
+@@ -1,10 +0,0 @@
+-type: counter
+-name: crowdsecurity/ban-reports-ssh_bf_report
+-description: "Count unique ips performing ssh bruteforce"
+-#debug: true
+-filter: "evt.Overflow.Alert.Scenario == 'ssh_bruteforce'"
+-distinct: "evt.Overflow.Alert.Source.IP"
+-capacity: -1
+-duration: 10m
+-labels:
+-  service: ssh

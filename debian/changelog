@@ -5,6 +5,8 @@ crowdsec (1.0.9-1) UNRELEASED; urgency=medium
      + Fix disabled Central API use case: without Central API credentials
        in the relevant config file, crowdsec would still try and establish
        a connection.
+  * Add patch to disable broken scenario (ban-report-ssh_bf_report, #181):
+     + 0008-hub-disable-broken-scenario.patch
 
  -- Cyril Brulebois <cyril@debamax.com>  Sat, 13 Mar 2021 01:33:11 +0100
 

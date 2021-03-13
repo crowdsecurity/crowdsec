@@ -5,3 +5,4 @@
 0005-adjust-config.patch
 0006-prefer-systemctl-restart.patch
 0007-automatically-enable-online-hub.patch
+0008-hub-disable-broken-scenario.patch
