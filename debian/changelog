@@ -1,3 +1,13 @@
+crowdsec (1.0.9-1) UNRELEASED; urgency=medium
+
+  * New upstream stable release:
+     + Improve documentation.
+     + Fix disabled Central API use case: without Central API credentials
+       in the relevant config file, crowdsec would still try and establish
+       a connection.
+
+ -- Cyril Brulebois <cyril@debamax.com>  Sat, 13 Mar 2021 01:33:11 +0100
+
 crowdsec (1.0.8-2) unstable; urgency=medium
 
   * Update postinst to also strip ltsich/ when installing symlinks
