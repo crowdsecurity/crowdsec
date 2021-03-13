@@ -77,7 +77,7 @@ If you want to be able to restart/stop your container and keep the same DB `-v /
 * `CONFIG_FILE`             - Configuration file (default: `/etc/crowdsec/config.yaml`) : `-e CONFIG_FILE="<config_path>"`
 * `FILE_PATH`               - Process a single file in time-machine : `-e FILE_PATH="<file_path>"`
 * `JOURNALCTL_FILTER`       - Process a single journalctl output in time-machine : `-e JOURNALCTL_FILTER="<journalctl_filter>"`
-* `TYPE`                    - [`Labels.type`](https://https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine : `-e TYPE="<type>"`
+* `TYPE`                    - [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine : `-e TYPE="<type>"`
 * `TEST_MODE`               - Only test configs (default: `false`) : `-e TEST_MODE="<true|false>"`
 * `DISABLE_AGENT`           - Only test configs (default: `false`) : `-e DISABLE_AGENT="<true|false>"`
 * `DISABLE_LOCAL_API`       - Disable local API (default: `false`) : `-e DISABLE_API="<true|false>"`
