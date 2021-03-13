@@ -37,7 +37,10 @@ nav:
     - Postoverflows: cscli/cscli_postoverflows.md
     - Scenarios: cscli/cscli_scenarios.md
     - Simulation: cscli/cscli_simulation.md
-  - Local API: localAPI/index.md
+  - Local API: 
+    - Introduction: localAPI/index.md
+    - API Guide: localAPI/howto.md
+    - Swagger: https://crowdsecurity.github.io/api_doc/index.html?urls.primaryName=LAPI" target="_blank
   - Observability:
     - Overview: observability/overview.md
     - Logs: observability/logs.md
