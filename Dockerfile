@@ -4,7 +4,7 @@ FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-RUN apk update && apk add git jq gcc libc-dev make bash gettext
+RUN apk add --no-cache git jq gcc libc-dev make bash gettext
 
 COPY . .
 
