@@ -19,10 +19,8 @@ const (
 	FieldTime = "time"
 	// FieldSerialized holds the string denoting the serialized field in the database.
 	FieldSerialized = "serialized"
-
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
-
 	// Table holds the table name of the event in the database.
 	Table = "events"
 	// OwnerTable is the table the holds the owner relation/edge.
@@ -43,7 +41,8 @@ var Columns = []string{
 	FieldSerialized,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the Event type.
+// ForeignKeys holds the SQL foreign-keys that are owned by the "events"
+// table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"alert_events",
 }

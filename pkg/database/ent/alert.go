@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
-	"github.com/facebook/ent/dialect/sql"
 )
 
 // Alert is the model entity for the Alert schema.
@@ -70,13 +70,13 @@ type Alert struct {
 // AlertEdges holds the relations/edges for other nodes in the graph.
 type AlertEdges struct {
 	// Owner holds the value of the owner edge.
-	Owner *Machine
+	Owner *Machine `json:"owner,omitempty"`
 	// Decisions holds the value of the decisions edge.
-	Decisions []*Decision
+	Decisions []*Decision `json:"decisions,omitempty"`
 	// Events holds the value of the events edge.
-	Events []*Event
+	Events []*Event `json:"events,omitempty"`
 	// Metas holds the value of the metas edge.
-	Metas []*Meta
+	Metas []*Meta `json:"metas,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [4]bool

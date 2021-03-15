@@ -19,10 +19,8 @@ const (
 	FieldKey = "key"
 	// FieldValue holds the string denoting the value field in the database.
 	FieldValue = "value"
-
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
-
 	// Table holds the table name of the meta in the database.
 	Table = "meta"
 	// OwnerTable is the table the holds the owner relation/edge.
@@ -43,7 +41,8 @@ var Columns = []string{
 	FieldValue,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the Meta type.
+// ForeignKeys holds the SQL foreign-keys that are owned by the "meta"
+// table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"alert_metas",
 }

@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // EventQuery is the builder for querying Event entities.
@@ -63,7 +63,7 @@ func (eq *EventQuery) QueryOwner() *AlertQuery {
 		if err := eq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := eq.sqlQuery()
+		selector := eq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func (eq *EventQuery) GroupBy(field string, fields ...string) *EventGroupBy {
 		if err := eq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return eq.sqlQuery(), nil
+		return eq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -377,7 +377,8 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Event)
 		for i := range nodes {
-			if fk := nodes[i].alert_events; fk != nil {
+			fk := nodes[i].alert_events
+			if fk != nil {
 				ids = append(ids, *fk)
 				nodeids[*fk] = append(nodeids[*fk], nodes[i])
 			}
@@ -409,7 +410,7 @@ func (eq *EventQuery) sqlCount(ctx context.Context) (int, error) {
 func (eq *EventQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := eq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -459,7 +460,7 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (eq *EventQuery) sqlQuery() *sql.Selector {
+func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(eq.driver.Dialect())
 	t1 := builder.Table(event.Table)
 	selector := builder.Select(t1.Columns(event.Columns...)...).From(t1)
@@ -754,7 +755,7 @@ func (es *EventSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := es.prepareQuery(ctx); err != nil {
 		return err
 	}
-	es.sql = es.EventQuery.sqlQuery()
+	es.sql = es.EventQuery.sqlQuery(ctx)
 	return es.sqlScan(ctx, v)
 }
 

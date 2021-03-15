@@ -29,10 +29,8 @@ const (
 	FieldIsValidated = "is_validated"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
-
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
-
 	// Table holds the table name of the machine in the database.
 	Table = "machines"
 	// AlertsTable is the table the holds the alerts relation/edge.
