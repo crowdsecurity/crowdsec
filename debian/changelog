@@ -7,6 +7,7 @@ crowdsec (1.0.9-1) UNRELEASED; urgency=medium
        a connection.
   * Add patch to disable broken scenario (ban-report-ssh_bf_report, #181):
      + 0008-hub-disable-broken-scenario.patch
+  * Add logrotate config for /var/log/crowdsec{,_api}.log (weekly, 4).
 
  -- Cyril Brulebois <cyril@debamax.com>  Sat, 13 Mar 2021 01:33:11 +0100
 
