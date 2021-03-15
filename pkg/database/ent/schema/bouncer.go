@@ -19,7 +19,7 @@ func (Bouncer) Fields() []ent.Field {
 			Default(time.Now),
 		field.Time("updated_at").
 			Default(time.Now),
-		field.String("name").Unique(),
+		field.String("name").Unique().MaxLen(190),
 		field.String("api_key"), // hash of api_key
 		field.Bool("revoked"),
 		field.String("ip_address").Default("").Optional(),

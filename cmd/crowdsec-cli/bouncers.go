@@ -102,6 +102,10 @@ cscli bouncers add MyBouncerName -l 24`,
 				log.Errorf("Please provide a name for the api key")
 				return
 			}
+			if len(keyName) > 190 {
+				log.Errorf("Please provide a shorter name  (<=190)")
+				return
+			}
 			apiKey, err := middlewares.GenerateAPIKey(keyLength)
 			if err != nil {
 				log.Errorf("unable to generate api key: %s", err)
