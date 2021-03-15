@@ -4,8 +4,6 @@ import (
 	"time"
 
 	"entgo.io/ent"
-	"entgo.io/ent/dialect"
-
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -23,11 +21,7 @@ func (Event) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now),
 		field.Time("time"),
-		field.String("serialized").MaxLen(4095).SchemaType(map[string]string{
-			dialect.MySQL:    "text",   // Override MySQL.
-			dialect.Postgres: "text",   // Override Postgres.
-			dialect.SQLite: "text",   // Override SQLite
-		}),
+		field.String("serialized").MaxLen(4095),
 	}
 }
 
