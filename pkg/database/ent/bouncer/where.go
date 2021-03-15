@@ -5,8 +5,8 @@ package bouncer
 import (
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
 )
 
 // ID filters vertices based on their ID field.

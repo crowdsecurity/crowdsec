@@ -39,10 +39,8 @@ const (
 	FieldOrigin = "origin"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
-
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
-
 	// Table holds the table name of the decision in the database.
 	Table = "decisions"
 	// OwnerTable is the table the holds the owner relation/edge.
@@ -73,7 +71,8 @@ var Columns = []string{
 	FieldSimulated,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the Decision type.
+// ForeignKeys holds the SQL foreign-keys that are owned by the "decisions"
+// table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"alert_decisions",
 }

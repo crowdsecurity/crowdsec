@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // MetaQuery is the builder for querying Meta entities.
@@ -63,7 +63,7 @@ func (mq *MetaQuery) QueryOwner() *AlertQuery {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := mq.sqlQuery()
+		selector := mq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return mq.sqlQuery(), nil
+		return mq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -377,7 +377,8 @@ func (mq *MetaQuery) sqlAll(ctx context.Context) ([]*Meta, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Meta)
 		for i := range nodes {
-			if fk := nodes[i].alert_metas; fk != nil {
+			fk := nodes[i].alert_metas
+			if fk != nil {
 				ids = append(ids, *fk)
 				nodeids[*fk] = append(nodeids[*fk], nodes[i])
 			}
@@ -409,7 +410,7 @@ func (mq *MetaQuery) sqlCount(ctx context.Context) (int, error) {
 func (mq *MetaQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := mq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -459,7 +460,7 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (mq *MetaQuery) sqlQuery() *sql.Selector {
+func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(meta.Table)
 	selector := builder.Select(t1.Columns(meta.Columns...)...).From(t1)
@@ -754,7 +755,7 @@ func (ms *MetaSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := ms.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ms.sql = ms.MetaQuery.sqlQuery()
+	ms.sql = ms.MetaQuery.sqlQuery(ctx)
 	return ms.sqlScan(ctx, v)
 }
 

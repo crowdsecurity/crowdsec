@@ -9,15 +9,15 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // AlertQuery is the builder for querying Alert entities.
@@ -70,7 +70,7 @@ func (aq *AlertQuery) QueryOwner() *MachineQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := aq.sqlQuery()
+		selector := aq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -92,7 +92,7 @@ func (aq *AlertQuery) QueryDecisions() *DecisionQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := aq.sqlQuery()
+		selector := aq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -114,7 +114,7 @@ func (aq *AlertQuery) QueryEvents() *EventQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := aq.sqlQuery()
+		selector := aq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -136,7 +136,7 @@ func (aq *AlertQuery) QueryMetas() *MetaQuery {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := aq.sqlQuery()
+		selector := aq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -408,7 +408,7 @@ func (aq *AlertQuery) GroupBy(field string, fields ...string) *AlertGroupBy {
 		if err := aq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return aq.sqlQuery(), nil
+		return aq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -489,7 +489,8 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Alert)
 		for i := range nodes {
-			if fk := nodes[i].machine_alerts; fk != nil {
+			fk := nodes[i].machine_alerts
+			if fk != nil {
 				ids = append(ids, *fk)
 				nodeids[*fk] = append(nodeids[*fk], nodes[i])
 			}
@@ -608,7 +609,7 @@ func (aq *AlertQuery) sqlCount(ctx context.Context) (int, error) {
 func (aq *AlertQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := aq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -658,7 +659,7 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (aq *AlertQuery) sqlQuery() *sql.Selector {
+func (aq *AlertQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(aq.driver.Dialect())
 	t1 := builder.Table(alert.Table)
 	selector := builder.Select(t1.Columns(alert.Columns...)...).From(t1)
@@ -953,7 +954,7 @@ func (as *AlertSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := as.prepareQuery(ctx); err != nil {
 		return err
 	}
-	as.sql = as.AlertQuery.sqlQuery()
+	as.sql = as.AlertQuery.sqlQuery(ctx)
 	return as.sqlScan(ctx, v)
 }
 

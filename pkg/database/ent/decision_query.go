@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // DecisionQuery is the builder for querying Decision entities.
@@ -63,7 +63,7 @@ func (dq *DecisionQuery) QueryOwner() *AlertQuery {
 		if err := dq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := dq.sqlQuery()
+		selector := dq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupB
 		if err := dq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return dq.sqlQuery(), nil
+		return dq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -377,7 +377,8 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context) ([]*Decision, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Decision)
 		for i := range nodes {
-			if fk := nodes[i].alert_decisions; fk != nil {
+			fk := nodes[i].alert_decisions
+			if fk != nil {
 				ids = append(ids, *fk)
 				nodeids[*fk] = append(nodeids[*fk], nodes[i])
 			}
@@ -409,7 +410,7 @@ func (dq *DecisionQuery) sqlCount(ctx context.Context) (int, error) {
 func (dq *DecisionQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := dq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -459,7 +460,7 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (dq *DecisionQuery) sqlQuery() *sql.Selector {
+func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(dq.driver.Dialect())
 	t1 := builder.Table(decision.Table)
 	selector := builder.Select(t1.Columns(decision.Columns...)...).From(t1)
@@ -754,7 +755,7 @@ func (ds *DecisionSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := ds.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ds.sql = ds.DecisionQuery.sqlQuery()
+	ds.sql = ds.DecisionQuery.sqlQuery(ctx)
 	return ds.sqlScan(ctx, v)
 }
 

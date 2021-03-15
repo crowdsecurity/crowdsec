@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
-	"github.com/facebook/ent/dialect/sql"
 )
 
 // Decision is the model entity for the Decision schema.
@@ -54,7 +54,7 @@ type Decision struct {
 // DecisionEdges holds the relations/edges for other nodes in the graph.
 type DecisionEdges struct {
 	// Owner holds the value of the owner edge.
-	Owner *Alert
+	Owner *Alert `json:"owner,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool

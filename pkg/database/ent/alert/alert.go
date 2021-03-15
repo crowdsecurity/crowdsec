@@ -55,7 +55,6 @@ const (
 	FieldScenarioHash = "scenario_hash"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
-
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// EdgeDecisions holds the string denoting the decisions edge name in mutations.
@@ -64,7 +63,6 @@ const (
 	EdgeEvents = "events"
 	// EdgeMetas holds the string denoting the metas edge name in mutations.
 	EdgeMetas = "metas"
-
 	// Table holds the table name of the alert in the database.
 	Table = "alerts"
 	// OwnerTable is the table the holds the owner relation/edge.
@@ -124,7 +122,8 @@ var Columns = []string{
 	FieldSimulated,
 }
 
-// ForeignKeys holds the SQL foreign-keys that are owned by the Alert type.
+// ForeignKeys holds the SQL foreign-keys that are owned by the "alerts"
+// table and are not defined as standalone fields in the schema.
 var ForeignKeys = []string{
 	"machine_alerts",
 }

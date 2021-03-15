@@ -3,8 +3,8 @@
 package migrate
 
 import (
-	"github.com/facebook/ent/dialect/sql/schema"
-	"github.com/facebook/ent/schema/field"
+	"entgo.io/ent/dialect/sql/schema"
+	"entgo.io/ent/schema/field"
 )
 
 var (
@@ -16,7 +16,7 @@ var (
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "bucket_id", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "message", Type: field.TypeString, Nullable: true, Default: ""},
-		{Name: "events_count", Type: field.TypeInt32, Nullable: true},
+		{Name: "events_count", Type: field.TypeInt32, Nullable: true, Default: 0},
 		{Name: "started_at", Type: field.TypeTime, Nullable: true},
 		{Name: "stopped_at", Type: field.TypeTime, Nullable: true},
 		{Name: "source_ip", Type: field.TypeString, Nullable: true},
@@ -32,7 +32,7 @@ var (
 		{Name: "leak_speed", Type: field.TypeString, Nullable: true},
 		{Name: "scenario_version", Type: field.TypeString, Nullable: true},
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
-		{Name: "simulated", Type: field.TypeBool},
+		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -42,9 +42,8 @@ var (
 		PrimaryKey: []*schema.Column{AlertsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:  "alerts_machines_alerts",
-				Columns: []*schema.Column{AlertsColumns[23]},
-
+				Symbol:     "alerts_machines_alerts",
+				Columns:    []*schema.Column{AlertsColumns[23]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -87,7 +86,7 @@ var (
 		{Name: "scope", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
-		{Name: "simulated", Type: field.TypeBool},
+		{Name: "simulated", Type: field.TypeBool, Default: false},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -97,9 +96,8 @@ var (
 		PrimaryKey: []*schema.Column{DecisionsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:  "decisions_alerts_decisions",
-				Columns: []*schema.Column{DecisionsColumns[15]},
-
+				Symbol:     "decisions_alerts_decisions",
+				Columns:    []*schema.Column{DecisionsColumns[15]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -121,9 +119,8 @@ var (
 		PrimaryKey: []*schema.Column{EventsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:  "events_alerts_events",
-				Columns: []*schema.Column{EventsColumns[5]},
-
+				Symbol:     "events_alerts_events",
+				Columns:    []*schema.Column{EventsColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -139,7 +136,7 @@ var (
 		{Name: "ip_address", Type: field.TypeString},
 		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 4095},
 		{Name: "version", Type: field.TypeString, Nullable: true},
-		{Name: "is_validated", Type: field.TypeBool},
+		{Name: "is_validated", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Nullable: true},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
@@ -165,9 +162,8 @@ var (
 		PrimaryKey: []*schema.Column{MetaColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:  "meta_alerts_metas",
-				Columns: []*schema.Column{MetaColumns[5]},
-
+				Symbol:     "meta_alerts_metas",
+				Columns:    []*schema.Column{MetaColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
