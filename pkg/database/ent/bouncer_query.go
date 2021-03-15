@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // BouncerQuery is the builder for querying Bouncer entities.
@@ -261,7 +261,7 @@ func (bq *BouncerQuery) GroupBy(field string, fields ...string) *BouncerGroupBy 
 		if err := bq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return bq.sqlQuery(), nil
+		return bq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -334,7 +334,7 @@ func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 func (bq *BouncerQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := bq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -384,7 +384,7 @@ func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (bq *BouncerQuery) sqlQuery() *sql.Selector {
+func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(bq.driver.Dialect())
 	t1 := builder.Table(bouncer.Table)
 	selector := builder.Select(t1.Columns(bouncer.Columns...)...).From(t1)
@@ -679,7 +679,7 @@ func (bs *BouncerSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := bs.prepareQuery(ctx); err != nil {
 		return err
 	}
-	bs.sql = bs.BouncerQuery.sqlQuery()
+	bs.sql = bs.BouncerQuery.sqlQuery(ctx)
 	return bs.sqlScan(ctx, v)
 }
 

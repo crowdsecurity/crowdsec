@@ -31,7 +31,6 @@ const (
 	FieldUntil = "until"
 	// FieldLastPull holds the string denoting the last_pull field in the database.
 	FieldLastPull = "last_pull"
-
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )

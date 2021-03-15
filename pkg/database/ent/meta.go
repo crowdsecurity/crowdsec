@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
-	"github.com/facebook/ent/dialect/sql"
 )
 
 // Meta is the model entity for the Meta schema.
@@ -34,7 +34,7 @@ type Meta struct {
 // MetaEdges holds the relations/edges for other nodes in the graph.
 type MetaEdges struct {
 	// Owner holds the value of the owner edge.
-	Owner *Alert
+	Owner *Alert `json:"owner,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool

@@ -16,7 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 
-	"github.com/facebook/ent"
+	"entgo.io/ent"
 )
 
 const (

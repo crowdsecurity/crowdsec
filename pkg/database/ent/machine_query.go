@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"math"
 
+	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
+	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/facebook/ent/dialect/sql"
-	"github.com/facebook/ent/dialect/sql/sqlgraph"
-	"github.com/facebook/ent/schema/field"
 )
 
 // MachineQuery is the builder for querying Machine entities.
@@ -63,7 +63,7 @@ func (mq *MachineQuery) QueryAlerts() *AlertQuery {
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		selector := mq.sqlQuery()
+		selector := mq.sqlQuery(ctx)
 		if err := selector.Err(); err != nil {
 			return nil, err
 		}
@@ -299,7 +299,7 @@ func (mq *MachineQuery) GroupBy(field string, fields ...string) *MachineGroupBy 
 		if err := mq.prepareQuery(ctx); err != nil {
 			return nil, err
 		}
-		return mq.sqlQuery(), nil
+		return mq.sqlQuery(ctx), nil
 	}
 	return group
 }
@@ -406,7 +406,7 @@ func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 func (mq *MachineQuery) sqlExist(ctx context.Context) (bool, error) {
 	n, err := mq.sqlCount(ctx)
 	if err != nil {
-		return false, fmt.Errorf("ent: check existence: %v", err)
+		return false, fmt.Errorf("ent: check existence: %w", err)
 	}
 	return n > 0, nil
 }
@@ -456,7 +456,7 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (mq *MachineQuery) sqlQuery() *sql.Selector {
+func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(machine.Table)
 	selector := builder.Select(t1.Columns(machine.Columns...)...).From(t1)
@@ -751,7 +751,7 @@ func (ms *MachineSelect) Scan(ctx context.Context, v interface{}) error {
 	if err := ms.prepareQuery(ctx); err != nil {
 		return err
 	}
-	ms.sql = ms.MachineQuery.sqlQuery()
+	ms.sql = ms.MachineQuery.sqlQuery(ctx)
 	return ms.sqlScan(ctx, v)
 }
 
