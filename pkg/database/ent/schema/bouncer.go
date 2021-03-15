@@ -23,7 +23,6 @@ func (Bouncer) Fields() []ent.Field {
 			Default(time.Now),
 		field.String("name").Unique().SchemaType(map[string]string{
 			dialect.MySQL: "varchar(190)",
-			dialect.SQLite: "varchar(190)",
 		}),
 		field.String("api_key"), // hash of api_key
 		field.Bool("revoked"),

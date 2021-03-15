@@ -105,18 +105,12 @@ func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
 		affected int
 	)
 	if len(eu.hooks) == 0 {
-		if err = eu.check(); err != nil {
-			return 0, err
-		}
 		affected, err = eu.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*EventMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = eu.check(); err != nil {
-				return 0, err
 			}
 			eu.mutation = mutation
 			affected, err = eu.sqlSave(ctx)
@@ -153,16 +147,6 @@ func (eu *EventUpdate) ExecX(ctx context.Context) {
 	if err := eu.Exec(ctx); err != nil {
 		panic(err)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (eu *EventUpdate) check() error {
-	if v, ok := eu.mutation.Serialized(); ok {
-		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
-		}
-	}
-	return nil
 }
 
 func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
@@ -341,18 +325,12 @@ func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 		node *Event
 	)
 	if len(euo.hooks) == 0 {
-		if err = euo.check(); err != nil {
-			return nil, err
-		}
 		node, err = euo.sqlSave(ctx)
 	} else {
 		var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 			mutation, ok := m.(*EventMutation)
 			if !ok {
 				return nil, fmt.Errorf("unexpected mutation type %T", m)
-			}
-			if err = euo.check(); err != nil {
-				return nil, err
 			}
 			euo.mutation = mutation
 			node, err = euo.sqlSave(ctx)
@@ -389,16 +367,6 @@ func (euo *EventUpdateOne) ExecX(ctx context.Context) {
 	if err := euo.Exec(ctx); err != nil {
 		panic(err)
 	}
-}
-
-// check runs all checks and user-defined validators on the builder.
-func (euo *EventUpdateOne) check() error {
-	if v, ok := euo.mutation.Serialized(); ok {
-		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
-		}
-	}
-	return nil
 }
 
 func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error) {

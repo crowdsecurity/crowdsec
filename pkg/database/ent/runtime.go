@@ -98,10 +98,6 @@ func init() {
 	eventDescUpdatedAt := eventFields[1].Descriptor()
 	// event.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	event.DefaultUpdatedAt = eventDescUpdatedAt.Default.(func() time.Time)
-	// eventDescSerialized is the schema descriptor for serialized field.
-	eventDescSerialized := eventFields[3].Descriptor()
-	// event.SerializedValidator is a validator for the "serialized" field. It is called by the builders before save.
-	event.SerializedValidator = eventDescSerialized.Validators[0].(func(string) error)
 	machineFields := schema.Machine{}.Fields()
 	_ = machineFields
 	// machineDescCreatedAt is the schema descriptor for created_at field.
