@@ -1,4 +1,4 @@
-crowdsec (1.0.9-1) UNRELEASED; urgency=medium
+crowdsec (1.0.9-1) unstable; urgency=medium
 
   * New upstream stable release:
      + Improve documentation.
@@ -9,7 +9,7 @@ crowdsec (1.0.9-1) UNRELEASED; urgency=medium
      + 0008-hub-disable-broken-scenario.patch
   * Add logrotate config for /var/log/crowdsec{,_api}.log (weekly, 4).
 
- -- Cyril Brulebois <cyril@debamax.com>  Sat, 13 Mar 2021 01:33:11 +0100
+ -- Cyril Brulebois <cyril@debamax.com>  Mon, 15 Mar 2021 01:19:43 +0100
 
 crowdsec (1.0.8-2) unstable; urgency=medium
 
