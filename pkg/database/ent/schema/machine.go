@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -20,7 +21,9 @@ func (Machine) Fields() []ent.Field {
 			Default(time.Now),
 		field.Time("updated_at").
 			Default(time.Now),
-		field.String("machineId").Unique(),
+		field.String("machineId").Unique().SchemaType(map[string]string{
+			dialect.MySQL: "varchar(190)",
+		}),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
 		field.String("scenarios").MaxLen(4095).Optional(),

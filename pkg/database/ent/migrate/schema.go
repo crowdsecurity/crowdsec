@@ -131,7 +131,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "machine_id", Type: field.TypeString, Unique: true},
+		{Name: "machine_id", Type: field.TypeString, Unique: true, SchemaType: map[string]string{"mysql": "varchar(190)"}},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},
 		{Name: "scenarios", Type: field.TypeString, Nullable: true, Size: 4095},
