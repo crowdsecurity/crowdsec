@@ -109,7 +109,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "time", Type: field.TypeTime},
-		{Name: "serialized", Type: field.TypeString, Size: 4095, SchemaType: map[string]string{"mysql": "text", "postgres": "text", "sqlite3": "text"}},
+		{Name: "serialized", Type: field.TypeString, Size: 4095},
 		{Name: "alert_events", Type: field.TypeInt, Nullable: true},
 	}
 	// EventsTable holds the schema information for the "events" table.
