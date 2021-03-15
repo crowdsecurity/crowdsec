@@ -54,7 +54,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
-		{Name: "name", Type: field.TypeString, Unique: true, SchemaType: map[string]string{"mysql": "varchar(190)"}},
+		{Name: "name", Type: field.TypeString, Unique: true, SchemaType: map[string]string{"mysql": "varchar(190)", "sqlite3": "varchar(190)"}},
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "revoked", Type: field.TypeBool},
 		{Name: "ip_address", Type: field.TypeString, Nullable: true, Default: ""},
