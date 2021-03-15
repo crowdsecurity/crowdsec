@@ -46,7 +46,7 @@ func initConfig() {
 
 	log.Debugf("Using %s as configuration file", ConfigFilePath)
 	if err := csConfig.LoadConfigurationFile(ConfigFilePath, csConfig.DisableAPI, csConfig.DisableAgent); err != nil {
-		log.Fatalf(err.Error())
+		log.Warningf(err.Error())
 	}
 	if csConfig.Cscli == nil {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
