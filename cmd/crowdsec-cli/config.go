@@ -287,13 +287,17 @@ func NewConfigCmd() *cobra.Command {
 			switch csConfig.Cscli.Output {
 			case "human":
 				fmt.Printf("Global:\n")
-				fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
-				fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
-				fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
-				fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
-				fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
-				fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
-				fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
+				if csConfig.ConfigPaths != nil {
+					fmt.Printf("   - Configuration Folder   : %s\n", csConfig.ConfigPaths.ConfigDir)
+					fmt.Printf("   - Data Folder            : %s\n", csConfig.ConfigPaths.DataDir)
+					fmt.Printf("   - Hub Folder             : %s\n", csConfig.ConfigPaths.HubDir)
+					fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
+				}
+				if csConfig.Common != nil {
+					fmt.Printf("   - Log Folder             : %s\n", csConfig.Common.LogDir)
+					fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
+					fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
+				}
 				if csConfig.Crowdsec != nil {
 					fmt.Printf("Crowdsec:\n")
 					fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
