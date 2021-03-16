@@ -294,52 +294,65 @@ func NewConfigCmd() *cobra.Command {
 				fmt.Printf("   - Simulation File        : %s\n", csConfig.ConfigPaths.SimulationFilePath)
 				fmt.Printf("   - Log level              : %s\n", csConfig.Common.LogLevel)
 				fmt.Printf("   - Log Media              : %s\n", csConfig.Common.LogMedia)
-				fmt.Printf("Crowdsec:\n")
-				fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
-				fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
-				fmt.Printf("cscli:\n")
-				fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
-				fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
-				fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
-				fmt.Printf("API Client:\n")
-				fmt.Printf("  - URL                     : %s\n", csConfig.API.Client.Credentials.URL)
-				fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
-				fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
-				fmt.Printf("Local API Server:\n")
-				fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
-				fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
-				if csConfig.API.Server.TLS != nil {
-					if csConfig.API.Server.TLS.CertFilePath != "" {
-						fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
+				if csConfig.Crowdsec != nil {
+					fmt.Printf("Crowdsec:\n")
+					fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
+					fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
+				}
+				if csConfig.Cscli != nil {
+					fmt.Printf("cscli:\n")
+					fmt.Printf("  - Output                  : %s\n", csConfig.Cscli.Output)
+					fmt.Printf("  - Hub Branch              : %s\n", csConfig.Cscli.HubBranch)
+					fmt.Printf("  - Hub Folder              : %s\n", csConfig.Cscli.HubDir)
+				}
+				if csConfig.API != nil {
+					if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil {
+						fmt.Printf("API Client:\n")
+						fmt.Printf("  - URL                     : %s\n", csConfig.API.Client.Credentials.URL)
+						fmt.Printf("  - Login                   : %s\n", csConfig.API.Client.Credentials.Login)
+						fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Client.CredentialsFilePath)
 					}
-					if csConfig.API.Server.TLS.KeyFilePath != "" {
-						fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
+					if csConfig.API.Server != nil {
+						fmt.Printf("Local API Server:\n")
+						fmt.Printf("  - Listen URL              : %s\n", csConfig.API.Server.ListenURI)
+						fmt.Printf("  - Profile File            : %s\n", csConfig.API.Server.ProfilesPath)
+						if csConfig.API.Server.TLS != nil {
+							if csConfig.API.Server.TLS.CertFilePath != "" {
+								fmt.Printf("  - Cert File : %s\n", csConfig.API.Server.TLS.CertFilePath)
+							}
+							if csConfig.API.Server.TLS.KeyFilePath != "" {
+								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
+							}
+						}
+						if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
+							fmt.Printf("Central API:\n")
+							fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
+							fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)
+							fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+						}
 					}
 				}
-				fmt.Printf("  - Database:\n")
-				fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
-				switch csConfig.DbConfig.Type {
-				case "sqlite":
-					fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
-				case "mysql", "postgresql", "postgres":
-					fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
-					fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
-					fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
-					fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
-				}
-				if csConfig.DbConfig.Flush != nil {
-					if *csConfig.DbConfig.Flush.MaxAge != "" {
-						fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
+				if csConfig.DbConfig != nil {
+					fmt.Printf("  - Database:\n")
+					fmt.Printf("      - Type                : %s\n", csConfig.DbConfig.Type)
+					switch csConfig.DbConfig.Type {
+					case "sqlite":
+						fmt.Printf("      - Path                : %s\n", csConfig.DbConfig.DbPath)
+					case "mysql", "postgresql", "postgres":
+						fmt.Printf("      - Host                : %s\n", csConfig.DbConfig.Host)
+						fmt.Printf("      - Port                : %d\n", csConfig.DbConfig.Port)
+						fmt.Printf("      - User                : %s\n", csConfig.DbConfig.User)
+						fmt.Printf("      - DB Name             : %s\n", csConfig.DbConfig.DbName)
 					}
-					if *csConfig.DbConfig.Flush.MaxItems != 0 {
-						fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
+					if csConfig.DbConfig.Flush != nil {
+						if *csConfig.DbConfig.Flush.MaxAge != "" {
+							fmt.Printf("      - Flush age           : %s\n", *csConfig.DbConfig.Flush.MaxAge)
+						}
+						if *csConfig.DbConfig.Flush.MaxItems != 0 {
+							fmt.Printf("      - Flush size          : %d\n", *csConfig.DbConfig.Flush.MaxItems)
+						}
 					}
 				}
-
-				fmt.Printf("Central API:\n")
-				fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
-				fmt.Printf("  - Login                   : %s\n", csConfig.API.Server.OnlineClient.Credentials.Login)
-				fmt.Printf("  - Credentials File        : %s\n", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			case "json":
 				data, err := json.MarshalIndent(csConfig, "", "  ")
 				if err != nil {
