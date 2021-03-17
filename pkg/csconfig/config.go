@@ -12,9 +12,10 @@ import (
 )
 
 /*top-level config : defaults,overriden by cfg file,overriden by cli*/
-type GlobalConfig struct {
+type Config struct {
 	//just a path to ourself :p
-	Self         *string             `yaml:"-"`
+	FilePath     *string             `yaml:"-"`
+	Self         []byte              `yaml:"-"`
 	Common       *CommonCfg          `yaml:"common,omitempty"`
 	Prometheus   *PrometheusCfg      `yaml:"prometheus,omitempty"`
 	Crowdsec     *CrowdsecServiceCfg `yaml:"crowdsec_service,omitempty"`
@@ -26,7 +27,7 @@ type GlobalConfig struct {
 	DisableAgent bool                `yaml:"-"`
 }
 
-func (c *GlobalConfig) Dump() error {
+func (c *Config) Dump() error {
 	out, err := yaml.Marshal(c)
 	if err != nil {
 		return errors.Wrap(err, "failed marshaling config")
@@ -35,26 +36,16 @@ func (c *GlobalConfig) Dump() error {
 	return nil
 }
 
-func (c *GlobalConfig) LoadAPI() error {
+func (c *Config) LoadAPIServer() error {
 	apiConfig := &APICfg{}
-	fcontent, err := ioutil.ReadFile(*c.Self)
-	if err != nil {
-		return errors.Wrap(err, "failed to read config file")
-	}
-	configData := os.ExpandEnv(string(fcontent))
-	err = yaml.UnmarshalStrict([]byte(configData), apiConfig)
-	if err != nil {
-		return err
-	}
-	c.API = apiConfig
 
-	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
-		if err := c.API.Client.Load(); err != nil {
-			return err
-		}
-	}
+	c.API = &APICfg{}
+	c.API.Server = apiConfig.Server
+
 	if c.API.Server != nil && !c.DisableAPI {
-		c.API.Server.DbConfig = c.DbConfig
+		if err := c.LoadCommon(); err != nil {
+			return fmt.Errorf("loading common configuration: %s", err.Error())
+		}
 		c.API.Server.LogDir = c.Common.LogDir
 		c.API.Server.LogMedia = c.Common.LogMedia
 		if err := c.API.Server.LoadProfiles(); err != nil {
@@ -78,38 +69,30 @@ func (c *GlobalConfig) LoadAPI() error {
 		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
 			log.Printf("push and pull to crowdsec API disabled")
 		}
+		if err := c.LoadDBConfig(); err != nil {
+			return err
+		}
+	} else {
+		c.DisableAPI = true
 	}
 
 	return nil
 }
 
-func (c *GlobalConfig) LoadConfigurationFile(path string, disableAPI bool, disableAgent bool) error {
-	c.DisableAPI = disableAPI
-	c.DisableAgent = disableAgent
-	fcontent, err := ioutil.ReadFile(path)
-	if err != nil {
-		return errors.Wrap(err, "failed to read config file")
-	}
-	configData := os.ExpandEnv(string(fcontent))
-	err = yaml.UnmarshalStrict([]byte(configData), c)
-	if err != nil {
-		return errors.Wrap(err, "failed unmarshaling config")
-	}
-	path, err = filepath.Abs(path)
-	if err != nil {
-		return errors.Wrap(err, "failed to load absolute path")
-	}
-	c.Self = &path
-	if err := c.LoadConfiguration(); err != nil {
-		return errors.Wrap(err, "failed to load sub configurations")
+func (c *Config) LoadAPIClient() error {
+	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
+		if err := c.API.Client.Load(); err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (c *GlobalConfig) LoadConfiguration() error {
-	if c.ConfigPaths.ConfigDir == "" {
-		return fmt.Errorf("please provide a configuration directory with the 'config_dir' directive in the 'config_paths' section")
+func (c *Config) LoadConfigurationPaths() error {
+	var err error
+	if c.ConfigPaths == nil {
+		return fmt.Errorf("no configuration paths provided")
 	}
 
 	if c.ConfigPaths.DataDir == "" {
@@ -124,9 +107,35 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		c.ConfigPaths.HubIndexFile = filepath.Clean(c.ConfigPaths.HubDir + "/.index.json")
 	}
 
-	if err := c.LoadSimulation(); err != nil {
-		return err
+	var configPathsCleanup = []*string{
+		&c.ConfigPaths.HubDir,
+		&c.ConfigPaths.HubIndexFile,
+		&c.ConfigPaths.ConfigDir,
+		&c.ConfigPaths.DataDir,
+		&c.ConfigPaths.SimulationFilePath,
 	}
+	for _, k := range configPathsCleanup {
+		if *k == "" {
+			continue
+		}
+		*k, err = filepath.Abs(*k)
+		if err != nil {
+			return errors.Wrap(err, "failed to clean path")
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) LoadCrowdsec() error {
+	var err error
+	// Configuration paths are dependency to load crowdsec configuration
+	if c.ConfigPaths == nil {
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
+	}
+
 	if c.Crowdsec != nil {
 		if c.Crowdsec.AcquisitionFilePath != "" {
 			log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
@@ -161,37 +170,98 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		if c.Crowdsec.OutputRoutinesCount <= 0 {
 			c.Crowdsec.OutputRoutinesCount = 1
 		}
-	}
 
-	if err := c.CleanupPaths(); err != nil {
-		return errors.Wrap(err, "invalid config")
-	}
-
-	if c.Cscli != nil {
-		c.Cscli.DbConfig = c.DbConfig
-		c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
-		c.Cscli.DataDir = c.ConfigPaths.DataDir
-		c.Cscli.HubDir = c.ConfigPaths.HubDir
-		c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
-		if c.Cscli.PrometheusUrl == "" {
-			port := 6060
-			if c.Prometheus.ListenPort != 0 {
-				port = c.Prometheus.ListenPort
+		var crowdsecCleanup = []*string{
+			&c.Crowdsec.AcquisitionFilePath,
+		}
+		for _, k := range crowdsecCleanup {
+			if *k == "" {
+				continue
 			}
-			c.Cscli.PrometheusUrl = fmt.Sprintf("http://127.0.0.1:%d/", port)
+			*k, err = filepath.Abs(*k)
+			if err != nil {
+				return errors.Wrap(err, "failed to clean path")
+			}
+		}
+	} else {
+		c.DisableAgent = true
+	}
+	return nil
+}
+
+func (c *Config) LoadPrometheus() error {
+	if c.Cscli != nil && c.Cscli.PrometheusUrl == "" && c.Prometheus != nil {
+		if c.Prometheus.ListenAddr != "" && c.Prometheus.ListenPort != 0 {
+			c.Cscli.PrometheusUrl = fmt.Sprintf("http://%s:%d", c.Prometheus.ListenAddr, c.Prometheus.ListenPort)
 		}
 	}
 
 	return nil
 }
 
-func (c *GlobalConfig) LoadSimulation() error {
+func (c *Config) LoadCSCLI() error {
 	if c.ConfigPaths == nil {
-		return fmt.Errorf("ConfigPaths is empty")
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
+	}
+
+	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
+	c.Cscli.DataDir = c.ConfigPaths.DataDir
+	c.Cscli.HubDir = c.ConfigPaths.HubDir
+	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	return nil
+}
+
+func (c *Config) LoadDBConfig() error {
+	if c.DbConfig == nil {
+		return fmt.Errorf("no database configuration provided")
+	}
+
+	if c.Cscli != nil {
+		c.Cscli.DbConfig = c.DbConfig
+	}
+
+	if c.API.Server != nil {
+		c.API.Server.DbConfig = c.DbConfig
+	}
+
+	return nil
+}
+
+func (c *Config) LoadCommon() error {
+	var err error
+	if c.Common == nil {
+		return fmt.Errorf("no common block provided in configuration file")
+	}
+
+	var CommonCleanup = []*string{
+		&c.Common.PidDir,
+		&c.Common.LogDir,
+		&c.Common.WorkingDir,
+	}
+	for _, k := range CommonCleanup {
+		if *k == "" {
+			continue
+		}
+		*k, err = filepath.Abs(*k)
+		if err != nil {
+			return errors.Wrap(err, "failed to clean path")
+		}
+	}
+
+	return nil
+}
+
+func (c *Config) LoadSimulation() error {
+	if c.ConfigPaths == nil {
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
 	}
 
 	simCfg := SimulationConfig{}
-
 	if c.ConfigPaths.SimulationFilePath == "" {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
 	}
@@ -216,16 +286,27 @@ func (c *GlobalConfig) LoadSimulation() error {
 	return nil
 }
 
-func NewConfig() *GlobalConfig {
-	cfg := GlobalConfig{}
-	return &cfg
+func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
+	fcontent, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read config file")
+	}
+	configData := os.ExpandEnv(string(fcontent))
+	cfg := Config{
+		FilePath:     &configFile,
+		DisableAgent: disableAgent,
+		DisableAPI:   disableAPI,
+	}
+
+	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
 
-func (g *GlobalConfig) SetConfigFile(configFile string) {
-	g.Self = &configFile
-}
-
-func NewDefaultConfig() *GlobalConfig {
+func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
 	CommonCfg := CommonCfg{
 		Daemonize: false,
@@ -273,7 +354,7 @@ func NewDefaultConfig() *GlobalConfig {
 		DbPath: "/var/lib/crowdsec/data/crowdsec.db",
 	}
 
-	globalCfg := GlobalConfig{
+	globalCfg := Config{
 		Common:      &CommonCfg,
 		Prometheus:  &prometheus,
 		Crowdsec:    &crowdsecCfg,
@@ -284,61 +365,4 @@ func NewDefaultConfig() *GlobalConfig {
 	}
 
 	return &globalCfg
-}
-
-func (c *GlobalConfig) CleanupPaths() error {
-	var err error
-
-	if c.Common != nil {
-		var CommonCleanup = []*string{
-			&c.Common.PidDir,
-			&c.Common.LogDir,
-			&c.Common.WorkingDir,
-		}
-		for _, k := range CommonCleanup {
-			if *k == "" {
-				continue
-			}
-			*k, err = filepath.Abs(*k)
-			if err != nil {
-				return errors.Wrap(err, "failed to clean path")
-			}
-		}
-	}
-
-	if c.Crowdsec != nil {
-		var crowdsecCleanup = []*string{
-			&c.Crowdsec.AcquisitionFilePath,
-		}
-		for _, k := range crowdsecCleanup {
-			if *k == "" {
-				continue
-			}
-			*k, err = filepath.Abs(*k)
-			if err != nil {
-				return errors.Wrap(err, "failed to clean path")
-			}
-		}
-	}
-
-	if c.ConfigPaths != nil {
-		var configPathsCleanup = []*string{
-			&c.ConfigPaths.HubDir,
-			&c.ConfigPaths.HubIndexFile,
-			&c.ConfigPaths.ConfigDir,
-			&c.ConfigPaths.DataDir,
-			&c.ConfigPaths.SimulationFilePath,
-		}
-		for _, k := range configPathsCleanup {
-			if *k == "" {
-				continue
-			}
-			*k, err = filepath.Abs(*k)
-			if err != nil {
-				return errors.Wrap(err, "failed to clean path")
-			}
-		}
-	}
-
-	return nil
 }
