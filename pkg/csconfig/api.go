@@ -1,6 +1,15 @@
 package csconfig
 
-import log "github.com/sirupsen/logrus"
+import (
+	"fmt"
+	"io/ioutil"
+	"strings"
+
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
+)
 
 type APICfg struct {
 	Client *LocalApiClientCfg `yaml:"client"`
@@ -24,6 +33,45 @@ type LocalApiClientCfg struct {
 	CredentialsFilePath string             `yaml:"credentials_path,omitempty"` //credz will be edited by software, store in diff file
 	Credentials         *ApiCredentialsCfg `yaml:"-"`
 	InsecureSkipVerify  *bool              `yaml:"insecure_skip_verify"` // check if api certificate is bad or not
+}
+
+func (o *OnlineApiClientCfg) Load() error {
+	o.Credentials = new(ApiCredentialsCfg)
+	fcontent, err := ioutil.ReadFile(o.CredentialsFilePath)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", o.CredentialsFilePath))
+	}
+	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", o.CredentialsFilePath))
+	}
+	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
+		log.Debugf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
+		o.Credentials = nil
+	}
+	return nil
+}
+
+func (l *LocalApiClientCfg) Load() error {
+	fcontent, err := ioutil.ReadFile(l.CredentialsFilePath)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", l.CredentialsFilePath))
+	}
+	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath))
+	}
+	if l.Credentials != nil && l.Credentials.URL != "" {
+		if !strings.HasSuffix(l.Credentials.URL, "/") {
+			l.Credentials.URL = l.Credentials.URL + "/"
+		}
+	}
+	if l.InsecureSkipVerify == nil {
+		apiclient.InsecureSkipVerify = false
+	} else {
+		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
+	}
+	return nil
 }
 
 /*local api service configuration*/
