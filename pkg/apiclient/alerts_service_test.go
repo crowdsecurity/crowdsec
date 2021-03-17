@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAlertsListAsMachine(t *testing.T) {
@@ -388,7 +389,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	alerts, resp, err := client.Alerts.GetByID(context.Background(), 1)
-
+	require.NoError(t, err)
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}
@@ -436,6 +437,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	defer teardown()
 	alert := models.AddAlertsRequest{}
 	alerts, resp, err := client.Alerts.Add(context.Background(), alert)
+	require.NoError(t, err)
 	expected := &models.AddAlertsResponse{"3"}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -480,6 +482,8 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	alert := AlertsDeleteOpts{IPEquals: new(string)}
 	*alert.IPEquals = "1.2.3.4"
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
+	require.NoError(t, err)
+
 	expected := &models.DeleteAlertsResponse{""}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)

@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDecisionsList(t *testing.T) {
@@ -86,6 +87,7 @@ func TestDecisionsList(t *testing.T) {
 	decisionsFilter = DecisionsListOpts{IPEquals: new(string)}
 	*decisionsFilter.IPEquals = "1.2.3.5"
 	decisions, resp, err = newcli.Decisions.List(context.Background(), decisionsFilter)
+	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -159,6 +161,7 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), true)
+	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -173,6 +176,7 @@ func TestDecisionsStream(t *testing.T) {
 
 	//and second call, we get empty lists
 	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), false)
+	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
@@ -182,6 +186,7 @@ func TestDecisionsStream(t *testing.T) {
 
 	//delete stream
 	resp, err = newcli.Decisions.StopStream(context.Background())
+	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
