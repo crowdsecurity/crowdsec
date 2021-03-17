@@ -5,9 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -34,6 +32,54 @@ func (c *GlobalConfig) Dump() error {
 		return errors.Wrap(err, "failed marshaling config")
 	}
 	fmt.Printf("%s", string(out))
+	return nil
+}
+
+func (c *GlobalConfig) LoadAPI() error {
+	apiConfig := &APICfg{}
+	fcontent, err := ioutil.ReadFile(*c.Self)
+	if err != nil {
+		return errors.Wrap(err, "failed to read config file")
+	}
+	configData := os.ExpandEnv(string(fcontent))
+	err = yaml.UnmarshalStrict([]byte(configData), apiConfig)
+	if err != nil {
+		return err
+	}
+	c.API = apiConfig
+
+	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
+		if err := c.API.Client.Load(); err != nil {
+			return err
+		}
+	}
+	if c.API.Server != nil && !c.DisableAPI {
+		c.API.Server.DbConfig = c.DbConfig
+		c.API.Server.LogDir = c.Common.LogDir
+		c.API.Server.LogMedia = c.Common.LogMedia
+		if err := c.API.Server.LoadProfiles(); err != nil {
+			return errors.Wrap(err, "while loading profiles for LAPI")
+		}
+		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			c.API.Server.OnlineClient.Credentials = new(ApiCredentialsCfg)
+			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
+			err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
+			if c.API.Server.OnlineClient.Credentials.Login == "" || c.API.Server.OnlineClient.Credentials.Password == "" || c.API.Server.OnlineClient.Credentials.URL == "" {
+				log.Debugf("can't load CAPI credentials from '%s' (missing field)", c.API.Server.OnlineClient.CredentialsFilePath)
+				c.API.Server.OnlineClient.Credentials = nil
+			}
+		}
+		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+			log.Printf("push and pull to crowdsec API disabled")
+		}
+	}
+
 	return nil
 }
 
@@ -136,53 +182,6 @@ func (c *GlobalConfig) LoadConfiguration() error {
 		}
 	}
 
-	if c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
-		fcontent, err := ioutil.ReadFile(c.API.Client.CredentialsFilePath)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
-		}
-		err = yaml.UnmarshalStrict(fcontent, &c.API.Client.Credentials)
-		if err != nil {
-			return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api client credential configuration file '%s'", c.API.Client.CredentialsFilePath))
-		}
-		if c.API.Client.Credentials != nil && c.API.Client.Credentials.URL != "" {
-			if !strings.HasSuffix(c.API.Client.Credentials.URL, "/") {
-				c.API.Client.Credentials.URL = c.API.Client.Credentials.URL + "/"
-			}
-		}
-		if c.API.Client.InsecureSkipVerify == nil {
-			apiclient.InsecureSkipVerify = false
-		} else {
-			apiclient.InsecureSkipVerify = *c.API.Client.InsecureSkipVerify
-		}
-	}
-	if c.API.Server != nil && !c.DisableAPI {
-		c.API.Server.DbConfig = c.DbConfig
-		c.API.Server.LogDir = c.Common.LogDir
-		c.API.Server.LogMedia = c.Common.LogMedia
-		if err := c.API.Server.LoadProfiles(); err != nil {
-			return errors.Wrap(err, "while loading profiles for LAPI")
-		}
-		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			c.API.Server.OnlineClient.Credentials = new(ApiCredentialsCfg)
-			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
-			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
-			}
-			err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
-			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
-			}
-			if c.API.Server.OnlineClient.Credentials.Login == "" || c.API.Server.OnlineClient.Credentials.Password == "" || c.API.Server.OnlineClient.Credentials.URL == "" {
-				log.Debugf("can't load CAPI credentials from '%s' (missing field)", c.API.Server.OnlineClient.CredentialsFilePath)
-				c.API.Server.OnlineClient.Credentials = nil
-			}
-		}
-		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to crowdsec API disabled")
-		}
-	}
-
 	return nil
 }
 
@@ -220,6 +219,10 @@ func (c *GlobalConfig) LoadSimulation() error {
 func NewConfig() *GlobalConfig {
 	cfg := GlobalConfig{}
 	return &cfg
+}
+
+func (g *GlobalConfig) SetConfigFile(configFile string) {
+	g.Self = &configFile
 }
 
 func NewDefaultConfig() *GlobalConfig {
