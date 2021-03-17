@@ -18,10 +18,6 @@ func NewCollectionsCmd() *cobra.Command {
 		/*TBD fix help*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.Cscli == nil {
-				return fmt.Errorf("you must configure cli before interacting with hub")
-			}
-
 			if err := setHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}

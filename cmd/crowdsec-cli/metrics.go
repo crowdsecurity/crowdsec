@@ -377,6 +377,9 @@ func NewMetricsCmd() *cobra.Command {
 		Long:  `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := csConfig.LoadPrometheus(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			if !csConfig.Prometheus.Enabled {
 				log.Warningf("Prometheus is not enabled, can't show metrics")
 				os.Exit(1)
@@ -387,7 +390,7 @@ func NewMetricsCmd() *cobra.Command {
 			}
 
 			if prometheusURL == "" {
-				log.Errorf("No prometheus url, please specify in %s or via -u", *csConfig.Self)
+				log.Errorf("No prometheus url, please specify in %s or via -u", *csConfig.FilePath)
 				os.Exit(1)
 			}
 

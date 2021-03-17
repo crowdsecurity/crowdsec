@@ -25,14 +25,17 @@ var CAPIBaseURL string = "https://api.crowdsec.net/"
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
 		Use:   "capi [action]",
-		Short: "Manage interaction with Central API (CAPI)",
+		Short: "Manage interaction with Central API (CAPI) (need root permissions)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadAPIServer(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			if csConfig.API.Server == nil {
 				log.Fatalln("There is no API->server configuration")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
 			}
 
 			return nil

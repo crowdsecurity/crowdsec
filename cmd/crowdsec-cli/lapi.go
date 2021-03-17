@@ -25,14 +25,17 @@ var lapiUser string
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
 		Use:   "lapi [action]",
-		Short: "Manage interaction with Local API (LAPI)",
+		Short: "Manage interaction with Local API (LAPI) (need root permissions)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadAPIClient(); err != nil {
+				return fmt.Errorf("loading api client: %s", err.Error())
+			}
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no API->client configuration")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
 			}
 			return nil
 		},

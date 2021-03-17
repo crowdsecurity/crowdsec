@@ -264,7 +264,7 @@ func InspectItem(name string, objecitemType string) {
 	fmt.Printf("%s", string(buff))
 	if csConfig.Prometheus.Enabled {
 		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.Self)
+			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
 			return
 		}
 		if prometheusURL == "" {

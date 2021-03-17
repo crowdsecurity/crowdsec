@@ -199,6 +199,9 @@ func NewAlertsCmd() *cobra.Command {
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+			if err := csConfig.LoadAPIClient(); err != nil {
+				log.Fatalf("loading api client: %s", err.Error())
+			}
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}

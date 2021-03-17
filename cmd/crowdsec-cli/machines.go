@@ -80,11 +80,11 @@ func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdMachines = &cobra.Command{
 		Use:   "machines [action]",
-		Short: "Manage local API machines",
+		Short: "Manage local API machines (need root permissions)",
 		Long: `
 Machines Management.
 
-To list/add/delete/register/validate machines
+To list/add/delete/validate machines
 `,
 		Example: `cscli machines [action]`,
 	}
@@ -97,6 +97,9 @@ To list/add/delete/register/validate machines
 		Args:    cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to create new database client: %s", err)
