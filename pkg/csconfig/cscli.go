@@ -13,3 +13,18 @@ type CscliCfg struct {
 	SimulationFilePath string            `yaml:"-"`
 	PrometheusUrl      string            `yaml:"prometheus_uri"`
 }
+
+func (c *Config) LoadCSCLI() error {
+	if c.ConfigPaths == nil {
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
+	}
+
+	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
+	c.Cscli.DataDir = c.ConfigPaths.DataDir
+	c.Cscli.HubDir = c.ConfigPaths.HubDir
+	c.Cscli.HubIndexFile = c.ConfigPaths.HubIndexFile
+
+	return nil
+}

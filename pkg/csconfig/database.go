@@ -1,6 +1,10 @@
 package csconfig
 
-import log "github.com/sirupsen/logrus"
+import (
+	"fmt"
+
+	log "github.com/sirupsen/logrus"
+)
 
 type DatabaseCfg struct {
 	User     string      `yaml:"user"`
@@ -17,4 +21,20 @@ type DatabaseCfg struct {
 type FlushDBCfg struct {
 	MaxItems *int    `yaml:"max_items"`
 	MaxAge   *string `yaml:"max_age"`
+}
+
+func (c *Config) LoadDBConfig() error {
+	if c.DbConfig == nil {
+		return fmt.Errorf("no database configuration provided")
+	}
+
+	if c.Cscli != nil {
+		c.Cscli.DbConfig = c.DbConfig
+	}
+
+	if c.API.Server != nil {
+		c.API.Server.DbConfig = c.DbConfig
+	}
+
+	return nil
 }

@@ -92,3 +92,53 @@ type TLSCfg struct {
 	CertFilePath string `yaml:"cert_file"`
 	KeyFilePath  string `yaml:"key_file"`
 }
+
+func (c *Config) LoadAPIServer() error {
+	if c.API.Server != nil && !c.DisableAPI {
+		if err := c.LoadCommon(); err != nil {
+			return fmt.Errorf("loading common configuration: %s", err.Error())
+		}
+		c.API.Server.LogDir = c.Common.LogDir
+		c.API.Server.LogMedia = c.Common.LogMedia
+		if err := c.API.Server.LoadProfiles(); err != nil {
+			return errors.Wrap(err, "while loading profiles for LAPI")
+		}
+		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
+			c.API.Server.OnlineClient.Credentials = new(ApiCredentialsCfg)
+			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
+			err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
+			if err != nil {
+				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
+			}
+			if c.API.Server.OnlineClient.Credentials.Login == "" || c.API.Server.OnlineClient.Credentials.Password == "" || c.API.Server.OnlineClient.Credentials.URL == "" {
+				log.Debugf("can't load CAPI credentials from '%s' (missing field)", c.API.Server.OnlineClient.CredentialsFilePath)
+				c.API.Server.OnlineClient.Credentials = nil
+			}
+		}
+		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
+			log.Printf("push and pull to crowdsec API disabled")
+		}
+		if err := c.LoadDBConfig(); err != nil {
+			return err
+		}
+	} else {
+		c.DisableAPI = true
+	}
+
+	return nil
+}
+
+func (c *Config) LoadAPIClient() error {
+	if c.API != nil && c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
+		if err := c.API.Client.Load(); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("no API client section in configuration")
+	}
+
+	return nil
+}

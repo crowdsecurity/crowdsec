@@ -7,3 +7,20 @@ type Hub struct {
 	HubIndexFile string `yaml:"-"`
 	DataDir      string `yaml:"-"`
 }
+
+func (c *Config) LoadHub() error {
+	if c.ConfigPaths == nil {
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
+	}
+
+	c.Hub = &Hub{
+		HubIndexFile: c.ConfigPaths.HubIndexFile,
+		ConfigDir:    c.ConfigPaths.ConfigDir,
+		HubDir:       c.ConfigPaths.HubDir,
+		DataDir:      c.ConfigPaths.DataDir,
+	}
+
+	return nil
+}
