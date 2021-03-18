@@ -4,6 +4,30 @@
 source tests_base.sh
 
 
+
+## status / start / stop
+# service should be up
+pidof crowdsec || fail "crowdsec process shouldn't be running"
+${SYSTEMCTL} status crowdsec || fail "systemctl status crowdsec failed"
+
+#shut it down
+${SYSTEMCTL} stop crowdsec || fail "failed to stop service"
+${SYSTEMCTL} status crowdsec && fail "crowdsec should be down"
+pidof crowdsec && fail "crowdsec process shouldn't be running"
+
+#start it again
+${SYSTEMCTL} start crowdsec || fail "failed to stop service"
+${SYSTEMCTL} status crowdsec || fail "crowdsec should be down"
+pidof crowdsec || fail "crowdsec process shouldn't be running"
+
+#restart it
+${SYSTEMCTL} restart crowdsec || fail "failed to stop service"
+${SYSTEMCTL} status crowdsec || fail "crowdsec should be down"
+pidof crowdsec || fail "crowdsec process shouldn't be running"
+
+
+
+
 ## version
 
 ${CSCLI} version || fail "cannot run cscli version"
