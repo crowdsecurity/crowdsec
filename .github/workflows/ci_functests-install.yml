@@ -1,4 +1,4 @@
-name: Functionnal tests
+name: Functional tests
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
     - name: Install release
       run: |
         cd crowdsec-${{ steps.keydb.outputs.release }}
-        sudo bash -x ./wizard.sh --unattended
+        sudo ./wizard.sh --unattended
     - name: "Test post-install base"
       run: |
           cd scripts/func_tests/
