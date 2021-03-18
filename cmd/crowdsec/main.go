@@ -33,9 +33,6 @@ var (
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
 
-	disableAPI   bool
-	disableAgent bool
-
 	flags *Flags
 
 	/*the state of acquisition*/
@@ -192,36 +189,24 @@ func (f *Flags) Parse() {
 
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
-	disableAPI = flags.DisableAPI
-	disableAgent = flags.DisableAgent
 
-	if !disableAgent {
+	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
 			return err
 		}
 	}
 
-	if !disableAPI {
+	if !flags.DisableAPI {
 		if err := cConfig.LoadAPIServer(); err != nil {
 			return err
 		}
 	}
 
-	if !disableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
-		log.Errorf("no API server configuration found, will not start the local API")
-		disableAPI = true
-	}
-
-	if !disableAgent && cConfig.Crowdsec == nil {
-		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		disableAgent = true
-	}
-
-	if !disableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
+	if !cConfig.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
 		log.Fatalf("missing local API credentials for crowdsec agent, abort")
 	}
 
-	if disableAPI && disableAgent {
+	if cConfig.DisableAPI && cConfig.DisableAgent {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
@@ -250,14 +235,14 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Common.LogLevel = &logLevel
 	}
 
-	if flags.TestMode && !disableAgent {
+	if flags.TestMode && !cConfig.DisableAgent {
 		cConfig.Crowdsec.LintOnly = true
 	}
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if disableAPI {
+		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		cConfig.Common.LogMedia = "stdout"
@@ -297,19 +282,6 @@ func main() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if !flags.DisableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
-		log.Errorf("no API server configuration found, will not start the local API")
-		flags.DisableAPI = true
-	}
-
-	if !flags.DisableAgent && cConfig.Crowdsec == nil {
-		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		flags.DisableAgent = true
-	}
-
-	if !flags.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
-		log.Fatalf("missing local API credentials for crowdsec agent, abort")
-	}
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
