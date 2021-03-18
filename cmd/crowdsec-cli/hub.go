@@ -81,11 +81,12 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatalf("while loading hub : %s", err.Error())
 			}
 			if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
+
 		},
 	}
 	cmdHub.AddCommand(cmdHubUpdate)
