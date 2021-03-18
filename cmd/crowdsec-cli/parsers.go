@@ -46,7 +46,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example: `cscli parsers install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -66,7 +69,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example: `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -91,7 +97,11 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Long:    `Fetch and upgrade given parser(s) from hub`,
 		Example: `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -115,7 +125,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example: `cscli parsers inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -133,7 +146,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example: `cscli parsers list
 cscli parser list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

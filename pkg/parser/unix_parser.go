@@ -1,8 +1,8 @@
 package parser
 
 import (
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
@@ -45,8 +45,7 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	return &r, nil
 }
 
-
-func LoadParsers(cConfig *csconfig.GlobalConfig, parsers *Parsers) (*Parsers, error) {
+func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
 	log.Infof("Loading grok library %s", cConfig.Crowdsec.ConfigDir+string("/patterns/"))

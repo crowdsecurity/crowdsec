@@ -14,14 +14,14 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func initCrowdsec(cConfig *csconfig.GlobalConfig) (*parser.Parsers, error) {
+func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
 	err := exprhelpers.Init()
 	if err != nil {
 		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
 	}
 
 	// Populate cwhub package tools
-	if err := cwhub.GetHubIdx(cConfig.Cscli); err != nil {
+	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {
 		return &parser.Parsers{}, fmt.Errorf("Failed to load hub index : %s", err)
 	}
 
@@ -41,7 +41,7 @@ func initCrowdsec(cConfig *csconfig.GlobalConfig) (*parser.Parsers, error) {
 	return csParsers, nil
 }
 
-func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error {
+func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
@@ -117,7 +117,7 @@ func runCrowdsec(cConfig *csconfig.GlobalConfig, parsers *parser.Parsers) error 
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.GlobalConfig) {
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 	crowdsecTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {

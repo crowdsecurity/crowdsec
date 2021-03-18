@@ -19,7 +19,7 @@ import (
 )
 
 //debugHandler is kept as a dev convenience : it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
+func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
 	//stop go routines
@@ -37,7 +37,7 @@ func debugHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
+func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
 
@@ -186,7 +186,7 @@ func termHandler(sig os.Signal) error {
 	return nil
 }
 
-func HandleSignals(cConfig *csconfig.GlobalConfig) {
+func HandleSignals(cConfig *csconfig.Config) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
@@ -220,7 +220,7 @@ func HandleSignals(cConfig *csconfig.GlobalConfig) {
 	os.Exit(code)
 }
 
-func Serve(cConfig *csconfig.GlobalConfig) error {
+func Serve(cConfig *csconfig.Config) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
