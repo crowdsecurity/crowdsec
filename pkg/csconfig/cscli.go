@@ -15,10 +15,8 @@ type CscliCfg struct {
 }
 
 func (c *Config) LoadCSCLI() error {
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir

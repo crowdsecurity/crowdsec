@@ -30,10 +30,8 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 }
 
 func (c *Config) LoadSimulation() error {
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	simCfg := SimulationConfig{}

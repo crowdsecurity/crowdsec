@@ -9,10 +9,8 @@ type Hub struct {
 }
 
 func (c *Config) LoadHub() error {
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	c.Hub = &Hub{
