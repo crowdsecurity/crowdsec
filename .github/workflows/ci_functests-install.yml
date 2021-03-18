@@ -1,14 +1,12 @@
-name: Functionnal tests install
+name: Functionnal tests
 
 on:
   push:
     branches:
-      - wip_lapi
-      - master
+      - unified_functest
   pull_request:
     branches:
-      - wip_lapi
-      - master
+      - unified_functest
 
 jobs:
   build:
@@ -33,64 +31,28 @@ jobs:
     - name: Install release
       run: |
         cd crowdsec-${{ steps.keydb.outputs.release }}
-        sudo bash -x ./wizard.sh --bininstall
-        sudo cscli machines add -a
-    - name: Post-installation check
+        sudo bash -x ./wizard.sh --unattended
+    - name: "Test post-install base"
       run: |
-        sudo cscli hub update
-    - name: Install collection
+          cd scripts/func_tests/
+          ./tests_post-install_0base.sh
+    - name: "Test post-install bouncer"
       run: |
-        sudo cscli hub list -a
-        sudo cscli parsers install crowdsecurity/syslog-logs crowdsecurity/sshd-logs crowdsecurity/dateparse-enrich
-        sudo cscli scenarios install crowdsecurity/ssh-bf
-    - name: Crowdsec start service
+          cd scripts/func_tests/
+          ./tests_post-install_1bouncers.sh
+    - name: "Test post-install bouncer"
       run: |
-        sudo systemctl start crowdsec
-    - name: Generate fake ssh bf logs
+          cd scripts/func_tests/
+          ./tests_post-install_2collections.sh
+    - name: "Test post-install bouncer"
       run: |
-        for i in `seq 1 10` ; do 
-          echo `date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
-        done;
-    - name: Process ssh-bf logs in time-machine
+          cd scripts/func_tests/
+          ./tests_post-install_3machines.sh   
+    - name: "Test post-install ip management"
       run: |
-        sudo crowdsec -file ./ssh-bf.log -type syslog -no-api
-    - name: Cscli ban list check
-      #check that we got the expected ban and that the filters are working properly
+          cd scripts/func_tests/
+          ./tests_post-install_99ip_mgmt.sh
+    - name: "Test cold logs"
       run: |
-        sudo cscli decisions list
-        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
-        sudo cscli decisions list -r 1.1.1.0/24 -o=json --contained | jq -e '.[].decisions[0].value == "1.1.1.172"'
-        sudo cscli decisions list -r 1.1.2.0/24 -o=json | jq -e '. == null'
-        sudo cscli decisions list -i 1.1.1.172 -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
-        sudo cscli decisions list -i 1.1.1.173 -o=json | jq -e '. == null'
-    - name: Cscli ban del check
-      #check that the delete is working and that filters are working properly
-      run: |
-        sudo cscli decisions delete -i 1.1.1.173
-        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
-        sudo cscli decisions delete -i 1.1.1.172
-        sudo cscli decisions list -o=json | jq -e '. == null'
-    - name: Metrics check
-      run: |
-        sudo cscli metrics
-    - name: Service stop & config change
-      #shutdown the service, edit that acquisition.yaml
-      run: |
-        sudo systemctl stop crowdsec
-        echo "" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
-        echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
-        echo "labels:" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
-        echo "  type: syslog" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
-        touch /tmp/test.log
-    - name: Service start & check
-      run: |
-        sudo systemctl start crowdsec || sudo journalctl -xe
-    - name: Trigger events via normal acquisition
-      run: |
-        cat ssh-bf.log >> /tmp/test.log
-        sleep 1
-    - name: Check results
-      run: |
-        sudo cscli decisions list -o=json | jq -e '.[].decisions[0].value == "1.1.1.172"'
-
-
+          cd scripts/func_tests/
+          ./tests_post-install_4cold-logs.sh
