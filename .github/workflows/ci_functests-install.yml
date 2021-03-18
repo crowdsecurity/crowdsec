@@ -3,10 +3,10 @@ name: Functionnal tests
 on:
   push:
     branches:
-      - unified_functest
+      - master
   pull_request:
     branches:
-      - unified_functest
+      - master
 
 jobs:
   build:
