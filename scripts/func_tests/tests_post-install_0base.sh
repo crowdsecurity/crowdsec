@@ -12,7 +12,8 @@ ${CSCLI} version || fail "cannot run cscli version"
 ## alerts
 
 # alerts list at startup should just return one entry : comunity pull
-${CSCLI} alerts list -ojson || fail "expected at least one entry from cscli alerts list"
+sleep 5
+${CSCLI} alerts list -ojson  | ${JQ} '. | length >= 1' || fail "expected at least one entry from cscli alerts list"
 
 
 ## capi

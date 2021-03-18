@@ -10,6 +10,7 @@ CSCLI_BIN="cscli"
 CSCLI="sudo ${CSCLI_BIN}"
 JQ="jq -e"
 
+SYSTEMCTL="sudo systemctl --no-pager"
 
 # helpers
 function fail {
