@@ -192,8 +192,6 @@ func (f *Flags) Parse() {
 
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
-	disableAPI = flags.DisableAPI
-	disableAgent = flags.DisableAgent
 
 	if !disableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
@@ -207,21 +205,21 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		}
 	}
 
-	if !disableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
+	if !flags.DisableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
 		log.Errorf("no API server configuration found, will not start the local API")
-		disableAPI = true
+		flags.DisableAPI = true
 	}
 
-	if !disableAgent && cConfig.Crowdsec == nil {
+	if !flags.DisableAgent && cConfig.Crowdsec == nil {
 		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		disableAgent = true
+		flags.DisableAgent = true
 	}
 
-	if !disableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
+	if !flags.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
 		log.Fatalf("missing local API credentials for crowdsec agent, abort")
 	}
 
-	if disableAPI && disableAgent {
+	if flags.DisableAPI && flags.DisableAgent {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
@@ -257,7 +255,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if disableAPI {
+		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		cConfig.Common.LogMedia = "stdout"
@@ -296,16 +294,6 @@ func main() {
 	}
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	if !flags.DisableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
-		log.Errorf("no API server configuration found, will not start the local API")
-		flags.DisableAPI = true
-	}
-
-	if !flags.DisableAgent && cConfig.Crowdsec == nil {
-		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		flags.DisableAgent = true
-	}
 
 	if !flags.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
 		log.Fatalf("missing local API credentials for crowdsec agent, abort")
