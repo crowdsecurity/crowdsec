@@ -88,13 +88,6 @@ To list/add/delete/validate machines
 `,
 		Example: `cscli machines [action]`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			isUserRoot, err := isRoot()
-			if err != nil {
-				log.Fatalf(err.Error())
-			}
-			if !isUserRoot {
-				log.Fatalf("you must run this command as root or with sudo")
-			}
 			if err := csConfig.LoadDBConfig(); err != nil {
 				log.Fatalf(err.Error())
 			}
