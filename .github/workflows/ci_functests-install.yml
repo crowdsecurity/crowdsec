@@ -56,3 +56,9 @@ jobs:
       run: |
           cd scripts/func_tests/
           ./tests_post-install_4cold-logs.sh
+    - name: "Uninstall"
+      run: sudo ./wizard.sh --uninstall
+    - name: "Test post remove"
+      run: |
+          cd scripts/func_tests/
+          ./tests_post-remove_0base.sh      
