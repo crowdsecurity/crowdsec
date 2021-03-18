@@ -61,4 +61,4 @@ jobs:
     - name: "Test post remove"
       run: |
           cd scripts/func_tests/
-          ./tests_post-remove_0base.sh      
+          bash -x ./tests_post-remove_0base.sh      
