@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 
+source tests_base.sh
+
+
 # Codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -9,9 +12,7 @@ NC='\033[0m'
 OK_STR="${GREEN}OK${NC}"
 FAIL_STR="${RED}FAIL${NC}"
 
-CSCLI_BIN="./cscli"
-CSCLI="${CSCLI_BIN} -c dev.yaml"
-JQ="jq -e"
+
 CROWDSEC_API_URL="http://localhost:8081"
 CROWDSEC_VERSION=""
 API_KEY=""
@@ -19,11 +20,6 @@ API_KEY=""
 RELEASE_FOLDER_FULL=""
 FAILED="false"
 MUST_FAIL="false"
-
-
-get_latest_release() {
-  CROWDSEC_VERSION=$(curl --silent "https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-}
 
 ### Helpers
 function docurl
@@ -51,39 +47,6 @@ function cscli_echo {
     fi
     FAILED="false"
 }
-
-function fail {
-    FAILED="true"
-    MUST_FAIL="true"
-}
-
-## End helpers ##
-
-
-function init
-{
-    if [[ ! -d ${RELEASE_FOLDER} ]];
-    then
-      cd ..
-      get_latest_release
-      BUILD_VERSION=${CROWDSEC_VERSION} make release
-      if [ $? != 0 ]; then
-        echo "Unable to make the release (make sur you have go installed), exiting"
-        exit 1
-      fi
-      RELEASE_FOLDER="crowdsec-${CROWDSEC_VERSION}"
-    fi
-    RELEASE_FOLDER_FULL="$(readlink -f ${RELEASE_FOLDER})"
-    TEST_ENV_FOLDER="${RELEASE_FOLDER_FULL}/tests/"
-    cd ${RELEASE_FOLDER}/
-    if [[ ! -d "${TEST_ENV_FOLDER}" ]];
-    then
-        echo "Installing crowdsec test environment"
-        ./test_env.sh
-    fi
-    reset
-}
-
 
 function test_ipv4_ip
 {
@@ -144,6 +107,7 @@ function test_ipv4_range
     echo "$FUNCNAME"
     echo "##########################################"
     echo ""
+
 
     cscli_echo "adding decision for range 4.4.4.0/24"
     ${CSCLI} decisions add -r 4.4.4.0/24 > /dev/null 2>&1 || fail
@@ -390,34 +354,15 @@ function start_test
 {
 
     ## ipv4 testing
+    ${CSCLI} decisions delete --all
+
     test_ipv4_ip
     test_ipv4_range
 
-    reset
-
     ## ipv6 testing
+    ${CSCLI} decisions delete --all
     test_ipv6_ip
     test_ipv6_range
-}
-
-function reset 
-{
-    cd ${RELEASE_FOLDER_FULL}/tests/
-    killall -w crowdsec > /dev/null 2>&1 || echo ""
-    rm data/crowdsec.db > /dev/null 2>&1 || echo ""
-    ${CSCLI} hub update
-    ${CSCLI} machines add -a
-    API_KEY=`${CSCLI} bouncers add TestingBouncer -o=raw`
-    ./crowdsec -c dev.yaml> crowdsec-out.log 2>&1  &
-    sleep 2
-}
-
-function down
-{
-  cd ${RELEASE_FOLDER_FULL}/tests/
-  rm data/crowdsec.db
-  killall crowdsec
-  #rm -rf tests/
 }
 
 
@@ -453,9 +398,7 @@ do
 done
 
 
-init
 start_test
-down
 
 if [[ "${MUST_FAIL}" == "true" ]];
 then

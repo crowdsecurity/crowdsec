@@ -50,17 +50,6 @@ goversion:
         exit 1; \
     fi
 
-hubci:
-	@rm -rf crowdsec-xxx hub-tests
-	BUILD_VERSION=xxx make release
-	@git clone https://github.com/crowdsecurity/hub-tests.git
-	@cd hub-tests && make
-	@cd crowdsec-xxx && ./test_env.sh
-	@cd crowdsec-xxx/tests && bash ../../scripts/install_all.sh
-	@cp hub-tests/main ./crowdsec-xxx/tests/
-	@cp -R hub-tests/tests ./crowdsec-xxx/tests/
-	@cd ./crowdsec-xxx/tests/ && bash ../../hub-tests/run_tests.sh
-
 clean:
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
@@ -112,12 +101,6 @@ else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
 endif
-
-.PHONY: uninstall
-uninstall:
-	@rm -rf "$(CFG_PREFIX)" || exit
-	@rm -rf "$(DATA_PREFIX)" || exit
-	@rm -rf "$(SYSTEMD_PATH_FILE)" || exit
 
 .PHONY: check_release
 check_release:
