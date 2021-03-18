@@ -15,6 +15,36 @@ func TestLoadCrowdsec(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
+	acquisInDirFullPath, err := filepath.Abs("./tests/acquis/acquis.yaml")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	acquisDirFullPath, err := filepath.Abs("./tests/acquis")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	hubFullPath, err := filepath.Abs("./hub")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	dataFullPath, err := filepath.Abs("./data")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	configDirFullPath, err := filepath.Abs("./tests")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
 	tests := []struct {
 		name           string
 		Input          *Config
@@ -41,9 +71,10 @@ func TestLoadCrowdsec(t *testing.T) {
 			expectedResult: &CrowdsecServiceCfg{
 				AcquisitionDirPath:   "",
 				AcquisitionFilePath:  acquisFullPath,
-				ConfigDir:            "./tests",
-				DataDir:              "./data",
-				HubDir:               "./hub",
+				ConfigDir:            configDirFullPath,
+				DataDir:              dataFullPath,
+				HubDir:               hubFullPath,
+				HubIndexFile:         hubIndexFileFullPath,
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
@@ -69,15 +100,16 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
-				AcquisitionDirPath:   "",
+				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
-				ConfigDir:            "./tests",
-				DataDir:              "./data",
-				HubDir:               "./hub",
+				ConfigDir:            configDirFullPath,
+				HubIndexFile:         hubIndexFileFullPath,
+				DataDir:              dataFullPath,
+				HubDir:               hubFullPath,
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
-				AcquisitionFiles:     []string{acquisFullPath},
+				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
 			},
 		},
 	}

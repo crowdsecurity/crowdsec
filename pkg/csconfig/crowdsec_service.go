@@ -50,6 +50,10 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
 	}
 	if c.Crowdsec.AcquisitionDirPath != "" {
+		c.Crowdsec.AcquisitionDirPath, err = filepath.Abs(c.Crowdsec.AcquisitionDirPath)
+		if err != nil {
+			return errors.Wrapf(err, "can't get absolute path of '%s'", c.Crowdsec.AcquisitionDirPath)
+		}
 		files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 		if err != nil {
