@@ -30,6 +30,7 @@ func (s *SimulationConfig) IsSimulated(scenario string) bool {
 }
 
 func (c *Config) LoadSimulation() error {
+
 	if err := c.LoadConfigurationPaths(); err != nil {
 		return err
 	}
@@ -38,7 +39,6 @@ func (c *Config) LoadSimulation() error {
 	if c.ConfigPaths.SimulationFilePath == "" {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
 	}
-
 	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "while reading '%s'", c.ConfigPaths.SimulationFilePath)

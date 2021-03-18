@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -9,6 +10,17 @@ import (
 )
 
 func TestSimulationLoading(t *testing.T) {
+
+	testXXFullPath, err := filepath.Abs("./tests/xxx.yaml")
+	if err != nil {
+		panic(err)
+	}
+
+	badYamlFullPath, err := filepath.Abs("./tests/config.yaml")
+	if err != nil {
+		panic(err)
+	}
+
 	tests := []struct {
 		name           string
 		Input          *Config
@@ -20,6 +32,7 @@ func TestSimulationLoading(t *testing.T) {
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./tests/simulation.yaml",
+					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
@@ -30,16 +43,18 @@ func TestSimulationLoading(t *testing.T) {
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./tests/xxx.yaml",
+					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: "while reading './tests/xxx.yaml': open ./tests/xxx.yaml: no such file or directory",
+			err: fmt.Sprintf("while reading '%s': open %s: no such file or directory", testXXFullPath, testXXFullPath),
 		},
 		{
 			name: "basic nil config",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "",
+					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
@@ -49,14 +64,16 @@ func TestSimulationLoading(t *testing.T) {
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					SimulationFilePath: "./tests/config.yaml",
+					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: "while unmarshaling simulation file './tests/config.yaml' : yaml: unmarshal errors",
+			err: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
 	}
 
 	for idx, test := range tests {
+		fmt.Printf("TEST '%s'", test.name)
 		err := test.Input.LoadSimulation()
 		if err == nil && test.err != "" {
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
