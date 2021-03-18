@@ -125,11 +125,9 @@ func (c *Config) LoadConfigurationPaths() error {
 
 func (c *Config) LoadCrowdsec() error {
 	var err error
-	// Configuration paths are dependency to load crowdsec configuration
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	if c.Crowdsec == nil {
@@ -202,10 +200,8 @@ func (c *Config) LoadPrometheus() error {
 }
 
 func (c *Config) LoadCSCLI() error {
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	c.Cscli.ConfigDir = c.ConfigPaths.ConfigDir
@@ -271,10 +267,8 @@ func (c *Config) LoadCommon() error {
 }
 
 func (c *Config) LoadSimulation() error {
-	if c.ConfigPaths == nil {
-		if err := c.LoadConfigurationPaths(); err != nil {
-			return err
-		}
+	if err := c.LoadConfigurationPaths(); err != nil {
+		return err
 	}
 
 	simCfg := SimulationConfig{}
