@@ -25,6 +25,7 @@ type Config struct {
 	ConfigPaths  *ConfigurationPaths `yaml:"config_paths,omitempty"`
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
+	Hub          *Hub                `yaml:"-"`
 }
 
 func (c *Config) Dump() error {
@@ -37,11 +38,6 @@ func (c *Config) Dump() error {
 }
 
 func (c *Config) LoadAPIServer() error {
-	apiConfig := &APICfg{}
-
-	c.API = &APICfg{}
-	c.API.Server = apiConfig.Server
-
 	if c.API.Server != nil && !c.DisableAPI {
 		if err := c.LoadCommon(); err != nil {
 			return fmt.Errorf("loading common configuration: %s", err.Error())
@@ -136,55 +132,61 @@ func (c *Config) LoadCrowdsec() error {
 		}
 	}
 
-	if c.Crowdsec != nil {
-		if c.Crowdsec.AcquisitionFilePath != "" {
-			log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
-			if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
-				return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
-			}
-			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
-		}
-		if c.Crowdsec.AcquisitionDirPath != "" {
-			files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
-			c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
-			if err != nil {
-				return errors.Wrap(err, "while globing acquis_dir")
-			}
-		}
-		if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
-			return fmt.Errorf("no acquisition_path nor acquisition_dir")
-		}
-
-		c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
-		c.Crowdsec.DataDir = c.ConfigPaths.DataDir
-		c.Crowdsec.HubDir = c.ConfigPaths.HubDir
-		c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
-		if c.Crowdsec.ParserRoutinesCount <= 0 {
-			c.Crowdsec.ParserRoutinesCount = 1
-		}
-
-		if c.Crowdsec.BucketsRoutinesCount <= 0 {
-			c.Crowdsec.BucketsRoutinesCount = 1
-		}
-
-		if c.Crowdsec.OutputRoutinesCount <= 0 {
-			c.Crowdsec.OutputRoutinesCount = 1
-		}
-
-		var crowdsecCleanup = []*string{
-			&c.Crowdsec.AcquisitionFilePath,
-		}
-		for _, k := range crowdsecCleanup {
-			if *k == "" {
-				continue
-			}
-			*k, err = filepath.Abs(*k)
-			if err != nil {
-				return errors.Wrap(err, "failed to clean path")
-			}
-		}
-	} else {
+	if c.Crowdsec == nil {
 		c.DisableAgent = true
+		return nil
+	}
+	if c.Crowdsec.AcquisitionFilePath != "" {
+		log.Debugf("non-empty acquisition file path %s", c.Crowdsec.AcquisitionFilePath)
+		if _, err := os.Stat(c.Crowdsec.AcquisitionFilePath); err != nil {
+			return errors.Wrapf(err, "while checking acquisition path %s", c.Crowdsec.AcquisitionFilePath)
+		}
+		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, c.Crowdsec.AcquisitionFilePath)
+	}
+	if c.Crowdsec.AcquisitionDirPath != "" {
+		files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
+		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
+		if err != nil {
+			return errors.Wrap(err, "while globing acquis_dir")
+		}
+	}
+	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
+		return fmt.Errorf("no acquisition_path nor acquisition_dir")
+	}
+
+	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
+	c.Crowdsec.DataDir = c.ConfigPaths.DataDir
+	c.Crowdsec.HubDir = c.ConfigPaths.HubDir
+	c.Crowdsec.HubIndexFile = c.ConfigPaths.HubIndexFile
+	if c.Crowdsec.ParserRoutinesCount <= 0 {
+		c.Crowdsec.ParserRoutinesCount = 1
+	}
+
+	if c.Crowdsec.BucketsRoutinesCount <= 0 {
+		c.Crowdsec.BucketsRoutinesCount = 1
+	}
+
+	if c.Crowdsec.OutputRoutinesCount <= 0 {
+		c.Crowdsec.OutputRoutinesCount = 1
+	}
+
+	var crowdsecCleanup = []*string{
+		&c.Crowdsec.AcquisitionFilePath,
+	}
+	for _, k := range crowdsecCleanup {
+		if *k == "" {
+			continue
+		}
+		*k, err = filepath.Abs(*k)
+		if err != nil {
+			return errors.Wrap(err, "failed to clean path")
+		}
+	}
+	if err := c.LoadAPIClient(); err != nil {
+		return fmt.Errorf("loading api client: %s", err.Error())
+	}
+	if err := c.LoadHub(); err != nil {
+		return fmt.Errorf("loading hub: %s", err)
 	}
 	return nil
 }
@@ -214,6 +216,22 @@ func (c *Config) LoadCSCLI() error {
 	return nil
 }
 
+func (c *Config) LoadHub() error {
+	if c.ConfigPaths == nil {
+		if err := c.LoadConfigurationPaths(); err != nil {
+			return err
+		}
+	}
+
+	c.Hub = &Hub{
+		HubIndexFile: c.ConfigPaths.HubIndexFile,
+		ConfigDir:    c.ConfigPaths.ConfigDir,
+		HubDir:       c.ConfigPaths.HubDir,
+		DataDir:      c.ConfigPaths.DataDir,
+	}
+
+	return nil
+}
 func (c *Config) LoadDBConfig() error {
 	if c.DbConfig == nil {
 		return fmt.Errorf("no database configuration provided")
@@ -302,7 +320,6 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, 
 	if err != nil {
 		return nil, err
 	}
-
 	return &cfg, nil
 }
 

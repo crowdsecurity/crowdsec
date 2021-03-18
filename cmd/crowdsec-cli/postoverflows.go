@@ -45,7 +45,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Example: `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -65,7 +68,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Example: `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -90,7 +96,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:    `Fetch and Upgrade given postoverflow(s) from hub`,
 		Example: `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -114,7 +123,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Example: `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -130,7 +142,10 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Example: `cscli postoverflows list
 cscli postoverflows list crowdsecurity/xxx`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

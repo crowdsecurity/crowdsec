@@ -18,6 +18,13 @@ func NewCollectionsCmd() *cobra.Command {
 		/*TBD fix help*/
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if csConfig.Hub == nil {
+				return fmt.Errorf("you must configure cli before interacting with hub")
+			}
+
 			if err := setHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
@@ -38,7 +45,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -58,7 +65,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Example: `cscli collections remove crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -91,7 +98,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Long:    `Fetch and upgrade given collection(s) from hub`,
 		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -115,7 +122,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Example: `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -134,7 +141,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Example: `cscli collections list`,
 		Args:    cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

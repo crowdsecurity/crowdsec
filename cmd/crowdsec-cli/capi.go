@@ -127,7 +127,12 @@ func NewCapiCmd() *cobra.Command {
 			if err != nil {
 				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

@@ -131,7 +131,10 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 		Short:   "Enable the simulation, globally or on specified scenarios",
 		Example: `cscli simulation enable`,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

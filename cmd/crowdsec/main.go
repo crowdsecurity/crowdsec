@@ -112,7 +112,7 @@ func newParsers() *parser.Parsers {
 	return parsers
 }
 
-func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
+func LoadBuckets(cConfig *csconfig.Config) error {
 
 	var (
 		err   error
@@ -140,7 +140,7 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
+func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
@@ -191,16 +191,22 @@ func (f *Flags) Parse() {
 }
 
 // LoadConfig return configuration parsed from configuration file
-func LoadConfig(cConfig *csconfig.GlobalConfig) error {
+func LoadConfig(cConfig *csconfig.Config) error {
 	disableAPI = flags.DisableAPI
 	disableAgent = flags.DisableAgent
-	if flags.ConfigFile != "" {
-		if err := cConfig.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
-			return fmt.Errorf("while loading configuration : %s", err)
+
+	if !disableAgent {
+		if err := cConfig.LoadCrowdsec(); err != nil {
+			return err
 		}
-	} else {
-		log.Warningf("no configuration file provided")
 	}
+
+	if !disableAPI {
+		if err := cConfig.LoadAPIServer(); err != nil {
+			return err
+		}
+	}
+
 	if !disableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
 		log.Errorf("no API server configuration found, will not start the local API")
 		disableAPI = true
@@ -263,13 +269,12 @@ func LoadConfig(cConfig *csconfig.GlobalConfig) error {
 
 func main() {
 	var (
-		cConfig *csconfig.GlobalConfig
+		cConfig *csconfig.Config
 		err     error
 	)
 
 	defer types.CatchPanic("crowdsec/main")
 
-	cConfig = csconfig.NewConfig()
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
@@ -278,6 +283,10 @@ func main() {
 		os.Exit(0)
 	}
 
+	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}

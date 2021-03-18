@@ -27,12 +27,12 @@ var testDataFolder = "."
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
@@ -74,12 +74,12 @@ func TestItemStatus(t *testing.T) {
 func TestGetters(t *testing.T) {
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 
@@ -135,58 +135,58 @@ func TestIndexDownload(t *testing.T) {
 
 	cfg := test_prepenv()
 
-	err := UpdateHubIdx(cfg.Cscli)
+	err := UpdateHubIdx(cfg.Hub)
 	//DownloadHubIdx()
 	if err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index : %s", err)
 	}
 }
 
-func test_prepenv() *csconfig.GlobalConfig {
+func test_prepenv() *csconfig.Config {
 	log.SetLevel(log.DebugLevel)
 
-	var cfg = csconfig.NewConfig()
-	cfg.Cscli = &csconfig.CscliCfg{}
-	cfg.Cscli.ConfigDir, _ = filepath.Abs("./install")
-	cfg.Cscli.HubDir, _ = filepath.Abs("./hubdir")
-	cfg.Cscli.HubIndexFile = filepath.Clean("./hubdir/.index.json")
+	var cfg = &csconfig.Config{}
+	cfg.Hub = &csconfig.Hub{}
+	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
+	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
+	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
 
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
-	if err := os.RemoveAll(cfg.Cscli.ConfigDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Cscli.ConfigDir, err)
+	if err := os.RemoveAll(cfg.Hub.ConfigDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.ConfigDir, err)
 	}
 
-	if err := os.MkdirAll(cfg.Cscli.ConfigDir, 0700); err != nil {
+	if err := os.MkdirAll(cfg.Hub.ConfigDir, 0700); err != nil {
 		log.Fatalf("mkdir : %s", err)
 	}
 
-	if err := os.RemoveAll(cfg.Cscli.HubDir); err != nil {
-		log.Fatalf("failed to remove %s : %s", cfg.Cscli.HubDir, err)
+	if err := os.RemoveAll(cfg.Hub.HubDir); err != nil {
+		log.Fatalf("failed to remove %s : %s", cfg.Hub.HubDir, err)
 	}
-	if err := os.MkdirAll(cfg.Cscli.HubDir, 0700); err != nil {
-		log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.HubDir, err)
+	if err := os.MkdirAll(cfg.Hub.HubDir, 0700); err != nil {
+		log.Fatalf("failed to mkdir %s : %s", cfg.Hub.HubDir, err)
 	}
 
-	if err := UpdateHubIdx(cfg.Cscli); err != nil {
+	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		log.Fatalf("failed to download index : %s", err)
 	}
 
-	// if err := os.RemoveAll(cfg.Cscli.InstallDir); err != nil {
-	// 	log.Fatalf("failed to remove %s : %s", cfg.Cscli.InstallDir, err)
+	// if err := os.RemoveAll(cfg.Hub.InstallDir); err != nil {
+	// 	log.Fatalf("failed to remove %s : %s", cfg.Hub.InstallDir, err)
 	// }
-	// if err := os.MkdirAll(cfg.Cscli.InstallDir, 0700); err != nil {
-	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Cscli.InstallDir, err)
+	// if err := os.MkdirAll(cfg.Hub.InstallDir, 0700); err != nil {
+	// 	log.Fatalf("failed to mkdir %s : %s", cfg.Hub.InstallDir, err)
 	// }
 	return cfg
 
 }
 
-func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	//Install the parser
 	item, err := DownloadLatest(cfg, item, false)
@@ -218,7 +218,7 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 }
 
-func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("pre-taint: %s should not be tainted", item.Name)
 	}
@@ -240,7 +240,7 @@ func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 }
 
-func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	if hubIdx[item.Type][item.Name].UpToDate {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
@@ -262,7 +262,7 @@ func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 }
 
-func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
+func testDisableItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !item.Installed {
 		t.Fatalf("disable: %s should be installed", item.Name)
 	}
@@ -314,20 +314,20 @@ func TestInstallParser(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
 	for _, it := range hubIdx[PARSERS] {
-		testInstallItem(cfg.Cscli, t, it)
+		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
-		testTaintItem(cfg.Cscli, t, it)
+		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		_ = HubStatus(PARSERS, it.Name, false)
-		testUpdateItem(cfg.Cscli, t, it)
+		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		testDisableItem(cfg.Cscli, t, it)
+		testDisableItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 
 		break
@@ -347,18 +347,18 @@ func TestInstallCollection(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Cscli); err != nil {
+	if err := GetHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to load hub index")
 	}
 	//map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
-		testInstallItem(cfg.Cscli, t, it)
+		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testTaintItem(cfg.Cscli, t, it)
+		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testUpdateItem(cfg.Cscli, t, it)
+		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
-		testDisableItem(cfg.Cscli, t, it)
+		testDisableItem(cfg.Hub, t, it)
 
 		it = hubIdx[COLLECTIONS][it.Name]
 		x := HubStatus(COLLECTIONS, it.Name, false)

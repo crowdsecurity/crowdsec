@@ -31,8 +31,8 @@ var MachineTest = models.WatcherAuthRequest{
 
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
 
-func LoadTestConfig() csconfig.GlobalConfig {
-	config := csconfig.GlobalConfig{}
+func LoadTestConfig() csconfig.Config {
+	config := csconfig.Config{}
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
@@ -57,8 +57,8 @@ func LoadTestConfig() csconfig.GlobalConfig {
 	return config
 }
 
-func LoadTestConfigForwardedFor() csconfig.GlobalConfig {
-	config := csconfig.GlobalConfig{}
+func LoadTestConfigForwardedFor() csconfig.Config {
+	config := csconfig.Config{}
 	maxAge := "1h"
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
