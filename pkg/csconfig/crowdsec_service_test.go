@@ -112,6 +112,62 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
 			},
 		},
+		{
+			name: "no acquisition file and dir",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					ConfigDir: "./tests",
+					DataDir:   "./data",
+					HubDir:    "./hub",
+				},
+				API: &APICfg{
+					Client: &LocalApiClientCfg{
+						CredentialsFilePath: "./tests/lapi-secrets.yaml",
+					},
+				},
+				Crowdsec: &CrowdsecServiceCfg{},
+			},
+			expectedResult: &CrowdsecServiceCfg{
+				BucketsRoutinesCount: 0,
+				ParserRoutinesCount:  0,
+				OutputRoutinesCount:  0,
+			},
+		},
+		{
+			name: "non existing acquisition file",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					ConfigDir: "./tests",
+					DataDir:   "./data",
+					HubDir:    "./hub",
+				},
+				API: &APICfg{
+					Client: &LocalApiClientCfg{
+						CredentialsFilePath: "./tests/lapi-secrets.yaml",
+					},
+				},
+				Crowdsec: &CrowdsecServiceCfg{
+					AcquisitionFilePath: "./tests/acquis_not_exist.yaml",
+				},
+			},
+			expectedResult: &CrowdsecServiceCfg{
+				AcquisitionFilePath:  "./tests/acquis_not_exist.yaml",
+				BucketsRoutinesCount: 0,
+				ParserRoutinesCount:  0,
+				OutputRoutinesCount:  0,
+			},
+		},
+		{
+			name: "agent disabled",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					ConfigDir: "./tests",
+					DataDir:   "./data",
+					HubDir:    "./hub",
+				},
+			},
+			expectedResult: nil,
+		},
 	}
 
 	for idx, test := range tests {

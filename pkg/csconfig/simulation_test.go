@@ -84,12 +84,9 @@ func TestSimulationLoading(t *testing.T) {
 					fmt.Sprintf("%s", err))
 			}
 		}
-
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Crowdsec.SimulationConfig)
 		if !isOk {
 			t.Fatalf("test '%s' failed", test.name)
 		}
-
 	}
-
 }
