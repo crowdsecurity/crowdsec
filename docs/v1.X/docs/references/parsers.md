@@ -243,7 +243,7 @@ onsuccess: next_stage|continue
 
 _default: continue_
 
-if set to `next_stage` and the node is considered successful, the {{v1X.event.name}} will be moved directly to next stage without processing other nodes in the current stage.
+if set to `next_stage` and the node is considered successful, the {{v1X.event.name}} will be moved directly to the next stage without processing other nodes in the current stage. _note: if it's a parser tree, and a "leaf" node succeeds, it is the parent's "onsuccess" that is evaluated._
 
 ### `pattern_syntax`
 
