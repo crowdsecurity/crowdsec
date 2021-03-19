@@ -1,0 +1,20 @@
+name: Dispatch to deb pkg repo for tests
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  dispatch:
+    name: dispatch to deb pkg repo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v1
+        with:
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          event-type: test_package_from_master
+          repository: crowdsecurity/packaging
+          client-payload: '{"branch": "master"}'
