@@ -35,6 +35,7 @@ func TestSimulationLoading(t *testing.T) {
 					DataDir:            "./data",
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
+				Cscli:    &CscliCfg{},
 			},
 			expectedResult: &SimulationConfig{Simulation: new(bool)},
 		},
@@ -70,6 +71,17 @@ func TestSimulationLoading(t *testing.T) {
 			},
 			err: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
 		},
+		{
+			name: "basic bad file content",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					SimulationFilePath: "./tests/config.yaml",
+					DataDir:            "./data",
+				},
+				Crowdsec: &CrowdsecServiceCfg{},
+			},
+			err: fmt.Sprintf("while unmarshaling simulation file '%s' : yaml: unmarshal errors", badYamlFullPath),
+		},
 	}
 
 	for idx, test := range tests {
@@ -89,4 +101,53 @@ func TestSimulationLoading(t *testing.T) {
 			t.Fatalf("test '%s' failed", test.name)
 		}
 	}
+}
+
+func TestIsSimulated(t *testing.T) {
+	simCfgOff := &SimulationConfig{
+		Simulation: new(bool),
+		Exclusions: []string{"test"},
+	}
+
+	simCfgOn := &SimulationConfig{
+		Simulation: new(bool),
+		Exclusions: []string{"test"},
+	}
+	*simCfgOn.Simulation = true
+
+	tests := []struct {
+		name             string
+		SimulationConfig *SimulationConfig
+		Input            string
+		expectedResult   bool
+		err              string
+	}{
+		{
+			name:             "No simulation except (in exclusion)",
+			SimulationConfig: simCfgOff,
+			Input:            "test",
+			expectedResult:   true,
+		},
+		{
+			name:             "All simulation (not in exclusion)",
+			SimulationConfig: simCfgOn,
+			Input:            "toto",
+			expectedResult:   true,
+		},
+		{
+			name:             "All simulation (in exclusion)",
+			SimulationConfig: simCfgOn,
+			Input:            "test",
+			expectedResult:   false,
+		},
+	}
+	for _, test := range tests {
+		IsSimulated := test.SimulationConfig.IsSimulated(test.Input)
+		isOk := assert.Equal(t, test.expectedResult, IsSimulated)
+		if !isOk {
+			fmt.Printf("TEST: '%v' failed", test.name)
+			t.Fatal()
+		}
+	}
+
 }
