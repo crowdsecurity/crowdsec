@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Install generated release and perform upgrade tests
+    name: Install generated release and perform functional tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.13
