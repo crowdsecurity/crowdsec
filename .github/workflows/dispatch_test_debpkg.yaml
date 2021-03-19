@@ -2,7 +2,7 @@ name: Dispatch to deb pkg repo for tests
 
 on:
   push:
-    branches: [ master, dispatch_deb_tests]
+    branches: [ master ]
 
 jobs:
   dispatch:
