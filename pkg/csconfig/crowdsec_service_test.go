@@ -52,7 +52,7 @@ func TestLoadCrowdsec(t *testing.T) {
 		err            string
 	}{
 		{
-			name: "basic valid simulation",
+			name: "basic valid configuration",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					ConfigDir: "./tests",
@@ -82,7 +82,7 @@ func TestLoadCrowdsec(t *testing.T) {
 			},
 		},
 		{
-			name: "basic valid simulation with acquisition dir",
+			name: "basic valid configuration with acquisition dir",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
 					ConfigDir: "./tests",
