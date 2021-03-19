@@ -32,7 +32,7 @@ func (c *Config) LoadDBConfig() error {
 		c.Cscli.DbConfig = c.DbConfig
 	}
 
-	if c.API.Server != nil {
+	if c.API != nil && c.API.Server != nil {
 		c.API.Server.DbConfig = c.DbConfig
 	}
 

@@ -54,6 +54,17 @@ func TestLoadHub(t *testing.T) {
 			},
 		},
 		{
+			name: "no data dir",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					ConfigDir:    "./tests",
+					HubDir:       "./hub",
+					HubIndexFile: "./hub/.index.json",
+				},
+			},
+			expectedResult: nil,
+		},
+		{
 			name:           "no configuration path",
 			Input:          &Config{},
 			expectedResult: nil,
