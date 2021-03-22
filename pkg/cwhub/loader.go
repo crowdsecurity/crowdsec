@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
 
 	//"log"
 
@@ -101,7 +102,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	//non symlinks are local user files or hub files
 	if f.Mode()&os.ModeSymlink == 0 {
 		local = true
-		skippedLocal++
 		log.Tracef("%s isn't a symlink", path)
 	} else {
 		hubpath, err = os.Readlink(path)
@@ -243,6 +243,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 }
 
 func CollecDepsCheck(v *Item) error {
+
+	if GetVersionStatus(v) != 0 { //not up-to-date
+		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
+		return nil
+	}
+
 	/*if it's a collection, ensure all the items are installed, or tag it as tainted*/
 	if v.Type == COLLECTIONS {
 		log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
@@ -294,10 +300,11 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
+func SyncDir(cscli *csconfig.CscliCfg, dir string) (error, []string) {
 	hubdir = cscli.HubDir
 	installdir = cscli.ConfigDir
 	indexpath = cscli.HubIndexFile
+	warnings := []string{}
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
@@ -307,33 +314,44 @@ func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
 		}
 		err = filepath.Walk(cpath, parser_visit)
 		if err != nil {
-			return err
+			return err, warnings
 		}
 
 	}
 
 	for k, v := range hubIdx[COLLECTIONS] {
-		if err := CollecDepsCheck(&v); err != nil {
-			log.Infof("dependency issue %s : %s", v.Name, err)
+		if v.Installed {
+			versStat := GetVersionStatus(&v)
+			if versStat == 0 { //latest
+				if err := CollecDepsCheck(&v); err != nil {
+					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
+					hubIdx[COLLECTIONS][k] = v
+				}
+			} else if versStat == 1 { //not up-to-date
+				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+			} else { //version is higher than the highest available from hub?
+				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+			}
+			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
 		}
-		hubIdx[COLLECTIONS][k] = v
 	}
-	return nil
+	return nil, warnings
 }
 
 /* Updates the infos from HubInit() with the local state */
-func LocalSync(cscli *csconfig.CscliCfg) error {
+func LocalSync(cscli *csconfig.CscliCfg) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
-		log.Debugf("scanning %s", dir)
-		if err := SyncDir(cscli, dir); err != nil {
-			return fmt.Errorf("failed to scan %s : %s", dir, err)
-		}
+	err, warnings := SyncDir(cscli, cscli.ConfigDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s : %s", cscli.ConfigDir, err), warnings
 	}
-
-	return nil
+	err, _ = SyncDir(cscli, cscli.HubDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s : %s", cscli.HubDir, err), warnings
+	}
+	return nil, warnings
 }
 
 func GetHubIdx(cscli *csconfig.CscliCfg) error {
@@ -353,7 +371,8 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 		return err
 	}
 	hubIdx = ret
-	if err := LocalSync(cscli); err != nil {
+	err, _ = LocalSync(cscli)
+	if err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil
