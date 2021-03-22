@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 	"runtime"
-	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -23,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"golang.org/x/sys/unix"
 )
 
 var machineID string
@@ -71,7 +71,7 @@ func generateID() (string, error) {
 		var bID []byte
 		switch runtime.GOOS {
 		case "openbsd":
-			id, err = syscall.Sysctl("hw.uuid")
+			id, err = unix.Sysctl("hw.uuid")
 		default:
 			bID, err = ioutil.ReadFile(uuid)
 			id = string(bID)
