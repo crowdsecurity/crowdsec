@@ -9,6 +9,8 @@ import (
 	"os"
 	"strings"
 	"time"
+	"runtime"
+	"syscall"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -65,11 +67,18 @@ func generateID() (string, error) {
 		log.Debugf("failed to get machine-id with usual files : %s", err)
 	}
 	if id == "" || err != nil {
-		bID, err := ioutil.ReadFile(uuid)
+		var err error
+		var bID []byte
+		switch runtime.GOOS {
+		case "openbsd":
+			id, err = syscall.Sysctl("hw.uuid")
+		default:
+			bID, err = ioutil.ReadFile(uuid)
+			id = string(bID)
+		}
 		if err != nil {
 			return "", errors.Wrap(err, "generating machine id")
 		}
-		id = string(bID)
 	}
 	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))
