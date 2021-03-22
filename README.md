@@ -72,7 +72,7 @@ Ensure you have dependencies :
   <summary>for Debian based distributions</summary>
 
 ```bash
-apt-get install bash gettext whiptail curl wget
+apt-get install bash gettext whiptail wget
 ```
 </details>
 
@@ -80,14 +80,14 @@ apt-get install bash gettext whiptail curl wget
   <summary>for RedHat based distributions</summary>
 
 ```bash
-yum install bash gettext newt curl wget
+yum install bash gettext newt wget
  ```
 </details>
 
 Then :
 
 ```bash
-curl -s https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest | grep browser_download_url| cut -d '"' -f 4  | wget -i -
+wget https://github.com/crowdsecurity/crowdsec/releases/latest/download/crowdsec-release.tgz
 tar xvzf crowdsec-release.tgz
 cd crowdsec-v*
 sudo ./wizard.sh -i
