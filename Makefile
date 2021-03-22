@@ -1,3 +1,12 @@
+ROOT= $(shell git rev-parse --show-toplevel)
+SYSTEM = $(shell uname -s | tr '[A-Z]' '[a-z]')
+
+ifneq ("$(wildcard $(ROOT)/platform/$(SYSTEM).mk)", "")
+	include $(ROOT)/platform/$(SYSTEM).mk
+else
+	include $(ROOT)/platform/linux.mk
+endif
+
 PREFIX?="/tmp/crowdsec/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
@@ -9,10 +18,8 @@ CSCLI_FOLDER = "./cmd/crowdsec-cli/"
 CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
-MAKE = "make"
 
 GOARCH=amd64
-GOOS=linux
 
 #Golang version info
 GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
