@@ -85,7 +85,7 @@ func TestSimulationLoading(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-		fmt.Printf("TEST '%s'", test.name)
+		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadSimulation()
 		if err == nil && test.err != "" {
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
@@ -98,7 +98,7 @@ func TestSimulationLoading(t *testing.T) {
 		}
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Crowdsec.SimulationConfig)
 		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
+			t.Fatalf("test '%s' failed\n", test.name)
 		}
 	}
 }

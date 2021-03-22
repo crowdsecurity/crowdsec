@@ -61,6 +61,7 @@ func TestLoadCSCLI(t *testing.T) {
 	}
 
 	for idx, test := range tests {
+		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadCSCLI()
 		if err == nil && test.err != "" {
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
@@ -74,7 +75,7 @@ func TestLoadCSCLI(t *testing.T) {
 
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Cscli)
 		if !isOk {
-			fmt.Printf("TEST: '%v' failed", test.name)
+			fmt.Printf("TEST: '%v' failed\n", test.name)
 			t.Fatal()
 		}
 	}

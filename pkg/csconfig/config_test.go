@@ -46,6 +46,7 @@ func TestNewCrowdSecConfig(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		fmt.Printf("TEST '%s'\n", test.name)
 		result := &Config{}
 		isOk := assert.Equal(t, test.expectedResult, result)
 		if !isOk {

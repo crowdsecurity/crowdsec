@@ -75,6 +75,7 @@ func TestLoadCommon(t *testing.T) {
 	}
 
 	for idx, test := range tests {
+		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadCommon()
 		if err == nil && test.err != "" {
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))

@@ -40,6 +40,7 @@ func TestLoadDBConfig(t *testing.T) {
 	}
 
 	for idx, test := range tests {
+		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadDBConfig()
 		if err == nil && test.err != "" {
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
@@ -53,7 +54,7 @@ func TestLoadDBConfig(t *testing.T) {
 
 		isOk := assert.Equal(t, test.expectedResult, test.Input.DbConfig)
 		if !isOk {
-			fmt.Printf("TEST: '%v' failed", test.name)
+			fmt.Printf("TEST: '%v' failed\n", test.name)
 			t.Fatal()
 		}
 	}
