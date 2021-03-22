@@ -22,15 +22,8 @@ Crowdsec distributes their own pragmatic debian packages that closely follow the
 
 ## setup the repository
 
-<details>
-  <summary>pre-requisites to add custom repositories on debian</summary>
 ```bash
-sudo apt install software-properties-common
-```
-</details>
-
-```bash
-wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && sudo apt-add-repository "https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main"
+wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && echo "deb https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/crowdsec.list > /dev/null
 sudo apt-get update
 ```
 
