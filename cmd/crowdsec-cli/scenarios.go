@@ -98,6 +98,9 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			if all {
 				UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target scenario to upgrade")
+				}
 				for _, name := range args {
 					UpgradeConfig(cwhub.SCENARIOS, name, forceAction)
 				}
