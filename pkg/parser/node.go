@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
+	"github.com/logrusorgru/grokky"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/antonmedv/expr/vm"
@@ -407,6 +408,10 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	for _, pattern := range n.SubGroks {
 		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
 		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
+			if err == grokky.ErrAlreadyExist {
+				n.Logger.Debugf("grok '%s' already registred", pattern.Key)
+				continue
+			}
 			n.Logger.Errorf("Unable to compile subpattern %s : %v", pattern.Key, err)
 			return err
 		}
