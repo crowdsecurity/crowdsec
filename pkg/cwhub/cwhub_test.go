@@ -193,7 +193,7 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].UpToDate {
@@ -210,7 +210,7 @@ func testInstallItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	if err != nil {
 		t.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Installed {
@@ -232,7 +232,7 @@ func testTaintItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 	}
 	f.Close()
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Tainted {
@@ -251,7 +251,7 @@ func testUpdateItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
+	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].UpToDate {
@@ -272,8 +272,8 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("failed to disable item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
-		t.Fatalf("failed to run localSync : %s", err)
+	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
+		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("disable: %s should not be tainted anymore", item.Name)
@@ -290,8 +290,8 @@ func testDisableItem(cfg *csconfig.CscliCfg, t *testing.T, item Item) {
 		t.Fatalf("failed to purge item : %v", err)
 	}
 	//Local sync and check status
-	if err := LocalSync(cfg); err != nil {
-		t.Fatalf("failed to run localSync : %s", err)
+	if err, warns := LocalSync(cfg); err != nil || len(warns) > 0 {
+		t.Fatalf("failed to run localSync : %s (%+v)", err, warns)
 	}
 	if hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("disable: %s should not be installed anymore", item.Name)
