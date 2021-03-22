@@ -409,7 +409,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		n.Logger.Tracef("Adding subpattern '%s' : '%s'", pattern.Key, pattern.Value)
 		if err := pctx.Grok.Add(pattern.Key.(string), pattern.Value.(string)); err != nil {
 			if err == grokky.ErrAlreadyExist {
-				n.Logger.Debugf("grok '%s' already registred", pattern.Key)
+				n.Logger.Warningf("grok '%s' already registred", pattern.Key)
 				continue
 			}
 			n.Logger.Errorf("Unable to compile subpattern %s : %v", pattern.Key, err)
