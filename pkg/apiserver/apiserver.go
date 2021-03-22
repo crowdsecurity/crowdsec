@@ -52,7 +52,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 
 	logFile := ""
-	if config.LogDir != "" && config.LogMedia == "file" {
+	if config.LogMedia == "file" {
 		logFile = fmt.Sprintf("%s/crowdsec_api.log", config.LogDir)
 	}
 
@@ -86,7 +86,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if err != nil {
 			return &APIServer{}, errors.Wrapf(err, "creating api access log file: %s", logFile)
 		}
-		gin.DefaultWriter = io.MultiWriter(file, os.Stdout)
+		gin.DefaultWriter = io.MultiWriter(file)
 	}
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
