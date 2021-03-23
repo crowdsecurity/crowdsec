@@ -104,18 +104,8 @@ func (c *Config) LoadAPIServer() error {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
-			c.API.Server.OnlineClient.Credentials = new(ApiCredentialsCfg)
-			fcontent, err := ioutil.ReadFile(c.API.Server.OnlineClient.CredentialsFilePath)
-			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
-			}
-			err = yaml.UnmarshalStrict(fcontent, c.API.Server.OnlineClient.Credentials)
-			if err != nil {
-				return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", c.API.Server.OnlineClient.CredentialsFilePath))
-			}
-			if c.API.Server.OnlineClient.Credentials.Login == "" || c.API.Server.OnlineClient.Credentials.Password == "" || c.API.Server.OnlineClient.Credentials.URL == "" {
-				log.Debugf("can't load CAPI credentials from '%s' (missing field)", c.API.Server.OnlineClient.CredentialsFilePath)
-				c.API.Server.OnlineClient.Credentials = nil
+			if err := c.API.Server.OnlineClient.Load(); err != nil {
+				return errors.Wrap(err, "loading online client credentials")
 			}
 		}
 		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {

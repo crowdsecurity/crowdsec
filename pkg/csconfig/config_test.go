@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDefaultConfig(t *testing.T) {
-	x := NewDefaultConfig()
-	x.Dump()
-}
-
 func TestNormalLoad(t *testing.T) {
 
 	_, err := NewConfig("./tests/config.yaml", false, false)
@@ -54,4 +49,9 @@ func TestNewCrowdSecConfig(t *testing.T) {
 		}
 	}
 
+}
+
+func TestDefaultConfig(t *testing.T) {
+	x := NewDefaultConfig()
+	x.Dump()
 }
