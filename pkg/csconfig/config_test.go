@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -46,13 +45,13 @@ func TestNewCrowdSecConfig(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		fmt.Printf("TEST '%s'\n", test.name)
 		result := &Config{}
 		isOk := assert.Equal(t, test.expectedResult, result)
 		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
+			t.Fatalf("TEST '%s': NOK", test.name)
+		} else {
+			fmt.Printf("TEST '%s': OK\n", test.name)
 		}
-		log.Infof("test '%s' : OK", test.name)
 	}
 
 }

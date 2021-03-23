@@ -72,22 +72,23 @@ func TestLoadHub(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadHub()
 		if err == nil && test.err != "" {
+			fmt.Printf("TEST '%s': NOK\n", test.name)
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
 		} else if test.err != "" {
 			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
 					test.err,
 					fmt.Sprintf("%s", err))
 			}
 		}
-
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Hub)
 		if !isOk {
-			t.Fatalf("test '%s' failed", test.name)
+			t.Fatalf("TEST '%s': NOK", test.name)
+		} else {
+			fmt.Printf("TEST '%s': OK\n", test.name)
 		}
-
 	}
 }

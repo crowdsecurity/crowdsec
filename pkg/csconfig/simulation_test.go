@@ -85,12 +85,13 @@ func TestSimulationLoading(t *testing.T) {
 	}
 
 	for idx, test := range tests {
-		fmt.Printf("TEST '%s'\n", test.name)
 		err := test.Input.LoadSimulation()
 		if err == nil && test.err != "" {
+			fmt.Printf("TEST '%s': NOK\n", test.name)
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
 		} else if test.err != "" {
 			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
+				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
 					test.err,
 					fmt.Sprintf("%s", err))
@@ -98,7 +99,9 @@ func TestSimulationLoading(t *testing.T) {
 		}
 		isOk := assert.Equal(t, test.expectedResult, test.Input.Crowdsec.SimulationConfig)
 		if !isOk {
-			t.Fatalf("test '%s' failed\n", test.name)
+			t.Fatalf("TEST '%s': NOK\n", test.name)
+		} else {
+			fmt.Printf("TEST '%s': OK\n", test.name)
 		}
 	}
 }
