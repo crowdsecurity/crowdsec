@@ -26,6 +26,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 * [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
 * [cscli capi](cscli_capi.md)	 - Manage interaction with Central API (CAPI)
 * [cscli collections](cscli_collections.md)	 - Manage collections from hub
+* [cscli completion](cscli_completion.md)	 - Generate completion script
 * [cscli config](cscli_config.md)	 - Allows to view current config
 * [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
 * [cscli decisions](cscli_decisions.md)	 - Manage decisions
@@ -37,5 +38,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 * [cscli postoverflows](cscli_postoverflows.md)	 - Install/Remove/Upgrade/Inspect postoverflow(s) from hub
 * [cscli scenarios](cscli_scenarios.md)	 - Install/Remove/Upgrade/Inspect scenario(s) from hub
 * [cscli simulation](cscli_simulation.md)	 - Manage simulation status of scenarios
+* [cscli version](cscli_version.md)	 - Display version and exit.
 
 

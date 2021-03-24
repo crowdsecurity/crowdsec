@@ -27,6 +27,7 @@ cscli alerts list --type ban
       --type string       restrict to alerts with given decision type (ie. ban, captcha)
       --scope string      restrict to alerts of this scope (ie. ip,range)
   -v, --value string      the value to match for in the specified scope
+      --contained         query decisions contained by range
   -m, --machine           print machines that sended alerts
   -l, --limit int         limit size of alerts list table (0 to view all alerts) (default 50)
   -h, --help              help for list

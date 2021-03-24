@@ -24,6 +24,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"
   -i, --ip string         Source ip (shorthand for --scope ip --value <IP>)
   -r, --range string      Range source ip (shorthand for --scope range --value <RANGE>)
   -a, --all               delete all alerts
+      --contained         query decisions contained by range
   -h, --help              help for delete
 ```
 
