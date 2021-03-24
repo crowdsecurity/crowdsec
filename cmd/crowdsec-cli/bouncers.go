@@ -22,7 +22,7 @@ func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
-		Short: "Manage bouncers (need root permissions)",
+		Short: "Manage bouncers",
 		Long: `
 Bouncers Management.
 

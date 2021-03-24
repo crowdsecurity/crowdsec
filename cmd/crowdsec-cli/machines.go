@@ -80,7 +80,7 @@ func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdMachines = &cobra.Command{
 		Use:   "machines [action]",
-		Short: "Manage local API machines (need root permissions)",
+		Short: "Manage local API machines",
 		Long: `
 Machines Management.
 

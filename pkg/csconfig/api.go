@@ -39,14 +39,14 @@ func (o *OnlineApiClientCfg) Load() error {
 	o.Credentials = new(ApiCredentialsCfg)
 	fcontent, err := ioutil.ReadFile(o.CredentialsFilePath)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to read api server credentials configuration file '%s'", o.CredentialsFilePath))
+		return errors.Wrapf(err, "failed to read api server credentials configuration file '%s'", o.CredentialsFilePath)
 	}
 	err = yaml.UnmarshalStrict(fcontent, o.Credentials)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api server credentials configuration file '%s'", o.CredentialsFilePath))
+		return errors.Wrapf(err, "failed unmarshaling api server credentials configuration file '%s'", o.CredentialsFilePath)
 	}
 	if o.Credentials.Login == "" || o.Credentials.Password == "" || o.Credentials.URL == "" {
-		log.Debugf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
+		log.Warningf("can't load CAPI credentials from '%s' (missing field)", o.CredentialsFilePath)
 		o.Credentials = nil
 	}
 	return nil
@@ -55,11 +55,11 @@ func (o *OnlineApiClientCfg) Load() error {
 func (l *LocalApiClientCfg) Load() error {
 	fcontent, err := ioutil.ReadFile(l.CredentialsFilePath)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed to read api client credential configuration file '%s'", l.CredentialsFilePath))
+		return errors.Wrapf(err, "failed to read api client credential configuration file '%s'", l.CredentialsFilePath)
 	}
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {
-		return errors.Wrap(err, fmt.Sprintf("failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath))
+		return errors.Wrapf(err, "failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath)
 	}
 	if l.Credentials != nil && l.Credentials.URL != "" {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
@@ -115,6 +115,7 @@ func (c *Config) LoadAPIServer() error {
 			return err
 		}
 	} else {
+		log.Warningf("crowdsec local API is disabled")
 		c.DisableAPI = true
 	}
 

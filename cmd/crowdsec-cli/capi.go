@@ -25,7 +25,7 @@ var CAPIBaseURL string = "https://api.crowdsec.net/"
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
 		Use:   "capi [action]",
-		Short: "Manage interaction with Central API (CAPI) (need root permissions)",
+		Short: "Manage interaction with Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil {

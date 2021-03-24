@@ -25,7 +25,7 @@ var lapiUser string
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
 		Use:   "lapi [action]",
-		Short: "Manage interaction with Local API (LAPI) (need root permissions)",
+		Short: "Manage interaction with Local API (LAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {

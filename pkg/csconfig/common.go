@@ -35,7 +35,7 @@ func (c *Config) LoadCommon() error {
 		}
 		*k, err = filepath.Abs(*k)
 		if err != nil {
-			return errors.Wrap(err, "failed to clean path")
+			return errors.Wrapf(err, "failed to get absolute path of '%s'", *k)
 		}
 	}
 

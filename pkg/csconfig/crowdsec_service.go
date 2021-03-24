@@ -39,6 +39,7 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	if c.Crowdsec == nil {
+		log.Warningf("crowdsec agent is disabled")
 		c.DisableAgent = true
 		return nil
 	}
@@ -89,13 +90,13 @@ func (c *Config) LoadCrowdsec() error {
 		}
 		*k, err = filepath.Abs(*k)
 		if err != nil {
-			return errors.Wrap(err, "failed to clean path")
+			return errors.Wrapf(err, "failed to get absolute path of '%s'", *k)
 		}
 	}
 	for i, file := range c.Crowdsec.AcquisitionFiles {
 		f, err := filepath.Abs(file)
 		if err != nil {
-			return errors.Wrap(err, "failed to clean path")
+			return errors.Wrapf(err, "failed to get absolute path of '%s'", file)
 		}
 		c.Crowdsec.AcquisitionFiles[i] = f
 	}
