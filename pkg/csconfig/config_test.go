@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 
@@ -53,5 +54,7 @@ func TestNewCrowdSecConfig(t *testing.T) {
 
 func TestDefaultConfig(t *testing.T) {
 	x := NewDefaultConfig()
-	x.Dump()
+	if err := x.Dump(); err != nil {
+		log.Fatal(err)
+	}
 }
