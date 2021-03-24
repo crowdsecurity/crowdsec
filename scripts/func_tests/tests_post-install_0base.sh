@@ -75,13 +75,13 @@ pidof crowdsec && fail "crowdsec agent should not run without lapi (in configura
 ## capi
 ${CSCLI} -c ./config/config_no_lapi.yaml capi status && fail "capi status shouldn't be ok"
 ## config
-${CSCLI} -c ./config/config_no_lapi.yaml config show || fail "failed to show config"
+${CSCLI_BIN} -c ./config/config_no_lapi.yaml config show || fail "failed to show config"
 ${CSCLI} -c ./config/config_no_lapi.yaml config backup ./test || fail "failed to backup config"
 sudo rm -rf ./test
 ## lapi
 ${CSCLI} -c ./config/config_no_lapi.yaml lapi status && fail "lapi status should not be ok" ## if lapi status success, it means that the test fail
 ## metrics
-${CSCLI} -c ./config/config_no_lapi.yaml metrics
+${CSCLI_BIN} -c ./config/config_no_lapi.yaml metrics
 
 ${SYSTEMCTL} stop crowdsec
 sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
@@ -110,13 +110,13 @@ pidof crowdsec || fail "crowdsec LAPI should run without agent (in configuration
 ## capi
 ${CSCLI} -c ./config/config_no_agent.yaml capi status || fail "capi status should be ok"
 ## config
-${CSCLI} -c ./config/config_no_agent.yaml config show || fail "failed to show config"
+${CSCLI_BIN} -c ./config/config_no_agent.yaml config show || fail "failed to show config"
 ${CSCLI} -c ./config/config_no_agent.yaml config backup ./test || fail "failed to backup config"
 sudo rm -rf ./test
 ## lapi
 ${CSCLI} -c ./config/config_no_agent.yaml lapi status || fail "lapi status failed"
 ## metrics
-${CSCLI} -c ./config/config_no_agent.yaml metrics || fail "failed to get metrics"
+${CSCLI_BIN} -c ./config/config_no_agent.yaml metrics || fail "failed to get metrics"
 
 ${SYSTEMCTL} stop crowdsec
 sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
@@ -134,13 +134,13 @@ pidof crowdsec || fail "crowdsec LAPI should run without CAPI (in configuration 
 ## capi
 ${CSCLI} -c ./config/config_no_capi.yaml capi status && fail "capi status should not be ok" ## if capi status success, it means that the test fail
 ## config
-${CSCLI} -c ./config/config_no_capi.yaml config show || fail "failed to show config"
+${CSCLI_BIN} -c ./config/config_no_capi.yaml config show || fail "failed to show config"
 ${CSCLI} -c ./config/config_no_capi.yaml config backup ./test || fail "failed to backup config"
 sudo rm -rf ./test
 ## lapi
 ${CSCLI} -c ./config/config_no_capi.yaml lapi status || fail "lapi status failed"
 ## metrics
-${CSCLI} -c ./config/config_no_capi.yaml metrics || fail "failed to get metrics"
+${CSCLI_BIN} -c ./config/config_no_capi.yaml metrics || fail "failed to get metrics"
 
 sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
 ${SYSTEMCTL} restart crowdsec
