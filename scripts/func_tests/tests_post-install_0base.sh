@@ -48,7 +48,6 @@ ${CSCLI} lapi status || fail "lapi status failed"
 ${CSCLI} metrics || fail "failed to get metrics"
 
 ${SYSTEMCTL} stop crowdsec || fail "crowdsec should be down"
-sleep 1
 
 #######################
 ## TEST WITHOUT LAPI ##
@@ -59,6 +58,7 @@ echo "CROWDSEC (AGENT)"
 sudo cp ./systemd/crowdsec_no_lapi.service /etc/systemd/system/crowdsec.service
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec
+sleep 1
 pidof crowdsec && fail "crowdsec shouldn't run without LAPI (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
@@ -67,7 +67,8 @@ ${SYSTEMCTL} daemon-reload
 
 # test with no api server in configuration file
 sudo cp ./config/config_no_lapi.yaml /etc/crowdsec/config.yaml
-${SYSTEMCTL} start crowdsec 
+${SYSTEMCTL} start crowdsec
+sleep 1
 pidof crowdsec && fail "crowdsec agent should not run without lapi (in configuration file)"
 
 ##### cscli test ####
