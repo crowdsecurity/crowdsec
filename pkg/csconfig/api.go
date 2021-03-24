@@ -65,6 +65,8 @@ func (l *LocalApiClientCfg) Load() error {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL = l.Credentials.URL + "/"
 		}
+	} else {
+		log.Warningf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
 	if l.InsecureSkipVerify == nil {
 		apiclient.InsecureSkipVerify = false
