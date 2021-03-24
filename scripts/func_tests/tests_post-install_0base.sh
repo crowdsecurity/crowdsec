@@ -57,7 +57,8 @@ echo "CROWDSEC (AGENT)"
 
 # test with -no-api flag
 sudo cp ./systemd/crowdsec_no_lapi.service /etc/systemd/system/crowdsec.service
-
+pidof crowdsec
+cat /etc/systemd/system/crowdsec.service
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec 
 pidof crowdsec && fail "crowdsec shouldn't run without LAPI (in flag)"
