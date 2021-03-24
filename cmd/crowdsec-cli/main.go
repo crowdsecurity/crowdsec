@@ -50,9 +50,7 @@ func initConfig() {
 	if err := csConfig.LoadCSCLI(); err != nil {
 		log.Fatalf(err.Error())
 	}
-	/*if err := csConfig.LoadConfigurationFile(ConfigFilePath, csConfig.DisableAPI, csConfig.DisableAgent); err != nil {
-		log.Fatalf(err.Error())
-	}*/
+
 	if csConfig.Cscli == nil {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
 	}
