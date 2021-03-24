@@ -15,13 +15,15 @@ func NewCompletionCmd() *cobra.Command {
 
 Bash:
 
-  $ source <(sudo cscli completion bash)
+  $ source <(cscli completion bash)
 
   # To load completions for each session, execute once:
+  
   # Linux:
-  $ sudo cscli completion bash | sudo tee /etc/bash_completion.d/cscli
+  $ cscli completion bash | sudo tee /etc/bash_completion.d/cscli
+
   # macOS:
-  $ sudo cscli completion bash | tee /usr/local/etc/bash_completion.d/cscli
+  $ cscli completion bash | sudo tee /usr/local/etc/bash_completion.d/cscli
 
 Zsh:
 
