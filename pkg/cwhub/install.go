@@ -11,9 +11,9 @@ import (
 )
 
 //DisableItem to disable an item managed by the hub, removes the symlink if purge is true
-func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) (Item, error) {
-	var tdir = cscli.ConfigDir
-	var hdir = cscli.HubDir
+func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, error) {
+	var tdir = hub.ConfigDir
+	var hdir = hub.HubDir
 
 	syml, err := filepath.Abs(tdir + "/" + target.Type + "/" + target.Stage + "/" + target.FileName)
 	if err != nil {
@@ -34,7 +34,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(cscli, val, purge, force)
+					hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
 					}
@@ -51,7 +51,7 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 			return target, fmt.Errorf("can't delete %s : %s doesn't exist", target.Name, syml)
 		}
 	} else {
-		//if it's managed by hub, it's a symlink to csconfig.GConfig.Cscli.HubDir / ...
+		//if it's managed by hub, it's a symlink to csconfig.GConfig.hub.HubDir / ...
 		if stat.Mode()&os.ModeSymlink == 0 {
 			log.Warningf("%s (%s) isn't a symlink, can't disable", target.Name, syml)
 			return target, fmt.Errorf("%s isn't managed by hub", target.Name)
@@ -90,9 +90,9 @@ func DisableItem(cscli *csconfig.CscliCfg, target Item, purge bool, force bool) 
 	return target, nil
 }
 
-func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
-	var tdir = cscli.ConfigDir
-	var hdir = cscli.HubDir
+func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
+	var tdir = hub.ConfigDir
+	var hdir = hub.HubDir
 	var err error
 	parent_dir := filepath.Clean(tdir + "/" + target.Type + "/" + target.Stage + "/")
 	/*create directories if needed*/
@@ -123,7 +123,7 @@ func EnableItem(cscli *csconfig.CscliCfg, target Item) (Item, error) {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = EnableItem(cscli, val)
+					hubIdx[ptrtype][p], err = EnableItem(hub, val)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
 					}

@@ -28,11 +28,14 @@ func NewLapiCmd() *cobra.Command {
 		Short: "Manage interaction with Local API (LAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadAPIClient(); err != nil {
+				return fmt.Errorf("loading api client: %s", err.Error())
+			}
 			if csConfig.API.Client == nil {
 				log.Fatalln("There is no API->client configuration")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
 			}
 			return nil
 		},
@@ -133,7 +136,11 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			if err != nil {
 				log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 			}
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

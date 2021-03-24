@@ -84,9 +84,15 @@ func NewMachinesCmd() *cobra.Command {
 		Long: `
 Machines Management.
 
-To list/add/delete/register/validate machines
+To list/add/delete/validate machines
 `,
 		Example: `cscli machines [action]`,
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			return nil
+		},
 	}
 
 	var cmdMachinesList = &cobra.Command{
@@ -97,6 +103,7 @@ To list/add/delete/register/validate machines
 		Args:    cobra.MaximumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to create new database client: %s", err)

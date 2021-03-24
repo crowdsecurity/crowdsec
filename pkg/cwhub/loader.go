@@ -49,7 +49,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	subs := strings.Split(path, "/")
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
-	/*we're in hub (~/.cscli/hub/)*/
+	/*we're in hub (~/.hub/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
 		log.Tracef("in hub dir")
 		inhub = true
@@ -95,7 +95,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
-		/etc/crowdsec/.../collections/linux.yaml -> ~/.cscli/hub/collections/.../linux.yaml
+		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
@@ -108,7 +108,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
-		//the symlink target doesn't exist, user might have remove ~/.cscli/hub/...yaml without deleting /etc/crowdsec/....yaml
+		//the symlink target doesn't exist, user might have remove ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
 		_, err := os.Lstat(hubpath)
 		if os.IsNotExist(err) {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
@@ -294,10 +294,10 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
-	hubdir = cscli.HubDir
-	installdir = cscli.ConfigDir
-	indexpath = cscli.HubIndexFile
+func SyncDir(hub *csconfig.Hub, dir string) error {
+	hubdir = hub.HubDir
+	installdir = hub.ConfigDir
+	indexpath = hub.HubIndexFile
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
@@ -322,13 +322,13 @@ func SyncDir(cscli *csconfig.CscliCfg, dir string) error {
 }
 
 /* Updates the infos from HubInit() with the local state */
-func LocalSync(cscli *csconfig.CscliCfg) error {
+func LocalSync(hub *csconfig.Hub) error {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	for _, dir := range []string{cscli.ConfigDir, cscli.HubDir} {
+	for _, dir := range []string{hub.ConfigDir, hub.HubDir} {
 		log.Debugf("scanning %s", dir)
-		if err := SyncDir(cscli, dir); err != nil {
+		if err := SyncDir(hub, dir); err != nil {
 			return fmt.Errorf("failed to scan %s : %s", dir, err)
 		}
 	}
@@ -336,12 +336,12 @@ func LocalSync(cscli *csconfig.CscliCfg) error {
 	return nil
 }
 
-func GetHubIdx(cscli *csconfig.CscliCfg) error {
-	if cscli == nil {
-		return fmt.Errorf("no configuration found for cscli")
+func GetHubIdx(hub *csconfig.Hub) error {
+	if hub == nil {
+		return fmt.Errorf("no configuration found for hub")
 	}
-	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
-	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
+	log.Debugf("loading hub idx %s", hub.HubIndexFile)
+	bidx, err := ioutil.ReadFile(hub.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
 	}
@@ -353,7 +353,7 @@ func GetHubIdx(cscli *csconfig.CscliCfg) error {
 		return err
 	}
 	hubIdx = ret
-	if err := LocalSync(cscli); err != nil {
+	if err := LocalSync(hub); err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}
 	return nil

@@ -14,7 +14,7 @@ import (
 var trace_lvl, dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
 var ConfigFilePath string
-var csConfig *csconfig.GlobalConfig
+var csConfig *csconfig.Config
 var dbClient *database.Client
 
 var OutputFormat string
@@ -28,7 +28,7 @@ var restoreOldBackup bool
 var prometheusURL string
 
 func initConfig() {
-
+	var err error
 	if trace_lvl {
 		log.SetLevel(log.TraceLevel)
 	} else if dbg_lvl {
@@ -42,12 +42,15 @@ func initConfig() {
 	}
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
-	csConfig = csconfig.NewConfig()
-
-	log.Debugf("Using %s as configuration file", ConfigFilePath)
-	if err := csConfig.LoadConfigurationFile(ConfigFilePath, csConfig.DisableAPI, csConfig.DisableAgent); err != nil {
+	csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
+	if err != nil {
 		log.Fatalf(err.Error())
 	}
+	log.Debugf("Using %s as configuration file", ConfigFilePath)
+	if err := csConfig.LoadCSCLI(); err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	if csConfig.Cscli == nil {
 		log.Fatalf("missing 'cscli' configuration in '%s', exiting", ConfigFilePath)
 	}
