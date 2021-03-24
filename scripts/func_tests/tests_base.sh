@@ -13,7 +13,7 @@ JQ="jq -e"
 SYSTEMCTL="sudo systemctl --no-pager"
 
 CROWDSEC="sudo crowdsec"
-
+CROWDSEC_PROCESS="crowdsec"
 # helpers
 function fail {
     echo "ACTION FAILED, STOP : $@"

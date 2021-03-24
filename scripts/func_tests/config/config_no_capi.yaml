@@ -3,7 +3,7 @@ common:
   pid_dir: /var/run/
   log_media: file
   log_level: info
-  log_dir: /var/log/
+  log_dir: ./
   working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/
