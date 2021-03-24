@@ -23,8 +23,8 @@ cscli machines add MyTestMachine --password MyPassword
 ### Options
 
 ```
-  -a, --auto              add the machine automatically (will generate also the username if not provided)
-  -f, --file string       output file destination
+  -a, --auto              automatically generate password (and username if not provided)
+  -f, --file string       output file destination (defaults to /etc/crowdsec/local_api_credentials.yaml)
       --force             will force add the machine if it already exist
   -h, --help              help for add
   -i, --interactive       interfactive mode to enter the password

@@ -7,7 +7,7 @@ Manage local API machines
 
 Machines Management.
 
-To list/add/delete/register/validate machines
+To list/add/delete/validate machines
 
 
 ### Examples

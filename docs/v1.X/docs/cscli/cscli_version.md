@@ -1,30 +1,15 @@
-## cscli dashboard remove
+## cscli version
 
-removes the metabase container.
-
-### Synopsis
-
-removes the metabase container using docker.
+Display version and exit.
 
 ```
-cscli dashboard remove [flags]
-```
-
-### Examples
-
-```
-
-cscli dashboard remove
-cscli dashboard remove --force
- 
+cscli version [flags]
 ```
 
 ### Options
 
 ```
-  -f, --force   Remove also the metabase image
-  -h, --help    help for remove
-  -y, --yes     force  yes
+  -h, --help   help for version
 ```
 
 ### Options inherited from parent commands
@@ -41,6 +26,6 @@ cscli dashboard remove --force
 
 ### SEE ALSO
 
-* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
+* [cscli](cscli.md)	 - cscli allows you to manage crowdsec
 
 

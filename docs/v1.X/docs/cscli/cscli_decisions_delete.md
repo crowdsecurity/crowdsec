@@ -26,6 +26,7 @@ cscli decisions delete --type captcha
   -t, --type string    the decision type (ie. ban,captcha)
   -v, --value string   the value to match for in the specified scope
       --all            delete all decisions
+      --contained      query decisions contained by range
   -h, --help           help for delete
 ```
 
