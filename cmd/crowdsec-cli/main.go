@@ -77,6 +77,10 @@ func initConfig() {
 
 }
 
+var validArgs = []string{
+	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines", "metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard", "config", "completion", "version",
+}
+
 func main() {
 
 	var rootCmd = &cobra.Command{
@@ -84,6 +88,7 @@ func main() {
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
+		ValidArgs: validArgs,
 		/*TBD examples*/
 	}
 	var cmdDocGen = &cobra.Command{
@@ -142,6 +147,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewPostOverflowsCmd())
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())
+	rootCmd.AddCommand(NewCompletionCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
