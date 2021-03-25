@@ -300,10 +300,10 @@ func CollecDepsCheck(v *Item) error {
 	return nil
 }
 
-func SyncDir(cscli *csconfig.CscliCfg, dir string) (error, []string) {
-	hubdir = cscli.HubDir
-	installdir = cscli.ConfigDir
-	indexpath = cscli.HubIndexFile
+func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
+	hubdir = hub.HubDir
+	installdir = hub.ConfigDir
+	indexpath = hub.HubIndexFile
 	warnings := []string{}
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
@@ -339,17 +339,17 @@ func SyncDir(cscli *csconfig.CscliCfg, dir string) (error, []string) {
 }
 
 /* Updates the infos from HubInit() with the local state */
-func LocalSync(cscli *csconfig.CscliCfg) (error, []string) {
+func LocalSync(hub *csconfig.Hub) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
 
-	err, warnings := SyncDir(cscli, cscli.ConfigDir)
+	err, warnings := SyncDir(hub, hub.ConfigDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s : %s", cscli.ConfigDir, err), warnings
+		return fmt.Errorf("failed to scan %s : %s", hub.ConfigDir, err), warnings
 	}
-	err, _ = SyncDir(cscli, cscli.HubDir)
+	err, _ = SyncDir(hub, hub.HubDir)
 	if err != nil {
-		return fmt.Errorf("failed to scan %s : %s", cscli.HubDir, err), warnings
+		return fmt.Errorf("failed to scan %s : %s", hub.HubDir, err), warnings
 	}
 	return nil, warnings
 }
@@ -371,7 +371,7 @@ func GetHubIdx(hub *csconfig.Hub) error {
 		return err
 	}
 	hubIdx = ret
-	err, _ = LocalSync(cscli)
+	err, _ = LocalSync(hub)
 	if err != nil {
 		log.Fatalf("Failed to sync Hub index with local deployment : %v", err)
 	}

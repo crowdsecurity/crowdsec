@@ -49,7 +49,7 @@ cscli hub update # Download list of available configurations from the hub
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			//use LocalSync to get warnings about tainted / outdated items
-			_, warn := cwhub.LocalSync(csConfig.Cscli)
+			_, warn := cwhub.LocalSync(csConfig.Hub)
 			for _, v := range warn {
 				log.Info(v)
 			}
@@ -92,7 +92,7 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 			//use LocalSync to get warnings about tainted / outdated items
-			_, warn := cwhub.LocalSync(csConfig.Cscli)
+			_, warn := cwhub.LocalSync(csConfig.Hub)
 			for _, v := range warn {
 				log.Info(v)
 			}
