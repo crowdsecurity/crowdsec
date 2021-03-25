@@ -113,6 +113,11 @@ func generateID() (string, error) {
 			}
 		}
 	}
+
+	if id == "" {
+		return "", fmt.Errorf("no machine id has been found on the host")
+	}
+
 	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))
 	return id, nil
