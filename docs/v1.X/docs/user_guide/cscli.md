@@ -12,6 +12,11 @@
 
 Take a look at the [dedicated documentation](/Crowdsec/v1/cscli/cscli)
 
+!!! tips
+    You can enable `cscli` auto completion in `bash` or `zsh`.
+
+    You can find `cscli completion` documentation [here](/Crowdsec/v1/cscli/cscli_completion/).
+
 # Configuration
 
 `{{v1X.cli.name}}` shares the configuration file of {{v1X.crowdsec.name}}, usually in `/etc/crowdsec/config.yaml`

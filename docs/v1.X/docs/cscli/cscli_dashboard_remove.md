@@ -22,7 +22,7 @@ cscli dashboard remove --force
 ### Options
 
 ```
-  -f, --force   Force remove : stop the container if running and remove.
+  -f, --force   Remove also the metabase image
   -h, --help    help for remove
   -y, --yes     force  yes
 ```

@@ -9,7 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func initAPIServer(cConfig *csconfig.GlobalConfig) (*apiserver.APIServer, error) {
+func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)

@@ -19,7 +19,7 @@ import (
 )
 
 //debugHandler is kept as a dev convenience : it shuts down and serialize internal state
-func debugHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
+func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
 	//stop go routines
@@ -37,12 +37,12 @@ func debugHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
+func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
 
 	//stop go routines
-	if !disableAgent {
+	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
 			log.Fatalf("Failed to shut down crowdsec routines: %s", err)
 		}
@@ -57,7 +57,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 		}
 	}
 
-	if !disableAPI {
+	if !cConfig.DisableAPI {
 		if err := shutdownAPI(); err != nil {
 			log.Fatalf("Failed to shut down api routines: %s", err)
 		}
@@ -81,7 +81,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 		log.Fatal(err.Error())
 	}
 
-	if !disableAPI {
+	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return fmt.Errorf("unable to init api server: %s", err)
@@ -90,7 +90,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.GlobalConfig) error {
 		serveAPIServer(apiServer)
 	}
 
-	if !disableAgent {
+	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
 			return fmt.Errorf("unable to init crowdsec: %s", err)
@@ -186,7 +186,7 @@ func termHandler(sig os.Signal) error {
 	return nil
 }
 
-func HandleSignals(cConfig *csconfig.GlobalConfig) {
+func HandleSignals(cConfig *csconfig.Config) {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
@@ -220,7 +220,7 @@ func HandleSignals(cConfig *csconfig.GlobalConfig) {
 	os.Exit(code)
 }
 
-func Serve(cConfig *csconfig.GlobalConfig) error {
+func Serve(cConfig *csconfig.Config) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -228,7 +228,7 @@ func Serve(cConfig *csconfig.GlobalConfig) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 
-	if !disableAPI {
+	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "api server init")
@@ -238,7 +238,7 @@ func Serve(cConfig *csconfig.GlobalConfig) error {
 		}
 	}
 
-	if !disableAgent {
+	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "crowdsec init")

@@ -50,7 +50,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	subs := strings.Split(path, "/")
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
-	/*we're in hub (~/.cscli/hub/)*/
+	/*we're in hub (~/.hub/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
 		log.Tracef("in hub dir")
 		inhub = true
@@ -96,7 +96,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	/*
 		we can encounter 'collections' in the form of a symlink :
-		/etc/crowdsec/.../collections/linux.yaml -> ~/.cscli/hub/collections/.../linux.yaml
+		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
@@ -108,7 +108,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
-		//the symlink target doesn't exist, user might have remove ~/.cscli/hub/...yaml without deleting /etc/crowdsec/....yaml
+		//the symlink target doesn't exist, user might have remove ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
 		_, err := os.Lstat(hubpath)
 		if os.IsNotExist(err) {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
@@ -354,12 +354,12 @@ func LocalSync(cscli *csconfig.CscliCfg) (error, []string) {
 	return nil, warnings
 }
 
-func GetHubIdx(cscli *csconfig.CscliCfg) error {
-	if cscli == nil {
-		return fmt.Errorf("no configuration found for cscli")
+func GetHubIdx(hub *csconfig.Hub) error {
+	if hub == nil {
+		return fmt.Errorf("no configuration found for hub")
 	}
-	log.Debugf("loading hub idx %s", cscli.HubIndexFile)
-	bidx, err := ioutil.ReadFile(cscli.HubIndexFile)
+	log.Debugf("loading hub idx %s", hub.HubIndexFile)
+	bidx, err := ioutil.ReadFile(hub.HubIndexFile)
 	if err != nil {
 		return errors.Wrap(err, "unable to read index file")
 	}

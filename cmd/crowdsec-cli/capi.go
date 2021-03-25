@@ -28,11 +28,14 @@ func NewCapiCmd() *cobra.Command {
 		Short: "Manage interaction with Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			if err := csConfig.LoadAPIServer(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			if csConfig.API.Server == nil {
 				log.Fatalln("There is no API->server configuration")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.Self)
+				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
 			}
 
 			return nil
@@ -124,7 +127,12 @@ func NewCapiCmd() *cobra.Command {
 			if err != nil {
 				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
 			}
-			if err := cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

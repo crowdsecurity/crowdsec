@@ -44,7 +44,7 @@ func backupConfigToDirectory(dirPath string) error {
 		return errors.Wrapf(err, "while checking parent directory %s existence", parentDir)
 	}
 
-	if err = os.Mkdir(dirPath, 0600); err != nil {
+	if err = os.Mkdir(dirPath, 0700); err != nil {
 		return fmt.Errorf("error while creating %s : %s", dirPath, err)
 	}
 
@@ -68,7 +68,7 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	acquisBackupDir := dirPath + "/acquis/"
-	if err = os.Mkdir(acquisBackupDir, 0600); err != nil {
+	if err = os.Mkdir(acquisBackupDir, 0700); err != nil {
 		return fmt.Errorf("error while creating %s : %s", acquisBackupDir, err)
 	}
 
@@ -215,7 +215,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 
 	/*if there is a acquisition dir, restore its content*/
 	if csConfig.Crowdsec.AcquisitionDirPath != "" {
-		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0600); err != nil {
+		if err = os.Mkdir(csConfig.Crowdsec.AcquisitionDirPath, 0700); err != nil {
 			return fmt.Errorf("error while creating %s : %s", csConfig.Crowdsec.AcquisitionDirPath, err)
 		}
 
@@ -389,7 +389,10 @@ func NewConfigCmd() *cobra.Command {
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
@@ -414,7 +417,7 @@ func NewConfigCmd() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			if err = cwhub.GetHubIdx(csConfig.Cscli); err != nil {
+			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}

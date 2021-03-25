@@ -52,6 +52,43 @@ INFO[0000] POSTOVERFLOWS:
 ```
 </details>
 
+## Installing configurations
+
+```bash
+sudo cscli <configuration_type> install <item>
+```
+
+`configuration_type` can be:
+
+ - [`parsers`](https://docs.crowdsec.net/Crowdsec/v1/references/parsers/)
+
+ - [`scenarios`](https://docs.crowdsec.net/Crowdsec/v1/references/scenarios/)
+
+ - [`postoverflows`](https://docs.crowdsec.net/Crowdsec/v1/references/postoverflows/)
+
+ - [`collections`](https://docs.crowdsec.net/Crowdsec/v1/references/collections/)
+
+
+They can be found and browsed on the {{v1X.hub.htmlname}}
+
+## Upgrading configurations
+
+```bash
+sudo cscli <configuration_type> upgrade <item>
+```
+
+`configuration_type` can be:
+
+ - [`parsers`](https://docs.crowdsec.net/Crowdsec/v1/references/parsers/)
+
+ - [`scenarios`](https://docs.crowdsec.net/Crowdsec/v1/references/scenarios/)
+
+ - [`postoverflows`](https://docs.crowdsec.net/Crowdsec/v1/references/postoverflows/)
+
+ - [`collections`](https://docs.crowdsec.net/Crowdsec/v1/references/collections/)
+
+They can be found and browsed on the {{v1X.hub.htmlname}}
+
 ## List active decisions
 
 
@@ -202,8 +239,11 @@ The `Acquisition Metrics` is a great way to know if your parsers are setup corre
 
 
 The `Parser Metrics` will let you troubleshoot eventual parser misconfigurations :
+
  - **HITS** is how many events where fed to this specific parser
+
  - **PARSED** and **UNPARSED** indicate how many events successfully come out of the parser
+
 
 For example, if you have a custom log format in nginx that is not supported by the default parser, you will end up seeing a lot of **UNPARSED** for this specific parser, and 0 for **PARSED**.
 
@@ -228,15 +268,6 @@ sudo tail -f /var/log/crowdsec.log
  - `/var/log/crowdsec.log` is the main log, it shows ongoing decisions and acquisition/parsing/scenario errors.
  - `/var/log/crowdsec_api.log` is the access log of the local api (LAPI)
 
-## Installing collections
-
-```bash
-sudo cscli collections install crowdsecurity/nginx
-```
-
-Collections are bundles of parsers/scenarios that form a coherent ensemble to analyze/detect attacks for a specific service. It is the most common way to deploy configurations.
-
-They can be found and browsed on the {{v1X.hub.htmlname}}
 
 ## Scalability
 

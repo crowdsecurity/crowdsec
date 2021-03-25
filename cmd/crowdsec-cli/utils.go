@@ -141,16 +141,16 @@ func InstallItem(name string, obtype string, force bool) {
 			return
 		}
 	}
-	item, err := cwhub.DownloadLatest(csConfig.Cscli, item, force)
+	item, err := cwhub.DownloadLatest(csConfig.Hub, item, force)
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
 	cwhub.AddItem(obtype, item)
 	if downloadOnly {
-		log.Infof("Downloaded %s to %s", item.Name, csConfig.Cscli.HubDir+"/"+item.RemotePath)
+		log.Infof("Downloaded %s to %s", item.Name, csConfig.Hub.HubDir+"/"+item.RemotePath)
 		return
 	}
-	item, err = cwhub.EnableItem(csConfig.Cscli, item)
+	item, err = cwhub.EnableItem(csConfig.Hub, item)
 	if err != nil {
 		log.Fatalf("error while enabled %s : %v.", item.Name, err)
 	}
@@ -168,7 +168,7 @@ func RemoveMany(itemType string, name string) {
 			log.Fatalf("unable to retrieve: %s", name)
 		}
 		item := *it
-		item, err = cwhub.DisableItem(csConfig.Cscli, item, purge, forceAction)
+		item, err = cwhub.DisableItem(csConfig.Hub, item, purge, forceAction)
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
@@ -176,7 +176,7 @@ func RemoveMany(itemType string, name string) {
 		return
 	} else if name == "" && all {
 		for _, v := range cwhub.GetItemMap(itemType) {
-			v, err = cwhub.DisableItem(csConfig.Cscli, v, purge, forceAction)
+			v, err = cwhub.DisableItem(csConfig.Hub, v, purge, forceAction)
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
@@ -219,7 +219,7 @@ func UpgradeConfig(itemType string, name string, force bool) {
 				continue
 			}
 		}
-		v, err = cwhub.DownloadLatest(csConfig.Cscli, v, force)
+		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -264,7 +264,7 @@ func InspectItem(name string, objecitemType string) {
 	fmt.Printf("%s", string(buff))
 	if csConfig.Prometheus.Enabled {
 		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
-			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.Self)
+			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
 			return
 		}
 		if prometheusURL == "" {
@@ -500,7 +500,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if downloadOnly && it.Downloaded && it.UpToDate {
 		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 	}
-	it, err := cwhub.DownloadLatest(csConfig.Cscli, it, forceAction)
+	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 	}
@@ -511,7 +511,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if downloadOnly {
 		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
 	}
-	it, err = cwhub.EnableItem(csConfig.Cscli, it)
+	it, err = cwhub.EnableItem(csConfig.Hub, it)
 	if err != nil {
 		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
 	}

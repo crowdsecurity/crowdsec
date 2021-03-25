@@ -22,9 +22,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
+func UpdateHubIdx(hub *csconfig.Hub) error {
 
-	bidx, err := DownloadHubIdx(cscli)
+	bidx, err := DownloadHubIdx(hub)
 	if err != nil {
 		return errors.Wrap(err, "failed to download index")
 	}
@@ -41,7 +41,7 @@ func UpdateHubIdx(cscli *csconfig.CscliCfg) error {
 	return nil
 }
 
-func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
+func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 	log.Debugf("fetching index from branch %s (%s)", HubBranch, fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile))
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, HubIndexFile), nil)
 	if err != nil {
@@ -59,7 +59,7 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read request answer for hub index")
 	}
-	file, err := os.OpenFile(cscli.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	file, err := os.OpenFile(hub.HubIndexFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "while opening hub index file")
@@ -70,12 +70,12 @@ func DownloadHubIdx(cscli *csconfig.CscliCfg) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "while writting hub index file")
 	}
-	log.Infof("Wrote new %d bytes index to %s", wsize, cscli.HubIndexFile)
+	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
 	return body, nil
 }
 
 //DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
+func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -89,12 +89,12 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-						hubIdx[ptrtype][p], err = DownloadLatest(cscli, val, overwrite)
+						hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite)
 						if err != nil {
 							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 						}
 					}
-					item, err := DownloadItem(cscli, val, overwrite)
+					item, err := DownloadItem(hub, val, overwrite)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
@@ -102,7 +102,7 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 					// We need to enable an item when it has been added to a collection since latest release of the collection.
 					// We check if val.Downloaded is false because maybe the item has been disabled by the user.
 					if !item.Installed && !val.Downloaded {
-						if item, err = EnableItem(cscli, item); err != nil {
+						if item, err = EnableItem(hub, item); err != nil {
 							return target, errors.Wrapf(err, "enabling '%s'", item.Name)
 						}
 					}
@@ -112,20 +112,20 @@ func DownloadLatest(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item
 				}
 			}
 		}
-		target, err = DownloadItem(cscli, target, overwrite)
+		target, err = DownloadItem(hub, target, overwrite)
 		if err != nil {
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
-		return DownloadItem(cscli, target, overwrite)
+		return DownloadItem(hub, target, overwrite)
 	}
 	return target, nil
 }
 
-func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item, error) {
+func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
 
-	var tdir = cscli.HubDir
-	var dataFolder = cscli.DataDir
+	var tdir = hub.HubDir
+	var dataFolder = hub.DataDir
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
 	if !overwrite {
 		if target.Tainted {

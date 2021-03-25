@@ -31,6 +31,9 @@ To list/add/delete bouncers
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to create new database client: %s", err)

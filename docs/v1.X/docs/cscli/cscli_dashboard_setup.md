@@ -29,6 +29,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
   -l, --listen string     Listen address of container (default "127.0.0.1")
       --password string   metabase password
   -p, --port string       Listen port of container (default "3000")
+  -y, --yes               force  yes
 ```
 
 ### Options inherited from parent commands

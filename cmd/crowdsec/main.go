@@ -33,9 +33,6 @@ var (
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
 
-	disableAPI   bool
-	disableAgent bool
-
 	flags *Flags
 
 	/*the state of acquisition*/
@@ -112,7 +109,7 @@ func newParsers() *parser.Parsers {
 	return parsers
 }
 
-func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
+func LoadBuckets(cConfig *csconfig.Config) error {
 
 	var (
 		err   error
@@ -140,7 +137,7 @@ func LoadBuckets(cConfig *csconfig.GlobalConfig) error {
 	return nil
 }
 
-func LoadAcquisition(cConfig *csconfig.GlobalConfig) error {
+func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
@@ -191,31 +188,25 @@ func (f *Flags) Parse() {
 }
 
 // LoadConfig return configuration parsed from configuration file
-func LoadConfig(cConfig *csconfig.GlobalConfig) error {
-	disableAPI = flags.DisableAPI
-	disableAgent = flags.DisableAgent
-	if flags.ConfigFile != "" {
-		if err := cConfig.LoadConfigurationFile(flags.ConfigFile, disableAPI, disableAgent); err != nil {
-			return fmt.Errorf("while loading configuration : %s", err)
+func LoadConfig(cConfig *csconfig.Config) error {
+
+	if !flags.DisableAgent {
+		if err := cConfig.LoadCrowdsec(); err != nil {
+			return err
 		}
-	} else {
-		log.Warningf("no configuration file provided")
-	}
-	if !disableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
-		log.Errorf("no API server configuration found, will not start the local API")
-		disableAPI = true
 	}
 
-	if !disableAgent && cConfig.Crowdsec == nil {
-		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		disableAgent = true
+	if !flags.DisableAPI {
+		if err := cConfig.LoadAPIServer(); err != nil {
+			return err
+		}
 	}
 
-	if !disableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
+	if !cConfig.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
 		log.Fatalf("missing local API credentials for crowdsec agent, abort")
 	}
 
-	if disableAPI && disableAgent {
+	if cConfig.DisableAPI && cConfig.DisableAgent {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
@@ -244,14 +235,14 @@ func LoadConfig(cConfig *csconfig.GlobalConfig) error {
 		cConfig.Common.LogLevel = &logLevel
 	}
 
-	if flags.TestMode && !disableAgent {
+	if flags.TestMode && !cConfig.DisableAgent {
 		cConfig.Crowdsec.LintOnly = true
 	}
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
-		if disableAPI {
+		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		cConfig.Common.LogMedia = "stdout"
@@ -263,13 +254,12 @@ func LoadConfig(cConfig *csconfig.GlobalConfig) error {
 
 func main() {
 	var (
-		cConfig *csconfig.GlobalConfig
+		cConfig *csconfig.Config
 		err     error
 	)
 
 	defer types.CatchPanic("crowdsec/main")
 
-	cConfig = csconfig.NewConfig()
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
@@ -278,6 +268,10 @@ func main() {
 		os.Exit(0)
 	}
 
+	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
@@ -288,19 +282,6 @@ func main() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
-	if !flags.DisableAPI && (cConfig.API == nil || cConfig.API.Server == nil) {
-		log.Errorf("no API server configuration found, will not start the local API")
-		flags.DisableAPI = true
-	}
-
-	if !flags.DisableAgent && cConfig.Crowdsec == nil {
-		log.Errorf("no configuration found crowdsec agent, will not start the agent")
-		flags.DisableAgent = true
-	}
-
-	if !flags.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
-		log.Fatalf("missing local API credentials for crowdsec agent, abort")
-	}
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)

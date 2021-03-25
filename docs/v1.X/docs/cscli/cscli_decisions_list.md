@@ -29,6 +29,7 @@ cscli decisions list -t ban
   -i, --ip string         restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)
   -r, --range string      restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)
       --no-simu           exclude decisions in simulation mode
+      --contained         query decisions contained by range
   -h, --help              help for list
 ```
 
