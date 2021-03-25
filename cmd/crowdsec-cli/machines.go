@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bytes"
 	saferand "crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -39,7 +42,8 @@ var (
 )
 
 const (
-	uuid = "/proc/sys/kernel/random/uuid"
+	uuid     = "/proc/sys/kernel/random/uuid"
+	bsd_uuid = "/etc/hostid"
 )
 
 func generatePassword(length int) string {
@@ -59,17 +63,55 @@ func generatePassword(length int) string {
 	return string(buf)
 }
 
+func readHostid() (string, error) {
+	bID, err := ioutil.ReadFile(bsd_uuid)
+	if err != nil {
+		return "", errors.Wrap(err, "generating machine id")
+	}
+	return strings.TrimSpace(strings.Trim(string(bID), "\n")), nil
+}
+
+func readMachineid() (string, error) {
+	bID, err := ioutil.ReadFile(uuid)
+	if err != nil {
+		return "", errors.Wrap(err, "generating machine id")
+	}
+	return strings.TrimSpace(strings.Trim(string(bID), "\n")), nil
+}
+
+func readKenv() (string, error) {
+	buf := &bytes.Buffer{}
+	c := exec.Command("kenv", "-q", "smbios.system.uuid")
+	c.Stdin = os.Stdin
+	c.Stdout = buf
+	c.Stderr = os.Stderr
+	if err := c.Run(); err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(strings.Trim(buf.String(), "\n")), nil
+}
+
 func generateID() (string, error) {
 	id, err := machineid.ID()
 	if err != nil {
 		log.Debugf("failed to get machine-id with usual files : %s", err)
 	}
 	if id == "" || err != nil {
-		bID, err := ioutil.ReadFile(uuid)
-		if err != nil {
-			return "", errors.Wrap(err, "generating machine id")
+		switch runtime.GOOS {
+		case "freebsd", "openbsd":
+			id, err = readHostid()
+			if err != nil {
+				id, err = readKenv()
+			}
+			if err != nil {
+				return "", err
+			}
+		default:
+			id, err = readMachineid()
+			if err != nil {
+				return "", errors.Wrap(err, "generating machine id")
+			}
 		}
-		id = string(bID)
 	}
 	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))
