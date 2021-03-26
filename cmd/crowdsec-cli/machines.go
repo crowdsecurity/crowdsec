@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"runtime"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -21,6 +22,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
+	"golang.org/x/sys/unix"
 )
 
 var machineID string
@@ -65,11 +67,18 @@ func generateID() (string, error) {
 		log.Debugf("failed to get machine-id with usual files : %s", err)
 	}
 	if id == "" || err != nil {
-		bID, err := ioutil.ReadFile(uuid)
+		var err error
+		var bID []byte
+		switch runtime.GOOS {
+		case "openbsd":
+			id, err = unix.Sysctl("hw.uuid")
+		default:
+			bID, err = ioutil.ReadFile(uuid)
+			id = string(bID)
+		}
 		if err != nil {
 			return "", errors.Wrap(err, "generating machine id")
 		}
-		id = string(bID)
 	}
 	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))

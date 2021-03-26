@@ -9,7 +9,7 @@ CSCLI_FOLDER = "./cmd/crowdsec-cli/"
 CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
-MAKE = "make"
+MAKE ?= "make"
 
 GOARCH=amd64
 GOOS=linux
