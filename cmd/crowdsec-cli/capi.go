@@ -99,7 +99,7 @@ func NewCapiCmd() *cobra.Command {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
 
-			log.Warningf("Run 'sudo systemctl reload crowdsec' for the new configuration to be effective")
+			log.Warningf(ReloadMessage())
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
