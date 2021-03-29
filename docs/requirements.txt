@@ -14,7 +14,7 @@ mkdocs-monorepo-plugin==0.4.11
 mkdocs-redirects==1.0.1
 nltk==3.5b1
 prompt-toolkit==2.0.10
-Pygments==2.6.1
+Pygments==2.7.4
 pymdown-extensions==7.0
 python-markdown-math==0.6
 PyYAML==5.4
