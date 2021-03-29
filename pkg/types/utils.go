@@ -17,6 +17,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/http2"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -86,6 +87,12 @@ func CatchPanic(component string) {
 				if se.Err == syscall.EPIPE || se.Err == syscall.ECONNRESET {
 					brokenPipe = true
 				}
+			}
+		}
+		/*gin doesn't properly handle all http2 errors (or so it seems)*/
+		if ne, ok := r.(*http2.StreamError); ok {
+			if ne.Error() == "STREAM_CLOSED" || ne.Error() == "CANCEL" {
+				brokenPipe = true
 			}
 		}
 
