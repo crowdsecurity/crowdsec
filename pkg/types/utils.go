@@ -91,7 +91,7 @@ func CatchPanic(component string) {
 		}
 		/*gin doesn't properly handle all http2 errors (or so it seems)*/
 		if ne, ok := r.(*http2.StreamError); ok {
-			if ne.Error() == "STREAM_CLOSED" || ne.Error() == "CANCEL" {
+			if ne.Code.String() == "STREAM_CLOSED" || ne.Code.String() == "CANCEL" {
 				brokenPipe = true
 			}
 		}
