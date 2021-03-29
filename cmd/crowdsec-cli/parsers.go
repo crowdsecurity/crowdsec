@@ -93,6 +93,9 @@ cscli parsers remove crowdsecurity/sshd-logs
 			if all {
 				UpgradeConfig(cwhub.PARSERS, "", forceAction)
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target parser to upgrade")
+				}
 				for _, name := range args {
 					UpgradeConfig(cwhub.PARSERS, name, forceAction)
 				}

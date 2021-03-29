@@ -98,6 +98,9 @@ func NewCollectionsCmd() *cobra.Command {
 			if all {
 				UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target collection to upgrade")
+				}
 				for _, name := range args {
 					UpgradeConfig(cwhub.COLLECTIONS, name, forceAction)
 				}

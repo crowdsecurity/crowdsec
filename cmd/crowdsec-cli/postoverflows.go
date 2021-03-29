@@ -92,6 +92,9 @@ func NewPostOverflowsCmd() *cobra.Command {
 			if all {
 				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceAction)
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("no target postoverflow to upgrade")
+				}
 				for _, name := range args {
 					UpgradeConfig(cwhub.PARSERS_OVFLW, name, forceAction)
 				}
