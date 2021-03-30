@@ -60,12 +60,14 @@ Signals sent to the curation platform are extremely limited (IP, Scenario, Times
 Crowdsec is available for various platforms :
 
 <details>
- <summary>[Use our debian repositories](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository)</summary>
+ <summary><href a="https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository">Use our debian repositories</summary>
+
 ```bash
 wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && echo "deb https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/crowdsec.list > /dev/null
 sudo apt-get update
 sudo apt-get install crowdsec
 ```
+
 </details>
  
 <details>
