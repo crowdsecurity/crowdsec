@@ -41,7 +41,7 @@ Processing is done in 5 steps:
  2. Matching those signals to behavior patterns, aka scenarios (*)
  3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) : a software component integrated into your applicative stack that supports various remediations such as block, return 403, and soon captcha, 2FA, etc.
  4. The aggressive IP, the scenario name triggered and a timestamp is sent to our curation platform (to avoid poisoning & false positives)
- 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (based on the scenarios installed)
+ 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec users (based on the scenarios installed)
 
 By detecting, blocking & sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
