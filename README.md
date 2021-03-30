@@ -30,7 +30,7 @@ If you want to be notified of software **updates**, <a href="https://docs.google
 
 ## <TL;DR>
 
-A modern behavior detection system, written in Go. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs. It exposes an api, allowing to decouple detection and remediation for Cloud/Containers/VM based infrastructures. Once detected you respond to threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) and blocked IPs are shared among all users to further improve their security.
+A modern behavior detection system, written in Go. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs. It exposes an api, allowing to decouple detection and remediation for Cloud/Containers/VM based infrastructures. Once detected you respond to threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) and blocked IPs are shared among all users to further improve their security. See [FAQ](https://doc.crowdsec.net/faq/) or read bellow for more.
 
 ## :information_source: About the CrowdSec project
 
@@ -40,8 +40,8 @@ Processing is done in 5 steps:
  1. Read Data sources (log files, streams, trails, messages ...), normalize and enrich signals
  2. Matching those signals to behavior patterns, aka scenarios (*)
  3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) : a software component integrated into your applicative stack that supports various remediations such as block, return 403, and soon captcha, 2FA, etc.
- 4. *(ONLY)* The aggressive IP, the scenario name triggered and a timestamp is sent to our curation platform (to avoid poisoning & false positives)
- 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients
+ 4. The aggressive IP, the scenario name triggered and a timestamp is sent to our curation platform (to avoid poisoning & false positives)
+ 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (based on the scenarios installed)
 
 By detecting, blocking & sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
@@ -55,7 +55,6 @@ Your data stay in your premises and are only analyzed and forgotten.
 
 Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attempts.
 
-
 ## :arrow_down: Install it !
 
 Crowdsec is available for various platforms :
@@ -66,7 +65,7 @@ Crowdsec is available for various platforms :
  - You can as well [build it from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-from-source)
  - FreeBSD support is [wip](https://github.com/crowdsecurity/crowdsec/issues/651)
 
-Or just look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
+Or look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
 
 ## :tada: Key points
 
