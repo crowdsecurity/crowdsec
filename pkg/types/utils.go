@@ -89,10 +89,25 @@ func CatchPanic(component string) {
 				}
 			}
 		}
+
 		/*gin doesn't properly handle all http2 errors (or so it seems)*/
 		if ne, ok := r.(*http2.StreamError); ok {
 			if ne.Code.String() == "STREAM_CLOSED" || ne.Code.String() == "CANCEL" {
+				log.Infof("client reset connection (http2 #1)")
 				brokenPipe = true
+			}
+		}
+
+		if !brokenPipe {
+			if err, ok := r.(error); ok {
+				strErr := err.Error()
+				if strings.Contains(strErr, "stream closed") {
+					brokenPipe = true
+					log.Infof("client reset connection (http2 #2)")
+				} else if strings.Contains(strErr, "client disconnected") {
+					brokenPipe = true
+					log.Infof("client reset connection (http2 #3)")
+				}
 			}
 		}
 
