@@ -72,9 +72,13 @@ func Clone(a, b interface{}) error {
 	return nil
 }
 
-func WriteStackTrace() string {
+func WriteStackTrace(iErr interface{}) string {
 	tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
 	if err != nil {
+		log.Fatal(err)
+	}
+	if _, err := tmpfile.Write([]byte(fmt.Sprintf("error : %+v\n", iErr))); err != nil {
+		tmpfile.Close()
 		log.Fatal(err)
 	}
 	if _, err := tmpfile.Write([]byte(cwversion.ShowStr())); err != nil {
@@ -96,7 +100,7 @@ func CatchPanic(component string) {
 	if r := recover(); r != nil {
 		log.Errorf("crowdsec - goroutine %s crashed : %s", component, r)
 		log.Errorf("please report this error to https://github.com/crowdsecurity/crowdsec/")
-		filename := WriteStackTrace()
+		filename := WriteStackTrace(r)
 		log.Errorf("stacktrace/report is written to %s : please join it to your issue", filename)
 		log.Fatalf("crowdsec stopped")
 	}
