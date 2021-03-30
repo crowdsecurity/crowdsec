@@ -12,7 +12,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -99,7 +98,6 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/CreateAlert")
 
 	var input models.AddAlertsRequest
 
@@ -148,12 +146,12 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 // FindAlerts : return alerts from database based on the specified filter
 func (c *Controller) FindAlerts(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/FindAlerts")
 	result, err := c.DBClient.QueryAlertWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+
 	data := FormatAlerts(result)
 
 	if gctx.Request.Method == "HEAD" {
@@ -166,8 +164,6 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 
 // FindAlertByID return the alert assiocated to the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/FindAlertByID")
-
 	alertIDStr := gctx.Param("alert_id")
 	alertID, err := strconv.Atoi(alertIDStr)
 	if err != nil {
@@ -191,7 +187,6 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/DeleteAlerts")
 
 	if gctx.ClientIP() != "127.0.0.1" && gctx.ClientIP() != "::1" {
 		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
