@@ -77,7 +77,7 @@ func CustomRecoveryWithWriter() gin.HandlerFunc {
 					log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
 					c.Abort()
 				} else {
-					filename := types.WriteStackTrace()
+					filename := types.WriteStackTrace(err)
 					log.Warningf("client %s error : %s", c.ClientIP(), err)
 					log.Warningf("stacktrace written to %s, please join to your issue", filename)
 					c.AbortWithStatus(http.StatusInternalServerError)
