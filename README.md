@@ -67,12 +67,6 @@ Crowdsec is available for various platforms :
 
 Or look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
 
-*install directly from our repositories :*
-```bash
-wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && echo "deb https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/crowdsec.list > /dev/null
-sudo apt-get update
-```
-
 ## :tada: Key points
 
 ### Fast assisted installation, no technical barrier
