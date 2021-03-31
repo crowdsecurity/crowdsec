@@ -73,29 +73,37 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/Crowds
 
 <details open>
   <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
-  <img src="docs/assets/images/crowdsec_install.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/README_update/docs/assets/images/crowdsec_install.gif">
 </details>
 
 ### Out of the box detection
 
 <details>
   <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click to expand)</summary>
-  <img src="docs/assets/images/out-of-the-box-protection.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/README_update/docs/assets/images/out-of-the-box-protection.gif">
 </details>
 
 ### Easy bouncer deployment
 
 <details>
   <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
-  <img src="docs/assets/images/blocker-installation.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/README_update/docs/assets/images/blocker-installation.gif">
 </details>
 
 ### Easy dashboard access
 
 <details>
   <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click to expand)</summary>
-  <img src="docs/assets/images/cscli-metabase.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/README_update/docs/assets/images/cscli-metabase.gif">
 </details>
+
+### Hot & Cold logs
+
+<details>
+  <summary>process cold logs, for forensic, tests and chasing false-positives & false negatives (click to expand)</summary>
+  <img src="https://github.com/crowdsecurity/crowdsec/blob/README_update/docs/assets/images/forensic-mode.gif">
+</details>
+
 
 ## 📦 About this repository
 
