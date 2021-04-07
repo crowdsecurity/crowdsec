@@ -30,7 +30,6 @@ type APIServer struct {
 	TLS            *csconfig.TLSCfg
 	dbClient       *database.Client
 	logFile        string
-	ctx            context.Context
 	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine

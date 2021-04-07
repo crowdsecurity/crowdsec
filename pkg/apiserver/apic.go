@@ -131,7 +131,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*a
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
-	return ret, nil
+	return ret, err
 }
 
 func (a *apic) Push() error {
