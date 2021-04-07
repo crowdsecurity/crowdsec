@@ -4,13 +4,11 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 )
 
 func (c *Controller) CreateMachine(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/CreateMachine")
 	var err error
 	var input models.WatcherRegistrationRequest
 	if err = gctx.ShouldBindJSON(&input); err != nil {

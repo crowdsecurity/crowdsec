@@ -3,7 +3,10 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
@@ -34,6 +37,55 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	httpServerTomb tomb.Tomb
+}
+
+// RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
+func CustomRecoveryWithWriter() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				// Check for a broken connection, as it is not really a
+				// condition that warrants a panic stack trace.
+				var brokenPipe bool
+				if ne, ok := err.(*net.OpError); ok {
+					if se, ok := ne.Err.(*os.SyscallError); ok {
+						if strings.Contains(strings.ToLower(se.Error()), "broken pipe") || strings.Contains(strings.ToLower(se.Error()), "connection reset by peer") {
+							brokenPipe = true
+						}
+					}
+				}
+
+				// because of https://github.com/golang/net/blob/39120d07d75e76f0079fe5d27480bcb965a21e4c/http2/server.go
+				// and because it seems gin doesn't handle those neither, we need to "hand define" some errors to properly catch them
+				if strErr, ok := err.(error); ok {
+					//stolen from http2/server.go in x/net
+					var (
+						errClientDisconnected = errors.New("client disconnected")
+						errClosedBody         = errors.New("body closed by handler")
+						errHandlerComplete    = errors.New("http2: request body closed due to handler exiting")
+						errStreamClosed       = errors.New("http2: stream closed")
+					)
+					if strErr == errClientDisconnected ||
+						strErr == errClosedBody ||
+						strErr == errHandlerComplete ||
+						strErr == errStreamClosed {
+						brokenPipe = true
+					}
+				}
+
+				if brokenPipe {
+					log.Warningf("client %s disconnected : %s", c.ClientIP(), err)
+					c.Abort()
+				} else {
+					filename := types.WriteStackTrace(err)
+					log.Warningf("client %s error : %s", c.ClientIP(), err)
+					log.Warningf("stacktrace written to %s, please join to your issue", filename)
+					c.AbortWithStatus(http.StatusInternalServerError)
+				}
+			}
+		}()
+		c.Next()
+	}
 }
 
 func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
@@ -111,7 +163,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
 		return
 	})
-	router.Use(gin.Recovery())
+	router.Use(CustomRecoveryWithWriter())
 	controller := &controllers.Controller{
 		DBClient: dbClient,
 		Ectx:     context.Background(),

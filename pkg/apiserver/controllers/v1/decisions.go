@@ -9,7 +9,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,7 +32,6 @@ func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 }
 
 func (c *Controller) GetDecision(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/GetDecision")
 	var err error
 	var results []*models.Decision
 	var data []*ent.Decision
@@ -66,7 +64,6 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/DeleteDecisionById")
 	var err error
 
 	decisionIDStr := gctx.Param("decision_id")
@@ -90,7 +87,6 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/DeleteDecisions")
 	var err error
 
 	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
@@ -107,7 +103,6 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
-	defer types.CatchPanic("crowdsec/controllersV1/StreamDecision")
 	var data []*ent.Decision
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
