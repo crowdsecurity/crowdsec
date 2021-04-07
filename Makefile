@@ -124,3 +124,15 @@ release: check_release build
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	
+
+.PHONY:
+release_static: check_release static
+	@echo Building Release to dir $(RELDIR)
+	@mkdir -p $(RELDIR)/cmd/crowdsec
+	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
+	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
+	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
+	@cp -R ./config/ $(RELDIR)
+	@cp wizard.sh $(RELDIR)
+	@cp scripts/test_env.sh $(RELDIR)
+	@tar cvzf crowdsec-release-static.tgz $(RELDIR)	
