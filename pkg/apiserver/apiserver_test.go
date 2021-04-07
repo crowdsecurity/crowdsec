@@ -3,15 +3,18 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -212,5 +215,139 @@ func TestUnknownPath(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 404, w.Code)
+
+}
+
+/*
+
+ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
+	TLS                    *TLSCfg             `yaml:"tls"`
+	DbConfig               *DatabaseCfg        `yaml:"-"`
+	LogDir                 string              `yaml:"-"`
+	LogMedia               string              `yaml:"-"`
+	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
+	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	Profiles               []*ProfileCfg       `yaml:"-"`
+	LogLevel               *log.Level          `yaml:"log_level"`
+	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
+
+*/
+
+func TestLoggingDebugToFileConfig(t *testing.T) {
+
+	/*declare settings*/
+	maxAge := "1h"
+	flushConfig := csconfig.FlushDBCfg{
+		MaxAge: &maxAge,
+	}
+	dbconfig := csconfig.DatabaseCfg{
+		Type:   "sqlite",
+		DbPath: "./ent",
+		Flush:  &flushConfig,
+	}
+	cfg := csconfig.LocalApiServerCfg{
+		ListenURI: "127.0.0.1:8080",
+		LogMedia:  "file",
+		LogDir:    ".",
+		DbConfig:  &dbconfig,
+	}
+	lvl := log.DebugLevel
+	expectedFile := "./crowdsec_api.log"
+	expectedLines := []string{"/test42"}
+	cfg.LogLevel = &lvl
+
+	os.Remove("./crowdsec.log")
+	os.Remove(expectedFile)
+
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+		t.Fatal(err.Error())
+	}
+	api, err := NewServer(&cfg)
+	if err != nil {
+		t.Fatalf("failed to create api : %s", err)
+	}
+	if api == nil {
+		t.Fatalf("failed to create api #2 is nbill")
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test42", nil)
+	req.Header.Set("User-Agent", UserAgent)
+	api.router.ServeHTTP(w, req)
+	assert.Equal(t, 404, w.Code)
+	//wait for the request to happen
+	time.Sleep(500 * time.Millisecond)
+
+	//check file content
+	data, err := ioutil.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("failed to read file : %s", err)
+	}
+
+	for _, expectedStr := range expectedLines {
+		if !strings.Contains(string(data), expectedStr) {
+			t.Fatalf("expected %s in %s", expectedStr, string(data))
+		}
+	}
+
+	os.Remove("./crowdsec.log")
+	os.Remove(expectedFile)
+
+}
+
+func TestLoggingErrorToFileConfig(t *testing.T) {
+
+	/*declare settings*/
+	maxAge := "1h"
+	flushConfig := csconfig.FlushDBCfg{
+		MaxAge: &maxAge,
+	}
+	dbconfig := csconfig.DatabaseCfg{
+		Type:   "sqlite",
+		DbPath: "./ent",
+		Flush:  &flushConfig,
+	}
+	cfg := csconfig.LocalApiServerCfg{
+		ListenURI: "127.0.0.1:8080",
+		LogMedia:  "file",
+		LogDir:    ".",
+		DbConfig:  &dbconfig,
+	}
+	lvl := log.ErrorLevel
+	expectedFile := "./crowdsec_api.log"
+	cfg.LogLevel = &lvl
+
+	os.Remove("./crowdsec.log")
+	os.Remove(expectedFile)
+
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+		t.Fatal(err.Error())
+	}
+	api, err := NewServer(&cfg)
+	if err != nil {
+		t.Fatalf("failed to create api : %s", err)
+	}
+	if api == nil {
+		t.Fatalf("failed to create api #2 is nbill")
+	}
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test42", nil)
+	req.Header.Set("User-Agent", UserAgent)
+	api.router.ServeHTTP(w, req)
+	assert.Equal(t, 404, w.Code)
+	//wait for the request to happen
+	time.Sleep(500 * time.Millisecond)
+
+	//check file content
+	_, err = ioutil.ReadFile(expectedFile)
+	if err == nil {
+		t.Fatalf("file should be empty")
+	}
+
+	os.Remove("./crowdsec.log")
+	os.Remove(expectedFile)
 
 }
