@@ -3,12 +3,12 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
