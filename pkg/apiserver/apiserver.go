@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -18,6 +17,7 @@ import (
 	"github.com/go-co-op/gocron"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"gopkg.in/tomb.v2"
 )
 
@@ -122,6 +122,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	/*The logger that will be used by handlers*/
 	clog := log.New()
+
 	if err := types.ConfigureLogger(clog); err != nil {
 		return nil, errors.Wrap(err, "while configuring gin logger")
 	}
@@ -129,16 +130,20 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		clog.SetLevel(*config.LogLevel)
 	}
 
-	gin.DefaultErrorWriter = clog.Writer()
-
-	// Logging to a file.
+	/*Configure logs*/
 	if logFile != "" {
-		file, err := os.Create(logFile)
-		if err != nil {
-			return &APIServer{}, errors.Wrapf(err, "creating api access log file: %s", logFile)
+		LogOutput := &lumberjack.Logger{
+			Filename:   logFile,
+			MaxSize:    500, //megabytes
+			MaxBackups: 3,
+			MaxAge:     28,   //days
+			Compress:   true, //disabled by default
 		}
-		gin.DefaultWriter = io.MultiWriter(file)
+		clog.SetOutput(LogOutput)
 	}
+
+	gin.DefaultErrorWriter = clog.WriterLevel(log.ErrorLevel)
+	gin.DefaultWriter = clog.Writer()
 
 	router.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
 		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",

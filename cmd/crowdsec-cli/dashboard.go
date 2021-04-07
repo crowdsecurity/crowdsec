@@ -55,6 +55,10 @@ cscli dashboard remove
 			if err := os.MkdirAll(metabaseConfigFolderPath, os.ModePerm); err != nil {
 				log.Fatalf(err.Error())
 			}
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
 		},
 	}
 

@@ -12,6 +12,7 @@ import (
 
 	"github.com/enescakir/emoji"
 	"github.com/pkg/errors"
+	"golang.org/x/mod/semver"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -77,6 +78,11 @@ var skippedTainted = 0
 /*To be used when reference(s) (is/are) missing in a collection*/
 var ReferenceMissingError = errors.New("Reference(s) missing in collection")
 var MissingHubIndex = errors.New("hub index can't be found")
+
+//GetVersionStatus : semver requires 'v' prefix
+func GetVersionStatus(v *Item) int {
+	return semver.Compare("v"+v.Version, "v"+v.LocalVersion)
+}
 
 // calculate sha256 of a file
 func getSHA256(filepath string) (string, error) {

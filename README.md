@@ -25,13 +25,12 @@
 :speech_balloon: <a href="https://gitter.im/crowdsec-project/community?utm_source=share-link&utm_medium=link&utm_campaign=share-link">Gitter Chat</a>
 </p>
 
-> Crowdsec shouldn't, and didn't crash any production so far we know, but some features might be missing or undergo evolutions. IP Blocklists are limited to very-safe-to-ban IPs only (~5% of the global database so far, will grow soon)
 
 If you want to be notified of software **updates**, <a href="https://docs.google.com/forms/d/e/1FAIpQLSdirOC4OMYtR-HG2c54T8Ubwrq8oPLZ5k-VHOjrANip-O_KfA/viewform">click here</a>
 
 ## <TL;DR>
 
-A modern behavior detection system, written in Go. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs, a modern decoupled approach (detect here, remedy there) for Cloud/Containers/VM based infrastructures. Once detected you can remedy threats with various bouncers (block, 403, Captchas, etc.) and blocked IPs are shared among all users to further improve their security.
+A modern behavior detection system, written in Go. It stacks on Fail2ban's philosophy, but uses Grok patterns & YAML grammar to analyse logs. It exposes an api, allowing to decouple detection and remediation for Cloud/Containers/VM based infrastructures. Once detected you respond to threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) and blocked IPs are shared among all users to further improve their security. See [FAQ](https://doc.crowdsec.net/faq/) or read bellow for more.
 
 ## :information_source: About the CrowdSec project
 
@@ -41,12 +40,12 @@ Processing is done in 5 steps:
  1. Read Data sources (log files, streams, trails, messages ...), normalize and enrich signals
  2. Matching those signals to behavior patterns, aka scenarios (*)
  3. If an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers) : a software component integrated into your applicative stack that supports various remediations such as block, return 403, and soon captcha, 2FA, etc.
- 4. *(ONLY)* The aggressive IP, the scenario name triggered and a timestamp is then sent to our curation platform (to avoid poisoning & false positives)
- 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec clients (which is used as an enrichment source in step1)
+ 4. The aggressive IP, the scenario name triggered and a timestamp is sent to our curation platform (to avoid poisoning & false positives)
+ 5. If verified, this IP is then integrated to the block list continuously distributed to all CrowdSec users (based on the scenarios installed)
 
 By detecting, blocking & sharing the threat they faced, all clients are reinforcing each-others (hence the name Crowd-Security). Crowdsec is designed for modern infrastructures, with its "*Detect Here, Remedy There*" approach, letting you analyse logs coming from several sources in one place and block threats at various levels (applicative, system, infrastructural) of your stack.
 
-(*) CrowdSec ships by default with scenario (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the [hub](https://hub.crowdsec.net). It is also very easy to adapt an existing one or create one yourself.
+(*) CrowdSec ships by default with scenarios (brute force, port scan, web scan, etc.) adapted for most context, but you can easily extend it by picking more of them from the [hub](https://hub.crowdsec.net). It is also easy to adapt an existing one or create one yourself.
 
 ## :point_right: What it is not
 
@@ -54,71 +53,26 @@ CrowdSec is not a SIEM, storing your logs (neither locally nor remotely).
 
 Your data stay in your premises and are only analyzed and forgotten.
 
-Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attemps.
-
+Signals sent to the curation platform are extremely limited (IP, Scenario, Timestamp), and are only there to allow the system to rule out false positives or poisoning attempts.
 
 ## :arrow_down: Install it !
 
-In order to install it on an `amd64` platform, you can use the available prebuilt release package. 
-Just follow the steps below. However, if you want crowdsec for a different architecture
-(e.g. ARM) then you must build it yourself from source. You can find the build instructions 
-[here](https://doc.crowdsec.net/getting_started/installation/#from-source) in 
-our [documentation](https://doc.crowdsec.net).
+Crowdsec is available for various platforms :
 
-Find the [latest release](https://github.com/crowdsecurity/crowdsec/releases/latest)
+ - [Use our debian repositories](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository) or [the official debian packages](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-debian-official-packages)
+ - An [image](https://hub.docker.com/r/crowdsecurity/crowdsec) is available for docker
+ - [Prebuilt release packages](https://github.com/crowdsecurity/crowdsec/releases) are also available (suitable for `amd64`)
+ - You can as well [build it from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-from-source)
+ - FreeBSD support is [wip](https://github.com/crowdsecurity/crowdsec/issues/651)
 
-Ensure you have dependencies :
-<details open>
-  <summary>for Debian based distributions</summary>
-
-```bash
-apt-get install bash gettext whiptail wget
-```
-</details>
-
-<details open>
-  <summary>for RedHat based distributions</summary>
-
-```bash
-yum install bash gettext newt wget
- ```
-</details>
-
-Then :
-
-```bash
-wget https://github.com/crowdsecurity/crowdsec/releases/latest/download/crowdsec-release.tgz
-tar xvzf crowdsec-release.tgz
-cd crowdsec-v*
-sudo ./wizard.sh -i
-```
-
-## :whale2: Docker
-
-You can use docker to run crowdsec, by using [official docker image](https://hub.docker.com/r/crowdsecurity/crowdsec).
-
-You can also build the docker image following [this](https://github.com/crowdsecurity/crowdsec/tree/master/docker#build) 
-
-## ⚙️ Build it !
-
-If you want to build crowdsec yourself follow these steps:
-
-```bash
-git clone https://github.com/crowdsecurity/crowdsec
-cd crowdsec
-make build
-```
-
-For more details read the chapter 
-[Installation from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#from-source) in 
-our [documentation](https://doc.crowdsec.net).
+Or look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
 
 ## :tada: Key points
 
 ### Fast assisted installation, no technical barrier
 
 <details open>
-  <summary>User is assisted during setup, providing functional out-of-the-box setup</summary>
+  <summary>Initial configuration is automated, providing functional out-of-the-box setup</summary>
   <img src="docs/assets/images/crowdsec_install.gif">
 </details>
 
@@ -143,10 +97,18 @@ our [documentation](https://doc.crowdsec.net).
   <img src="docs/assets/images/cscli-metabase.gif">
 </details>
 
+### Hot & Cold logs
+
+<details>
+  <summary>Process cold logs, for forensic, tests and chasing false-positives & false negatives (click to expand)</summary>
+  <img src="docs/assets/images/forensic-mode.gif">
+</details>
+
+
 ## 📦 About this repository
 
 This repository contains the code for the two main components of crowdsec :
- - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristis to logs. This is the component in charge of "detecting" the attacks
+ - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristics to logs. This is the component in charge of "detecting" the attacks
  - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
 
 
