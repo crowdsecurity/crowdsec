@@ -2,7 +2,6 @@
 <p align="center">
 <img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
-
 </br>
 </br>
 </br>
@@ -45,7 +44,8 @@ Crowdsec is an open-source, lightweight software, detecting peers with aggressiv
 
 Processing is done in 4 steps:
 
-<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/docs/assets/images/CS-simplified-treatment.png" alt="CrowdSec" title="CrowdSec" width="633" height="256"/>
+<img src="docs/assets/images/CS-simplified-treatment.png" alt="CrowdSec" title="CrowdSec" width="633" height="256"/>
+
 
 
 Once an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
