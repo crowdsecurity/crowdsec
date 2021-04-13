@@ -150,7 +150,7 @@ func TestJournaldTail(t *testing.T) {
 
 		if test.tomb_error != "" {
 			assert.Contains(t, fmt.Sprintf("%s", tomb.Err()), test.tomb_error)
-			log.Infof("expected tomb error ok : %s", test.read_error)
+			log.Infof("expected tomb error ok : '%s'", test.tomb_error)
 			continue
 		} else {
 			if tomb.Err() != nil {
