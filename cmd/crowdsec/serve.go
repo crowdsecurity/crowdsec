@@ -73,6 +73,11 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 
+	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
 	if err := LoadConfig(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
