@@ -13,6 +13,10 @@ Please refer to [ent.](https://entgo.io/) [supported database](https://entgo.io/
  - Gremlin
 
 
+!!! warning
+    When switching an existing instance of crowdsec to a new database backend, you need to register your machine(s) (ie. `cscli machines add -a`) and bouncer(s) to the new database, as data is not migrated.
+
+
 ## MySQL
 
 Connect to your `MySQL` server and run the following commands:
