@@ -29,7 +29,7 @@
 
 ## Local API -> Database
 
- - When using a networked database (PostgreSQL or MySQL), only the central API needs to access the database, agents don't have to be able to comunicate with it.
+ - When using a networked database (PostgreSQL or MySQL), only the local API needs to access the database, agents don't have to be able to comunicate with it.
 
 ## Prometheus -> Agents
 
