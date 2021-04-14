@@ -33,7 +33,7 @@
 
 ## Prometheus -> Agents
 
- - If you're scrapping prometheus metrics from your agents or you local API, you need to allow inbound connections to `tcp/6060`
+ - If you're scrapping prometheus metrics from your agents or your local API, you need to allow inbound connections to `tcp/6060`
 
 
 
