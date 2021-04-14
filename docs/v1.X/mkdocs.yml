@@ -15,10 +15,11 @@ nav:
       - Parsers: user_guide/configurations_management/parsers.md
       - Enrichers: user_guide/configurations_management/enrichers.md
       - Scenarios: user_guide/configurations_management/scenarios.md
-    - Decisions Management: user_guide/decision_management.md
+    - Decisions management: user_guide/decision_management.md
     - Bouncers & machines management: user_guide/bouncer_machine_management.md
     - Databases: user_guide/database.md
-    - Simulation Management: user_guide/simulation_mode.md
+    - Network management: user_guide/network.md
+    - Simulation management: user_guide/simulation_mode.md
     - Crowdsec forensic mode: user_guide/forensic_mode.md
     - Debugging: user_guide/debugging_configs.md
   - CLI:
