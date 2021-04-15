@@ -80,18 +80,20 @@ func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdMachines = &cobra.Command{
 		Use:   "machines [action]",
-		Short: "Manage local API machines",
-		Long: `
-Machines Management.
-
-To list/add/delete/validate machines
+		Short: "Manage local API machines [requires local API]",
+		Long: `To list/add/delete/validate machines.
+Note: This command requires database direct access, so is intended to be run on the local API machine.
 `,
 		Example: `cscli machines [action]`,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			csConfig.LoadAPIServer()
+			if csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
 			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Errorf("This command requires direct database access (must be run on the local API machine)")
 				log.Fatalf(err.Error())
 			}
-			return nil
 		},
 	}
 
@@ -101,9 +103,8 @@ To list/add/delete/validate machines
 		Long:    `List `,
 		Example: `cscli machines list`,
 		Args:    cobra.MaximumNArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
 				log.Fatalf("unable to create new database client: %s", err)
@@ -164,7 +165,7 @@ cscli machines add --auto
 cscli machines add MyTestMachine --auto
 cscli machines add MyTestMachine --password MyPassword
 `,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
@@ -264,7 +265,7 @@ cscli machines add MyTestMachine --password MyPassword
 		Short:   "delete machines",
 		Example: `cscli machines delete <machine_name>`,
 		Args:    cobra.ExactArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {
@@ -290,7 +291,7 @@ cscli machines add MyTestMachine --password MyPassword
 		Long:    `validate a machine to access the local API.`,
 		Example: `cscli machines validate <machine_name>`,
 		Args:    cobra.ExactArgs(1),
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
 			if err != nil {

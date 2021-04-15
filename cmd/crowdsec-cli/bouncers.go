@@ -22,15 +22,17 @@ func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdBouncers = &cobra.Command{
 		Use:   "bouncers [action]",
-		Short: "Manage bouncers",
-		Long: `
-Bouncers Management.
-
-To list/add/delete bouncers
+		Short: "Manage bouncers [requires local API]",
+		Long: `To list/add/delete bouncers.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
 		Args: cobra.MinimumNArgs(1),
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+			csConfig.LoadAPIServer()
+			if csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
 			if err := csConfig.LoadDBConfig(); err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -119,7 +121,7 @@ cscli bouncers add MyBouncerName -l 24`,
 			if csConfig.Cscli.Output == "human" {
 				fmt.Printf("Api key for '%s':\n\n", keyName)
 				fmt.Printf("   %s\n\n", apiKey)
-				fmt.Print("Please keep this key since you will not be able to retrive it!\n")
+				fmt.Print("Please keep this key since you will not be able to retrieve it!\n")
 			} else if csConfig.Cscli.Output == "raw" {
 				fmt.Printf("%s", apiKey)
 			} else if csConfig.Cscli.Output == "json" {
