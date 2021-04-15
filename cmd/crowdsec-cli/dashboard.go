@@ -63,6 +63,7 @@ cscli dashboard remove
 				log.Fatalf(err.Error())
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Errorf("This command requires direct database access (must be run on the local API machine)")
 				log.Fatalf(err.Error())
 			}
 
