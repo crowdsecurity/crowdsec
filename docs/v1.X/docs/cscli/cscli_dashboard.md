@@ -1,10 +1,12 @@
 ## cscli dashboard
 
-Manage your metabase dashboard container
+Manage your metabase dashboard container [requires local API]
 
 ### Synopsis
 
 Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
+		
 
 ### Examples
 

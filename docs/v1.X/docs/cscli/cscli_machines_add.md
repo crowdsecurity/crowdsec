@@ -46,6 +46,6 @@ cscli machines add MyTestMachine --password MyPassword
 
 ### SEE ALSO
 
-* [cscli machines](cscli_machines.md)	 - Manage local API machines
+* [cscli machines](cscli_machines.md)	 - Manage local API machines [requires local API]
 
 

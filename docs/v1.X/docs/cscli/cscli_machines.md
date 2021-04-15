@@ -1,13 +1,11 @@
 ## cscli machines
 
-Manage local API machines
+Manage local API machines [requires local API]
 
 ### Synopsis
 
-
-Machines Management.
-
-To list/add/delete/validate machines
+To list/add/delete/validate machines.
+Note: This command requires database direct access, so is intended to be run on the local API machine.
 
 
 ### Examples

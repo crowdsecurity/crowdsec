@@ -1,13 +1,11 @@
 ## cscli bouncers
 
-Manage bouncers
+Manage bouncers [requires local API]
 
 ### Synopsis
 
-
-Bouncers Management.
-
-To list/add/delete bouncers
+To list/add/delete bouncers.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
 
 
 ### Options

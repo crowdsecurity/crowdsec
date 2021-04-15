@@ -33,6 +33,6 @@ cscli machines delete <machine_name>
 
 ### SEE ALSO
 
-* [cscli machines](cscli_machines.md)	 - Manage local API machines
+* [cscli machines](cscli_machines.md)	 - Manage local API machines [requires local API]
 
 

@@ -23,16 +23,16 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 ### SEE ALSO
 
 * [cscli alerts](cscli_alerts.md)	 - Manage alerts
-* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
+* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers [requires local API]
 * [cscli capi](cscli_capi.md)	 - Manage interaction with Central API (CAPI)
 * [cscli collections](cscli_collections.md)	 - Manage collections from hub
 * [cscli completion](cscli_completion.md)	 - Generate completion script
 * [cscli config](cscli_config.md)	 - Allows to view current config
-* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
+* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container [requires local API]
 * [cscli decisions](cscli_decisions.md)	 - Manage decisions
 * [cscli hub](cscli_hub.md)	 - Manage Hub
 * [cscli lapi](cscli_lapi.md)	 - Manage interaction with Local API (LAPI)
-* [cscli machines](cscli_machines.md)	 - Manage local API machines
+* [cscli machines](cscli_machines.md)	 - Manage local API machines [requires local API]
 * [cscli metrics](cscli_metrics.md)	 - Display crowdsec prometheus metrics.
 * [cscli parsers](cscli_parsers.md)	 - Install/Remove/Upgrade/Inspect parser(s) from hub
 * [cscli postoverflows](cscli_postoverflows.md)	 - Install/Remove/Upgrade/Inspect postoverflow(s) from hub
