@@ -60,10 +60,6 @@ func generatePassword(length int) string {
 }
 
 func generateID(lapi bool) (string, error) {
-	// If running in Github action, use a hardcoded machine-id
-	if os.Getenv("GITHUB_RUN_ID") != "" && !lapi {
-		return "99999999999999999999999999999999", nil
-	}
 	id, err := machineid.ID()
 	if err != nil {
 		log.Debugf("failed to get machine-id with usual files : %s", err)
@@ -77,6 +73,10 @@ func generateID(lapi bool) (string, error) {
 	}
 	id = strings.ReplaceAll(id, "-", "")[:32]
 	id = fmt.Sprintf("%s%s", id, generatePassword(16))
+	// If running in Github action and generating an id for CAPI, add a prefix to the machine-id
+	if os.Getenv("GITHUB_RUN_ID") != "" && !lapi {
+		id = "cirun" + id
+	}
 	return id, nil
 }
 
