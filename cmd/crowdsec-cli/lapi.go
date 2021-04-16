@@ -50,7 +50,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if lapiUser == "" {
-				lapiUser, err = generateID()
+				lapiUser, err = generateID(true)
 				if err != nil {
 					log.Fatalf("unable to generate machine id: %s", err)
 				}

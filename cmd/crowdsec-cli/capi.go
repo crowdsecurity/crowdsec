@@ -49,7 +49,7 @@ func NewCapiCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
-			id, err := generateID()
+			id, err := generateID(false)
 			if err != nil {
 				log.Fatalf("unable to generate machine id: %s", err)
 			}

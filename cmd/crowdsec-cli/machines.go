@@ -59,7 +59,11 @@ func generatePassword(length int) string {
 	return string(buf)
 }
 
-func generateID() (string, error) {
+func generateID(lapi bool) (string, error) {
+	// If running in Github action, use a hardcoded machine-id
+	if os.Getenv("GITHUB_RUN_ID") != "" && !lapi {
+		return "99999999999999999999999999999999", nil
+	}
 	id, err := machineid.ID()
 	if err != nil {
 		log.Debugf("failed to get machine-id with usual files : %s", err)
@@ -184,7 +188,7 @@ cscli machines add MyTestMachine --password MyPassword
 					}
 					return
 				}
-				machineID, err = generateID()
+				machineID, err = generateID(true)
 				if err != nil {
 					log.Fatalf("unable to generate machine id : %s", err)
 				}
