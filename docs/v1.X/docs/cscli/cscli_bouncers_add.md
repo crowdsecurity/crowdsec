@@ -38,6 +38,6 @@ cscli bouncers add MyBouncerName -l 24
 
 ### SEE ALSO
 
-* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers
+* [cscli bouncers](cscli_bouncers.md)	 - Manage bouncers [requires local API]
 
 

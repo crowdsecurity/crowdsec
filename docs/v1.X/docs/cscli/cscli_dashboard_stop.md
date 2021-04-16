@@ -30,6 +30,6 @@ cscli dashboard stop [flags]
 
 ### SEE ALSO
 
-* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
+* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container [requires local API]
 
 

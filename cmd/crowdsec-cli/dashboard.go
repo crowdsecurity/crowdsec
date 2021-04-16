@@ -40,9 +40,11 @@ func NewDashboardCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdDashboard = &cobra.Command{
 		Use:   "dashboard [command]",
-		Short: "Manage your metabase dashboard container",
-		Long:  `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.`,
-		Args:  cobra.ExactArgs(1),
+		Short: "Manage your metabase dashboard container [requires local API]",
+		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
+Note: This command requires database direct access, so is intended to be run on Local API/master.
+		`,
+		Args: cobra.ExactArgs(1),
 		Example: `
 cscli dashboard setup
 cscli dashboard start
@@ -50,12 +52,17 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+
 			metabaseConfigFolderPath := filepath.Join(csConfig.ConfigPaths.ConfigDir, metabaseConfigFolder)
 			metabaseConfigPath = filepath.Join(metabaseConfigFolderPath, metabaseConfigFile)
 			if err := os.MkdirAll(metabaseConfigFolderPath, os.ModePerm); err != nil {
 				log.Fatalf(err.Error())
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Errorf("This command requires direct database access (must be run on the local API machine)")
 				log.Fatalf(err.Error())
 			}
 

@@ -15,6 +15,18 @@ If you spotted some mistakes in the documentation or have improvement suggestion
 Let us as well know if you have some improvement suggestions !
 
 
+<details>
+  <summary>Preview your documentation changes locally</summary>
+
+```bash
+python3 -m venv cs-env
+source cs-env/bin/activate
+pip install -r docs/requirements.txt
+mkdocs serve
+```
+
+</details>
+
 
 ## Contributing to the code
 

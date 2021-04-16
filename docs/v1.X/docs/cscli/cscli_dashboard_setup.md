@@ -46,6 +46,6 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 
 ### SEE ALSO
 
-* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container
+* [cscli dashboard](cscli_dashboard.md)	 - Manage your metabase dashboard container [requires local API]
 
 

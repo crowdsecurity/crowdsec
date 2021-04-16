@@ -132,7 +132,7 @@ func ListItem(itemType string, args []string) {
 func InstallItem(name string, obtype string, force bool) {
 	it := cwhub.GetItem(obtype, name)
 	if it == nil {
-		log.Fatalf("unable to retrive item : %s", name)
+		log.Fatalf("unable to retrieve item : %s", name)
 	}
 	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
