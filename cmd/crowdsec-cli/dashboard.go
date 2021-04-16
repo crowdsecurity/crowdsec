@@ -52,8 +52,7 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			csConfig.LoadAPIServer()
-			if csConfig.DisableAPI {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 

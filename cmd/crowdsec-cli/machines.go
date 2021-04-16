@@ -86,8 +86,7 @@ Note: This command requires database direct access, so is intended to be run on 
 `,
 		Example: `cscli machines [action]`,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			csConfig.LoadAPIServer()
-			if csConfig.DisableAPI {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {

@@ -28,11 +28,8 @@ func NewCapiCmd() *cobra.Command {
 		Short: "Manage interaction with Central API (CAPI)",
 		Args:  cobra.MinimumNArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil {
-				log.Fatalf(err.Error())
-			}
-			if csConfig.API.Server == nil {
-				log.Fatalln("There is no API->server configuration")
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
