@@ -379,7 +379,8 @@ func TestTimeNow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error parsing the return value of TimeNow: %s", err)
 	}
-	if time.Until(ti) > -1*time.Second {
+
+	if -1*time.Until(ti) > time.Second {
 		t.Fatalf("TimeNow func should return time.Now()")
 	}
 	log.Printf("test 'TimeNow()' : OK")
