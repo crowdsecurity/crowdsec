@@ -99,14 +99,11 @@ func GenDateParse(date string) (string, time.Time) {
 func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
 
 	var ret map[string]string = make(map[string]string)
-	log.Printf("Prout")
 	tstr, tbin := GenDateParse(in)
 	if !tbin.IsZero() {
-		log.Printf("Here")
 		ret["MarshaledTime"] = string(tstr)
 		return ret, nil
 	}
-	log.Printf("not Here")
 
 	return nil, nil
 }
