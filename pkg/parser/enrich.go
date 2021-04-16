@@ -50,25 +50,26 @@ func Loadplugin(path string) ([]EnricherCtx, error) {
 }
 
 func GenDateParse(date string) (string, time.Time) {
-	var retstr string
-	var layouts = [...]string{
-		time.RFC3339,
-		"02/Jan/2006:15:04:05 -0700",
-		"Mon Jan 2 15:04:05 2006",
-		"02-Jan-2006 15:04:05 europe/paris",
-		"01/02/2006 15:04:05",
-		"2006-01-02 15:04:05.999999999 -0700 MST",
-		//Jan  5 06:25:11
-		"Jan  2 15:04:05",
-		"Mon Jan 02 15:04:05.000000 2006",
-		"2006-01-02T15:04:05Z07:00",
-		"2006/01/02",
-		"2006/01/02 15:04",
-		"2006-01-02",
-		"2006-01-02 15:04",
-		"2006/01/02 15:04:05",
-		"2006-01-02 15:04:05",
-	}
+	var (
+		layouts = [...]string{
+			time.RFC3339,
+			"02/Jan/2006:15:04:05 -0700",
+			"Mon Jan 2 15:04:05 2006",
+			"02-Jan-2006 15:04:05 europe/paris",
+			"01/02/2006 15:04:05",
+			"2006-01-02 15:04:05.999999999 -0700 MST",
+			//Jan  5 06:25:11
+			"Jan  2 15:04:05",
+			"Mon Jan 02 15:04:05.000000 2006",
+			"2006-01-02T15:04:05Z07:00",
+			"2006/01/02",
+			"2006/01/02 15:04",
+			"2006-01-02",
+			"2006-01-02 15:04",
+			"2006/01/02 15:04:05",
+			"2006-01-02 15:04:05",
+		}
+	)
 
 	for _, dateFormat := range layouts {
 		t, err := time.Parse(dateFormat, date)
@@ -85,17 +86,24 @@ func GenDateParse(date string) (string, time.Time) {
 			return string(retstr), t
 		}
 	}
-	return retstr, time.Time{}
+
+	now := time.Now()
+	retstr, err := now.MarshalText()
+	if err != nil {
+		log.Warningf("Failed marshaling current time")
+		return "", time.Time{}
+	}
+	return string(retstr), now
 }
 
 func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
 
 	var ret map[string]string = make(map[string]string)
-
 	tstr, tbin := GenDateParse(in)
 	if !tbin.IsZero() {
 		ret["MarshaledTime"] = string(tstr)
 		return ret, nil
 	}
+
 	return nil, nil
 }

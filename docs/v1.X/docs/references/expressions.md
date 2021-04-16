@@ -60,3 +60,9 @@ Returns the uppercase version of the string
 Returns true if the IP `IPStr` is contained in the IP range `RangeStr` (uses `net.ParseCIDR`)
 
 > IpInRange("1.2.3.4", "1.2.3.0/24")
+
+## `TimeNow() string`
+
+Return RFC3339 formatted time 
+
+> TimeNow()

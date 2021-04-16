@@ -133,8 +133,11 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 		}
 
 		if value == "" {
-			clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
-			continue
+			//allow ParseDate to have empty input
+			if static.Method != "ParseDate" {
+				clog.Debugf("Empty value for %s, skip.", printStaticTarget(static))
+				continue
+			}
 		}
 
 		if static.Method != "" {
