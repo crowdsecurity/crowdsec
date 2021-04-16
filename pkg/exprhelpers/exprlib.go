@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -39,6 +40,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"RegexpInFile":   RegexpInFile,
 		"Upper":          Upper,
 		"IpInRange":      IpInRange,
+		"TimeNow":        TimeNow,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -133,4 +135,8 @@ func IpInRange(ip string, ipRange string) bool {
 		return true
 	}
 	return false
+}
+
+func TimeNow() string {
+	return time.Now().Format(time.RFC3339)
 }
