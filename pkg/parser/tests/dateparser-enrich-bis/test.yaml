@@ -1,0 +1,12 @@
+#these are the events we input into parser
+lines:
+  - Parsed:
+      test: format3
+#these are the results we expect from the parser
+results:
+  - Parsed:
+      test: format3
+    Enriched:
+      MarshaledTime: ""
+    Stage: s00-raw
+    Process: true
