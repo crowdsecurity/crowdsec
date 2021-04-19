@@ -17,4 +17,4 @@ jobs:
           token: ${{ secrets.DISPATCH_TOKEN }}
           event-type: test_package_from_master
           repository: crowdsecurity/packaging
-          client-payload: '{"branch": "master"}'
+          client-payload: '{"branch": "${{ github.ref }}"}'
