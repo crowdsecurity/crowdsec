@@ -28,6 +28,10 @@ jobs:
         excludes: draft
     - name: Build release
       run: BUILD_VERSION=${{ steps.keydb.outputs.release }} make release
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
     - name: Install release
       run: |
         cd crowdsec-${{ steps.keydb.outputs.release }}
