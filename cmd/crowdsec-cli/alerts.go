@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -178,12 +179,16 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 				fmt.Printf("\n- Date: %s\n", *event.Timestamp)
 				table = tablewriter.NewWriter(os.Stdout)
 				table.SetHeader([]string{"Key", "Value"})
+				sort.Slice(event.Meta, func(i, j int) bool {
+					return event.Meta[i].Key < event.Meta[j].Key
+				})
 				for _, meta := range event.Meta {
 					table.Append([]string{
 						meta.Key,
 						meta.Value,
 					})
 				}
+
 				table.Render() // Send output
 			}
 		}
