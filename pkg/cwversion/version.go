@@ -28,6 +28,7 @@ var (
 	BuildDate           string // = "I don't remember exactly"
 	Tag                 string // = "dev"
 	GoVersion           string // = "1.13"
+	System              string // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
@@ -40,6 +41,7 @@ func ShowStr() string {
 	ret += fmt.Sprintf("Codename: %s\n", Codename)
 	ret += fmt.Sprintf("BuildDate: %s\n", BuildDate)
 	ret += fmt.Sprintf("GoVersion: %s\n", GoVersion)
+	ret += fmt.Sprintf("Platform: %s\n", System)
 	return ret
 }
 
@@ -55,7 +57,7 @@ func Show() {
 }
 
 func VersionStr() string {
-	return fmt.Sprintf("%s-%s", Version, Tag)
+	return fmt.Sprintf("%s-%s-%s", Version, System, Tag)
 }
 
 func VersionStrip() string {
