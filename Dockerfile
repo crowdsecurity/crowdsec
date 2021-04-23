@@ -8,7 +8,7 @@ RUN apk add --no-cache git jq gcc libc-dev make bash gettext
 
 COPY . .
 
-RUN BUILD_VERSION="$(git describe --tags `git rev-list --tags --max-count=1`)-docker" make release
+RUN SYSTEM="docker" make release
 RUN /bin/bash wizard.sh --docker-mode
 RUN cscli hub update && cscli collections install crowdsecurity/linux
 
