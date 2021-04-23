@@ -1,4 +1,4 @@
-package acquisition
+package journalctl_acquisition
 
 import (
 	"bufio"

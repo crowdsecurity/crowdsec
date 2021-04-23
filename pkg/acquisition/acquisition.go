@@ -5,6 +5,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -57,52 +59,28 @@ cat mode will return once source has been exhausted.
   - how to deal with "file was not present at startup but might appear later" ?
 */
 
-var TAIL_MODE = "tail"
-var CAT_MODE = "cat"
-
-type DataSourceCfg struct {
-	Mode              string            `yaml:"mode,omitempty"` //tail|cat|...
-	Filename          string            `yaml:"filename,omitempty"`
-	Filenames         []string          `yaml:"filenames,omitempty"`
-	JournalctlFilters []string          `yaml:"journalctl_filter,omitempty"`
-	Labels            map[string]string `yaml:"labels,omitempty"`
-	Profiling         bool              `yaml:"profiling,omitempty"`
+var DataSourceMap = map[string]interface{}{
+	"file": file_acquisition.FileSource{},
 }
 
+// The interface each datasource module must implement
 type DataSource interface {
-	Configure(DataSourceCfg) error
-	/*the readers must watch the tomb (especially in tail mode) to know when to shutdown.
-	tomb is as well used to trigger general shutdown when a datasource errors */
-	StartReading(chan types.Event, *tomb.Tomb) error
-	Mode() string //return CAT_MODE or TAIL_MODE
-	//Not sure it makes sense to make those funcs part of the interface.
-	//While 'cat' and 'tail' are the only two modes we see now, other modes might appear
-	//StartTail(chan types.Event, *tomb.Tomb) error
-	//StartCat(chan types.Event, *tomb.Tomb) error
+	Configure([]byte) error                                // Configure the datasource
+	Mode() string                                          // Get the mode (TAIL, CAT or SERVER)
+	SupportedModes() []string                              // Returns the mode supported by the datasource
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
+	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 }
 
-func DataSourceConfigure(config DataSourceCfg) (DataSource, error) {
-	if config.Mode == "" { /*default mode is tail*/
-		config.Mode = TAIL_MODE
+func DataSourceConfigure(config configuration.DataSourceCommonCfg) (DataSource, error) {
+	dataSource := DataSourceMap[config.Type]
+	if dataSource == nil {
+		return nil, errors.Errorf("Unknown datasource %s", config.Type)
 	}
+	dataSourceInstance := dataSource.New()
+	dataSourceInstance.Configure([]byte(""))
 
-	if len(config.Filename) > 0 || len(config.Filenames) > 0 { /*it's file acquisition*/
-
-		fileSrc := new(FileSource)
-		if err := fileSrc.Configure(config); err != nil {
-			return nil, errors.Wrap(err, "configuring file datasource")
-		}
-		return fileSrc, nil
-	} else if len(config.JournalctlFilters) > 0 { /*it's journald acquisition*/
-
-		journaldSrc := new(JournaldSource)
-		if err := journaldSrc.Configure(config); err != nil {
-			return nil, errors.Wrap(err, "configuring journald datasource")
-		}
-		return journaldSrc, nil
-	} else {
-		return nil, fmt.Errorf("empty filename(s) and journalctl filter, malformed datasource")
-	}
+	return nil, nil
 }
 
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
@@ -119,7 +97,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		dec := yaml.NewDecoder(yamlFile)
 		dec.SetStrict(true)
 		for {
-			sub := DataSourceCfg{}
+			var sub interface{}
 			err = dec.Decode(&sub)
 			if err != nil {
 				if err == io.EOF {
@@ -127,6 +105,14 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 					break
 				}
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", acquisFile))
+			}
+			// If no type is defined, assume file for backward compatibility
+			if sub.Type == "" {
+				sub.Type = "file"
+			}
+			// default mode is tail
+			if sub.Mode == "" {
+				sub.Mode = configuration.TAIL_MODE
 			}
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
@@ -141,13 +127,18 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 }
 
 func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
-
 	for i := 0; i < len(sources); i++ {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")
-			if err := subsrc.StartReading(output, AcquisTomb); err != nil {
+			var err error
+			if subsrc.Mode() == configuration.TAIL_MODE {
+				err = subsrc.LiveAcquisition(output, AcquisTomb)
+			} else {
+				err = subsrc.OneShotAcquisition(output, AcquisTomb)
+			}
+			if err != nil {
 				return err
 			}
 			return nil

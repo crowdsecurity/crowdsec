@@ -1,4 +1,4 @@
-package acquisition
+package file_acquisition
 
 import (
 	"fmt"

@@ -142,7 +142,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 
-		tmpCfg := acquisition.DataSourceCfg{}
+		tmpCfg := acquisition.DataSourceCommonCfg{}
 		tmpCfg.Mode = acquisition.CAT_MODE
 		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
 
