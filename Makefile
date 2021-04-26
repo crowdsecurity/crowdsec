@@ -28,11 +28,11 @@ MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 13
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 #Current versioning information from env
-BUILD_VERSION?="$(shell git describe --tags `git rev-list --tags --max-count=1`)"
-BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
-BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
-BUILD_TIMESTAMP=$(shell date +%F"_"%T)
-BUILD_TAG="$(shell git rev-parse HEAD)"
+export BUILD_VERSION?="$(shell git describe --tags `git rev-list --tags --max-count=1`)"
+export BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -r 's/[go]+//g')"
+export BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
+export BUILD_TIMESTAMP=$(shell date +%F"_"%T)
+export BUILD_TAG="$(shell git rev-parse HEAD)"
 export LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \

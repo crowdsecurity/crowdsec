@@ -14,13 +14,21 @@ PID_DIR = $(PREFIX)"/var/run/"
 
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
+export LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-extldflags '-static'"
+
+
 all: clean test build
 
 build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
 
 static: clean
-	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v -a -tags netgo -ldflags '-w -extldflags "-static"'
+	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
 test:
 	$(GOTEST) -v ./...
