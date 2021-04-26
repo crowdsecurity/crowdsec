@@ -29,6 +29,7 @@ type FileSource struct {
 }
 
 func (f *FileSource) Configure(Config []byte) error {
+	log.Warn("Configuring FileSource")
 	return nil
 }
 
@@ -56,6 +57,7 @@ func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (f *FileSource) New() *FileSource {
+	log.Warn("Creating new FileSource")
 	return &FileSource{}
 }
 

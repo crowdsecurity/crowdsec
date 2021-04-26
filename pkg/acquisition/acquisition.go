@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -59,11 +58,7 @@ cat mode will return once source has been exhausted.
   - how to deal with "file was not present at startup but might appear later" ?
 */
 
-var DataSourceMap = map[string]interface{}{
-	"file": file_acquisition.FileSource{},
-}
-
-// The interface each datasource module must implement
+// The interface each datasource must implement
 type DataSource interface {
 	Configure([]byte) error                                // Configure the datasource
 	Mode() string                                          // Get the mode (TAIL, CAT or SERVER)
@@ -72,15 +67,16 @@ type DataSource interface {
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 }
 
-func DataSourceConfigure(config configuration.DataSourceCommonCfg) (DataSource, error) {
-	dataSource := DataSourceMap[config.Type]
+func DataSourceConfigure(yamlConfig []byte, dataSourceType string) (*DataSource, error) {
+	datasourceMap := DataSourceMap{}
+	dataSource := datasourceMap.GetDataSource(dataSourceType)
 	if dataSource == nil {
-		return nil, errors.Errorf("Unknown datasource %s", config.Type)
+		return nil, errors.Errorf("Unknown datasource %s", dataSourceType)
 	}
-	dataSourceInstance := dataSource.New()
-	dataSourceInstance.Configure([]byte(""))
+	//dataSourceInstance := *dataSource.New()
+	err := dataSource.Configure([]byte(""))
 
-	return nil, nil
+	return dataSource, nil
 }
 
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
@@ -95,9 +91,9 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
 		}
 		dec := yaml.NewDecoder(yamlFile)
-		dec.SetStrict(true)
+		dec.SetStrict(false)
 		for {
-			var sub interface{}
+			var sub configuration.DataSourceCommonCfg
 			err = dec.Decode(&sub)
 			if err != nil {
 				if err == io.EOF {
@@ -114,12 +110,12 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if sub.Mode == "" {
 				sub.Mode = configuration.TAIL_MODE
 			}
-			src, err := DataSourceConfigure(sub)
+			src, err := DataSourceConfigure([]byte(""), sub.Type)
 			if err != nil {
 				log.Warningf("while configuring datasource : %s", err)
 				continue
 			}
-			sources = append(sources, src)
+			sources = append(sources, *src)
 		}
 	}
 

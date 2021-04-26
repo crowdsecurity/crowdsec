@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	_ "net/http/pprof"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"sort"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -142,24 +142,24 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
 
-		tmpCfg := acquisition.DataSourceCommonCfg{}
-		tmpCfg.Mode = acquisition.CAT_MODE
+		tmpCfg := configuration.DataSourceCommonCfg{}
+		tmpCfg.Mode = configuration.CAT_MODE
 		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
 
-		if flags.SingleFilePath != "" {
+		/*if flags.SingleFilePath != "" {
 			tmpCfg.Filename = flags.SingleFilePath
 		} else if flags.SingleJournalctlFilter != "" {
 			tmpCfg.JournalctlFilters = strings.Split(flags.SingleJournalctlFilter, " ")
-		}
+		}*/
 
-		datasrc, err := acquisition.DataSourceConfigure(tmpCfg)
+		datasrc, err := acquisition.DataSourceConfigure([]byte(""), "file")
 		if err != nil {
 			return fmt.Errorf("while configuring specified file datasource : %s", err)
 		}
 		if dataSources == nil {
 			dataSources = make([]acquisition.DataSource, 0)
 		}
-		dataSources = append(dataSources, datasrc)
+		dataSources = append(dataSources, *datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
