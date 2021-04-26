@@ -14,7 +14,7 @@ build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 static: clean
-	@$(GOBUILD) -o $(BINARY_NAME) -v -a -tags netgo -ldflags '-w -extldflags "-static"'
+	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v -a -tags netgo -ldflags '-w -extldflags "-static"'
 
 install: install-conf install-bin
 
