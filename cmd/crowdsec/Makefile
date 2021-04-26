@@ -20,7 +20,7 @@ build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
 
 static: clean
-	$(GOBUILD) -o $(CROWDSEC_BIN) -v -a -tags netgo -ldflags '-w -extldflags "-static"'
+	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
 test:
 	$(GOTEST) -v ./...

@@ -83,6 +83,8 @@ func setHubBranch() error {
 		} else if semver.Compare(csVersion, latest) == 1 { // if current version is greater than the latest we are in pre-release
 			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
 			cwhub.HubBranch = "master"
+		} else if csVersion == "" {
+			log.Warningf("Crowdsec version is '', using master branch for the hub")
 		} else {
 			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and the latest stable version is '%s'. Please update it!", csVersion, latest)
 			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
