@@ -66,7 +66,7 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
     - name: Install release
       run: |
-        cd crowdsec-v${{ steps.fetch_prerelease_version.outputs.release }}
+        cd crowdsec-${{ steps.fetch_prerelease_version.outputs.release }}
         sudo ./wizard.sh --unattended
     - name: Check out code to get functional tests scripts
       uses: actions/checkout@v2
