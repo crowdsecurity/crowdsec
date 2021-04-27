@@ -50,6 +50,11 @@ jobs:
   #     env:
   #       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   test_tarball:
+    strategy:
+      matrix:
+        tarball:
+          standard: crowdsec-release
+          static: crowdsec-release-static
     name: Download tarball and run functional tests
     runs-on: ubuntu-20.04
     steps:
@@ -59,7 +64,7 @@ jobs:
         repository: crowdsecurity/crowdsec
         excludes: draft
     - name: download tarball
-      run: wget -qO - https://github.com/crowdsecurity/crowdsec/releases/download/${{ steps.fetch_prerelease_version.outputs.release }}/crowdsec-release.tgz | tar xvzf -
+      run: wget -qO - https://github.com/crowdsecurity/crowdsec/releases/download/${{ steps.fetch_prerelease_version.outputs.release }}/${{ matrix.tarball }}.tgz | tar xvzf -
     - name: "Force machineid"
       run: |
           sudo chmod +w /etc/machine-id
@@ -78,11 +83,11 @@ jobs:
       run: |
           cd scripts/func_tests/
           ./tests_post-install_1bouncers.sh
-    - name: "Test post-install bouncer"
+    - name: "Test post-install collections"
       run: |
           cd scripts/func_tests/
           ./tests_post-install_2collections.sh
-    - name: "Test post-install bouncer"
+    - name: "Test post-install macines"
       run: |
           cd scripts/func_tests/
           ./tests_post-install_3machines.sh   
