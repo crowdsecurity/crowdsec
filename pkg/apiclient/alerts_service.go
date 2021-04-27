@@ -41,6 +41,7 @@ type AlertsDeleteOpts struct {
 	ActiveDecisionEquals *bool   `url:"has_active_decision,omitempty"`
 	SourceEquals         *string `url:"alert_source,omitempty"`
 	Contains             *bool   `url:"contains,omitempty"`
+	Limit                *int    `url:"limit,omitempty"`
 	ListOpts
 }
 
