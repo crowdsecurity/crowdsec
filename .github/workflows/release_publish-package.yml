@@ -52,6 +52,7 @@ jobs:
           - name: crowdsec-release-static
     name: Download tarball and run functional tests
     runs-on: ubuntu-20.04
+    needs: [build, build_static]
     steps:
     - id: fetch_prerelease_version
       uses: pozetroninc/github-action-get-latest-release@master
