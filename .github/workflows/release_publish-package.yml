@@ -53,8 +53,8 @@ jobs:
     strategy:
       matrix:
         tarball:
-          standard: crowdsec-release
-          static: crowdsec-release-static
+          - name: crowdsec-release
+          - name: crowdsec-release-static
     name: Download tarball and run functional tests
     runs-on: ubuntu-20.04
     steps:
