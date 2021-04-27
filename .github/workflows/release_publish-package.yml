@@ -59,7 +59,7 @@ jobs:
         repository: crowdsecurity/crowdsec
         excludes: draft
     - name: download tarball
-      run: wget -q https://github.com/crowdsecurity/crowdsec/releases/download/v${{ steps.fetch_prerelease_version.outputs.release }}/crowdsec-release.tgz | tar xvzf -
+      run: wget -q https://github.com/crowdsecurity/crowdsec/releases/download/${{ steps.fetch_prerelease_version.outputs.release }}/crowdsec-release.tgz | tar xvzf -
     - name: "Force machineid"
       run: |
           sudo chmod +w /etc/machine-id
