@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -62,39 +63,39 @@ cat mode will return once source has been exhausted.
 type DataSource interface {
 	GetMetrics() []interface{}                             // Returns pointers to metrics that are managed by the module
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
-	Mode() string                                          // Get the mode (TAIL, CAT or SERVER)
+	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // Returns the mode supported by the datasource
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 	CanRun() bool                                          // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 }
 
-type FileDataSource struct {
-}
+// type FileDataSource struct {
+// }
 
-func (f *FileDataSource) GetMetrics() []interface{} {
-	return nil
-}
-func (f *FileDataSource) Configure([]byte, *log.Entry) error {
-	return nil
-}
-func (f *FileDataSource) Mode() string {
-	return ""
-}
-func (f *FileDataSource) SupportedModes() []string {
-	return nil
-}
-func (f *FileDataSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error {
-	return nil
-}
+// func (f *FileDataSource) GetMetrics() []interface{} {
+// 	return nil
+// }
+// func (f *FileDataSource) Configure([]byte, *log.Entry) error {
+// 	return nil
+// }
+// func (f *FileDataSource) Mode() string {
+// 	return ""
+// }
+// func (f *FileDataSource) SupportedModes() []string {
+// 	return nil
+// }
+// func (f *FileDataSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error {
+// 	return nil
+// }
 
-func (f *FileDataSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
-	return nil
-}
+// func (f *FileDataSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
+// 	return nil
+// }
 
-func (f *FileDataSource) CanRun() bool {
-	return true
-}
+// func (f *FileDataSource) CanRun() bool {
+// 	return true
+// }
 
 var AcquisitionSources = []struct {
 	name  string
@@ -102,7 +103,7 @@ var AcquisitionSources = []struct {
 }{
 	{
 		name:  "file",
-		iface: &FileDataSource{},
+		iface: &file_acquisition.FileSource{},
 	},
 }
 
@@ -181,7 +182,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")
 			var err error
-			if subsrc.Mode() == configuration.TAIL_MODE {
+			if subsrc.GetMode() == configuration.TAIL_MODE {
 				err = subsrc.LiveAcquisition(output, AcquisTomb)
 			} else {
 				err = subsrc.OneShotAcquisition(output, AcquisTomb)

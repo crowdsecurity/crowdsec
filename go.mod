@@ -56,7 +56,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
-	github.com/ugorji/go/codec v1.2.3 // indirect
+	github.com/ugorji/go v1.2.3 // indirect
 	github.com/vjeantet/grok v1.0.1 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/mod v0.4.1

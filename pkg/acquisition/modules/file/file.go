@@ -22,19 +22,20 @@ type FileConfiguration struct {
 }
 
 type FileSource struct {
-	CommonConfig configuration.DataSourceCommonCfg
-	FileConfig   FileConfiguration
-	tails        []*tail.Tail
-	Files        []string
+	configuration.DataSourceCommonCfg
+	FileConfig FileConfiguration
+	Mode       string
+	tails      []*tail.Tail
+	Files      []string
 }
 
-func (f *FileSource) Configure(Config []byte) error {
+func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	log.Warn("Configuring FileSource")
 	return nil
 }
 
-func (f *FileSource) Mode() string {
-	return f.CommonConfig.Mode
+func (f *FileSource) GetMode() string {
+	return f.Mode
 }
 
 func (f *FileSource) SupportedModes() []string {
@@ -50,6 +51,14 @@ func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		}
 	}
 	return nil
+}
+
+func (f *FileSource) GetMetrics() []interface{} {
+	return nil
+}
+
+func (f *FileSource) CanRun() bool {
+	return true
 }
 
 func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
@@ -93,7 +102,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		l.Raw = scanner.Text()
 		l.Time = time.Now()
 		l.Src = filename
-		l.Labels = f.CommonConfig.Labels
+		l.Labels = f.Labels
 		l.Process = true
 		// FIXME: How to interact with prom metrics ?
 		//ReaderHits.With(prometheus.Labels{"source": filename}).Inc()
