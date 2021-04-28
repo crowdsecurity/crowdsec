@@ -65,6 +65,7 @@ type DataSource interface {
 	SupportedModes() []string                              // Returns the mode supported by the datasource
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
+	CanRun() bool                                          // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 }
 
 func DataSourceConfigure(yamlConfig []byte, dataSourceType string) (*DataSource, error) {
