@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -72,7 +73,12 @@ type DataSource interface {
 var AcquisitionSources = []struct {
 	name  string
 	iface DataSource
-}{}
+}{
+	{
+		name:  "file",
+		iface: &file_acquisition.FileSource{},
+	},
+}
 
 func GetDataSourceIface(dataSourceType string) DataSource {
 	for _, source := range AcquisitionSources {

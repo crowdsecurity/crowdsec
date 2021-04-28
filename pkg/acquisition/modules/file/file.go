@@ -16,6 +16,7 @@ import (
 	"github.com/fsnotify/fsnotify"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
@@ -108,12 +109,12 @@ func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	return nil
 }
 
-func (f *FileSource) GetMetrics() []interface{} {
+func (f *FileSource) GetMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (f *FileSource) CanRun() bool {
-	return true
+func (f *FileSource) CanRun() error {
+	return nil
 }
 
 func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {

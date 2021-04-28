@@ -18,6 +18,7 @@ require (
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/enescakir/emoji v1.0.0
+	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-co-op/gocron v0.5.1
 	github.com/go-openapi/errors v0.19.9
