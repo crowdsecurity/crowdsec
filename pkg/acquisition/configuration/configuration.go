@@ -1,15 +1,15 @@
 package configuration
 
-type DataSourceCommonCfg struct {
-	Mode      string            `yaml:"mode,omitempty"`
-	Labels    map[string]string `yaml:"labels,omitempty"`
-	Profiling bool              `yaml:"profiling,omitempty"`
-	Type      string            `yaml:"type,omitempty"`
-}
+import (
+	log "github.com/sirupsen/logrus"
+)
 
-type FileSourceCfg struct {
-	DataSourceCommonCfg
-	filename string
+type DataSourceCommonCfg struct {
+	Mode       string            `yaml:"mode,omitempty"`
+	Labels     map[string]string `yaml:"labels,omitempty"`
+	LogLevel   *log.Level        `yaml:"log_level,omitempty"`
+	Type       string            `yaml:"type,omitempty"`
+	ConfigFile string            `yaml:"-"` //filled at run time : the filepath from which the config was unmarshaled
 }
 
 var TAIL_MODE = "tail"

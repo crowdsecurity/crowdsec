@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -61,69 +60,72 @@ cat mode will return once source has been exhausted.
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []interface{}                             // Returns pointers to metrics that are managed by the module
+	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
 	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // Returns the mode supported by the datasource
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
-	CanRun() bool                                          // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 }
-
-// type FileDataSource struct {
-// }
-
-// func (f *FileDataSource) GetMetrics() []interface{} {
-// 	return nil
-// }
-// func (f *FileDataSource) Configure([]byte, *log.Entry) error {
-// 	return nil
-// }
-// func (f *FileDataSource) Mode() string {
-// 	return ""
-// }
-// func (f *FileDataSource) SupportedModes() []string {
-// 	return nil
-// }
-// func (f *FileDataSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error {
-// 	return nil
-// }
-
-// func (f *FileDataSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
-// 	return nil
-// }
-
-// func (f *FileDataSource) CanRun() bool {
-// 	return true
-// }
 
 var AcquisitionSources = []struct {
 	name  string
 	iface DataSource
-}{
-	{
-		name:  "file",
-		iface: &file_acquisition.FileSource{},
-	},
-}
+}{}
 
-func DataSourceConfigure(yamlConfig []byte, dataSourceType string) (*DataSource, error) {
-
+func GetDataSourceIface(dataSourceType string) DataSource {
 	for _, source := range AcquisitionSources {
 		if source.name == dataSourceType {
 			newsrc := source.iface
-			if !newsrc.CanRun() {
-				log.Errorf("...")
-			}
-			if err := newsrc.Configure(yamlConfig, nil); err != nil {
-				log.Errorf("....")
-			}
-			return &newsrc, nil
+			return newsrc
 		}
 	}
-	return nil, nil
+	return nil
 }
 
+func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
+
+	if dataSrc := GetDataSourceIface(commonConfig.Type); dataSrc != nil {
+		/* this logger will then be used by the datasource at runtime */
+		clog := log.New()
+		if err := types.ConfigureLogger(clog); err != nil {
+			return nil, errors.Wrap(err, "while configuring datasource logger")
+		}
+		if commonConfig.LogLevel != nil {
+			clog.SetLevel(*commonConfig.LogLevel)
+		}
+		subLogger := clog.WithFields(log.Fields{
+			"type": commonConfig.Type,
+		})
+
+		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
+		if err := dataSrc.CanRun(); err != nil {
+			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Type)
+		}
+
+		/* check that mode is supported */
+		found := false
+		for _, submode := range dataSrc.SupportedModes() {
+			if submode == commonConfig.Mode {
+				found = true
+			}
+		}
+		if !found {
+			return nil, fmt.Errorf("%s mode is not supported by %s", commonConfig.Mode, commonConfig.Type)
+		}
+
+		/* configure the actual datasource */
+		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
+			return nil, errors.Wrapf(err, "failed to configure datasource %s", commonConfig.Type)
+
+		}
+		return &dataSrc, nil
+	}
+	return nil, fmt.Errorf("cannot find source %s", commonConfig.Type)
+}
+
+// LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
 
 	var sources []DataSource
@@ -139,21 +141,26 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		dec.SetStrict(false)
 		for {
 			var sub configuration.DataSourceCommonCfg
-			err = dec.Decode(&sub)
+			var holder interface{}
+			err = dec.Decode(&holder)
 			if err != nil {
 				if err == io.EOF {
 					log.Tracef("End of yaml file")
 					break
 				}
-				return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", acquisFile))
+				return nil, errors.Wrapf(err, "failed to yaml decode %s", sub.ConfigFile)
 			}
-			/*
-				todo :
-					- check if mode exists & is supported
-					- check if datasource can run
-					- check common parameters
-					- configure logger based on common config
-			*/
+			//we dump it back to []byte, because we want to decode the yaml blob twice :
+			//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
+			inBytes, err := yaml.Marshal(holder)
+			if err != nil {
+				return nil, errors.Wrap(err, "unable to marshal back interface")
+			}
+
+			if err := yaml.Unmarshal(inBytes, &sub); err != nil {
+				return nil, errors.Wrapf(err, "configuration isn't valid config in %s : %s", acquisFile, string(inBytes))
+			}
+			sub.ConfigFile = acquisFile
 			// If no type is defined, assume file for backward compatibility
 			if sub.Type == "" {
 				sub.Type = "file"
@@ -162,16 +169,18 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if sub.Mode == "" {
 				sub.Mode = configuration.TAIL_MODE
 			}
+			if GetDataSourceIface(sub.Type) == nil {
+				log.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
+			}
 
-			src, err := DataSourceConfigure([]byte(""), sub.Type)
+			src, err := DataSourceConfigure(inBytes, sub)
 			if err != nil {
-				log.Warningf("while configuring datasource : %s", err)
+				log.Warningf("while configuring datasource from %s : %s", acquisFile, err)
 				continue
 			}
 			sources = append(sources, *src)
 		}
 	}
-
 	return sources, nil
 }
 
@@ -192,6 +201,8 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			}
 			return nil
 		})
+		//register acquisition specific metrics
+		prometheus.MustRegister(subsrc.GetMetrics()...)
 	}
 	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()

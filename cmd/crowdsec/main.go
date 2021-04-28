@@ -151,15 +151,16 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		} else if flags.SingleJournalctlFilter != "" {
 			tmpCfg.JournalctlFilters = strings.Split(flags.SingleJournalctlFilter, " ")
 		}*/
+		log.Fatalf("fixme tko")
 
-		datasrc, err := acquisition.DataSourceConfigure([]byte(""), "file")
-		if err != nil {
-			return fmt.Errorf("while configuring specified file datasource : %s", err)
-		}
-		if dataSources == nil {
-			dataSources = make([]acquisition.DataSource, 0)
-		}
-		dataSources = append(dataSources, *datasrc)
+		// datasrc, err := acquisition.DataSourceConfigure([]byte(""), "file")
+		// if err != nil {
+		// 	return fmt.Errorf("while configuring specified file datasource : %s", err)
+		// }
+		// if dataSources == nil {
+		// 	dataSources = make([]acquisition.DataSource, 0)
+		// }
+		// dataSources = append(dataSources, *datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
