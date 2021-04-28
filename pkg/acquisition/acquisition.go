@@ -60,7 +60,8 @@ cat mode will return once source has been exhausted.
 
 // The interface each datasource must implement
 type DataSource interface {
-	Configure([]byte) error                                // Configure the datasource
+	GetMetrics() []interface{}                             // Returns pointers to metrics that are managed by the module
+	Configure([]byte, *log.Entry) error                    // Configure the datasource
 	Mode() string                                          // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // Returns the mode supported by the datasource
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
@@ -68,16 +69,58 @@ type DataSource interface {
 	CanRun() bool                                          // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 }
 
-func DataSourceConfigure(yamlConfig []byte, dataSourceType string) (*DataSource, error) {
-	datasourceMap := DataSourceMap{}
-	dataSource := datasourceMap.GetDataSource(dataSourceType)
-	if dataSource == nil {
-		return nil, errors.Errorf("Unknown datasource %s", dataSourceType)
-	}
-	//dataSourceInstance := *dataSource.New()
-	err := dataSource.Configure([]byte(""))
+type FileDataSource struct {
+}
 
-	return dataSource, nil
+func (f *FileDataSource) GetMetrics() []interface{} {
+	return nil
+}
+func (f *FileDataSource) Configure([]byte, *log.Entry) error {
+	return nil
+}
+func (f *FileDataSource) Mode() string {
+	return ""
+}
+func (f *FileDataSource) SupportedModes() []string {
+	return nil
+}
+func (f *FileDataSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+
+func (f *FileDataSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
+	return nil
+}
+
+func (f *FileDataSource) CanRun() bool {
+	return true
+}
+
+var AcquisitionSources = []struct {
+	name  string
+	iface DataSource
+}{
+	{
+		name:  "file",
+		iface: &FileDataSource{},
+	},
+}
+
+func DataSourceConfigure(yamlConfig []byte, dataSourceType string) (*DataSource, error) {
+
+	for _, source := range AcquisitionSources {
+		if source.name == dataSourceType {
+			newsrc := source.iface
+			if !newsrc.CanRun() {
+				log.Errorf("...")
+			}
+			if err := newsrc.Configure(yamlConfig, nil); err != nil {
+				log.Errorf("....")
+			}
+			return &newsrc, nil
+		}
+	}
+	return nil, nil
 }
 
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
@@ -103,6 +146,13 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				}
 				return nil, errors.Wrap(err, fmt.Sprintf("failed to yaml decode %s", acquisFile))
 			}
+			/*
+				todo :
+					- check if mode exists & is supported
+					- check if datasource can run
+					- check common parameters
+					- configure logger based on common config
+			*/
 			// If no type is defined, assume file for backward compatibility
 			if sub.Type == "" {
 				sub.Type = "file"
@@ -111,6 +161,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if sub.Mode == "" {
 				sub.Mode = configuration.TAIL_MODE
 			}
+
 			src, err := DataSourceConfigure([]byte(""), sub.Type)
 			if err != nil {
 				log.Warningf("while configuring datasource : %s", err)
