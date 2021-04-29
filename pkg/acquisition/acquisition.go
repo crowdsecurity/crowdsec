@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -42,6 +41,8 @@ var ReaderHits = prometheus.NewCounterVec(
    filenames:
 	- "/var/log/nginx/*.log"
 	```
+
+	!!! how to handle expect mode that is not directly linked to tail/cat mode
 */
 
 /* Approach
@@ -68,30 +69,30 @@ type DataSource interface {
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	Dump() interface{}
+	New() DataSource
 }
 
 var AcquisitionSources = []struct {
 	name  string
-	iface DataSource
+	iface func() DataSource
 }{
-	{
-		name:  "file",
-		iface: &file_acquisition.FileSource{},
-	},
+	// {
+	// 	name:  "file",
+	// 	iface: &file_acquisition.FileSource{},
+	// },
 }
 
 func GetDataSourceIface(dataSourceType string) DataSource {
 	for _, source := range AcquisitionSources {
 		if source.name == dataSourceType {
-			newsrc := source.iface
-			return newsrc
+			return source.iface.New()
 		}
 	}
 	return nil
 }
 
 func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
-
 	if dataSrc := GetDataSourceIface(commonConfig.Type); dataSrc != nil {
 		/* this logger will then be used by the datasource at runtime */
 		clog := log.New()
@@ -104,7 +105,6 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 		subLogger := clog.WithFields(log.Fields{
 			"type": commonConfig.Type,
 		})
-
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
 			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Type)
@@ -135,16 +135,15 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
 
 	var sources []DataSource
-	var acquisSources = config.AcquisitionFiles
 
-	for _, acquisFile := range acquisSources {
+	for _, acquisFile := range config.AcquisitionFiles {
 		log.Infof("loading acquisition file : %s", acquisFile)
 		yamlFile, err := os.Open(acquisFile)
 		if err != nil {
 			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
 		}
 		dec := yaml.NewDecoder(yamlFile)
-		dec.SetStrict(false)
+		dec.SetStrict(true)
 		for {
 			var sub configuration.DataSourceCommonCfg
 			var holder interface{}
@@ -156,6 +155,20 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				}
 				return nil, errors.Wrapf(err, "failed to yaml decode %s", sub.ConfigFile)
 			}
+			log.Printf("%s -> %T", acquisFile, holder)
+
+			switch holder.(type) {
+			case map[interface{}]interface{}:
+				//leftover empty item
+				if len(holder.(map[interface{}]interface{})) == 0 {
+					log.Printf("leftover empty item")
+					break
+				}
+			}
+			//the user let a trailing `---` at the end of the file, and the last item is empty
+			// if len(holder.(map[interface{}]interface{})) == 0 {
+			// 	continue
+			// }
 			//we dump it back to []byte, because we want to decode the yaml blob twice :
 			//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 			inBytes, err := yaml.Marshal(holder)
@@ -176,7 +189,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				sub.Mode = configuration.TAIL_MODE
 			}
 			if GetDataSourceIface(sub.Type) == nil {
-				log.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
+				return nil, fmt.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
 			}
 
 			src, err := DataSourceConfigure(inBytes, sub)

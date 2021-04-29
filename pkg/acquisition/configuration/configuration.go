@@ -10,6 +10,7 @@ type DataSourceCommonCfg struct {
 	LogLevel   *log.Level        `yaml:"log_level,omitempty"`
 	Type       string            `yaml:"type,omitempty"`
 	ConfigFile string            `yaml:"-"` //filled at run time : the filepath from which the config was unmarshaled
+	//logger     *log.Entry        `yaml:"-"`
 }
 
 var TAIL_MODE = "tail"
