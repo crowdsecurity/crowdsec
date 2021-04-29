@@ -141,12 +141,8 @@ func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	return nil
 }
 
-func (f *FileSource) Dump() *FileSource {
+func (f *FileSource) Dump() interface{} {
 	return f
-}
-
-func (f *FileSource) New() FileSource {
-	return FileSource{}
 }
 
 func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
