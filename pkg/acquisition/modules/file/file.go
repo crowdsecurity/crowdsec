@@ -26,6 +26,7 @@ import (
 type FileConfiguration struct {
 	Filenames                         []string
 	Filename                          string
+	ForceInotify                      bool `yaml:"force_inotify"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -61,6 +62,18 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
 	for _, pattern := range f.config.Filenames {
+		if f.config.ForceInotify {
+			directory := path.Dir(pattern)
+			f.logger.Infof("Force add watch on %s", directory)
+			if !f.watchedDirectories[directory] {
+				err = f.watcher.Add(directory)
+				if err != nil {
+					f.logger.Errorf("Could not create watch on directory %s : %s", directory, err)
+					continue
+				}
+				f.watchedDirectories[directory] = true
+			}
+		}
 		files, err := filepath.Glob(pattern)
 		if err != nil {
 			return errors.Wrap(err, "Glob failure")
@@ -74,7 +87,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
 				directory := path.Dir(file)
 				if !f.watchedDirectories[directory] {
-					f.logger.Infof("Adding watch on %s", directory)
+
 					err = f.watcher.Add(directory)
 					if err != nil {
 						f.logger.Errorf("Could not create watch on directory %s : %s", directory, err)
@@ -130,6 +143,9 @@ func (f *FileSource) CanRun() error {
 
 func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debugf("Starting live acquisition")
+	t.Go(func() error {
+		return f.monitorNewFiles(out, t)
+	})
 	for _, file := range f.files {
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}})
 		if err != nil {
@@ -137,9 +153,6 @@ func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 			continue
 		}
 		f.tails[file] = true
-		t.Go(func() error {
-			return f.monitorNewFiles(out, t)
-		})
 		t.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis/file/live/fsnotify")
 			return f.tailFile(out, t, tail)
