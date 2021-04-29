@@ -43,7 +43,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	f.logger = logger
 	f.watchedDirectories = make(map[string]bool)
 	f.tails = make(map[string]bool)
-	err := yaml.Unmarshal(Config, &fileConfig)
+	err := yaml.UnmarshalStrict(Config, &fileConfig)
 	if err != nil {
 		return errors.Wrap(err, "[fileacquisition] Cannot parse FileAcquisition configuration")
 	}
@@ -139,6 +139,14 @@ func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 		})
 	}
 	return nil
+}
+
+func (f *FileSource) Dump() *FileSource {
+	return f
+}
+
+func (f *FileSource) New() FileSource {
+	return FileSource{}
 }
 
 func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
