@@ -195,10 +195,14 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if err := yaml.Unmarshal(inBytes, &sub); err != nil {
 				return nil, errors.Wrapf(err, "configuration isn't valid config in %s : %s", acquisFile, string(inBytes))
 			}
+			sub.ConfigFile = acquisFile
 			//it's an empty item, skip it
 			if len(sub.Labels) == 0 {
-				log.Debugf("skipping empty item in %s", acquisFile)
-				continue
+				if sub.Type == "" {
+					log.Debugf("skipping empty item in %s", acquisFile)
+					continue
+				}
+				return nil, fmt.Errorf("missing labels in %s", acquisFile)
 			}
 			//for backward compat ('type' was not mandatory, detect it)
 			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
@@ -213,7 +217,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			src, err := DataSourceConfigure(inBytes, sub)
 			if err != nil {
-				return nil, errors.Wrapf(err, "while configuring datasource from %s", acquisFile)
+				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Type, sub.ConfigFile)
 			}
 			sources = append(sources, *src)
 		}

@@ -243,6 +243,34 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			},
 			ExpectedLen: 2,
 		},
+		{
+			TestName: "missing_labels",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/missing_labels.yaml"},
+			},
+			ExpectedError: "missing labels in test_files/missing_labels.yaml",
+		},
+		{
+			TestName: "backward_compat",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/backward_compat.yaml"},
+			},
+			ExpectedLen: 2,
+		},
+		{
+			TestName: "bad_type",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/bad_source.yaml"},
+			},
+			ExpectedError: "unknown data source does_not_exist in test_files/bad_source.yaml",
+		},
+		{
+			TestName: "invalid_filetype_config",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/bad_filetype.yaml"},
+			},
+			ExpectedError: "while configuring datasource of type file from test_files/bad_filetype.yaml",
+		},
 	}
 	for _, test := range tests {
 		dss, err := LoadAcquisitionFromFile(&test.Config)
