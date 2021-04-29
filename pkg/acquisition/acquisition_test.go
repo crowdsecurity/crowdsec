@@ -39,7 +39,8 @@ func (f *MockSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error    { re
 func (f *MockSource) CanRun() error                                         { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector                    { return nil }
 func (f *MockSource) Dump() interface{}                                     { return f }
-func (f *MockSource) New() DataSource                                       { return &MockSource{} }
+
+//func (f *MockSource) New() DataSource                                       { return &MockSource{} }
 
 //copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
@@ -54,15 +55,21 @@ func appendMockSource() {
 	if GetDataSourceIface("mock") == nil {
 		mock := struct {
 			name  string
-			iface DataSource
-		}{name: "mock", iface: &MockSource{}}
+			iface func() DataSource
+		}{
+			name:  "mock",
+			iface: func() DataSource { return &MockSource{} },
+		}
 		AcquisitionSources = append(AcquisitionSources, mock)
 	}
 	if GetDataSourceIface("mock_cant_run") == nil {
 		mock := struct {
 			name  string
-			iface DataSource
-		}{name: "mock_cant_run", iface: &MockSourceCantRun{}}
+			iface func() DataSource
+		}{
+			name:  "mock_cant_run",
+			iface: func() DataSource { return &MockSourceCantRun{} },
+		}
 		AcquisitionSources = append(AcquisitionSources, mock)
 	}
 }

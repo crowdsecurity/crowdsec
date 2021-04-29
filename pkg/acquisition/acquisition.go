@@ -71,23 +71,33 @@ type DataSource interface {
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
-	New() DataSource
+	//New() DataSource
 }
+
+// var AcquisitionSources = []struct {
+// 	name  string
+// 	iface DataSource
+// }{
+// 	{
+// 		name:  "file",
+// 		iface: &file_acquisition.FileSource{},
+// 	},
+// }
 
 var AcquisitionSources = []struct {
 	name  string
-	iface DataSource
+	iface func() DataSource
 }{
 	{
 		name:  "file",
-		iface: &file_acquisition.FileSource{},
+		iface: func() DataSource { return &file_acquisition.FileSource{} },
 	},
 }
 
 func GetDataSourceIface(dataSourceType string) DataSource {
 	for _, source := range AcquisitionSources {
 		if source.name == dataSourceType {
-			return source.iface.New()
+			return source.iface()
 		}
 	}
 	return nil
