@@ -24,9 +24,9 @@ import (
 )
 
 type FileConfiguration struct {
-	Filenames []string
-	Filename  string
-	configuration.DataSourceCommonCfg
+	Filenames                         []string
+	Filename                          string
+	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 type FileSource struct {
@@ -55,7 +55,6 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		return fmt.Errorf("[fileacquisition] no filename or filenames configuration provided")
 	}
 	f.config = fileConfig
-	f.config.Mode = configuration.TAIL_MODE // FIXME
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "[fileacquisition] Could not create fsnotify watcher")
