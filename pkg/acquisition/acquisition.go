@@ -75,7 +75,7 @@ type DataSource interface {
 
 var AcquisitionSources = []struct {
 	name  string
-	iface func() DataSource
+	iface DataSource
 }{
 	// {
 	// 	name:  "file",
