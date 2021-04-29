@@ -101,10 +101,18 @@ func (f *FileSource) SupportedModes() []string {
 
 //OneShotAcquisition reads a set of file and returns when done
 func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	log.Infof("Starting oneshot acquisition on %d files", len(f.files))
+	f.logger.Infof("Starting oneshot acquisition on %d files", len(f.files))
 	for _, filename := range f.files {
-		log.Infof("reading %s at once", filename)
-		err := f.readFile(filename, out, t)
+		fi, err := os.Stat(filename)
+		if err != nil {
+			return fmt.Errorf("could not stat file %s : %w", filename, err)
+		}
+		if fi.IsDir() {
+			f.logger.Warnf("%s is a directory, ignoring it.", filename)
+			continue
+		}
+		f.logger.Infof("reading %s at once", filename)
+		err = f.readFile(filename, out, t)
 		if err != nil {
 			return err
 		}
@@ -251,8 +259,8 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	var scanner *bufio.Scanner
 
 	fd, err := os.Open(filename)
+
 	if err != nil {
-		f.logger.Errorf("Failed opening file: %s", err)
 		return errors.Wrapf(err, "failed opening %s", filename)
 	}
 	defer fd.Close()
