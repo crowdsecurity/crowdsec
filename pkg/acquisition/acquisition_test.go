@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -292,5 +293,179 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			t.Fatalf("%s : expected %d datasources got %d", test.TestName, test.ExpectedLen, len(dss))
 		}
 
+	}
+}
+
+/*
+ test start acquisition :
+  - create mock parser in cat mode : start acquisition, check it returns, count items in chan
+  - create mock parser in tail mode : start acquisition, sleep, check item count, tomb kill it, wait for it to return
+*/
+
+type MockCat struct {
+	configuration.DataSourceCommonCfg `yaml:",inline"`
+	logger                            *log.Entry
+}
+
+func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
+	f.logger = logger
+	return nil
+}
+func (f *MockCat) GetMode() string          { return "cat" }
+func (f *MockCat) SupportedModes() []string { return []string{"cat"} }
+func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+	for i := 0; i < 10; i++ {
+		evt := types.Event{}
+		evt.Line.Src = "test"
+		out <- evt
+	}
+	return nil
+}
+func (f *MockCat) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
+	return fmt.Errorf("can't run in tail")
+}
+func (f *MockCat) CanRun() error                      { return nil }
+func (f *MockCat) GetMetrics() []prometheus.Collector { return nil }
+func (f *MockCat) Dump() interface{}                  { return f }
+
+//----
+
+type MockTail struct {
+	configuration.DataSourceCommonCfg `yaml:",inline"`
+	logger                            *log.Entry
+}
+
+func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
+	f.logger = logger
+	return nil
+}
+func (f *MockTail) GetMode() string          { return "tail" }
+func (f *MockTail) SupportedModes() []string { return []string{"tail"} }
+func (f *MockTail) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) error {
+	return fmt.Errorf("can't run in cat mode")
+}
+func (f *MockTail) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	for i := 0; i < 10; i++ {
+		evt := types.Event{}
+		evt.Line.Src = "test"
+		out <- evt
+	}
+	select {
+	case <-t.Dying():
+		return nil
+	}
+}
+func (f *MockTail) CanRun() error                      { return nil }
+func (f *MockTail) GetMetrics() []prometheus.Collector { return nil }
+func (f *MockTail) Dump() interface{}                  { return f }
+
+//func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
+
+func TestStartAcquisitionCat(t *testing.T) {
+	sources := []DataSource{
+		&MockCat{},
+	}
+	out := make(chan types.Event)
+	acquisTomb := tomb.Tomb{}
+
+	go func() {
+		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
+			t.Fatalf("unexpected error")
+		}
+	}()
+
+	count := 0
+READLOOP:
+	for {
+		select {
+		case <-out:
+			count++
+		case <-time.After(1 * time.Second):
+			break READLOOP
+		}
+	}
+	if count != 10 {
+		t.Fatalf("expected 10 results, got %d", count)
+	}
+}
+
+func TestStartAcquisitionTail(t *testing.T) {
+	sources := []DataSource{
+		&MockTail{},
+	}
+	out := make(chan types.Event)
+	acquisTomb := tomb.Tomb{}
+
+	go func() {
+		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
+			t.Fatalf("unexpected error")
+		}
+	}()
+
+	count := 0
+READLOOP:
+	for {
+		select {
+		case <-out:
+			count++
+		case <-time.After(1 * time.Second):
+			break READLOOP
+		}
+	}
+	if count != 10 {
+		t.Fatalf("expected 10 results, got %d", count)
+	}
+	acquisTomb.Kill(nil)
+	time.Sleep(1 * time.Second)
+	if acquisTomb.Err() != nil {
+		t.Fatalf("unexpected tomb error %s (should be dead)", acquisTomb.Err())
+	}
+}
+
+//
+type MockTailError struct {
+	MockTail
+}
+
+func (f *MockTailError) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	for i := 0; i < 10; i++ {
+		evt := types.Event{}
+		evt.Line.Src = "test"
+		out <- evt
+	}
+	t.Kill(fmt.Errorf("got error (tomb)"))
+	return fmt.Errorf("got error")
+}
+
+func TestStartAcquisitionTailError(t *testing.T) {
+	sources := []DataSource{
+		&MockTailError{},
+	}
+	out := make(chan types.Event)
+	acquisTomb := tomb.Tomb{}
+
+	go func() {
+		if err := StartAcquisition(sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
+			t.Fatalf("expected error, got '%s'", err.Error())
+		}
+	}()
+
+	count := 0
+READLOOP:
+	for {
+		select {
+		case <-out:
+			count++
+		case <-time.After(1 * time.Second):
+			break READLOOP
+		}
+	}
+	if count != 10 {
+		t.Fatalf("expected 10 results, got %d", count)
+	}
+	//acquisTomb.Kill(nil)
+	time.Sleep(1 * time.Second)
+	if acquisTomb.Err().Error() != "got error (tomb)" {
+		t.Fatalf("didn't got expected error, got '%s'", acquisTomb.Err().Error())
 	}
 }

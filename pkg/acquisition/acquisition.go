@@ -71,18 +71,7 @@ type DataSource interface {
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
-	//New() DataSource
 }
-
-// var AcquisitionSources = []struct {
-// 	name  string
-// 	iface DataSource
-// }{
-// 	{
-// 		name:  "file",
-// 		iface: &file_acquisition.FileSource{},
-// 	},
-// }
 
 var AcquisitionSources = []struct {
 	name  string
