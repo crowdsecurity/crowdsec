@@ -236,6 +236,13 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			},
 			ExpectedLen: 0,
 		},
+		{
+			TestName: "basic_valid",
+			Config: csconfig.CrowdsecServiceCfg{
+				AcquisitionFiles: []string{"test_files/basic_filemode.yaml"},
+			},
+			ExpectedLen: 2,
+		},
 	}
 	for _, test := range tests {
 		dss, err := LoadAcquisitionFromFile(&test.Config)
