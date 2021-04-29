@@ -45,25 +45,25 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	f.tails = make(map[string]bool)
 	err := yaml.UnmarshalStrict(Config, &fileConfig)
 	if err != nil {
-		return errors.Wrap(err, "[fileacquisition] Cannot parse FileAcquisition configuration")
+		return errors.Wrap(err, "Cannot parse FileAcquisition configuration")
 	}
 	f.logger.Tracef("FileAcquisition configuration: %+v", fileConfig)
 	if len(fileConfig.Filename) != 0 {
 		fileConfig.Filenames = append(fileConfig.Filenames, fileConfig.Filename)
 	}
 	if len(fileConfig.Filenames) == 0 {
-		return fmt.Errorf("[fileacquisition] no filename or filenames configuration provided")
+		return fmt.Errorf("no filename or filenames configuration provided")
 	}
 	f.config = fileConfig
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
-		return errors.Wrapf(err, "[fileacquisition] Could not create fsnotify watcher")
+		return errors.Wrapf(err, "Could not create fsnotify watcher")
 	}
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
 	for _, pattern := range f.config.Filenames {
 		files, err := filepath.Glob(pattern)
 		if err != nil {
-			return errors.Wrap(err, "[fileacquisition] Glob failure")
+			return errors.Wrap(err, "Glob failure")
 		}
 		if len(files) == 0 {
 			f.logger.Infof("No matching files for pattern %s", pattern)
