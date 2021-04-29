@@ -142,6 +142,24 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 	return nil, fmt.Errorf("cannot find source %s", commonConfig.Type)
 }
 
+//detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
+func detectBackwardCompatAcquis(raw []byte) string {
+	var out map[string]interface{}
+	if err := yaml.Unmarshal(raw, &out); err != nil {
+		return ""
+	}
+	if _, ok := out["filename"]; ok {
+		return "file"
+	}
+	if _, ok := out["filenames"]; ok {
+		return "file"
+	}
+	if _, ok := out["journalctl_filter"]; ok {
+		return "journalctl"
+	}
+	return ""
+}
+
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
 func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource, error) {
 
@@ -154,7 +172,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
 		}
 		dec := yaml.NewDecoder(yamlFile)
-		dec.SetStrict(true)
+		dec.SetStrict(false)
 		for {
 			var sub configuration.DataSourceCommonCfg
 			var holder interface{}
@@ -166,20 +184,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				}
 				return nil, errors.Wrapf(err, "failed to yaml decode %s", sub.ConfigFile)
 			}
-			log.Printf("%s -> %T", acquisFile, holder)
 
-			switch holder.(type) {
-			case map[interface{}]interface{}:
-				//leftover empty item
-				if len(holder.(map[interface{}]interface{})) == 0 {
-					log.Printf("leftover empty item")
-					break
-				}
-			}
-			//the user let a trailing `---` at the end of the file, and the last item is empty
-			// if len(holder.(map[interface{}]interface{})) == 0 {
-			// 	continue
-			// }
 			//we dump it back to []byte, because we want to decode the yaml blob twice :
 			//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
 			inBytes, err := yaml.Marshal(holder)
@@ -190,10 +195,14 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if err := yaml.Unmarshal(inBytes, &sub); err != nil {
 				return nil, errors.Wrapf(err, "configuration isn't valid config in %s : %s", acquisFile, string(inBytes))
 			}
-			sub.ConfigFile = acquisFile
-			// If no type is defined, assume file for backward compatibility
-			if sub.Type == "" {
-				sub.Type = "file"
+			//it's an empty item, skip it
+			if len(sub.Labels) == 0 {
+				log.Debugf("skipping empty item in %s", acquisFile)
+				continue
+			}
+			//for backward compat ('type' was not mandatory, detect it)
+			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
+				sub.Type = guessType
 			}
 			// default mode is tail
 			if sub.Mode == "" {
@@ -202,11 +211,9 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if GetDataSourceIface(sub.Type) == nil {
 				return nil, fmt.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
 			}
-
 			src, err := DataSourceConfigure(inBytes, sub)
 			if err != nil {
-				log.Warningf("while configuring datasource from %s : %s", acquisFile, err)
-				continue
+				return nil, errors.Wrapf(err, "while configuring datasource from %s", acquisFile)
 			}
 			sources = append(sources, *src)
 		}
