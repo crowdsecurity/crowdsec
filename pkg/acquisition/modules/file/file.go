@@ -60,6 +60,9 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		return fmt.Errorf("no filename or filenames configuration provided")
 	}
 	f.config = fileConfig
+	if f.config.Mode == "" {
+		f.config.Mode = configuration.TAIL_MODE
+	}
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "Could not create fsnotify watcher")
