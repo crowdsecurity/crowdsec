@@ -17,6 +17,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 
@@ -143,11 +144,13 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		}
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
-
+		if err != nil {
+			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
+		}
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			log.Fatalf("While loading acquisition configuration : %s", err)
+			return errors.Wrap(err, "while loading acquisition configuration")
 		}
 	}
 
