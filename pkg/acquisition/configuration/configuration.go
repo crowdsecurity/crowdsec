@@ -13,6 +13,14 @@ type DataSourceCommonCfg struct {
 	//logger     *log.Entry        `yaml:"-"`
 }
 
+func (d *DataSourceCommonCfg) SetDefaults() error {
+	// default mode is tail
+	if d.Mode == "" {
+		d.Mode = TAIL_MODE
+	}
+	return nil
+}
+
 var TAIL_MODE = "tail"
 var CAT_MODE = "cat"
 var SERVER_MODE = "server" // No difference with tail, just a bit more verbose

@@ -39,7 +39,12 @@ type FileSource struct {
 	files              []string
 }
 
+func (f *FileSource) SupportedURIPrefixes() []string {
+	return []string{"file://"}
+}
+
 func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
+	f.config.SetDefaults()
 	fileConfig := FileConfiguration{}
 	f.logger = logger
 	f.watchedDirectories = make(map[string]bool)

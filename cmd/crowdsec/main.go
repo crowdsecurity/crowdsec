@@ -146,21 +146,35 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		tmpCfg.Mode = configuration.CAT_MODE
 		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
 
-		/*if flags.SingleFilePath != "" {
-			tmpCfg.Filename = flags.SingleFilePath
+		var craftConf []byte
+		var acquisType string
+		if flags.SingleFilePath != "" {
+			acquisType = "file"
+			craftConf = []byte(fmt.Sprintf(`
+filename: %s
+labels:
+  type: %s
+type: file
+mode: cat`, flags.SingleFilePath, flags.SingleFileType))
 		} else if flags.SingleJournalctlFilter != "" {
-			tmpCfg.JournalctlFilters = strings.Split(flags.SingleJournalctlFilter, " ")
-		}*/
-		log.Fatalf("fixme tko")
+			acquisType = "journald"
+			craftConf = []byte(fmt.Sprintf(`
+journalctl_filter: %s
+labels:
+  type: %s
+type: journald
+mode: cat`, flags.SingleJournalctlFilter, flags.SingleFileType))
+		}
+		tmpCfg.Type = acquisType
 
-		// datasrc, err := acquisition.DataSourceConfigure([]byte(""), "file")
-		// if err != nil {
-		// 	return fmt.Errorf("while configuring specified file datasource : %s", err)
-		// }
-		// if dataSources == nil {
-		// 	dataSources = make([]acquisition.DataSource, 0)
-		// }
-		// dataSources = append(dataSources, *datasrc)
+		datasrc, err := acquisition.DataSourceConfigure(craftConf, tmpCfg)
+		if err != nil {
+			return fmt.Errorf("while configuring specified file datasource : %s", err)
+		}
+		if dataSources == nil {
+			dataSources = make([]acquisition.DataSource, 0)
+		}
+		dataSources = append(dataSources, *datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {

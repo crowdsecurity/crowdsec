@@ -67,6 +67,7 @@ type DataSource interface {
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
 	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // Returns the mode supported by the datasource
+	SupportedURIPrefixes() []string                        // Returns the list of supported URI schemes (file:// s3:// ...)
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
 	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
@@ -197,10 +198,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
 				sub.Type = guessType
 			}
-			// default mode is tail
-			if sub.Mode == "" {
-				sub.Mode = configuration.TAIL_MODE
-			}
+
 			if GetDataSourceIface(sub.Type) == nil {
 				return nil, fmt.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
 			}

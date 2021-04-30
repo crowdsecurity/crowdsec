@@ -24,6 +24,7 @@ type MockSource struct {
 }
 
 func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
+	f.SetDefaults()
 	f.logger = logger
 	if err := yaml.UnmarshalStrict(cfg, &f); err != nil {
 		return errors.Wrap(err, "while unmarshaling to reader specific config")
@@ -40,6 +41,7 @@ func (f *MockSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error    { re
 func (f *MockSource) CanRun() error                                         { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector                    { return nil }
 func (f *MockSource) Dump() interface{}                                     { return f }
+func (f *MockSource) SupportedURIPrefixes() []string                        { return []string{"mock://"} }
 
 //func (f *MockSource) New() DataSource                                       { return &MockSource{} }
 
@@ -308,6 +310,7 @@ type MockCat struct {
 }
 
 func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
+	f.SetDefaults()
 	f.logger = logger
 	return nil
 }
@@ -327,6 +330,7 @@ func (f *MockCat) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
 func (f *MockCat) CanRun() error                      { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector { return nil }
 func (f *MockCat) Dump() interface{}                  { return f }
+func (f *MockCat) SupportedURIPrefixes() []string     { return []string{"mock://"} }
 
 //----
 
@@ -336,6 +340,7 @@ type MockTail struct {
 }
 
 func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
+	f.SetDefaults()
 	f.logger = logger
 	return nil
 }
@@ -358,6 +363,7 @@ func (f *MockTail) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 func (f *MockTail) CanRun() error                      { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() interface{}                  { return f }
+func (f *MockTail) SupportedURIPrefixes() []string     { return []string{"mock://"} }
 
 //func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
