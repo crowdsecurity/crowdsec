@@ -138,7 +138,7 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
-	if flags.SingleFileType != "" || flags.OneShotDSN == "" {
+	if flags.SingleFileType != "" || flags.OneShotDSN != "" {
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
