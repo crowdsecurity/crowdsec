@@ -39,7 +39,7 @@ type FileSource struct {
 	files              []string
 }
 
-func (f *FileSource) SupportedURIPrefixes() []string {
+func (f *FileSource) SupportedDSN() []string {
 	return []string{"file://"}
 }
 

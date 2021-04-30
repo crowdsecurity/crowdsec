@@ -41,7 +41,7 @@ func (f *MockSource) LiveAcquisition(chan types.Event, *tomb.Tomb) error    { re
 func (f *MockSource) CanRun() error                                         { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector                    { return nil }
 func (f *MockSource) Dump() interface{}                                     { return f }
-func (f *MockSource) SupportedURIPrefixes() []string                        { return []string{"mock://"} }
+func (f *MockSource) SupportedDSN() []string                                { return []string{"mock://"} }
 
 //func (f *MockSource) New() DataSource                                       { return &MockSource{} }
 
@@ -330,7 +330,7 @@ func (f *MockCat) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
 func (f *MockCat) CanRun() error                      { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector { return nil }
 func (f *MockCat) Dump() interface{}                  { return f }
-func (f *MockCat) SupportedURIPrefixes() []string     { return []string{"mock://"} }
+func (f *MockCat) SupportedDSN() []string             { return []string{"mock://"} }
 
 //----
 
@@ -363,7 +363,7 @@ func (f *MockTail) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 func (f *MockTail) CanRun() error                      { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() interface{}                  { return f }
-func (f *MockTail) SupportedURIPrefixes() []string     { return []string{"mock://"} }
+func (f *MockTail) SupportedDSN() []string             { return []string{"mock://"} }
 
 //func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
