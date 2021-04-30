@@ -183,11 +183,15 @@ func (f *FileSource) GetMetrics() []prometheus.Collector {
 	return nil
 }
 
+func (f *FileSource) GetName() string {
+	return "file"
+}
+
 func (f *FileSource) CanRun() error {
 	return nil
 }
 
-func (f *FileSource) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	f.logger.Debug("Starting live acquisition")
 	t.Go(func() error {
 		return f.monitorNewFiles(out, t)
