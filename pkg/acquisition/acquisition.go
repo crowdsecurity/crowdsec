@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
@@ -41,6 +42,14 @@ var ReaderHits = prometheus.NewCounterVec(
    source: files
    filenames:
 	- "/var/log/nginx/*.log"
+    ---
+
+	type: nginx
+	source: file
+	file:
+		filenames:
+			- /var/log/xxx
+
 	```
 
 	!!! how to handle expect mode that is not directly linked to tail/cat mode
@@ -65,7 +74,7 @@ cat mode will return once source has been exhausted.
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
-	ConfigureByDSN(string, *log.Entry) error               // Configure the datasource
+	ConfigureByDSN(string, string, *log.Entry) error       // Configure the datasource
 	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // TO REMOVE : Returns the mode supported by the datasource
 	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)
@@ -94,7 +103,14 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 	return nil
 }
 
-func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
+func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
+
+	//we dump it back to []byte, because we want to decode the yaml blob twice :
+	//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
+	yamlConfig, err := yaml.Marshal(commonConfig)
+	if err != nil {
+		return nil, errors.Wrap(err, "unable to marshal back interface")
+	}
 	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
 		/* this logger will then be used by the datasource at runtime */
 		clog := log.New()
@@ -122,21 +138,45 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 }
 
 //detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
-func detectBackwardCompatAcquis(raw []byte) string {
-	var out map[string]interface{}
-	if err := yaml.Unmarshal(raw, &out); err != nil {
-		return ""
-	}
-	if _, ok := out["filename"]; ok {
+func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
+
+	if _, ok := sub.Config["filename"]; ok {
 		return "file"
 	}
-	if _, ok := out["filenames"]; ok {
+	if _, ok := sub.Config["filenames"]; ok {
 		return "file"
 	}
-	if _, ok := out["journalctl_filter"]; ok {
+	if _, ok := sub.Config["journalctl_filter"]; ok {
 		return "journalctl"
 	}
 	return ""
+}
+
+func LoadAcquisitionFromDSN(dsn string, label string) ([]DataSource, error) {
+	var sources []DataSource
+
+	frags := strings.Split(dsn, ":")
+	if len(frags) == 1 {
+		return nil, fmt.Errorf("%s isn't valid dsn (no protocol)", dsn)
+	}
+	dataSrc := GetDataSourceIface(frags[0])
+	if dataSrc == nil {
+		return nil, fmt.Errorf("no acquisition for protocol %s://", frags[0])
+	}
+	/* this logger will then be used by the datasource at runtime */
+	clog := log.New()
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, errors.Wrap(err, "while configuring datasource logger")
+	}
+	subLogger := clog.WithFields(log.Fields{
+		"type": dsn,
+	})
+	err := dataSrc.ConfigureByDSN(dsn, label, subLogger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while configuration datasource for %s", dsn)
+	}
+	sources = append(sources, dataSrc)
+	return sources, nil
 }
 
 // LoadAcquisitionFromFile unmarshals the configuration item and checks its availability
@@ -151,11 +191,10 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			return nil, errors.Wrapf(err, "can't open %s", acquisFile)
 		}
 		dec := yaml.NewDecoder(yamlFile)
-		dec.SetStrict(false)
+		dec.SetStrict(true)
 		for {
 			var sub configuration.DataSourceCommonCfg
-			var holder interface{}
-			err = dec.Decode(&holder)
+			err = dec.Decode(&sub)
 			if err != nil {
 				if err == io.EOF {
 					log.Tracef("End of yaml file")
@@ -164,18 +203,8 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
 			}
 
-			//we dump it back to []byte, because we want to decode the yaml blob twice :
-			//once to DataSourceCommonCfg, and then later to the dedicated type of the datasource
-			inBytes, err := yaml.Marshal(holder)
-			if err != nil {
-				return nil, errors.Wrap(err, "unable to marshal back interface")
-			}
-
-			if err := yaml.Unmarshal(inBytes, &sub); err != nil {
-				return nil, errors.Wrapf(err, "configuration isn't valid config in %s : %s", acquisFile, string(inBytes))
-			}
 			//for backward compat ('type' was not mandatory, detect it)
-			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
+			if guessType := detectBackwardCompatAcquis(sub); guessType != "" {
 				sub.Source = guessType
 			}
 			//it's an empty item, skip it
@@ -190,7 +219,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if GetDataSourceIface(sub.Source) == nil {
 				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, acquisFile)
 			}
-			src, err := DataSourceConfigure(inBytes, sub)
+			src, err := DataSourceConfigure(sub)
 			if err != nil {
 				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Source, acquisFile)
 			}

@@ -11,7 +11,6 @@ import (
 	"sort"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
-	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -46,18 +45,16 @@ var (
 )
 
 type Flags struct {
-	ConfigFile             string
-	TraceLevel             bool
-	DebugLevel             bool
-	InfoLevel              bool
-	PrintVersion           bool
-	SingleFilePath         string
-	SingleJournalctlFilter string
-	SingleFileType         string
-	SingleFileJsonOutput   string
-	TestMode               bool
-	DisableAgent           bool
-	DisableAPI             bool
+	ConfigFile     string
+	TraceLevel     bool
+	DebugLevel     bool
+	InfoLevel      bool
+	PrintVersion   bool
+	SingleFileType string
+	OneShotDSN     string
+	TestMode       bool
+	DisableAgent   bool
+	DisableAPI     bool
 }
 
 type parsers struct {
@@ -140,41 +137,46 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
-	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
+	if flags.SingleFileType != "" || flags.OneShotDSN == "" {
 
-		tmpCfg := configuration.DataSourceCommonCfg{}
-		tmpCfg.Mode = configuration.CAT_MODE
-		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
+		// tmpCfg := configuration.DataSourceCommonCfg{}
+		// tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
 
-		var craftConf []byte
-		var acquisType string
-		if flags.SingleFilePath != "" {
-			acquisType = "file"
-			craftConf = []byte(fmt.Sprintf(`
-filename: %s
-labels:
-  type: %s
-type: file
-mode: cat`, flags.SingleFilePath, flags.SingleFileType))
-		} else if flags.SingleJournalctlFilter != "" {
-			acquisType = "journald"
-			craftConf = []byte(fmt.Sprintf(`
-journalctl_filter: %s
-labels:
-  type: %s
-type: journald
-mode: cat`, flags.SingleJournalctlFilter, flags.SingleFileType))
+		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
+			return fmt.Errorf("-type requires a -dsn argument")
 		}
-		tmpCfg.Type = acquisType
 
-		datasrc, err := acquisition.DataSourceConfigure(craftConf, tmpCfg)
-		if err != nil {
-			return fmt.Errorf("while configuring specified file datasource : %s", err)
-		}
-		if dataSources == nil {
-			dataSources = make([]acquisition.DataSource, 0)
-		}
-		dataSources = append(dataSources, *datasrc)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
+		log.Fatalf("set type ?")
+		// 		var craftConf []byte
+		// 		var acquisType string
+		// 		if flags.SingleFilePath != "" {
+		// 			acquisType = "file"
+		// 			craftConf = []byte(fmt.Sprintf(`
+		// filename: %s
+		// labels:
+		//   type: %s
+		// type: file
+		// mode: cat`, flags.SingleFilePath, flags.SingleFileType))
+		// 		} else if flags.SingleJournalctlFilter != "" {
+		// 			acquisType = "journald"
+		// 			craftConf = []byte(fmt.Sprintf(`
+		// journalctl_filter: %s
+		// labels:
+		//   type: %s
+		// type: journald
+		// mode: cat`, flags.SingleJournalctlFilter, flags.SingleFileType))
+		// 		}
+		// 		tmpCfg.Source = acquisType
+
+		// 		datasrc, err := acquisition.DataSourceConfigure(craftConf, tmpCfg)
+		// 		if err != nil {
+		// 			return fmt.Errorf("while configuring specified file datasource : %s", err)
+		// 		}
+		// 		if dataSources == nil {
+		// 			dataSources = make([]acquisition.DataSource, 0)
+		// 		}
+		// 		dataSources = append(dataSources, *datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
@@ -192,8 +194,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
-	flag.StringVar(&f.SingleFilePath, "file", "", "Process a single file in time-machine")
-	flag.StringVar(&f.SingleJournalctlFilter, "jfilter", "", "Process a single journalctl output in time-machine")
+	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
@@ -225,17 +226,17 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.SingleFilePath != "" {
-		if flags.SingleFileType == "" {
-			return fmt.Errorf("-file requires -type")
-		}
-	}
+	// if flags.SingleFilePath != "" {
+	// 	if flags.SingleFileType == "" {
+	// 		return fmt.Errorf("-file requires -type")
+	// 	}
+	// }
 
-	if flags.SingleJournalctlFilter != "" {
-		if flags.SingleFileType == "" {
-			return fmt.Errorf("-jfilter requires -type")
-		}
-	}
+	// if flags.SingleJournalctlFilter != "" {
+	// 	if flags.SingleFileType == "" {
+	// 		return fmt.Errorf("-jfilter requires -type")
+	// 	}
+	// }
 
 	if flags.DebugLevel {
 		logLevel := log.DebugLevel
@@ -254,7 +255,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Crowdsec.LintOnly = true
 	}
 
-	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
+	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if flags.DisableAPI {
