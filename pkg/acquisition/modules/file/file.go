@@ -44,7 +44,6 @@ func (f *FileSource) SupportedDSN() []string {
 }
 
 func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
-	f.config.SetDefaults()
 	fileConfig := FileConfiguration{}
 	f.logger = logger
 	f.watchedDirectories = make(map[string]bool)
@@ -61,6 +60,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		return fmt.Errorf("no filename or filenames configuration provided")
 	}
 	f.config = fileConfig
+	f.config.SetDefaults()
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "Could not create fsnotify watcher")
