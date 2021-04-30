@@ -72,15 +72,14 @@ cat mode will return once source has been exhausted.
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
-	Configure([]byte, *log.Entry) error                    // Configure the datasource
-	ConfigureByDSN(string, string, *log.Entry) error       // Configure the datasource
-	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
-	SupportedModes() []string                              // TO REMOVE : Returns the mode supported by the datasource
-	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
-	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
-	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetMetrics() []prometheus.Collector              // Returns pointers to metrics that are managed by the module
+	Configure([]byte, *log.Entry) error              // Configure the datasource
+	ConfigureByDSN(string, string, *log.Entry) error // Configure the datasource
+	GetMode() string                                 // Get the mode (TAIL, CAT or SERVER)
+	GetName() string
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
+	CanRun() error                                           // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
 }
 
@@ -237,7 +236,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			defer types.CatchPanic("crowdsec/acquis")
 			var err error
 			if subsrc.GetMode() == configuration.TAIL_MODE {
-				err = subsrc.LiveAcquisition(output, AcquisTomb)
+				err = subsrc.StreamingAcquisition(output, AcquisTomb)
 			} else {
 				err = subsrc.OneShotAcquisition(output, AcquisTomb)
 			}
