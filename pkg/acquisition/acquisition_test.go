@@ -20,11 +20,9 @@ import (
 type MockSource struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string `yaml:"toto"`
-	logger                            *log.Entry
 }
 
-func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
-	f.logger = logger
+func (f *MockSource) Configure(cfg []byte, commonConfig configuration.DataSourceCommonCfg) error {
 	if err := yaml.UnmarshalStrict(cfg, &f); err != nil {
 		return errors.Wrap(err, "while unmarshaling to reader specific config")
 	}
