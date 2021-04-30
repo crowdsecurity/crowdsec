@@ -63,6 +63,9 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	if f.config.Mode == "" {
 		f.config.Mode = configuration.TAIL_MODE
 	}
+	if f.config.Mode != configuration.CAT_MODE && f.config.Mode != configuration.TAIL_MODE {
+		return fmt.Errorf("unsupported mode %s for file source", f.config.Mode)
+	}
 	f.watcher, err = fsnotify.NewWatcher()
 	if err != nil {
 		return errors.Wrapf(err, "Could not create fsnotify watcher")
