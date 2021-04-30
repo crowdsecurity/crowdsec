@@ -63,15 +63,15 @@ cat mode will return once source has been exhausted.
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                        // Returns pointers to metrics that are managed by the module
-	Configure([]byte, configuration.DataSourceCommonCfg) error // Configure the datasource
-	ConfigureByDSN(string, *log.Entry) error                   // Configure the datasource
-	GetMode() string                                           // Get the mode (TAIL, CAT or SERVER)
-	SupportedModes() []string                                  // Returns the mode supported by the datasource
-	SupportedDSN() []string                                    // Returns the list of supported URI schemes (file:// s3:// ...)
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error     // Start one shot acquisition(eg, cat a file)
-	LiveAcquisition(chan types.Event, *tomb.Tomb) error        // Start live acquisition (eg, tail a file)
-	CanRun() error                                             // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
+	Configure([]byte, *log.Entry) error                    // Configure the datasource
+	ConfigureByDSN(string, *log.Entry) error               // Configure the datasource
+	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
+	SupportedModes() []string                              // Returns the mode supported by the datasource
+	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
+	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
+	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
 }
 
@@ -122,12 +122,8 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 		if !found {
 			return nil, fmt.Errorf("%s mode is not supported by %s", commonConfig.Mode, commonConfig.Source)
 		}
-		if commonConfig.Mode == "" {
-			commonConfig.Mode = configuration.TAIL_MODE
-		}
-		commonConfig.Logger = subLogger
 		/* configure the actual datasource */
-		if err := dataSrc.Configure(yamlConfig, commonConfig); err != nil {
+		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
 			return nil, errors.Wrapf(err, "failed to configure datasource %s", commonConfig.Source)
 
 		}

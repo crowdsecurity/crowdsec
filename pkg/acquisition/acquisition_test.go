@@ -20,11 +20,16 @@ import (
 type MockSource struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string `yaml:"toto"`
+	logger                            *log.Entry
 }
 
-func (f *MockSource) Configure(cfg []byte, commonConfig configuration.DataSourceCommonCfg) error {
+func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
+	f.logger = logger
 	if err := yaml.UnmarshalStrict(cfg, &f); err != nil {
 		return errors.Wrap(err, "while unmarshaling to reader specific config")
+	}
+	if f.Mode == "" {
+		f.Mode = configuration.CAT_MODE
 	}
 	if f.Toto == "" {
 		return fmt.Errorf("expect non-empty toto")
@@ -308,8 +313,10 @@ type MockCat struct {
 }
 
 func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
-	f.SetDefaults()
 	f.logger = logger
+	if f.Mode == "" {
+		f.Mode = configuration.CAT_MODE
+	}
 	return nil
 }
 func (f *MockCat) GetMode() string          { return "cat" }
@@ -339,8 +346,10 @@ type MockTail struct {
 }
 
 func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
-	f.SetDefaults()
 	f.logger = logger
+	if f.Mode == "" {
+		f.Mode = configuration.TAIL_MODE
+	}
 	return nil
 }
 func (f *MockTail) GetMode() string          { return "tail" }
