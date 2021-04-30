@@ -450,7 +450,7 @@ type MockTailError struct {
 	MockTail
 }
 
-func (f *MockTailError) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (f *MockTailError) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	for i := 0; i < 10; i++ {
 		evt := types.Event{}
 		evt.Line.Src = "test"
