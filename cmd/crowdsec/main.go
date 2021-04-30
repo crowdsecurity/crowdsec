@@ -138,45 +138,12 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
 	if flags.SingleFileType != "" || flags.OneShotDSN == "" {
-
-		// tmpCfg := configuration.DataSourceCommonCfg{}
-		// tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
-
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
-		log.Fatalf("set type ?")
-		// 		var craftConf []byte
-		// 		var acquisType string
-		// 		if flags.SingleFilePath != "" {
-		// 			acquisType = "file"
-		// 			craftConf = []byte(fmt.Sprintf(`
-		// filename: %s
-		// labels:
-		//   type: %s
-		// type: file
-		// mode: cat`, flags.SingleFilePath, flags.SingleFileType))
-		// 		} else if flags.SingleJournalctlFilter != "" {
-		// 			acquisType = "journald"
-		// 			craftConf = []byte(fmt.Sprintf(`
-		// journalctl_filter: %s
-		// labels:
-		//   type: %s
-		// type: journald
-		// mode: cat`, flags.SingleJournalctlFilter, flags.SingleFileType))
-		// 		}
-		// 		tmpCfg.Source = acquisType
 
-		// 		datasrc, err := acquisition.DataSourceConfigure(craftConf, tmpCfg)
-		// 		if err != nil {
-		// 			return fmt.Errorf("while configuring specified file datasource : %s", err)
-		// 		}
-		// 		if dataSources == nil {
-		// 			dataSources = make([]acquisition.DataSource, 0)
-		// 		}
-		// 		dataSources = append(dataSources, *datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
