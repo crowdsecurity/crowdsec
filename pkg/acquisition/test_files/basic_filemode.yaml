@@ -1,9 +1,9 @@
-type: file
+#type: file
 filename: /tmp/test.log
 labels:
   type: syslog
 ---
-type: file
+#type: file
 filenames:
  - /tmp/test*.log
 labels:

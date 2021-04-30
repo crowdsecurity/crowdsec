@@ -31,6 +31,9 @@ func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
+	if f.Mode != configuration.CAT_MODE && f.Mode != configuration.TAIL_MODE {
+		return fmt.Errorf("mode %s is not supported", f.Mode)
+	}
 	if f.Toto == "" {
 		return fmt.Errorf("expect non-empty toto")
 	}
@@ -94,7 +97,7 @@ mode: cat
 labels:
   test: foobar
 log_level: info
-type: mock
+source: mock
 toto: test_value1
 `),
 		},
@@ -105,7 +108,7 @@ mode: cat
 labels:
   test: foobar
 log_level: debug
-type: mock
+source: mock
 toto: test_value1
 `),
 		},
@@ -116,7 +119,7 @@ mode: tail
 labels:
   test: foobar
 log_level: debug
-type: mock
+source: mock
 toto: test_value1
 `),
 		},
@@ -127,19 +130,19 @@ mode: ratata
 labels:
   test: foobar
 log_level: debug
-type: mock
+source: mock
 toto: test_value1
 `),
-			ExpectedError: "ratata mode is not supported by mock",
+			ExpectedError: "failed to configure datasource mock: mode ratata is not supported",
 		},
 		{
 			TestName: "bad_type_config",
 			RawBytes: []byte(`
-mode: ratata
+mode: cat
 labels:
   test: foobar
 log_level: debug
-type: tutu
+source: tutu
 `),
 			ExpectedError: "cannot find source tutu",
 		},
@@ -150,7 +153,7 @@ mode: cat
 labels:
   test: foobar
 log_level: debug
-type: mock
+source: mock
 wowo: ajsajasjas
 `),
 			ExpectedError: "field wowo not found in type acquisition.MockSource",
@@ -162,7 +165,7 @@ mode: cat
 labels:
   test: foobar
 log_level: debug
-type: mock_cant_run
+source: mock_cant_run
 wowo: ajsajasjas
 `),
 			ExpectedError: "datasource mock_cant_run cannot be run: can't run bro",
@@ -317,6 +320,9 @@ func (f *MockCat) Configure(cfg []byte, logger *log.Entry) error {
 	if f.Mode == "" {
 		f.Mode = configuration.CAT_MODE
 	}
+	if f.Mode != configuration.CAT_MODE {
+		return fmt.Errorf("mode %s is not supported", f.Mode)
+	}
 	return nil
 }
 func (f *MockCat) GetMode() string          { return "cat" }
@@ -349,6 +355,9 @@ func (f *MockTail) Configure(cfg []byte, logger *log.Entry) error {
 	f.logger = logger
 	if f.Mode == "" {
 		f.Mode = configuration.TAIL_MODE
+	}
+	if f.Mode != configuration.TAIL_MODE {
+		return fmt.Errorf("mode %s is not supported", f.Mode)
 	}
 	return nil
 }

@@ -67,7 +67,7 @@ type DataSource interface {
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
 	ConfigureByDSN(string, *log.Entry) error               // Configure the datasource
 	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
-	SupportedModes() []string                              // Returns the mode supported by the datasource
+	SupportedModes() []string                              // TO REMOVE : Returns the mode supported by the datasource
 	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
 	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
@@ -110,17 +110,6 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
 			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Source)
-		}
-
-		/* check that mode is supported */
-		found := false
-		for _, submode := range dataSrc.SupportedModes() {
-			if submode == commonConfig.Mode {
-				found = true
-			}
-		}
-		if !found {
-			return nil, fmt.Errorf("%s mode is not supported by %s", commonConfig.Mode, commonConfig.Source)
 		}
 		/* configure the actual datasource */
 		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
@@ -172,7 +161,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 					log.Tracef("End of yaml file")
 					break
 				}
-				return nil, errors.Wrapf(err, "failed to yaml decode %s", sub.ConfigFile)
+				return nil, errors.Wrapf(err, "failed to yaml decode %s", acquisFile)
 			}
 
 			//we dump it back to []byte, because we want to decode the yaml blob twice :
@@ -185,7 +174,10 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if err := yaml.Unmarshal(inBytes, &sub); err != nil {
 				return nil, errors.Wrapf(err, "configuration isn't valid config in %s : %s", acquisFile, string(inBytes))
 			}
-			sub.ConfigFile = acquisFile
+			//for backward compat ('type' was not mandatory, detect it)
+			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
+				sub.Source = guessType
+			}
 			//it's an empty item, skip it
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
@@ -194,17 +186,13 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				}
 				return nil, fmt.Errorf("missing labels in %s", acquisFile)
 			}
-			//for backward compat ('type' was not mandatory, detect it)
-			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
-				sub.Source = guessType
-			}
 
 			if GetDataSourceIface(sub.Source) == nil {
-				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, sub.ConfigFile)
+				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, acquisFile)
 			}
 			src, err := DataSourceConfigure(inBytes, sub)
 			if err != nil {
-				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Source, sub.ConfigFile)
+				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Source, acquisFile)
 			}
 			sources = append(sources, *src)
 		}
