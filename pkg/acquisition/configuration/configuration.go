@@ -8,17 +8,9 @@ type DataSourceCommonCfg struct {
 	Mode       string            `yaml:"mode,omitempty"`
 	Labels     map[string]string `yaml:"labels,omitempty"`
 	LogLevel   *log.Level        `yaml:"log_level,omitempty"`
-	Type       string            `yaml:"type,omitempty"`
+	Source     string            `yaml:"source,omitempty"`
 	ConfigFile string            `yaml:"-"` //filled at run time : the filepath from which the config was unmarshaled
-	//logger     *log.Entry        `yaml:"-"`
-}
-
-func (d *DataSourceCommonCfg) SetDefaults() error {
-	// default mode is tail
-	if d.Mode == "" {
-		d.Mode = TAIL_MODE
-	}
-	return nil
+	Logger     *log.Entry        `yaml:"-"`
 }
 
 var TAIL_MODE = "tail"

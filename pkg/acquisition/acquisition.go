@@ -63,15 +63,15 @@ cat mode will return once source has been exhausted.
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
-	Configure([]byte, *log.Entry) error                    // Configure the datasource
-	ConfigureByDSN(string, *log.Entry) error               // Configure the datasource
-	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
-	SupportedModes() []string                              // Returns the mode supported by the datasource
-	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error // Start one shot acquisition(eg, cat a file)
-	LiveAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
-	CanRun() error                                         // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetMetrics() []prometheus.Collector                        // Returns pointers to metrics that are managed by the module
+	Configure([]byte, configuration.DataSourceCommonCfg) error // Configure the datasource
+	ConfigureByDSN(string, *log.Entry) error                   // Configure the datasource
+	GetMode() string                                           // Get the mode (TAIL, CAT or SERVER)
+	SupportedModes() []string                                  // Returns the mode supported by the datasource
+	SupportedDSN() []string                                    // Returns the list of supported URI schemes (file:// s3:// ...)
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error     // Start one shot acquisition(eg, cat a file)
+	LiveAcquisition(chan types.Event, *tomb.Tomb) error        // Start live acquisition (eg, tail a file)
+	CanRun() error                                             // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
 }
 
@@ -95,7 +95,7 @@ func GetDataSourceIface(dataSourceType string) DataSource {
 }
 
 func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourceCommonCfg) (*DataSource, error) {
-	if dataSrc := GetDataSourceIface(commonConfig.Type); dataSrc != nil {
+	if dataSrc := GetDataSourceIface(commonConfig.Source); dataSrc != nil {
 		/* this logger will then be used by the datasource at runtime */
 		clog := log.New()
 		if err := types.ConfigureLogger(clog); err != nil {
@@ -105,11 +105,11 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 			clog.SetLevel(*commonConfig.LogLevel)
 		}
 		subLogger := clog.WithFields(log.Fields{
-			"type": commonConfig.Type,
+			"type": commonConfig.Source,
 		})
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
-			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Type)
+			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Source)
 		}
 
 		/* check that mode is supported */
@@ -120,17 +120,20 @@ func DataSourceConfigure(yamlConfig []byte, commonConfig configuration.DataSourc
 			}
 		}
 		if !found {
-			return nil, fmt.Errorf("%s mode is not supported by %s", commonConfig.Mode, commonConfig.Type)
+			return nil, fmt.Errorf("%s mode is not supported by %s", commonConfig.Mode, commonConfig.Source)
 		}
-
+		if commonConfig.Mode == "" {
+			commonConfig.Mode = configuration.TAIL_MODE
+		}
+		commonConfig.Logger = subLogger
 		/* configure the actual datasource */
-		if err := dataSrc.Configure(yamlConfig, subLogger); err != nil {
-			return nil, errors.Wrapf(err, "failed to configure datasource %s", commonConfig.Type)
+		if err := dataSrc.Configure(yamlConfig, commonConfig); err != nil {
+			return nil, errors.Wrapf(err, "failed to configure datasource %s", commonConfig.Source)
 
 		}
 		return &dataSrc, nil
 	}
-	return nil, fmt.Errorf("cannot find source %s", commonConfig.Type)
+	return nil, fmt.Errorf("cannot find source %s", commonConfig.Source)
 }
 
 //detectBackwardCompatAcquis : try to magically detect the type for backward compat (type was not mandatory then)
@@ -189,7 +192,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			sub.ConfigFile = acquisFile
 			//it's an empty item, skip it
 			if len(sub.Labels) == 0 {
-				if sub.Type == "" {
+				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
 					continue
 				}
@@ -197,15 +200,15 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			}
 			//for backward compat ('type' was not mandatory, detect it)
 			if guessType := detectBackwardCompatAcquis(inBytes); guessType != "" {
-				sub.Type = guessType
+				sub.Source = guessType
 			}
 
-			if GetDataSourceIface(sub.Type) == nil {
-				return nil, fmt.Errorf("unknown data source %s in %s", sub.Type, sub.ConfigFile)
+			if GetDataSourceIface(sub.Source) == nil {
+				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, sub.ConfigFile)
 			}
 			src, err := DataSourceConfigure(inBytes, sub)
 			if err != nil {
-				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Type, sub.ConfigFile)
+				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Source, sub.ConfigFile)
 			}
 			sources = append(sources, *src)
 		}

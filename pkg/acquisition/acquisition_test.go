@@ -24,7 +24,6 @@ type MockSource struct {
 }
 
 func (f *MockSource) Configure(cfg []byte, logger *log.Entry) error {
-	f.SetDefaults()
 	f.logger = logger
 	if err := yaml.UnmarshalStrict(cfg, &f); err != nil {
 		return errors.Wrap(err, "while unmarshaling to reader specific config")
