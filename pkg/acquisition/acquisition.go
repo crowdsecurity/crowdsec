@@ -65,6 +65,7 @@ cat mode will return once source has been exhausted.
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                    // Returns pointers to metrics that are managed by the module
 	Configure([]byte, *log.Entry) error                    // Configure the datasource
+	ConfigureByDSN(string, *log.Entry) error               // Configure the datasource
 	GetMode() string                                       // Get the mode (TAIL, CAT or SERVER)
 	SupportedModes() []string                              // Returns the mode supported by the datasource
 	SupportedDSN() []string                                // Returns the list of supported URI schemes (file:// s3:// ...)

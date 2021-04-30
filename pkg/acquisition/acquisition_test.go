@@ -42,6 +42,7 @@ func (f *MockSource) CanRun() error                                         { re
 func (f *MockSource) GetMetrics() []prometheus.Collector                    { return nil }
 func (f *MockSource) Dump() interface{}                                     { return f }
 func (f *MockSource) SupportedDSN() []string                                { return []string{"mock://"} }
+func (f *MockSource) ConfigureByDSN(string, *log.Entry) error               { return fmt.Errorf("not supported") }
 
 //func (f *MockSource) New() DataSource                                       { return &MockSource{} }
 
@@ -327,10 +328,11 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 func (f *MockCat) LiveAcquisition(chan types.Event, *tomb.Tomb) error {
 	return fmt.Errorf("can't run in tail")
 }
-func (f *MockCat) CanRun() error                      { return nil }
-func (f *MockCat) GetMetrics() []prometheus.Collector { return nil }
-func (f *MockCat) Dump() interface{}                  { return f }
-func (f *MockCat) SupportedDSN() []string             { return []string{"mock://"} }
+func (f *MockCat) CanRun() error                           { return nil }
+func (f *MockCat) GetMetrics() []prometheus.Collector      { return nil }
+func (f *MockCat) Dump() interface{}                       { return f }
+func (f *MockCat) SupportedDSN() []string                  { return []string{"mock://"} }
+func (f *MockCat) ConfigureByDSN(string, *log.Entry) error { return fmt.Errorf("not supported") }
 
 //----
 
@@ -360,10 +362,11 @@ func (f *MockTail) LiveAcquisition(out chan types.Event, t *tomb.Tomb) error {
 		return nil
 	}
 }
-func (f *MockTail) CanRun() error                      { return nil }
-func (f *MockTail) GetMetrics() []prometheus.Collector { return nil }
-func (f *MockTail) Dump() interface{}                  { return f }
-func (f *MockTail) SupportedDSN() []string             { return []string{"mock://"} }
+func (f *MockTail) CanRun() error                           { return nil }
+func (f *MockTail) GetMetrics() []prometheus.Collector      { return nil }
+func (f *MockTail) Dump() interface{}                       { return f }
+func (f *MockTail) SupportedDSN() []string                  { return []string{"mock://"} }
+func (f *MockTail) ConfigureByDSN(string, *log.Entry) error { return fmt.Errorf("not supported") }
 
 //func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 
