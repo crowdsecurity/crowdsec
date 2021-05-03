@@ -6,3 +6,4 @@
 0006-prefer-systemctl-restart.patch
 0007-automatically-enable-online-hub.patch
 0008-hub-disable-broken-scenario.patch
+0009-Improve-http-bad-user-agent-use-regexp-197.patch

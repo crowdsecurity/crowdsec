@@ -1,0 +1,71 @@
+From 7a50abdef0e723508b3fbbc41430d80ae93625b1 Mon Sep 17 00:00:00 2001
+From: "Thibault \"bui\" Koechlin" <thibault@crowdsec.net>
+Date: Thu, 22 Apr 2021 11:08:16 +0200
+Subject: [PATCH] Improve http bad user agent : use regexp (#197)
+
+* switch to regexp with word boundaries to avoid false positives when a legit user agent contains a bad one
+
+Co-authored-by: GitHub Action <action@github.com>
+---
+ .index.json                                               | 8 ++++++--
+ .../.tests/http-bad-user-agent/bucket_results.yaml        | 2 +-
+ scenarios/crowdsecurity/http-bad-user-agent.yaml          | 2 +-
+ 3 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/.index.json b/.index.json
+index da76124..4119b7b 100644
+--- a/hub1/.index.json
++++ b/hub1/.index.json
+@@ -895,7 +895,7 @@
+   },
+   "crowdsecurity/http-bad-user-agent": {
+    "path": "scenarios/crowdsecurity/http-bad-user-agent.yaml",
+-   "version": "0.3",
++   "version": "0.4",
+    "versions": {
+     "0.1": {
+      "digest": "46e7058419bc3086f2919fb9afad6b2e85f0d4764f74153dd336ed491f99fa08",
+@@ -908,10 +908,14 @@
+     "0.3": {
+      "digest": "d3cae6c40fadd16693e449b4eb7a030586c8f1a9d9dd33c97001c9dc717c68f2",
+      "deprecated": false
++    },
++    "0.4": {
++     "digest": "8dd16e9de043f47f026d2e3c1b53ad4bbc6dd8f8aac3adaf26a7f4bd2bb6e6fd",
++     "deprecated": false
+     }
+    },
+    "long_description": "IyBLbm93biBiYWQgdXNlci1hZ2VudHMKCkRldGVjdCBrbm93biBiYWQgdXNlci1hZ2VudHMuCgpCYW5zIGFmdGVyIHR3byByZXF1ZXN0cy4KCgoKCgo=",
+-   "content": "dHlwZTogbGVha3kKZm9ybWF0OiAyLjAKI2RlYnVnOiB0cnVlCm5hbWU6IGNyb3dkc2VjdXJpdHkvaHR0cC1iYWQtdXNlci1hZ2VudApkZXNjcmlwdGlvbjogIkRldGVjdCBiYWQgdXNlci1hZ2VudHMiCmZpbHRlcjogJ2V2dC5NZXRhLmxvZ190eXBlIGluIFsiaHR0cF9hY2Nlc3MtbG9nIiwgImh0dHBfZXJyb3ItbG9nIl0gJiYgYW55KEZpbGUoImJhZF91c2VyX2FnZW50cy50eHQiKSwge2V2dC5QYXJzZWQuaHR0cF91c2VyX2FnZW50IGNvbnRhaW5zICN9KScKZGF0YToKICAtIHNvdXJjZV91cmw6IGh0dHBzOi8vcmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbS9jcm93ZHNlY3VyaXR5L3NlYy1saXN0cy9tYXN0ZXIvd2ViL2JhZF91c2VyX2FnZW50cy50eHQKICAgIGRlc3RfZmlsZTogYmFkX3VzZXJfYWdlbnRzLnR4dAogICAgdHlwZTogc3RyaW5nCmNhcGFjaXR5OiAxCmxlYWtzcGVlZDogMW0KZ3JvdXBieTogImV2dC5NZXRhLnNvdXJjZV9pcCIKYmxhY2tob2xlOiAybQpsYWJlbHM6CiAgdHlwZTogc2NhbgogIHJlbWVkaWF0aW9uOiB0cnVlCg==",
++   "content": "dHlwZTogbGVha3kKZm9ybWF0OiAyLjAKI2RlYnVnOiB0cnVlCm5hbWU6IGNyb3dkc2VjdXJpdHkvaHR0cC1iYWQtdXNlci1hZ2VudApkZXNjcmlwdGlvbjogIkRldGVjdCBiYWQgdXNlci1hZ2VudHMiCmZpbHRlcjogJ2V2dC5NZXRhLmxvZ190eXBlIGluIFsiaHR0cF9hY2Nlc3MtbG9nIiwgImh0dHBfZXJyb3ItbG9nIl0gJiYgYW55KEZpbGUoImJhZF91c2VyX2FnZW50cy50eHQiKSwge2V2dC5QYXJzZWQuaHR0cF91c2VyX2FnZW50IG1hdGNoZXMgIlxcYiIrIysiXFxiIn0pJwpkYXRhOgogIC0gc291cmNlX3VybDogaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2Nyb3dkc2VjdXJpdHkvc2VjLWxpc3RzL21hc3Rlci93ZWIvYmFkX3VzZXJfYWdlbnRzLnR4dAogICAgZGVzdF9maWxlOiBiYWRfdXNlcl9hZ2VudHMudHh0CiAgICB0eXBlOiBzdHJpbmcKY2FwYWNpdHk6IDEKbGVha3NwZWVkOiAxbQpncm91cGJ5OiAiZXZ0Lk1ldGEuc291cmNlX2lwIgpibGFja2hvbGU6IDJtCmxhYmVsczoKICB0eXBlOiBzY2FuCiAgcmVtZWRpYXRpb246IHRydWUK",
+    "description": "Detect bad user-agents",
+    "author": "crowdsecurity",
+    "labels": {
+diff --git a/scenarios/crowdsecurity/.tests/http-bad-user-agent/bucket_results.yaml b/scenarios/crowdsecurity/.tests/http-bad-user-agent/bucket_results.yaml
+index 709526b..578f91b 100644
+--- a/hub1/scenarios/crowdsecurity/.tests/http-bad-user-agent/bucket_results.yaml
++++ b/hub1/scenarios/crowdsecurity/.tests/http-bad-user-agent/bucket_results.yaml
+@@ -1,6 +1,6 @@
+ - Type: 1
+   Alert:
+-    MapKey: 25fa9229bd06e973b3e656d1cc9b0a093cb779d1
++    MapKey: 726dc5f15649d6ffac5a8aff8d85f2427775c823
+     Sources:
+       8.8.8.8:
+         asname: ""
+diff --git a/scenarios/crowdsecurity/http-bad-user-agent.yaml b/scenarios/crowdsecurity/http-bad-user-agent.yaml
+index 6c7baf3..0069956 100644
+--- a/hub1/scenarios/crowdsecurity/http-bad-user-agent.yaml
++++ b/hub1/scenarios/crowdsecurity/http-bad-user-agent.yaml
+@@ -3,7 +3,7 @@ format: 2.0
+ #debug: true
+ name: crowdsecurity/http-bad-user-agent
+ description: "Detect bad user-agents"
+-filter: 'evt.Meta.log_type in ["http_access-log", "http_error-log"] && any(File("bad_user_agents.txt"), {evt.Parsed.http_user_agent contains #})'
++filter: 'evt.Meta.log_type in ["http_access-log", "http_error-log"] && any(File("bad_user_agents.txt"), {evt.Parsed.http_user_agent matches "\\b"+#+"\\b"})'
+ data:
+   - source_url: https://raw.githubusercontent.com/crowdsecurity/sec-lists/master/web/bad_user_agents.txt
+     dest_file: bad_user_agents.txt
+-- 
+2.30.2
+
