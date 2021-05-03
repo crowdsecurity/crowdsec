@@ -37,7 +37,7 @@ db_config:
   db_path: /var/lib/crowdsec/data/crowdsec.db
   #user:
   #password:
-  #db_name: 
+  #db_name:
   #host:
   #port:
   flush:
@@ -76,10 +76,10 @@ For example, if you don't want to store your database password in the configurat
 db_config:
   type:     mysql
   user:     database_user
-  password: ${DB_PASSWORD}  
+  password: ${DB_PASSWORD}
   db_name:  db_name
-  host:     192.168.0.2   
-  port:     3306 
+  host:     192.168.0.2
+  port:     3306
 ```
 
 And export the environment variable such as:
@@ -88,7 +88,7 @@ And export the environment variable such as:
 export DB_PASSWORD="<db_password>"
 ```
 
-!!! warning 
+!!! warning
     **Note**: you need to be `root` or put the environment variable in `/etc/environement`
 
 ## Configuration format
@@ -118,12 +118,13 @@ cscli:
   hub_branch: <hub_branch>
 db_config:
   type:     <db_type>
-  db_path:  <path_to_database_file>  
+  db_path:  <path_to_database_file>
   user:     <db_user>      # for mysql/pgsql
   password: <db_password>  # for mysql/pgsql
   db_name:  <db_name>      # for mysql/pgsql
   host:     <db_host_ip>   # for mysql/pgsql
   port:     <db_host_port> # for mysql/pgsql
+  sslmode:  <required/disable> # for pgsql
   flush:
     max_items: <max_alerts_in_db>
     max_age: <max_age_of_alerts_in_db>
@@ -256,7 +257,7 @@ crowdsec_service:
 
 Number of dedicated goroutines for parsing files.
 
-#### `buckets_routines` 
+#### `buckets_routines`
 > int
 
 Number of dedicated goroutines for managing live buckets.
@@ -414,7 +415,7 @@ Path to certificate file.
 
 Path to certficate key file.
 
-### `prometheus` 
+### `prometheus`
 
 This section is used by local API and crowdsec.
 

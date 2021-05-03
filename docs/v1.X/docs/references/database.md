@@ -60,10 +60,11 @@ db_config:
   password: crowdsecpassword
   db_name: crowdsec
   host: "127.0.0.1"
-  port: 3306
+  port: 5432
+  sslmode: disable
   flush:
     max_items: 5000
-    max_age: 7d  
+    max_age: 7d
 ```
 
 </details>
@@ -76,14 +77,15 @@ db_config:
 ```yaml
 db_config:
   type:     <db_type>
-  
+
   db_path:  <path_to_database_file>  # for sqlite
-  
+
   user:     <db_user>      # for mysql/pgsql
   password: <db_password>  # for mysql/pgsql
   db_name:  <db_name>      # for mysql/pgsql
   host:     <db_host_ip>   # for mysql/pgsql
   port:     <db_host_port> # for mysql/pgsql
+  sslmode:  <required/disable> # for pgsql
   flush:
     max_items: <max_alerts_in_db>
 	max_age: <max_age_of_alerts_in_db>
@@ -165,6 +167,14 @@ db_config:
 ```
 The port to connect to (only if the type of database is `mysql` or `postgresql`)
 
+```yaml
+db_config:
+  type: postgresql
+
+  sslmode: required
+```
+Required or disable ssl connection to database (only if the type of database is `postgresql`)
+
 ### `flush`
 
 ```yaml
@@ -237,7 +247,7 @@ Alert:
 	| events    | Event    | false   |         | O2M      | false  | true     |
 	| metas     | Meta     | false   |         | O2M      | false  | true     |
 	+-----------+----------+---------+---------+----------+--------+----------+
-	
+
 Bouncer:
 	+------------+-----------+--------+----------+----------+---------+---------------+-----------+-----------------------------+------------+
 	|   Field    |   Type    | Unique | Optional | Nillable | Default | UpdateDefault | Immutable |          StructTag          | Validators |
@@ -254,7 +264,7 @@ Bouncer:
 	| until      | time.Time | false  | true     | false    | true    | false         | false     | json:"until,omitempty"      |          0 |
 	| last_pull  | time.Time | false  | false    | false    | true    | false         | false     | json:"last_pull,omitempty"  |          0 |
 	+------------+-----------+--------+----------+----------+---------+---------------+-----------+-----------------------------+------------+
-	
+
 Decision:
 	+--------------+-----------+--------+----------+----------+---------+---------------+-----------+-------------------------------+------------+
 	|    Field     |   Type    | Unique | Optional | Nillable | Default | UpdateDefault | Immutable |           StructTag           | Validators |
@@ -280,7 +290,7 @@ Decision:
 	+-------+-------+---------+-----------+----------+--------+----------+
 	| owner | Alert | true    | decisions | M2O      | true   | true     |
 	+-------+-------+---------+-----------+----------+--------+----------+
-	
+
 Event:
 	+------------+-----------+--------+----------+----------+---------+---------------+-----------+-----------------------------+------------+
 	|   Field    |   Type    | Unique | Optional | Nillable | Default | UpdateDefault | Immutable |          StructTag          | Validators |
@@ -296,7 +306,7 @@ Event:
 	+-------+-------+---------+---------+----------+--------+----------+
 	| owner | Alert | true    | events  | M2O      | true   | true     |
 	+-------+-------+---------+---------+----------+--------+----------+
-	
+
 Machine:
 	+-------------+-----------+--------+----------+----------+---------+---------------+-----------+------------------------------+------------+
 	|    Field    |   Type    | Unique | Optional | Nillable | Default | UpdateDefault | Immutable |          StructTag           | Validators |
@@ -317,7 +327,7 @@ Machine:
 	+--------+-------+---------+---------+----------+--------+----------+
 	| alerts | Alert | false   |         | O2M      | false  | true     |
 	+--------+-------+---------+---------+----------+--------+----------+
-	
+
 Meta:
 	+------------+-----------+--------+----------+----------+---------+---------------+-----------+-----------------------------+------------+
 	|   Field    |   Type    | Unique | Optional | Nillable | Default | UpdateDefault | Immutable |          StructTag          | Validators |
