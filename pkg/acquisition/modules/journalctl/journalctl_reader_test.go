@@ -1,1 +1,1 @@
-package journalctl_acquisition
+package journalctlacquisition

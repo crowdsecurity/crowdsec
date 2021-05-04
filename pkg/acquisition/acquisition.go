@@ -8,6 +8,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	syslog_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -95,6 +96,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "syslog",
 		iface: func() DataSource { return &syslog_acquisition.SyslogSource{} },
+	},
+	{
+		name:  "journalctl",
+		iface: func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
 	},
 }
 
