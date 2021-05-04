@@ -12,6 +12,7 @@ type SyslogServer struct {
 	proto        string
 	listenAddr   string
 	port         int
+	channel      chan string
 	tcpListener  *net.TCPListener
 	udpConn      *net.UDPConn
 	parsingTombs []*tomb.Tomb
@@ -53,4 +54,8 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 		s.udpConn.SetReadBuffer(1024 * 8) // FIXME probably
 	}
 	return nil
+}
+
+func (s *SyslogServer) SetChannel(c chan string) {
+	s.channel = c
 }
