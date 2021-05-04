@@ -1,0 +1,11 @@
+#type: file
+filename: /tmp/test.log
+labels:
+  type: syslog
+---
+#type: file
+filenames:
+ - /tmp/test*.log
+labels:
+  type: syslog
+---
