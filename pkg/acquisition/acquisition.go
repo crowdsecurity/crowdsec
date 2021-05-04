@@ -19,14 +19,6 @@ import (
 	tomb "gopkg.in/tomb.v2"
 )
 
-var ReaderHits = prometheus.NewCounterVec(
-	prometheus.CounterOpts{
-		Name: "cs_reader_hits_total",
-		Help: "Total lines where read.",
-	},
-	[]string{"source"},
-)
-
 /*
  current limits :
  - The acquisition is not yet modular (cf. traefik/yaegi), but we start with an interface to pave the road for it.
@@ -233,6 +225,17 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 	for i := 0; i < len(sources); i++ {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
+		//register acquisition specific metrics
+		for _, metrics := range subsrc.GetMetrics() {
+			if err := prometheus.Register(metrics); err != nil {
+				if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
+					//ignore the error
+				} else {
+					return errors.Wrapf(err, "could not register metrics for datasource %s", subsrc.GetName())
+				}
+			}
+		}
+
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")
 			var err error
@@ -246,8 +249,6 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			}
 			return nil
 		})
-		//register acquisition specific metrics
-		prometheus.MustRegister(subsrc.GetMetrics()...)
 	}
 	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()

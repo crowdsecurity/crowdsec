@@ -23,6 +23,13 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_filesource_hits_total",
+		Help: "Total lines where read.",
+	},
+	[]string{"source"})
+
 type FileConfiguration struct {
 	Filenames                         []string
 	Filename                          string
@@ -37,10 +44,6 @@ type FileSource struct {
 	tails              map[string]bool
 	logger             *log.Entry
 	files              []string
-}
-
-func (f *FileSource) SupportedDSN() []string {
-	return []string{"file://"}
 }
 
 func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
@@ -180,7 +183,7 @@ func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 }
 
 func (f *FileSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (f *FileSource) GetName() string {
@@ -300,9 +303,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			//FIXME: prometheus metrics
-			//ReaderHits.With(prometheus.Labels{"source": tail.Filename}).Inc()
-
+			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
 			l.Raw = line.Text
 			l.Labels = f.config.Labels
 			l.Time = line.Time
@@ -349,6 +350,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		l.Src = filename
 		l.Labels = f.config.Labels
 		l.Process = true
+		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 		//we're reading logs at once, it must be time-machine buckets
 		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
