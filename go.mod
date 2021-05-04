@@ -32,6 +32,7 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.1
+	github.com/influxdata/go-syslog/v3 v3.0.0 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
