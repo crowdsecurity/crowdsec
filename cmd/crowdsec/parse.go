@@ -22,7 +22,11 @@ LOOP:
 			if !event.Process {
 				continue
 			}
-			globalParserHits.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+			if event.Line.Module == "" {
+				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
+				continue
+			}
+			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 
 			/* parse the log using magic */
 			parsed, error := parser.Parse(parserCTX, event, nodes)
@@ -31,11 +35,11 @@ LOOP:
 				return errors.New("parsing failed :/")
 			}
 			if !parsed.Process {
-				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
 				continue
 			}
-			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src}).Inc()
+			globalParserHitsOk.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 			if parsed.Whitelisted {
 				log.Debugf("event whitelisted, discard")
 				continue

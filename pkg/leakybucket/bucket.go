@@ -77,7 +77,7 @@ var BucketsPour = prometheus.NewCounterVec(
 		Name: "cs_bucket_poured_total",
 		Help: "Total events were poured in bucket.",
 	},
-	[]string{"source", "name"},
+	[]string{"source", "type", "name"},
 )
 
 var BucketsOverflow = prometheus.NewCounterVec(
@@ -226,7 +226,7 @@ func LeakRoutine(leaky *Leaky) error {
 			if leaky.logger.Level >= log.TraceLevel {
 				leaky.logger.Tracef("Pour event: %s", spew.Sdump(msg))
 			}
-			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src}).Inc()
+			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
 			leaky.Pour(leaky, msg) // glue for now
 			//Clear cache on behalf of pour
