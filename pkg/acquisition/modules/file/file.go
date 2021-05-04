@@ -1,4 +1,4 @@
-package file_acquisition
+package fileacquisition
 
 import (
 	"bufio"

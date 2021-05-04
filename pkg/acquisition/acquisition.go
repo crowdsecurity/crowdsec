@@ -7,9 +7,8 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	file_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
+	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
-	syslog_acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -66,10 +65,6 @@ We support acquisition in two modes :
 One DataSourceCfg can lead to multiple goroutines, hence the Tombs passing around to allow proper tracking.
 tail mode shouldn't return except on errors or when externally killed via tombs.
 cat mode will return once source has been exhausted.
-
-
- TBD in current iteration :
-  - how to deal with "file was not present at startup but might appear later" ?
 */
 
 // The interface each datasource must implement
@@ -91,11 +86,7 @@ var AcquisitionSources = []struct {
 }{
 	{
 		name:  "file",
-		iface: func() DataSource { return &file_acquisition.FileSource{} },
-	},
-	{
-		name:  "syslog",
-		iface: func() DataSource { return &syslog_acquisition.SyslogSource{} },
+		iface: func() DataSource { return &fileacquisition.FileSource{} },
 	},
 	{
 		name:  "journalctl",
