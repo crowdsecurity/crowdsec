@@ -1,4 +1,4 @@
-ROOT= $(shell git rev-parse --show-toplevel)
+ROOT= $(shell pwd)
 SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 
 ifneq ("$(wildcard $(ROOT)/platform/$(SYSTEM).mk)", "")
