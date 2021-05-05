@@ -86,6 +86,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Time = time.Now()
 			l.Src = j.src
 			l.Process = true
+			l.Module = j.GetName()
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			out <- evt
 		}

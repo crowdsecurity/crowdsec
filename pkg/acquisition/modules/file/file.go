@@ -309,6 +309,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			l.Time = line.Time
 			l.Src = tail.Filename
 			l.Process = true
+			l.Module = f.GetName()
 			//we're tailing, it must be real time logs
 			f.logger.Debugf("pushing %+v", l)
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
@@ -350,6 +351,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		l.Src = filename
 		l.Labels = f.config.Labels
 		l.Process = true
+		l.Module = f.GetName()
 		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 		//we're reading logs at once, it must be time-machine buckets
