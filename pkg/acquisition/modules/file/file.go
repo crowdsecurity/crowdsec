@@ -229,6 +229,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				fi, err := os.Stat(event.Name)
 				if err != nil {
 					f.logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
+					continue
 				}
 				if fi.IsDir() {
 					continue
