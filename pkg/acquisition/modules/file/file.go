@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -92,7 +93,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			return errors.Wrap(err, "Glob failure")
 		}
 		if len(files) == 0 {
-			f.logger.Infof("No matching files for pattern %s", pattern)
+			f.logger.Warnf("No matching files for pattern %s", pattern)
 			continue
 		}
 		f.logger.Infof("Will read %d files", len(files))
@@ -200,6 +201,19 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
+		err := unix.Access(file, unix.R_OK)
+		if err != nil {
+			f.logger.Errorf("unable to read %s : %s", file, err)
+			continue
+		}
+		fi, err := os.Stat(file)
+		if err != nil {
+			return fmt.Errorf("could not stat file %s : %w", file, err)
+		}
+		if fi.IsDir() {
+			f.logger.Warnf("%s is a directory, ignoring it.", file)
+			continue
+		}
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
@@ -254,6 +268,11 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					//we already have a tail on it, do not start a new one
 					f.logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
+				}
+				err = unix.Access(event.Name, unix.R_OK)
+				if err != nil {
+					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
 				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
