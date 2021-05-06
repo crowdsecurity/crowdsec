@@ -3,9 +3,11 @@ package cloudwatchacquisition
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -22,9 +24,9 @@ type CloudwatchSource struct {
 	Config CloudwatchSourceConfiguration
 	/*runtime stuff*/
 	logger           *log.Entry
-	t                tomb.Tomb
+	t                *tomb.Tomb
 	cwClient         *cloudwatchlogs.CloudWatchLogs
-	monitoredStreams []LogStreamTailConfig
+	monitoredStreams []*LogStreamTailConfig
 }
 
 //CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
@@ -33,12 +35,14 @@ type CloudwatchSourceConfiguration struct {
 	GroupName                         string         `yaml:"group_name"`                         //the group name to be monitored
 	StreamPrefix                      *string        `yaml:"stream_prefix,omitempty"`            //allow to filter specific streams
 	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` //batch size for DescribeLogStreamsPagesWithContext
-	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitpempty"`
+	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
 	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` //frequency at which we poll for new streams within the log group
 	MaxStreamAge                      *time.Duration `yaml:"max_stream_age,omitempty"`           //monitor only streams that have been updated within $duration
 	PollStreamInterval                *time.Duration `yaml:"poll_stream_interval,omitempty"`     //frequency at which we poll each stream
 	StreamReadTimeout                 *time.Duration `yaml:"stream_read_timeout,omitempty"`      //stop monitoring streams that haven't been updated within $duration, might be reopened later tho
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
+	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
+	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -48,7 +52,7 @@ type LogStreamTailConfig struct {
 	GetLogEventsPagesLimit     int64
 	PollStreamInterval         time.Duration
 	StreamReadTimeout          time.Duration
-	PrependCloudwatchTimestamp bool
+	PrependCloudwatchTimestamp *bool
 	Labels                     map[string]string
 	logger                     *log.Entry
 	ExpectMode                 int
@@ -60,20 +64,19 @@ var def_PollNewStreamInterval = 10 * time.Second
 var def_MaxStreamAge = 5 * time.Minute
 var def_PollStreamInterval = 10 * time.Second
 var def_AwsApiCallTimeout = 10 * time.Second
-
 var def_StreamReadTimeout = 10 * time.Minute
 var def_GetLogEventsPagesLimit = int64(1000)
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
-	cw.logger = logger.WithField("group", cw.Config.GroupName)
+	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
 	cwConfig := CloudwatchSourceConfiguration{}
 	err := yaml.UnmarshalStrict(cfg, &cwConfig)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
 	}
 	cw.Config = cwConfig
+	cw.logger = logger.WithField("group", cw.Config.GroupName)
 	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
-	cw.t = tomb.Tomb{}
 	if len(cw.Config.GroupName) == 0 {
 		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
 	}
@@ -105,11 +108,38 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		cw.Config.AwsApiCallTimeout = &def_AwsApiCallTimeout
 	}
 	logger.Tracef("AwsApiCallTimeout set to %v", *cw.Config.AwsApiCallTimeout)
+	if *cw.Config.MaxStreamAge > *cw.Config.StreamReadTimeout {
+		logger.Warningf("MaxStreamAge > StreamReadTimeout, stream might keep being opened/closed")
+	}
 	return nil
 }
 
-func (cw *CloudwatchSource) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
-	return nil
+func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	var sess *session.Session
+	cw.t = t
+	if cw.Config.AwsProfile != nil {
+		sess = session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+			Profile:           *cw.Config.AwsProfile,
+		}))
+	} else {
+		sess = session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		}))
+	}
+
+	if sess == nil {
+		return fmt.Errorf("failed to create aws session")
+	}
+	cw.cwClient = cloudwatchlogs.New(sess)
+	if cw.cwClient == nil {
+		return fmt.Errorf("failed to create cloudwatch client")
+	}
+	monitChan := make(chan LogStreamTailConfig)
+	t.Go(func() error {
+		return cw.LogStreamManager(monitChan, out)
+	})
+	return cw.WatchLogGroupForStreams(monitChan)
 }
 
 func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
@@ -147,15 +177,15 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 
 	for {
 		select {
+		/*TODO handle tomb*/
+		/*TODO test one specific stream only*/
 		case <-ticker.C:
 			hasMoreStreams := true
-			cw.logger.Tracef("starting outter loop")
 			startFrom = nil
 			for hasMoreStreams {
-				cw.logger.Tracef("starting describe!")
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 				//there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
-				cw.cwClient.DescribeLogStreamsPagesWithContext(
+				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
 					ctx,
 					&cloudwatchlogs.DescribeLogStreamsInput{
 						LogGroupName:        aws.String(cw.Config.GroupName),
@@ -165,7 +195,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 						OrderBy:             aws.String(cloudwatchlogs.OrderByLastEventTime),
 					},
 					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
-						cw.logger.Tracef("got %d items", len(page.LogStreams))
 						for _, event := range page.LogStreams {
 							startFrom = page.NextToken
 							//we check if the stream has been written to recently enough to be monitored
@@ -173,19 +202,20 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								//aws uses millisecond since the epoch
 								oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
-								if oldest.Before(LastIngestionTime) {
-									cw.logger.Debugf("stream %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().Add(-cfg.MaxStreamAge))
+								if LastIngestionTime.Before(oldest) {
+									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().Add(-*cw.Config.MaxStreamAge))
 									hasMoreStreams = false
 									return false
 								}
-								cw.logger.Debugf("stream %s is elligible for monitoring", *event.LogStreamName)
+								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
 								//the stream has been update recently, check if we should monitor it
 								monitorStream := LogStreamTailConfig{
-									GroupName:              cw.Config.GroupName,
-									StreamName:             *event.LogStreamName,
-									GetLogEventsPagesLimit: *cw.Config.GetLogEventsPagesLimit,
-									PollStreamInterval:     *cw.Config.PollStreamInterval,
-									StreamReadTimeout:      *cw.Config.StreamReadTimeout,
+									GroupName:                  cw.Config.GroupName,
+									StreamName:                 *event.LogStreamName,
+									GetLogEventsPagesLimit:     *cw.Config.GetLogEventsPagesLimit,
+									PollStreamInterval:         *cw.Config.PollStreamInterval,
+									StreamReadTimeout:          *cw.Config.StreamReadTimeout,
+									PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
 								}
 								out <- monitorStream
 							}
@@ -198,6 +228,10 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 					},
 				)
 				cancel()
+				if err != nil {
+					newerr := errors.Wrapf(err, "while describing group %s", cw.Config.GroupName)
+					return newerr
+				}
 			}
 		}
 	}
@@ -214,11 +248,11 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 		select {
 		case newStream := <-in:
 			shouldCreate := true
-			cw.logger.Debugf("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
+			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 			for idx, stream := range cw.monitoredStreams {
 				if newStream.GroupName == stream.GroupName && newStream.StreamName == stream.StreamName {
 					//stream exists, but is dead, remove it from list
-					if !cw.monitoredStreams[idx].t.Alive() {
+					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
 						break
@@ -234,8 +268,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				newStream.logger = cw.logger.WithFields(log.Fields{"stream": newStream.StreamName})
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
 				newStream.t.Go(func() error {
-					return TailLogStream(newStream, outChan, cw.cwClient)
+					return TailLogStream(&newStream, outChan, cw.cwClient)
 				})
+				cw.monitoredStreams = append(cw.monitoredStreams, &newStream)
 			}
 		case <-pollDeadStreamInterval.C:
 			for idx, stream := range cw.monitoredStreams {
@@ -248,23 +283,29 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 		case <-cw.t.Dying():
 			cw.logger.Infof("LogStreamManager for %s is dying, %d alive streams", cw.Config.GroupName, len(cw.monitoredStreams))
 			for idx, stream := range cw.monitoredStreams {
-				if !cw.monitoredStreams[idx].t.Alive() {
+				if cw.monitoredStreams[idx].t.Alive() {
+					cw.logger.Debugf("killing stream %s", stream.StreamName)
+					cw.monitoredStreams[idx].t.Kill(nil)
+					if err := cw.monitoredStreams[idx].t.Wait(); err != nil {
+						cw.logger.Debugf("error while waiting for death of %s", stream.StreamName)
+					}
+				} else {
 					cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
-					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
-					break
 				}
 			}
+			return nil
 		}
 	}
 	return nil
 }
 
-func TailLogStream(cfg LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
+func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
 	var startFrom *string
-	var lastReadMessage time.Time
+	var lastReadMessage time.Time = time.Now()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
 
-	lastReadMessage = time.Now()
+	/*during first run, we want to avoid reading any message, but just get a token.
+	if we don't, we might end up sending the same item several times. hence the 'startup' hack */
 	startup := true
 	for {
 		select {
@@ -276,7 +317,6 @@ func TailLogStream(cfg LogStreamTailConfig, outChan chan types.Event, cwClient *
 				limit := cfg.GetLogEventsPagesLimit
 				if startup {
 					limit = 1
-					startup = false
 				}
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
 				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -288,6 +328,10 @@ func TailLogStream(cfg LogStreamTailConfig, outChan chan types.Event, cwClient *
 						NextToken:     startFrom,
 					},
 					func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
+						startFrom = page.NextForwardToken
+						if startup { //we grab the NextForwardToken and we return on first iteration
+							return false
+						}
 						if lastPage { /*wait another ticker to check on new log availability*/
 							cfg.logger.Tracef("last page")
 							hasMorePages = false
@@ -300,25 +344,27 @@ func TailLogStream(cfg LogStreamTailConfig, outChan chan types.Event, cwClient *
 							if err != nil {
 								cfg.logger.Warningf("discard event : %s", err)
 							}
+							cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
 							outChan <- evt
-							startFrom = page.NextForwardToken
 						}
 						return true
 					},
 				)
 				if err != nil {
-					cfg.logger.Errorf("got error while getting logs : %s", err)
+					//cfg.logger.Errorf("got error while getting logs : %s", err)
 					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
-					cfg.t.Kill(newerr)
+					cfg.logger.Warningf("err : %s", newerr)
 					return newerr
+				}
+				if startup {
+					startup = false
 				}
 				cancel()
 				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")
 
 				if time.Now().Sub(lastReadMessage) > cfg.StreamReadTimeout {
-					cfg.logger.Warningf("%s/%s reached timeout (%s, last message was %s)", cfg.GroupName, cfg.StreamName, time.Now().Sub(lastReadMessage),
+					cfg.logger.Warningf("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Now().Sub(lastReadMessage),
 						lastReadMessage)
-					cfg.t.Kill(nil)
 					return nil
 				}
 			}
@@ -330,14 +376,14 @@ func TailLogStream(cfg LogStreamTailConfig, outChan chan types.Event, cwClient *
 	return nil
 }
 
-func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg LogStreamTailConfig) (types.Event, error) {
+func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) (types.Event, error) {
 	l := types.Line{}
 	evt := types.Event{}
 	if log.Message == nil {
 		return evt, fmt.Errorf("nil message")
 	}
 	msg := *log.Message
-	if cfg.PrependCloudwatchTimestamp {
+	if cfg.PrependCloudwatchTimestamp != nil && *cfg.PrependCloudwatchTimestamp {
 		eventTimestamp := time.Unix(0, *log.Timestamp*int64(time.Millisecond))
 		msg = eventTimestamp.String() + " " + msg
 	}
@@ -347,6 +393,7 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg LogStreamTailConfig) (
 	l.Time = time.Now()
 	l.Src = fmt.Sprintf("%s/%s", cfg.GroupName, cfg.StreamName)
 	l.Process = true
+	//l.Module = "cloudwatch"
 	evt.Line = l
 	evt.Process = true
 	evt.Type = types.LOG

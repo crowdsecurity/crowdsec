@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -91,6 +92,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "journalctl",
 		iface: func() DataSource { return &journalctlacquisition.JournalCtlSource{} },
+	},
+	{
+		name:  "cloudwatch",
+		iface: func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
 	},
 }
 
@@ -242,14 +247,17 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 				err = subsrc.OneShotAcquisition(output, AcquisTomb)
 			}
 			if err != nil {
-				return err
+				//if one of the acqusition returns an error, we kill the others to properly shutdown
+				AcquisTomb.Kill(err)
 			}
 			return nil
 		})
 		//register acquisition specific metrics
 		prometheus.MustRegister(subsrc.GetMetrics()...)
 	}
+	log.Infof("waiting on tomb...")
 	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()
+	log.Errorf("AcquisTomb : %s", err)
 	return err
 }
