@@ -179,7 +179,9 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 
 	for {
 		select {
-		/*TODO handle tomb*/
+		case <-cw.t.Dying():
+			cw.logger.Infof("stopping group watch")
+			return nil
 		/*TODO test one specific stream only*/
 		case <-ticker.C:
 			hasMoreStreams := true
@@ -352,6 +354,7 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 						return true
 					},
 				)
+				cancel()
 				if err != nil {
 					//cfg.logger.Errorf("got error while getting logs : %s", err)
 					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
@@ -361,7 +364,6 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 				if startup {
 					startup = false
 				}
-				cancel()
 				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")
 
 				if time.Now().Sub(lastReadMessage) > cfg.StreamReadTimeout {
