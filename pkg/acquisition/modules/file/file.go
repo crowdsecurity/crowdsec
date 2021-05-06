@@ -296,8 +296,8 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
-	//lint:ignore SA1015 as it is an infinite loop
-	timeout := time.Tick(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 	f.logger.Debugf("-> Starting tail of %s", tail.Filename)
 	for {
 		l := types.Line{}
@@ -333,7 +333,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			//we're tailing, it must be real time logs
 			f.logger.Debugf("pushing %+v", l)
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-		case <-timeout:
+		case <-ticker.C:
 			//time out, shall we do stuff ?
 			f.logger.Trace("timeout")
 		}
