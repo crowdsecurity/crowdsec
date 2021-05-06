@@ -38,6 +38,13 @@ var (
 	journalctlArgstreaming = []string{"--follow"}
 )
 
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_journalctlsource_hits_total",
+		Help: "Total lines where read.",
+	},
+	[]string{"source"})
+
 func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) error {
 	cmd := exec.Command(journalctlCmd, j.args...)
 	stdout, err := cmd.StdoutPipe()
@@ -79,7 +86,6 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		}
 		for scanner.Scan() {
 			l := types.Line{}
-			//ReaderHits.With(prometheus.Labels{"source": j.SrcName}).Inc()
 			l.Raw = scanner.Text()
 			j.logger.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
@@ -87,6 +93,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()
+			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			out <- evt
 		}
@@ -116,7 +123,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 }
 
 func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error {
