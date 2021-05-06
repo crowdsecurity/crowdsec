@@ -59,13 +59,15 @@ type LogStreamTailConfig struct {
 	t                          tomb.Tomb
 }
 
-var def_DescribeLogStreamsLimit = int64(50)
-var def_PollNewStreamInterval = 10 * time.Second
-var def_MaxStreamAge = 5 * time.Minute
-var def_PollStreamInterval = 10 * time.Second
-var def_AwsApiCallTimeout = 10 * time.Second
-var def_StreamReadTimeout = 10 * time.Minute
-var def_GetLogEventsPagesLimit = int64(1000)
+var (
+	def_DescribeLogStreamsLimit = int64(50)
+	def_PollNewStreamInterval   = 10 * time.Second
+	def_MaxStreamAge            = 5 * time.Minute
+	def_PollStreamInterval      = 10 * time.Second
+	def_AwsApiCallTimeout       = 10 * time.Second
+	def_StreamReadTimeout       = 10 * time.Minute
+	def_GetLogEventsPagesLimit  = int64(1000)
+)
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
