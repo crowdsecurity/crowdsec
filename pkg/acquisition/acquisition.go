@@ -255,9 +255,7 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 		//register acquisition specific metrics
 		prometheus.MustRegister(subsrc.GetMetrics()...)
 	}
-	log.Infof("waiting on tomb...")
 	/*return only when acquisition is over (cat) or never (tail)*/
 	err := AcquisTomb.Wait()
-	log.Errorf("AcquisTomb : %s", err)
 	return err
 }
