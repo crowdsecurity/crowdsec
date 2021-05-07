@@ -417,6 +417,9 @@ func NewConfigCmd() *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
 			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
