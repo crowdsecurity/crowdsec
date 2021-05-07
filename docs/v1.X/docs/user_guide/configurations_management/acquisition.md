@@ -15,7 +15,7 @@ Acquisition can be found in `{{v1X.config.acquis_path}}`, for example :
   <summary>Acquisition example</summary>
 ```yaml
 filenames:
-  - /var/log/nginx/access-*.log
+  - /var/log/nginx/access*.log
   - /var/log/nginx/error.log
 labels:
   type: nginx
