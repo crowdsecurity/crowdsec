@@ -3,12 +3,14 @@ package cloudwatchacquisition
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -32,8 +34,10 @@ type CloudwatchSource struct {
 //CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	GroupName                         string         `yaml:"group_name"`                         //the group name to be monitored
-	StreamPrefix                      *string        `yaml:"stream_prefix,omitempty"`            //allow to filter specific streams
+	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
+	StreamPrefix                      *string        `yaml:"stream_prefix,omitempty"` //allow to filter specific streams
+	StreamName                        *string        `yaml:"-"`
+	StartTime, EndTime                *time.Time     `yaml:"-"`
 	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` //batch size for DescribeLogStreamsPagesWithContext
 	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
 	PollNewStreamInterval             *time.Duration `yaml:"poll_new_stream_interval,omitempty"` //frequency at which we poll for new streams within the log group
@@ -43,6 +47,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
+	Mode                              string         `yaml:"-"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -57,6 +62,7 @@ type LogStreamTailConfig struct {
 	logger                     *log.Entry
 	ExpectMode                 int
 	t                          tomb.Tomb
+	StartTime, EndTime         time.Time //only used for CatMode
 }
 
 var (
@@ -67,6 +73,7 @@ var (
 	def_AwsApiCallTimeout       = 10 * time.Second
 	def_StreamReadTimeout       = 10 * time.Minute
 	def_GetLogEventsPagesLimit  = int64(1000)
+	def_Mode                    = configuration.TAIL_MODE
 )
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
@@ -78,6 +85,7 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	}
 	cw.Config = cwConfig
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
+	cw.Config.Mode = configuration.TAIL_MODE
 	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
 	if len(cw.Config.GroupName) == 0 {
 		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
@@ -148,20 +156,12 @@ func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
 	return nil
 }
 
-func (cw *CloudwatchSource) ConfigureByDSN(string, string, *log.Entry) error {
-	return nil
-}
-
 func (cw *CloudwatchSource) GetMode() string {
-	return configuration.TAIL_MODE
+	return cw.Config.Mode
 }
 
 func (cw *CloudwatchSource) GetName() string {
 	return "cloudwatch"
-}
-
-func (cw *CloudwatchSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error {
-	return nil
 }
 
 func (cw *CloudwatchSource) CanRun() error {
@@ -239,7 +239,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 			}
 		}
 	}
-	return nil
 }
 
 //LogStreamManager receives the potential streams to monitor, and start a go routine when needed
@@ -300,7 +299,6 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 			return nil
 		}
 	}
-	return nil
 }
 
 func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
@@ -375,6 +373,138 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 		case <-cfg.t.Dying():
 			cfg.logger.Infof("Tail of %s/%s is stopping", cfg.GroupName, cfg.StreamName)
 			return fmt.Errorf("killed")
+		}
+	}
+}
+
+func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *log.Entry) error {
+	cw.logger = logger
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return errors.Wrapf(err, "while parsing %s", dsn)
+	}
+	cw.Config.GroupName = u.Host
+	cw.logger.Tracef("host=%s", cw.Config.GroupName)
+	cw.Config.StreamName = &u.Path
+	cw.logger.Tracef("stream=%s", *cw.Config.StreamName)
+	for k, v := range u.Query() {
+		switch k {
+		case "profile":
+			if len(v) != 1 {
+				return fmt.Errorf("expected zero or one value for 'profile'")
+			}
+			awsprof := v[0]
+			cw.Config.AwsProfile = &awsprof
+			cw.logger.Debugf("profile set to '%s'", cw.Config.AwsProfile)
+		case "start_date":
+			if len(v) != 1 {
+				return fmt.Errorf("expected zero or one argument for 'start_date'")
+			}
+			//let's reuse our parser helper so that a ton of date formats are supported
+			strdate, startDate := parser.GenDateParse(v[0])
+			cw.logger.Debugf("parsed '%s' as '%s'", v[0], strdate)
+			cw.Config.StartTime = &startDate
+		case "end_date":
+			if len(v) != 1 {
+				return fmt.Errorf("expected zero or one argument for 'end_date'")
+			}
+			//let's reuse our parser helper so that a ton of date formats are supported
+			strdate, endDate := parser.GenDateParse(v[0])
+			cw.logger.Debugf("parsed '%s' as '%s'", v[0], strdate)
+			cw.Config.EndTime = &endDate
+		case "backlog":
+			if len(v) != 1 {
+				return fmt.Errorf("expected zero or one argument for 'backlog'")
+			}
+			//let's reuse our parser helper so that a ton of date formats are supported
+			duration, err := time.ParseDuration(v[0])
+			if err != nil {
+				return errors.Wrapf(err, "unable to parse '%s' as duration", v[0])
+			}
+			cw.logger.Debugf("parsed '%s' as '%s'", v[0], duration)
+			start := time.Now().UTC().Add(duration)
+			cw.Config.StartTime = &start
+			end := time.Now().UTC()
+			cw.Config.EndTime = &end
+		default:
+			return fmt.Errorf("unexpected argument %s", k)
+		}
+	}
+	var sess *session.Session
+	if cw.Config.AwsProfile != nil {
+		sess = session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+			Profile:           *cw.Config.AwsProfile,
+		}))
+	} else {
+		sess = session.Must(session.NewSessionWithOptions(session.Options{
+			SharedConfigState: session.SharedConfigEnable,
+		}))
+	}
+
+	if sess == nil {
+		return fmt.Errorf("failed to create aws session")
+	}
+	cw.cwClient = cloudwatchlogs.New(sess)
+	if cw.cwClient == nil {
+		return fmt.Errorf("failed to create cloudwatch client")
+	}
+	return nil
+}
+
+func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	//StreamName string, Start time.Time, End time.Time
+	config := LogStreamTailConfig{
+		GroupName:              cw.Config.GroupName,
+		StreamName:             *cw.Config.StreamName,
+		StartTime:              *cw.Config.StartTime,
+		EndTime:                *cw.Config.EndTime,
+		GetLogEventsPagesLimit: *cw.Config.GetLogEventsPagesLimit,
+		logger: cw.logger.WithFields(log.Fields{
+			"group":  cw.Config.GroupName,
+			"stream": *cw.Config.StreamName,
+		}),
+	}
+	return CatLogStream(&config, out, cw.cwClient)
+}
+
+func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
+	var startFrom *string
+
+	/*convert the times*/
+	startTime := cfg.StartTime.Unix() * 1000
+	endTime := cfg.EndTime.Unix() * 1000
+	hasMoreEvents := true
+	for hasMoreEvents {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		err := cwClient.GetLogEventsPagesWithContext(ctx,
+			&cloudwatchlogs.GetLogEventsInput{
+				Limit:         aws.Int64(cfg.GetLogEventsPagesLimit),
+				LogGroupName:  aws.String(cfg.GroupName),
+				LogStreamName: aws.String(cfg.StreamName),
+				StartTime:     aws.Int64(startTime),
+				EndTime:       aws.Int64(endTime),
+				NextToken:     startFrom,
+			},
+			func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
+				for _, event := range page.Events {
+					evt, err := cwLogToEvent(event, cfg)
+					if err != nil {
+						cfg.logger.Warningf("discard event : %s", err)
+					}
+					cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
+					outChan <- evt
+				}
+				if page.NextForwardToken == startFrom {
+					cfg.logger.Debugf("reached end of available events")
+					hasMoreEvents = false
+				}
+				return true
+			},
+		)
+		cancel()
+		if err != nil {
+			return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
 		}
 	}
 	return nil
