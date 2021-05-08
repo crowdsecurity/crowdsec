@@ -48,7 +48,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
-	Mode                              string         `yaml:"-"`
+	Mode                              *string        `yaml:"mode,omitempty"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -90,7 +90,9 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	*/
 	cw.Config = cwConfig
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
-	cw.Config.Mode = configuration.TAIL_MODE
+	if cw.Config.Mode == nil {
+		cw.Config.Mode = &configuration.TAIL_MODE
+	}
 	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
 	if len(cw.Config.GroupName) == 0 {
 		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
@@ -163,7 +165,7 @@ func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
 }
 
 func (cw *CloudwatchSource) GetMode() string {
-	return cw.Config.Mode
+	return *cw.Config.Mode
 }
 
 func (cw *CloudwatchSource) GetName() string {
@@ -193,7 +195,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 			hasMoreStreams := true
 			startFrom = nil
 			for hasMoreStreams {
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx := context.Background()
 				//there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
 				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
 					ctx,
@@ -237,7 +239,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 						return true
 					},
 				)
-				cancel()
 				if err != nil {
 					newerr := errors.Wrapf(err, "while describing group %s", cw.Config.GroupName)
 					return newerr
@@ -327,7 +328,7 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 					limit = 1
 				}
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				ctx := context.Background()
 				err := cwClient.GetLogEventsPagesWithContext(ctx,
 					&cloudwatchlogs.GetLogEventsInput{
 						Limit:         aws.Int64(limit),
@@ -358,7 +359,6 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 						return true
 					},
 				)
-				cancel()
 				if err != nil {
 					//cfg.logger.Errorf("got error while getting logs : %s", err)
 					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
@@ -488,6 +488,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 		return fmt.Errorf("start_date and end_date or backlog are mandatory in one-shot mode")
 	}
 
+	cw.Config.Mode = &configuration.CAT_MODE
 	return nil
 }
 
@@ -521,7 +522,7 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 		if startFrom != nil {
 			cfg.logger.Tracef("next_token: %s", *startFrom)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx := context.Background()
 		err := cwClient.GetLogEventsPagesWithContext(ctx,
 			&cloudwatchlogs.GetLogEventsInput{
 				Limit:         aws.Int64(10),
@@ -551,7 +552,6 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 				return true
 			},
 		)
-		cancel()
 		if err != nil {
 			return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
 		}
