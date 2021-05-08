@@ -220,7 +220,9 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 				}
 				return nil, fmt.Errorf("missing labels in %s", acquisFile)
 			}
-
+			if sub.Source == "" {
+				return nil, fmt.Errorf("data source type is empty ('source') in %s", acquisFile)
+			}
 			if GetDataSourceIface(sub.Source) == nil {
 				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, acquisFile)
 			}

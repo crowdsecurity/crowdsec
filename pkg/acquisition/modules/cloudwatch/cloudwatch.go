@@ -84,6 +84,10 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
 	}
+	/*
+		TBD: Acquisition returned error : while describing group acquis-cloudwatch-tests: InvalidParameterException: Cannot order by LastEventTime with a logStreamNamePrefix.
+		either we sort by time or by prefix, can't do both :()
+	*/
 	cw.Config = cwConfig
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 	cw.Config.Mode = configuration.TAIL_MODE
@@ -146,6 +150,7 @@ func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.T
 	if cw.cwClient == nil {
 		return fmt.Errorf("failed to create cloudwatch client")
 	}
+	cw.logger.Infof("let's goooo")
 	monitChan := make(chan LogStreamTailConfig)
 	t.Go(func() error {
 		return cw.LogStreamManager(monitChan, out)
@@ -513,7 +518,9 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 		cfg.logger.Tracef("Calling GetLogEventsPagesWithContext(%s, %s), startTime:%d / endTime:%d",
 			cfg.GroupName, cfg.StreamName, startTime, endTime)
 		cfg.logger.Tracef("startTime:%s / endTime:%s", cfg.StartTime, cfg.EndTime)
-
+		if startFrom != nil {
+			cfg.logger.Tracef("next_token: %s", *startFrom)
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		err := cwClient.GetLogEventsPagesWithContext(ctx,
 			&cloudwatchlogs.GetLogEventsInput{
@@ -526,7 +533,7 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 				NextToken:     startFrom,
 			},
 			func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
-				cfg.logger.Tracef("in GetLogEventsPagesWithContext handker (%d events) (last:%T)", len(page.Events), lastPage)
+				cfg.logger.Tracef("in GetLogEventsPagesWithContext handker (%d events) (last:%t)", len(page.Events), lastPage)
 				for _, event := range page.Events {
 					evt, err := cwLogToEvent(event, cfg)
 					if err != nil {
@@ -535,9 +542,10 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 					cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
 					outChan <- evt
 				}
-				if startFrom != nil && page.NextForwardToken == startFrom {
+				if startFrom != nil && *page.NextForwardToken == *startFrom {
 					cfg.logger.Debugf("reached end of available events")
 					hasMoreEvents = false
+					return false
 				}
 				startFrom = page.NextForwardToken
 				return true
