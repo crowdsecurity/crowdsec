@@ -74,7 +74,6 @@ var (
 	def_AwsApiCallTimeout       = 10 * time.Second
 	def_StreamReadTimeout       = 10 * time.Minute
 	def_GetLogEventsPagesLimit  = int64(1000)
-	def_Mode                    = configuration.TAIL_MODE
 )
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
@@ -370,8 +369,8 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 				}
 				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")
 
-				if time.Now().Sub(lastReadMessage) > cfg.StreamReadTimeout {
-					cfg.logger.Warningf("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Now().Sub(lastReadMessage),
+				if time.Since(lastReadMessage) > cfg.StreamReadTimeout {
+					cfg.logger.Warningf("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Since(lastReadMessage),
 						lastReadMessage)
 					return nil
 				}
