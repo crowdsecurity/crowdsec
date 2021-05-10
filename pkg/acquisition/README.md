@@ -35,6 +35,7 @@ Ground rules :
  - `StreamingAcquisition` starts dedicated routines (via the `tomb.Tomb`) and returns, while `OneShotAcquisition` returns when datasource is consumed
  - `ConfigureByDSN` allows to configure datasource via cli for command-line invokation. Liberties can be taken with dsn format
  - Each datasource will be given a logger at configuration time, that is configured according to `DataSourceCommonCfg`. It is advised to customize it via [`.WithFields`](https://pkg.go.dev/github.com/sirupsen/logrus#WithFields) to take advantage of structured logging.
+ - You must set `Module` in the `types.Event.Line` that you're pushing the chan
 
 Note about configuration format :
 
