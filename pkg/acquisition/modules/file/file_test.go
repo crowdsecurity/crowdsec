@@ -103,6 +103,15 @@ filename: /`,
 		{
 			config: `
 mode: cat
+filename: "[*-.log"`,
+			expectedErr:    "Glob failure: syntax error in pattern",
+			expectedOutput: "",
+			logLevel:       log.WarnLevel,
+			expectedLines:  0,
+		},
+		{
+			config: `
+mode: cat
 filename: /do/not/exist`,
 			expectedErr:    "",
 			expectedOutput: "No matching files for pattern /do/not/exist",
@@ -148,7 +157,10 @@ filename: test_files/bad.gz`,
 		out := make(chan types.Event)
 		f := FileSource{}
 		err := f.Configure([]byte(ts.config), subLogger)
-		if err != nil {
+		if err != nil && ts.expectedErr != "" {
+			assert.Contains(t, err.Error(), ts.expectedErr)
+			continue
+		} else if err != nil && ts.expectedErr == "" {
 			t.Fatalf("Unexpected error : %s", err)
 		}
 		actualLines := 0
@@ -220,7 +232,8 @@ filename: /do/not/exist`,
 		{
 			config: `
 mode: tail
-filename: test_files/stream.log
+filenames:
+ - test_files/*.log
 force_inotify: true`,
 			expectedErr:    "",
 			expectedOutput: "",
