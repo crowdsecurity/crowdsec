@@ -32,7 +32,7 @@ type DataSource interface {
 Ground rules :
 
  - All modules must respect the `tomb.Tomb`
- - `StreamingAcquisition` never returns, `OneShotAcquisition` returns when datasource is consumed
+ - `StreamingAcquisition` starts dedicated routines (via the `tomb.Tomb`) and returns, while `OneShotAcquisition` returns when datasource is consumed
  - `ConfigureByDSN` allows to configure datasource via cli for command-line invokation. Liberties can be taken with dsn format
  - Each datasource will be given a logger at configuration time, that is configured according to `DataSourceCommonCfg`. It is advised to customize it via [`.WithFields`](https://pkg.go.dev/github.com/sirupsen/logrus#WithFields) to take advantage of structured logging.
 
@@ -73,12 +73,11 @@ Start a one-shot (or `CAT_MODE`, commonly used for forensic) acquisition that is
 
 ## StreamingAcquisition
 
-Start a streaming (or `TAIL_MODE`, commonly used when crowdsec runs as a daemon) acquisition that is never expected to return except on error.
+Start a streaming (or `TAIL_MODE`, commonly used when crowdsec runs as a daemon) acquisition. Starts appropriate go-routines via the `tomb.Tomb` and returns.
 
 ## CanRun
 
 Can be used to prevent specific data source to run on specific platforms (ie. journalctl on BSD)
-
 
 # BoilerPlate code
 
