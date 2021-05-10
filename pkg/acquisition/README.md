@@ -49,6 +49,9 @@ Note about configuration format :
 Each data source can and should return custom prometheus metrics.
 This is called for each data source that has at least one configured instance.
 
+Using `cs_yoursource_` is advised, along with [prometheus naming good practices](https://prometheus.io/docs/practices/naming/) for reference.
+
+
 ### Configure 
 
 Configure is fed with the raw yaml configuration for your data source.
@@ -78,6 +81,15 @@ Start a streaming (or `TAIL_MODE`, commonly used when crowdsec runs as a daemon)
 ## CanRun
 
 Can be used to prevent specific data source to run on specific platforms (ie. journalctl on BSD)
+
+
+## Dump
+
+Simply return a pointer to the actual object, kept for future.
+
+## GetName
+
+Returns the name, as expected in the `source` argument of the configuration.
 
 # BoilerPlate code
 
