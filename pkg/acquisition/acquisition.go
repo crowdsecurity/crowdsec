@@ -19,53 +19,13 @@ import (
 	tomb "gopkg.in/tomb.v2"
 )
 
-/*
- current limits :
- - The acquisition is not yet modular (cf. traefik/yaegi), but we start with an interface to pave the road for it.
- - The configuration item unmarshaled (DataSourceCfg) isn't generic neither yet.
- - This changes should be made when we're ready to have acquisition managed by the hub & cscli
- once this change is done, we might go for the following configuration format instead :
-   ```yaml
-   ---
-   type: nginx
-   source: journald
-   filter: "PROG=nginx"
-   ---
-   type: nginx
-   source: files
-   filenames:
-	- "/var/log/nginx/*.log"
-    ---
-
-	type: nginx
-	source: file
-	file:
-		filenames:
-			- /var/log/xxx
-
-	```
-
-	!!! how to handle expect mode that is not directly linked to tail/cat mode
-*/
-
-/* Approach
-
-We support acquisition in two modes :
- - tail mode : we're following a stream of info (tail -f $src). this is used when monitoring live logs
- - cat mode : we're reading a file/source one-shot (cat $src), and scenarios will match the timestamp extracted from logs.
-
-One DataSourceCfg can lead to multiple goroutines, hence the Tombs passing around to allow proper tracking.
-tail mode shouldn't return except on errors or when externally killed via tombs.
-cat mode will return once source has been exhausted.
-*/
-
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector              // Returns pointers to metrics that are managed by the module
-	Configure([]byte, *log.Entry) error              // Configure the datasource
-	ConfigureByDSN(string, string, *log.Entry) error // Configure the datasource
-	GetMode() string                                 // Get the mode (TAIL, CAT or SERVER)
-	GetName() string
+	GetMetrics() []prometheus.Collector                      // Returns pointers to metrics that are managed by the module
+	Configure([]byte, *log.Entry) error                      // Configure the datasource
+	ConfigureByDSN(string, string, *log.Entry) error         // Configure the datasource
+	GetMode() string                                         // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                         // Get the name of the module
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
 	StreamingAcquisition(chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
 	CanRun() error                                           // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
