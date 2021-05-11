@@ -22,6 +22,10 @@ LOOP:
 			if !event.Process {
 				continue
 			}
+			if event.Line.Module == "" {
+				log.Errorf("empty event.Line.Module field, the acquisition module must set it ! : %+v", event.Line)
+				continue
+			}
 			globalParserHits.With(prometheus.Labels{"source": event.Line.Src}).Inc()
 
 			/* parse the log using magic */

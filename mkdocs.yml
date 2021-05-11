@@ -92,6 +92,7 @@ extra:
           cli_dir: /etc/crowdsec/cscli/
           crowdsec_dir: "/etc/crowdsec/config/"
           acquis_path: "/etc/crowdsec/config/acquis.yaml"
+          acquis_dir: "/etc/crowdsec/acquis/"
       bouncers:
           name: bouncers
           Name: bouncers

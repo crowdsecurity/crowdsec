@@ -19,9 +19,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
+
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_filesource_hits_total",
+		Help: "Total lines where read.",
+	},
+	[]string{"source"})
 
 type FileConfiguration struct {
 	Filenames                         []string
@@ -37,10 +45,6 @@ type FileSource struct {
 	tails              map[string]bool
 	logger             *log.Entry
 	files              []string
-}
-
-func (f *FileSource) SupportedDSN() []string {
-	return []string{"file://"}
 }
 
 func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
@@ -89,7 +93,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			return errors.Wrap(err, "Glob failure")
 		}
 		if len(files) == 0 {
-			f.logger.Infof("No matching files for pattern %s", pattern)
+			f.logger.Warnf("No matching files for pattern %s", pattern)
 			continue
 		}
 		f.logger.Infof("Will read %d files", len(files))
@@ -180,7 +184,7 @@ func (f *FileSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 }
 
 func (f *FileSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (f *FileSource) GetName() string {
@@ -197,6 +201,19 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
+		err := unix.Access(file, unix.R_OK)
+		if err != nil {
+			f.logger.Errorf("unable to read %s : %s", file, err)
+			continue
+		}
+		fi, err := os.Stat(file)
+		if err != nil {
+			return fmt.Errorf("could not stat file %s : %w", file, err)
+		}
+		if fi.IsDir() {
+			f.logger.Warnf("%s is a directory, ignoring it.", file)
+			continue
+		}
 		tail, err := tail.TailFile(file, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekEnd}})
 		if err != nil {
 			f.logger.Errorf("Could not start tailing file %s : %s", file, err)
@@ -226,6 +243,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				fi, err := os.Stat(event.Name)
 				if err != nil {
 					f.logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
+					continue
 				}
 				if fi.IsDir() {
 					continue
@@ -251,6 +269,11 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					f.logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
+				err = unix.Access(event.Name, unix.R_OK)
+				if err != nil {
+					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					continue
+				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
 				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 				if err != nil {
@@ -273,8 +296,8 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
-	//lint:ignore SA1015 as it is an infinite loop
-	timeout := time.Tick(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
 	f.logger.Debugf("-> Starting tail of %s", tail.Filename)
 	for {
 		l := types.Line{}
@@ -300,18 +323,17 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			if line.Text == "" { //skip empty lines
 				continue
 			}
-			//FIXME: prometheus metrics
-			//ReaderHits.With(prometheus.Labels{"source": tail.Filename}).Inc()
-
+			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
 			l.Raw = line.Text
 			l.Labels = f.config.Labels
 			l.Time = line.Time
 			l.Src = tail.Filename
 			l.Process = true
+			l.Module = f.GetName()
 			//we're tailing, it must be real time logs
 			f.logger.Debugf("pushing %+v", l)
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-		case <-timeout:
+		case <-ticker.C:
 			//time out, shall we do stuff ?
 			f.logger.Trace("timeout")
 		}
@@ -349,6 +371,8 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		l.Src = filename
 		l.Labels = f.config.Labels
 		l.Process = true
+		l.Module = f.GetName()
+		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 		//we're reading logs at once, it must be time-machine buckets
 		out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
