@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -36,8 +37,8 @@ type CloudwatchSource struct {
 type CloudwatchSourceConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	GroupName                         string         `yaml:"group_name"`              //the group name to be monitored
-	StreamPrefix                      *string        `yaml:"stream_prefix,omitempty"` //allow to filter specific streams
-	StreamName                        *string        `yaml:"-"`
+	StreamRegexp                      *string        `yaml:"stream_regexp,omitempty"` //allow to filter specific streams
+	StreamName                        *string        `yaml:"stream_name,omitempty"`
 	StartTime, EndTime                *time.Time     `yaml:"-"`
 	DescribeLogStreamsLimit           *int64         `yaml:"describelogstreams_limit,omitempty"` //batch size for DescribeLogStreamsPagesWithContext
 	GetLogEventsPagesLimit            *int64         `yaml:"getlogeventspages_limit,omitempty"`
@@ -67,7 +68,7 @@ type LogStreamTailConfig struct {
 }
 
 var (
-	def_DescribeLogStreamsLimit = int64(50)
+	def_DescribeLogStreamsLimit = int64(1000)
 	def_PollNewStreamInterval   = 10 * time.Second
 	def_MaxStreamAge            = 5 * time.Minute
 	def_PollStreamInterval      = 10 * time.Second
@@ -151,7 +152,6 @@ func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.T
 	if cw.cwClient == nil {
 		return fmt.Errorf("failed to create cloudwatch client")
 	}
-	cw.logger.Infof("let's goooo")
 	monitChan := make(chan LogStreamTailConfig)
 	t.Go(func() error {
 		return cw.LogStreamManager(monitChan, out)
@@ -189,7 +189,6 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 		case <-cw.t.Dying():
 			cw.logger.Infof("stopping group watch")
 			return nil
-		/*TODO test one specific stream only*/
 		case <-ticker.C:
 			hasMoreStreams := true
 			startFrom = nil
@@ -199,11 +198,11 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
 					ctx,
 					&cloudwatchlogs.DescribeLogStreamsInput{
-						LogGroupName:        aws.String(cw.Config.GroupName),
-						Descending:          aws.Bool(true),
-						LogStreamNamePrefix: cw.Config.StreamPrefix,
-						NextToken:           startFrom,
-						OrderBy:             aws.String(cloudwatchlogs.OrderByLastEventTime),
+						LogGroupName: aws.String(cw.Config.GroupName),
+						Descending:   aws.Bool(true),
+						NextToken:    startFrom,
+						OrderBy:      aws.String(cloudwatchlogs.OrderByLastEventTime),
+						Limit:        cw.Config.DescribeLogStreamsLimit,
 					},
 					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
 						for _, event := range page.LogStreams {
@@ -258,6 +257,24 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 		case newStream := <-in:
 			shouldCreate := true
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
+
+			if cw.Config.StreamName != nil && newStream.StreamName != *cw.Config.StreamName {
+				cw.logger.Tracef("stream %s != %s", newStream.StreamName, *cw.Config.StreamName)
+				continue
+			}
+
+			if cw.Config.StreamRegexp != nil {
+				match, err := regexp.Match(newStream.StreamName, []byte(*cw.Config.StreamRegexp))
+				if err != nil {
+					cw.logger.Warningf("invalid regexp : %s", err)
+				} else {
+					if !match {
+						cw.logger.Tracef("stream %s doesn't match %s", newStream.StreamName, *cw.Config.StreamRegexp)
+						continue
+					}
+				}
+			}
+
 			for idx, stream := range cw.monitoredStreams {
 				if newStream.GroupName == stream.GroupName && newStream.StreamName == stream.StreamName {
 					//stream exists, but is dead, remove it from list
@@ -359,7 +376,6 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 					},
 				)
 				if err != nil {
-					//cfg.logger.Errorf("got error while getting logs : %s", err)
 					newerr := errors.Wrapf(err, "while reading %s/%s", cfg.GroupName, cfg.StreamName)
 					cfg.logger.Warningf("err : %s", newerr)
 					return newerr
@@ -403,7 +419,6 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 	}
 
 	for k, v := range u {
-		log.Printf("----> %+v -> %+v", k, v)
 		switch k {
 		case "log_level":
 			if len(v) != 1 {
@@ -577,7 +592,7 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	l.Time = time.Now()
 	l.Src = fmt.Sprintf("%s/%s", cfg.GroupName, cfg.StreamName)
 	l.Process = true
-	//l.Module = "cloudwatch"
+	l.Module = "cloudwatch"
 	evt.Line = l
 	evt.Process = true
 	evt.Type = types.LOG
