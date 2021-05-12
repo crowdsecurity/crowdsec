@@ -65,7 +65,7 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("no acquisition_path nor acquisition_dir")
 	}
 	if err := c.LoadSimulation(); err != nil {
-		log.Errorf("load error (simulation) : %s", err)
+		return errors.Wrap(err, "load error (simulation)")
 	}
 
 	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
