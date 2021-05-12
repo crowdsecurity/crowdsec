@@ -575,11 +575,27 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) 
 	return len(alertsToDelete), nil
 }
 
+func (c *Client) FlushOrphans() {
+	/* While it has only been linked to some very corner-case bug : https://github.com/crowdsecurity/crowdsec/issues/778 */
+	/* We want to take care of orphaned events for which the parent alert/decision has been deleted */
+
+	events_count, err := c.Ent.Event.Delete().Where(event.Not(event.HasOwner())).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("error while deleting orphans : %s", err)
+		return
+	}
+	if events_count > 0 {
+		c.Log.Infof("%d deleted orphan events", events_count)
+	}
+}
+
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var deletedByAge int
 	var deletedByNbItem int
 	var totalAlerts int
 	var err error
+
+	c.FlushOrphans()
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
