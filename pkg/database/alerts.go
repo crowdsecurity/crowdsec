@@ -581,11 +581,20 @@ func (c *Client) FlushOrphans() {
 
 	events_count, err := c.Ent.Event.Delete().Where(event.Not(event.HasOwner())).Exec(c.CTX)
 	if err != nil {
-		c.Log.Warningf("error while deleting orphans : %s", err)
+		c.Log.Warningf("error while deleting orphan events : %s", err)
 		return
 	}
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan events", events_count)
+	}
+
+	events_count, err = c.Ent.Decision.Delete().Where(decision.Not(decision.HasOwner())).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("error while deleting orphan decisions : %s", err)
+		return
+	}
+	if events_count > 0 {
+		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
 }
 
