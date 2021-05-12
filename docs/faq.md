@@ -85,10 +85,16 @@ Setting up a proxy works out of the box, the [net/http golang library](https://g
 * `HTTPS_PROXY`
 * `NO_PROXY`
 
-Since {{v1X.cli.name}} uses `sudo`, you just this line in `visudo` after setting up the previous environment variables:
+For example:
 
 ```
-Defaults env_keep += "HTTP_PROXY HTTPS_PROXY NO_PROXY"
+export HTTP_PROXY=http://<proxy_url>
+```
+
+If you uses `sudo` {{v1X.cli.name}}, just add this line in `visudo` after setting up the previous environment variables:
+
+```
+Defaults        env_keep += "HTTP_PROXY HTTPS_PROXY NO_PROXY"
 ```
 
 ## How to report a bug ?
