@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -49,7 +50,6 @@ type CloudwatchSourceConfiguration struct {
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
-	Mode                              *string        `yaml:"mode,omitempty"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -68,7 +68,7 @@ type LogStreamTailConfig struct {
 }
 
 var (
-	def_DescribeLogStreamsLimit = int64(1000)
+	def_DescribeLogStreamsLimit = int64(50)
 	def_PollNewStreamInterval   = 10 * time.Second
 	def_MaxStreamAge            = 5 * time.Minute
 	def_PollStreamInterval      = 10 * time.Second
@@ -90,8 +90,8 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	*/
 	cw.Config = cwConfig
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
-	if cw.Config.Mode == nil {
-		cw.Config.Mode = &configuration.TAIL_MODE
+	if cw.Config.Mode == "" {
+		cw.Config.Mode = configuration.TAIL_MODE
 	}
 	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
 	if len(cw.Config.GroupName) == 0 {
@@ -164,7 +164,7 @@ func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
 }
 
 func (cw *CloudwatchSource) GetMode() string {
-	return *cw.Config.Mode
+	return cw.Config.Mode
 }
 
 func (cw *CloudwatchSource) GetName() string {
@@ -226,6 +226,8 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 									PollStreamInterval:         *cw.Config.PollStreamInterval,
 									StreamReadTimeout:          *cw.Config.StreamReadTimeout,
 									PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
+									ExpectMode:                 leaky.LIVE,
+									Labels:                     cw.Config.Labels,
 								}
 								out <- monitorStream
 							}
@@ -412,6 +414,8 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 	}
 	cw.Config.GroupName = frags[0]
 	cw.Config.StreamName = &frags[1]
+	cw.Config.Labels = make(map[string]string)
+	cw.Config.Labels["type"] = logtype
 
 	u, err := url.ParseQuery(args[1])
 	if err != nil {
@@ -502,7 +506,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 		return fmt.Errorf("start_date and end_date or backlog are mandatory in one-shot mode")
 	}
 
-	cw.Config.Mode = &configuration.CAT_MODE
+	cw.Config.Mode = configuration.CAT_MODE
 	return nil
 }
 
@@ -518,6 +522,8 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 			"group":  cw.Config.GroupName,
 			"stream": *cw.Config.StreamName,
 		}),
+		Labels:     cw.Config.Labels,
+		ExpectMode: leaky.TIMEMACHINE,
 	}
 	return CatLogStream(&config, out, cw.cwClient)
 }
@@ -597,5 +603,6 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	evt.Process = true
 	evt.Type = types.LOG
 	evt.ExpectMode = cfg.ExpectMode
+	cfg.logger.Debugf("returned event labels : %+v", evt.Line.Labels)
 	return evt, nil
 }
