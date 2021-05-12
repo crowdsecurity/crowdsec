@@ -172,6 +172,11 @@ func (a *apic) Push() error {
 				if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
 					continue
 				}
+				/*we also ignore alerts in simulated mode*/
+				if *alert.Simulated {
+					log.Debugf("ignoring alert (id:%d) in simulated mode", alert.ID)
+					continue
+				}
 				signals = append(signals, AlertToSignal(alert))
 			}
 			a.mu.Lock()
