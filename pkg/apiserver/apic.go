@@ -174,7 +174,7 @@ func (a *apic) Push() error {
 				}
 				/*we also ignore alerts in simulated mode*/
 				if *alert.Simulated {
-					log.Debugf("ignoring alert (id:%d) in simulated mode", alert.ID)
+					log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
 					continue
 				}
 				signals = append(signals, AlertToSignal(alert))
