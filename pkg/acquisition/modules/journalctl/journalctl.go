@@ -2,6 +2,7 @@ package journalctlacquisition
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"net/url"
 	"os/exec"
@@ -34,8 +35,8 @@ type JournalCtlSource struct {
 const journalctlCmd string = "journalctl"
 
 var (
-	journalctlArgsOneShot  = []string{""}
-	journalctlArgstreaming = []string{"--follow"}
+	journalctlArgsOneShot  = []string{}
+	journalctlArgstreaming = []string{"--follow", "-n", "0"}
 )
 
 var linesRead = prometheus.NewCounterVec(
@@ -45,8 +46,26 @@ var linesRead = prometheus.NewCounterVec(
 	},
 	[]string{"source"})
 
+func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error {
+	for scanner.Scan() {
+		txt := scanner.Text()
+		out <- txt
+	}
+	if errChan != nil && scanner.Err() != nil {
+		errChan <- scanner.Err()
+		close(errChan)
+		return scanner.Err()
+	}
+	if errChan != nil {
+		close(errChan)
+	}
+	return nil
+}
+
 func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) error {
-	cmd := exec.Command(journalctlCmd, j.args...)
+	ctx, cancel := context.WithCancel(context.Background())
+
+	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("could not get journalctl stdout: %s", err)
@@ -56,38 +75,54 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		return fmt.Errorf("could not get journalctl stderr: %s", err)
 	}
 
-	readErr := make(chan error)
+	stderrChan := make(chan string)
+	stdoutChan := make(chan string)
+	errChan := make(chan error)
 
-	j.logger.Debugf("Running journalctl command: %s %s", cmd.Path, cmd.Args)
+	logger := j.logger.WithField("src", j.src)
+
+	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
+	fmt.Printf("Running journalctl command: %s %s\n", cmd.Path, cmd.Args)
 	err = cmd.Start()
 	if err != nil {
-		j.logger.Errorf("could not start journalctl command : %s", err)
+		logger.Errorf("could not start journalctl command : %s", err)
 		return err
 	}
 
-	go func() {
-		scanner := bufio.NewScanner(stderr)
-		if scanner == nil {
-			readErr <- fmt.Errorf("failed to create stderr scanner")
-			return
-		}
-		for scanner.Scan() {
-			txt := scanner.Text()
-			j.logger.Warningf("got stderr message : %s", txt)
-			readErr <- fmt.Errorf(txt)
-		}
-	}()
+	stdoutscanner := bufio.NewScanner(stdout)
 
-	go func() {
-		scanner := bufio.NewScanner(stdout)
-		if scanner == nil {
-			readErr <- fmt.Errorf("failed to create stdout scanner")
-			return
-		}
-		for scanner.Scan() {
+	if stdoutscanner == nil {
+		cancel()
+		cmd.Wait()
+		return fmt.Errorf("failed to create stdout scanner")
+	}
+
+	stderrScanner := bufio.NewScanner(stderr)
+
+	if stderrScanner == nil {
+		cancel()
+		cmd.Wait()
+		return fmt.Errorf("failed to create stderr scanner")
+	}
+	t.Go(func() error {
+		return readLine(stdoutscanner, stdoutChan, errChan)
+	})
+	t.Go(func() error {
+		//looks like journalctl closes stderr quite early, so ignore its status (but not its output)
+		return readLine(stderrScanner, stderrChan, nil)
+	})
+
+	for {
+		select {
+		case <-t.Dying():
+			logger.Infof("journalctl datasource %s stopping", j.src)
+			cancel()
+			cmd.Wait() //avoid zombie process
+			return nil
+		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
-			l.Raw = scanner.Text()
-			j.logger.Debugf("getting one line : %s", l.Raw)
+			l.Raw = stdoutLine
+			logger.Infof("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
 			l.Time = time.Now()
 			l.Src = j.src
@@ -96,28 +131,18 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			out <- evt
-		}
-		j.logger.Debugf("finished reading from journalctl")
-		if err := scanner.Err(); err != nil {
-			j.logger.Debugf("got an error while reading %s : %s", j.src, err)
-			readErr <- err
-			return
-		}
-		readErr <- nil
-	}()
-
-	for {
-		select {
-		case <-t.Dying():
-			j.logger.Debugf("journalctl datasource %s stopping", j.src)
-			return nil
-		case err := <-readErr:
-			j.logger.Debugf("the subroutine returned, leave as well")
-			if err != nil {
-				j.logger.Warningf("journalctl reader error : %s", err)
-				t.Kill(err)
+		case stderrLine := <-stderrChan:
+			logger.Warnf("Got stderr message : %s", stderrLine)
+			err := fmt.Errorf("journalctl error : %s", stderrLine)
+			t.Kill(err)
+		case errScanner, ok := <-errChan:
+			if !ok {
+				logger.Debugf("errChan is closed, quitting")
+				t.Kill(nil)
 			}
-			return err
+			if errScanner != nil {
+				t.Kill(errScanner)
+			}
 		}
 	}
 }
@@ -141,6 +166,9 @@ func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error
 		args = journalctlArgstreaming
 	} else {
 		args = journalctlArgsOneShot
+	}
+	if len(config.Filters) == 0 {
+		return fmt.Errorf("journalctl_filter is required")
 	}
 	j.args = append(args, config.Filters...)
 	j.src = fmt.Sprintf("journalctl-%s", strings.Join(config.Filters, "."))
@@ -187,11 +215,11 @@ func (j *JournalCtlSource) GetName() string {
 }
 
 func (j *JournalCtlSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	t.Go(func() error {
-		defer types.CatchPanic("crowdsec/acquis/journalctl/oneshot")
-		return j.runJournalCtl(out, t)
-	})
-	return nil
+	defer types.CatchPanic("crowdsec/acquis/journalctl/oneshot")
+	err := j.runJournalCtl(out, t)
+	j.logger.Debug("Oneshot journalctl acquisition is done")
+	return err
+
 }
 
 func (j *JournalCtlSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
