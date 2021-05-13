@@ -291,6 +291,8 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				return nil
 			}
 			f.logger.Errorf("Error while monitoring folder: %s", err)
+		case <-t.Dying():
+			return nil
 		}
 	}
 }
@@ -306,7 +308,9 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			f.logger.Infof("File datasource %s stopping", tail.Filename)
 			if err := tail.Stop(); err != nil {
 				f.logger.Errorf("error in stop : %s", err)
+				return err
 			}
+			return nil
 		case <-tail.Tomb.Dying(): //our tailer is dying
 			f.logger.Warningf("File reader of %s died", tail.Filename)
 			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
