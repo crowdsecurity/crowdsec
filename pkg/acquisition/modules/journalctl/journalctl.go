@@ -82,7 +82,6 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	logger := j.logger.WithField("src", j.src)
 
 	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
-	fmt.Printf("Running journalctl command: %s %s\n", cmd.Path, cmd.Args)
 	err = cmd.Start()
 	if err != nil {
 		logger.Errorf("could not start journalctl command : %s", err)
@@ -122,7 +121,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 		case stdoutLine := <-stdoutChan:
 			l := types.Line{}
 			l.Raw = stdoutLine
-			logger.Infof("getting one line : %s", l.Raw)
+			logger.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
 			l.Time = time.Now()
 			l.Src = j.src
