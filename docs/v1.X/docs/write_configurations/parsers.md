@@ -48,19 +48,27 @@ May 11 16:23:50 sd-126005 kernel: [47615902.763137] IN=enp1s0 OUT= MAC=00:08:a2:
 ## Trying our mock parser
 
 !!! warning
-    Your yaml file must be in the `config/parsers/s01-parser/` directory.
+    Your yaml file must be in the `config/parsers/s01-parse/` directory.
 
-    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parser/myparser.yaml`, or `/etc/crowdsec/parsers/s01-parser/myparser.yaml`.
+    For example it can be `~/crowdsec-v0.0.19/tests/config/parsers/s01-parse/myparser.yaml`, or `/etc/crowdsec/parsers/s01-parse/myparser.yaml`.
 
     The {{v1X.stage.htmlname}} directory might not exist, don't forget to create it.
 
 (deployment is assuming [you're using a test environment](/Crowdsec/v1/write_configurations/requirements/))
 
 Setting up our new parser :
+
+- if `config/parsers/s01-parse` doesn't exist, create it:
+
 ```bash
 cd crowdsec-v0.X.Y/tests
-mkdir -p config/parsers/s01-parser
-cp myparser.yaml config/parsers/s01-parser/                  
+mkdir -p config/parsers/s01-parse
+```
+
+- Then copy your parser in `config/parsers/s01-parse` and try it:
+
+```
+cp myparser.yaml config/parsers/s01-parse/                  
 ./crowdsec -c ./dev.yaml -file ./x.log -type foobar
 ```
 
@@ -71,15 +79,15 @@ cp myparser.yaml config/parsers/s01-parser/
 INFO[0000] setting loglevel to info                     
 INFO[11-05-2020 15:48:28] Crowdsec v0.0.18-6b1281ba76819fed4b89247a5a673c592a3a9f88
 ...
-DEBU[0000] Event entering node                           id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] eval(TRUE) '1 == 1'                           id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] + Grok '' returned 1 entries to merge in Parsed  id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] 	.Parsed['some_data'] = 'May 11 16:23:41 sd-126005 kernel: [47615893.721616] IN=enp1s0 OUT= MAC=00:08:a2:0c:1f:12:00:c8:8b:e2:d6:87:08:00 SRC=99.99.99.99 DST=127.0.0.1 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=54555 PROTO=TCP SPT=45225 DPT=8080 WINDOW=1024 RES=0x00 SYN URGP=0 '  id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] + Processing 1 statics                        id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] .Parsed[is_my_service] = 'yes'                id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] Event leaving node : ok                       id=dark-water name=me/myparser stage=s01-parser
-DEBU[0000] move Event from stage s01-parser to s02-enrich  id=dark-water name=me/myparser stage=s01-parser
+DEBU[0000] Event entering node                           id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] eval(TRUE) '1 == 1'                           id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] + Grok '' returned 1 entries to merge in Parsed  id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] 	.Parsed['some_data'] = 'May 11 16:23:41 sd-126005 kernel: [47615893.721616] IN=enp1s0 OUT= MAC=00:08:a2:0c:1f:12:00:c8:8b:e2:d6:87:08:00 SRC=99.99.99.99 DST=127.0.0.1 LEN=40 TOS=0x00 PREC=0x00 TTL=245 ID=54555 PROTO=TCP SPT=45225 DPT=8080 WINDOW=1024 RES=0x00 SYN URGP=0 '  id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] + Processing 1 statics                        id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] .Parsed[is_my_service] = 'yes'                id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] Event leaving node : ok                       id=dark-water name=me/myparser stage=s01-parse
+DEBU[0000] move Event from stage s01-parse to s02-enrich  id=dark-water name=me/myparser stage=s01-parse
 ...
 ```
 </details>
@@ -151,22 +159,22 @@ statics:
 INFO[0000] setting loglevel to info                     
 INFO[11-05-2020 16:18:58] Crowdsec v0.0.18-6b1281ba76819fed4b89247a5a673c592a3a9f88 
 ...
-DEBU[0000] Event entering node                           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] eval(TRUE) '1 == 1'                           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] + Grok '' returned 8 entries to merge in Parsed  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['dst_port'] = '8080'                 id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['action'] = ''                       id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['int_eth'] = 'enp1s0'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['src_ip'] = '99.99.99.99'         id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['dst_ip'] = '127.0.0.1'           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['length'] = '40'                     id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['proto'] = 'TCP'                     id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['src_port'] = '45225'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] + Processing 1 statics                        id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] .Parsed[is_my_service] = 'yes'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] Event leaving node : ok                       id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] move Event from stage s01-parser to s02-enrich  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parser
+DEBU[0000] Event entering node                           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] eval(TRUE) '1 == 1'                           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] + Grok '' returned 8 entries to merge in Parsed  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['dst_port'] = '8080'                 id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['action'] = ''                       id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['int_eth'] = 'enp1s0'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['src_ip'] = '99.99.99.99'         id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['dst_ip'] = '127.0.0.1'           id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['length'] = '40'                     id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['proto'] = 'TCP'                     id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['src_port'] = '45225'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] + Processing 1 statics                        id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] .Parsed[is_my_service] = 'yes'                id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] Event leaving node : ok                       id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] move Event from stage s01-parse to s02-enrich  id=lingering-breeze name=crowdsecurity/iptables-logs stage=s01-parse
 ...
 ```
 
@@ -233,24 +241,24 @@ Look into dedicated {{v1X.statics.htmlname}} documentation to know more about it
   <summary>Expected output</summary>
 ```bash
 ...
-DEBU[0000] Event entering node                           id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] eval(TRUE) 'evt.Parsed.program == 'kernel''   id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] + Grok '' returned 8 entries to merge in Parsed  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['src_port'] = '45225'                id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['dst_port'] = '8118'                 id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['action'] = ''                       id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['int_eth'] = 'enp1s0'                id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['src_ip'] = '44.44.44.44'            id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['dst_ip'] = '127.0.0.1'              id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['length'] = '40'                     id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] 	.Parsed['proto'] = 'TCP'                     id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] + Processing 3 statics                        id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] .Meta[log_type] = 'iptables_drop'             id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] .Meta[service] = 'tcp'                        id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] .Meta[source_ip] = '44.44.44.44'              id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] Event leaving node : ok                       id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
-DEBU[0000] move Event from stage s01-parser to s02-enrich  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parser
+DEBU[0000] Event entering node                           id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] eval(TRUE) 'evt.Parsed.program == 'kernel''   id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] no ip in event, cidr/ip whitelists not checked  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] + Grok '' returned 8 entries to merge in Parsed  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['src_port'] = '45225'                id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['dst_port'] = '8118'                 id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['action'] = ''                       id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['int_eth'] = 'enp1s0'                id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['src_ip'] = '44.44.44.44'            id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['dst_ip'] = '127.0.0.1'              id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['length'] = '40'                     id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] 	.Parsed['proto'] = 'TCP'                     id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] + Processing 3 statics                        id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] .Meta[log_type] = 'iptables_drop'             id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] .Meta[service] = 'tcp'                        id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] .Meta[source_ip] = '44.44.44.44'              id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] Event leaving node : ok                       id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
+DEBU[0000] move Event from stage s01-parse to s02-enrich  id=shy-forest name=crowdsecurity/iptables-logs stage=s01-parse
 ...
 ```
 </details>
