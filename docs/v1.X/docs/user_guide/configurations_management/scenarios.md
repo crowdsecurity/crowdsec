@@ -58,7 +58,7 @@ $ sudo cscli scenarios list
 ## Upgrading installed scenarios
 
 ```bash
-$ sudo cscli scenarios upgrade crowdsecurity/sshd-bf
+$ sudo cscli scenarios upgrade crowdsecurity/ssh-bf
 ```
 
 Scenarios upgrade allows you to upgrade an existing scenario to the latest version.
