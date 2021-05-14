@@ -88,10 +88,23 @@ Setting up a proxy works out of the box, the [net/http golang library](https://g
 For example:
 
 ```
-export HTTP_PROXY=http://<proxy_url>
+export HTTP_PROXY=http://<proxy_url>:<proxy_port>
 ```
+### Systemd variable
+On Systemd devices you have to set the proxy variable in the environment section for the CrowdSec service. To avoid overwriting the service file during an update, a folder is created in `/etc/systemd/system/crowdsec.service.d` and a file in it named `http-proxy.conf`. The content for this file should look something like this:
+```
+[Service]
+Environment=HTTP_PROXY=http://myawesomeproxy.com:8080
+Environment=HTTPS_PROXY=https://myawesomeproxy.com:443
+```
+After this change you need to reload the systemd daemon using:
+`systemctl daemon-reload`
 
-If you uses `sudo` {{v1X.cli.name}}, just add this line in `visudo` after setting up the previous environment variables:
+Then you can restart CrowdSec like this:
+`systemctl restart crowdsec`
+
+### Sudo
+If you use `sudo` {{v1X.cli.name}}, just add this line in `visudo` after setting up the previous environment variables:
 
 ```
 Defaults        env_keep += "HTTP_PROXY HTTPS_PROXY NO_PROXY"
