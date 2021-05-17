@@ -64,6 +64,9 @@ func (c *Config) LoadCrowdsec() error {
 	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
 		return fmt.Errorf("no acquisition_path nor acquisition_dir")
 	}
+	if err := c.LoadSimulation(); err != nil {
+		return errors.Wrap(err, "load error (simulation)")
+	}
 
 	c.Crowdsec.ConfigDir = c.ConfigPaths.ConfigDir
 	c.Crowdsec.DataDir = c.ConfigPaths.DataDir

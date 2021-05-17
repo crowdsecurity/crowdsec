@@ -60,6 +60,10 @@ jobs:
       run: |
           cd scripts/func_tests/
           ./tests_post-install_4cold-logs.sh
+    - name: "Test simulation"
+      run: |
+          cd scripts/func_tests/
+          ./tests_post-install_5simulation.sh
     - name: "Uninstall"
       run: sudo ./wizard.sh --uninstall
     - name: "Test post remove"

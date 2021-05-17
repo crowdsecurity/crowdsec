@@ -10,6 +10,7 @@ import (
 )
 
 func TestLoadCrowdsec(t *testing.T) {
+	falseBoolPtr := false
 	acquisFullPath, err := filepath.Abs("./tests/acquis.yaml")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -66,6 +67,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis.yaml",
+					SimulationFilePath:  "./tests/simulation.yaml",
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
@@ -79,6 +81,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath},
+				SimulationFilePath:   "./tests/simulation.yaml",
+				SimulationConfig: &SimulationConfig{
+					Simulation: &falseBoolPtr,
+				},
 			},
 		},
 		{
@@ -97,6 +103,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{
 					AcquisitionFilePath: "./tests/acquis.yaml",
 					AcquisitionDirPath:  "./tests/acquis/",
+					SimulationFilePath:  "./tests/simulation.yaml",
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
@@ -110,6 +117,10 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
+				SimulationFilePath:   "./tests/simulation.yaml",
+				SimulationConfig: &SimulationConfig{
+					Simulation: &falseBoolPtr,
+				},
 			},
 		},
 		{
