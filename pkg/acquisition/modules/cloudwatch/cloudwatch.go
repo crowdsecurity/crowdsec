@@ -24,6 +24,22 @@ import (
 	"github.com/aws/aws-sdk-go/service/cloudwatchlogs"
 )
 
+var openedStreams = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_cloudwatch_openstreams_total",
+		Help: "Number of opened stream within group.",
+	},
+	[]string{"group"},
+)
+
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_cloudwatch_stream_hits_total",
+		Help: "Number of event read from stream.",
+	},
+	[]string{"group", "stream"},
+)
+
 //CloudwatchSource is the runtime instance keeping track of N streams within 1 cloudwatch group
 type CloudwatchSource struct {
 	Config CloudwatchSourceConfiguration
@@ -86,10 +102,6 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
 	}
-	/*
-		TBD: Acquisition returned error : while describing group acquis-cloudwatch-tests: InvalidParameterException: Cannot order by LastEventTime with a logStreamNamePrefix.
-		either we sort by time or by prefix, can't do both :()
-	*/
 	cw.Config = cwConfig
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 	if cw.Config.Mode == "" {
@@ -176,7 +188,7 @@ func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.T
 }
 
 func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead, openedStreams}
 }
 
 func (cw *CloudwatchSource) GetMode() string {
@@ -227,6 +239,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 							if event.LastIngestionTime != nil {
 								//aws uses millisecond since the epoch
 								oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
+								//TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
 								if LastIngestionTime.Before(oldest) {
 									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().Add(-*cw.Config.MaxStreamAge))
@@ -299,6 +312,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 					if !stream.t.Alive() {
 						cw.logger.Debugf("stream %s already exists, but is dead", newStream.StreamName)
 						cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
+						openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Dec()
 						break
 					}
 					shouldCreate = false
@@ -308,6 +322,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 			//let's start watching this stream
 			if shouldCreate {
+				openedStreams.With(prometheus.Labels{"group": newStream.GroupName}).Inc()
 				newStream.t = tomb.Tomb{}
 				newStream.logger = cw.logger.WithFields(log.Fields{"stream": newStream.StreamName})
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
@@ -321,6 +336,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				if !cw.monitoredStreams[idx].t.Alive() {
 					cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
+					openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
 					break
 				}
 			}
@@ -399,7 +415,9 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 								cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
 							} else {
 								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
+								linesRead.With(prometheus.Labels{"group": cfg.GroupName, "stream": cfg.StreamName}).Inc()
 								outChan <- evt
+
 							}
 						}
 						return true
