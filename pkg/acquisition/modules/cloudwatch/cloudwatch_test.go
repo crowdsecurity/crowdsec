@@ -44,6 +44,7 @@ func TestMain(m *testing.M) {
 	def_PollStreamInterval = 1 * time.Second
 	def_StreamReadTimeout = 10 * time.Second
 	def_MaxStreamAge = 5 * time.Second
+	def_PollDeadStreamInterval = 5 * time.Second
 	os.Exit(m.Run())
 }
 
@@ -295,6 +296,56 @@ stream_name: test_stream`),
 			},
 			expectedResLen:      2,
 			expectedResMessages: []string{"test_message_41", "test_message_51"},
+		},
+		//have a stream generate events, reach time-out and dead body collection
+		{
+			name: "group_exists_stream_exists_has_events+timeout+GC",
+			config: []byte(`
+source: cloudwatch
+labels:
+  type: test_source
+group_name: test_log_group1
+log_level: trace
+stream_name: test_stream`),
+			//expectedStartErr: "The specified log group does not exist",
+			pre: func(cw *CloudwatchSource) {
+				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+					LogGroupName: aws.String("test_log_group1"),
+				})
+				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+					LogGroupName:  aws.String("test_log_group1"),
+					LogStreamName: aws.String("test_stream"),
+				})
+				//have a message before we start - won't be popped, but will trigger stream monitoring
+				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
+					LogGroupName:  aws.String("test_log_group1"),
+					LogStreamName: aws.String("test_stream"),
+					LogEvents: []*cloudwatchlogs.InputLogEvent{
+						&cloudwatchlogs.InputLogEvent{
+							Message:   aws.String("test_message_1"),
+							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+						},
+					},
+				}); err != nil {
+					log.Fatalf("failed to put logs")
+				}
+			},
+			run: func(cw *CloudwatchSource) {
+				//wait for new stream pickup + stream poll interval
+				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
+				time.Sleep(def_PollStreamInterval + (1 * time.Second))
+				time.Sleep(def_PollDeadStreamInterval + (1 * time.Second))
+			},
+			post: func(cw *CloudwatchSource) {
+				cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
+					LogGroupName:  aws.String("test_log_group1"),
+					LogStreamName: aws.String("test_stream"),
+				})
+				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+					LogGroupName: aws.String("test_log_group1"),
+				})
+			},
+			expectedResLen: 0,
 		},
 	}
 

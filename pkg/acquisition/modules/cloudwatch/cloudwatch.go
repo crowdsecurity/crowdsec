@@ -32,6 +32,7 @@ type CloudwatchSource struct {
 	t                *tomb.Tomb
 	cwClient         *cloudwatchlogs.CloudWatchLogs
 	monitoredStreams []*LogStreamTailConfig
+	streamIndexes    map[string]string
 }
 
 //CloudwatchSourceConfiguration allows user to define one or more streams to monitor within a cloudwatch log group
@@ -74,6 +75,7 @@ var (
 	def_PollStreamInterval      = 10 * time.Second
 	def_AwsApiCallTimeout       = 10 * time.Second
 	def_StreamReadTimeout       = 10 * time.Minute
+	def_PollDeadStreamInterval  = 10 * time.Second
 	def_GetLogEventsPagesLimit  = int64(1000)
 )
 
@@ -128,12 +130,16 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	if *cw.Config.MaxStreamAge > *cw.Config.StreamReadTimeout {
 		logger.Warningf("MaxStreamAge > StreamReadTimeout, stream might keep being opened/closed")
 	}
+	if err := cw.newClient(); err != nil {
+		return err
+	}
+	cw.streamIndexes = make(map[string]string)
 	return nil
 }
 
-func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+func (cw *CloudwatchSource) newClient() error {
 	var sess *session.Session
-	cw.t = t
+
 	if cw.Config.AwsProfile != nil {
 		sess = session.Must(session.NewSessionWithOptions(session.Options{
 			SharedConfigState: session.SharedConfigEnable,
@@ -148,10 +154,20 @@ func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.T
 	if sess == nil {
 		return fmt.Errorf("failed to create aws session")
 	}
-	cw.cwClient = cloudwatchlogs.New(sess)
+	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
+		cw.logger.Debugf("[testing] overloading endpoint with %s", v)
+		cw.cwClient = cloudwatchlogs.New(sess, aws.NewConfig().WithEndpoint(v))
+	} else {
+		cw.cwClient = cloudwatchlogs.New(sess)
+	}
 	if cw.cwClient == nil {
 		return fmt.Errorf("failed to create cloudwatch client")
 	}
+	return nil
+}
+
+func (cw *CloudwatchSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
+	cw.t = t
 	monitChan := make(chan LogStreamTailConfig)
 	t.Go(func() error {
 		return cw.LogStreamManager(monitChan, out)
@@ -180,7 +196,7 @@ func (cw *CloudwatchSource) Dump() interface{} {
 }
 
 func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig) error {
-	cw.logger.Infof("Starting to watch group")
+	cw.logger.Debugf("Starting to watch group (interval:%s)", cw.Config.PollNewStreamInterval)
 	ticker := time.NewTicker(*cw.Config.PollNewStreamInterval)
 	var startFrom *string
 
@@ -252,7 +268,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outChan chan types.Event) error {
 
 	cw.logger.Debugf("starting to monitor streams for %s", cw.Config.GroupName)
-	pollDeadStreamInterval := time.NewTicker(10 * time.Second)
+	pollDeadStreamInterval := time.NewTicker(def_PollDeadStreamInterval)
 
 	for {
 		select {
@@ -296,7 +312,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 				newStream.logger = cw.logger.WithFields(log.Fields{"stream": newStream.StreamName})
 				cw.logger.Debugf("starting tail of stream %s", newStream.StreamName)
 				newStream.t.Go(func() error {
-					return TailLogStream(&newStream, outChan, cw.cwClient)
+					return cw.TailLogStream(&newStream, outChan)
 				})
 				cw.monitoredStreams = append(cw.monitoredStreams, &newStream)
 			}
@@ -315,25 +331,32 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 					cw.logger.Debugf("killing stream %s", stream.StreamName)
 					cw.monitoredStreams[idx].t.Kill(nil)
 					if err := cw.monitoredStreams[idx].t.Wait(); err != nil {
-						cw.logger.Debugf("error while waiting for death of %s", stream.StreamName)
+						cw.logger.Debugf("error while waiting for death of %s : %s", stream.StreamName, err)
 					}
 				} else {
 					cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
 				}
 			}
+			cw.logger.Debugf("routine cleanup done, return")
 			return nil
 		}
 	}
 }
 
-func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
+func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
 	var lastReadMessage time.Time = time.Now()
-	ticker := time.NewTicker(cfg.PollStreamInterval)
+	startup := true
 
+	ticker := time.NewTicker(cfg.PollStreamInterval)
+	//resume at existing index if we already had
+	if v, ok := cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName]; ok && v != "" {
+		cfg.logger.Debugf("restarting on index %s", v)
+		startFrom = &v
+		startup = false
+	}
 	/*during first run, we want to avoid reading any message, but just get a token.
 	if we don't, we might end up sending the same item several times. hence the 'startup' hack */
-	startup := true
 	for {
 		select {
 		case <-ticker.C:
@@ -347,7 +370,7 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 				}
 				cfg.logger.Tracef("calling GetLogEventsPagesWithContext")
 				ctx := context.Background()
-				err := cwClient.GetLogEventsPagesWithContext(ctx,
+				err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
 					&cloudwatchlogs.GetLogEventsInput{
 						Limit:         aws.Int64(limit),
 						LogGroupName:  aws.String(cfg.GroupName),
@@ -355,7 +378,11 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 						NextToken:     startFrom,
 					},
 					func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
+						cfg.logger.Tracef("%d results, last:%t", len(page.Events), lastPage)
 						startFrom = page.NextForwardToken
+						if page.NextForwardToken != nil {
+							cw.streamIndexes[cfg.GroupName+"+"+cfg.StreamName] = *page.NextForwardToken
+						}
 						if startup { //we grab the NextForwardToken and we return on first iteration
 							return false
 						}
@@ -369,10 +396,11 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 						for _, event := range page.Events {
 							evt, err := cwLogToEvent(event, cfg)
 							if err != nil {
-								cfg.logger.Warningf("discard event : %s", err)
+								cfg.logger.Warningf("cwLogToEvent error, discarded event : %s", err)
+							} else {
+								cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
+								outChan <- evt
 							}
-							cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
-							outChan <- evt
 						}
 						return true
 					},
@@ -388,13 +416,13 @@ func TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient 
 				cfg.logger.Tracef("done reading GetLogEventsPagesWithContext")
 
 				if time.Since(lastReadMessage) > cfg.StreamReadTimeout {
-					cfg.logger.Warningf("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Since(lastReadMessage),
+					cfg.logger.Infof("%s/%s reached timeout (%s) (last message was %s)", cfg.GroupName, cfg.StreamName, time.Since(lastReadMessage),
 						lastReadMessage)
 					return nil
 				}
 			}
 		case <-cfg.t.Dying():
-			cfg.logger.Infof("Tail of %s/%s is stopping", cfg.GroupName, cfg.StreamName)
+			cfg.logger.Infof("logstream tail stopping")
 			return fmt.Errorf("killed")
 		}
 	}
@@ -479,24 +507,8 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 	cw.logger.Tracef("stream=%s", *cw.Config.StreamName)
 	cw.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
 
-	var sess *session.Session
-	if cw.Config.AwsProfile != nil {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-			Profile:           *cw.Config.AwsProfile,
-		}))
-	} else {
-		sess = session.Must(session.NewSessionWithOptions(session.Options{
-			SharedConfigState: session.SharedConfigEnable,
-		}))
-	}
-
-	if sess == nil {
-		return fmt.Errorf("failed to create aws session")
-	}
-	cw.cwClient = cloudwatchlogs.New(sess)
-	if cw.cwClient == nil {
-		return fmt.Errorf("failed to create cloudwatch client")
+	if err := cw.newClient(); err != nil {
+		return err
 	}
 
 	if cw.Config.StreamName == nil || cw.Config.GroupName == "" {
@@ -507,6 +519,8 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 	}
 
 	cw.Config.Mode = configuration.CAT_MODE
+	cw.streamIndexes = make(map[string]string)
+	cw.t = &tomb.Tomb{}
 	return nil
 }
 
@@ -525,10 +539,10 @@ func (cw *CloudwatchSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 		Labels:     cw.Config.Labels,
 		ExpectMode: leaky.TIMEMACHINE,
 	}
-	return CatLogStream(&config, out, cw.cwClient)
+	return cw.CatLogStream(&config, out)
 }
 
-func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *cloudwatchlogs.CloudWatchLogs) error {
+func (cw *CloudwatchSource) CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
 	var head = true
 	/*convert the times*/
@@ -536,44 +550,51 @@ func CatLogStream(cfg *LogStreamTailConfig, outChan chan types.Event, cwClient *
 	endTime := cfg.EndTime.UTC().Unix() * 1000
 	hasMoreEvents := true
 	for hasMoreEvents {
-		cfg.logger.Tracef("Calling GetLogEventsPagesWithContext(%s, %s), startTime:%d / endTime:%d",
-			cfg.GroupName, cfg.StreamName, startTime, endTime)
-		cfg.logger.Tracef("startTime:%s / endTime:%s", cfg.StartTime, cfg.EndTime)
-		if startFrom != nil {
-			cfg.logger.Tracef("next_token: %s", *startFrom)
-		}
-		ctx := context.Background()
-		err := cwClient.GetLogEventsPagesWithContext(ctx,
-			&cloudwatchlogs.GetLogEventsInput{
-				Limit:         aws.Int64(10),
-				LogGroupName:  aws.String(cfg.GroupName),
-				LogStreamName: aws.String(cfg.StreamName),
-				StartTime:     aws.Int64(startTime),
-				EndTime:       aws.Int64(endTime),
-				StartFromHead: &head,
-				NextToken:     startFrom,
-			},
-			func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
-				cfg.logger.Tracef("in GetLogEventsPagesWithContext handker (%d events) (last:%t)", len(page.Events), lastPage)
-				for _, event := range page.Events {
-					evt, err := cwLogToEvent(event, cfg)
-					if err != nil {
-						cfg.logger.Warningf("discard event : %s", err)
+		select {
+		default:
+			cfg.logger.Tracef("Calling GetLogEventsPagesWithContext(%s, %s), startTime:%d / endTime:%d",
+				cfg.GroupName, cfg.StreamName, startTime, endTime)
+			cfg.logger.Tracef("startTime:%s / endTime:%s", cfg.StartTime, cfg.EndTime)
+			if startFrom != nil {
+				cfg.logger.Tracef("next_token: %s", *startFrom)
+			}
+			ctx := context.Background()
+			err := cw.cwClient.GetLogEventsPagesWithContext(ctx,
+				&cloudwatchlogs.GetLogEventsInput{
+					Limit:         aws.Int64(10),
+					LogGroupName:  aws.String(cfg.GroupName),
+					LogStreamName: aws.String(cfg.StreamName),
+					StartTime:     aws.Int64(startTime),
+					EndTime:       aws.Int64(endTime),
+					StartFromHead: &head,
+					NextToken:     startFrom,
+				},
+				func(page *cloudwatchlogs.GetLogEventsOutput, lastPage bool) bool {
+					cfg.logger.Tracef("in GetLogEventsPagesWithContext handker (%d events) (last:%t)", len(page.Events), lastPage)
+					for _, event := range page.Events {
+						evt, err := cwLogToEvent(event, cfg)
+						if err != nil {
+							cfg.logger.Warningf("discard event : %s", err)
+						}
+						cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
+						outChan <- evt
 					}
-					cfg.logger.Debugf("pushing message : %s", evt.Line.Raw)
-					outChan <- evt
-				}
-				if startFrom != nil && *page.NextForwardToken == *startFrom {
-					cfg.logger.Debugf("reached end of available events")
-					hasMoreEvents = false
-					return false
-				}
-				startFrom = page.NextForwardToken
-				return true
-			},
-		)
-		if err != nil {
-			return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
+					if startFrom != nil && *page.NextForwardToken == *startFrom {
+						cfg.logger.Debugf("reached end of available events")
+						hasMoreEvents = false
+						return false
+					}
+					startFrom = page.NextForwardToken
+					return true
+				},
+			)
+			if err != nil {
+				return errors.Wrapf(err, "while reading logs from %s/%s", cfg.GroupName, cfg.StreamName)
+			}
+			cfg.logger.Tracef("after GetLogEventsPagesWithContext")
+		case <-cw.t.Dying():
+			cfg.logger.Warningf("cat stream killed")
+			return nil
 		}
 	}
 	cfg.logger.Tracef("CatLogStream out")
