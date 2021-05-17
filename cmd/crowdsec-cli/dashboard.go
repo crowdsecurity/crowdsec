@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
@@ -86,7 +87,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			}
 
 			if metabasePassword == "" {
-				metabasePassword = generatePassword(16)
+				isValid := passwordIsValid(metabasePassword)
+				for !isValid {
+					metabasePassword = generatePassword(16)
+					isValid = passwordIsValid(metabasePassword)
+				}
 			}
 			var answer bool
 			groupExist := false
@@ -250,4 +255,20 @@ cscli dashboard remove --force
 	cmdDashboard.AddCommand(cmdDashRemove)
 
 	return cmdDashboard
+}
+
+func passwordIsValid(password string) bool {
+	hasDigit := false
+	for _, j := range password {
+		if unicode.IsDigit(j) {
+			hasDigit = true
+			break
+		}
+	}
+
+	if !hasDigit || len(password) < 6 {
+		return false
+	}
+	return true
+
 }
