@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       localstack:
-        image: localstack/localstack
+        image: localstack/localstack:0.12.11
         ports:
           - 4566:4566 # Localstack exposes all services on same port
         env:
