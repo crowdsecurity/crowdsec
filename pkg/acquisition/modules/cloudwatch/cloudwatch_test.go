@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 
 func TestWatchLogGroupForStreams(t *testing.T) {
 	var err error
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.TraceLevel)
 	tests := []struct {
 		config              []byte
 		expectedCfgErr      string
