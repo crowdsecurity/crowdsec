@@ -196,10 +196,21 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labelType string, logger *
 		return fmt.Errorf("could not parse journalctl DSN : %s", err)
 	}
 	for key, value := range params {
-		if key != "filters" {
+		switch key {
+		case "filters":
+			j.config.Filters = append(j.config.Filters, value...)
+		case "log_level":
+			if len(value) != 1 {
+				return fmt.Errorf("expected zero or one value for 'log_level'")
+			}
+			lvl, err := log.ParseLevel(value[0])
+			if err != nil {
+				return errors.Wrapf(err, "unknown level %s", value[0])
+			}
+			j.logger.Logger.SetLevel(lvl)
+		default:
 			return fmt.Errorf("unsupported key %s in journalctl DSN", key)
 		}
-		j.config.Filters = append(j.config.Filters, value...)
 	}
 	j.args = append(j.args, j.config.Filters...)
 	return nil

@@ -75,8 +75,12 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "could not parse journalctl DSN : invalid URL escape \"%ZZ\"",
 		},
 		{
-			dsn:         "journalctl://filters=_UID=42",
+			dsn:         "journalctl://filters=_UID=42?log_level=warn",
 			expectedErr: "",
+		},
+		{
+			dsn:         "journalctl://filters=_UID=1000&log_level=foobar",
+			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
 	}
 	subLogger := log.WithFields(log.Fields{
