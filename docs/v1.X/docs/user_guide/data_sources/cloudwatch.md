@@ -1,4 +1,6 @@
-# About
+# Cloudwatch acquisition
+
+This module allows `{{v1X.crowdsec.name}}` to acquire logs from AWS's cloudwatch service, in one-shot and streaming mode.
 
 # Configuration
 

@@ -1,6 +1,6 @@
 # Journalctl Acquisition
 
-This module allows crowdsec to acquire logs from journalctl files in one-shot and streaming mode.
+This module allows `{{v1X.crowdsec.name}}` to acquire logs from journalctl files in one-shot and streaming mode.
 
 ## Configuration Parameters
 

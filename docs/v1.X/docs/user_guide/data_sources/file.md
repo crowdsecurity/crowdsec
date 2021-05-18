@@ -1,6 +1,6 @@
 # File Acquisition
 
-This module allows crowdsec to acquire logs from text files (in one-shot and streaming mode), and GZ files in one-shot mode.
+This module allows `{{v1X.crowdsec.name}}` to acquire logs from text files (in one-shot and streaming mode), and GZ files in one-shot mode.
 
 ## Configuration Parameters
 
