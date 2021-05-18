@@ -398,7 +398,7 @@ stream_name: test_stream`),
 
 	for _, test := range tests {
 		dbgLogger := log.New().WithField("test", test.name)
-		dbgLogger.Logger.SetLevel(log.DebugLevel)
+		dbgLogger.Logger.SetLevel(log.TraceLevel)
 		dbgLogger.Infof("starting test")
 		cw := CloudwatchSource{}
 		err = cw.Configure(test.config, dbgLogger)
