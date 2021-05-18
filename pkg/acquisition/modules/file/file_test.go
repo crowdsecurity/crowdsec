@@ -56,8 +56,12 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "empty file:// DSN",
 		},
 		{
-			dsn:         "file:///etc/passwd",
+			dsn:         "file:///etc/passwd?log_level=warn",
 			expectedErr: "",
+		},
+		{
+			dsn:         "file:///etc/passwd?log_level=foobar",
+			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
 	}
 	subLogger := log.WithFields(log.Fields{

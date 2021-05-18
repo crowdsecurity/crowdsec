@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"path/filepath"
@@ -122,25 +123,48 @@ func (f *FileSource) ConfigureByDSN(dsn string, labelType string, logger *log.En
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
 
-	pattern := strings.TrimPrefix(dsn, "file://")
+	f.logger = logger
 
-	if len(pattern) == 0 {
+	dsn = strings.TrimPrefix(dsn, "file://")
+
+	args := strings.Split(dsn, "?")
+
+	if len(args[0]) == 0 {
 		return fmt.Errorf("empty file:// DSN")
 	}
 
-	f.logger = logger
+	if len(args) == 2 && len(args[1]) != 0 {
+		params, err := url.ParseQuery(args[1])
+		if err != nil {
+			return fmt.Errorf("could not parse file args : %s", err)
+		}
+		for key, value := range params {
+			if key != "log_level" {
+				return fmt.Errorf("unsupported key %s in file DSN", key)
+			}
+			if len(value) != 1 {
+				return fmt.Errorf("expected zero or one value for 'log_level'")
+			}
+			lvl, err := log.ParseLevel(value[0])
+			if err != nil {
+				return errors.Wrapf(err, "unknown level %s", value[0])
+			}
+			f.logger.Logger.SetLevel(lvl)
+		}
+	}
+
 	f.config = FileConfiguration{}
 	f.config.Labels = map[string]string{"type": labelType}
 	f.config.Mode = configuration.CAT_MODE
 
-	f.logger.Debugf("Will try pattern %s", pattern)
-	files, err := filepath.Glob(pattern)
+	f.logger.Debugf("Will try pattern %s", args[0])
+	files, err := filepath.Glob(args[0])
 	if err != nil {
 		return errors.Wrap(err, "Glob failure")
 	}
 
 	if len(files) == 0 {
-		return fmt.Errorf("no matching files for pattern %s", pattern)
+		return fmt.Errorf("no matching files for pattern %s", args[0])
 	}
 
 	f.logger.Infof("Will read %d files", len(files))
