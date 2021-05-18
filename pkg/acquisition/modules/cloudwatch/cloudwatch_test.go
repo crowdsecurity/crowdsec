@@ -74,7 +74,7 @@ stream_name: test_stream`),
 			expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
 				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
-					LogGroupName: aws.String("test_group1"),
+					LogGroupName: aws.String("test_group_not_used_1"),
 				}); err != nil {
 					t.Fatalf("failed to create log group : %s", err)
 				}
