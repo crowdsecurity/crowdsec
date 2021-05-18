@@ -44,6 +44,7 @@ func (f *MockSource) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { 
 func (f *MockSource) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSource) CanRun() error                                           { return nil }
 func (f *MockSource) GetMetrics() []prometheus.Collector                      { return nil }
+func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSource) Dump() interface{}                                       { return f }
 func (f *MockSource) GetName() string                                         { return "mock" }
 func (f *MockSource) ConfigureByDSN(string, string, *log.Entry) error {
@@ -339,6 +340,7 @@ func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
 }
 func (f *MockCat) CanRun() error                                   { return nil }
 func (f *MockCat) GetMetrics() []prometheus.Collector              { return nil }
+func (f *MockCat) GetAggregMetrics() []prometheus.Collector        { return nil }
 func (f *MockCat) Dump() interface{}                               { return f }
 func (f *MockCat) ConfigureByDSN(string, string, *log.Entry) error { return fmt.Errorf("not supported") }
 
@@ -375,9 +377,10 @@ func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		return nil
 	}
 }
-func (f *MockTail) CanRun() error                      { return nil }
-func (f *MockTail) GetMetrics() []prometheus.Collector { return nil }
-func (f *MockTail) Dump() interface{}                  { return f }
+func (f *MockTail) CanRun() error                            { return nil }
+func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
+func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
+func (f *MockTail) Dump() interface{}                        { return f }
 func (f *MockTail) ConfigureByDSN(string, string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
@@ -505,6 +508,7 @@ func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error
 func (f *MockSourceByDSN) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
 func (f *MockSourceByDSN) CanRun() error                                           { return nil }
 func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                      { return nil }
+func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
 func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
 func (f *MockSourceByDSN) ConfigureByDSN(dsn string, logType string, logger *log.Entry) error {
