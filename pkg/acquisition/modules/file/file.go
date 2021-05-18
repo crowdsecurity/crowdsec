@@ -257,6 +257,7 @@ func (f *FileSource) Dump() interface{} {
 }
 
 func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
+	logger := f.logger.WithField("goroutine", "inotify")
 	for {
 		select {
 		case event, ok := <-f.watcher.Events:
@@ -266,19 +267,19 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				fi, err := os.Stat(event.Name)
 				if err != nil {
-					f.logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
+					logger.Errorf("Could not stat() new file %s, ignoring it : %s", event.Name, err)
 					continue
 				}
 				if fi.IsDir() {
 					continue
 				}
-				f.logger.Infof("Detected new file %s", event.Name)
+				logger.Infof("Detected new file %s", event.Name)
 				matched := false
 				for _, pattern := range f.config.Filenames {
-					f.logger.Debugf("Matching %s with %s", pattern, event.Name)
+					logger.Debugf("Matching %s with %s", pattern, event.Name)
 					matched, err = path.Match(pattern, event.Name)
 					if err != nil {
-						f.logger.Errorf("Could not match pattern : %s", err)
+						logger.Errorf("Could not match pattern : %s", err)
 						continue
 					}
 					if matched {
@@ -290,18 +291,18 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 				}
 				if f.tails[event.Name] {
 					//we already have a tail on it, do not start a new one
-					f.logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
+					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
 				err = unix.Access(event.Name, unix.R_OK)
 				if err != nil {
-					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					logger.Errorf("unable to read %s : %s", event.Name, err)
 					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
 				tail, err := tail.TailFile(event.Name, tail.Config{ReOpen: true, Follow: true, Poll: true, Location: &tail.SeekInfo{Offset: 0, Whence: io.SeekStart}})
 				if err != nil {
-					f.logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
+					logger.Errorf("Could not start tailing file %s : %s", event.Name, err)
 					break
 				}
 				f.tails[event.Name] = true
@@ -314,7 +315,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if !ok {
 				return nil
 			}
-			f.logger.Errorf("Error while monitoring folder: %s", err)
+			logger.Errorf("Error while monitoring folder: %s", err)
 		case <-t.Dying():
 			return nil
 		}
@@ -322,30 +323,29 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tail) error {
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	f.logger.Debugf("-> Starting tail of %s", tail.Filename)
+	logger := f.logger.WithField("tail", tail.Filename)
+	logger.Debugf("-> Starting tail of %s", tail.Filename)
 	for {
 		l := types.Line{}
 		select {
 		case <-t.Dying():
-			f.logger.Infof("File datasource %s stopping", tail.Filename)
+			logger.Infof("File datasource %s stopping", tail.Filename)
 			if err := tail.Stop(); err != nil {
 				f.logger.Errorf("error in stop : %s", err)
 				return err
 			}
 			return nil
 		case <-tail.Tomb.Dying(): //our tailer is dying
-			f.logger.Warningf("File reader of %s died", tail.Filename)
+			logger.Warningf("File reader of %s died", tail.Filename)
 			t.Kill(fmt.Errorf("dead reader for %s", tail.Filename))
 			return fmt.Errorf("reader for %s is dead", tail.Filename)
 		case line := <-tail.Lines:
 			if line == nil {
-				f.logger.Debugf("Nil line")
+				logger.Debugf("Nil line")
 				return fmt.Errorf("tail for %s is empty", tail.Filename)
 			}
 			if line.Err != nil {
-				log.Warningf("fetch error : %v", line.Err)
+				logger.Warningf("fetch error : %v", line.Err)
 				return line.Err
 			}
 			if line.Text == "" { //skip empty lines
@@ -359,18 +359,15 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			l.Process = true
 			l.Module = f.GetName()
 			//we're tailing, it must be real time logs
-			f.logger.Debugf("pushing %+v", l)
+			logger.Debugf("pushing %+v", l)
 			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-		case <-ticker.C:
-			//time out, shall we do stuff ?
-			f.logger.Trace("timeout")
 		}
 	}
 }
 
 func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tomb) error {
 	var scanner *bufio.Scanner
-
+	logger := f.logger.WithField("oneshot", filename)
 	fd, err := os.Open(filename)
 
 	if err != nil {
@@ -381,7 +378,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	if strings.HasSuffix(filename, ".gz") {
 		gz, err := gzip.NewReader(fd)
 		if err != nil {
-			f.logger.Errorf("Failed to read gz file: %s", err)
+			logger.Errorf("Failed to read gz file: %s", err)
 			return errors.Wrapf(err, "failed to read gz %s", filename)
 		}
 		defer gz.Close()
@@ -392,7 +389,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	}
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
-		f.logger.Debugf("line %s", scanner.Text())
+		logger.Debugf("line %s", scanner.Text())
 		l := types.Line{}
 		l.Raw = scanner.Text()
 		l.Time = time.Now()
