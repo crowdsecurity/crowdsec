@@ -20,8 +20,8 @@ jobs:
     services:
       localstack:
         image: localstack/localstack:0.12.11
-        #ports:
-        #  - 4566:4566 # Localstack exposes all services on same port
+        ports:
+          - 4566:4566 # Localstack exposes all services on same port
         env:
           SERVICES: ${{ env.SERVICES }}
           DEBUG: ""
@@ -49,7 +49,7 @@ jobs:
     - name: Build
       run: make build && go get -u github.com/jandelgado/gcov2lcov
     - name: All tests
-      run: AWS_ENDPOINT_FORCE=http://localstack:4566 go test -timeout=120s -coverprofile=coverage.out -covermode=atomic ./...
+      run: AWS_ENDPOINT_FORCE=http://localhost:4566 go test -timeout=120s -coverprofile=coverage.out -covermode=atomic ./...
     - name: gcov2lcov
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
