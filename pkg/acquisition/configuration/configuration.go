@@ -9,6 +9,7 @@ type DataSourceCommonCfg struct {
 	Labels   map[string]string      `yaml:"labels,omitempty"`
 	LogLevel *log.Level             `yaml:"log_level,omitempty"`
 	Source   string                 `yaml:"source,omitempty"`
+	Name     string                 `yaml:"name,omitempty"`
 	Config   map[string]interface{} `yaml:",inline"` //to keep the datasource-specific configuration directives
 }
 
