@@ -98,19 +98,20 @@ var (
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
 	cwConfig := CloudwatchSourceConfiguration{}
-	err := yaml.UnmarshalStrict(cfg, &cwConfig)
-	if err != nil {
+	if err := yaml.UnmarshalStrict(cfg, &cwConfig); err != nil {
 		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
 	}
+
 	cw.Config = cwConfig
+	if len(cw.Config.GroupName) == 0 {
+		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
+	}
 	cw.logger = logger.WithField("group", cw.Config.GroupName)
 	if cw.Config.Mode == "" {
 		cw.Config.Mode = configuration.TAIL_MODE
 	}
 	logger.Debugf("Starting configuration for Cloudwatch group %s", cw.Config.GroupName)
-	if len(cw.Config.GroupName) == 0 {
-		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
-	}
+
 	if cw.Config.DescribeLogStreamsLimit == nil {
 		cw.Config.DescribeLogStreamsLimit = &def_DescribeLogStreamsLimit
 	}
