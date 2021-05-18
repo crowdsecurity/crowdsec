@@ -211,6 +211,10 @@ func (f *FileSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
+func (f *FileSource) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{linesRead}
+}
+
 func (f *FileSource) GetName() string {
 	return "file"
 }

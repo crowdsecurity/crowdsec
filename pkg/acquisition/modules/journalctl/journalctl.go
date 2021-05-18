@@ -153,6 +153,10 @@ func (j *JournalCtlSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead}
 }
 
+func (j *JournalCtlSource) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{linesRead}
+}
+
 func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	config := JournalCtlConfiguration{}
 	j.logger = logger
