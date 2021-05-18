@@ -83,13 +83,17 @@ labels:
 group_name: test_group1
 stream_name: test_stream_bad`),
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("failed to create log group : %s", err)
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to create log stream : %s", err)
+				}
 				//have a message before we start - won't be popped, but will trigger stream monitoring
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_group1"),
@@ -105,9 +109,11 @@ stream_name: test_stream_bad`),
 				}
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete log group : %s", err)
+				}
 			},
 			expectedResLen: 0,
 		},
@@ -121,13 +127,18 @@ labels:
 group_name: test_group1
 stream_regexp: test_bad[0-9]+`),
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("failed to create log group : %s", err)
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to create log stream : %s", err)
+
+				}
 				//have a message before we start - won't be popped, but will trigger stream monitoring
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_group1"),
@@ -139,13 +150,16 @@ stream_regexp: test_bad[0-9]+`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs")
+					t.Fatalf("failed to put logs")
 				}
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete log group : %s", err)
+
+				}
 			},
 			expectedResLen: 0,
 		},
@@ -161,13 +175,19 @@ log_level: trace
 stream_name: test_stream`),
 			//expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("failed to create log group : %s", err)
+
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to create log stream : %s", err)
+
+				}
 				//have a message before we start - won't be popped, but will trigger stream monitoring
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -179,7 +199,7 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs")
+					t.Fatalf("failed to put logs")
 				}
 			},
 			run: func(cw *CloudwatchSource) {
@@ -201,17 +221,23 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs : %s", err)
+					t.Fatalf("failed to put logs : %s", err)
 				}
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
+				if _, err := cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				}); err != nil {
+					t.Fatalf("failed to delete log stream : %s", err)
+
+				}
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete log group : %s", err)
+
+				}
 			},
 			expectedResLen:      2,
 			expectedResMessages: []string{"test_message_4", "test_message_5"},
@@ -228,13 +254,18 @@ log_level: trace
 stream_name: test_stream`),
 			//expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("failed to create log group : %s", err)
+
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to create log stream : %s", err)
+				}
 				//have a message before we start - won't be popped, but will trigger stream monitoring
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -246,7 +277,7 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs")
+					t.Fatalf("failed to put logs")
 				}
 			},
 			run: func(cw *CloudwatchSource) {
@@ -264,7 +295,7 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs : %s", err)
+					t.Fatalf("failed to put logs : %s", err)
 				}
 				//wait for the stream to time-out
 				time.Sleep(def_StreamReadTimeout + (1 * time.Second))
@@ -279,20 +310,26 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs : %s", err)
+					t.Fatalf("failed to put logs : %s", err)
 				}
 				//wait for new stream pickup + stream poll interval
 				time.Sleep(def_PollNewStreamInterval + (1 * time.Second))
 				time.Sleep(def_PollStreamInterval + (1 * time.Second))
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
+				if _, err := cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				}); err != nil {
+					t.Fatalf("failed to delete log stream : %s", err)
+
+				}
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete log group : %s", err)
+
+				}
 			},
 			expectedResLen:      2,
 			expectedResMessages: []string{"test_message_41", "test_message_51"},
@@ -309,13 +346,17 @@ log_level: trace
 stream_name: test_stream`),
 			//expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
-				cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
+				if _, err := cw.cwClient.CreateLogGroup(&cloudwatchlogs.CreateLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
-				cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
+				}); err != nil {
+					t.Fatalf("failed to create log group : %s", err)
+				}
+				if _, err := cw.cwClient.CreateLogStream(&cloudwatchlogs.CreateLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to create log stream : %s", err)
+				}
 				//have a message before we start - won't be popped, but will trigger stream monitoring
 				if _, err := cw.cwClient.PutLogEvents(&cloudwatchlogs.PutLogEventsInput{
 					LogGroupName:  aws.String("test_log_group1"),
@@ -327,7 +368,7 @@ stream_name: test_stream`),
 						},
 					},
 				}); err != nil {
-					log.Fatalf("failed to put logs")
+					t.Fatalf("failed to put logs")
 				}
 			},
 			run: func(cw *CloudwatchSource) {
@@ -337,13 +378,19 @@ stream_name: test_stream`),
 				time.Sleep(def_PollDeadStreamInterval + (1 * time.Second))
 			},
 			post: func(cw *CloudwatchSource) {
-				cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
+				if _, err := cw.cwClient.DeleteLogStream(&cloudwatchlogs.DeleteLogStreamInput{
 					LogGroupName:  aws.String("test_log_group1"),
 					LogStreamName: aws.String("test_stream"),
-				})
-				cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+				}); err != nil {
+					t.Fatalf("failed to delete log stream : %s", err)
+
+				}
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
 					LogGroupName: aws.String("test_log_group1"),
-				})
+				}); err != nil {
+					t.Fatalf("failed to delete log stream : %s", err)
+
+				}
 			},
 			expectedResLen: 0,
 		},
