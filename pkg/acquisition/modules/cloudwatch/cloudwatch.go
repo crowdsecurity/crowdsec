@@ -239,6 +239,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 						Limit:        cw.Config.DescribeLogStreamsLimit,
 					},
 					func(page *cloudwatchlogs.DescribeLogStreamsOutput, lastPage bool) bool {
+						cw.logger.Tracef("in helper of of DescribeLogStreamsPagesWithContext")
 						for _, event := range page.LogStreams {
 							startFrom = page.NextToken
 							//we check if the stream has been written to recently enough to be monitored
@@ -278,6 +279,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 					newerr := errors.Wrapf(err, "while describing group %s", cw.Config.GroupName)
 					return newerr
 				}
+				cw.logger.Tracef("after DescribeLogStreamsPagesWithContext")
 			}
 		}
 	}
