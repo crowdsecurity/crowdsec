@@ -28,7 +28,7 @@ import (
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_filesource_hits_total",
-		Help: "Total lines where read.",
+		Help: "Total lines that were read.",
 	},
 	[]string{"source"})
 
