@@ -50,7 +50,7 @@ func TestMain(m *testing.M) {
 
 func TestWatchLogGroupForStreams(t *testing.T) {
 	var err error
-	log.SetLevel(log.TraceLevel)
+	log.SetLevel(log.DebugLevel)
 	tests := []struct {
 		config              []byte
 		expectedCfgErr      string
@@ -405,7 +405,7 @@ stream_name: test_stream`),
 
 	for _, test := range tests {
 		dbgLogger := log.New().WithField("test", test.name)
-		dbgLogger.Logger.SetLevel(log.TraceLevel)
+		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		dbgLogger.Infof("starting test")
 		cw := CloudwatchSource{}
 		err = cw.Configure(test.config, dbgLogger)
@@ -751,7 +751,7 @@ func TestOneShotAcquisition(t *testing.T) {
 
 	for _, test := range tests {
 		dbgLogger := log.New().WithField("test", test.name)
-		dbgLogger.Logger.SetLevel(log.TraceLevel)
+		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		dbgLogger.Infof("starting test")
 		cw := CloudwatchSource{}
 		err = cw.ConfigureByDSN(test.dsn, "test", dbgLogger)
