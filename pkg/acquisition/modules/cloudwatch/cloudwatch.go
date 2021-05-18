@@ -197,6 +197,10 @@ func (cw *CloudwatchSource) GetMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesRead, openedStreams}
 }
 
+func (cw *CloudwatchSource) GetAggregMetrics() []prometheus.Collector {
+	return []prometheus.Collector{linesRead, openedStreams}
+}
+
 func (cw *CloudwatchSource) GetMode() string {
 	return cw.Config.Mode
 }
