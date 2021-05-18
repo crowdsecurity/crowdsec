@@ -68,10 +68,12 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	cmd := exec.CommandContext(ctx, journalctlCmd, j.args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
+		cancel()
 		return fmt.Errorf("could not get journalctl stdout: %s", err)
 	}
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
+		cancel()
 		return fmt.Errorf("could not get journalctl stderr: %s", err)
 	}
 
@@ -84,6 +86,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 	logger.Infof("Running journalctl command: %s %s", cmd.Path, cmd.Args)
 	err = cmd.Start()
 	if err != nil {
+		cancel()
 		logger.Errorf("could not start journalctl command : %s", err)
 		return err
 	}
