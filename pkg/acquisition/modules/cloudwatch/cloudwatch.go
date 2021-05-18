@@ -227,6 +227,8 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 			hasMoreStreams := true
 			startFrom = nil
 			for hasMoreStreams {
+				cw.logger.Tracef("doing the call to DescribeLogStreamsPagesWithContext")
+
 				ctx := context.Background()
 				//there can be a lot of streams in a group, and we're only interested in those recently written to, so we sort by LastEventTime
 				err := cw.cwClient.DescribeLogStreamsPagesWithContext(
@@ -342,9 +344,9 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 		case <-pollDeadStreamInterval.C:
 			for idx, stream := range cw.monitoredStreams {
 				if !cw.monitoredStreams[idx].t.Alive() {
-					cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
 					cw.logger.Debugf("remove dead stream %s", stream.StreamName)
 					openedStreams.With(prometheus.Labels{"group": cw.monitoredStreams[idx].GroupName}).Dec()
+					cw.monitoredStreams = append(cw.monitoredStreams[:idx], cw.monitoredStreams[idx+1:]...)
 					break
 				}
 			}
