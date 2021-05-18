@@ -264,6 +264,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			if !ok {
 				return nil
 			}
+
 			if event.Op&fsnotify.Create == fsnotify.Create {
 				fi, err := os.Stat(event.Name)
 				if err != nil {
@@ -317,6 +318,10 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 			}
 			logger.Errorf("Error while monitoring folder: %s", err)
 		case <-t.Dying():
+			err := f.watcher.Close()
+			if err != nil {
+				return errors.Wrapf(err, "could not remove all inotify watches")
+			}
 			return nil
 		}
 	}
