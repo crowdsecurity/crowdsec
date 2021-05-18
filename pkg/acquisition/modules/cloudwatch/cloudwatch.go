@@ -147,6 +147,11 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		return err
 	}
 	cw.streamIndexes = make(map[string]string)
+	if cw.Config.StreamRegexp != nil {
+		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
+			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
+		}
+	}
 	return nil
 }
 
