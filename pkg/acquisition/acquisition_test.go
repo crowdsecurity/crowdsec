@@ -492,3 +492,77 @@ READLOOP:
 		t.Fatalf("didn't got expected error, got '%s'", acquisTomb.Err().Error())
 	}
 }
+
+type MockSourceByDSN struct {
+	configuration.DataSourceCommonCfg `yaml:",inline"`
+	Toto                              string `yaml:"toto"`
+	logger                            *log.Entry
+}
+
+func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry) error           { return nil }
+func (f *MockSourceByDSN) GetMode() string                                         { return f.Mode }
+func (f *MockSourceByDSN) OneShotAcquisition(chan types.Event, *tomb.Tomb) error   { return nil }
+func (f *MockSourceByDSN) StreamingAcquisition(chan types.Event, *tomb.Tomb) error { return nil }
+func (f *MockSourceByDSN) CanRun() error                                           { return nil }
+func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                      { return nil }
+func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
+func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
+func (f *MockSourceByDSN) ConfigureByDSN(dsn string, logType string, logger *log.Entry) error {
+	dsn = strings.TrimPrefix(dsn, "mockdsn://")
+	if dsn != "test_expect" {
+		return fmt.Errorf("unexpected value")
+	}
+	return nil
+}
+
+func TestConfigureByDSN(t *testing.T) {
+	tests := []struct {
+		dsn            string
+		ExpectedError  string
+		ExpectedResLen int
+	}{
+		{
+			dsn:           "baddsn",
+			ExpectedError: "baddsn isn't valid dsn (no protocol)",
+		},
+		{
+			dsn:           "foobar://toto",
+			ExpectedError: "no acquisition for protocol foobar://",
+		},
+		{
+			dsn:            "mockdsn://test_expect",
+			ExpectedResLen: 1,
+		},
+		{
+			dsn:           "mockdsn://bad",
+			ExpectedError: "unexpected value",
+		},
+	}
+
+	if GetDataSourceIface("mockdsn") == nil {
+		mock := struct {
+			name  string
+			iface func() DataSource
+		}{
+			name:  "mockdsn",
+			iface: func() DataSource { return &MockSourceByDSN{} },
+		}
+		AcquisitionSources = append(AcquisitionSources, mock)
+	}
+
+	for _, test := range tests {
+		srcs, err := LoadAcquisitionFromDSN(test.dsn, "test_label")
+		if err != nil && test.ExpectedError != "" {
+			if !strings.Contains(err.Error(), test.ExpectedError) {
+				t.Fatalf("expected '%s', got '%s'", test.ExpectedError, err.Error())
+			}
+		} else if err != nil && test.ExpectedError == "" {
+			t.Fatalf("got unexpected error '%s'", err.Error())
+		} else if err == nil && test.ExpectedError != "" {
+			t.Fatalf("expected error '%s' got none", test.ExpectedError)
+		}
+		if len(srcs) != test.ExpectedResLen {
+			t.Fatalf("expected %d results, got %d", test.ExpectedResLen, len(srcs))
+		}
+	}
+}
