@@ -69,7 +69,7 @@ func TestWatchLogGroupForStreams(t *testing.T) {
 source: cloudwatch
 labels:
   type: test_source
-group_name: test_group2
+group_name: b
 stream_name: test_stream`),
 			expectedStartErr: "The specified log group does not exist",
 			pre: func(cw *CloudwatchSource) {
@@ -543,17 +543,6 @@ labels:
   type: test_source
 stream_name: test_stream`),
 			expectedCfgErr: "group_name is mandatory for CloudwatchSource",
-		},
-		{
-			name: "bad_profile_name",
-			config: []byte(`
-aws_profile: asd--a/
-source: cloudwatch
-group_name: bad_group
-labels:
-  type: test_source
-stream_name: test_stream`),
-			expectedStartErr: "while describing group bad_group: MissingRegion: could not find region configuration",
 		},
 	}
 
