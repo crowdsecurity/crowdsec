@@ -85,6 +85,9 @@ func TestOneShot(t *testing.T) {
 		expectedOutput string
 		expectedLines  int
 		logLevel       log.Level
+		setup          func()
+		afterConfigure func()
+		teardown       func()
 	}{
 		{
 			config: `
@@ -149,6 +152,18 @@ filename: test_files/bad.gz`,
 			expectedLines:  0,
 			logLevel:       log.WarnLevel,
 		},
+		{
+			config: `
+mode: cat
+filename: test_files/test_delete.log`,
+			setup: func() {
+				os.Create("test_files/test_delete.log")
+			},
+			afterConfigure: func() {
+				os.Remove("test_files/test_delete.log")
+			},
+			expectedErr: "could not stat file test_files/test_delete.log : stat test_files/test_delete.log: no such file or directory",
+		},
 	}
 
 	for _, ts := range tests {
@@ -160,12 +175,18 @@ filename: test_files/bad.gz`,
 		tomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		f := FileSource{}
+		if ts.setup != nil {
+			ts.setup()
+		}
 		err := f.Configure([]byte(ts.config), subLogger)
 		if err != nil && ts.expectedErr != "" {
 			assert.Contains(t, err.Error(), ts.expectedErr)
 			continue
 		} else if err != nil && ts.expectedErr == "" {
 			t.Fatalf("Unexpected error : %s", err)
+		}
+		if ts.afterConfigure != nil {
+			ts.afterConfigure()
 		}
 		actualLines := 0
 		if ts.expectedLines != 0 {
@@ -195,6 +216,9 @@ filename: test_files/bad.gz`,
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 			hook.Reset()
 		}
+		if ts.teardown != nil {
+			ts.teardown()
+		}
 	}
 }
 
@@ -205,6 +229,9 @@ func TestLiveAcquisition(t *testing.T) {
 		expectedOutput string
 		expectedLines  int
 		logLevel       log.Level
+		setup          func()
+		afterConfigure func()
+		teardown       func()
 	}{
 		{
 			config: `
@@ -244,6 +271,58 @@ force_inotify: true`,
 			expectedLines:  5,
 			logLevel:       log.DebugLevel,
 		},
+		{
+			config: `
+mode: tail
+filenames:
+ - test_files/*.log
+force_inotify: true`,
+			expectedErr:    "",
+			expectedOutput: "",
+			expectedLines:  0,
+			logLevel:       log.DebugLevel,
+			afterConfigure: func() {
+				os.Create("test_files/a.log")
+				os.Remove("test_files/a.log")
+			},
+		},
+		{
+			config: `
+mode: tail
+filenames:
+ - test_files/*.log
+force_inotify: true`,
+			expectedErr:    "",
+			expectedOutput: "",
+			expectedLines:  5,
+			logLevel:       log.DebugLevel,
+			afterConfigure: func() {
+				os.Create("test_files/a.log")
+				time.Sleep(1 * time.Second)
+				os.Chmod("test_files/a.log", 0000)
+			},
+			teardown: func() {
+				os.Chmod("test_files/a.log", 0644)
+				os.Remove("test_files/a.log")
+			},
+		},
+		{
+			config: `
+mode: tail
+filenames:
+ - test_files/*.log
+force_inotify: true`,
+			expectedErr:    "",
+			expectedOutput: "",
+			expectedLines:  5,
+			logLevel:       log.DebugLevel,
+			afterConfigure: func() {
+				os.Mkdir("test_files/pouet/", 0700)
+			},
+			teardown: func() {
+				os.Remove("test_files/pouet/")
+			},
+		},
 	}
 
 	for _, ts := range tests {
@@ -255,9 +334,15 @@ force_inotify: true`,
 		tomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		f := FileSource{}
+		if ts.setup != nil {
+			ts.setup()
+		}
 		err := f.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
+		}
+		if ts.afterConfigure != nil {
+			ts.afterConfigure()
 		}
 		actualLines := 0
 		if ts.expectedLines != 0 {
@@ -308,6 +393,11 @@ force_inotify: true`,
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
 			hook.Reset()
 		}
+
+		if ts.teardown != nil {
+			ts.teardown()
+		}
+
 		tomb.Kill(nil)
 	}
 }
