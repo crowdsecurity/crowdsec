@@ -8,6 +8,7 @@ require (
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/antonmedv/expr v1.8.9
 	github.com/appleboy/gin-jwt/v2 v2.6.4
+	github.com/aws/aws-sdk-go v1.38.34
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/containerd v1.4.3 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf

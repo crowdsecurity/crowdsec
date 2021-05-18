@@ -1,8 +1,20 @@
 name: tests
 
+#those env variables are for localstack, so we can emulate aws services
+env:
+  AWS_HOST: localstack
+  SERVICES: cloudwatch,logs 
+  #those are to mimic aws config
+  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE 
+  AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY 
+  AWS_REGION: us-east-1 
+  #and to override our endpoint in aws sdk
+  AWS_ENDPOINT_FORCE: http://localhost:4566 
+
+
 on:
   push:
-    branches: [ master ]
+    branches: [ master, acqui-refacto-new-cloudwatch ]
   pull_request:
     branches: [ master ]
 
@@ -11,6 +23,27 @@ jobs:
   build:
     name: Build
     runs-on: ubuntu-latest
+    services:
+      localstack:
+        image: localstack/localstack:0.12.11
+        ports:
+          - 4566:4566 # Localstack exposes all services on same port
+        env:
+          SERVICES: ${{ env.SERVICES }}
+          DEBUG: ""
+          DATA_DIR: ""
+          LAMBDA_EXECUTOR: ""
+          KINESIS_ERROR_PROBABILITY: ""
+          DOCKER_HOST: unix:///var/run/docker.sock
+          HOST_TMP_FOLDER: "/tmp"
+          HOSTNAME_EXTERNAL: ${{ env.AWS_HOST }} # Required so that resource urls are provided properly 
+                                                 # e.g sqs url will get localhost if we don't set this env to map our service
+        options: >-
+          --name=localstack
+          --health-cmd="curl -sS 127.0.0.1:4566 || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
     steps:
     - name: Set up Go 1.13
       uses: actions/setup-go@v1
@@ -22,7 +55,7 @@ jobs:
     - name: Build
       run: make build && go get -u github.com/jandelgado/gcov2lcov
     - name: All tests
-      run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      run: go test -timeout=120s -coverprofile=coverage.out -covermode=atomic ./...
     - name: gcov2lcov
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
