@@ -22,6 +22,7 @@ import (
 // The interface each datasource must implement
 type DataSource interface {
 	GetMetrics() []prometheus.Collector                      // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
 	Configure([]byte, *log.Entry) error                      // Configure the datasource
 	ConfigureByDSN(string, string, *log.Entry) error         // Configure the datasource
 	GetMode() string                                         // Get the mode (TAIL, CAT or SERVER)
@@ -72,9 +73,13 @@ func DataSourceConfigure(commonConfig configuration.DataSourceCommonCfg) (*DataS
 		if commonConfig.LogLevel != nil {
 			clog.SetLevel(*commonConfig.LogLevel)
 		}
-		subLogger := clog.WithFields(log.Fields{
+		customLog := log.Fields{
 			"type": commonConfig.Source,
-		})
+		}
+		if commonConfig.Name != "" {
+			customLog["name"] = commonConfig.Name
+		}
+		subLogger := clog.WithFields(customLog)
 		/* check eventual dependencies are satisfied (ie. journald will check journalctl availability) */
 		if err := dataSrc.CanRun(); err != nil {
 			return nil, errors.Wrapf(err, "datasource %s cannot be run", commonConfig.Source)
@@ -181,20 +186,32 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 	return sources, nil
 }
 
+func GetMetrics(sources []DataSource, aggregated bool) error {
+	var metrics []prometheus.Collector
+	for i := 0; i < len(sources); i++ {
+		if aggregated {
+			metrics = sources[i].GetMetrics()
+		} else {
+			metrics = sources[i].GetAggregMetrics()
+		}
+		for _, metric := range metrics {
+			if err := prometheus.Register(metric); err != nil {
+				if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
+					//ignore the error
+				} else {
+					return errors.Wrapf(err, "could not register metrics for datasource %s", sources[i].GetName())
+				}
+			}
+		}
+
+	}
+	return nil
+}
+
 func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb *tomb.Tomb) error {
 	for i := 0; i < len(sources); i++ {
 		subsrc := sources[i] //ensure its a copy
 		log.Debugf("starting one source %d/%d ->> %T", i, len(sources), subsrc)
-		//register acquisition specific metrics
-		for _, metrics := range subsrc.GetMetrics() {
-			if err := prometheus.Register(metrics); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
-					//ignore the error
-				} else {
-					return errors.Wrapf(err, "could not register metrics for datasource %s", subsrc.GetName())
-				}
-			}
-		}
 
 		AcquisTomb.Go(func() error {
 			defer types.CatchPanic("crowdsec/acquis")

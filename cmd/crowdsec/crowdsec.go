@@ -11,6 +11,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -112,6 +113,17 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
 		log.Fatalf("starting acquisition error : %s", err)
 		return err
+	}
+
+	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
+		aggregated := false
+		if cConfig.Prometheus.Level == "aggregated" {
+			aggregated = true
+		}
+		if err := acquisition.GetMetrics(dataSources, aggregated); err != nil {
+			return errors.Wrap(err, "while fetching prometheus metrics for datasources.")
+		}
+
 	}
 
 	return nil
