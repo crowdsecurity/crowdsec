@@ -9,14 +9,14 @@ nav:
     - Crowdsec Tour: getting_started/crowdsec-tour.md
   - User guide:
     - CLI: user_guide/cscli.md
-    - Configurations management:
+    - Config management:
       - Collections: user_guide/configurations_management/collections.md
       - Parsers: user_guide/configurations_management/parsers.md
       - Enrichers: user_guide/configurations_management/enrichers.md
       - Scenarios: user_guide/configurations_management/scenarios.md
     - Decisions management: user_guide/decision_management.md
     - Bouncers & machines management: user_guide/bouncer_machine_management.md
-    - Data source configuration: 
+    - Data sources config: 
        - Introduction: user_guide/data_sources/acquisition.md
        - Files: user_guide/data_sources/file.md
        - Journalctl: user_guide/data_sources/journalctl.md
