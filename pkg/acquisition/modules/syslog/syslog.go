@@ -1,4 +1,4 @@
-package syslog
+package syslogacquisition
 
 import (
 	"fmt"

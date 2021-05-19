@@ -1,4 +1,4 @@
-package syslog
+package syslogacquisition
 
 import (
 	"fmt"
@@ -22,7 +22,7 @@ func TestConfigure(t *testing.T) {
 			config: `
 foobar: bla
 source: syslog`,
-			expectedErr: "line 2: field foobar not found in type syslog.SyslogConfiguration",
+			expectedErr: "line 2: field foobar not found in type syslogacquisition.SyslogConfiguration",
 		},
 		{
 			config:      `source: syslog`,

@@ -11,6 +11,7 @@ import (
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -50,6 +51,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "cloudwatch",
 		iface: func() DataSource { return &cloudwatchacquisition.CloudwatchSource{} },
+	},
+	{
+		name:  "syslog",
+		iface: func() DataSource { return &syslogacquisition.SyslogSource{} },
 	},
 }
 
