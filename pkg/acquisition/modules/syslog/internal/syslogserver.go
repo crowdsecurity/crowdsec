@@ -12,11 +12,12 @@ import (
 )
 
 type SyslogServer struct {
-	listenAddr string
-	port       int
-	channel    chan SyslogMessage
-	udpConn    *net.UDPConn
-	Logger     *log.Entry
+	listenAddr    string
+	port          int
+	channel       chan SyslogMessage
+	udpConn       *net.UDPConn
+	Logger        *log.Entry
+	MaxMessageLen int
 }
 
 type SyslogMessage struct {
@@ -37,11 +38,11 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 		return errors.Wrapf(err, "could not listen on port %d", s.port)
 	}
 	s.udpConn = udpConn
-	err = s.udpConn.SetReadBuffer(1024 * 8) // FIXME probably
+	err = s.udpConn.SetReadBuffer(s.MaxMessageLen) // FIXME probably
 	if err != nil {
 		return errors.Wrap(err, "could not set readbuffer on UDP socket")
 	}
-	s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	err = s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	if err != nil {
 		return errors.Wrap(err, "could not set read deadline on UDP socket")
 	}
@@ -65,7 +66,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 			default:
 				//RFC3164 says 1024 bytes max
 				//RFC5424 says 480 bytes minimum, and should support up to 2048 bytes
-				b := make([]byte, 2048)
+				b := make([]byte, s.MaxMessageLen)
 				n, addr, err := s.udpConn.ReadFrom(b)
 				if err != nil && !strings.Contains(err.Error(), "i/o timeout") {
 					s.Logger.Errorf("error while reading from socket : %s", err)

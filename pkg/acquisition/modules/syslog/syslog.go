@@ -24,6 +24,7 @@ type SyslogConfiguration struct {
 	Proto                             string `yaml:"protocol,omitempty"`
 	Port                              int    `yaml:"listen_port,omitempty"`
 	Addr                              string `yaml:"listen_addr,omitempty"`
+	MaxMessageLen                     int    `yaml:"max_message_len,omitempty"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -103,6 +104,9 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	if syslogConfig.Port == 0 {
 		syslogConfig.Port = 514
 	}
+	if syslogConfig.MaxMessageLen == 0 {
+		syslogConfig.MaxMessageLen = 2048
+	}
 	if !validatePort(syslogConfig.Port) {
 		return fmt.Errorf("invalid port %d", syslogConfig.Port)
 	}
@@ -115,7 +119,7 @@ func (s *SyslogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 
 func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	c := make(chan syslogserver.SyslogMessage)
-	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal")}
+	s.server = &syslogserver.SyslogServer{Logger: s.logger.WithField("syslog", "internal"), MaxMessageLen: s.config.MaxMessageLen}
 	s.server.SetChannel(c)
 	err := s.server.Listen(s.config.Addr, s.config.Port)
 	if err != nil {
