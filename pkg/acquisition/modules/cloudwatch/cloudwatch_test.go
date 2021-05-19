@@ -79,6 +79,13 @@ stream_name: test_stream`),
 					t.Fatalf("failed to create log group : %s", err)
 				}
 			},
+			post: func(cw *CloudwatchSource) {
+				if _, err := cw.cwClient.DeleteLogGroup(&cloudwatchlogs.DeleteLogGroupInput{
+					LogGroupName: aws.String("test_group_not_used_1"),
+				}); err != nil {
+					t.Fatalf("failed to delete log group : %s", err)
+				}
+			},
 		},
 		//test stream mismatch
 		{
