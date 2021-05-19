@@ -1,7 +1,9 @@
 # Syslog Acquisition
 
 This module allows crowdsec to expose a syslog server, and ingest logs directly from another syslog server (or any software that knows how to forward logs with syslog).
+
 Only UDP is supported.
+
 Syslog messages must conform either to RFC3164 or RFC5424, and can be up to 2048 bytes long.
 
 

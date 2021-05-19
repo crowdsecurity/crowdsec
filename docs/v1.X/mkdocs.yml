@@ -21,6 +21,7 @@ nav:
        - Files: user_guide/data_sources/file.md
        - Journalctl: user_guide/data_sources/journalctl.md
        - Cloudwatch: user_guide/data_sources/cloudwatch.md
+       - Syslog: user_guide/data_sources/syslog.md
     - Databases: user_guide/database.md
     - Network management: user_guide/network.md
     - Simulation management: user_guide/simulation_mode.md
