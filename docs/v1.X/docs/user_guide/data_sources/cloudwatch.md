@@ -11,6 +11,7 @@ source: cloudwatch
 group_name: /aws/my/group/
 stream_name: 'given_stream'
 aws_profile: monitoring
+aws_config_dir: /home/user/.aws/
 labels:
   type: apigateway
 ```
@@ -64,6 +65,10 @@ When set to `true` (default: `false`), prepend the cloudwatch event timestamp to
 ### aws_profile
 
 The aws profile to use to poll cloudwatch, relies on your `~/.aws/config/`.
+
+### aws_config_dir
+
+The path to your `~/.aws/`, defaults to `/root/.aws`.
 
 # DSN and command-line
 
