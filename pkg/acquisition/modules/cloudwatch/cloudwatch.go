@@ -67,7 +67,6 @@ type CloudwatchSourceConfiguration struct {
 	AwsApiCallTimeout                 *time.Duration `yaml:"aws_api_timeout,omitempty"`
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
-	AwsConfigDir                      *string        `yaml:"aws_config_dir,omitempty"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -94,15 +93,15 @@ var (
 	def_StreamReadTimeout       = 10 * time.Minute
 	def_PollDeadStreamInterval  = 10 * time.Second
 	def_GetLogEventsPagesLimit  = int64(1000)
-	def_AwsConfigDir            = "/root/.aws/"
 )
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
+	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
 	cwConfig := CloudwatchSourceConfiguration{}
-	targetStream := "*"
 	if err := yaml.UnmarshalStrict(cfg, &cwConfig); err != nil {
 		return errors.Wrap(err, "Cannot parse CloudwatchSource configuration")
 	}
+
 	cw.Config = cwConfig
 	if len(cw.Config.GroupName) == 0 {
 		return fmt.Errorf("group_name is mandatory for CloudwatchSource")
@@ -116,62 +115,43 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 	if cw.Config.DescribeLogStreamsLimit == nil {
 		cw.Config.DescribeLogStreamsLimit = &def_DescribeLogStreamsLimit
 	}
-	logger.Tracef("describelogstreams_limit set to %d", *cw.Config.DescribeLogStreamsLimit)
+	logger.Tracef("DescribeLogStreamsLimit set to %d", *cw.Config.DescribeLogStreamsLimit)
 	if cw.Config.PollNewStreamInterval == nil {
 		cw.Config.PollNewStreamInterval = &def_PollNewStreamInterval
 	}
-	logger.Tracef("poll_new_stream_interval set to %v", *cw.Config.PollNewStreamInterval)
+	logger.Tracef("PollNewStreamInterval set to %v", *cw.Config.PollNewStreamInterval)
 	if cw.Config.MaxStreamAge == nil {
 		cw.Config.MaxStreamAge = &def_MaxStreamAge
 	}
-	logger.Tracef("max_stream_age set to %v", *cw.Config.MaxStreamAge)
+	logger.Tracef("MaxStreamAge set to %v", *cw.Config.MaxStreamAge)
 	if cw.Config.PollStreamInterval == nil {
 		cw.Config.PollStreamInterval = &def_PollStreamInterval
 	}
-	logger.Tracef("poll_stream_interval set to %v", *cw.Config.PollStreamInterval)
+	logger.Tracef("PollStreamInterval set to %v", *cw.Config.PollStreamInterval)
 	if cw.Config.StreamReadTimeout == nil {
 		cw.Config.StreamReadTimeout = &def_StreamReadTimeout
 	}
-	logger.Tracef("stream_read_timeout set to %v", *cw.Config.StreamReadTimeout)
+	logger.Tracef("StreamReadTimeout set to %v", *cw.Config.StreamReadTimeout)
 	if cw.Config.GetLogEventsPagesLimit == nil {
 		cw.Config.GetLogEventsPagesLimit = &def_GetLogEventsPagesLimit
 	}
-	logger.Tracef("getlogeventspages_limit set to %v", *cw.Config.GetLogEventsPagesLimit)
+	logger.Tracef("GetLogEventsPagesLimit set to %v", *cw.Config.GetLogEventsPagesLimit)
 	if cw.Config.AwsApiCallTimeout == nil {
 		cw.Config.AwsApiCallTimeout = &def_AwsApiCallTimeout
 	}
-	logger.Tracef("aws_api_timeout set to %v", *cw.Config.AwsApiCallTimeout)
+	logger.Tracef("AwsApiCallTimeout set to %v", *cw.Config.AwsApiCallTimeout)
 	if *cw.Config.MaxStreamAge > *cw.Config.StreamReadTimeout {
-		logger.Warningf("max_stream_age > stream_read_timeout, stream might keep being opened/closed")
+		logger.Warningf("MaxStreamAge > StreamReadTimeout, stream might keep being opened/closed")
 	}
-	if cw.Config.AwsConfigDir == nil {
-		cw.Config.AwsConfigDir = &def_AwsConfigDir
-	}
-	logger.Tracef("aws_config_dir set to %s", *cw.Config.AwsConfigDir)
-	_, err := os.Stat(*cw.Config.AwsConfigDir)
-	if os.IsNotExist(err) {
-		logger.Errorf("aws_config_dir '%s' : directory does not exists", *cw.Config.AwsConfigDir)
-		return fmt.Errorf("aws_config_dir %s does not exist", *cw.Config.AwsConfigDir)
-	}
-	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
-	//as aws sdk relies on $HOME, let's allow the user to override it :)
-	os.Setenv("AWS_CONFIG_FILE", fmt.Sprintf("%s/config", *cw.Config.AwsConfigDir))
-	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
 	if err := cw.newClient(); err != nil {
 		return err
 	}
 	cw.streamIndexes = make(map[string]string)
-
 	if cw.Config.StreamRegexp != nil {
 		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
 			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
 		}
-		targetStream = *cw.Config.StreamRegexp
-	} else if cw.Config.StreamName != nil {
-		targetStream = *cw.Config.StreamName
 	}
-
-	logger.Infof("Adding cloudwatch group '%s' (stream:%s) to datasources", cw.Config.GroupName, targetStream)
 	return nil
 }
 

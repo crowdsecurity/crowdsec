@@ -97,6 +97,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 			f.logger.Warnf("No matching files for pattern %s", pattern)
 			continue
 		}
+		f.logger.Infof("Will read %d files", len(files))
 		for _, file := range files {
 			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
 				directory := path.Dir(file)
@@ -110,7 +111,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 					f.watchedDirectories[directory] = true
 				}
 			}
-			f.logger.Infof("Adding file %s to datasources", file)
+			f.logger.Infof("Adding file %s to filelist", file)
 			f.files = append(f.files, file)
 		}
 	}
