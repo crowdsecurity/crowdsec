@@ -23,21 +23,21 @@ var globalParserHits = prometheus.NewCounterVec(
 		Name: "cs_parser_hits_total",
 		Help: "Total events entered the parser.",
 	},
-	[]string{"source"},
+	[]string{"source", "type"},
 )
 var globalParserHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_parser_hits_ok_total",
 		Help: "Total events were successfully parsed.",
 	},
-	[]string{"source"},
+	[]string{"source", "type"},
 )
 var globalParserHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_parser_hits_ko_total",
 		Help: "Total events were unsuccessfully parsed.",
 	},
-	[]string{"source"},
+	[]string{"source", "type"},
 )
 
 var globalBucketPourKo = prometheus.NewCounter(
