@@ -329,6 +329,10 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			source, ok := metric.Labels["source"]
 			if !ok {
 				log.Debugf("no source in Metric %v", metric.Labels)
+			} else {
+				if srctype, ok := metric.Labels["type"]; ok {
+					source = srctype + ":" + source
+				}
 			}
 			value := m.(prom2json.Metric).Value
 			fval, err := strconv.ParseFloat(value, 32)
