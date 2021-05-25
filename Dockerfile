@@ -13,7 +13,7 @@ RUN /bin/bash wizard.sh --docker-mode
 RUN cscli hub update && cscli collections install crowdsecurity/linux
 
 FROM alpine:latest
-RUN wget https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq
+RUN wget https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq && apk add tzdata
 COPY --from=build /etc/crowdsec /etc/crowdsec
 COPY --from=build /var/lib/crowdsec /var/lib/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec

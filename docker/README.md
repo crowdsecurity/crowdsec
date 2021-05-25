@@ -79,6 +79,7 @@ If you want to be able to restart/stop your container and keep the same DB `-v /
 * `JOURNALCTL_FILTER`       - Process a single journalctl output in time-machine : `-e JOURNALCTL_FILTER="<journalctl_filter>"`
 * `TYPE`                    - [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine : `-e TYPE="<type>"`
 * `TEST_MODE`               - Only test configs (default: `false`) : `-e TEST_MODE="<true|false>"`
+* `TZ`                      - Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure logs have a local timestamp.
 * `DISABLE_AGENT`           - Only test configs (default: `false`) : `-e DISABLE_AGENT="<true|false>"`
 * `DISABLE_LOCAL_API`       - Disable local API (default: `false`) : `-e DISABLE_API="<true|false>"`
 * `DISABLE_ONLINE_API`      - Disable Online API registration for signal sharing (default: `false`) : `-e DISABLE_ONLINE_API="<true|false>"`
