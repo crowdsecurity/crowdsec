@@ -195,7 +195,7 @@ var NodesHits = prometheus.NewCounterVec(
 		Name: "cs_node_hits_total",
 		Help: "Total events entered node.",
 	},
-	[]string{"source", "name"},
+	[]string{"source", "type", "name"},
 )
 
 var NodesHitsOk = prometheus.NewCounterVec(
@@ -203,7 +203,7 @@ var NodesHitsOk = prometheus.NewCounterVec(
 		Name: "cs_node_hits_ok_total",
 		Help: "Total events successfuly exited node.",
 	},
-	[]string{"source", "name"},
+	[]string{"source", "type", "name"},
 )
 
 var NodesHitsKo = prometheus.NewCounterVec(
@@ -211,7 +211,7 @@ var NodesHitsKo = prometheus.NewCounterVec(
 		Name: "cs_node_hits_ko_total",
 		Help: "Total events unsuccessfuly exited node.",
 	},
-	[]string{"source", "name"},
+	[]string{"source", "type", "name"},
 )
 
 func stageidx(stage string, stages []string) int {

@@ -147,7 +147,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 
 	if n.Name != "" {
-		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+		NodesHits.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 	isWhitelisted := false
 	hasWhitelist := false
@@ -308,14 +308,14 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	//grok or leafs failed, don't process statics
 	if !NodeState {
 		if n.Name != "" {
-			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+			NodesHitsKo.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 		}
 		clog.Debugf("Event leaving node : ko")
 		return NodeState, nil
 	}
 
 	if n.Name != "" {
-		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "name": n.Name}).Inc()
+		NodesHitsOk.With(prometheus.Labels{"source": p.Line.Src, "type": p.Line.Module, "name": n.Name}).Inc()
 	}
 	/*
 		Please kill me. this is to apply statics when the node *has* whitelists that successfully matched the node.
