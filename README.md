@@ -31,11 +31,12 @@ CrowdSec is a free, modern & collaborative behavior detection engine, coupled wi
 ## 2 mins install
 
 Installing it through the [Package system](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) of your OS is the easiest way to proceed. 
-Otherwise, to install from source, in a shell:
+Otherwise, to install from source, in a shell (replace the X in the URL by the version that you want to install):
 
 ```console
-git clone https://github.com/crowdsecurity/crowdsec.git
-cd crowdsec && ./wizard.sh -i
+wget https://github.com/crowdsecurity/crowdsec/releases/download/v1.0.X/crowdsec-release.tgz
+tar xzvf crowdsec-release.tgz
+cd crowdsec-v* && sudo ./wizard.sh -i
 ```
 
 ## :information_source: About the CrowdSec project
