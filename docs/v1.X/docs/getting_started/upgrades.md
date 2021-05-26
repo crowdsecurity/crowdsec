@@ -14,7 +14,10 @@ Crowdsec does it best not to break existing setups, and the following rules gene
 
 # Upgrades from debian packages (official or pragmatic)
 
-`apt-get install crowdsec`
+```bash
+apt-get update 
+apt-get install crowdsec
+```
 
 # Upgrades from release tarball
 
