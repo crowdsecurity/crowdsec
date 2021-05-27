@@ -6,7 +6,7 @@ You can install crowdsec in different ways :
  - Most users [set up crowdsec's repositories](/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository) and install from them, for ease of installation and upgrade
  - Some users [use debian's official crowdsec packages](/Crowdsec/v1/getting_started/installation/#install-using-debian-official-packages)
  - Some users download the DEB package directly and [install it manually](/Crowdsec/v1/getting_started/installation/#manually-install-the-debian-package)
- - Some users download the tarball directly and [install it manually](/Crowdsec/v1/getting_started/installation/#install-from-release-tarball)
+ - Some users download the tarball directly and [install it manually](/Crowdsec/v1/getting_started/installation/#install-from-the-release-tarball)
  - Some users use the [docker hub image](https://hub.docker.com/r/crowdsecurity/crowdsec)
  - And the most adventurous might want to [build & install from source](/Crowdsec/v1/getting_started/installation/#install-from-source)
  - And some might even want to [build their own docker image](/Crowdsec/v1/getting_started/installation/#build-docker-image)
