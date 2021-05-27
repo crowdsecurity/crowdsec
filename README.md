@@ -44,7 +44,7 @@ sudo apt-get install crowdsec
 ### From source
 
 ```sh
-wget https://github.com/crowdsecurity/crowdsec/releases/download/latest/crowdsec-release.tgz
+wget https://github.com/crowdsecurity/crowdsec/releases/latest/download/crowdsec-release.tgz
 tar xzvf crowdsec-release.tgz
 cd crowdsec-v* && sudo ./wizard.sh -i
 ```
