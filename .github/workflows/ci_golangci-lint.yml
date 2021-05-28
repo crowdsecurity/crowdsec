@@ -5,7 +5,15 @@ on:
       - v*
     branches:
       - master
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
 jobs:
   golangci:
     name: lint
