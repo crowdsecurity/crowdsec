@@ -246,7 +246,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		Flush:  &flushConfig,
 	}
 	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
+		ListenURI: "http://127.0.0.1:8080",
 		LogMedia:  "file",
 		LogDir:    ".",
 		DbConfig:  &dbconfig,
@@ -309,7 +309,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 		Flush:  &flushConfig,
 	}
 	cfg := csconfig.LocalApiServerCfg{
-		ListenURI: "127.0.0.1:8080",
+		ListenURI: "http://127.0.0.1:8080",
 		LogMedia:  "file",
 		LogDir:    ".",
 		DbConfig:  &dbconfig,

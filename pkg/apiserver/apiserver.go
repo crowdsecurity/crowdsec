@@ -189,8 +189,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return &APIServer{}, err
 	}
 
+	var url string
+	if strings.HasPrefix(config.ListenURI, "https://") && config.TLS != nil {
+		log.Fatalf("Trying to start LAPI on https with no TLS config")
+	}
+	url = strings.TrimPrefix(config.ListenURI, "http://")
+	url = strings.TrimPrefix(config.ListenURI, "https://")
+
 	return &APIServer{
-		URL:            config.ListenURI,
+		URL:            url,
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
