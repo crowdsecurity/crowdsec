@@ -3,8 +3,16 @@ name: tests
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
 
 jobs:
 
