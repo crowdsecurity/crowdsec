@@ -23,6 +23,10 @@
 
  - Agents connect to local API on port `tcp/8080` (only relevant )
 
+!!! warning
+    If you update crowdsec config (`/etc/crowdsec/config.yaml`), then it causes an error on the agent. The Local API will also fail !
+    Both components need proper configuration to run (we decide to keep this behavior to detect agent or local API errors on start)
+
 ## Local API -> Central API
 
  - Central API is reached on port `tcp/443` by Local API. The FQDN is `api.crowdsec.net`
