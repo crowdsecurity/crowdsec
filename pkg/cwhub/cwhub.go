@@ -266,7 +266,9 @@ func HubStatus(itemType string, name string, all bool) []map[string]string {
 		tmp["local_version"] = item.LocalVersion
 		tmp["local_path"] = item.LocalPath
 		tmp["description"] = item.Description
-		if !managed || !item.Installed {
+		if !managed {
+			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.House, status)
+		} else if !item.Installed {
 			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
 		} else if warning {
 			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Warning, status)
