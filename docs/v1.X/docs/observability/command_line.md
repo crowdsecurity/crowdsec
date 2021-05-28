@@ -19,6 +19,10 @@ The metrics are split in 3 main sections :
     For example, if you have a source that has mostly unparsed logs, you know you might be missing some parsers.
     As well, if you have scenarios that are never instantiated, it might be a hint that they are not relevant to your configuration.
 
+    Furthermore, you might see parsers called `child-<parser_name>` while calling `cscli metrics`. This correspond to all nodes belonging to a parser. Their metrics
+    (HITS, PARSED, UNPARSED) are gather by default. If you want to identify metrics for a specific parser node, you just have to set a name for this node in your parser configuration.
+
+
 <details>
   <summary>{{v1X.cli.name}} metrics example</summary>
 ```bash
