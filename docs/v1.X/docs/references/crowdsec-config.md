@@ -49,7 +49,7 @@ api:
     credentials_path: /etc/crowdsec/local_api_credentials.yaml
   server:
     log_level: info
-    listen_uri: 127.0.0.1:8080
+    listen_uri: http://127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
     use_forwarded_for_headers: false
     online_client: # Crowdsec API
@@ -134,7 +134,7 @@ api:
     credentials_path: <path_to_local_api_client_credential_file>
   server:
     log_level: (error|info|debug|trace>)
-    listen_uri: <listen_uri> # host:port
+    listen_uri: <listen_uri> # http(s)://host:port
     profiles_path: <path_to_profile_file>
     use_forwarded_for_headers: <true|false>
     online_client:
@@ -319,7 +319,7 @@ api:
     credentials_path: <path_to_local_api_client_credential_file>
   server:
     log_level: (error|info|debug|trace>)
-    listen_uri: <listen_uri> # host:port
+    listen_uri: <listen_uri> # http(s)://host:port
     profiles_path: <path_to_profile_file>
     use_forwarded_for_headers: (true|false)
     online_client:
@@ -369,7 +369,7 @@ server:
 #### `listen_uri`
 > string
 
-Address and port listen configuration, the form `host:port`.
+URI for LAPI server on the form `http(s)://host:port`. 
 
 #### `profiles_path`
 > string

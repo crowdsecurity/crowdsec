@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -189,15 +190,25 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return &APIServer{}, err
 	}
 
-	var url string
-	if strings.HasPrefix(config.ListenURI, "https://") && config.TLS != nil {
-		log.Fatalf("Trying to start LAPI on https with no TLS config")
+	var uri string
+	if strings.HasPrefix(config.ListenURI, "https://") && config.TLS == nil {
+		log.Fatalf("trying to start LAPI on https with no TLS config")
 	}
-	url = strings.TrimPrefix(config.ListenURI, "http://")
-	url = strings.TrimPrefix(config.ListenURI, "https://")
+	if strings.HasPrefix(config.ListenURI, "http") {
+		var trueUrl *url.URL
+		if trueUrl, err = url.Parse(config.ListenURI); err != nil {
+			log.Fatalf("Unable to parse LAPI url: %s", err)
+		}
+		if trueUrl.Scheme != "http" && trueUrl.Scheme != "https" {
+			log.Fatalf("Unknown scheme: %s", trueUrl.Scheme)
+		}
+		uri = trueUrl.Host
+	} else {
+		uri = config.ListenURI
+	}
 
 	return &APIServer{
-		URL:            url,
+		URL:            uri,
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
@@ -250,11 +261,12 @@ func (s *APIServer) Run() error {
 		go func() {
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf(err.Error())
+					log.Fatalf("not able to start LAPI server: %s", err.Error())
 				}
 			} else {
 				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf(err.Error())
+					log.Printf("%+v", s)
+					log.Fatalf("not able to start LAPI server: %s", err.Error())
 				}
 			}
 		}()

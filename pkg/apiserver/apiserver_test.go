@@ -220,7 +220,7 @@ func TestUnknownPath(t *testing.T) {
 
 /*
 
-ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
+ListenURI              string              `yaml:"listen_uri,omitempty"` //http://127.0.0.1:8080
 	TLS                    *TLSCfg             `yaml:"tls"`
 	DbConfig               *DatabaseCfg        `yaml:"-"`
 	LogDir                 string              `yaml:"-"`
