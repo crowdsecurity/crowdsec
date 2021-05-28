@@ -23,6 +23,10 @@
 
  - Agents connect to local API on port `tcp/8080` (only relevant )
 
+!!! warning
+    If there is an error in the agent configuration, it will also cause the Local API to fail if both of them are running in the same machine !
+    Both components need proper configuration to run (we decide to keep this behavior to detect agent or local API errors on start).
+
 ## Local API -> Central API
 
  - Central API is reached on port `tcp/443` by Local API. The FQDN is `api.crowdsec.net`
