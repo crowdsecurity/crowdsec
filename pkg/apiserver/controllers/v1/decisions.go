@@ -133,7 +133,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	if val, ok := gctx.Request.URL.Query()["scope"]; ok {
 		filters["scope"] = strings.Split(val[0], ",")
 	}
-	log.Warnf("%+v", filters)
+	// log.Warnf("%+v", filters)
 
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
