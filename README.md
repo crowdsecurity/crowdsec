@@ -128,3 +128,12 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/Crowds
 This repository contains the code for the two main components of crowdsec :
  - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristics to logs. This is the component in charge of "detecting" the attacks
  - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
+
+
+## Contributing
+
+If you wish to contribute to the core of crowdsec, you are welcome to open a PR in this repository.
+
+If you wish to add a new parser, scenario or collection, please open a PR in the [hub repository](https://github.com/crowdsecurity/hub).
+
+If you wish to contribute to the documentation, please open a PR in the [documentation repository](http://github.com/crowdsecurity/crowdsec-docs).
