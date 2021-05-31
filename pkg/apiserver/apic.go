@@ -234,7 +234,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 func (a *apic) PullTop() error {
 	var err error
 
-	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup)
+	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup, []string{})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
 	}

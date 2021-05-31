@@ -10,7 +10,7 @@
                 "duration": "1h",
                 "origin": "test",
                 "scenario": "crowdsecurity/test",
-                "scope": "ip",
+                "scope": "Ip",
                 "value": "127.0.0.1",
                 "type": "ban"
             }
