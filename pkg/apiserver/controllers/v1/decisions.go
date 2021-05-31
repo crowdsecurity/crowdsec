@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -127,10 +128,17 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
+	filters := make(map[string][]string)
+	filters["scope"] = []string{"ip", "range"}
+	if val, ok := gctx.Request.URL.Query()["scope"]; ok {
+		filters["scope"] = strings.Split(val[0], ",")
+	}
+	log.Warnf("%+v", filters)
+
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err := c.DBClient.QueryAllDecisions()
+			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -144,7 +152,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 			}
 
 			// getting expired decisions
-			data, err = c.DBClient.QueryExpiredDecisions()
+			data, err = c.DBClient.QueryExpiredDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -172,7 +180,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSince(bouncerInfo.LastPull)
+	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull, filters)
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -186,7 +194,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	// getting expired decisions
-	data, err = c.DBClient.QueryExpiredDecisionsSince(bouncerInfo.LastPull.Add((-2 * time.Second))) // do we want to give exactly lastPull time ?
+	data, err = c.DBClient.QueryExpiredDecisionsSinceWithFilters(bouncerInfo.LastPull.Add((-2 * time.Second)), filters) // do we want to give exactly lastPull time ?
 	if err != nil {
 		log.Errorf("unable to query expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
