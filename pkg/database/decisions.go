@@ -42,10 +42,15 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			}
 		case "scope":
 			for i, scope := range value {
-				if strings.ToLower(scope) == "ip" {
+				switch strings.ToLower(scope) {
+				case "ip":
 					value[i] = types.Ip
-				} else if strings.ToLower(scope) == "range" {
+				case "range":
 					value[i] = types.Range
+				case "country":
+					value[i] = types.Country
+				case "as":
+					value[i] = types.AS
 				}
 			}
 			query = query.Where(decision.ScopeIn(value...))

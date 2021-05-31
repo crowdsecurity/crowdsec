@@ -57,6 +57,8 @@ const (
 	Ip        = "Ip"
 	Range     = "Range"
 	Filter    = "Filter"
+	Country   = "Country"
+	AS        = "AS"
 )
 
 //Move in leakybuckets
