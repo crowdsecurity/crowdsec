@@ -13,6 +13,11 @@ func JsonExtractLib(jsblob string, target ...string) string {
 		jsonparser.StringToBytes(jsblob),
 		target...,
 	)
+	if err == jsonparser.KeyPathNotFoundError {
+		log.Debugf("%+v doesn't exist", target)
+		return ""
+	}
+
 	if err != nil {
 		log.Errorf("jsonExtractLib : %+v : %s", target, err)
 		return ""
@@ -22,7 +27,6 @@ func JsonExtractLib(jsblob string, target ...string) string {
 		return ""
 	}
 	strvalue := string(value)
-	//debug stuff
 	return strvalue
 }
 
