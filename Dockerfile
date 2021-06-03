@@ -1,10 +1,10 @@
-ARG GOVERSION=1.14
+ARG GOVERSION=1.16
 
 FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-RUN apk add --no-cache git jq gcc libc-dev make bash gettext
+RUN apk update && apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold
 
 COPY . .
 
@@ -13,7 +13,7 @@ RUN /bin/bash wizard.sh --docker-mode
 RUN cscli hub update && cscli collections install crowdsecurity/linux
 
 FROM alpine:latest
-RUN wget https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64 -O /usr/bin/yq && chmod +x /usr/bin/yq && apk add tzdata
+RUN apk update --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community && apk add --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq
 COPY --from=build /etc/crowdsec /etc/crowdsec
 COPY --from=build /var/lib/crowdsec /var/lib/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
