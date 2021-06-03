@@ -13,7 +13,7 @@ type AuthService service
 
 // Don't add it to the models, as they are used with LAPI, but the enroll endpoint is specific to CAPI
 type enrollRequest struct {
-	EnrollKey string `json:"attachment_key"`
+	AttachmentKey string `json:"attachment_key"`
 }
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
@@ -61,9 +61,9 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 	return resp, nil
 }
 
-func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string) (*Response, error) {
+func (s *AuthService) EnrollWatcher(ctx context.Context, attachmentKey string) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers/enroll", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &enrollRequest{EnrollKey: enrollKey})
+	req, err := s.client.NewRequest("POST", u, &enrollRequest{AttachmentKey: attachmentKey})
 	if err != nil {
 		return nil, err
 	}
