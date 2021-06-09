@@ -15,14 +15,14 @@ import (
 
 func NewEnrollCmd() *cobra.Command {
 	cmdEnroll := &cobra.Command{
-		Use:   "enroll [attachment-key]",
+		Use:   "enroll [enroll-key]",
 		Short: "Enroll this instance to https://app.crowdsec.net [requires local API]",
 		Long: `
 Enroll this instance to https://app.crowdsec.net
 		
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
-		Example: "cscli enroll YOUR-ATTACHMENT-KEY",
+		Example: "cscli enroll YOUR-ENROLL-KEY",
 		Args:    cobra.ExactArgs(1),
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
