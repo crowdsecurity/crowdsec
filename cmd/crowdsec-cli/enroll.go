@@ -58,7 +58,7 @@ After running this command your will need to validate the enrollment in the weba
 			}
 
 			if len(scenarios) == 0 {
-				log.Fatalf("no scenarios installed, abort")
+				scenarios = make([]string, 0)
 			}
 
 			c, _ := apiclient.NewClient(&apiclient.Config{
