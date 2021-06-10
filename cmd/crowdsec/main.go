@@ -196,18 +196,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
-	// if flags.SingleFilePath != "" {
-	// 	if flags.SingleFileType == "" {
-	// 		return fmt.Errorf("-file requires -type")
-	// 	}
-	// }
-
-	// if flags.SingleJournalctlFilter != "" {
-	// 	if flags.SingleFileType == "" {
-	// 		return fmt.Errorf("-jfilter requires -type")
-	// 	}
-	// }
-
 	if flags.DebugLevel {
 		logLevel := log.DebugLevel
 		cConfig.Common.LogLevel = &logLevel
