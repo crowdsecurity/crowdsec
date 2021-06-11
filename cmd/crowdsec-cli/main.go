@@ -78,7 +78,7 @@ func initConfig() {
 }
 
 var validArgs = []string{
-	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines", "metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard", "config", "completion", "version", "enroll",
+	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines", "metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard", "config", "completion", "version",
 }
 
 func main() {
@@ -148,7 +148,6 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewCapiCmd())
 	rootCmd.AddCommand(NewLapiCmd())
 	rootCmd.AddCommand(NewCompletionCmd())
-	rootCmd.AddCommand(NewEnrollCmd())
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatalf("While executing root command : %s", err)
 	}
