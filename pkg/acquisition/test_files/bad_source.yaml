@@ -1,0 +1,4 @@
+source: does_not_exist
+labels:
+  type: syslog
+foobar: toto

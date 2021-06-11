@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strings"
 
 	_ "net/http/pprof"
 	"time"
@@ -18,6 +17,7 @@ import (
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 
@@ -46,18 +46,16 @@ var (
 )
 
 type Flags struct {
-	ConfigFile             string
-	TraceLevel             bool
-	DebugLevel             bool
-	InfoLevel              bool
-	PrintVersion           bool
-	SingleFilePath         string
-	SingleJournalctlFilter string
-	SingleFileType         string
-	SingleFileJsonOutput   string
-	TestMode               bool
-	DisableAgent           bool
-	DisableAPI             bool
+	ConfigFile     string
+	TraceLevel     bool
+	DebugLevel     bool
+	InfoLevel      bool
+	PrintVersion   bool
+	SingleFileType string
+	OneShotDSN     string
+	TestMode       bool
+	DisableAgent   bool
+	DisableAPI     bool
 }
 
 type parsers struct {
@@ -140,30 +138,19 @@ func LoadBuckets(cConfig *csconfig.Config) error {
 func LoadAcquisition(cConfig *csconfig.Config) error {
 	var err error
 
-	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
-
-		tmpCfg := acquisition.DataSourceCfg{}
-		tmpCfg.Mode = acquisition.CAT_MODE
-		tmpCfg.Labels = map[string]string{"type": flags.SingleFileType}
-
-		if flags.SingleFilePath != "" {
-			tmpCfg.Filename = flags.SingleFilePath
-		} else if flags.SingleJournalctlFilter != "" {
-			tmpCfg.JournalctlFilters = strings.Split(flags.SingleJournalctlFilter, " ")
+	if flags.SingleFileType != "" || flags.OneShotDSN != "" {
+		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
+			return fmt.Errorf("-type requires a -dsn argument")
 		}
 
-		datasrc, err := acquisition.DataSourceConfigure(tmpCfg)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
 		if err != nil {
-			return fmt.Errorf("while configuring specified file datasource : %s", err)
+			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
-		if dataSources == nil {
-			dataSources = make([]acquisition.DataSource, 0)
-		}
-		dataSources = append(dataSources, datasrc)
 	} else {
 		dataSources, err = acquisition.LoadAcquisitionFromFile(cConfig.Crowdsec)
 		if err != nil {
-			log.Fatalf("While loading acquisition configuration : %s", err)
+			return errors.Wrap(err, "while loading acquisition configuration")
 		}
 	}
 
@@ -177,8 +164,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
-	flag.StringVar(&f.SingleFilePath, "file", "", "Process a single file in time-machine")
-	flag.StringVar(&f.SingleJournalctlFilter, "jfilter", "", "Process a single journalctl output in time-machine")
+	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
@@ -210,18 +196,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Fatalf("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.SingleFilePath != "" {
-		if flags.SingleFileType == "" {
-			return fmt.Errorf("-file requires -type")
-		}
-	}
-
-	if flags.SingleJournalctlFilter != "" {
-		if flags.SingleFileType == "" {
-			return fmt.Errorf("-jfilter requires -type")
-		}
-	}
-
 	if flags.DebugLevel {
 		logLevel := log.DebugLevel
 		cConfig.Common.LogLevel = &logLevel
@@ -239,7 +213,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		cConfig.Crowdsec.LintOnly = true
 	}
 
-	if flags.SingleFilePath != "" || flags.SingleJournalctlFilter != "" {
+	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
 		cConfig.API.Server.OnlineClient = nil
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if flags.DisableAPI {
