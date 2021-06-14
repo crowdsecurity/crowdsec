@@ -1,0 +1,13 @@
+filter: "evt.Line.Labels.type == 'testlog'"
+debug: true
+onsuccess: next_stage
+name: tests/base-grok
+pattern_syntax:
+  MYCAP1: ".*"
+nodes:
+  - grok:
+      pattern: ^xxheader %{MYCAP1:extracted_value} trailing stuff$
+      expression: evt.Line.Raw
+statics:
+  - meta: log_type
+    value: parsed_testlog
