@@ -7,6 +7,7 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/logrusorgru/grokky"
+	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/antonmedv/expr/vm"
@@ -77,8 +78,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 	}
 
 	if n.Grok.RunTimeRegexp != nil || n.Grok.TargetField != "" {
-		if n.Grok.TargetField == "" {
-			return fmt.Errorf("grok's apply_on can't be empty")
+		if n.Grok.TargetField == "" && n.Grok.ExpValue == "" {
+			return fmt.Errorf("grok requires 'expression' or 'apply_on'")
 		}
 		if n.Grok.RegexpName == "" && n.Grok.RegexpValue == "" {
 			return fmt.Errorf("grok needs 'pattern' or 'name'")
@@ -232,10 +233,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	if n.Grok.RunTimeRegexp != nil {
 		clog.Tracef("Processing grok pattern : %s : %p", n.Grok.RegexpName, n.Grok.RunTimeRegexp)
 		//for unparsed, parsed etc. set sensible defaults to reduce user hassle
-		if n.Grok.TargetField == "" {
-			clog.Fatalf("not default field and no specified on stage '%s'", n.Stage)
-
-		} else {
+		if n.Grok.TargetField != "" {
 			//it's a hack to avoid using real reflect
 			if n.Grok.TargetField == "Line.Raw" {
 				gstr = p.Line.Raw
@@ -244,9 +242,21 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			} else {
 				clog.Debugf("(%s) target field '%s' doesn't exist in %v", n.rn, n.Grok.TargetField, p.Parsed)
 				NodeState = false
-				//return false, nil
+			}
+		} else if n.Grok.RunTimeValue != nil {
+			output, err := expr.Run(n.Grok.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			if err != nil {
+				clog.Warningf("failed to run RunTimeValue : %v", err)
+				NodeState = false
+			}
+			switch out := output.(type) {
+			case string:
+				gstr = out
+			default:
+				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 			}
 		}
+
 		var groklabel string
 		if n.Grok.RegexpName == "" {
 			groklabel = fmt.Sprintf("%5.5s...", n.Grok.RegexpValue)
@@ -444,6 +454,16 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 		n.Logger.Tracef("%s regexp : %s", n.Grok.RegexpValue, n.Grok.RunTimeRegexp.Regexp.String())
 		valid = true
 	}
+
+	/*if grok source is an expression*/
+	if n.Grok.ExpValue != "" {
+		n.Grok.RunTimeValue, err = expr.Compile(n.Grok.ExpValue,
+			expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			return errors.Wrap(err, "while compiling grok's expression")
+		}
+	}
+
 	/* load grok statics */
 	if len(n.Grok.Statics) > 0 {
 		//compile expr statics if present
