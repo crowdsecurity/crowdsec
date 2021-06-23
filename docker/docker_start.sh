@@ -49,7 +49,7 @@ if [ "$FILE_PATH" != "" ]; then
     ARGS="$ARGS -dsn file://${FILE_PATH}"
 fi
 if [ "$JOURNALCTL_FILTER" != "" ]; then
-    ARGS="$ARGS -jfilter $JOURNALCTL_FILTER"
+    ARGS="$ARGS -dsn journalctl://$JOURNALCTL_FILTER"
 fi
 if [ "$TYPE" != "" ]; then
     ARGS="$ARGS -type $TYPE"
