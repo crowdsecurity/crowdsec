@@ -46,7 +46,7 @@ if [ "$CONFIG_FILE" != "" ]; then
     ARGS="-c $CONFIG_FILE"
 fi
 if [ "$FILE_PATH" != "" ]; then
-    ARGS="$ARGS -file $FILE"
+    ARGS="$ARGS -file $FILE_PATH"
 fi
 if [ "$JOURNALCTL_FILTER" != "" ]; then
     ARGS="$ARGS -jfilter $JOURNALCTL_FILTER"
