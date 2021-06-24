@@ -14,6 +14,8 @@ SYSTEMCTL="sudo systemctl --no-pager"
 
 CROWDSEC="sudo crowdsec"
 CROWDSEC_PROCESS="crowdsec"
+LC_ALL="C"
+
 # helpers
 function fail {
     echo "ACTION FAILED, STOP : $@"

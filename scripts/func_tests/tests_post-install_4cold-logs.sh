@@ -15,7 +15,7 @@ ${SYSTEMCTL} reload crowdsec
 rm  -f ssh-bf.log
 
 for i in `seq 1 10` ; do 
-    LC_ALL=C echo `date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
+    echo `date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
 done;
 
 ${CROWDSEC} -dsn "file://./ssh-bf.log" -type syslog -no-api
