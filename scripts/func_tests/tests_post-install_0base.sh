@@ -3,7 +3,7 @@
 
 source tests_base.sh
 
-
+echo $PATH
 
 ##########################
 ## TEST AGENT/LAPI/CAPI ##
