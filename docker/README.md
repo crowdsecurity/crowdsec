@@ -75,7 +75,7 @@ If you want to be able to restart/stop your container and keep the same DB `-v /
 * `PARSERS`                 - Parsers to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e PARSERS="crowdsecurity/http-logs crowdsecurity/modsecurity"`
 * `POSTOVERFLOWS`           - Postoverflows to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e POSTOVERFLOWS="crowdsecurity/cdn-whitelist"`
 * `CONFIG_FILE`             - Configuration file (default: `/etc/crowdsec/config.yaml`) : `-e CONFIG_FILE="<config_path>"`
-* `DSN`               - Process a single source in time-machine : `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"`
+* `DSN`                     - Process a single source in time-machine : `-e DSN="file:///var/log/toto.log"` or `-e DSN="cloudwatch:///your/group/path:stream_name?profile=dev&backlog=16h"` or `-e DSN="journalctl://filters=_SYSTEMD_UNIT=ssh.service"`
 * `TYPE`                    - [`Labels.type`](https://docs.crowdsec.net/Crowdsec/v1/references/acquisition/) for file in time-machine : `-e TYPE="<type>"`
 * `TEST_MODE`               - Only test configs (default: `false`) : `-e TEST_MODE="<true|false>"`
 * `TZ`                      - Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure logs have a local timestamp.
