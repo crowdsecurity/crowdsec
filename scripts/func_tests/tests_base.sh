@@ -9,7 +9,7 @@ PACKAGE_PATH="${PACKAGE_PATH:-./crowdsec.deb}"
 CSCLI_BIN="cscli"
 CSCLI="sudo ${CSCLI_BIN}"
 JQ="jq -e"
-pathadd("/usr/sbin")
+pathadd /usr/sbin
 
 LC_ALL=C
 SYSTEMCTL="sudo systemctl --no-pager"
