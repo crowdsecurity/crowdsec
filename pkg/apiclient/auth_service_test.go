@@ -179,3 +179,60 @@ func TestWatcherUnregister(t *testing.T) {
 	}
 	log.Printf("->%T", client)
 }
+
+func TestWatcherEnroll(t *testing.T) {
+	log.SetLevel(log.DebugLevel)
+
+	mux, urlx, teardown := setup()
+	defer teardown()
+
+	mux.HandleFunc("/watchers/enroll", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		buf := new(bytes.Buffer)
+		_, _ = buf.ReadFrom(r.Body)
+		newStr := buf.String()
+		log.Debugf("body -> %s", newStr)
+		if newStr == `{"attachment_key":"goodkey"}
+` {
+			log.Print("good key")
+			w.WriteHeader(http.StatusOK)
+			fmt.Fprintf(w, `{"statusCode": 200, "message": "OK"}`)
+		} else {
+			log.Print("bad key")
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintf(w, `{"message":"the attachment key provided is not valid"}`)
+		}
+	})
+	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
+		testMethod(t, r, "POST")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"code":200,"expire":"2029-11-30T14:14:24+01:00","token":"toto"}`)
+	})
+	log.Printf("URL is %s", urlx)
+	apiURL, err := url.Parse(urlx + "/")
+	if err != nil {
+		log.Fatalf("parsing api url: %s", apiURL)
+	}
+
+	mycfg := &Config{
+		MachineID:     "test_login",
+		Password:      "test_password",
+		UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:           apiURL,
+		VersionPrefix: "v1",
+		Scenarios:     []string{"crowdsecurity/test"},
+	}
+	client, err := NewClient(mycfg)
+
+	if err != nil {
+		log.Fatalf("new api client: %s", err.Error())
+	}
+
+	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey")
+	if err != nil {
+		t.Fatalf("unexpect auth err: %s", err)
+	}
+
+	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey")
+	assert.Contains(t, err.Error(), "the attachment key provided is not valid")
+}
