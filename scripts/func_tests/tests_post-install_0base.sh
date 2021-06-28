@@ -105,7 +105,7 @@ ${SYSTEMCTL} start crowdsec
 pidof crowdsec || fail "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-sed '/^ExecStart/s/-no-cs//g' {SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service
+sed '/^ExecStart/s/-no-cs//g' ${SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service
 sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
