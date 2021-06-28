@@ -64,7 +64,9 @@ sleep 1
 pidof crowdsec && fail "crowdsec shouldn't run without LAPI (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-sudo cp ./systemd/crowdsec.service /etc/systemd/system/crowdsec.service
+sed '/^ExecStart/s/-no-api//g' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service
+sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
+
 ${SYSTEMCTL} daemon-reload
 
 # test with no api server in configuration file
@@ -94,7 +96,7 @@ sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
 echo "CROWDSEC (LAPI+CAPI)"
 
 # test with -no-cs flag
-sed '/^ExecStart/s/-no-api/-no-cs/g' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service 
+sed '/^ExecStart/ s/$/ -no-cs/' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service 
 sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service 
 
 
