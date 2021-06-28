@@ -15,6 +15,7 @@ SYSTEMCTL="sudo systemctl --no-pager"
 
 CROWDSEC="sudo crowdsec"
 CROWDSEC_PROCESS="crowdsec"
+
 # helpers
 function fail {
     echo "ACTION FAILED, STOP : $@"
@@ -29,3 +30,11 @@ function pathadd {
 }
 
 pathadd /usr/sbin
+
+if [ -f /etc/systemd/system/crowdsec.service ]; then
+    SYSTEMD_SERVICE_FILE=/etc/systemd/system/crowdsec.service
+elif  [ -f /usr/lib/systemd/system/crowdsec.service ]; then
+    SYSTEMD_SERVICE_FILE=/usr/lib/systemd/system/crowdsec.service
+else
+   fail systemd service file not found
+fi
