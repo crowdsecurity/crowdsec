@@ -10,6 +10,7 @@ CSCLI_BIN="cscli"
 CSCLI="sudo ${CSCLI_BIN}"
 JQ="jq -e"
 
+
 SYSTEMCTL="sudo systemctl --no-pager"
 
 CROWDSEC="sudo crowdsec"
@@ -19,4 +20,10 @@ function fail {
     echo "ACTION FAILED, STOP : $@"
     caller
     exit 1
+}
+
+function pathadd {
+    if [ -d "$1" ] && [[ ":$PATH:" != *":$1:"* ]]; then
+        PATH="${PATH:+"$PATH:"}$1"
+    fi
 }
