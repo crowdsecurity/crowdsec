@@ -55,7 +55,8 @@ ${SYSTEMCTL} stop crowdsec || fail "crowdsec should be down"
 echo "CROWDSEC (AGENT)"
 
 # test with -no-api flag
-sed '/^ExecStart/ s/$/ -no-api/' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service 
+cp ${SYSTEMD_SERVICE_FILE} /tmp/crowdsec.service-orig
+sed '/^ExecStart/ s/$/ -no-api/' ${SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service 
 sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
@@ -64,8 +65,7 @@ sleep 1
 pidof crowdsec && fail "crowdsec shouldn't run without LAPI (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-sed '/^ExecStart/s/-no-api//g' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service
-sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
+sudo cp /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
 
@@ -105,7 +105,7 @@ ${SYSTEMCTL} start crowdsec
 pidof crowdsec || fail "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-sed '/^ExecStart/s/-no-cs//g' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service
+sed '/^ExecStart/s/-no-cs//g' {SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service
 sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
@@ -151,7 +151,6 @@ ${CSCLI} -c ./config/config_no_capi.yaml lapi status || fail "lapi status failed
 ## metrics
 ${CSCLI_BIN} -c ./config/config_no_capi.yaml metrics || fail "failed to get metrics"
 
-sed '/^ExecStart/s/-no-cs//g' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service
-sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service 
+sudo mv /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service 
 
 ${SYSTEMCTL} restart crowdsec
