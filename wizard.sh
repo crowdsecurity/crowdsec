@@ -298,7 +298,7 @@ genacquisition() {
         if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
             log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
             genyamllog ${PSVG} ${DETECTED_LOGFILES[@]}
-	else
+	elif [[ ${PSVG} != "linux" ]] ; then
 	    log_info "using journald for '${PSVG}'"
 	    genyamljournal ${PSVG}
         fi;
