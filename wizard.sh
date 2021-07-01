@@ -523,7 +523,8 @@ function show_link {
 }
 
 main() {
-    if [ "$1" == "install" ] || [ "$1" == "configure" ]; then
+
+    if [ "$1" == "install" ] || [ "$1" == "configure" ] || [ "$1" == "detect" ]; then
         if [ "${SILENT}" == "false" ]; then
             which whiptail > /dev/null
             if [ $? -ne 0 ]; then
