@@ -53,13 +53,12 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if err := metabase.TestAvailability(); err != nil {
+				log.Fatalf("%s", err)
+			}
 
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-
-			if err := metabase.TestAvailability(); err != nil {
-				log.Fatalf("%s", err)
 			}
 
 			metabaseConfigFolderPath := filepath.Join(csConfig.ConfigPaths.ConfigDir, metabaseConfigFolder)
