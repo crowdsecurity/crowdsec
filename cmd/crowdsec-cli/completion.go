@@ -31,7 +31,7 @@ func NewCompletionCmd() *cobra.Command {
   # Troubleshoot:
   If you have this error (bash: _get_comp_words_by_ref: command not found), it seems that you need "bash-completion" dependency :
 
-  $ sudo (yum|apt) install bash-completion
+  * Install bash-completion package
   $ source /etc/profile
   $ source <(cscli completion bash)
 
