@@ -71,6 +71,11 @@ cscli dashboard remove
 				log.Fatalf(err.Error())
 			}
 
+			/*
+				Old container name was "/crowdsec-metabase" but podman doesn't
+				allow '/' in container name. We do this check to not break
+				existing dashboard setup.
+			*/
 			if !metabase.IsContainerExist(metabaseContainerID) {
 				oldContainerID := fmt.Sprintf("/%s", metabaseContainerID)
 				if metabase.IsContainerExist(oldContainerID) {
