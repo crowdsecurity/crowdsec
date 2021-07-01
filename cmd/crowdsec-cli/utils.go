@@ -535,6 +535,13 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 func RestoreHub(dirPath string) error {
 	var err error
 
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+	if err := setHubBranch(); err != nil {
+		return fmt.Errorf("error while setting hub branch: %s", err)
+	}
+
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)
 		if _, err = os.Stat(itemDirectory); err != nil {
