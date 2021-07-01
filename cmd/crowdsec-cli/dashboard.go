@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -53,6 +54,11 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+
+			if runtime.GOARCH != "amd64" {
+				log.Fatalf("cscli dashboard is only available on amd64, but you are running %s", runtime.GOARCH)
+			}
+
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
