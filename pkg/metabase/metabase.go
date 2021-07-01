@@ -3,15 +3,18 @@ package metabase
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -41,14 +44,27 @@ type Config struct {
 var (
 	metabaseDefaultUser     = "crowdsec@crowdsec.net"
 	metabaseDefaultPassword = "!!Cr0wdS3c_M3t4b4s3??"
-	containerName           = "/crowdsec-metabase"
 	metabaseImage           = "metabase/metabase:v0.37.0.2"
 	containerSharedFolder   = "/metabase-data"
-
-	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
+	metabaseSQLiteDBURL     = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
 )
 
-func (m *Metabase) Init() error {
+func TestAvailability() error {
+	if runtime.GOARCH != "amd64" {
+		return fmt.Errorf("cscli dashboard is only available on amd64, but you are running %s", runtime.GOARCH)
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+
+	_, err = cli.Ping(context.TODO())
+	return err
+
+}
+
+func (m *Metabase) Init(containerName string) error {
 	var err error
 	var DBConnectionURI string
 	var remoteDBAddr string
@@ -81,12 +97,12 @@ func (m *Metabase) Init() error {
 	return nil
 }
 
-func NewMetabase(configPath string) (*Metabase, error) {
+func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 	m := &Metabase{}
 	if err := m.LoadConfig(configPath); err != nil {
 		return m, err
 	}
-	if err := m.Init(); err != nil {
+	if err := m.Init(containerName); err != nil {
 		return m, err
 	}
 	return m, nil
@@ -118,15 +134,11 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 	m.Config = config
 
-	if err := m.Init(); err != nil {
-		return err
-	}
-
 	return nil
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string, containerName string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
 			Database:      dbConfig,
@@ -139,7 +151,7 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 			DockerGroupID: dockerGroupID,
 		},
 	}
-	if err := metabase.Init(); err != nil {
+	if err := metabase.Init(containerName); err != nil {
 		return nil, errors.Wrap(err, "metabase setup init")
 	}
 
