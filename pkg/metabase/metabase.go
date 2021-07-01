@@ -3,15 +3,18 @@ package metabase
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"strings"
 	"time"
 
+	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -47,6 +50,21 @@ var (
 
 	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
 )
+
+func TestAvailability() error {
+	if runtime.GOARCH != "amd64" {
+		return fmt.Errorf("cscli dashboard is only available on amd64, but you are running %s", runtime.GOARCH)
+	}
+
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return fmt.Errorf("failed to create docker client : %s", err)
+	}
+
+	_, err = cli.Ping(context.TODO())
+	return err
+
+}
 
 func (m *Metabase) Init() error {
 	var err error

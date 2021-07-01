@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"unicode"
@@ -55,10 +54,6 @@ cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 
-			if runtime.GOARCH != "amd64" {
-				log.Fatalf("cscli dashboard is only available on amd64, but you are running %s", runtime.GOARCH)
-			}
-
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
@@ -72,7 +67,9 @@ cscli dashboard remove
 				log.Errorf("This command requires direct database access (must be run on the local API machine)")
 				log.Fatalf(err.Error())
 			}
-
+			if err := metabase.TestAvailability(); err != nil {
+				log.Fatalf("%s", err)
+			}
 		},
 	}
 
