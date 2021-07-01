@@ -27,7 +27,7 @@ type Container struct {
 	DockerGroupID string
 }
 
-func NewContainer(listenAddr string, listenPort string, sharedFolder string, name string, image string, mbDBURI string, dockerGroupID string) (*Container, error) {
+func NewContainer(listenAddr string, listenPort string, sharedFolder string, containerName string, image string, mbDBURI string, dockerGroupID string) (*Container, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create docker client : %s", err)
@@ -37,7 +37,7 @@ func NewContainer(listenAddr string, listenPort string, sharedFolder string, nam
 		ListenPort:    listenPort,
 		SharedFolder:  sharedFolder,
 		Image:         image,
-		Name:          name,
+		Name:          containerName,
 		CLI:           cli,
 		MBDBUri:       mbDBURI,
 		DockerGroupID: dockerGroupID,

@@ -44,11 +44,9 @@ type Config struct {
 var (
 	metabaseDefaultUser     = "crowdsec@crowdsec.net"
 	metabaseDefaultPassword = "!!Cr0wdS3c_M3t4b4s3??"
-	containerName           = "/crowdsec-metabase"
 	metabaseImage           = "metabase/metabase:v0.37.0.2"
 	containerSharedFolder   = "/metabase-data"
-
-	metabaseSQLiteDBURL = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
+	metabaseSQLiteDBURL     = "https://crowdsec-statics-assets.s3-eu-west-1.amazonaws.com/metabase_sqlite.zip"
 )
 
 func TestAvailability() error {
@@ -91,7 +89,7 @@ func (m *Metabase) Init(containerName string) error {
 	if err != nil {
 		return err
 	}
-	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID, containerName)
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
 	if err != nil {
 		return errors.Wrap(err, "container init")
 	}
