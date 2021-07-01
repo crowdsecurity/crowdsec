@@ -28,7 +28,7 @@ var (
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
-	metabaseContainerID   = "/crowdsec-metabase"
+	metabaseContainerID   = "crowdsec-metabase"
 	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
@@ -58,6 +58,10 @@ cscli dashboard remove
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 
+			if err := metabase.TestAvailability(); err != nil {
+				log.Fatalf("%s", err)
+			}
+
 			metabaseConfigFolderPath := filepath.Join(csConfig.ConfigPaths.ConfigDir, metabaseConfigFolder)
 			metabaseConfigPath = filepath.Join(metabaseConfigFolderPath, metabaseConfigFile)
 			if err := os.MkdirAll(metabaseConfigFolderPath, os.ModePerm); err != nil {
@@ -67,8 +71,12 @@ cscli dashboard remove
 				log.Errorf("This command requires direct database access (must be run on the local API machine)")
 				log.Fatalf(err.Error())
 			}
-			if err := metabase.TestAvailability(); err != nil {
-				log.Fatalf("%s", err)
+
+			if !metabase.IsContainerExist(metabaseContainerID) {
+				oldContainerID := fmt.Sprintf("/%s", metabaseContainerID)
+				if metabase.IsContainerExist(oldContainerID) {
+					metabaseContainerID = oldContainerID
+				}
 			}
 		},
 	}
@@ -137,7 +145,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 			}
 
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -169,7 +177,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 		Long:  `Stats the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath)
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}

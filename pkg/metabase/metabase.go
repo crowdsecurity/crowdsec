@@ -66,7 +66,7 @@ func TestAvailability() error {
 
 }
 
-func (m *Metabase) Init() error {
+func (m *Metabase) Init(containerName string) error {
 	var err error
 	var DBConnectionURI string
 	var remoteDBAddr string
@@ -91,7 +91,7 @@ func (m *Metabase) Init() error {
 	if err != nil {
 		return err
 	}
-	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID)
+	m.Container, err = NewContainer(m.Config.ListenAddr, m.Config.ListenPort, m.Config.DBPath, containerName, metabaseImage, DBConnectionURI, m.Config.DockerGroupID, containerName)
 	if err != nil {
 		return errors.Wrap(err, "container init")
 	}
@@ -99,12 +99,12 @@ func (m *Metabase) Init() error {
 	return nil
 }
 
-func NewMetabase(configPath string) (*Metabase, error) {
+func NewMetabase(configPath string, containerName string) (*Metabase, error) {
 	m := &Metabase{}
 	if err := m.LoadConfig(configPath); err != nil {
 		return m, err
 	}
-	if err := m.Init(); err != nil {
+	if err := m.Init(containerName); err != nil {
 		return m, err
 	}
 	return m, nil
@@ -136,15 +136,11 @@ func (m *Metabase) LoadConfig(configPath string) error {
 
 	m.Config = config
 
-	if err := m.Init(); err != nil {
-		return err
-	}
-
 	return nil
 
 }
 
-func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string) (*Metabase, error) {
+func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort string, username string, password string, mbDBPath string, dockerGroupID string, containerName string) (*Metabase, error) {
 	metabase := &Metabase{
 		Config: &Config{
 			Database:      dbConfig,
@@ -157,7 +153,7 @@ func SetupMetabase(dbConfig *csconfig.DatabaseCfg, listenAddr string, listenPort
 			DockerGroupID: dockerGroupID,
 		},
 	}
-	if err := metabase.Init(); err != nil {
+	if err := metabase.Init(containerName); err != nil {
 		return nil, errors.Wrap(err, "metabase setup init")
 	}
 
