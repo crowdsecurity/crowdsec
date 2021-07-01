@@ -28,12 +28,12 @@ func NewCompletionCmd() *cobra.Command {
 
   $ cscli completion bash | sudo tee /usr/local/etc/bash_completion.d/cscli
 
-	# Troubleshoot:
-	If you have this error (bash: _get_comp_words_by_ref: command not found), it seems that you need "bash-completion" dependency :
+  # Troubleshoot:
+  If you have this error (bash: _get_comp_words_by_ref: command not found), it seems that you need "bash-completion" dependency :
 
-	$ sudo (yum|apt) install bash-completion
-	$ source /etc/profile
-	$ source <(cscli completion bash)
+  $ sudo (yum|apt) install bash-completion
+  $ source /etc/profile
+  $ source <(cscli completion bash)
 
 ### Zsh:
 
