@@ -37,6 +37,4 @@ elif  [ -f /usr/lib/systemd/system/crowdsec.service ]; then
     SYSTEMD_SERVICE_FILE=/usr/lib/systemd/system/crowdsec.service
 elif  [ -f /lib/systemd/system/crowdsec.service ]; then
     SYSTEMD_SERVICE_FILE=/lib/systemd/system/crowdsec.service
-else
-   fail systemd service file not found
 fi
