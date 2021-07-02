@@ -23,6 +23,7 @@ func NewCompletionCmd() *cobra.Command {
   # Linux:
 
   $ cscli completion bash | sudo tee /etc/bash_completion.d/cscli
+  $ source ~/.bashrc
 
   # macOS:
 
