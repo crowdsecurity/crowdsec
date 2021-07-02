@@ -276,6 +276,14 @@ func (a *apic) PullTop() error {
 		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
 
+		/*CAPI might send lower case scopes, unify it.*/
+		switch strings.ToLower(*decision.Scope) {
+		case "ip":
+			*decision.Scope = types.Ip
+		case "range":
+			*decision.Scope = types.Range
+		}
+
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decision.Scope) == "ip" || strings.ToLower(*decision.Scope) == "range" {
 			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decision.Value)
