@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,9 +24,17 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 		return nil, models.WatcherAuthResponse{}, fmt.Errorf("unable to run local API: %s", err)
 	}
 
-	body, err := CreateTestMachine(router)
+	loginResp, err := LoginToTestAPI(router)
 	if err != nil {
 		return nil, models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
+	}
+	return router, loginResp, nil
+}
+
+func LoginToTestAPI(router *gin.Engine) (models.WatcherAuthResponse, error) {
+	body, err := CreateTestMachine(router)
+	if err != nil {
+		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
 	}
 
 	err = ValidateMachine("test")
@@ -41,10 +50,14 @@ func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
 	loginResp := models.WatcherAuthResponse{}
 	err = json.NewDecoder(w.Body).Decode(&loginResp)
 	if err != nil {
-		log.Fatalln(err.Error())
+		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
 	}
+	return loginResp, nil
+}
 
-	return router, loginResp, nil
+func AddAuthHeaders(request *http.Request, authResponse models.WatcherAuthResponse) {
+	request.Header.Add("User-Agent", UserAgent)
+	request.Header.Add("Authorization", fmt.Sprintf("Bearer %s", authResponse.Token))
 }
 
 func TestSimulatedAlert(t *testing.T) {
@@ -61,15 +74,13 @@ func TestSimulatedAlert(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	//exclude decision in simulation mode
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=false", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
@@ -77,8 +88,7 @@ func TestSimulatedAlert(t *testing.T) {
 	//include decision in simulation mode
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), `"message":"Ip 91.121.79.178 performed crowdsecurity/ssh-bf (6 events over `)
@@ -94,8 +104,7 @@ func TestCreateAlert(t *testing.T) {
 	// Create Alert with invalid format
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader("test"))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 400, w.Code)
@@ -110,8 +119,7 @@ func TestCreateAlert(t *testing.T) {
 
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
@@ -126,12 +134,42 @@ func TestCreateAlert(t *testing.T) {
 
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "[\"1\"]", w.Body.String())
+}
+
+func TestCreateAlertChannels(t *testing.T) {
+	apiServer, err := NewAPIServer()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+	loginResp, err := LoginToTestAPI(apiServer.router)
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alertContent := string(alertContentBytes)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	AddAuthHeaders(req, loginResp)
+	var alert []*models.Alert
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		alert = <-apiServer.controller.PluginChannel
+		wg.Done()
+	}()
+	apiServer.controller.Router.ServeHTTP(w, req)
+	wg.Wait()
+	assert.Equal(t, len(alert), 1)
 }
 
 func TestAlertListFilters(t *testing.T) {
@@ -163,15 +201,13 @@ func TestAlertListFilters(t *testing.T) {
 	//create one alert
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	//bad filter
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, "{\"message\":\"Filter parameter 'test' is unknown (=test): invalid filter\"}", w.Body.String())
@@ -179,8 +215,7 @@ func TestAlertListFilters(t *testing.T) {
 	//get without filters
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	//check alert and decision
@@ -190,8 +225,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test decision_type filter (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?decision_type=ban", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -200,8 +234,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test decision_type filter (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?decision_type=ratata", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -209,8 +242,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test scope (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scope=Ip", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -219,8 +251,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test scope (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scope=rarara", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -228,8 +259,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test scenario (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scenario=crowdsecurity/ssh-bf", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -238,8 +268,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test scenario (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?scenario=crowdsecurity/nope", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -247,8 +276,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test ip (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=91.121.79.195", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -257,8 +285,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test ip (bad value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=99.122.77.195", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -266,8 +293,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test ip (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?ip=gruueq", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"unable to convert 'gruueq' to int: invalid address: invalid ip address / range"}`, w.Body.String())
@@ -275,8 +301,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test range (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?range=91.121.79.0/24&contains=false", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -285,8 +310,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test range
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?range=99.122.77.0/24&contains=false", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -294,8 +318,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test range (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?range=ratata", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"unable to convert 'ratata' to int: invalid address: invalid ip address / range"}`, w.Body.String())
@@ -303,8 +326,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test since (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1h", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -313,8 +335,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test since (ok but yelds no results)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1ns", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -322,8 +343,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test since (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?since=1zuzu", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
@@ -331,8 +351,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test until (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1ns", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -341,8 +360,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test until (ok but no return)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1m", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -350,8 +368,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test until (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?until=1zuzu", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Contains(t, w.Body.String(), `{"message":"while parsing duration: time: unknown unit`)
@@ -359,8 +376,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test simulated (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -369,8 +385,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test simulated (ok)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=false", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -379,8 +394,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test has active decision
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?has_active_decision=true", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
@@ -389,8 +403,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test has active decision
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?has_active_decision=false", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, "null", w.Body.String())
@@ -398,8 +411,7 @@ func TestAlertListFilters(t *testing.T) {
 	//test has active decision (invalid value)
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?has_active_decision=ratatqata", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, `{"message":"'ratatqata' is not a boolean: strconv.ParseBool: parsing \"ratatqata\": invalid syntax: unable to parse type"}`, w.Body.String())
@@ -421,14 +433,12 @@ func TestAlertBulkInsert(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 }
@@ -447,15 +457,13 @@ func TestListAlert(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// List Alert with invalid filter
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
 	assert.Equal(t, "{\"message\":\"Filter parameter 'test' is unknown (=test): invalid filter\"}", w.Body.String())
@@ -463,8 +471,7 @@ func TestListAlert(t *testing.T) {
 	// List Alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("GET", "/v1/alerts", nil)
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -515,15 +522,13 @@ func TestDeleteAlert(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// Fail Delete Alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	req.RemoteAddr = "127.0.0.2:4242"
 	router.ServeHTTP(w, req)
 
@@ -533,8 +538,7 @@ func TestDeleteAlert(t *testing.T) {
 	// Delete Alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	req.RemoteAddr = "127.0.0.1:4242"
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)

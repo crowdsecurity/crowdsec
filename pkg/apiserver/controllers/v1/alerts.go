@@ -135,9 +135,15 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 	select {
 	case c.CAPIChan <- input:
-		log.Debugf("alert send to CAPI channel")
+		log.Debugf("alert sent to CAPI channel")
 	default:
 		log.Warningf("Cannot send alert to Central API channel")
+	}
+	select {
+	case c.PluginChannel <- input:
+		log.Info("alert sent to Plugin channel") // TODO: Make this log to debug level.
+	default:
+		log.Warningf("Cannot send alert to Plugin channel") // TODO: What if no plugins are loaded.
 	}
 
 	gctx.JSON(http.StatusCreated, alerts)
