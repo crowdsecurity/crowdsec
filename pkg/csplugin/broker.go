@@ -17,7 +17,6 @@ type ProfileAlert struct {
 }
 
 func (pb *PluginBroker) Run() {
-	log.Info("Hello plugins are loaded")
 	for {
 		profileAlert := <-pb.PluginChannel
 		log.Infof("%+v ", profileAlert)

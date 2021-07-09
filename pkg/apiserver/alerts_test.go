@@ -158,19 +158,26 @@ func TestCreateAlertChannels(t *testing.T) {
 	}
 	alertContent := string(alertContentBytes)
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	var pd csplugin.ProfileAlert
 	wg := sync.WaitGroup{}
 	wg.Add(1)
+	// FIXME: The Pluginbroker and the test both race to empty apiServer.controller.PluginChannel.
+	go func() {
+		for {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+			AddAuthHeaders(req, loginResp)
+			apiServer.controller.Router.ServeHTTP(w, req)
+		}
+	}()
+
+	var pd csplugin.ProfileAlert
 	go func() {
 		pd = <-apiServer.controller.PluginChannel
 		wg.Done()
 	}()
-	apiServer.controller.Router.ServeHTTP(w, req)
 	wg.Wait()
 	assert.Equal(t, len(pd.Alert.Decisions), 1)
+	apiServer.Close()
 }
 
 func TestAlertListFilters(t *testing.T) {

@@ -195,7 +195,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return &APIServer{}, err
 	}
 
-	go func() { // TODO: Run this in tomb with better error handling and failover. 
+	go func() { // TODO: Run this in tomb with better error handling and failover.
 		pluginBroker.Run()
 	}()
 
