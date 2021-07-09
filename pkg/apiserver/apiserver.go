@@ -12,8 +12,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-co-op/gocron"
@@ -186,10 +186,18 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		apiClient = nil
 		controller.CAPIChan = nil
 	}
-	controller.PluginChannel = make(chan []*models.Alert)
+	controller.PluginChannel = make(chan csplugin.ProfileAlert)
+	pluginBroker := csplugin.PluginBroker{
+		ProfileConfigs: config.Profiles,
+		PluginChannel:  controller.PluginChannel,
+	}
 	if err := controller.Init(); err != nil {
 		return &APIServer{}, err
 	}
+
+	go func() { // TODO: Run this in tomb with better error handling and failover. 
+		pluginBroker.Run()
+	}()
 
 	return &APIServer{
 		URL:            config.ListenURI,

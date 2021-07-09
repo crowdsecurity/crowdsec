@@ -57,10 +57,9 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 
 var clog *log.Entry
 
-//EvaluateProfiles is going to evaluate an Alert against a set of profiles to generate Decisions
-func EvaluateProfiles(Profiles []*csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, error) {
+//EvaluateProfile is going to evaluate an Alert against a set of profiles to generate Decisions
+func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, bool, error) {
 	var decisions []*models.Decision
-
 	if clog == nil {
 		xlog := log.New()
 		if err := types.ConfigureLogger(xlog); err != nil {
@@ -72,50 +71,42 @@ func EvaluateProfiles(Profiles []*csconfig.ProfileCfg, Alert *models.Alert) ([]*
 		})
 	}
 
+	matched := false
 	if !Alert.Remediation {
-		return nil, nil
+		return nil, matched, nil
 	}
-PROFILE_LOOP:
-	for _, profile := range Profiles {
-		matched := false
-		for eIdx, expression := range profile.RuntimeFilters {
-			output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
-			if err != nil {
-				log.Warningf("failed to run whitelist expr : %v", err)
-				return nil, errors.Wrapf(err, "while running expression %s", profile.Filters[eIdx])
-			}
-			switch out := output.(type) {
-			case bool:
-				if out {
-					matched = true
-					/*the expression matched, create the associated decision*/
-					subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
-					if err != nil {
-						return nil, errors.Wrapf(err, "while generating decision from profile %s", profile.Name)
-					}
-
-					decisions = append(decisions, subdecisions...)
-				} else {
-					if profile.Debug != nil && *profile.Debug {
-						profile.DebugFilters[eIdx].Run(clog, false, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
-					}
-					log.Debugf("Profile %s filter is unsuccessful", profile.Name)
-					if profile.OnFailure == "break" {
-						break PROFILE_LOOP
-					}
+	for eIdx, expression := range profile.RuntimeFilters {
+		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+		if err != nil {
+			log.Warningf("failed to run whitelist expr : %v", err)
+			return nil, matched, errors.Wrapf(err, "while running expression %s", profile.Filters[eIdx])
+		}
+		switch out := output.(type) {
+		case bool:
+			if out {
+				matched = true
+				/*the expression matched, create the associated decision*/
+				subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
+				if err != nil {
+					return nil, matched, errors.Wrapf(err, "while generating decision from profile %s", profile.Name)
 				}
 
-			default:
-				return nil, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, profile.Filters[eIdx])
-
+				decisions = append(decisions, subdecisions...)
+			} else {
+				if profile.Debug != nil && *profile.Debug {
+					profile.DebugFilters[eIdx].Run(clog, false, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+				}
+				log.Debugf("Profile %s filter is unsuccessful", profile.Name)
+				if profile.OnFailure == "break" {
+					break
+				}
 			}
 
+		default:
+			return nil, matched, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, profile.Filters[eIdx])
+
 		}
-		if matched {
-			if profile.OnSuccess == "break" {
-				break PROFILE_LOOP
-			}
-		}
+
 	}
-	return decisions, nil
+	return decisions, matched, nil
 }

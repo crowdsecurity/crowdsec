@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ type Controller struct {
 	Router        *gin.Engine
 	Profiles      []*csconfig.ProfileCfg
 	CAPIChan      chan []*models.Alert
-	PluginChannel chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
 	Log           *log.Logger
 }
 

@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 
@@ -151,7 +152,7 @@ func TestCreateAlertChannels(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_ssh-bf.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -160,16 +161,16 @@ func TestCreateAlertChannels(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 	AddAuthHeaders(req, loginResp)
-	var alert []*models.Alert
+	var pd csplugin.ProfileAlert
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
-		alert = <-apiServer.controller.PluginChannel
+		pd = <-apiServer.controller.PluginChannel
 		wg.Done()
 	}()
 	apiServer.controller.Router.ServeHTTP(w, req)
 	wg.Wait()
-	assert.Equal(t, len(alert), 1)
+	assert.Equal(t, len(pd.Alert.Decisions), 1)
 }
 
 func TestAlertListFilters(t *testing.T) {
