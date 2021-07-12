@@ -116,18 +116,19 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
-		if len(alert.Decisions) != 0 {
-			continue
-		}
+		// if len(alert.Decisions) != 0 {
+		// 	continue
+		// }
 		for pIdx, profile := range c.Profiles {
-			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
-			if err != nil {
-				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				return
-			}
-			if !matched {
-				continue
-			}
+			// profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
+			profileDecisions, _, _ := csprofiles.EvaluateProfile(profile, alert)
+			// if err != nil {
+			// 	gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			// 	return
+			// }
+			// if !matched {
+			// 	continue
+			// }
 			alert.Decisions = append(alert.Decisions, profileDecisions...)
 			profileAlert := *alert
 			select {

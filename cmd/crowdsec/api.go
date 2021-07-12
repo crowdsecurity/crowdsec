@@ -15,6 +15,19 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
 
+	// if hasPlugins(cConfig.API.Server.Profiles) {
+	// 	log.Info("initing plugin broker")
+	// 	pluginBroker.Init(&csconfig.ProfileCfg{}, &csconfig.ConfigurationPaths{})
+	// 	log.Info("inited plugin broker")
+	// 	apiServer.AttachPluginBroker(&pluginBroker)
+	// 	log.Info("plugin broker attached")
+	// }
+
+	// err = apiServer.InitController()
+	// if err != nil {
+	// 	return nil, fmt.Errorf("unable to run local API: %s", err)
+	// }
+
 	return apiServer, nil
 }
 
@@ -23,6 +36,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		defer types.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
 			defer types.CatchPanic("crowdsec/runAPIServer")
+			pluginBroker.Run()
 			if err := apiServer.Run(); err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -34,4 +48,13 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		}
 		return nil
 	})
+}
+
+func hasPlugins(profiles []*csconfig.ProfileCfg) bool {
+	for _, profile := range profiles {
+		if len(profile.Notifications) != 0 {
+			return true
+		}
+	}
+	return false
 }

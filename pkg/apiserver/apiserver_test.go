@@ -91,6 +91,7 @@ func NewAPIServer() (*APIServer, error) {
 	config := LoadTestConfig()
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
+	// apiServer.InitController()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}

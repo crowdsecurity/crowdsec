@@ -37,7 +37,6 @@ func LoginToTestAPI(router *gin.Engine) (models.WatcherAuthResponse, error) {
 	if err != nil {
 		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
 	}
-
 	err = ValidateMachine("test")
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -143,10 +142,14 @@ func TestCreateAlert(t *testing.T) {
 }
 
 func TestCreateAlertChannels(t *testing.T) {
+
 	apiServer, err := NewAPIServer()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
+	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
+	apiServer.InitController()
+
 	loginResp, err := LoginToTestAPI(apiServer.router)
 	if err != nil {
 		log.Fatalln(err.Error())
@@ -158,22 +161,23 @@ func TestCreateAlertChannels(t *testing.T) {
 	}
 	alertContent := string(alertContentBytes)
 
-	wg := sync.WaitGroup{}
+	var pd csplugin.ProfileAlert
+	var wg sync.WaitGroup
+
 	wg.Add(1)
-	// FIXME: The Pluginbroker and the test both race to empty apiServer.controller.PluginChannel.
+	go func() {
+		pd = <-apiServer.controller.PluginChannel
+		wg.Done()
+	}()
+
 	go func() {
 		for {
 			w := httptest.NewRecorder()
 			req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
 			AddAuthHeaders(req, loginResp)
 			apiServer.controller.Router.ServeHTTP(w, req)
+			break
 		}
-	}()
-
-	var pd csplugin.ProfileAlert
-	go func() {
-		pd = <-apiServer.controller.PluginChannel
-		wg.Done()
 	}()
 	wg.Wait()
 	assert.Equal(t, len(pd.Alert.Decisions), 1)
