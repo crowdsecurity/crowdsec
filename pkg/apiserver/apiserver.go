@@ -185,19 +185,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		apiClient = nil
 		controller.CAPIChan = nil
 	}
-	controller.PluginChannel = make(chan csplugin.ProfileAlert)
-	pluginBroker := csplugin.PluginBroker{
-		ProfileConfigs: config.Profiles,
-		PluginChannel:  controller.PluginChannel,
-	}
+
 	if err := controller.Init(); err != nil {
 		return &APIServer{}, err
 	}
-
-	go func() { // TODO: Run this in tomb with better error handling and failover.
-		pluginBroker.Run()
-	}()
-
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
@@ -288,4 +279,14 @@ func (s *APIServer) Shutdown() error {
 		return err
 	}
 	return nil
+}
+
+func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
+	s.controller.PluginChannel = broker.PluginChannel
+	go func() { broker.Run() }()
+}
+
+func (s *APIServer) InitController() error {
+	err := s.controller.Init()
+	return err
 }

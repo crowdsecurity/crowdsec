@@ -13,6 +13,8 @@ type ConfigurationPaths struct {
 	SimulationFilePath string `yaml:"simulation_path,omitempty"`
 	HubIndexFile       string `yaml:"index_path,omitempty"` //path of the .index.json
 	HubDir             string `yaml:"hub_dir,omitempty"`
+	PluginDir          string `yaml:"plugin_dir,omitempty"`
+	NotificationDir    string `yaml:"notification_dir,omitempty"`
 }
 
 func (c *Config) LoadConfigurationPaths() error {
@@ -39,6 +41,8 @@ func (c *Config) LoadConfigurationPaths() error {
 		&c.ConfigPaths.ConfigDir,
 		&c.ConfigPaths.DataDir,
 		&c.ConfigPaths.SimulationFilePath,
+		&c.ConfigPaths.PluginDir,
+		&c.ConfigPaths.NotificationDir,
 	}
 	for _, k := range configPathsCleanup {
 		if *k == "" {
