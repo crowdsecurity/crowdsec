@@ -48,6 +48,13 @@ curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rp
 yum install crowdsec
 ```
 
+### From package (FreeBSD)
+
+```
+sudo pkg update
+sudo pkg install crowdsec
+```
+
 ### From source
 
 ```sh
@@ -88,7 +95,6 @@ Crowdsec is available for various platforms :
  - An [image](https://hub.docker.com/r/crowdsecurity/crowdsec) is available for docker
  - [Prebuilt release packages](https://github.com/crowdsecurity/crowdsec/releases) are also available (suitable for `amd64`)
  - You can as well [build it from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-from-source)
- - FreeBSD support is [wip](https://github.com/crowdsecurity/crowdsec/issues/651)
 
 Or look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
 
