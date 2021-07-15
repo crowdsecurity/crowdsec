@@ -19,12 +19,12 @@ import (
 )
 
 type PluginBroker struct {
-	ProfileConfigs      []*csconfig.ProfileCfg
-	PluginChannel       chan ProfileAlert
-	NotificationPlugins []Notifier
-	ConfigsByPlugin     map[string][][]byte // "slack" -> []{config1, config2}
-	PluginPaths         []string
-	PluginMap           map[string]plugin.Plugin
+	ProfileConfigs              []*csconfig.ProfileCfg
+	PluginChannel               chan ProfileAlert
+	NotificationConfigsByPlugin map[string][][]byte // "slack" -> []{config1, config2}
+	PluginPaths                 []string
+	PluginMap                   map[string]plugin.Plugin
+	NotificationPluginByName    map[string]Notifier
 }
 
 type ProfileAlert struct {
@@ -32,9 +32,10 @@ type ProfileAlert struct {
 	Alert     *models.Alert
 }
 
-// temporary holder
+// temporary holder to determine where to dispatch config
 type PluginConfig struct {
-	Type string `yaml:"type,"`
+	Type string `yaml:"type"`
+	Name string `yaml:"name"`
 }
 
 var Handshake = plugin.HandshakeConfig{
@@ -44,9 +45,24 @@ var Handshake = plugin.HandshakeConfig{
 	MagicCookieValue: "hello",
 }
 
-func (pb *PluginBroker) Init(profileConfigs *csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
+func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
-	files, err := listFilesAtPath(configPaths.NotificationDir)
+	pb.NotificationConfigsByPlugin = make(map[string][][]byte)
+	pb.NotificationPluginByName = make(map[string]Notifier)
+	pb.PluginMap = make(map[string]plugin.Plugin)
+	pb.ProfileConfigs = profileConfigs
+
+	err := pb.LoadConfig(configPaths.NotificationDir)
+	if err != nil {
+		return err
+	}
+
+	err = pb.LoadPlugins(configPaths.PluginDir)
+	return err
+}
+
+func (pb *PluginBroker) LoadConfig(path string) error {
+	files, err := listFilesAtPath(path)
 	if err != nil {
 		return err
 	}
@@ -60,10 +76,9 @@ func (pb *PluginBroker) Init(profileConfigs *csconfig.ProfileCfg, configPaths *c
 		if err != nil {
 			return err
 		}
-		pb.ConfigsByPlugin[pc.Type] = append(pb.ConfigsByPlugin[pc.Type], data)
+		pb.NotificationConfigsByPlugin[pc.Type] = append(pb.NotificationConfigsByPlugin[pc.Type], data)
 	}
-	err = pb.LoadPlugins(configPaths.PluginDir)
-	return err
+	return nil
 }
 
 func (pb *PluginBroker) LoadPlugins(path string) error {
@@ -83,6 +98,7 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 		}
 		// TODO: assign this by using some sort of map.
 		if Type == "notification" {
+			log.Info("found notification plugin")
 			pb.PluginMap[name] = &NotifierPlugin{}
 			// TODO: do the permission drop here.
 			cmd := exec.Command("sh", "-c", binaryPath)
@@ -101,8 +117,14 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 				return err
 			}
 			pluginClient := raw.(Notifier)
-			pb.NotificationPlugins = append(pb.NotificationPlugins, pluginClient)
-			for _, config := range pb.ConfigsByPlugin[name] {
+			for _, config := range pb.NotificationConfigsByPlugin[name] {
+				pc := PluginConfig{}
+				// TODO: Refactor to avoid double marshalling and drop config once sent to plugin
+				err = yaml.Unmarshal(config, &pc)
+				if err != nil {
+					return err
+				}
+				pb.NotificationPluginByName[pc.Name] = pluginClient
 				pluginClient.Configure(context.Background(), &Config{Config: config})
 			}
 		}
@@ -113,12 +135,13 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 func (pb *PluginBroker) Run() {
 	for {
 		profileAlert := <-pb.PluginChannel
-		for _, plugin := range pb.NotificationPlugins {
-			log.Info("client pushing")
-			plugin.Notify(context.Background(), &Notification{
-				Text: profileAlert.Alert.CreatedAt,
-			})
-			log.Info("client done")
+		log.Info("sending alerts to plugins")
+		for _, pluginName := range pb.ProfileConfigs[profileAlert.ProfileID].Notifications {
+			pb.NotificationPluginByName[pluginName].Notify(
+				context.Background(), &Notification{
+					Text: profileAlert.Alert.CreatedAt,
+				},
+			)
 		}
 	}
 }

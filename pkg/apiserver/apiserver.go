@@ -186,9 +186,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.CAPIChan = nil
 	}
 
-	if err := controller.Init(); err != nil {
-		return &APIServer{}, err
-	}
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
@@ -283,7 +280,6 @@ func (s *APIServer) Shutdown() error {
 
 func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 	s.controller.PluginChannel = broker.PluginChannel
-	go func() { broker.Run() }()
 }
 
 func (s *APIServer) InitController() error {
