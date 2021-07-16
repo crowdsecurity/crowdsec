@@ -3,13 +3,14 @@ package csplugin
 import (
 	"context"
 
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	plugin "github.com/hashicorp/go-plugin"
 	"google.golang.org/grpc"
 )
 
 type Notifier interface {
-	Notify(ctx context.Context, notification *Notification) (*Empty, error)
-	Configure(ctx context.Context, config *Config) (*Empty, error)
+	Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error)
+	Configure(ctx context.Context, cfg *protobufs.Config) (*protobufs.Empty, error)
 }
 
 type NotifierPlugin struct {
@@ -17,20 +18,20 @@ type NotifierPlugin struct {
 	Impl Notifier
 }
 
-type GRPCClient struct{ client NotifierClient }
+type GRPCClient struct{ client protobufs.NotifierClient }
 
-func (m *GRPCClient) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
+func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	_, err := m.client.Notify(
-		context.Background(), &Notification{Text: notification.Text, Name: notification.Name},
+		context.Background(), &protobufs.Notification{Text: notification.Text, Name: notification.Name},
 	)
-	return &Empty{}, err
+	return &protobufs.Empty{}, err
 }
 
-func (m *GRPCClient) Configure(ctx context.Context, config *Config) (*Empty, error) {
+func (m *GRPCClient) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	_, err := m.client.Configure(
-		context.Background(), &Config{Config: config.Config},
+		context.Background(), config,
 	)
-	return &Empty{}, err
+	return &protobufs.Empty{}, err
 }
 
 type GRPCServer struct {
@@ -38,10 +39,10 @@ type GRPCServer struct {
 }
 
 func (p *NotifierPlugin) GRPCServer(broker *plugin.GRPCBroker, s *grpc.Server) error {
-	RegisterNotifierServer(s, p.Impl)
+	protobufs.RegisterNotifierServer(s, p.Impl)
 	return nil
 }
 
 func (p *NotifierPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker, c *grpc.ClientConn) (interface{}, error) {
-	return &GRPCClient{client: NewNotifierClient(c)}, nil
+	return &GRPCClient{client: protobufs.NewNotifierClient(c)}, nil
 }
