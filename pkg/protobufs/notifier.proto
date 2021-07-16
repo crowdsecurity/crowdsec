@@ -1,6 +1,6 @@
 syntax = "proto3" ; 
 package proto;
-option go_package = ".;csplugin";
+option go_package = ".;protobufs";
 
 message Notification {
     string text = 1 ; 

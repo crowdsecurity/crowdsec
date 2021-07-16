@@ -15,6 +15,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	plugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -137,7 +138,7 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 				}
 				pb.PluginConfigByName[pc.Name] = pc
 				pb.NotificationPluginByName[pc.Name] = pluginClient
-				pluginClient.Configure(context.Background(), &Config{Config: config})
+				pluginClient.Configure(context.Background(), &protobufs.Config{Config: config})
 			}
 		}
 	}
@@ -165,7 +166,7 @@ func (pb *PluginBroker) Run() {
 
 			go func(plugin Notifier, name string) {
 				_, err = plugin.Notify(
-					context.TODO(), &Notification{
+					context.TODO(), &protobufs.Notification{
 						Text: b.String(),
 						Name: name,
 					},
