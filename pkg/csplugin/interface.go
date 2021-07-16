@@ -24,7 +24,7 @@ type GRPCClient struct{ client NotifierClient }
 
 func (m *GRPCClient) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
 	_, err := m.client.Notify(
-		context.Background(), &Notification{Text: notification.Text},
+		context.Background(), &Notification{Text: notification.Text, Name: notification.Name},
 	)
 	return &Empty{}, err
 }

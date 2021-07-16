@@ -17,7 +17,10 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initing plugin broker")
-		pluginBroker.Init(cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		err = pluginBroker.Init(cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		if err != nil {
+			return nil, fmt.Errorf("plugin init error %s", err)
+		}
 		log.Info("inited plugin broker")
 		apiServer.AttachPluginBroker(&pluginBroker)
 		log.Info("plugin broker attached")
