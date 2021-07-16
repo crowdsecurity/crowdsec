@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/user"
@@ -18,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	plugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"gopkg.in/yaml.v2"
 )
 
@@ -88,9 +86,10 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 		return err
 	}
 	for _, binaryPath := range binaryPaths {
-		// if !pluginIsValid(binaryPath){
-		// 	continue
-		// }
+		if !pluginIsValid(binaryPath) {
+			log.Errorf("plugin at %s is invalid", binaryPath)
+			continue
+		}
 		name, Type, err := getPluginNameAndTypeFromPath(binaryPath)
 		if err != nil {
 			log.Error(err)
@@ -100,26 +99,25 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 		if Type == "notification" {
 			log.Info("found notification plugin")
 			pb.PluginMap[name] = &NotifierPlugin{}
-			// TODO: do the permission drop here.
 			cmd := exec.Command("sh", "-c", binaryPath)
 			cmd.SysProcAttr = getProccessAtr()
 			uuid, err := getUUID()
 			if err != nil {
 				return err
 			}
-
-			var Handshake = plugin.HandshakeConfig{
-				// This isn't required when using VersionedPlugins
+			handshake := plugin.HandshakeConfig{
 				ProtocolVersion:  1,
 				MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
 				MagicCookieValue: uuid,
 			}
+
 			c := plugin.NewClient(&plugin.ClientConfig{
-				HandshakeConfig:  Handshake,
+				HandshakeConfig:  handshake,
 				Plugins:          pb.PluginMap,
 				Cmd:              cmd,
 				AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 			})
+
 			client, err := c.Client()
 			if err != nil {
 				return err
@@ -128,10 +126,11 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 			if err != nil {
 				return err
 			}
+
 			pluginClient := raw.(Notifier)
 			for _, config := range pb.NotificationConfigsByPlugin[name] {
 				pc := PluginConfig{}
-				// TODO: Refactor to avoid double marshalling and drop config once sent to plugin
+				// TODO: Refactor to avoid double marshalling.
 				err = yaml.Unmarshal(config, &pc)
 				if err != nil {
 					return err
@@ -145,31 +144,38 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 	return nil
 }
 
-func (pb *PluginBroker) Run() error {
+func (pb *PluginBroker) Run() {
 	for {
 		profileAlert := <-pb.PluginChannel
 		for _, pluginName := range pb.ProfileConfigs[profileAlert.ProfileID].Notifications {
+			log.Infof("%s", pluginName)
 			template, err := template.New("").Parse(
 				pb.PluginConfigByName[pluginName].Format,
 			)
 			if err != nil {
-				return err
+				log.Error(err)
 			}
 			b := new(strings.Builder)
 			err = template.Execute(b, profileAlert.Alert)
 			if err != nil {
-				return err
+				log.WithField("plugin:", pluginName).Error(err)
 			}
-			log.Debugf("sending alert to %s", pluginName)
-			go func() {
-				pb.NotificationPluginByName[pluginName].Notify(
-					context.Background(), &Notification{
+			log.Info(b.String())
+			log.WithField("plugin:", pluginName).Infof("receiving alert")
+
+			go func(plugin Notifier, name string) {
+				_, err = plugin.Notify(
+					context.TODO(), &Notification{
 						Text: b.String(),
-						Name: pluginName,
+						Name: name,
 					},
 				)
-			}()
+				if err != nil {
+					log.WithField("plugin:", name).Error(err)
+				}
+			}(pb.NotificationPluginByName[pluginName], pluginName)
 		}
+
 	}
 }
 
@@ -183,20 +189,18 @@ func pluginIsValid(path string) bool {
 		return false
 	}
 
-	// check if it is world-writable
-	if unix.Access(path, unix.W_OK) != nil {
-		return false
-	}
-
 	// check if it is owned by root
 	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != 0 || stat.Gid != 0 {
+		log.Errorf("%s is not owned by root user and group")
 		return false
 	}
-	return true
+
+	// check if it is world writable
+	return (int(details.Mode()) & 2) == 0
 }
 
-// helper which lists all files in the given directory non-recursively
+// helper which gives paths to all files in the given directory non-recursively
 func listFilesAtPath(path string) ([]string, error) {
 	filePaths := make([]string, 0)
 	files, err := os.ReadDir(path)
@@ -236,7 +240,7 @@ func getProccessAtr() *syscall.SysProcAttr {
 }
 
 func getUUID() (string, error) {
-	if d, err := ioutil.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
+	if d, err := os.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
 		return "", err
 	} else {
 		return string(d), nil

@@ -13,10 +13,7 @@ type Notifier interface {
 }
 
 type NotifierPlugin struct {
-	// GRPCPlugin must still implement the Plugin interface
 	plugin.Plugin
-	// Concrete implementation, written in Go. This is only used for plugins
-	// that are written in Go.
 	Impl Notifier
 }
 
@@ -36,9 +33,7 @@ func (m *GRPCClient) Configure(ctx context.Context, config *Config) (*Empty, err
 	return &Empty{}, err
 }
 
-// Here is the gRPC server that GRPCClient talks to.
 type GRPCServer struct {
-	// This is the real implementation
 	Impl Notifier
 }
 

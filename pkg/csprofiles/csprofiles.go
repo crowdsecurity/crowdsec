@@ -70,7 +70,7 @@ func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*mode
 			"type": "profile",
 		})
 	}
-
+	log.Infof("%+v", profile.Filters)
 	matched := false
 	if !Alert.Remediation {
 		return nil, matched, nil
