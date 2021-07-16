@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -22,6 +26,7 @@ type PluginBroker struct {
 	ProfileConfigs              []*csconfig.ProfileCfg
 	PluginChannel               chan ProfileAlert
 	NotificationConfigsByPlugin map[string][][]byte // "slack" -> []{config1, config2}
+	PluginConfigByName          map[string]PluginConfig
 	PluginPaths                 []string
 	PluginMap                   map[string]plugin.Plugin
 	NotificationPluginByName    map[string]Notifier
@@ -34,15 +39,9 @@ type ProfileAlert struct {
 
 // temporary holder to determine where to dispatch config
 type PluginConfig struct {
-	Type string `yaml:"type"`
-	Name string `yaml:"name"`
-}
-
-var Handshake = plugin.HandshakeConfig{
-	// This isn't required when using VersionedPlugins
-	ProtocolVersion:  1,
-	MagicCookieKey:   "BASIC_PLUGIN",
-	MagicCookieValue: "hello",
+	Type   string `yaml:"type"`
+	Name   string `yaml:"name"`
+	Format string `yaml:"format"`
 }
 
 func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
@@ -50,14 +49,15 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	pb.NotificationConfigsByPlugin = make(map[string][][]byte)
 	pb.NotificationPluginByName = make(map[string]Notifier)
 	pb.PluginMap = make(map[string]plugin.Plugin)
+	pb.PluginConfigByName = make(map[string]PluginConfig)
+
 	pb.ProfileConfigs = profileConfigs
 
-	err := pb.LoadConfig(configPaths.NotificationDir)
-	if err != nil {
+	if err := pb.LoadConfig(configPaths.NotificationDir); err != nil {
 		return err
 	}
 
-	err = pb.LoadPlugins(configPaths.PluginDir)
+	err := pb.LoadPlugins(configPaths.PluginDir)
 	return err
 }
 
@@ -102,6 +102,18 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 			pb.PluginMap[name] = &NotifierPlugin{}
 			// TODO: do the permission drop here.
 			cmd := exec.Command("sh", "-c", binaryPath)
+			cmd.SysProcAttr = getProccessAtr()
+			uuid, err := getUUID()
+			if err != nil {
+				return err
+			}
+
+			var Handshake = plugin.HandshakeConfig{
+				// This isn't required when using VersionedPlugins
+				ProtocolVersion:  1,
+				MagicCookieKey:   "CROWDSEC_PLUGIN_KEY",
+				MagicCookieValue: uuid,
+			}
 			c := plugin.NewClient(&plugin.ClientConfig{
 				HandshakeConfig:  Handshake,
 				Plugins:          pb.PluginMap,
@@ -124,6 +136,7 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 				if err != nil {
 					return err
 				}
+				pb.PluginConfigByName[pc.Name] = pc
 				pb.NotificationPluginByName[pc.Name] = pluginClient
 				pluginClient.Configure(context.Background(), &Config{Config: config})
 			}
@@ -132,16 +145,30 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 	return nil
 }
 
-func (pb *PluginBroker) Run() {
+func (pb *PluginBroker) Run() error {
 	for {
 		profileAlert := <-pb.PluginChannel
-		log.Info("sending alerts to plugins")
 		for _, pluginName := range pb.ProfileConfigs[profileAlert.ProfileID].Notifications {
-			pb.NotificationPluginByName[pluginName].Notify(
-				context.Background(), &Notification{
-					Text: profileAlert.Alert.CreatedAt,
-				},
+			template, err := template.New("").Parse(
+				pb.PluginConfigByName[pluginName].Format,
 			)
+			if err != nil {
+				return err
+			}
+			b := new(strings.Builder)
+			err = template.Execute(b, profileAlert.Alert)
+			if err != nil {
+				return err
+			}
+			log.Debugf("sending alert to %s", pluginName)
+			go func() {
+				pb.NotificationPluginByName[pluginName].Notify(
+					context.Background(), &Notification{
+						Text: b.String(),
+						Name: pluginName,
+					},
+				)
+			}()
 		}
 	}
 }
@@ -192,4 +219,26 @@ func getPluginNameAndTypeFromPath(path string) (string, string, error) {
 		return "", "", fmt.Errorf("plugin name %s is invalid. Name should be like {type-name}", path)
 	}
 	return parts[len(parts)-1], strings.Join(parts[:len(parts)-1], "-"), nil
+}
+
+func getProccessAtr() *syscall.SysProcAttr {
+	u, _ := user.Lookup("nobody")
+	g, _ := user.LookupGroup("nogroup")
+	uid, _ := strconv.Atoi(u.Uid)
+	gid, _ := strconv.Atoi(g.Gid)
+
+	return &syscall.SysProcAttr{
+		Credential: &syscall.Credential{
+			Uid: uint32(uid),
+			Gid: uint32(gid),
+		},
+	}
+}
+
+func getUUID() (string, error) {
+	if d, err := ioutil.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
+		return "", err
+	} else {
+		return string(d), nil
+	}
 }
