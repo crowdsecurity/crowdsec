@@ -46,6 +46,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 
 		go func() {
 			pluginBroker.Run()
+			log.Error("plugin broker dead")
 		}()
 		<-apiTomb.Dying() // lock until go routine is dying
 		log.Infof("serve: shutting down api server")
