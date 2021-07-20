@@ -18,12 +18,12 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initing plugin broker")
 		err = pluginBroker.Init(cConfig.API.Server.Profiles, cConfig.ConfigPaths)
-		if err != nil {
-			return nil, fmt.Errorf("plugin init error %s", err)
+		if err == nil {
+			log.Info("inited plugin broker")
+			apiServer.AttachPluginBroker(&pluginBroker)
+		} else {
+			log.Error(err)
 		}
-		log.Info("inited plugin broker")
-		apiServer.AttachPluginBroker(&pluginBroker)
-		log.Info("plugin broker attached")
 	}
 
 	err = apiServer.InitController()
@@ -46,7 +46,6 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 
 		go func() {
 			pluginBroker.Run()
-			log.Error("plugin broker dead")
 		}()
 		<-apiTomb.Dying() // lock until go routine is dying
 		log.Infof("serve: shutting down api server")
