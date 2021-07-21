@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"text/template"
 	"time"
@@ -22,8 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
-
-var pluginLock sync.Mutex
 
 const (
 	PluginProtocolVersion uint   = 1
@@ -74,6 +71,12 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	return err
 }
 
+func (pb *PluginBroker) Kill() {
+	for _, kill := range pb.pluginKillMethods {
+		kill()
+	}
+}
+
 func (pb *PluginBroker) Run() {
 	go pb.watcher.Start()
 	for {
@@ -82,11 +85,11 @@ func (pb *PluginBroker) Run() {
 			pb.addProfileAlert(profileAlert)
 
 		case pluginName := <-pb.watcher.C:
-			go func() {
-				if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
-					log.Error(err)
-				}
-			}()
+			// this can be ran in goroutine, but then locks will be needed
+			if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
+				log.Error(err)
+			}
+			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 		}
 	}
 }
@@ -94,18 +97,11 @@ func (pb *PluginBroker) Run() {
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
-			log.Errorf("binary for notification plugin %s  not found in", pluginName)
+			log.Errorf("binary for plugin %s  not found in", pluginName)
 			continue
 		}
-		pluginLock.Lock()
 		pb.alertsByPluginName[pluginName] = append(pb.alertsByPluginName[pluginName], profileAlert.Alert)
-		pluginLock.Unlock()
-	}
-}
-
-func (pb *PluginBroker) Kill() {
-	for _, kill := range pb.pluginKillMethods {
-		kill()
+		pb.watcher.Inserts <- pluginName
 	}
 }
 
@@ -218,10 +214,6 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 	if err != nil {
 		return err
 	}
-
-	pluginLock.Lock()
-	defer pluginLock.Unlock()
-	pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 	return nil
 }
 
@@ -312,8 +304,6 @@ func formatAlerts(format string, alerts []*models.Alert) (string, error) {
 		return "", err
 	}
 	b := new(strings.Builder)
-	pluginLock.Lock()
-	defer pluginLock.Unlock()
 	err = template.Execute(b, alerts)
 	if err != nil {
 		return "", err
