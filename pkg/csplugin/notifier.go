@@ -2,6 +2,7 @@ package csplugin
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	plugin "github.com/hashicorp/go-plugin"
@@ -21,10 +22,20 @@ type NotifierPlugin struct {
 type GRPCClient struct{ client protobufs.NotifierClient }
 
 func (m *GRPCClient) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
-	_, err := m.client.Notify(
-		context.Background(), &protobufs.Notification{Text: notification.Text, Name: notification.Name},
-	)
-	return &protobufs.Empty{}, err
+	done := make(chan error)
+	go func() {
+		_, err := m.client.Notify(
+			context.Background(), &protobufs.Notification{Text: notification.Text, Name: notification.Name},
+		)
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		return &protobufs.Empty{}, err
+
+	case <-ctx.Done():
+		return &protobufs.Empty{}, fmt.Errorf("timeout exceeded")
+	}
 }
 
 func (m *GRPCClient) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {

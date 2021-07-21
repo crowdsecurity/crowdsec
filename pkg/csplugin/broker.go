@@ -46,6 +46,7 @@ type PluginConfig struct {
 	GroupWait      time.Duration `yaml:"group_wait"`
 	GroupThreshold int           `yaml:"group_threshold"`
 	MaxRetry       int           `yaml:"max_retry"`
+	TimeOut        time.Duration `yaml:"timeout"`
 
 	Format string `yaml:"format"` // specific to notification plugins
 
@@ -122,8 +123,17 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		if err != nil {
 			return err
 		}
+
+		if pc.MaxRetry == 0 {
+			pc.MaxRetry++
+		}
+		if pc.TimeOut == time.Second*0 {
+			pc.TimeOut = time.Second * 5
+		}
+
 		pb.notificationConfigsByPluginType[pc.Type] = append(pb.notificationConfigsByPluginType[pc.Type], data)
 		pb.pluginConfigByName[pc.Name] = pc
+
 	}
 	return nil
 }
@@ -208,17 +218,19 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 	plugin := pb.notificationPluginByName[pluginName]
 	backoffDuration := time.Second
 	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigByName[pluginName].TimeOut)
+		defer cancel()
 		_, err = plugin.Notify(
-			context.Background(),
+			ctx,
 			&protobufs.Notification{
 				Text: message,
 				Name: pluginName,
 			},
 		)
 		if err == nil {
-			break
+			return err
 		}
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", pluginName, i)
+		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err.Error(), i)
 		time.Sleep(backoffDuration)
 		backoffDuration *= 2
 	}
