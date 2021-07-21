@@ -7,30 +7,33 @@ import (
 )
 
 type PluginWatcher struct {
-	PluginConfigByName map[string]PluginConfig
-	AlertsByPluginName map[string][]*models.Alert
-	C                  chan string
+	PluginConfigByName     map[string]PluginConfig
+	AlertCountByPluginName map[string]int
+	C                      chan string
+	Inserts                chan string
 }
 
-func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alerts map[string][]*models.Alert) {
+func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
-	pw.AlertsByPluginName = alerts
-
 	pw.C = make(chan string)
+	pw.AlertCountByPluginName = make(map[string]int)
+	pw.Inserts = make(chan string)
+	for name := range alertsByPluginName {
+		pw.AlertCountByPluginName[name] = 0
+	}
 }
 
 func (pw *PluginWatcher) Start() {
 	for name := range pw.PluginConfigByName {
-		pw.watchPlugin(name)
+		go pw.watchPluginTicker(name)
 	}
-}
-
-func (pw *PluginWatcher) watchPlugin(pluginName string) {
-	go pw.watchPluginTicker(pluginName)
-	go pw.watchPluginAlerts(pluginName)
+	go pw.watchPluginAlertCounts()
 }
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
+	if pw.PluginConfigByName[pluginName].GroupWait <= time.Second*0 {
+		return
+	}
 	ticker := time.NewTicker(pw.PluginConfigByName[pluginName].GroupWait)
 	for {
 		<-ticker.C
@@ -38,17 +41,15 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	}
 }
 
-func (pw *PluginWatcher) watchPluginAlerts(pluginName string) {
-	if pw.PluginConfigByName[pluginName].GroupThreshold <= 0 {
-		return
-	}
-
+func (pw *PluginWatcher) watchPluginAlertCounts() {
 	for {
-		time.Sleep(time.Second) // this is for avoiding busy loop and cpu hogging
-		pluginLock.Lock()
-		if len(pw.AlertsByPluginName[pluginName]) > pw.PluginConfigByName[pluginName].GroupThreshold {
-			pw.C <- pluginName
+		pluginName := <-pw.Inserts
+		if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold < 0 {
+			pw.AlertCountByPluginName[pluginName]++
+			if pw.AlertCountByPluginName[pluginName] > threshold {
+				pw.C <- pluginName
+				pw.AlertCountByPluginName[pluginName] = 0
+			}
 		}
-		pluginLock.Unlock()
 	}
 }
