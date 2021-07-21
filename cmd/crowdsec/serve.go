@@ -239,7 +239,7 @@ func Serve(cConfig *csconfig.Config) error {
 	}
 	if flags.TestMode {
 		log.Infof("test done")
-		pluginBroker.KillPlugins()
+		pluginBroker.Kill()
 		os.Exit(0)
 	}
 

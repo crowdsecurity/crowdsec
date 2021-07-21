@@ -31,16 +31,15 @@ const (
 )
 
 type PluginBroker struct {
-	AlertsByPluginName              map[string][]*models.Alert
-	ProfileConfigs                  []*csconfig.ProfileCfg
 	PluginChannel                   chan ProfileAlert
-	PluginConfigByName              map[string]PluginConfig
-	PluginPaths                     []string
-	PluginMap                       map[string]plugin.Plugin
-	NotificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
-	NotificationPluginByName        map[string]Notifier
-	Ticker                          PluginWatcher
-	PluginKillMethods               []func()
+	alertsByPluginName              map[string][]*models.Alert
+	profileConfigs                  []*csconfig.ProfileCfg
+	pluginConfigByName              map[string]PluginConfig
+	pluginMap                       map[string]plugin.Plugin
+	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
+	notificationPluginByName        map[string]Notifier
+	watcher                         PluginWatcher
+	pluginKillMethods               []func()
 }
 
 // holder to determine where to dispatch config and how to format messages
@@ -58,64 +57,59 @@ type ProfileAlert struct {
 	Alert     *models.Alert
 }
 
-type PluginWatcher struct {
-	PluginConfigByName map[string]PluginConfig
-	TickerByPluginName map[string]*time.Ticker
-	AlertsByPluginName map[string][]*models.Alert
-	C                  chan string
-}
-
-func (mpt *PluginWatcher) Start() {
-	mpt.TickerByPluginName = make(map[string]*time.Ticker)
-	mpt.C = make(chan string)
-	for name, cfg := range mpt.PluginConfigByName {
-		ticker := time.NewTicker(cfg.GroupWait)
-		mpt.TickerByPluginName[name] = ticker
-	}
-
-	for name, cfg := range mpt.PluginConfigByName {
-		go func(name string) {
-			for {
-				<-mpt.TickerByPluginName[name].C
-				mpt.C <- name
-			}
-		}(name)
-
-		if cfg.GroupThreshold == 0 {
-			continue
-		}
-
-		go func(name string, cfg PluginConfig) {
-			for {
-				time.Sleep(time.Second)
-				pluginLock.Lock()
-				if len(mpt.AlertsByPluginName[name]) > cfg.GroupThreshold {
-					mpt.C <- name
-				}
-				pluginLock.Unlock()
-			}
-		}(name, cfg)
-	}
-
-}
-
 func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
-	pb.NotificationConfigsByPluginType = make(map[string][][]byte)
-	pb.NotificationPluginByName = make(map[string]Notifier)
-	pb.PluginMap = make(map[string]plugin.Plugin)
-	pb.PluginConfigByName = make(map[string]PluginConfig)
-	pb.AlertsByPluginName = make(map[string][]*models.Alert)
-	pb.ProfileConfigs = profileConfigs
-	if err := pb.LoadConfig(configPaths.NotificationDir); err != nil {
+	pb.notificationConfigsByPluginType = make(map[string][][]byte)
+	pb.notificationPluginByName = make(map[string]Notifier)
+	pb.pluginMap = make(map[string]plugin.Plugin)
+	pb.pluginConfigByName = make(map[string]PluginConfig)
+	pb.alertsByPluginName = make(map[string][]*models.Alert)
+	pb.profileConfigs = profileConfigs
+	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
 		return err
 	}
-	err := pb.LoadPlugins(configPaths.PluginDir)
-	pb.Ticker = PluginWatcher{PluginConfigByName: pb.PluginConfigByName, AlertsByPluginName: pb.AlertsByPluginName}
+	err := pb.loadPlugins(configPaths.PluginDir)
+	pb.watcher = PluginWatcher{}
+	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 	return err
 }
 
-func (pb *PluginBroker) LoadConfig(path string) error {
+func (pb *PluginBroker) Run() {
+	go pb.watcher.Start()
+	for {
+		select {
+		case profileAlert := <-pb.PluginChannel:
+			pb.addProfileAlert(profileAlert)
+
+		case pluginName := <-pb.watcher.C:
+			go func() {
+				if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
+					log.Error(err)
+				}
+			}()
+		}
+	}
+}
+
+func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
+	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
+		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
+			log.Errorf("binary for notification plugin %s  not found in", pluginName)
+			continue
+		}
+		pluginLock.Lock()
+		pb.alertsByPluginName[pluginName] = append(pb.alertsByPluginName[pluginName], profileAlert.Alert)
+		pluginLock.Unlock()
+	}
+}
+
+func (pb *PluginBroker) Kill() {
+	for _, kill := range pb.pluginKillMethods {
+		kill()
+	}
+}
+
+func (pb *PluginBroker) loadConfig(path string) error {
 	files, err := listFilesAtPath(path)
 	if err != nil {
 		return err
@@ -130,12 +124,13 @@ func (pb *PluginBroker) LoadConfig(path string) error {
 		if err != nil {
 			return err
 		}
-		pb.NotificationConfigsByPluginType[pc.Type] = append(pb.NotificationConfigsByPluginType[pc.Type], data)
+		pb.notificationConfigsByPluginType[pc.Type] = append(pb.notificationConfigsByPluginType[pc.Type], data)
+		pb.pluginConfigByName[pc.Name] = pc
 	}
 	return nil
 }
 
-func (pb *PluginBroker) LoadPlugins(path string) error {
+func (pb *PluginBroker) loadPlugins(path string) error {
 	binaryPaths, err := listFilesAtPath(path)
 	if err != nil {
 		return err
@@ -145,46 +140,49 @@ func (pb *PluginBroker) LoadPlugins(path string) error {
 			log.Errorf("plugin at %s is invalid", binaryPath)
 			continue
 		}
-		name, Type, err := getPluginNameAndTypeFromPath(binaryPath)
+		name, Type, err := getPluginNameAndTypeFromPath(binaryPath) // eg name="slack" , type="notification"
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 		if Type == "notification" {
-			pluginClient, err := pb.LoadNotificationPlugin(name, binaryPath)
+			pluginClient, err := pb.loadNotificationPlugin(name, binaryPath)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
 
-			for _, config := range pb.NotificationConfigsByPluginType[name] {
-				pc := PluginConfig{}
-				err = yaml.Unmarshal(config, &pc)
-				if err != nil {
-					log.Error(err)
+			typesConfigured := make(map[string]struct{})
+			for _, pc := range pb.pluginConfigByName {
+				pb.notificationPluginByName[pc.Name] = pluginClient
+				if _, ok := typesConfigured[pc.Type]; pc.Type != name || ok {
 					continue
 				}
 
-				pb.PluginConfigByName[pc.Name] = pc
-				pb.NotificationPluginByName[pc.Name] = pluginClient
-				pluginClient.Configure(context.Background(), &protobufs.Config{Config: config})
+				for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
+					pluginClient.Configure(
+						context.Background(),
+						&protobufs.Config{Config: cfg},
+					)
+				}
+				typesConfigured[pc.Type] = struct{}{}
 			}
 		}
 	}
 	return err
 }
 
-func (pb *PluginBroker) LoadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
+func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
 	}
 	cmd := exec.Command(binaryPath)
 	cmd.SysProcAttr = getProccessAtr()
-	pb.PluginMap[name] = &NotifierPlugin{}
+	pb.pluginMap[name] = &NotifierPlugin{}
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,
-		Plugins:          pb.PluginMap,
+		Plugins:          pb.pluginMap,
 		Cmd:              cmd,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 	})
@@ -196,25 +194,20 @@ func (pb *PluginBroker) LoadNotificationPlugin(name string, binaryPath string) (
 	if err != nil {
 		return nil, err
 	}
-	pb.PluginKillMethods = append(pb.PluginKillMethods, c.Kill)
+	pb.pluginKillMethods = append(pb.pluginKillMethods, c.Kill)
 	return raw.(Notifier), nil
 }
 
-func (pb *PluginBroker) KillPlugins() {
-	for _, kill := range pb.PluginKillMethods {
-		kill()
+func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
+	if len(pb.alertsByPluginName[pluginName]) == 0 {
+		return nil
 	}
-}
 
-func (pb *PluginBroker) PushNotificationsToPlugin(pluginName string) error {
-	pluginLock.Lock()
-	defer pluginLock.Unlock()
-	message, err := formatAlerts(pb.PluginConfigByName[pluginName].Format, pb.AlertsByPluginName[pluginName])
+	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, pb.alertsByPluginName[pluginName])
 	if err != nil {
 		return err
 	}
-	log.Infof("%d total alerts", len(pb.AlertsByPluginName[pluginName]))
-	plugin := pb.NotificationPluginByName[pluginName]
+	plugin := pb.notificationPluginByName[pluginName]
 	_, err = plugin.Notify(
 		context.Background(),
 		&protobufs.Notification{
@@ -225,37 +218,11 @@ func (pb *PluginBroker) PushNotificationsToPlugin(pluginName string) error {
 	if err != nil {
 		return err
 	}
-	pb.AlertsByPluginName[pluginName] = make([]*models.Alert, 0)
-	return nil
-}
-func (pb *PluginBroker) Run() {
-	go pb.Ticker.Start()
-	for {
-		select {
-		case profileAlert := <-pb.PluginChannel:
-			go func() {
-				pluginLock.Lock()
-				defer pluginLock.Unlock()
-				for _, pluginName := range pb.ProfileConfigs[profileAlert.ProfileID].Notifications {
-					if _, ok := pb.PluginConfigByName[pluginName]; !ok {
-						log.Errorf("binary for notification plugin %s  not found in", pluginName)
-						continue
-					}
-					pb.AlertsByPluginName[pluginName] = append(pb.AlertsByPluginName[pluginName], profileAlert.Alert)
-				}
-			}()
 
-		case pluginName := <-pb.Ticker.C:
-			go func() {
-				if len(pb.AlertsByPluginName[pluginName]) == 0 {
-					return
-				}
-				if err := pb.PushNotificationsToPlugin(pluginName); err != nil {
-					log.Error(err)
-				}
-			}()
-		}
-	}
+	pluginLock.Lock()
+	defer pluginLock.Unlock()
+	pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
+	return nil
 }
 
 func pluginIsValid(path string) bool {
@@ -271,7 +238,7 @@ func pluginIsValid(path string) bool {
 	// check if it is owned by root
 	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != 0 || stat.Gid != 0 {
-		log.Errorf("%s is not owned by root user and group")
+		log.Errorf("%s is not owned by root user and group", path)
 		return false
 	}
 
@@ -345,6 +312,8 @@ func formatAlerts(format string, alerts []*models.Alert) (string, error) {
 		return "", err
 	}
 	b := new(strings.Builder)
+	pluginLock.Lock()
+	defer pluginLock.Unlock()
 	err = template.Execute(b, alerts)
 	if err != nil {
 		return "", err
