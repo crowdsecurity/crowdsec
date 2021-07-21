@@ -106,8 +106,8 @@ func Test_listFilesAtPath(t *testing.T) {
 }
 
 func TestPluginBroker_BuildPluginMap(t *testing.T) {
-	pb := PluginBroker{PluginMap: make(map[string]plugin.Plugin)}
-	err := pb.LoadPlugins("./tests")
+	pb := PluginBroker{pluginMap: make(map[string]plugin.Plugin)}
+	err := pb.loadPlugins("./tests")
 
 	if err != nil {
 		t.Error(err)
@@ -117,7 +117,7 @@ func TestPluginBroker_BuildPluginMap(t *testing.T) {
 		"gitter": &NotifierPlugin{},
 	}
 
-	if !reflect.DeepEqual(expectedPluginMap, pb.PluginMap) {
-		t.Errorf("expected= %v, found= %v", expectedPluginMap, pb.PluginMap)
+	if !reflect.DeepEqual(expectedPluginMap, pb.pluginMap) {
+		t.Errorf("expected= %v, found= %v", expectedPluginMap, pb.pluginMap)
 	}
 }
