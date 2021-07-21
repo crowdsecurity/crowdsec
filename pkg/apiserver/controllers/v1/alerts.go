@@ -132,7 +132,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			profileAlert := *alert
 			select {
 			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(pIdx), Alert: &profileAlert}:
-				log.Info("alert sent to Plugin channel") // TODO: Make this log to debug level.
+				log.Debugf("alert sent to Plugin channel")
 			default:
 				log.Warningf("Cannot send alert to Plugin channel")
 			}
