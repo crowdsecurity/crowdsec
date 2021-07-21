@@ -45,8 +45,10 @@ type PluginConfig struct {
 	Name           string        `yaml:"name"`
 	GroupWait      time.Duration `yaml:"group_wait"`
 	GroupThreshold int           `yaml:"group_threshold"`
+	MaxRetry       int           `yaml:"max_retry"`
 
 	Format string `yaml:"format"` // specific to notification plugins
+
 }
 
 type ProfileAlert struct {
@@ -87,7 +89,7 @@ func (pb *PluginBroker) Run() {
 		case pluginName := <-pb.watcher.C:
 			// this can be ran in goroutine, but then locks will be needed
 			if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
-				log.Error(err)
+				log.WithField("plugin:", pluginName).Error(err)
 			}
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 		}
@@ -204,17 +206,24 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 		return err
 	}
 	plugin := pb.notificationPluginByName[pluginName]
-	_, err = plugin.Notify(
-		context.Background(),
-		&protobufs.Notification{
-			Text: message,
-			Name: pluginName,
-		},
-	)
-	if err != nil {
-		return err
+	backoffDuration := time.Second
+	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
+		_, err = plugin.Notify(
+			context.Background(),
+			&protobufs.Notification{
+				Text: message,
+				Name: pluginName,
+			},
+		)
+		if err == nil {
+			break
+		}
+		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", pluginName, i)
+		time.Sleep(backoffDuration)
+		backoffDuration *= 2
 	}
-	return nil
+
+	return err
 }
 
 func pluginIsValid(path string) bool {
