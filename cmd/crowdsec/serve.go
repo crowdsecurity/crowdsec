@@ -232,7 +232,6 @@ func Serve(cConfig *csconfig.Config) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
-
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
@@ -255,6 +254,7 @@ func Serve(cConfig *csconfig.Config) error {
 	}
 	if flags.TestMode {
 		log.Infof("test done")
+		pluginBroker.Kill()
 		os.Exit(0)
 	}
 

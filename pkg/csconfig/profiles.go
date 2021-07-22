@@ -24,6 +24,7 @@ type ProfileCfg struct {
 	Decisions      []models.Decision           `yaml:"decisions,omitempty"`
 	OnSuccess      string                      `yaml:"on_success,omitempty"` //continue or break
 	OnFailure      string                      `yaml:"on_failure,omitempty"` //continue or break
+	Notifications  []string                    `yaml:"notifications,omitempty"`
 }
 
 func (c *LocalApiServerCfg) LoadProfiles() error {

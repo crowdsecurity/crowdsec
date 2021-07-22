@@ -9,6 +9,7 @@ import (
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -115,13 +116,29 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
-		if len(alert.Decisions) == 0 {
-			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
+		if len(alert.Decisions) != 0 {
+			continue
+		}
+		for pIdx, profile := range c.Profiles {
+			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			alert.Decisions = decisions
+			if !matched {
+				continue
+			}
+			alert.Decisions = append(alert.Decisions, profileDecisions...)
+			profileAlert := *alert
+			select {
+			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(pIdx), Alert: &profileAlert}:
+				log.Debugf("alert sent to Plugin channel")
+			default:
+				log.Warningf("Cannot send alert to Plugin channel")
+			}
+			if profile.OnSuccess == "break" {
+				break
+			}
 		}
 	}
 
@@ -135,11 +152,10 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 	select {
 	case c.CAPIChan <- input:
-		log.Debugf("alert send to CAPI channel")
+		log.Debugf("alert sent to CAPI channel")
 	default:
 		log.Warningf("Cannot send alert to Central API channel")
 	}
-
 	gctx.JSON(http.StatusCreated, alerts)
 	return
 }
