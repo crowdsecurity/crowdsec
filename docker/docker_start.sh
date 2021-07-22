@@ -1,9 +1,14 @@
 #!/bin/sh
 
 # Check if the container has already been started
-cscli machines list | grep 127.0.0.1
-if [ $? == 1 ]; then
-    cscli machines add --force --auto -f /etc/crowdsec/local_api_credentials.yaml
+if [ "$DISABLE_AGENT" == "" ] ; then
+    if [ "$LOCAL_API_URL" != "" ] ; then
+        cscli lapi register --url $LOCAL_API_URL
+    fi
+    cscli machines list | grep localhost
+    if [ $? == 1 ]; then
+        cscli lapi register --machine localhost
+    fi
 fi
 
 # registration to online API for signal push
@@ -58,7 +63,7 @@ fi
 if [ "$DISABLE_AGENT" == "true" ] || [ "$DISABLE_AGENT" == "TRUE" ]; then
     ARGS="$ARGS -no-cs"
 fi
-if [ "$DISABLE_API" == "true" ] || [ "$DISABLE_API" == "TRUE" ]; then
+if [ "$DISABLE_LOCAL_API" == "true" ] || [ "$DISABLE_LOCAL_API" == "TRUE" ]; then
     ARGS="$ARGS -no-api"
 fi
 if [ "$LEVEL_TRACE" == "true" ] || [ "$LEVEL_TRACE" == "TRUE" ]; then
