@@ -195,7 +195,7 @@ cscli machines add MyTestMachine --password MyPassword
 			/*check if file already exists*/
 			if outputFile != "" {
 				dumpFile = outputFile
-			} else if csConfig.API.Client.CredentialsFilePath != "" {
+			} else if csConfig.API.Client != nil && csConfig.API.Client.CredentialsFilePath != "" {
 				dumpFile = csConfig.API.Client.CredentialsFilePath
 			}
 
