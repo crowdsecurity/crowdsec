@@ -241,7 +241,11 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			return nil
 		})
 	}
-	/*return only when acquisition is over (cat) or never (tail)*/
-	err := AcquisTomb.Wait()
-	return err
+	// Don't wait if we have no sources, as it will hang forever
+	if len(sources) > 0 {
+		/*return only when acquisition is over (cat) or never (tail)*/
+		err := AcquisTomb.Wait()
+		return err
+	}
+	return nil
 }
