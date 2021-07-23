@@ -226,7 +226,13 @@ cscli machines add MyTestMachine --password MyPassword
 				if csConfig.API.Client != nil && csConfig.API.Client.Credentials != nil && csConfig.API.Client.Credentials.URL != "" {
 					apiURL = csConfig.API.Client.Credentials.URL
 				} else if csConfig.API.Server != nil && csConfig.API.Server.ListenURI != "" {
-					apiURL = "http://" + csConfig.API.Server.ListenURI
+					if !strings.HasPrefix(csConfig.API.Server.ListenURI, "http") {
+						if csConfig.API.Server.TLS == nil {
+							apiURL = "http://" + csConfig.API.Server.ListenURI
+						} else {
+							apiURL = "https://" + csConfig.API.Server.ListenURI
+						}
+					}
 				} else {
 					log.Fatalf("unable to dump an api URL. Please provide it in your configuration or with the -u parameter")
 				}
