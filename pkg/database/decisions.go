@@ -41,13 +41,19 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scope":
-			var scope string = value[0]
-			if strings.ToLower(scope) == "ip" {
-				scope = types.Ip
-			} else if strings.ToLower(scope) == "range" {
-				scope = types.Range
+			for i, scope := range value {
+				switch strings.ToLower(scope) {
+				case "ip":
+					value[i] = types.Ip
+				case "range":
+					value[i] = types.Range
+				case "country":
+					value[i] = types.Country
+				case "as":
+					value[i] = types.AS
+				}
 			}
-			query = query.Where(decision.ScopeEQ(scope))
+			query = query.Where(decision.ScopeIn(value...))
 		case "value":
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
@@ -165,37 +171,66 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
-func (c *Client) QueryAllDecisions() ([]*ent.Decision, error) {
-	data, err := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now())).All(c.CTX)
+func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now()))
+	query, err := BuildDecisionRequestWithFilter(query, filters)
+
 	if err != nil {
-		c.Log.Warningf("QueryAllDecisions : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions")
+		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
+	}
+
+	data, err := query.All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 	return data, nil
 }
 
-func (c *Client) QueryExpiredDecisions() ([]*ent.Decision, error) {
-	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).All(c.CTX)
+func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now()))
+	query, err := BuildDecisionRequestWithFilter(query, filters)
+
 	if err != nil {
-		c.Log.Warningf("QueryExpiredDecisions : %s", err)
+		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
+	}
+	data, err := query.All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
 	return data, nil
 }
 
-func (c *Client) QueryExpiredDecisionsSince(since time.Time) ([]*ent.Decision, error) {
-	data, err := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since)).All(c.CTX)
+func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since))
+	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
-		c.Log.Warningf("QueryExpiredDecisionsSince : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
+		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
+
+	data, err := query.All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
+	}
+
 	return data, nil
 }
 
-func (c *Client) QueryNewDecisionsSince(since time.Time) ([]*ent.Decision, error) {
-	data, err := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).All(c.CTX)
+func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since))
+	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
-		c.Log.Warningf("QueryNewDecisionsSince : %s", err)
+		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
+	}
+	data, err := query.All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
 	return data, nil

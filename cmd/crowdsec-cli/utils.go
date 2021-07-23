@@ -63,6 +63,11 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Ip
 	case "range":
 		*scope = types.Range
+	case "country":
+		*scope = types.Country
+	case "as":
+		*scope = types.AS
+
 	}
 	return nil
 }
@@ -329,6 +334,10 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 			source, ok := metric.Labels["source"]
 			if !ok {
 				log.Debugf("no source in Metric %v", metric.Labels)
+			} else {
+				if srctype, ok := metric.Labels["type"]; ok {
+					source = srctype + ":" + source
+				}
 			}
 			value := m.(prom2json.Metric).Value
 			fval, err := strconv.ParseFloat(value, 32)
@@ -525,6 +534,13 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 
 func RestoreHub(dirPath string) error {
 	var err error
+
+	if err := csConfig.LoadHub(); err != nil {
+		return err
+	}
+	if err := setHubBranch(); err != nil {
+		return fmt.Errorf("error while setting hub branch: %s", err)
+	}
 
 	for _, itype := range cwhub.ItemTypes {
 		itemDirectory := fmt.Sprintf("%s/%s/", dirPath, itype)

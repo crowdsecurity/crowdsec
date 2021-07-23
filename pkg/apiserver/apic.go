@@ -234,7 +234,7 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 func (a *apic) PullTop() error {
 	var err error
 
-	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup)
+	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup, []string{})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
 	}
@@ -275,6 +275,14 @@ func (a *apic) PullTop() error {
 	for _, decision := range data.New {
 		var start_ip, start_sfx, end_ip, end_sfx int64
 		var sz int
+
+		/*CAPI might send lower case scopes, unify it.*/
+		switch strings.ToLower(*decision.Scope) {
+		case "ip":
+			*decision.Scope = types.Ip
+		case "range":
+			*decision.Scope = types.Range
+		}
 
 		/*if the scope is IP or Range, convert the value to integers */
 		if strings.ToLower(*decision.Scope) == "ip" || strings.ToLower(*decision.Scope) == "range" {

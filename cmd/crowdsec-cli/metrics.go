@@ -134,8 +134,13 @@ func ShowPrometheus(url string) {
 			}
 			source, ok := metric.Labels["source"]
 			if !ok {
-				log.Debugf("no source in Metric %v", metric.Labels)
+				log.Debugf("no source in Metric %v for %s", metric.Labels, fam.Name)
+			} else {
+				if srctype, ok := metric.Labels["type"]; ok {
+					source = srctype + ":" + source
+				}
 			}
+
 			value := m.(prom2json.Metric).Value
 			machine := metric.Labels["machine"]
 			bouncer := metric.Labels["bouncer"]
@@ -180,7 +185,7 @@ func ShowPrometheus(url string) {
 				}
 				buckets_stats[name]["underflow"] += ival
 				/*acquis*/
-			case "cs_reader_hits_total":
+			case "cs_parser_hits_total":
 				if _, ok := acquis_stats[source]; !ok {
 					acquis_stats[source] = make(map[string]int)
 				}

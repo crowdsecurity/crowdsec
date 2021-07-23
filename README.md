@@ -1,6 +1,6 @@
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec/master/docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
+<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
 </br>
 </br>
@@ -36,9 +36,16 @@ Otherwise, you can install it from source.
 ### From package (Debian)
 
 ```sh
-wget -qO - https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/crowdsec.asc |sudo apt-key add - && echo "deb https://s3-eu-west-1.amazonaws.com/crowdsec.debian.pragmatic/$(lsb_release -cs) $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/crowdsec.list > /dev/null
+curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.deb.sh | sudo bash
 sudo apt-get update
 sudo apt-get install crowdsec
+```
+
+### From package (rhel/centos/amazon linux)
+
+```sh
+curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rpm.sh | sudo bash
+yum install crowdsec
 ```
 
 ### From source
@@ -56,7 +63,7 @@ Crowdsec is an open-source, lightweight software, detecting peers with aggressiv
 Processing is done in 4 steps:
 
 <p align="center">
- <img src="docs/assets/images/CS-simplified-treatment.png" alt="CrowdSec" title="CrowdSec" width="844" height="341"/>
+ <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/CS-simplified-treatment.png?raw=true" alt="CrowdSec" title="CrowdSec" width="844" height="341"/>
 </p>
 
 Once an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
@@ -91,35 +98,35 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/Crowds
 
 <details open>
   <summary>Initial configuration is automated, providing functional out-of-the-box setup</summary>
-  <img src="docs/assets/images/crowdsec_install.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/crowdsec_install.gif?raw=true">
 </details>
 
 ### Out of the box detection
 
 <details>
   <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click to expand)</summary>
-  <img src="docs/assets/images/out-of-the-box-protection.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/out-of-the-box-protection.gif?raw=true">
 </details>
 
 ### Easy bouncer deployment
 
 <details>
   <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
-  <img src="docs/assets/images/blocker-installation.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/blocker-installation.gif?raw=true">
 </details>
 
 ### Easy dashboard access
 
 <details>
   <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click to expand)</summary>
-  <img src="docs/assets/images/cscli-metabase.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/cscli-metabase.gif?raw=true">
 </details>
 
 ### Hot & Cold logs
 
 <details>
   <summary>Process cold logs, for forensic, tests and chasing false-positives & false negatives (click to expand)</summary>
-  <img src="docs/assets/images/forensic-mode.gif">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/forensic-mode.gif?raw=true">
 </details>
 
 
@@ -128,3 +135,12 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/Crowds
 This repository contains the code for the two main components of crowdsec :
  - `crowdsec` : the daemon a-la-fail2ban that can read, parse, enrich and apply heuristics to logs. This is the component in charge of "detecting" the attacks
  - `cscli` : the cli tool mainly used to interact with crowdsec : ban/unban/view current bans, enable/disable parsers and scenarios.
+
+
+## Contributing
+
+If you wish to contribute to the core of crowdsec, you are welcome to open a PR in this repository.
+
+If you wish to add a new parser, scenario or collection, please open a PR in the [hub repository](https://github.com/crowdsecurity/hub).
+
+If you wish to contribute to the documentation, please open a PR in the [documentation repository](http://github.com/crowdsecurity/crowdsec-docs).

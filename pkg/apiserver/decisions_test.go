@@ -277,7 +277,7 @@ func TestGetDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
 }
 
@@ -449,5 +449,5 @@ func TestStreamDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
 }

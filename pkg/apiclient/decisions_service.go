@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
@@ -52,10 +53,12 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	return &decisions, resp, nil
 }
 
-func (s *DecisionsService) GetStream(ctx context.Context, startup bool) (*models.DecisionsStreamResponse, *Response, error) {
+func (s *DecisionsService) GetStream(ctx context.Context, startup bool, scopes []string) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-
 	u := fmt.Sprintf("%s/decisions/stream?startup=%t", s.client.URLPrefix, startup)
+	if len(scopes) > 0 {
+		u += "&scopes=" + strings.Join(scopes, ",")
+	}
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err

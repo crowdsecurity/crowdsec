@@ -166,5 +166,6 @@ func NewCapiCmd() *cobra.Command {
 		},
 	}
 	cmdCapi.AddCommand(cmdCapiStatus)
+
 	return cmdCapi
 }

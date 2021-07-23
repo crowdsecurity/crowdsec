@@ -28,7 +28,7 @@ var (
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
-	metabaseContainerID   = "/crowdsec-metabase"
+	metabaseContainerID   = "crowdsec-metabase"
 	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
@@ -53,6 +53,10 @@ cscli dashboard stop
 cscli dashboard remove
 `,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if err := metabase.TestAvailability(); err != nil {
+				log.Fatalf("%s", err)
+			}
+
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
@@ -67,6 +71,17 @@ cscli dashboard remove
 				log.Fatalf(err.Error())
 			}
 
+			/*
+				Old container name was "/crowdsec-metabase" but podman doesn't
+				allow '/' in container name. We do this check to not break
+				existing dashboard setup.
+			*/
+			if !metabase.IsContainerExist(metabaseContainerID) {
+				oldContainerID := fmt.Sprintf("/%s", metabaseContainerID)
+				if metabase.IsContainerExist(oldContainerID) {
+					metabaseContainerID = oldContainerID
+				}
+			}
 		},
 	}
 
@@ -134,7 +149,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				log.Fatalf("unable to chown sqlite db file '%s': %s", csConfig.DbConfig.DbPath, err)
 			}
 
-			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid)
+			mb, err := metabase.SetupMetabase(csConfig.API.Server.DbConfig, metabaseListenAddress, metabaseListenPort, metabaseUser, metabasePassword, metabaseDbPath, dockerGroup.Gid, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
@@ -166,7 +181,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 		Long:  `Stats the metabase container using docker.`,
 		Args:  cobra.ExactArgs(0),
 		Run: func(cmd *cobra.Command, args []string) {
-			mb, err := metabase.NewMetabase(metabaseConfigPath)
+			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}

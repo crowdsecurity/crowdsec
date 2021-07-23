@@ -45,12 +45,10 @@ ARGS=""
 if [ "$CONFIG_FILE" != "" ]; then
     ARGS="-c $CONFIG_FILE"
 fi
-if [ "$FILE_PATH" != "" ]; then
-    ARGS="$ARGS -file $FILE"
+if [ "$DSN" != "" ]; then
+    ARGS="$ARGS -dsn ${DSN}"
 fi
-if [ "$JOURNALCTL_FILTER" != "" ]; then
-    ARGS="$ARGS -jfilter $JOURNALCTL_FILTER"
-fi
+
 if [ "$TYPE" != "" ]; then
     ARGS="$ARGS -type $TYPE"
 fi

@@ -251,7 +251,7 @@ install_collection() {
 
     ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
     if [[ ${SILENT} == "false" ]]; then
-        whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP adresses from being banned, feel free to remove it any time." 20 50
+        whiptail --msgbox "Out of safety, I installed a parser called 'crowdsecurity/whitelists'. This one will prevent private IP addresses from being banned, feel free to remove it any time." 20 50
     fi
 
     if [[ ${SILENT} == "false" ]]; then
@@ -260,7 +260,7 @@ install_collection() {
 }
 
 #$1 is the service name, $... is the list of candidate logs (from find_logs_for)
-genyaml() {
+genyamllog() {
     local service="${1}"
     shift
     local files=("${@}")
@@ -277,13 +277,30 @@ genyaml() {
     log_dbg "tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
 }
 
+genyamljournal() {
+    local service="${1}"
+    shift
+    
+    echo "#Generated acquisition file - wizard.sh (service: ${service}) / files : ${files[@]}" >> ${TMP_ACQUIS_FILE}
+    
+    echo "journalctl_filter:"  >> ${TMP_ACQUIS_FILE}
+    echo " - _SYSTEMD_UNIT="${service}".service"  >> ${TMP_ACQUIS_FILE}
+    echo "labels:"  >> ${TMP_ACQUIS_FILE}
+    echo "  "${log_input_tags[${service}]}  >> ${TMP_ACQUIS_FILE}
+    echo "---"  >> ${TMP_ACQUIS_FILE}
+    log_dbg "tmp acquisition file generated to: ${TMP_ACQUIS_FILE}"
+}
+
 genacquisition() {
     log_dbg "Found following services : "${DETECTED_SERVICES[@]}
     for PSVG in ${DETECTED_SERVICES[@]} ; do
         find_logs_for ${PSVG}
         if [[ ${#DETECTED_LOGFILES[@]} -gt 0 ]] ; then
             log_info "service '${PSVG}': ${DETECTED_LOGFILES[*]}"
-            genyaml ${PSVG} ${DETECTED_LOGFILES[@]}
+            genyamllog ${PSVG} ${DETECTED_LOGFILES[@]}
+	elif [[ ${PSVG} != "linux" ]] ; then
+	    log_info "using journald for '${PSVG}'"
+	    genyamljournal ${PSVG}
         fi;
     done 
 }
@@ -506,7 +523,8 @@ function show_link {
 }
 
 main() {
-    if [ "$1" == "install" ] || [ "$1" == "configure" ]; then
+
+    if [ "$1" == "install" ] || [ "$1" == "configure" ] || [ "$1" == "detect" ]; then
         if [ "${SILENT}" == "false" ]; then
             which whiptail > /dev/null
             if [ $? -ne 0 ]; then
