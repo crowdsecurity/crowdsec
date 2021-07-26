@@ -266,8 +266,8 @@ func (a *apic) PullTop() error {
 	capiPullTopX := models.Alert{}
 	capiPullTopX.Scenario = new(string)
 	*capiPullTopX.Scenario = "capi/community-blocklist"
-	capiPullTopX.Scenario = new(string)
-	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
+	capiPullTopX.Message = new(string)
+	*capiPullTopX.Message = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Source = &models.Source{}
 	capiPullTopX.Source.Scope = new(string)
 	*capiPullTopX.Source.Scope = "Community blocklist"
