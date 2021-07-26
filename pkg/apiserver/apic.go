@@ -266,8 +266,14 @@ func (a *apic) PullTop() error {
 	scenar := fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Scenario = &scenar
 	capiPullTopX.Source = &models.Source{}
-	sourceScope := "Comunity blocklist"
-	capiPullTopX.Source.Scope = &sourceScope
+	capiPullTopX.Source.Scope = new(string)
+	*capiPullTopX.Source.Scope = "Comunity blocklist"
+	capiPullTopX.StartAt = new(string)
+	*capiPullTopX.StartAt = time.Now().Format(time.RFC3339)
+	capiPullTopX.StopAt = new(string)
+	*capiPullTopX.StopAt = time.Now().Format(time.RFC3339)
+	capiPullTopX.Capacity = new(int32)
+	*capiPullTopX.Capacity = 0
 
 	// process new decisions
 	for _, decision := range data.New {
