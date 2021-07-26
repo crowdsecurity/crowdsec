@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -299,11 +302,29 @@ func (a *apic) PullTop() error {
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
 
-	_, err = a.dbClient.CreateSingleAlertWithBulk(CapiMachineID, &capiPullTopX)
+	alertID, err := a.dbClient.CreateSingleAlertWithBulk(CapiMachineID, &capiPullTopX)
 	if err != nil {
-		log.Errorf("error while saving alert from capi/comunity-blocklist : %s", err)
+		log.Errorf("error while saving alert from capi/community-blocklist : %s", err)
 	}
+
 	log.Printf("pull top: added %d entries", len(data.New))
+
+	intID, err := strconv.Atoi(alertID)
+	if err != nil {
+		return errors.Wrap(err, "while converting alert ID")
+	}
+	/*Deleting older decisions from capi*/
+	decisions_count, err := a.dbClient.Ent.Decision.Delete().
+		Where(decision.And(
+			decision.OriginEQ(CapiMachineID),
+			decision.Not(decision.HasOwnerWith(alert.IDEQ(intID))),
+		)).Exec(a.dbClient.CTX)
+	if err != nil {
+		return errors.Wrap(err, "while deleting older community blocklist decisions")
+	}
+	log.Infof("deleted %d older entries", decisions_count)
+
+	//.Decisions.Delete()
 	return nil
 }
 
