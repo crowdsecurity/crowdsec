@@ -125,13 +125,19 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
 		var events []*ent.Event
+		var owner *ent.Machine
+		var err error
 
-		owner, err := c.QueryMachineByID(machineId)
-		if err != nil {
-			if errors.Cause(err) != UserNotExists {
-				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
+		if machineId != "CAPI" {
+			owner, err = c.QueryMachineByID(machineId)
+			if err != nil {
+				if errors.Cause(err) != UserNotExists {
+					return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
+				}
+				c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
+				owner = nil
 			}
-			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
+		} else {
 			owner = nil
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
@@ -143,9 +149,11 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if err != nil {
 			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
 		}
-		/*display proper alert in logs*/
-		for _, disp := range formatAlertAsString(machineId, alertItem) {
-			c.Log.Info(disp)
+		if machineId != "CAPI" {
+			/*display proper alert in logs*/
+			for _, disp := range formatAlertAsString(machineId, alertItem) {
+				c.Log.Info(disp)
+			}
 		}
 
 		if len(alertItem.Events) > 0 {
