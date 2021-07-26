@@ -270,6 +270,10 @@ func (c *Client) CreateSingleAlertWithBulk(machineId string, alertItem *models.A
 				} else {
 					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
 				}
+				// The 90's called, they want their concurrency back.
+				// This is needed for sqlite, which does not support concurrent access while writing.
+				// If we pull a large number of IPs from CAPI, and we have a slow disk, LAPI won't respond until all IPs are inserted (which can take up to a few seconds).
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 		_, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
