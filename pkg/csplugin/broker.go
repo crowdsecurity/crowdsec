@@ -127,8 +127,13 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		if pc.MaxRetry == 0 {
 			pc.MaxRetry++
 		}
+
 		if pc.TimeOut == time.Second*0 {
 			pc.TimeOut = time.Second * 5
+		}
+
+		if pc.GroupWait == time.Second*0 {
+			pc.GroupWait = time.Second * 1
 		}
 
 		pb.notificationConfigsByPluginType[pc.Type] = append(pb.notificationConfigsByPluginType[pc.Type], data)
@@ -153,28 +158,29 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			log.Error(err)
 			continue
 		}
-		if Type == "notification" {
-			pluginClient, err := pb.loadNotificationPlugin(name, binaryPath)
-			if err != nil {
-				log.Error(err)
+		if Type != "notification" {
+			continue
+		}
+
+		pluginClient, err := pb.loadNotificationPlugin(name, binaryPath)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		typesConfigured := make(map[string]struct{})
+		for _, pc := range pb.pluginConfigByName {
+			if _, ok := typesConfigured[pc.Type]; pc.Type != name || ok {
 				continue
 			}
-
-			typesConfigured := make(map[string]struct{})
-			for _, pc := range pb.pluginConfigByName {
-				pb.notificationPluginByName[pc.Name] = pluginClient
-				if _, ok := typesConfigured[pc.Type]; pc.Type != name || ok {
-					continue
-				}
-
-				for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
-					pluginClient.Configure(
-						context.Background(),
-						&protobufs.Config{Config: cfg},
-					)
-				}
-				typesConfigured[pc.Type] = struct{}{}
+			pb.notificationPluginByName[pc.Name] = pluginClient
+			for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
+				pluginClient.Configure(
+					context.Background(),
+					&protobufs.Config{Config: cfg},
+				)
 			}
+			typesConfigured[pc.Type] = struct{}{}
 		}
 	}
 	return err
