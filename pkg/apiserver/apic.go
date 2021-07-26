@@ -265,12 +265,12 @@ func (a *apic) PullTop() error {
 
 	capiPullTopX := models.Alert{}
 	capiPullTopX.Scenario = new(string)
-	*capiPullTopX.Scenario = "capi/comunity-blocklist"
+	*capiPullTopX.Scenario = "capi/community-blocklist"
 	capiPullTopX.Scenario = new(string)
 	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Source = &models.Source{}
 	capiPullTopX.Source.Scope = new(string)
-	*capiPullTopX.Source.Scope = "Comunity blocklist"
+	*capiPullTopX.Source.Scope = "Community blocklist"
 	capiPullTopX.Source.Scope = new(string)
 
 	capiPullTopX.StartAt = new(string)
@@ -301,7 +301,10 @@ func (a *apic) PullTop() error {
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
 
-	a.dbClient.CreateAlertBulk(CapiMachineID, []*models.Alert{&capiPullTopX})
+	_, err = a.dbClient.CreateAlertBulk(CapiMachineID, []*models.Alert{&capiPullTopX})
+	if err != nil {
+		log.Errorf("error while saving alert from capi/comunity-blocklist : %s", err)
+	}
 	log.Printf("pull top: added %d entries", len(data.New))
 	return nil
 }
