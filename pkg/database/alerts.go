@@ -286,7 +286,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 	ret := []string{}
 	bulkSize := 20
-	decisionBulkSize := 50
 
 	c.Log.Debugf("writting %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
@@ -294,19 +293,13 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
 		var events []*ent.Event
-		var owner *ent.Machine
-		var err error
 
-		if machineId != "CAPI" {
-			owner, err = c.QueryMachineByID(machineId)
-			if err != nil {
-				if errors.Cause(err) != UserNotExists {
-					return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
-				}
-				c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
-				owner = nil
+		owner, err := c.QueryMachineByID(machineId)
+		if err != nil {
+			if errors.Cause(err) != UserNotExists {
+				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
 			}
-		} else {
+			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
 			owner = nil
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
@@ -318,11 +311,9 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if err != nil {
 			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
 		}
-		if machineId != "CAPI" {
-			/*display proper alert in logs*/
-			for _, disp := range formatAlertAsString(machineId, alertItem) {
-				c.Log.Info(disp)
-			}
+		/*display proper alert in logs*/
+		for _, disp := range formatAlertAsString(machineId, alertItem) {
+			c.Log.Info(disp)
 		}
 
 		if len(alertItem.Events) > 0 {
@@ -366,7 +357,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			ts = time.Now()
 		}
 		if len(alertItem.Decisions) > 0 {
-			decisionBulk := make([]*ent.DecisionCreate, decisionBulkSize)
+			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
 			for i, decisionItem := range alertItem.Decisions {
 				var start_ip, start_sfx, end_ip, end_sfx int64
 				var sz int
@@ -383,8 +374,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
-
-				decisionBulk = append(decisionBulk, c.Ent.Decision.Create().
+				decisionBulk[i] = c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
@@ -396,19 +386,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
-					SetSimulated(*alertItem.Simulated))
-				if len(decisionBulk) == decisionBulkSize {
-					_, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-					if err != nil {
-						return []string{}, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
-					}
-
-					if len(alertItem.Decisions)-i <= decisionBulkSize {
-						decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
-					} else {
-						decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
-					}
-				}
+					SetSimulated(*alertItem.Simulated)
 			}
 			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
@@ -438,6 +416,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
+			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
 
