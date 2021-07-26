@@ -265,14 +265,12 @@ func (a *apic) PullTop() error {
 
 	capiPullTopX := models.Alert{}
 	capiPullTopX.Scenario = new(string)
-	*capiPullTopX.Scenario = "capi/community-blocklist"
+	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Message = new(string)
-	*capiPullTopX.Message = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Source = &models.Source{}
 	capiPullTopX.Source.Scope = new(string)
-	*capiPullTopX.Source.Scope = "Community blocklist"
+	*capiPullTopX.Source.Scope = "crowdsec/community-blocklist"
 	capiPullTopX.Source.Value = new(string)
-
 	capiPullTopX.StartAt = new(string)
 	*capiPullTopX.StartAt = time.Now().Format(time.RFC3339)
 	capiPullTopX.StopAt = new(string)

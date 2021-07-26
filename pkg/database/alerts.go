@@ -226,7 +226,7 @@ func (c *Client) CreateSingleAlertWithBulk(machineId string, alertItem *models.A
 	}
 
 	if len(alertItem.Decisions) > 0 {
-		decisionBulk := make([]*ent.DecisionCreate, decisionBulkSize)
+		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
