@@ -25,6 +25,7 @@ const (
 	PullInterval    = "2h"
 	PushInterval    = "30s"
 	MetricsInterval = "30m"
+	CapiMachineID   = "CAPI"
 )
 
 type apic struct {
@@ -263,17 +264,29 @@ func (a *apic) PullTop() error {
 	}
 
 	capiPullTopX := models.Alert{}
-	scenar := fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
-	capiPullTopX.Scenario = &scenar
+	capiPullTopX.Scenario = new(string)
+	*capiPullTopX.Scenario = "capi/comunity-blocklist"
+	capiPullTopX.Scenario = new(string)
+	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
 	capiPullTopX.Source = &models.Source{}
 	capiPullTopX.Source.Scope = new(string)
 	*capiPullTopX.Source.Scope = "Comunity blocklist"
+	capiPullTopX.Source.Scope = new(string)
+
 	capiPullTopX.StartAt = new(string)
 	*capiPullTopX.StartAt = time.Now().Format(time.RFC3339)
 	capiPullTopX.StopAt = new(string)
 	*capiPullTopX.StopAt = time.Now().Format(time.RFC3339)
 	capiPullTopX.Capacity = new(int32)
 	*capiPullTopX.Capacity = 0
+	capiPullTopX.Simulated = new(bool)
+	*capiPullTopX.Simulated = false
+	capiPullTopX.EventsCount = new(int32)
+	*capiPullTopX.EventsCount = int32(len(data.New))
+	capiPullTopX.Capacity = new(int32)
+	capiPullTopX.Leakspeed = new(string)
+	capiPullTopX.ScenarioHash = new(string)
+	capiPullTopX.ScenarioVersion = new(string)
 
 	// process new decisions
 	for _, decision := range data.New {
@@ -287,7 +300,8 @@ func (a *apic) PullTop() error {
 		}
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
-	a.dbClient.CreateAlertBulk("CAPI", []*models.Alert{&capiPullTopX})
+
+	a.dbClient.CreateAlertBulk(CapiMachineID, []*models.Alert{&capiPullTopX})
 	log.Printf("pull top: added %d entries", len(data.New))
 	return nil
 }
