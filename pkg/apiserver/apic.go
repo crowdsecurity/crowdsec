@@ -262,19 +262,15 @@ func (a *apic) PullTop() error {
 		log.Printf("pull top: deleted %s entries", nbDeleted)
 	}
 
-	alertCreated, err := a.dbClient.Ent.Alert.
-		Create().
-		SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
-		SetSourceScope("Community blocklist").
-		Save(a.dbClient.CTX)
-	if err != nil {
-		return errors.Wrap(err, "create alert from crowdsec-api")
-	}
+	capiPullTopX := models.Alert{}
+	scenar := fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
+	capiPullTopX.Scenario = &scenar
+	capiPullTopX.Source = &models.Source{}
+	sourceScope := "Comunity blocklist"
+	capiPullTopX.Source.Scope = &sourceScope
 
 	// process new decisions
 	for _, decision := range data.New {
-		var start_ip, start_sfx, end_ip, end_sfx int64
-		var sz int
 
 		/*CAPI might send lower case scopes, unify it.*/
 		switch strings.ToLower(*decision.Scope) {
@@ -283,36 +279,9 @@ func (a *apic) PullTop() error {
 		case "range":
 			*decision.Scope = types.Range
 		}
-
-		/*if the scope is IP or Range, convert the value to integers */
-		if strings.ToLower(*decision.Scope) == "ip" || strings.ToLower(*decision.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decision.Value)
-			if err != nil {
-				return errors.Wrapf(err, "invalid ip/range %s", *decision.Value)
-			}
-		}
-
-		duration, err := time.ParseDuration(*decision.Duration)
-		if err != nil {
-			return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
-		}
-		_, err = a.dbClient.Ent.Decision.Create().
-			SetUntil(time.Now().Add(duration)).
-			SetScenario(*decision.Scenario).
-			SetType(*decision.Type).
-			SetIPSize(int64(sz)).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetValue(*decision.Value).
-			SetScope(*decision.Scope).
-			SetOrigin(*decision.Origin).
-			SetOwner(alertCreated).Save(a.dbClient.CTX)
-		if err != nil {
-			return errors.Wrap(err, "decision creation from crowdsec-api:")
-		}
+		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
+	a.dbClient.CreateAlertBulk("CAPI", []*models.Alert{&capiPullTopX})
 	log.Printf("pull top: added %d entries", len(data.New))
 	return nil
 }

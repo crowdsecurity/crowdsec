@@ -55,7 +55,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 func (s *DecisionsService) GetStream(ctx context.Context, startup bool, scopes []string) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-	u := fmt.Sprintf("%s/decisions/stream?startup=%t", s.client.URLPrefix, startup)
+	u := fmt.Sprintf("%s/decisions/7facf0?startup=%t", s.client.URLPrefix, startup)
 	if len(scopes) > 0 {
 		u += "&scopes=" + strings.Join(scopes, ",")
 	}
