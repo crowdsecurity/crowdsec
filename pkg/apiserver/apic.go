@@ -266,6 +266,11 @@ func (a *apic) PullTop() error {
 		log.Printf("pull top: deleted %s entries", nbDeleted)
 	}
 
+	if len(data.New) == 0 {
+		log.Warnf("pull top: received 0 new entries, CAPI failure ?")
+		return nil
+	}
+
 	capiPullTopX := models.Alert{}
 	capiPullTopX.Scenario = new(string)
 	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
