@@ -301,7 +301,7 @@ func (a *apic) PullTop() error {
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
 
-	_, err = a.dbClient.CreateAlertBulk(CapiMachineID, []*models.Alert{&capiPullTopX})
+	_, err = a.dbClient.CreateSingleAlertWithBulk(CapiMachineID, &capiPullTopX)
 	if err != nil {
 		log.Errorf("error while saving alert from capi/comunity-blocklist : %s", err)
 	}
