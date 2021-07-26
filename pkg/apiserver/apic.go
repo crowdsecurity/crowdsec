@@ -271,7 +271,7 @@ func (a *apic) PullTop() error {
 	capiPullTopX.Source = &models.Source{}
 	capiPullTopX.Source.Scope = new(string)
 	*capiPullTopX.Source.Scope = "Community blocklist"
-	capiPullTopX.Source.Scope = new(string)
+	capiPullTopX.Source.Value = new(string)
 
 	capiPullTopX.StartAt = new(string)
 	*capiPullTopX.StartAt = time.Now().Format(time.RFC3339)
