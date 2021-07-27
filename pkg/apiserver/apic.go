@@ -272,27 +272,19 @@ func (a *apic) PullTop() error {
 	}
 
 	capiPullTopX := models.Alert{}
-	capiPullTopX.Scenario = new(string)
-	*capiPullTopX.Scenario = fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))
-	capiPullTopX.Message = new(string)
+	capiPullTopX.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted)))
+	capiPullTopX.Message = types.StrPtr("")
 	capiPullTopX.Source = &models.Source{}
-	capiPullTopX.Source.Scope = new(string)
-	*capiPullTopX.Source.Scope = "crowdsec/community-blocklist"
-	capiPullTopX.Source.Value = new(string)
-	capiPullTopX.StartAt = new(string)
-	*capiPullTopX.StartAt = time.Now().Format(time.RFC3339)
-	capiPullTopX.StopAt = new(string)
-	*capiPullTopX.StopAt = time.Now().Format(time.RFC3339)
-	capiPullTopX.Capacity = new(int32)
-	*capiPullTopX.Capacity = 0
-	capiPullTopX.Simulated = new(bool)
-	*capiPullTopX.Simulated = false
-	capiPullTopX.EventsCount = new(int32)
-	*capiPullTopX.EventsCount = int32(len(data.New))
-	capiPullTopX.Capacity = new(int32)
-	capiPullTopX.Leakspeed = new(string)
-	capiPullTopX.ScenarioHash = new(string)
-	capiPullTopX.ScenarioVersion = new(string)
+	capiPullTopX.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
+	capiPullTopX.Source.Value = types.StrPtr("")
+	capiPullTopX.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
+	capiPullTopX.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+	capiPullTopX.Capacity = types.Int32Ptr(0)
+	capiPullTopX.Simulated = types.BoolPtr(false)
+	capiPullTopX.EventsCount = types.Int32Ptr(int32(len(data.New)))
+	capiPullTopX.Leakspeed = types.StrPtr("")
+	capiPullTopX.ScenarioHash = types.StrPtr("")
+	capiPullTopX.ScenarioVersion = types.StrPtr("")
 
 	// process new decisions
 	for _, decision := range data.New {
