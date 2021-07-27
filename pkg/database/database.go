@@ -29,6 +29,17 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if config == nil {
 		return &Client{}, fmt.Errorf("DB config is empty")
 	}
+	/*The logger that will be used by db operations*/
+	clog := log.New()
+	if err := types.ConfigureLogger(clog); err != nil {
+		return nil, errors.Wrap(err, "while configuring db logger")
+	}
+	if config.LogLevel != nil {
+		clog.SetLevel(*config.LogLevel)
+	}
+	entLogger := clog.WithField("context", "ent")
+
+	entOpt := ent.Log(entLogger.Debug)
 	switch config.Type {
 	case "sqlite":
 
@@ -46,17 +57,17 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 			}
 		}
-		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath))
+		client, err = ent.Open("sqlite3", fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath), entOpt)
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to sqlite: %v", err)
 		}
 	case "mysql":
-		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName))
+		client, err = ent.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=True", config.User, config.Password, config.Host, config.Port, config.DbName), entOpt)
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to mysql: %v", err)
 		}
 	case "postgres", "postgresql":
-		client, err = ent.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", config.Host, config.Port, config.User, config.DbName, config.Password, config.Sslmode))
+		client, err = ent.Open("postgres", fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=%s", config.Host, config.Port, config.User, config.DbName, config.Password, config.Sslmode), entOpt)
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to postgres: %v", err)
 		}
@@ -64,17 +75,9 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		return &Client{}, fmt.Errorf("unknown database type")
 	}
 
-	/*The logger that will be used by db operations*/
-	clog := log.New()
-	if err := types.ConfigureLogger(clog); err != nil {
-		return nil, errors.Wrap(err, "while configuring db logger")
-	}
-	if config.LogLevel != nil {
-		clog.SetLevel(*config.LogLevel)
-		if *config.LogLevel >= log.DebugLevel {
-			clog.Debugf("Enabling request debug")
-			client = client.Debug()
-		}
+	if *config.LogLevel >= log.DebugLevel {
+		clog.Debugf("Enabling request debug")
+		client = client.Debug()
 	}
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
