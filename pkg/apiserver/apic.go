@@ -247,6 +247,7 @@ func (a *apic) PullTop() error {
 	}
 	// process deleted decisions
 	var filter map[string][]string
+	var nbDeleted int
 	for _, decision := range data.Deleted {
 		if strings.ToLower(*decision.Scope) == "ip" {
 			filter = make(map[string][]string, 1)
@@ -258,16 +259,20 @@ func (a *apic) PullTop() error {
 			filter["value"] = []string{*decision.Scope}
 		}
 
-		nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		dbCliRet, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "deleting decisions error")
 		}
-
-		log.Printf("pull top: deleted %s entries", nbDeleted)
+		dbCliDel, err := strconv.Atoi(dbCliRet)
+		if err != nil {
+			return errors.Wrapf(err, "converting db ret %s", dbCliDel)
+		}
+		nbDeleted += dbCliDel
 	}
+	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
 	if len(data.New) == 0 {
-		log.Warnf("pull top: received 0 new entries, CAPI failure ?")
+		log.Warnf("capi/community-blocklist : received 0 new entries, CAPI failure ?")
 		return nil
 	}
 
@@ -312,7 +317,7 @@ func (a *apic) PullTop() error {
 		log.Errorf("error while saving alert from capi/community-blocklist : %s", err)
 	}
 
-	log.Printf("pull top: added %d entries", len(data.New))
+	log.Printf("capi/community-blocklist : added %d entries", len(data.New))
 
 	intID, err := strconv.Atoi(alertID)
 	if err != nil {
@@ -327,9 +332,7 @@ func (a *apic) PullTop() error {
 	if err != nil {
 		return errors.Wrap(err, "while deleting older community blocklist decisions")
 	}
-	log.Infof("deleted %d older entries", decisions_count)
-
-	//.Decisions.Delete()
+	log.Infof("capi/community-blocklist : deleted %d entries from previous pull", decisions_count)
 	return nil
 }
 
