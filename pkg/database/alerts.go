@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -781,7 +780,7 @@ func (c *Client) DeleteOldCommunityDecisions(CurrentAlertID string) (int, error)
 	/*Deleting older decisions from capi*/
 	decisions_count, err := c.Ent.Decision.Delete().
 		Where(decision.And(
-			decision.OriginEQ(apiserver.CapiMachineID),
+			decision.OriginEQ(CapiMachineID),
 			decision.Not(decision.HasOwnerWith(alert.IDEQ(intID))),
 		)).Exec(c.CTX)
 	if err != nil {

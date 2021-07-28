@@ -26,7 +26,6 @@ const (
 	PullInterval    = "2h"
 	PushInterval    = "30s"
 	MetricsInterval = "30m"
-	CapiMachineID   = "CAPI"
 )
 
 type apic struct {
@@ -302,7 +301,7 @@ func (a *apic) PullTop() error {
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
 
-	alertID, err := a.dbClient.CreateSingleAlertWithBulk(CapiMachineID, &capiPullTopX)
+	alertID, err := a.dbClient.CreateSingleAlertWithBulk(database.CapiMachineID, &capiPullTopX)
 	if err != nil {
 		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
 	}
