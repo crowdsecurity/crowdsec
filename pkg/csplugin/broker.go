@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	plugin "github.com/hashicorp/go-plugin"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -66,12 +67,15 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
 	pb.profileConfigs = profileConfigs
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
-		return err
+		return errors.Wrap(err, "while loading plugin config")
 	}
-	err := pb.loadPlugins(configPaths.PluginDir)
+	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
+		return errors.Wrap(err, "while loading plugin")
+	}
 	pb.watcher = PluginWatcher{}
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
-	return err
+	return nil
+
 }
 
 func (pb *PluginBroker) Kill() {
@@ -87,7 +91,7 @@ func (pb *PluginBroker) Run() {
 		case profileAlert := <-pb.PluginChannel:
 			pb.addProfileAlert(profileAlert)
 
-		case pluginName := <-pb.watcher.C:
+		case pluginName := <-pb.watcher.PluginEvents:
 			// this can be ran in goroutine, but then locks will be needed
 			if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
 				log.WithField("plugin:", pluginName).Error(err)
@@ -100,7 +104,7 @@ func (pb *PluginBroker) Run() {
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
-			log.Errorf("binary for plugin %s  not found in", pluginName)
+			log.Errorf("binary for plugin %s  not found.", pluginName)
 			continue
 		}
 		pb.alertsByPluginName[pluginName] = append(pb.alertsByPluginName[pluginName], profileAlert.Alert)
@@ -175,10 +179,11 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			}
 			pb.notificationPluginByName[pc.Name] = pluginClient
 			for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
-				pluginClient.Configure(
+				_, err := pluginClient.Configure(
 					context.Background(),
 					&protobufs.Config{Config: cfg},
 				)
+				log.Errorf("failed to configure plugin %s got %s ", pc.Name, err.Error())
 			}
 			typesConfigured[pc.Type] = struct{}{}
 		}

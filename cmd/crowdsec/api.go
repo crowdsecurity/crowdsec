@@ -6,6 +6,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,13 +23,13 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 			log.Info("initiated plugin broker")
 			apiServer.AttachPluginBroker(&pluginBroker)
 		} else {
-			log.Error(err)
+			log.Error(errors.Wrap(err, "error while initialising plugin broker"))
 		}
 	}
 
 	err = apiServer.InitController()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, errors.Wrap(err, "unable to run local API")
 	}
 
 	return apiServer, nil

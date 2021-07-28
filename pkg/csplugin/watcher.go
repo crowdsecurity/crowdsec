@@ -9,13 +9,13 @@ import (
 type PluginWatcher struct {
 	PluginConfigByName     map[string]PluginConfig
 	AlertCountByPluginName map[string]int
-	C                      chan string
+	PluginEvents           chan string
 	Inserts                chan string
 }
 
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
-	pw.C = make(chan string)
+	pw.PluginEvents = make(chan string)
 	pw.AlertCountByPluginName = make(map[string]int)
 	pw.Inserts = make(chan string)
 	for name := range alertsByPluginName {
@@ -37,7 +37,7 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	ticker := time.NewTicker(pw.PluginConfigByName[pluginName].GroupWait)
 	for {
 		<-ticker.C
-		pw.C <- pluginName
+		pw.PluginEvents <- pluginName
 	}
 }
 
@@ -47,7 +47,7 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
 			pw.AlertCountByPluginName[pluginName]++
 			if pw.AlertCountByPluginName[pluginName] > threshold {
-				pw.C <- pluginName
+				pw.PluginEvents <- pluginName
 				pw.AlertCountByPluginName[pluginName] = 0
 			}
 		}
