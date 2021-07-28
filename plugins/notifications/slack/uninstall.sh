@@ -1,0 +1,1 @@
+sudo rm /etc/crowdsec/plugins/notification-slack
