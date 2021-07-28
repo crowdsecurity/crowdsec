@@ -13,8 +13,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
-	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -265,7 +263,7 @@ func (a *apic) PullTop() error {
 		}
 		dbCliDel, err := strconv.Atoi(dbCliRet)
 		if err != nil {
-			return errors.Wrapf(err, "converting db ret %s", dbCliDel)
+			return errors.Wrapf(err, "converting db ret %d", dbCliDel)
 		}
 		nbDeleted += dbCliDel
 	}
@@ -306,25 +304,15 @@ func (a *apic) PullTop() error {
 
 	alertID, err := a.dbClient.CreateSingleAlertWithBulk(CapiMachineID, &capiPullTopX)
 	if err != nil {
-		log.Errorf("error while saving alert from capi/community-blocklist : %s", err)
+		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
 	}
 
 	log.Printf("capi/community-blocklist : added %d entries", len(data.New))
-
-	intID, err := strconv.Atoi(alertID)
+	deletedCount, err := a.dbClient.DeleteOldCommunityDecisions(alertID)
 	if err != nil {
-		return errors.Wrap(err, "while converting alert ID")
+		return errors.Wrap(err, "while deleteing older decisions from capi/community-blocklist")
 	}
-	/*Deleting older decisions from capi*/
-	decisions_count, err := a.dbClient.Ent.Decision.Delete().
-		Where(decision.And(
-			decision.OriginEQ(CapiMachineID),
-			decision.Not(decision.HasOwnerWith(alert.IDEQ(intID))),
-		)).Exec(a.dbClient.CTX)
-	if err != nil {
-		return errors.Wrap(err, "while deleting older community blocklist decisions")
-	}
-	log.Infof("capi/community-blocklist : deleted %d entries from previous pull", decisions_count)
+	log.Infof("capi/community-blocklist : deleted %d entries from previous pull", deletedCount)
 	return nil
 }
 
@@ -390,8 +378,6 @@ func (a *apic) SendMetrics() error {
 			if err != nil {
 				return err
 			}
-			// models.metric structure : len(machines), len(bouncers), a.credentials.Login
-			// _, _, err := a.apiClient.Metrics.Add(//*models.Metrics)
 			for _, machine := range machines {
 				m := &models.MetricsSoftInfo{
 					Version: machine.Version,

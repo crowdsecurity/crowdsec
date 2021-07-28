@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
@@ -768,6 +769,25 @@ func (c *Client) FlushOrphans() {
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
+}
+
+//Delete the older decisions from CAPI/comunity-blocklist that are *not* related to current alert
+func (c *Client) DeleteOldCommunityDecisions(CurrentAlertID string) (int, error) {
+
+	intID, err := strconv.Atoi(CurrentAlertID)
+	if err != nil {
+		return 0, errors.Wrap(err, "while converting alert ID")
+	}
+	/*Deleting older decisions from capi*/
+	decisions_count, err := c.Ent.Decision.Delete().
+		Where(decision.And(
+			decision.OriginEQ(apiserver.CapiMachineID),
+			decision.Not(decision.HasOwnerWith(alert.IDEQ(intID))),
+		)).Exec(c.CTX)
+	if err != nil {
+		return 0, errors.Wrap(err, "while deleting older community blocklist decisions")
+	}
+	return decisions_count, nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
