@@ -124,7 +124,7 @@ func (c *Client) CreateSingleAlertWithBulk(machineId string, alertItem *models.A
 	var owner *ent.Machine
 	var err error
 
-	if machineId != "CAPI" {
+	if machineId != CapiMachineID {
 		owner, err = c.QueryMachineByID(machineId)
 		if err != nil {
 			if errors.Cause(err) != UserNotExists {
@@ -145,7 +145,7 @@ func (c *Client) CreateSingleAlertWithBulk(machineId string, alertItem *models.A
 	if err != nil {
 		return "", errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
 	}
-	if machineId != "CAPI" {
+	if machineId != CapiMachineID {
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
 			c.Log.Info(disp)
@@ -533,7 +533,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ("CAPI")))
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ(CapiMachineID)))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
