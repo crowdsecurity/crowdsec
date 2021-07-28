@@ -75,7 +75,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		return &Client{}, fmt.Errorf("unknown database type")
 	}
 
-	if *config.LogLevel >= log.DebugLevel {
+	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {
 		clog.Debugf("Enabling request debug")
 		client = client.Debug()
 	}
