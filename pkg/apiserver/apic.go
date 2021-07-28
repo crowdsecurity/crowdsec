@@ -263,7 +263,7 @@ func (a *apic) PullTop() error {
 		}
 		dbCliDel, err := strconv.Atoi(dbCliRet)
 		if err != nil {
-			return errors.Wrapf(err, "converting db ret %d", dbCliDel)
+			return errors.Wrapf(err, "converting db ret %s", dbCliDel)
 		}
 		nbDeleted += dbCliDel
 	}
