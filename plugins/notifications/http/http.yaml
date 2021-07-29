@@ -5,7 +5,7 @@ name: <NAME>
 
 format: <GO_TEMPLATE>  # http payload would contain the formatted text. 
 
-endpoint: <HTTP_ENDPOINT> # plugin will make requests to this url. Eg value https://www.example.com/
+url: <HTTP_url> # plugin will make requests to this url. Eg value https://www.example.com/
 
 method: GET # eg either of "POST", "GET", "PUT" and other http verbs is valid value. 
 

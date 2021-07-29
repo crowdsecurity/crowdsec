@@ -15,7 +15,7 @@ import (
 
 type PluginConfig struct {
 	Name                string            `yaml:"name"`
-	Endpoint            string            `yaml:"endpoint"`
+	URL                 string            `yaml:"url"`
 	Headers             map[string]string `yaml:"headers"`
 	SkipTLSVerification bool              `yaml:"skip_tls_verification"`
 	Method              string            `yaml:"method"`
@@ -36,7 +36,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*E
 		}
 	}
 
-	request, err := http.NewRequest(pluginConfig.Method, pluginConfig.Endpoint, bytes.NewReader([]byte(notification.Text)))
+	request, err := http.NewRequest(pluginConfig.Method, pluginConfig.URL, bytes.NewReader([]byte(notification.Text)))
 	if err != nil {
 		return nil, err
 	}

@@ -17,9 +17,9 @@ import (
 )
 
 type PluginConfig struct {
-	Name     string `yaml:"name"`
-	Endpoint string `yaml:"endpoint"`
-	Token    string `yaml:"token"`
+	Name  string `yaml:"name"`
+	URL   string `yaml:"url"`
+	Token string `yaml:"token"`
 }
 
 type Splunk struct {
@@ -44,7 +44,7 @@ func (s *Splunk) Notify(ctx context.Context, notification *Notification) (*Empty
 		return &Empty{}, err
 	}
 
-	req, err := http.NewRequest("POST", cfg.Endpoint, strings.NewReader(string(data)))
+	req, err := http.NewRequest("POST", cfg.URL, strings.NewReader(string(data)))
 	if err != nil {
 		return &Empty{}, err
 	}

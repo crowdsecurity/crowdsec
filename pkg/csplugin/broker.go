@@ -32,7 +32,7 @@ type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
 	profileConfigs                  []*csconfig.ProfileCfg
-	pluginConfigByName              map[string]PluginConfig
+	pluginConfigBySubtype           map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
 	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
 	notificationPluginByName        map[string]Notifier
@@ -63,7 +63,7 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]Notifier)
 	pb.pluginMap = make(map[string]plugin.Plugin)
-	pb.pluginConfigByName = make(map[string]PluginConfig)
+	pb.pluginConfigBySubtype = make(map[string]PluginConfig)
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
 	pb.profileConfigs = profileConfigs
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
@@ -73,7 +73,7 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 		return errors.Wrap(err, "while loading plugin")
 	}
 	pb.watcher = PluginWatcher{}
-	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
+	pb.watcher.Init(pb.pluginConfigBySubtype, pb.alertsByPluginName)
 	return nil
 
 }
@@ -103,7 +103,7 @@ func (pb *PluginBroker) Run() {
 
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
-		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
+		if _, ok := pb.pluginConfigBySubtype[pluginName]; !ok {
 			log.Errorf("binary for plugin %s not found.", pluginName)
 			continue
 		}
@@ -111,7 +111,16 @@ func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 		pb.watcher.Inserts <- pluginName
 	}
 }
-
+func (pb *PluginBroker) profilesContainPlugin(pluginName string) bool {
+	for _, profileCfg := range pb.profileConfigs {
+		for _, name := range profileCfg.Notifications {
+			if pluginName == name {
+				return true
+			}
+		}
+	}
+	return false
+}
 func (pb *PluginBroker) loadConfig(path string) error {
 	files, err := listFilesAtPath(path)
 	if err != nil {
@@ -128,6 +137,10 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			return err
 		}
 
+		if !pb.profilesContainPlugin(pc.Name) {
+			continue
+		}
+
 		if pc.MaxRetry == 0 {
 			pc.MaxRetry++
 		}
@@ -141,8 +154,14 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		}
 
 		pb.notificationConfigsByPluginType[pc.Type] = append(pb.notificationConfigsByPluginType[pc.Type], data)
-		pb.pluginConfigByName[pc.Name] = pc
-
+		pb.pluginConfigBySubtype[pc.Name] = pc
+	}
+	for _, profileCfg := range pb.profileConfigs {
+		for _, pluginName := range profileCfg.Notifications {
+			if _, ok := pb.pluginConfigBySubtype[pluginName]; !ok {
+				return fmt.Errorf("config file for plugin %s not found", pluginName)
+			}
+		}
 	}
 	return nil
 }
@@ -157,33 +176,36 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			log.Errorf("plugin at %s is invalid", binaryPath)
 			continue
 		}
-		name, Type, err := getPluginNameAndTypeFromPath(binaryPath) // eg name="slack" , type="notification"
+		pType, pSubtype, err := getPluginTypeAndSubtypeFromPath(binaryPath) // eg pType="notification" , pSubtype="slack"
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		if Type != "notification" {
+		if pType != "notification" {
 			continue
 		}
 
-		pluginClient, err := pb.loadNotificationPlugin(name, binaryPath)
+		pluginClient, err := pb.loadNotificationPlugin(pSubtype, binaryPath)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
 
 		typesConfigured := make(map[string]struct{})
-		for _, pc := range pb.pluginConfigByName {
-			if _, ok := typesConfigured[pc.Type]; pc.Type != name || ok {
+		for _, pc := range pb.pluginConfigBySubtype {
+			if _, ok := typesConfigured[pc.Type]; pc.Type != pSubtype || ok {
 				continue
 			}
 			pb.notificationPluginByName[pc.Name] = pluginClient
 			for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
+				cf := &protobufs.Config{Config: cfg}
 				_, err := pluginClient.Configure(
 					context.Background(),
-					&protobufs.Config{Config: cfg},
+					cf,
 				)
-				log.Errorf("failed to configure plugin %s got %s ", pc.Name, err.Error())
+				if err != nil {
+					log.Errorf("failed to configure plugin %s got %s ", pc.Name, err.Error())
+				}
 			}
 			typesConfigured[pc.Type] = struct{}{}
 		}
@@ -222,14 +244,14 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 		return nil
 	}
 
-	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, pb.alertsByPluginName[pluginName])
+	message, err := formatAlerts(pb.pluginConfigBySubtype[pluginName].Format, pb.alertsByPluginName[pluginName])
 	if err != nil {
 		return err
 	}
 	plugin := pb.notificationPluginByName[pluginName]
 	backoffDuration := time.Second
-	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigByName[pluginName].TimeOut)
+	for i := 1; i <= pb.pluginConfigBySubtype[pluginName].MaxRetry; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigBySubtype[pluginName].TimeOut)
 		defer cancel()
 		_, err = plugin.Notify(
 			ctx,
@@ -286,13 +308,13 @@ func listFilesAtPath(path string) ([]string, error) {
 	return filePaths, nil
 }
 
-func getPluginNameAndTypeFromPath(path string) (string, string, error) {
+func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	pluginFileName := filepath.Base(path)
 	parts := strings.Split(pluginFileName, "-")
 	if len(parts) < 2 {
 		return "", "", fmt.Errorf("plugin name %s is invalid. Name should be like {type-name}", path)
 	}
-	return parts[len(parts)-1], strings.Join(parts[:len(parts)-1], "-"), nil
+	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
 func getProccessAtr() *syscall.SysProcAttr {

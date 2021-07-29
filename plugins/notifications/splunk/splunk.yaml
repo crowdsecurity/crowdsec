@@ -3,9 +3,9 @@ type: splunk
 
 name: <NAME>
 
-format: <GO_TEMPLATE> 
+format: <GO_TEMPLATE>  # splunk event value
 
-endpoint: <SPLUNK_HTTP_ENDPOINT>
+url: <SPLUNK_HTTP_URL>
 
 token: <SPLUNK_TOKEN>
 
