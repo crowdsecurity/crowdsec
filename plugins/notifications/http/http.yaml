@@ -1,0 +1,23 @@
+# Don't change this
+type: http
+
+name: <NAME>
+
+format: <GO_TEMPLATE>  # http payload would contain the formatted text. 
+
+endpoint: <HTTP_ENDPOINT> # plugin will make requests to this url. Eg value https://www.example.com/
+
+method: GET # eg either of "POST", "GET", "PUT" and other http verbs is valid value. 
+
+# headers:
+#   - Authorization: token 0x64312313
+
+# skip_tls_verification:  # either true or false. Default is false
+
+# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
+
+# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
+
+# max_retry: # number of tries to attempt to send message to plugins in case of error.
+
+# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"

@@ -104,7 +104,7 @@ func (pb *PluginBroker) Run() {
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
-			log.Errorf("binary for plugin %s  not found.", pluginName)
+			log.Errorf("binary for plugin %s not found.", pluginName)
 			continue
 		}
 		pb.alertsByPluginName[pluginName] = append(pb.alertsByPluginName[pluginName], profileAlert.Alert)
