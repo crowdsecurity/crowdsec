@@ -287,7 +287,7 @@ func (a *apic) PullTop() error {
 	capiPullTopX.Leakspeed = types.StrPtr("")
 	capiPullTopX.ScenarioHash = types.StrPtr("")
 	capiPullTopX.ScenarioVersion = types.StrPtr("")
-
+	capiPullTopX.MachineID = database.CapiMachineID
 	// process new decisions
 	for _, decision := range data.New {
 
@@ -298,20 +298,17 @@ func (a *apic) PullTop() error {
 		case "range":
 			*decision.Scope = types.Range
 		}
+
 		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
 
-	alertID, err := a.dbClient.CreateSingleAlertWithBulk(database.CapiMachineID, &capiPullTopX)
+	alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(&capiPullTopX)
 	if err != nil {
 		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
 	}
 
-	log.Printf("capi/community-blocklist : added %d entries", len(data.New))
-	deletedCount, err := a.dbClient.DeleteOldCommunityDecisions(alertID)
-	if err != nil {
-		return errors.Wrap(err, "while deleteing older decisions from capi/community-blocklist")
-	}
-	log.Infof("capi/community-blocklist : deleted %d entries from previous pull", deletedCount)
+	log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
+
 	return nil
 }
 
