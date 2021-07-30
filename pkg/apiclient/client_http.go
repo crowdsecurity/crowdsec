@@ -80,7 +80,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	}
 
 	response := newResponse(resp)
-
+	if resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	err = CheckResponse(resp)
 	if err != nil {
 		return response, err
