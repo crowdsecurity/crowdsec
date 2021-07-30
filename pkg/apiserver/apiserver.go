@@ -283,6 +283,8 @@ func (s *APIServer) Shutdown() error {
 		pipe.Close()
 	}
 	s.httpServerTomb.Kill(nil)
-	s.httpServerTomb.Wait()
+	if err := s.httpServerTomb.Wait(); err != nil {
+		return errors.Wrap(err, "while waiting on httpServerTomb")
+	}
 	return nil
 }
