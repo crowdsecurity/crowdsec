@@ -276,8 +276,12 @@ func (s *APIServer) Shutdown() error {
 	}
 
 	//close io.writer logger given to gin
-	gin.DefaultErrorWriter.(*io.PipeWriter).Close()
-	gin.DefaultWriter.(*io.PipeWriter).Close()
+	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
+		pipe.Close()
+	}
+	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
+		pipe.Close()
+	}
 	s.httpServerTomb.Kill(nil)
 	s.httpServerTomb.Wait()
 	return nil
