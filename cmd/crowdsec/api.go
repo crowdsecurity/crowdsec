@@ -45,11 +45,13 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 			}
 		}()
 
-		go func() {
-			pluginBroker.Run()
-		}()
+		pluginTomb.Go(func() error {
+			pluginBroker.Run(&pluginTomb)
+			return nil
+		})
+
 		<-apiTomb.Dying() // lock until go routine is dying
-		pluginBroker.Kill()
+		pluginTomb.Kill(nil)
 		log.Infof("serve: shutting down api server")
 		if err := apiServer.Shutdown(); err != nil {
 			return err

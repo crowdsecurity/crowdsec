@@ -20,6 +20,7 @@ import (
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
 
@@ -84,8 +85,12 @@ func (pb *PluginBroker) Kill() {
 	}
 }
 
-func (pb *PluginBroker) Run() {
-	go pb.watcher.Start()
+func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
+	go func() {
+		pb.watcher.Start(tomb)
+		log.Info("watcher go routine dead")
+	}()
+
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -97,6 +102,11 @@ func (pb *PluginBroker) Run() {
 				log.WithField("plugin:", pluginName).Error(err)
 			}
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
+
+		case <-tomb.Dying():
+			log.Info("killing all plugins")
+			pb.Kill()
+			return
 		}
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 )
 
 type PluginWatcher struct {
@@ -11,6 +13,7 @@ type PluginWatcher struct {
 	AlertCountByPluginName map[string]int
 	PluginEvents           chan string
 	Inserts                chan string
+	tomb                   *tomb.Tomb
 }
 
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
@@ -23,11 +26,21 @@ func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginNam
 	}
 }
 
-func (pw *PluginWatcher) Start() {
+func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
+	pw.tomb = tomb
 	for name := range pw.PluginConfigByName {
-		go pw.watchPluginTicker(name)
+		pname := name
+		pw.tomb.Go(func() error {
+			pw.watchPluginTicker(pname)
+			return nil
+		})
 	}
-	go pw.watchPluginAlertCounts()
+
+	pw.tomb.Go(func() error {
+		pw.watchPluginAlertCounts()
+		log.Info("alert counter dead")
+		return nil
+	})
 }
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
@@ -36,20 +49,30 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	}
 	ticker := time.NewTicker(pw.PluginConfigByName[pluginName].GroupWait)
 	for {
-		<-ticker.C
-		pw.PluginEvents <- pluginName
+		select {
+		case <-ticker.C:
+			pw.PluginEvents <- pluginName
+
+		case <-pw.tomb.Dying():
+			ticker.Stop()
+			return
+		}
 	}
 }
 
 func (pw *PluginWatcher) watchPluginAlertCounts() {
 	for {
-		pluginName := <-pw.Inserts
-		if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
-			pw.AlertCountByPluginName[pluginName]++
-			if pw.AlertCountByPluginName[pluginName] > threshold {
-				pw.PluginEvents <- pluginName
-				pw.AlertCountByPluginName[pluginName] = 0
+		select {
+		case pluginName := <-pw.Inserts:
+			if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
+				pw.AlertCountByPluginName[pluginName]++
+				if pw.AlertCountByPluginName[pluginName] > threshold {
+					pw.PluginEvents <- pluginName
+					pw.AlertCountByPluginName[pluginName] = 0
+				}
 			}
+		case <-pw.tomb.Dying():
+			return
 		}
 	}
 }

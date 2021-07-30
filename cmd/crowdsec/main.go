@@ -4,11 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 
 	_ "net/http/pprof"
 	"time"
-
-	"sort"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -21,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
-
 	"gopkg.in/tomb.v2"
 )
 
@@ -33,6 +31,7 @@ var (
 	outputsTomb  tomb.Tomb
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
+	pluginTomb   tomb.Tomb
 
 	flags *Flags
 
