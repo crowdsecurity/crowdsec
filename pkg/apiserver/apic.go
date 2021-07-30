@@ -241,11 +241,11 @@ func (a *apic) PullTop() error {
 	alerts := a.dbClient.Ent.Alert.Query()
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
 	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
-	limit, err := alerts.Count(a.dbClient.CTX)
+	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
 		return errors.Wrap(err, "while looking for CAPI alert")
 	}
-	if limit > 0 {
+	if count > 0 {
 		log.Printf("last CAPI pull is newer than 1h30, skip.")
 		return nil
 	}
