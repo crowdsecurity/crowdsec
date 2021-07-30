@@ -57,7 +57,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	}
 
 	resp, err := c.client.Do(req)
-
+	if resp != nil && resp.Body != nil {
+		defer resp.Body.Close()
+	}
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -80,9 +82,7 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	}
 
 	response := newResponse(resp)
-	if resp.Body != nil {
-		defer resp.Body.Close()
-	}
+
 	err = CheckResponse(resp)
 	if err != nil {
 		return response, err
