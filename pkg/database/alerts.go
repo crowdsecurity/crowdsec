@@ -743,25 +743,6 @@ func (c *Client) FlushOrphans() {
 	}
 }
 
-//Delete the older decisions from CAPI/comunity-blocklist that are *not* related to current alert
-func (c *Client) DeleteOldCommunityDecisions(CurrentAlertID string) (int, error) {
-
-	intID, err := strconv.Atoi(CurrentAlertID)
-	if err != nil {
-		return 0, errors.Wrap(err, "while converting alert ID")
-	}
-	/*Deleting older decisions from capi*/
-	decisions_count, err := c.Ent.Decision.Delete().
-		Where(decision.And(
-			decision.OriginEQ(CapiMachineID),
-			decision.Not(decision.HasOwnerWith(alert.IDEQ(intID))),
-		)).Exec(c.CTX)
-	if err != nil {
-		return 0, errors.Wrap(err, "while deleting older community blocklist decisions")
-	}
-	return decisions_count, nil
-}
-
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var deletedByAge int
 	var deletedByNbItem int
