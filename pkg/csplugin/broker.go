@@ -3,6 +3,7 @@ package csplugin
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -33,7 +34,7 @@ type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
 	profileConfigs                  []*csconfig.ProfileCfg
-	pluginConfigBySubtype           map[string]PluginConfig
+	pluginConfigByName              map[string]PluginConfig
 	pluginMap                       map[string]plugin.Plugin
 	notificationConfigsByPluginType map[string][][]byte // "slack" -> []{config1, config2}
 	notificationPluginByName        map[string]Notifier
@@ -52,6 +53,8 @@ type PluginConfig struct {
 
 	Format string `yaml:"format"` // specific to notification plugins
 
+	Config map[string]interface{} `yaml:",inline"` //to keep the plugin-specific config
+
 }
 
 type ProfileAlert struct {
@@ -64,7 +67,7 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]Notifier)
 	pb.pluginMap = make(map[string]plugin.Plugin)
-	pb.pluginConfigBySubtype = make(map[string]PluginConfig)
+	pb.pluginConfigByName = make(map[string]PluginConfig)
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
 	pb.profileConfigs = profileConfigs
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
@@ -74,7 +77,7 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 		return errors.Wrap(err, "while loading plugin")
 	}
 	pb.watcher = PluginWatcher{}
-	pb.watcher.Init(pb.pluginConfigBySubtype, pb.alertsByPluginName)
+	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 	return nil
 
 }
@@ -86,11 +89,8 @@ func (pb *PluginBroker) Kill() {
 }
 
 func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
-	go func() {
-		pb.watcher.Start(tomb)
-		log.Info("watcher go routine dead")
-	}()
-
+	pb.watcher.Start(tomb)
+	log.Infof("%+v", pb.notificationPluginByName)
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -113,7 +113,7 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
-		if _, ok := pb.pluginConfigBySubtype[pluginName]; !ok {
+		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
 			log.Errorf("binary for plugin %s not found.", pluginName)
 			continue
 		}
@@ -136,39 +136,44 @@ func (pb *PluginBroker) loadConfig(path string) error {
 	if err != nil {
 		return err
 	}
-	for _, configFile := range files {
-		pc := PluginConfig{}
-		data, err := os.ReadFile(configFile)
+
+	for _, configFilePath := range files {
+		yamlFile, err := os.Open(configFilePath)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "while opening %s", configFilePath)
 		}
-		err = yaml.Unmarshal(data, &pc)
-		if err != nil {
-			return err
-		}
+		dec := yaml.NewDecoder(yamlFile)
+		for {
+			pc := PluginConfig{}
+			err = dec.Decode(&pc)
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return errors.Wrapf(err, "while decoding %s", configFilePath)
+			}
 
-		if !pb.profilesContainPlugin(pc.Name) {
-			continue
-		}
+			if !pb.profilesContainPlugin(pc.Name) {
+				continue
+			}
 
-		if pc.MaxRetry == 0 {
-			pc.MaxRetry++
-		}
+			if pc.MaxRetry == 0 {
+				pc.MaxRetry++
+			}
 
-		if pc.TimeOut == time.Second*0 {
-			pc.TimeOut = time.Second * 5
-		}
+			if pc.TimeOut == time.Second*0 {
+				pc.TimeOut = time.Second * 5
+			}
 
-		if pc.GroupWait == time.Second*0 {
-			pc.GroupWait = time.Second * 1
+			if pc.GroupWait == time.Second*0 {
+				pc.GroupWait = time.Second * 1
+			}
+			pb.pluginConfigByName[pc.Name] = pc
 		}
-
-		pb.notificationConfigsByPluginType[pc.Type] = append(pb.notificationConfigsByPluginType[pc.Type], data)
-		pb.pluginConfigBySubtype[pc.Name] = pc
 	}
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
-			if _, ok := pb.pluginConfigBySubtype[pluginName]; !ok {
+			if _, ok := pb.pluginConfigByName[pluginName]; !ok {
 				return fmt.Errorf("config file for plugin %s not found", pluginName)
 			}
 		}
@@ -201,23 +206,24 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			continue
 		}
 
-		typesConfigured := make(map[string]struct{})
-		for _, pc := range pb.pluginConfigBySubtype {
-			if _, ok := typesConfigured[pc.Type]; pc.Type != pSubtype || ok {
+		for _, pc := range pb.pluginConfigByName {
+			if pc.Type != pSubtype {
 				continue
 			}
-			pb.notificationPluginByName[pc.Name] = pluginClient
-			for _, cfg := range pb.notificationConfigsByPluginType[pc.Type] {
-				cf := &protobufs.Config{Config: cfg}
-				_, err := pluginClient.Configure(
-					context.Background(),
-					cf,
-				)
-				if err != nil {
-					log.Errorf("failed to configure plugin %s got %s ", pc.Name, err.Error())
-				}
+
+			data, err := yaml.Marshal(pc)
+			if err != nil {
+				log.Error(err)
+				continue
 			}
-			typesConfigured[pc.Type] = struct{}{}
+
+			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
+			if err != nil {
+				log.Error(err)
+				continue
+			}
+
+			pb.notificationPluginByName[pc.Name] = pluginClient
 		}
 	}
 	return err
@@ -254,14 +260,14 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 		return nil
 	}
 
-	message, err := formatAlerts(pb.pluginConfigBySubtype[pluginName].Format, pb.alertsByPluginName[pluginName])
+	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, pb.alertsByPluginName[pluginName])
 	if err != nil {
 		return err
 	}
 	plugin := pb.notificationPluginByName[pluginName]
 	backoffDuration := time.Second
-	for i := 1; i <= pb.pluginConfigBySubtype[pluginName].MaxRetry; i++ {
-		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigBySubtype[pluginName].TimeOut)
+	for i := 1; i <= pb.pluginConfigByName[pluginName].MaxRetry; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), pb.pluginConfigByName[pluginName].TimeOut)
 		defer cancel()
 		_, err = plugin.Notify(
 			ctx,
