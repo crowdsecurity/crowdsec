@@ -91,7 +91,6 @@ func NewAPIServer() (*APIServer, error) {
 	config := LoadTestConfig()
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
-	// apiServer.InitController()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
@@ -105,6 +104,7 @@ func NewAPITest() (*gin.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
+	apiServer.InitController()
 	router, err := apiServer.Router()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
@@ -120,6 +120,7 @@ func NewAPITestForwardedFor() (*gin.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
+	apiServer.InitController()
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
 	router, err := apiServer.Router()
