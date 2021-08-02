@@ -1,13 +1,21 @@
 package csplugin
 
 import (
+	"io/ioutil"
+	"log"
+	"os"
+	"path"
 	"reflect"
 	"testing"
 
 	plugin "github.com/hashicorp/go-plugin"
 )
 
+var testPath string
+
 func Test_getPluginNameAndTypeFromPath(t *testing.T) {
+	setUp()
+	defer tearDown()
 	type args struct {
 		path string
 	}
@@ -21,10 +29,10 @@ func Test_getPluginNameAndTypeFromPath(t *testing.T) {
 		{
 			name: "valid plugin name, single dash",
 			args: args{
-				path: "./tests/notification-gitter",
+				path: path.Join(testPath, "notification-gitter"),
 			},
-			want:    "gitter",
-			want1:   "notification",
+			want:    "notification",
+			want1:   "gitter",
 			wantErr: false,
 		},
 		{
@@ -41,8 +49,8 @@ func Test_getPluginNameAndTypeFromPath(t *testing.T) {
 			args: args{
 				path: "./tests/notification-instant-slack",
 			},
-			want:    "slack",
-			want1:   "notification-instant",
+			want:    "notification-instant",
+			want1:   "slack",
 			wantErr: false,
 		},
 	}
@@ -64,6 +72,8 @@ func Test_getPluginNameAndTypeFromPath(t *testing.T) {
 }
 
 func Test_listFilesAtPath(t *testing.T) {
+	setUp()
+	defer tearDown()
 	type args struct {
 		path string
 	}
@@ -76,11 +86,11 @@ func Test_listFilesAtPath(t *testing.T) {
 		{
 			name: "valid directory",
 			args: args{
-				path: "./tests",
+				path: testPath,
 			},
 			want: []string{
-				"tests/notification-gitter",
-				"tests/slack",
+				path.Join(testPath, "notification-gitter"),
+				path.Join(testPath, "slack"),
 			},
 		},
 		{
@@ -106,8 +116,10 @@ func Test_listFilesAtPath(t *testing.T) {
 }
 
 func TestPluginBroker_BuildPluginMap(t *testing.T) {
+	setUp()
+	defer tearDown()
 	pb := PluginBroker{pluginMap: make(map[string]plugin.Plugin)}
-	err := pb.loadPlugins("./tests")
+	err := pb.loadPlugins(testPath)
 
 	if err != nil {
 		t.Error(err)
@@ -120,4 +132,20 @@ func TestPluginBroker_BuildPluginMap(t *testing.T) {
 	if !reflect.DeepEqual(expectedPluginMap, pb.pluginMap) {
 		t.Errorf("expected= %v, found= %v", expectedPluginMap, pb.pluginMap)
 	}
+}
+
+func setUp() {
+	testMode = true
+	dir, err := ioutil.TempDir("./", "cs_plugin_test")
+	if err != nil {
+		log.Fatal(err)
+	}
+	os.Create(path.Join(dir, "slack"))
+	os.Create(path.Join(dir, "notification-gitter"))
+	os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
+	testPath = dir
+}
+
+func tearDown() {
+	os.RemoveAll(testPath)
 }

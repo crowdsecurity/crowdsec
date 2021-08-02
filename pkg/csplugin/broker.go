@@ -25,6 +25,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var testMode bool = false
+
 const (
 	PluginProtocolVersion uint   = 1
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
@@ -288,6 +290,9 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 }
 
 func pluginIsValid(path string) bool {
+	if testMode {
+		return true
+	}
 	var details fs.FileInfo
 	var err error
 
