@@ -148,6 +148,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			c.Log.Info(disp)
 		}
 
+		//let's track when we strip or drop data, notify outside of loop to avoid spam
+		stripped := false
+		dropped := false
+
 		if len(alertItem.Events) > 0 {
 			eventBulk := make([]*ent.EventCreate, len(alertItem.Events))
 			for i, eventItem := range alertItem.Events {
@@ -160,9 +164,47 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 				}
 
+				//the serialized field is too big, let's try to progressively strip it
+				if event.SerializedValidator(string(marshallMetas)) != nil {
+					stripped = true
+
+					valid := false
+					stripSize := 2048
+					for !valid && stripSize > 0 {
+						for _, serializedItem := range eventItem.Meta {
+							if len(serializedItem.Value) > stripSize*2 {
+								serializedItem.Value = serializedItem.Value[:stripSize] + fmt.Sprintf("<stripped>")
+							}
+						}
+
+						marshallMetas, err = json.Marshal(eventItem.Meta)
+						if err != nil {
+							return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+						}
+						if event.SerializedValidator(string(marshallMetas)) == nil {
+							valid = true
+						}
+						stripSize /= 2
+					}
+
+					//nothing worked, drop it
+					if !valid {
+						dropped = true
+						stripped = false
+						marshallMetas = []byte("")
+					}
+
+				}
+
 				eventBulk[i] = c.Ent.Event.Create().
 					SetTime(ts).
 					SetSerialized(string(marshallMetas))
+			}
+			if stripped {
+				c.Log.Warningf("stripped 'serialized' field (machine %s / scenario %s)", machineId, *alertItem.Scenario)
+			}
+			if dropped {
+				c.Log.Warningf("dropped 'serialized' field (machine %s / scenario %s)", machineId, *alertItem.Scenario)
 			}
 			events, err = c.Ent.Event.CreateBulk(eventBulk...).Save(c.CTX)
 			if err != nil {
