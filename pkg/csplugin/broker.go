@@ -92,7 +92,6 @@ func (pb *PluginBroker) Kill() {
 
 func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 	pb.watcher.Start(tomb)
-	log.Infof("%+v", pb.notificationPluginByName)
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -138,41 +137,25 @@ func (pb *PluginBroker) loadConfig(path string) error {
 	if err != nil {
 		return err
 	}
-
 	for _, configFilePath := range files {
-		yamlFile, err := os.Open(configFilePath)
+		pluginConfigs, err := parsePluginConfigFile(configFilePath)
 		if err != nil {
-			return errors.Wrapf(err, "while opening %s", configFilePath)
+			log.Error(err)
+			continue
 		}
-		dec := yaml.NewDecoder(yamlFile)
-		for {
-			pc := PluginConfig{}
-			err = dec.Decode(&pc)
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return errors.Wrapf(err, "while decoding %s", configFilePath)
-			}
-
-			if !pb.profilesContainPlugin(pc.Name) {
+		for _, pluginConfig := range pluginConfigs {
+			if !pb.profilesContainPlugin(pluginConfig.Name) {
 				continue
 			}
-
-			if pc.MaxRetry == 0 {
-				pc.MaxRetry++
-			}
-
-			if pc.TimeOut == time.Second*0 {
-				pc.TimeOut = time.Second * 5
-			}
-
-			if pc.GroupWait == time.Second*0 {
-				pc.GroupWait = time.Second * 1
-			}
-			pb.pluginConfigByName[pc.Name] = pc
+			setRequiredFields(&pluginConfig)
+			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
 	}
+	err = pb.verifyPluginConfigsWithProfile()
+	return err
+}
+
+func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
 			if _, ok := pb.pluginConfigByName[pluginName]; !ok {
@@ -224,7 +207,6 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 				log.Error(err)
 				continue
 			}
-
 			pb.notificationPluginByName[pc.Name] = pluginClient
 		}
 	}
@@ -287,6 +269,42 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
 	}
 
 	return err
+}
+
+func parsePluginConfigFile(path string) ([]PluginConfig, error) {
+	parsedConfigs := make([]PluginConfig, 0)
+	yamlFile, err := os.Open(path)
+	if err != nil {
+		return parsedConfigs, errors.Wrapf(err, "while opening %s", path)
+	}
+	dec := yaml.NewDecoder(yamlFile)
+	for {
+		pc := PluginConfig{}
+		err = dec.Decode(&pc)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			log.Errorf("while decoding %s got error %s", path, err.Error())
+			continue
+		}
+		parsedConfigs = append(parsedConfigs, pc)
+	}
+	return parsedConfigs, nil
+}
+
+func setRequiredFields(pluginCfg *PluginConfig) {
+	if pluginCfg.MaxRetry == 0 {
+		pluginCfg.MaxRetry++
+	}
+
+	if pluginCfg.TimeOut == time.Second*0 {
+		pluginCfg.TimeOut = time.Second * 5
+	}
+
+	if pluginCfg.GroupWait == time.Second*0 {
+		pluginCfg.GroupWait = time.Second * 1
+	}
 }
 
 func pluginIsValid(path string) bool {

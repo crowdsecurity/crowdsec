@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
 
@@ -38,7 +37,6 @@ func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
 
 	pw.tomb.Go(func() error {
 		pw.watchPluginAlertCounts()
-		log.Info("alert counter dead")
 		return nil
 	})
 }
