@@ -173,7 +173,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					for !valid && stripSize > 0 {
 						for _, serializedItem := range eventItem.Meta {
 							if len(serializedItem.Value) > stripSize*2 {
-								serializedItem.Value = serializedItem.Value[:stripSize] + fmt.Sprintf("<stripped>")
+								serializedItem.Value = serializedItem.Value[:stripSize] + "<stripped>"
 							}
 						}
 
