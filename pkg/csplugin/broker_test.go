@@ -140,12 +140,24 @@ func setUp() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	os.Create(path.Join(dir, "slack"))
-	os.Create(path.Join(dir, "notification-gitter"))
-	os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
+	_, err = os.Create(path.Join(dir, "slack"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = os.Create(path.Join(dir, "notification-gitter"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
 	testPath = dir
 }
 
 func tearDown() {
-	os.RemoveAll(testPath)
+	err := os.RemoveAll(testPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

@@ -104,7 +104,10 @@ func NewAPITest() (*gin.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
-	apiServer.InitController()
+	err = apiServer.InitController()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
 	router, err := apiServer.Router()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
@@ -120,7 +123,10 @@ func NewAPITestForwardedFor() (*gin.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
-	apiServer.InitController()
+	err = apiServer.InitController()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
 	router, err := apiServer.Router()
