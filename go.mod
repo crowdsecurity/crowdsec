@@ -34,6 +34,7 @@ require (
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-version v1.2.1
 	github.com/influxdata/go-syslog/v3 v3.0.0
+	github.com/kr/pty v1.1.5 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
@@ -50,6 +51,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.1 // indirect
 	github.com/oschwald/geoip2-golang v1.4.0
 	github.com/oschwald/maxminddb-golang v1.8.0
+	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/client_model v0.2.0

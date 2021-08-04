@@ -15,6 +15,12 @@ DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
 PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
+HTTP_PLUGIN_FOLDER = "./plugins/notifications/http"
+SLACK_PLUGIN_FOLDER = "./plugins/notifications/slack"
+SPLUNK_PLUGIN_FOLDER = "./plugins/notifications/splunk"
+HTTP_PLUGIN_BIN = "notification-http"
+SLACK_PLUGIN_BIN = "notification-slack"
+SPLUNK_PLUGIN_BIN = "notification-splunk"
 CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
@@ -53,9 +59,13 @@ RELDIR = crowdsec-$(BUILD_VERSION)
 
 all: clean test build
 
-build: goversion crowdsec cscli
+build: goversion crowdsec cscli plugins
 
-static: goversion crowdsec_static cscli_static
+static: crowdsec_static cscli_static plugins_static
+
+plugins: http-plugin slack-plugin splunk-plugin
+
+plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static
 
 goversion:
 	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
@@ -93,6 +103,15 @@ else
 	@exit 1;
 endif
 
+http-plugin: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory
+
+slack-plugin: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SLACK_PLUGIN_FOLDER) build --no-print-directory
+
+splunk-plugin: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build --no-print-directory
+
 
 cscli_static:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
@@ -111,7 +130,15 @@ else
 	@exit 1;
 endif
 
-#.PHONY: test
+http-plugin_static: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(HTTP_PLUGIN_FOLDER) static --no-print-directory
+
+slack-plugin_static: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SLACK_PLUGIN_FOLDER) static --no-print-directory
+
+splunk-plugin_static:goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) static --no-print-directory
+
 test:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
 	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
@@ -125,25 +152,23 @@ check_release:
 	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
 
 .PHONY:
-release: check_release build
+package:
 	@echo Building Release to dir $(RELDIR)
 	@mkdir -p $(RELDIR)/cmd/crowdsec
 	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
+	@mkdir -p $(RELDIR)/plugins
 	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
 	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
+	@cp $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/plugins
+	@cp $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/plugins
+	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/plugins
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	
 
 .PHONY:
-release_static: check_release static
-	@echo Building Release to dir $(RELDIR)
-	@mkdir -p $(RELDIR)/cmd/crowdsec
-	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
-	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
-	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
-	@cp -R ./config/ $(RELDIR)
-	@cp wizard.sh $(RELDIR)
-	@cp scripts/test_env.sh $(RELDIR)
-	@tar cvzf crowdsec-release-static.tgz $(RELDIR)	
+release: check_release build package
+
+.PHONY:
+release_static: check_release static package
