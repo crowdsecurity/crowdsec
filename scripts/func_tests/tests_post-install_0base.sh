@@ -21,12 +21,14 @@ pidof crowdsec && fail "crowdsec process shouldn't be running"
 
 #start it again
 ${SYSTEMCTL} start crowdsec || fail "failed to stop service"
-${SYSTEMCTL} status crowdsec || fail "crowdsec should be down"
+${SYSTEMCTL} status crowdsec || fail "crowdsec should be up"
+sleep 5s
 pidof crowdsec || fail "crowdsec process should be running"
 
 #restart it
 ${SYSTEMCTL} restart crowdsec || fail "failed to stop service"
-${SYSTEMCTL} status crowdsec || fail "crowdsec should be down"
+${SYSTEMCTL} status crowdsec || fail "crowdsec should be up"
+sleep 5s
 pidof crowdsec || fail "crowdsec process should be running"
 
 ## version

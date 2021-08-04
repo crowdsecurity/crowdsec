@@ -1,0 +1,163 @@
+package csplugin
+
+import (
+	"io/ioutil"
+	"log"
+	"os"
+	"path"
+	"reflect"
+	"testing"
+
+	plugin "github.com/hashicorp/go-plugin"
+)
+
+var testPath string
+
+func Test_getPluginNameAndTypeFromPath(t *testing.T) {
+	setUp()
+	defer tearDown()
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		want1   string
+		wantErr bool
+	}{
+		{
+			name: "valid plugin name, single dash",
+			args: args{
+				path: path.Join(testPath, "notification-gitter"),
+			},
+			want:    "notification",
+			want1:   "gitter",
+			wantErr: false,
+		},
+		{
+			name: "invalid plugin name",
+			args: args{
+				path: "./tests/gitter",
+			},
+			want:    "",
+			want1:   "",
+			wantErr: true,
+		},
+		{
+			name: "valid plugin name, multiple dash",
+			args: args{
+				path: "./tests/notification-instant-slack",
+			},
+			want:    "notification-instant",
+			want1:   "slack",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := getPluginTypeAndSubtypeFromPath(tt.args.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("getPluginNameAndTypeFromPath() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("getPluginNameAndTypeFromPath() got = %v, want %v", got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("getPluginNameAndTypeFromPath() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func Test_listFilesAtPath(t *testing.T) {
+	setUp()
+	defer tearDown()
+	type args struct {
+		path string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []string
+		wantErr bool
+	}{
+		{
+			name: "valid directory",
+			args: args{
+				path: testPath,
+			},
+			want: []string{
+				path.Join(testPath, "notification-gitter"),
+				path.Join(testPath, "slack"),
+			},
+		},
+		{
+			name: "invalid directory",
+			args: args{
+				path: "./foo/bar/",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := listFilesAtPath(tt.args.path)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("listFilesAtPath() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("listFilesAtPath() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestPluginBroker_BuildPluginMap(t *testing.T) {
+	setUp()
+	defer tearDown()
+	pb := PluginBroker{pluginMap: make(map[string]plugin.Plugin)}
+	err := pb.loadPlugins(testPath)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	expectedPluginMap := map[string]plugin.Plugin{
+		"gitter": &NotifierPlugin{},
+	}
+
+	if !reflect.DeepEqual(expectedPluginMap, pb.pluginMap) {
+		t.Errorf("expected= %v, found= %v", expectedPluginMap, pb.pluginMap)
+	}
+}
+
+func setUp() {
+	testMode = true
+	dir, err := ioutil.TempDir("./", "cs_plugin_test")
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = os.Create(path.Join(dir, "slack"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = os.Create(path.Join(dir, "notification-gitter"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	testPath = dir
+}
+
+func tearDown() {
+	err := os.RemoveAll(testPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+}

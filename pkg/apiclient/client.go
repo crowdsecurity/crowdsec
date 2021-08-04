@@ -119,7 +119,6 @@ func (e *ErrorResponse) Error() string {
 
 func newResponse(r *http.Response) *Response {
 	response := &Response{Response: r}
-	//response.populatePageValues()
 	return response
 }
 

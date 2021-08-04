@@ -40,29 +40,6 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
-
-	//stop go routines
-	if !cConfig.DisableAgent {
-		if err := shutdownCrowdsec(); err != nil {
-			log.Fatalf("Failed to shut down crowdsec routines: %s", err)
-		}
-		if cConfig.Crowdsec != nil && cConfig.Crowdsec.BucketStateDumpDir != "" {
-			if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
-				log.Fatalf("Failed dumping bucket state : %s", err)
-			}
-		}
-
-		if err := leaky.ShutdownAllBuckets(buckets); err != nil {
-			log.Fatalf("while shutting down routines : %s", err)
-		}
-	}
-
-	if !cConfig.DisableAPI {
-		if err := shutdownAPI(); err != nil {
-			log.Fatalf("Failed to shut down api routines: %s", err)
-		}
-	}
-
 	/*
 	 re-init tombs
 	*/
@@ -72,6 +49,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
+	pluginTomb = tomb.Tomb{}
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
@@ -180,14 +158,19 @@ func shutdownCrowdsec() error {
 	return nil
 }
 
-func termHandler(sig os.Signal) error {
-	if err := shutdownCrowdsec(); err != nil {
-		log.Errorf("Error encountered while shutting down crowdsec: %s", err)
+func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
+	if !cConfig.DisableAgent {
+		if err := shutdownCrowdsec(); err != nil {
+			log.Errorf("Failed to shut down crowdsec: %s", err)
+			return err
+		}
 	}
-	if err := shutdownAPI(); err != nil {
-		log.Errorf("Error encountered while shutting down api: %s", err)
+	if !cConfig.DisableAPI {
+		if err := shutdownAPI(); err != nil {
+			log.Errorf("Failed to shut down api routines: %s", err)
+			return err
+		}
 	}
-	log.Debugf("termHandler done")
 	return nil
 }
 
@@ -206,14 +189,17 @@ func HandleSignals(cConfig *csconfig.Config) {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
 				log.Warningf("SIGHUP received, reloading")
+				if err := shutdown(s, cConfig); err != nil {
+					log.Fatalf("failed shutdown : %s", err)
+				}
 				if err := reloadHandler(s, cConfig); err != nil {
 					log.Fatalf("Reload handler failure : %s", err)
 				}
 			// kill -SIGTERM XXXX
 			case syscall.SIGTERM:
 				log.Warningf("SIGTERM received, shutting down")
-				if err := termHandler(s); err != nil {
-					log.Fatalf("Term handler failure : %s", err)
+				if err := shutdown(s, cConfig); err != nil {
+					log.Fatalf("failed shutdown : %s", err)
 				}
 				exitChan <- 0
 			}
@@ -232,7 +218,7 @@ func Serve(cConfig *csconfig.Config) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
-
+	pluginTomb = tomb.Tomb{}
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {

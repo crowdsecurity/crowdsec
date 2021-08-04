@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -13,12 +14,13 @@ import (
 )
 
 type Controller struct {
-	Ectx     context.Context
-	DBClient *database.Client
-	Router   *gin.Engine
-	Profiles []*csconfig.ProfileCfg
-	CAPIChan chan []*models.Alert
-	Log      *log.Logger
+	Ectx          context.Context
+	DBClient      *database.Client
+	Router        *gin.Engine
+	Profiles      []*csconfig.ProfileCfg
+	CAPIChan      chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
+	Log           *log.Logger
 }
 
 func (c *Controller) Init() error {
@@ -38,7 +40,7 @@ func (c *Controller) Init() error {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan)
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel)
 	if err != nil {
 		return err
 	}

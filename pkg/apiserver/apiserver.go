@@ -3,6 +3,7 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
@@ -185,10 +187,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.CAPIChan = nil
 	}
 
-	if err := controller.Init(); err != nil {
-		return &APIServer{}, err
-	}
-
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
@@ -252,11 +250,6 @@ func (s *APIServer) Run() error {
 			}
 		}()
 		<-s.httpServerTomb.Dying()
-		log.Infof("run: shutting down api server")
-		if err := s.Shutdown(); err != nil {
-			log.Errorf("while shutting down API Server : %s", err)
-			return err
-		}
 		return nil
 	})
 
@@ -278,5 +271,26 @@ func (s *APIServer) Shutdown() error {
 	if err := s.httpServer.Shutdown(context.TODO()); err != nil {
 		return err
 	}
+
+	//close io.writer logger given to gin
+	if pipe, ok := gin.DefaultErrorWriter.(*io.PipeWriter); ok {
+		pipe.Close()
+	}
+	if pipe, ok := gin.DefaultWriter.(*io.PipeWriter); ok {
+		pipe.Close()
+	}
+	s.httpServerTomb.Kill(nil)
+	if err := s.httpServerTomb.Wait(); err != nil {
+		return errors.Wrap(err, "while waiting on httpServerTomb")
+	}
 	return nil
+}
+
+func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
+	s.controller.PluginChannel = broker.PluginChannel
+}
+
+func (s *APIServer) InitController() error {
+	err := s.controller.Init()
+	return err
 }
