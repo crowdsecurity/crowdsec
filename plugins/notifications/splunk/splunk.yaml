@@ -1,0 +1,19 @@
+# Don't change this
+type: splunk
+
+name: <NAME>
+
+format: <GO_TEMPLATE>  # splunk event value
+
+url: <SPLUNK_HTTP_URL>
+
+token: <SPLUNK_TOKEN>
+
+
+# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
+
+# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
+
+# max_retry: # number of tries to attempt to send message to plugins in case of error.
+
+# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"
