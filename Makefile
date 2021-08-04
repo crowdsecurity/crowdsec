@@ -86,22 +86,11 @@ clean:
 	@rm -f *.log
 	@rm -f crowdsec-release.tgz
 
-cscli:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
-
-crowdsec:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+crowdsec: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
 http-plugin: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory
@@ -113,22 +102,11 @@ splunk-plugin: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) build --no-print-directory
 
 
-cscli_static:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+cscli_static: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
-
-crowdsec_static:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+crowdsec_static: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) static --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
 http-plugin_static: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(HTTP_PLUGIN_FOLDER) static --no-print-directory
@@ -139,19 +117,9 @@ slack-plugin_static: goversion
 splunk-plugin_static:goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(SPLUNK_PLUGIN_FOLDER) static --no-print-directory
 
-test:
-ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
+test: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
-else
-	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
-	@exit 1;
-endif
 
-.PHONY: check_release
-check_release:
-	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
-
-.PHONY:
 package:
 	@echo Building Release to dir $(RELDIR)
 	@mkdir -p $(RELDIR)/cmd/crowdsec
@@ -166,6 +134,10 @@ package:
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
 	@tar cvzf crowdsec-release.tgz $(RELDIR)	
+
+.PHONY: check_release
+check_release:
+	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
 
 .PHONY:
 release: check_release build package
