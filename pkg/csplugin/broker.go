@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"text/template"
 	"time"
@@ -26,6 +27,7 @@ import (
 )
 
 var testMode bool = false
+var pluginMutex sync.Mutex
 
 const (
 	PluginProtocolVersion uint   = 1
@@ -99,10 +101,15 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 
 		case pluginName := <-pb.watcher.PluginEvents:
 			// this can be ran in goroutine, but then locks will be needed
-			if err := pb.pushNotificationsToPlugin(pluginName); err != nil {
-				log.WithField("plugin:", pluginName).Error(err)
-			}
+			pluginMutex.Lock()
+			tmpAlerts := pb.alertsByPluginName[pluginName]
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
+			pluginMutex.Unlock()
+			go func() {
+				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
+					log.WithField("plugin:", pluginName).Error(err)
+				}
+			}()
 
 		case <-tomb.Dying():
 			log.Info("killing all plugins")
@@ -111,14 +118,15 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 		}
 	}
 }
-
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
 			log.Errorf("binary for plugin %s not found.", pluginName)
 			continue
 		}
+		pluginMutex.Lock()
 		pb.alertsByPluginName[pluginName] = append(pb.alertsByPluginName[pluginName], profileAlert.Alert)
+		pluginMutex.Unlock()
 		pb.watcher.Inserts <- pluginName
 	}
 }
@@ -207,6 +215,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 				log.Error(err)
 				continue
 			}
+			log.Infof("registered plugin %s", pc.Name)
 			pb.notificationPluginByName[pc.Name] = pluginClient
 		}
 	}
@@ -239,12 +248,12 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	return raw.(Notifier), nil
 }
 
-func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string) error {
-	if len(pb.alertsByPluginName[pluginName]) == 0 {
+func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
+	if len(alerts) == 0 {
 		return nil
 	}
 
-	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, pb.alertsByPluginName[pluginName])
+	message, err := formatAlerts(pb.pluginConfigByName[pluginName].Format, alerts)
 	if err != nil {
 		return err
 	}
@@ -311,7 +320,7 @@ func pluginIsValid(path string) bool {
 	if testMode {
 		return true
 	}
-	var details fs.FileInfo
+	var details fs.FileInfo	
 	var err error
 
 	// check if it exists
