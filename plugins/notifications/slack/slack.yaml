@@ -1,9 +1,15 @@
 # Don't change this
 type: slack
 
-name: <NAME>
+name: <NAME> # this must match with the registered plugin in the profile
 
-format: <GO_TEMPLATE> 
+format: |  # This template receives list of models.Alert objects
+  CrowdSec detected {{len .}} attacks
+  {{range .}}
+    {{range .Decisions}}
+      Malicious IPs are {{.Value}}
+    {{end}}
+  {{end}}
 
 webhook: <WEBHOOK_URL>
 

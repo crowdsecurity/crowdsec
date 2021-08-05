@@ -1,9 +1,15 @@
 # Don't change this
 type: http
 
-name: <NAME>
+name: <NAME> # this must match with the registered plugin in the profile
 
-format: <GO_TEMPLATE>  # http payload would contain the formatted text. 
+format: |  # This template receives list of models.Alert objects. The request body would contain this. 
+  CrowdSec detected {{len .}} attacks
+  {{range .}}
+    {{range .Decisions}}
+      Malicious IPs are {{.Value}}
+    {{end}}
+  {{end}}
 
 url: <HTTP_url> # plugin will make requests to this url. Eg value https://www.example.com/
 
