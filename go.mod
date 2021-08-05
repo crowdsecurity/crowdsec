@@ -6,6 +6,7 @@ require (
 	entgo.io/ent v0.7.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Microsoft/go-winio v0.4.16 // indirect
+	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.8.9
 	github.com/appleboy/gin-jwt/v2 v2.6.4
 	github.com/aws/aws-sdk-go v1.38.34
@@ -32,7 +33,7 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
 	github.com/hashicorp/go-version v1.2.1
-	github.com/influxdata/go-syslog/v3 v3.0.0 // indirect
+	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
 	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
@@ -63,7 +64,7 @@ require (
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad
 	golang.org/x/mod v0.4.1
 	golang.org/x/net v0.0.0-20201224014010-6772e930b67b // indirect
-	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6 // indirect
+	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f // indirect

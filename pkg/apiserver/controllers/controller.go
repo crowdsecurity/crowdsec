@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"context"
+	"github.com/alexliesenfeld/health"
 	"net/http"
+	"time"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -37,12 +39,22 @@ func (c *Controller) Init() error {
 	return nil
 }
 
+// endpoint for health checking
+func serveHealth() http.HandlerFunc {
+	checker := health.NewChecker(
+		health.WithCacheDuration(1*time.Second),
+		health.WithDisabledDetails(),
+	)
+	return health.NewHandler(checker)
+}q
+
 func (c *Controller) NewV1() error {
 	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan)
 	if err != nil {
 		return err
 	}
 
+	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
 	c.Router.NoRoute(func(ctx *gin.Context) {
