@@ -1,7 +1,7 @@
 # Don't change this
 type: splunk
 
-name: <NAME> # this must match with the registered plugin in the profile
+name: splunk_default # this must match with the registered plugin in the profile
 
 format: |  # This template receives list of models.Alert objects
   CrowdSec detected {{len .}} attacks
