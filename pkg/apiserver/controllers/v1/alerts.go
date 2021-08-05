@@ -97,6 +97,15 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
+func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
+	select {
+	case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
+		log.Debugf("alert sent to Plugin channel")
+	default:
+		log.Warningf("Cannot send alert to Plugin channel")
+	}
+}
+
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
@@ -117,8 +126,20 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	for _, alert := range input {
 		if len(alert.Decisions) != 0 {
+			for pIdx, profile := range c.Profiles {
+				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
+				if err != nil {
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				if !matched {
+					continue
+				}
+				c.sendAlertToPluginChannel(alert, uint(pIdx))
+			}
 			continue
 		}
+
 		for pIdx, profile := range c.Profiles {
 			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
 			if err != nil {
@@ -130,12 +151,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			alert.Decisions = append(alert.Decisions, profileDecisions...)
 			profileAlert := *alert
-			select {
-			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(pIdx), Alert: &profileAlert}:
-				log.Debugf("alert sent to Plugin channel")
-			default:
-				log.Warningf("Cannot send alert to Plugin channel")
-			}
+			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
 			if profile.OnSuccess == "break" {
 				break
 			}
