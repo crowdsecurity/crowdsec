@@ -71,9 +71,6 @@ func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*mode
 		})
 	}
 	matched := false
-	if !Alert.Remediation {
-		return nil, matched, nil
-	}
 	for eIdx, expression := range profile.RuntimeFilters {
 		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 		if err != nil {
