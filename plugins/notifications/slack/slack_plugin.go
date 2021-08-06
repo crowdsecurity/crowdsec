@@ -6,6 +6,7 @@ import (
 
 	plugin "github.com/hashicorp/go-plugin"
 	log "github.com/sirupsen/logrus"
+
 	"github.com/slack-go/slack"
 	"gopkg.in/yaml.v2"
 )
@@ -19,11 +20,12 @@ type Notify struct {
 }
 
 func (n *Notify) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
-	log.Infof("found notify signal for %s config", notification.Name)
-	slack.PostWebhook(n.WebhooksByConfigName[notification.Name], &slack.WebhookMessage{
+	log.Info("found notify signal for %s config", notification.Name)
+	err := slack.PostWebhook(n.WebhooksByConfigName[notification.Name], &slack.WebhookMessage{
 		Text: notification.Text,
 	})
-	return &Empty{}, nil
+
+	return &Empty{}, err
 }
 
 func (n *Notify) Configure(ctx context.Context, config *Config) (*Empty, error) {
