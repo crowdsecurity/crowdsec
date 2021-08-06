@@ -146,6 +146,10 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		return err
 	}
 	for _, configFilePath := range files {
+		if !strings.HasSuffix(configFilePath, "yaml") && !strings.HasSuffix(configFilePath, "yml") {
+			continue
+		}
+
 		pluginConfigs, err := parsePluginConfigFile(configFilePath)
 		if err != nil {
 			log.Error(err)
@@ -156,6 +160,9 @@ func (pb *PluginBroker) loadConfig(path string) error {
 				continue
 			}
 			setRequiredFields(&pluginConfig)
+			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
+				log.Warnf("plugin config %s is repeated", pluginConfig.Name)
+			}
 			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
 	}
@@ -320,7 +327,7 @@ func pluginIsValid(path string) bool {
 	if testMode {
 		return true
 	}
-	var details fs.FileInfo	
+	var details fs.FileInfo
 	var err error
 
 	// check if it exists
