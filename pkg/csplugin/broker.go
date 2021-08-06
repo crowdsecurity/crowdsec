@@ -146,7 +146,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 		return err
 	}
 	for _, configFilePath := range files {
-		if !strings.HasSuffix(configFilePath, "yaml") && !strings.HasSuffix(configFilePath, "yml") {
+		if !strings.HasSuffix(configFilePath, ".yaml") && !strings.HasSuffix(configFilePath, ".yml") {
 			continue
 		}
 
@@ -161,7 +161,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			}
 			setRequiredFields(&pluginConfig)
 			if _, ok := pb.pluginConfigByName[pluginConfig.Name]; ok {
-				log.Warnf("plugin config %s is repeated", pluginConfig.Name)
+				log.Warnf("several configs for notification %s found  ", pluginConfig.Name)
 			}
 			pb.pluginConfigByName[pluginConfig.Name] = pluginConfig
 		}
