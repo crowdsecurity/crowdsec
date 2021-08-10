@@ -10,11 +10,18 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v2"
 )
+
+var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
+	Name:       "splunk-plugin",
+	Level:      hclog.LevelFromString("DEBUG"),
+	Output:     os.Stderr,
+	JSONFormat: true,
+})
 
 type PluginConfig struct {
 	Name  string `yaml:"name"`
@@ -32,7 +39,7 @@ type Payload struct {
 }
 
 func (s *Splunk) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
-	log.Infof("received notify signal for %s config", notification.Name)
+	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return &Empty{}, fmt.Errorf("splunk invalid config name %s", notification.Name)
 	}
@@ -96,5 +103,6 @@ func main() {
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
+		Logger:     logger,
 	})
 }

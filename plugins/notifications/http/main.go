@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"os"
 
+	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-	log "github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v2"
 )
@@ -25,8 +26,15 @@ type HTTPPlugin struct {
 	PluginConfigByName map[string]PluginConfig
 }
 
+var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
+	Name:       "http-plugin",
+	Level:      hclog.LevelFromString("DEBUG"),
+	Output:     os.Stderr,
+	JSONFormat: true,
+})
+
 func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
-	log.Info("received signal")
+	logger.Info(fmt.Sprintf("received signal for %s config", notification.Name))
 	pluginConfig := s.PluginConfigByName[notification.Name]
 	client := http.Client{}
 
@@ -80,5 +88,6 @@ func main() {
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
+		Logger:     logger,
 	})
 }
