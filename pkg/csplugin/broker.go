@@ -19,6 +19,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -121,7 +122,7 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
-			log.Errorf("binary for plugin %s not found.", pluginName)
+			log.Errorf("plugin %s is not configured properly.", pluginName)
 			continue
 		}
 		pluginMutex.Lock()
@@ -152,8 +153,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 
 		pluginConfigs, err := parsePluginConfigFile(configFilePath)
 		if err != nil {
-			log.Error(err)
-			continue
+			return errors.Wrapf(err, "got error while parsing %s", configFilePath)
 		}
 		for _, pluginConfig := range pluginConfigs {
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
@@ -187,14 +187,12 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 		return err
 	}
 	for _, binaryPath := range binaryPaths {
-		if !pluginIsValid(binaryPath) {
-			log.Errorf("plugin at %s is invalid", binaryPath)
-			continue
+		if err := pluginIsValid(binaryPath); err != nil {
+			return err
 		}
 		pType, pSubtype, err := getPluginTypeAndSubtypeFromPath(binaryPath) // eg pType="notification" , pSubtype="slack"
 		if err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
 		if pType != "notification" {
 			continue
@@ -202,10 +200,8 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 
 		pluginClient, err := pb.loadNotificationPlugin(pSubtype, binaryPath)
 		if err != nil {
-			log.Error(err)
-			continue
+			return err
 		}
-
 		for _, pc := range pb.pluginConfigByName {
 			if pc.Type != pSubtype {
 				continue
@@ -213,14 +209,12 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 
 			data, err := yaml.Marshal(pc)
 			if err != nil {
-				log.Error(err)
-				continue
+				return err
 			}
 
 			_, err = pluginClient.Configure(context.Background(), &protobufs.Config{Config: data})
 			if err != nil {
-				log.Error(err)
-				continue
+				return errors.Wrapf(err, "while configuring %s", pc.Name)
 			}
 			log.Infof("registered plugin %s", pc.Name)
 			pb.notificationPluginByName[pc.Name] = pluginClient
@@ -237,11 +231,15 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	cmd := exec.Command(binaryPath)
 	cmd.SysProcAttr = getProccessAtr()
 	pb.pluginMap[name] = &NotifierPlugin{}
+	l := log.New()
+	types.ConfigureLogger(l)
+	logger := NewHCLogAdapter(l, "")
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,
 		Plugins:          pb.pluginMap,
 		Cmd:              cmd,
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Logger:           logger,
 	})
 	client, err := c.Client()
 	if err != nil {
@@ -323,28 +321,28 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 	}
 }
 
-func pluginIsValid(path string) bool {
+func pluginIsValid(path string) error {
 	if testMode {
-		return true
+		return nil
 	}
 	var details fs.FileInfo
 	var err error
 
 	// check if it exists
 	if details, err = os.Stat(path); err != nil {
-		log.Error(err)
-		return false
+		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
 	}
 
 	// check if it is owned by root
 	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != 0 || stat.Gid != 0 {
-		log.Errorf("%s is not owned by root user and group", path)
-		return false
+		return fmt.Errorf("plugin at %s is not owned by root user and group", path)
 	}
 
-	// check if it is world writable
-	return (int(details.Mode()) & 2) == 0
+	if (int(details.Mode()) & 2) != 0 {
+		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
+	}
+	return nil
 }
 
 // helper which gives paths to all files in the given directory non-recursively

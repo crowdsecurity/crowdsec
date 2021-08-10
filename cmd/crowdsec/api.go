@@ -19,12 +19,11 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initiating plugin broker")
 		err = pluginBroker.Init(cConfig.API.Server.Profiles, cConfig.ConfigPaths)
-		if err == nil {
-			log.Info("initiated plugin broker")
-			apiServer.AttachPluginBroker(&pluginBroker)
-		} else {
-			log.Error(errors.Wrap(err, "error while initialising plugin broker"))
+		if err != nil {
+			return nil, fmt.Errorf("unable to run local API: %s", err)
 		}
+		log.Info("initiated plugin broker")
+		apiServer.AttachPluginBroker(&pluginBroker)
 	}
 
 	err = apiServer.InitController()
