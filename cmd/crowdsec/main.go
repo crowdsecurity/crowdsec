@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -241,6 +242,13 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
+	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
+		Writer: os.Stderr,
+		LogLevels: []log.Level{
+			log.PanicLevel,
+			log.FatalLevel,
+		},
+	})
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
