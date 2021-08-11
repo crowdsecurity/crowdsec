@@ -3,15 +3,13 @@ package controllers
 import (
 	"context"
 	"github.com/alexliesenfeld/health"
-	"net/http"
-	"time"
-
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
+	"net/http"
 )
 
 type Controller struct {
@@ -42,11 +40,13 @@ func (c *Controller) Init() error {
 // endpoint for health checking
 func serveHealth() http.HandlerFunc {
 	checker := health.NewChecker(
-		health.WithCacheDuration(1*time.Second),
+		// just simple up/down status is enough
 		health.WithDisabledDetails(),
+		// no caching required
+		health.WithDisabledCache(),
 	)
 	return health.NewHandler(checker)
-}q
+}
 
 func (c *Controller) NewV1() error {
 	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan)
