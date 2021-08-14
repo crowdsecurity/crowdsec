@@ -19,7 +19,8 @@ CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
 
-GOARCH=amd64
+GOOS ?= linux
+GOARCH ?= amd64
 
 #Golang version info
 GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
@@ -77,7 +78,7 @@ clean:
 
 cscli:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -86,7 +87,7 @@ endif
 
 crowdsec:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -95,7 +96,7 @@ endif
 
 cscli_static:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@$(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
@@ -104,7 +105,7 @@ endif
 
 crowdsec_static:
 ifeq ($(lastword $(RESPECT_VERSION)), $(CURRENT_GOVERSION))
-	@$(MAKE) -C $(CROWDSEC_FOLDER) static --no-print-directory
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) static --no-print-directory
 else
 	@echo "Required golang version is $(REQUIRE_GOVERSION). The current one is $(CURRENT_GOVERSION). Exiting.."
 	@exit 1;
