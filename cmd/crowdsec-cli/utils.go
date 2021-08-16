@@ -90,6 +90,7 @@ func setHubBranch() error {
 			cwhub.HubBranch = "master"
 		} else if csVersion == "" {
 			log.Warningf("Crowdsec version is '', using master branch for the hub")
+			cwhub.HubBranch = "master"
 		} else {
 			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and the latest stable version is '%s'. Please update it!", csVersion, latest)
 			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
