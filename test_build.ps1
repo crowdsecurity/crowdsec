@@ -9,7 +9,9 @@ cd .\crowdsec\cmd\crowdsec\
 go build 
 cd ..\crowdsec-cli\
 go build 
-crowdsec-cli -c ..\..\config\config_win.yaml hub update
+mkdir  $HOME\crowdsec\config\hub\
+mkdir  $HOME\crowdsec\data\
+crowdsec-cli -c ..\..\config\config_win.yaml hub update -b master
 crowdsec-cli -c ..\..\config\config_win.yaml machines add -a
 crowdsec-cli -c ..\..\config\config_win.yaml capi register
 cd ..\crowdsec\
