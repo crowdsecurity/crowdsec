@@ -1,7 +1,6 @@
 package parser
 
 import (
-	"plugin"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -15,7 +14,6 @@ type InitFunc func(map[string]string) (interface{}, error)
 type EnricherCtx struct {
 	Funcs      map[string]EnrichFunc
 	Init       InitFunc
-	Plugin     *plugin.Plugin //pointer to the actual plugin
 	Name       string
 	Path       string      //path to .so ?
 	RuntimeCtx interface{} //the internal context of plugin, given back over every call
@@ -23,7 +21,6 @@ type EnricherCtx struct {
 }
 
 /* mimic plugin loading */
-// TODO fix this shit with real plugin loading
 func Loadplugin(path string) ([]EnricherCtx, error) {
 	var err error
 
@@ -58,7 +55,6 @@ func GenDateParse(date string) (string, time.Time) {
 			"02-Jan-2006 15:04:05 europe/paris",
 			"01/02/2006 15:04:05",
 			"2006-01-02 15:04:05.999999999 -0700 MST",
-			//Jan  5 06:25:11
 			"Jan  2 15:04:05",
 			"Mon Jan 02 15:04:05.000000 2006",
 			"2006-01-02T15:04:05Z07:00",
