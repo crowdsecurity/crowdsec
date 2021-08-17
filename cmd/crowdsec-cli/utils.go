@@ -223,7 +223,9 @@ func UpgradeConfig(itemType string, name string, force bool) {
 		found = true
 		if v.UpToDate {
 			log.Infof("%s : up-to-date", v.Name)
+
 			if !force {
+				cwhub.DownloadDataIfNeeded(csConfig.Hub, v)
 				continue
 			}
 		}

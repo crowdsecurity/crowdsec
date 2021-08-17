@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"path"
 	"path/filepath"
 
 	//"errors"
@@ -134,7 +135,8 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		}
 		if target.UpToDate {
 			log.Debugf("%s : up-to-date, not updated", target.Name)
-			return target, nil
+			DownloadDataIfNeeded(hub, target)
+			//  We still have to check if data files are present
 		}
 	}
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
@@ -222,4 +224,45 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	}
 	hubIdx[target.Type][target.Name] = target
 	return target, nil
+}
+
+func DownloadDataIfNeeded(hub *csconfig.Hub, target Item) error {
+	var (
+		dataFolder = hub.DataDir
+		itemFile   *os.File
+		err        error
+	)
+	itemFilePath := fmt.Sprintf("%s/%s", hub.HubDir, target.RemotePath)
+
+	if itemFile, err = os.Open(itemFilePath); err != nil {
+		errors.Wrap(err, fmt.Sprintf("while opening %s", itemFilePath))
+	}
+
+	dec := yaml.NewDecoder(itemFile)
+
+	for {
+		data := &types.DataSet{}
+		err = dec.Decode(data)
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				return errors.Wrap(err, fmt.Sprintf("while reading file %s", itemFilePath))
+			}
+		}
+
+		download := false
+		for _, dataS := range data.Data {
+			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+				download = true
+			}
+		}
+		if download {
+			err = types.GetData(data.Data, dataFolder)
+			if err != nil {
+				return errors.Wrap(err, "while getting data")
+			}
+		}
+	}
+	return nil
 }
