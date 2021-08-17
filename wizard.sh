@@ -64,6 +64,15 @@ telnet
 smb
 '
 
+
+HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
+SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
+SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
+
+HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
+SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
+SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
+
 BACKUP_DIR=$(mktemp -d)
 rm -rf $BACKUP_DIR
 
@@ -451,6 +460,11 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
+    systemctl is-active --quiet crowdsec
+    if [ $? -eq 0 ]; then
+        systemctl stop crowdsec 
+    fi
+    install_plugins
     symlink_bins
 }
 
@@ -467,6 +481,17 @@ delete_bins() {
     log_info "Removing crowdsec binaries"
     rm -f ${CROWDSEC_BIN_INSTALLED}
     rm -f ${CSCLI_BIN_INSTALLED}   
+}
+
+install_plugins(){
+    cp ${SLACK_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications
+
+    cp ${SPLUNK_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications
+
+    cp ${HTTP_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications
 }
 
 check_running_bouncers() {

@@ -15,8 +15,8 @@ url: <HTTP_url> # plugin will make requests to this url. Eg value https://www.ex
 
 method: GET # eg either of "POST", "GET", "PUT" and other http verbs is valid value. 
 
-# headers:
-#   - Authorization: token 0x64312313
+headers:
+  Authorization: token 0x64312313
 
 # skip_tls_verification:  # either true or false. Default is false
 
