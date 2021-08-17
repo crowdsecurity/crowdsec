@@ -7,8 +7,6 @@ import (
 	"path"
 	"reflect"
 	"testing"
-
-	plugin "github.com/hashicorp/go-plugin"
 )
 
 var testPath string
@@ -112,25 +110,6 @@ func Test_listFilesAtPath(t *testing.T) {
 				t.Errorf("listFilesAtPath() = %v, want %v", got, tt.want)
 			}
 		})
-	}
-}
-
-func TestPluginBroker_BuildPluginMap(t *testing.T) {
-	setUp()
-	defer tearDown()
-	pb := PluginBroker{pluginMap: make(map[string]plugin.Plugin)}
-	err := pb.loadPlugins(testPath)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	expectedPluginMap := map[string]plugin.Plugin{
-		"gitter": &NotifierPlugin{},
-	}
-
-	if !reflect.DeepEqual(expectedPluginMap, pb.pluginMap) {
-		t.Errorf("expected= %v, found= %v", expectedPluginMap, pb.pluginMap)
 	}
 }
 
