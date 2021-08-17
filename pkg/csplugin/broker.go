@@ -232,7 +232,10 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	cmd.SysProcAttr = getProccessAtr()
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
-	types.ConfigureLogger(l)
+	err = types.ConfigureLogger(l)
+	if err != nil {
+		return nil, err
+	}
 	logger := NewHCLogAdapter(l, "")
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,

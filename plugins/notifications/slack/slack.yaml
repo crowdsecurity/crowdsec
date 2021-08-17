@@ -4,14 +4,19 @@ type: slack
 name: slack_default # this must match with the registered plugin in the profile
 
 format: |  # This template receives list of models.Alert objects
-  CrowdSec detected {{len .}} attacks
   {{range .}}
+  {{$alert := .}}
     {{range .Decisions}}
-      Malicious IPs are {{.Value}}
+      {{if $alert.Source.Cn}}
+        :flag-{{$alert.Source.Cn}}: {{.Value}} will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}. <https://www.whois.com/whois/{{.Value}}|WHOIS> <https://www.shodan.io/host/{{.Value}}|Shodan>     {{end}}
+      {{if not $alert.Source.Cn}}
+        :pirate_flag: {{.Value}} will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}.  <https://www.whois.com/whois/{{.Value}}|WHOIS> <https://www.shodan.io/host/{{.Value}}|Shodan> 
+
+      {{end}}
     {{end}}
   {{end}}
 
-webhook: <WEBHOOK_URL>
+webhook: https://hooks.slack.com/services/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
 
 # group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
 

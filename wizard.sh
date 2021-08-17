@@ -484,6 +484,9 @@ delete_bins() {
 }
 
 install_plugins(){
+    mkdir -p /etc/crowdsec/plugins
+    mkdir -p /etc/crowdsec/notifications
+
     cp ${SLACK_PLUGIN_BINARY} /etc/crowdsec/plugins 
     cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications
 
