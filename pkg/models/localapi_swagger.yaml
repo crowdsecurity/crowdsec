@@ -40,6 +40,12 @@ paths:
           required: false
           type: boolean
           description: 'If true, means that the bouncers is starting and a full list must be provided'
+        - name: scopes
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated scopes of decisions to fetch'
+          example: ip,range,country
       responses:
         '200':
           description: successful operation
