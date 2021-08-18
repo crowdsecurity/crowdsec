@@ -79,6 +79,9 @@ func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*mode
 		}
 		switch out := output.(type) {
 		case bool:
+			if profile.Debug != nil && *profile.Debug {
+				profile.DebugFilters[eIdx].Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			}
 			if out {
 				matched = true
 				/*the expression matched, create the associated decision*/
@@ -89,9 +92,6 @@ func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*mode
 
 				decisions = append(decisions, subdecisions...)
 			} else {
-				if profile.Debug != nil && *profile.Debug {
-					profile.DebugFilters[eIdx].Run(clog, false, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
-				}
 				log.Debugf("Profile %s filter is unsuccessful", profile.Name)
 				if profile.OnFailure == "break" {
 					break

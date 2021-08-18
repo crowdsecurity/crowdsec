@@ -6,6 +6,7 @@ require (
 	entgo.io/ent v0.7.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Microsoft/go-winio v0.4.16 // indirect
+	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.8.9
 	github.com/appleboy/gin-jwt/v2 v2.6.4
 	github.com/aws/aws-sdk-go v1.38.34
