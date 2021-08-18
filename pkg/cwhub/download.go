@@ -135,7 +135,6 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		}
 		if target.UpToDate {
 			log.Debugf("%s : up-to-date, not updated", target.Name)
-			DownloadDataIfNeeded(hub, target)
 			//  We still have to check if data files are present
 		}
 	}
@@ -206,27 +205,13 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.Tainted = false
 	target.UpToDate = true
 
-	dec := yaml.NewDecoder(bytes.NewReader(body))
-	for {
-		data := &types.DataSet{}
-		err = dec.Decode(data)
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return target, errors.Wrap(err, "while reading file")
-			}
-		}
-		err = types.GetData(data.Data, dataFolder)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting data")
-		}
-	}
+	downloadData(dataFolder, overwrite, bytes.NewReader(body))
+
 	hubIdx[target.Type][target.Name] = target
 	return target, nil
 }
 
-func DownloadDataIfNeeded(hub *csconfig.Hub, target Item) error {
+func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	var (
 		dataFolder = hub.DataDir
 		itemFile   *os.File
@@ -237,8 +222,13 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item) error {
 	if itemFile, err = os.Open(itemFilePath); err != nil {
 		errors.Wrap(err, fmt.Sprintf("while opening %s", itemFilePath))
 	}
+	downloadData(dataFolder, force, itemFile)
+	return nil
+}
 
-	dec := yaml.NewDecoder(itemFile)
+func downloadData(dataFolder string, force bool, reader io.Reader) error {
+	var err error
+	dec := yaml.NewDecoder(reader)
 
 	for {
 		data := &types.DataSet{}
@@ -247,17 +237,19 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item) error {
 			if err == io.EOF {
 				break
 			} else {
-				return errors.Wrap(err, fmt.Sprintf("while reading file %s", itemFilePath))
+				return errors.Wrap(err, "while reading file")
 			}
 		}
 
 		download := false
-		for _, dataS := range data.Data {
-			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
-				download = true
+		if !force {
+			for _, dataS := range data.Data {
+				if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+					download = true
+				}
 			}
 		}
-		if download {
+		if download || force {
 			err = types.GetData(data.Data, dataFolder)
 			if err != nil {
 				return errors.Wrap(err, "while getting data")

@@ -225,7 +225,9 @@ func UpgradeConfig(itemType string, name string, force bool) {
 			log.Infof("%s : up-to-date", v.Name)
 
 			if !force {
-				cwhub.DownloadDataIfNeeded(csConfig.Hub, v)
+				if err = cwhub.DownloadDataIfNeeded(csConfig.Hub, v, false); err != nil {
+					log.Fatalf("%s : download failed : %v", v.Name, err)
+				}
 				continue
 			}
 		}
