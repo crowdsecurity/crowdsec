@@ -4,12 +4,7 @@ type: http
 name: http_default # this must match with the registered plugin in the profile
 
 format: |  # This template receives list of models.Alert objects. The request body would contain this. 
-  CrowdSec detected {{len .}} attacks
-  {{range .}}
-    {{range .Decisions}}
-      Malicious IPs are {{.Value}}
-    {{end}}
-  {{end}}
+  {{.|toJson}}
 
 url: <HTTP_url> # plugin will make requests to this url. Eg value https://www.example.com/
 

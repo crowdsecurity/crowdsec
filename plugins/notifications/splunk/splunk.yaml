@@ -4,15 +4,9 @@ type: splunk
 name: splunk_default # this must match with the registered plugin in the profile
 
 format: |  # This template receives list of models.Alert objects
-  CrowdSec detected {{len .}} attacks
-  {{range .}}
-    {{range .Decisions}}
-      Malicious IPs are {{.Value}}
-    {{end}}
-  {{end}}
+  {{.|toJson}}
 
 url: <SPLUNK_HTTP_URL>
-
 token: <SPLUNK_TOKEN>
 
 

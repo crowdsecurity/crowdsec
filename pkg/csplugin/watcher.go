@@ -64,7 +64,7 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		case pluginName := <-pw.Inserts:
 			if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
 				pw.AlertCountByPluginName[pluginName]++
-				if pw.AlertCountByPluginName[pluginName] > threshold {
+				if pw.AlertCountByPluginName[pluginName] >= threshold {
 					pw.PluginEvents <- pluginName
 					pw.AlertCountByPluginName[pluginName] = 0
 				}
