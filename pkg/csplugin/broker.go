@@ -16,6 +16,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/Masterminds/sprig"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
@@ -409,7 +410,7 @@ func getHandshake() (plugin.HandshakeConfig, error) {
 }
 
 func formatAlerts(format string, alerts []*models.Alert) (string, error) {
-	template, err := template.New("").Parse(format)
+	template, err := template.New("").Funcs(sprig.TxtFuncMap()).Parse(format)
 	if err != nil {
 		return "", err
 	}
