@@ -23,7 +23,7 @@ CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 LAPI_LOG_FILE="/var/log/crowdsec_api.log"
-
+CROWDSEC_PLUGIN_DIR="/var/lib/crowdsec/plugins/"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -483,17 +483,21 @@ delete_bins() {
     rm -f ${CSCLI_BIN_INSTALLED}   
 }
 
+delete_plugins() {
+    rm -rf ${CROWDSEC_PLUGIN_DIR}
+}
+
 install_plugins(){
-    mkdir -p /etc/crowdsec/plugins
+    mkdir -p ${CROWDSEC_PLUGIN_DIR}
     mkdir -p /etc/crowdsec/notifications
 
-    cp ${SLACK_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications
 
-    cp ${SPLUNK_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications
 
-    cp ${HTTP_PLUGIN_BINARY} /etc/crowdsec/plugins 
+    cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications
 }
 
