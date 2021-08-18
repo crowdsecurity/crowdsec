@@ -205,7 +205,9 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.Tainted = false
 	target.UpToDate = true
 
-	downloadData(dataFolder, overwrite, bytes.NewReader(body))
+	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+	}
 
 	hubIdx[target.Type][target.Name] = target
 	return target, nil
