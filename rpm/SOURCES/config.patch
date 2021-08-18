@@ -1,0 +1,10 @@
+--- config/config.yaml-orig	2021-05-10 20:52:35.540560498 +0200
++++ config/config.yaml	2021-05-10 20:54:36.909254007 +0200
+@@ -16,6 +16,7 @@
+   parser_routines: 1
+ cscli:
+   output: human
++  hub_branch: master
+ db_config:
+   log_level: info
+   type: sqlite
