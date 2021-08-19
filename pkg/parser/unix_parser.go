@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
+        "path"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
@@ -48,14 +49,15 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	var err error
 
-	log.Infof("Loading grok library %s", cConfig.Crowdsec.ConfigDir+string("/patterns/"))
+	patternsDir := path.Join(cConfig.Crowdsec.ConfigDir, "patterns/")
+	log.Infof("Loading grok library %s", patternsDir)
 	/* load base regexps for two grok parsers */
-	parsers.Ctx, err = Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
+	parsers.Ctx, err = Init(map[string]interface{}{"patterns": patternsDir,
 		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser patterns : %v", err)
 	}
-	parsers.Povfwctx, err = Init(map[string]interface{}{"patterns": cConfig.Crowdsec.ConfigDir + string("/patterns/"),
+	parsers.Povfwctx, err = Init(map[string]interface{}{"patterns": patternsDir,
 		"data": cConfig.Crowdsec.DataDir})
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postovflw parser patterns : %v", err)
