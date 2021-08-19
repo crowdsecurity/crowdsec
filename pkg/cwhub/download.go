@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"path"
 	"path/filepath"
 
 	//"errors"
@@ -134,7 +135,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		}
 		if target.UpToDate {
 			log.Debugf("%s : up-to-date, not updated", target.Name)
-			return target, nil
+			//  We still have to check if data files are present
 		}
 	}
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
@@ -204,7 +205,35 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.Tainted = false
 	target.UpToDate = true
 
-	dec := yaml.NewDecoder(bytes.NewReader(body))
+	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+	}
+
+	hubIdx[target.Type][target.Name] = target
+	return target, nil
+}
+
+func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
+	var (
+		dataFolder = hub.DataDir
+		itemFile   *os.File
+		err        error
+	)
+	itemFilePath := fmt.Sprintf("%s/%s", hub.HubDir, target.RemotePath)
+
+	if itemFile, err = os.Open(itemFilePath); err != nil {
+		return errors.Wrapf(err, "while opening %s", itemFilePath)
+	}
+	if err = downloadData(dataFolder, force, itemFile); err != nil {
+		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
+	}
+	return nil
+}
+
+func downloadData(dataFolder string, force bool, reader io.Reader) error {
+	var err error
+	dec := yaml.NewDecoder(reader)
+
 	for {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
@@ -212,14 +241,24 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 			if err == io.EOF {
 				break
 			} else {
-				return target, errors.Wrap(err, "while reading file")
+				return errors.Wrap(err, "while reading file")
 			}
 		}
-		err = types.GetData(data.Data, dataFolder)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting data")
+
+		download := false
+		if !force {
+			for _, dataS := range data.Data {
+				if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+					download = true
+				}
+			}
+		}
+		if download || force {
+			err = types.GetData(data.Data, dataFolder)
+			if err != nil {
+				return errors.Wrap(err, "while getting data")
+			}
 		}
 	}
-	hubIdx[target.Type][target.Name] = target
-	return target, nil
+	return nil
 }
