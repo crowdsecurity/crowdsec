@@ -10,7 +10,6 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	//"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
 
 type GeoIpEnricherCtx struct {
@@ -18,9 +17,6 @@ type GeoIpEnricherCtx struct {
 	dba   *geoip2.Reader
 	dbraw *maxminddb.Reader
 }
-
-/* All plugins must export a list of function pointers for exported symbols */
-var ExportedFuncs = []string{"GeoIpASN", "GeoIpCity"}
 
 func IpToRange(field string, p *types.Event, ctx interface{}) (map[string]string, error) {
 	var dummy interface{}
@@ -98,6 +94,7 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 func GeoIpInit(cfg map[string]string) (interface{}, error) {
 	var ctx GeoIpEnricherCtx
 	var err error
+
 	ctx.dbc, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
 	if err != nil {
 		log.Debugf("couldn't open geoip : %v", err)
