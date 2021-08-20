@@ -33,7 +33,7 @@ func (n *Notify) Notify(ctx context.Context, notification *Notification) (*Empty
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
 	cfg := n.ConfigByName[notification.Name]
-	if cfg.LogLevel != nil {
+	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	} else {
 		logger.SetLevel(hclog.Info)
