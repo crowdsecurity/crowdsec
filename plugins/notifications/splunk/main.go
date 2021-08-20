@@ -24,9 +24,10 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 type PluginConfig struct {
-	Name  string `yaml:"name"`
-	URL   string `yaml:"url"`
-	Token string `yaml:"token"`
+	Name     string  `yaml:"name"`
+	URL      string  `yaml:"url"`
+	Token    string  `yaml:"token"`
+	LogLevel *string `yaml:"log_level"`
 }
 
 type Splunk struct {
@@ -39,12 +40,17 @@ type Payload struct {
 }
 
 func (s *Splunk) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
-	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return &Empty{}, fmt.Errorf("splunk invalid config name %s", notification.Name)
 	}
-
 	cfg := s.PluginConfigByName[notification.Name]
+	if cfg.LogLevel != nil {
+		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	} else {
+		logger.SetLevel(hclog.Info)
+	}
+	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
+
 	p := Payload{Event: notification.Text}
 	data, err := json.Marshal(p)
 	if err != nil {
@@ -57,8 +63,8 @@ func (s *Splunk) Notify(ctx context.Context, notification *Notification) (*Empty
 	}
 
 	req.Header.Add("Authorization", fmt.Sprintf("Splunk %s", cfg.Token))
+	logger.Debug(fmt.Sprintf("posting event %s to %s", string(data), req.URL))
 	resp, err := s.Client.Do(req)
-
 	if err != nil {
 		return &Empty{}, err
 	}
@@ -68,10 +74,13 @@ func (s *Splunk) Notify(ctx context.Context, notification *Notification) (*Empty
 		if err != nil {
 			return &Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", string(err.Error()))
 		}
-
 		return &Empty{}, fmt.Errorf("got non 200 response %s", string(content))
 	}
-
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return &Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+	}
+	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 	return &Empty{}, nil
 }
 
