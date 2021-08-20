@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 
@@ -20,6 +21,7 @@ type PluginConfig struct {
 	Headers             map[string]string `yaml:"headers"`
 	SkipTLSVerification bool              `yaml:"skip_tls_verification"`
 	Method              string            `yaml:"method"`
+	LogLevel            *string           `yaml:"log_level"`
 }
 
 type HTTPPlugin struct {
@@ -34,25 +36,34 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
+	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	}
+	cfg := s.PluginConfigByName[notification.Name]
+	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	} else {
+		logger.SetLevel(hclog.Info)
+	}
+
 	logger.Info(fmt.Sprintf("received signal for %s config", notification.Name))
-	pluginConfig := s.PluginConfigByName[notification.Name]
 	client := http.Client{}
 
-	if pluginConfig.SkipTLSVerification {
+	if cfg.SkipTLSVerification {
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 	}
 
-	request, err := http.NewRequest(pluginConfig.Method, pluginConfig.URL, bytes.NewReader([]byte(notification.Text)))
+	request, err := http.NewRequest(cfg.Method, cfg.URL, bytes.NewReader([]byte(notification.Text)))
 	if err != nil {
 		return nil, err
 	}
 
-	for headerName, headerValue := range pluginConfig.Headers {
+	for headerName, headerValue := range cfg.Headers {
 		request.Header.Add(headerName, headerValue)
 	}
-
+	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, string(notification.Text)))
 	resp, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -61,6 +72,11 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*E
 	if resp.StatusCode != 200 {
 		return nil, err
 	}
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return &Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+	}
+	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 
 	return &Empty{}, nil
 }

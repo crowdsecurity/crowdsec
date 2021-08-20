@@ -2,6 +2,7 @@
 type: slack
 
 name: slack_default # this must match with the registered plugin in the profile
+log_level: info # Options include: trace, debug, info, warn, error, off
 
 format: |  # This template receives list of models.Alert objects
   {{range .}}
@@ -11,7 +12,6 @@ format: |  # This template receives list of models.Alert objects
         :flag-{{$alert.Source.Cn}}: {{.Value}} will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}. <https://www.whois.com/whois/{{.Value}}|WHOIS> <https://www.shodan.io/host/{{.Value}}|Shodan>     {{end}}
       {{if not $alert.Source.Cn}}
         :pirate_flag: {{.Value}} will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}.  <https://www.whois.com/whois/{{.Value}}|WHOIS> <https://www.shodan.io/host/{{.Value}}|Shodan> 
-
       {{end}}
     {{end}}
   {{end}}

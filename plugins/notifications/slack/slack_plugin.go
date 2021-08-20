@@ -13,11 +13,12 @@ import (
 )
 
 type PluginConfig struct {
-	Name    string `yaml:"name"`
-	Webhook string `yaml:"webhook"`
+	Name     string  `yaml:"name"`
+	Webhook  string  `yaml:"webhook"`
+	LogLevel *string `yaml:"log_level"`
 }
 type Notify struct {
-	WebhooksByConfigName map[string]string
+	ConfigByName map[string]PluginConfig
 }
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
@@ -28,8 +29,19 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 })
 
 func (n *Notify) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
+	if _, ok := n.ConfigByName[notification.Name]; !ok {
+		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
+	}
+	cfg := n.ConfigByName[notification.Name]
+	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
+		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
+	} else {
+		logger.SetLevel(hclog.Info)
+	}
+
 	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.Name))
-	err := slack.PostWebhook(n.WebhooksByConfigName[notification.Name], &slack.WebhookMessage{
+	logger.Debug(fmt.Sprintf("posting to %s webhook, message %s", cfg.Webhook, notification.Text))
+	err := slack.PostWebhook(n.ConfigByName[notification.Name].Webhook, &slack.WebhookMessage{
 		Text: notification.Text,
 	})
 	if err != nil {
@@ -44,7 +56,7 @@ func (n *Notify) Configure(ctx context.Context, config *Config) (*Empty, error) 
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
 		return nil, err
 	}
-	n.WebhooksByConfigName[d.Name] = d.Webhook
+	n.ConfigByName[d.Name] = d
 	return &Empty{}, nil
 }
 
@@ -59,7 +71,7 @@ func main() {
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
 			"slack": &NotifierPlugin{
-				Impl: &Notify{WebhooksByConfigName: make(map[string]string)},
+				Impl: &Notify{ConfigByName: make(map[string]PluginConfig)},
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
