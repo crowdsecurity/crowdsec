@@ -27,6 +27,7 @@ import (
 )
 
 var (
+
 	/*tombs for the parser, buckets and outputs.*/
 	acquisTomb   tomb.Tomb
 	parsersTomb  tomb.Tomb
@@ -324,26 +325,31 @@ func run() {
 			log.FatalLevel,
 		},
 	})
+
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		log.Fatalf(err.Error())
+		elog.Error(1, err.Error())
+		//log.Fatalf(err.Error())
 	}
 	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
+		elog.Error(1, err.Error())
+		//log.Fatalf(err.Error())
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
-		log.Fatal(err.Error())
+		//log.Fatal(err.Error())
+		elog.Error(1, err.Error())
 	}
 
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
+	//log.Infof("Crowdsec %s", cwversion.VersionStr())
+	elog.Info(1, "Crowdsec"+cwversion.VersionStr())
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
 	}
-
+	//go Serve(cConfig)
 	if err := Serve(cConfig); err != nil {
-		log.Fatalf(err.Error())
+		//log.Fatalf(err.Error())
+		elog.Error(1, err.Error())
 	}
 }
