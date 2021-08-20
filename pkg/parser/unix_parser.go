@@ -37,7 +37,7 @@ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
 	}
 	r.DataFolder = c["data"].(string)
 	for _, f := range files {
-		if err := r.Grok.AddFromFile(c["patterns"].(string) + f.Name()); err != nil {
+		if err := r.Grok.AddFromFile(path.Join(c["patterns"].(string), f.Name())); err != nil {
 			log.Errorf("failed to load pattern %s : %v", f.Name(), err)
 			return nil, err
 		}
