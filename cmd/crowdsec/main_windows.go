@@ -269,7 +269,7 @@ func main() {
 		err = startService(svcName)
 		return
 	} else if flags.WinSvc == "Stop" {
-
+		err = controlService(svcName, svc.Stop, svc.Stopped)
 	}
 	//else if flags.WinSvc == "Restart" {
 	// } else {

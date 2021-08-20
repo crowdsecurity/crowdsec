@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"golang.org/x/sys/windows/svc"
@@ -27,12 +26,13 @@ func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest,
 	slowtick := time.Tick(2 * time.Second)
 	tick := fasttick
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
+	go run()
+
 loop:
 	for {
 		select {
 		case <-tick:
-			run()
-			elog.Info(1, "starting to serve crowdsec")
+
 		case c := <-r:
 			switch c.Cmd {
 			case svc.Interrogate:
@@ -41,10 +41,7 @@ loop:
 				time.Sleep(100 * time.Millisecond)
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
-				// golang.org/x/sys/windows/svc.TestExample is verifying this output.
-				testOutput := strings.Join(args, "-")
-				testOutput += fmt.Sprintf("-%d", c.Context)
-				elog.Info(1, testOutput)
+				shutdownCrowdsec()
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
