@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"os"
 	"os/exec"
 	"os/user"
@@ -230,7 +231,10 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr = getProccessAtr()
+	cmd.SysProcAttr, err = getProccessAtr()
+	if err != nil {
+		return nil, errors.Wrap(err, "while getting process attributes")
+	}
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 	err = types.ConfigureLogger(l)
@@ -374,18 +378,35 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
-func getProccessAtr() *syscall.SysProcAttr {
-	u, _ := user.Lookup("nobody")
-	g, _ := user.LookupGroup("nogroup")
-	uid, _ := strconv.Atoi(u.Uid)
-	gid, _ := strconv.Atoi(g.Gid)
-
+func getProccessAtr() (*syscall.SysProcAttr, error) {
+	u, err := user.Lookup("nobody")
+	if err != nil {
+		return nil, err
+	}
+	g, err := user.LookupGroup("nogroup")
+	if err != nil {
+		return nil, err
+	}
+	uid, err := strconv.Atoi(u.Uid)
+	if err != nil {
+		return nil, err
+	}
+	if uid < 0 && uid > math.MaxInt32 {
+		return nil, fmt.Errorf("out of bound uid")
+	}
+	gid, err := strconv.Atoi(g.Gid)
+	if err != nil {
+		return nil, err
+	}
+	if gid < 0 && gid > math.MaxInt32 {
+		return nil, fmt.Errorf("out of bound gid")
+	}
 	return &syscall.SysProcAttr{
 		Credential: &syscall.Credential{
 			Uid: uint32(uid),
 			Gid: uint32(gid),
 		},
-	}
+	}, nil
 }
 
 func getUUID() (string, error) {
