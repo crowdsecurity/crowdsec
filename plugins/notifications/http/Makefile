@@ -5,8 +5,6 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 BINARY_NAME=notification-http
-PREFIX?="/"
-BIN_PREFIX = $(PREFIX)"/etc/crowdsec/plugins/"
 
 clean:
 	@rm -f $(BINARY_NAME)
