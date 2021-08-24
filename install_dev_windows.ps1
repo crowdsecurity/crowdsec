@@ -6,12 +6,14 @@ choco install -y git
 choco install -y mingw
 refreshenv
 git clone https://github.com/zecloud/crowdsec
-cd .\crowdsec\cmd\crowdsec\
+cd .\crowdsec
+mkdir  config\hub\
+mkdir  data\
+mkdir  config\logs\
+cd .\cmd\crowdsec\
 go build 
 cd ..\crowdsec-cli\
 go build 
-mkdir  $HOME\crowdsec\config\hub\
-mkdir  $HOME\crowdsec\data\
 .\crowdsec-cli.exe -c ..\..\config\config_win.yaml hub update -b master
 .\crowdsec-cli.exe -c ..\..\config\config_win.yaml machines add -a
 .\crowdsec-cli.exe -c ..\..\config\config_win.yaml capi register

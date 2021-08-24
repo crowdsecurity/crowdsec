@@ -5,6 +5,7 @@ go 1.13
 require (
 	entgo.io/ent v0.7.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.8.9
@@ -40,7 +41,10 @@ require (
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
+	github.com/mattn/go-zglob v0.0.3 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
+	github.com/mh-cbon/go-msi v0.0.0-20170907180328-7f05345d485b // indirect
+	github.com/mh-cbon/stringexec v0.0.0-20160727103857-5a080a1a4118 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -56,6 +60,7 @@ require (
 	github.com/prometheus/prom2json v1.3.0
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
