@@ -133,12 +133,14 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	for _, alert := range input {
 		alert.MachineID = machineID
 	}
-	select {
-	case c.CAPIChan <- input:
-		log.Debugf("alert send to CAPI channel")
-	default:
-		log.Warningf("Cannot send alert to Central API channel")
-	}
+        if c.CAPIChan != nil {
+            select {
+            case c.CAPIChan <- input:
+                    log.Debug("alert sent to CAPI channel")
+            default:
+                    log.Warning("Cannot send alert to Central API channel")
+            }
+        }
 
 	gctx.JSON(http.StatusCreated, alerts)
 	return
