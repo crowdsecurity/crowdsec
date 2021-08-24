@@ -1,0 +1,10 @@
+VERIFICATION
+
+To check the checksum of this package, extract the msi file contained into it,
+then run
+
+  checksum.exe {{.Choco.MsiFile}} -t=sha256
+
+The result must match
+
+  {{.Choco.MsiSum | upper}}

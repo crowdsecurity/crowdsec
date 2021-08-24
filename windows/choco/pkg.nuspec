@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<package xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <metadata>
+    <id>{{.Choco.ID}}</id>
+    <title>{{.Choco.Title}}</title>
+    <version>{{.VersionOk}}</version>
+    <authors>{{.Choco.Authors}}</authors>
+    <owners>{{.Choco.Owners}}</owners>
+    <description>{{.Choco.Description}}</description>
+    {{if gt (.Choco.ProjectURL | len) 0}}
+    <projectUrl>{{.Choco.ProjectURL}}</projectUrl>
+    {{end}}
+    {{if gt (.Choco.Tags | len) 0}}
+    <tags>{{.Choco.Tags}}</tags>
+    {{end}}
+    {{if gt (.Choco.LicenseURL | len) 0}}
+    <licenseUrl>{{.Choco.LicenseURL}}</licenseUrl>
+    {{end}}
+    {{if gt (.Choco.IconURL | len) 0}}
+    <iconUrl>{{.Choco.IconURL}}</iconUrl>
+    {{end}}
+    {{if gt (.Choco.ChangeLog | len) 0}}
+    <releaseNotes>{{.Choco.ChangeLog}}</releaseNotes>
+    {{end}}
+    {{if .Choco.RequireLicense}}
+    <requireLicenseAcceptance>true</requireLicenseAcceptance>
+    {{else}}
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    {{end}}
+  </metadata>
+  <files>
+    <file src="{{.Choco.BuildDir}}\chocolateyInstall.ps1" target="tools" />
+    <file src="{{.Choco.BuildDir}}\chocolateyUninstall.ps1" target="tools" />
+    <file src="{{.Choco.BuildDir}}\{{.Choco.MsiFile}}" target="tools" />
+    <file src="{{.Choco.BuildDir}}\LICENSE.txt" target="tools" />
+    <file src="{{.Choco.BuildDir}}\VERIFICATION.txt" target="tools" />
+  </files>
+</package>

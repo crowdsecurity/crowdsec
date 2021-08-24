@@ -1,0 +1,9 @@
+From: {{.Choco.LicenseURL}}
+
+LICENSE
+
+{{if gt (.License | len) 0}}
+{{.License | cat}}
+{{else if gt (.Choco.LicenseURL | len) 0}}
+{{.Choco.LicenseURL | download}}
+{{end}}
