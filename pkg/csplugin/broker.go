@@ -391,14 +391,14 @@ func getProccessAtr() (*syscall.SysProcAttr, error) {
 	if err != nil {
 		return nil, err
 	}
-	if uid < 0 && uid > math.MaxInt32 {
+	if uid < 0 && uid > math.MaxUint32 {
 		return nil, fmt.Errorf("out of bound uid")
 	}
 	gid, err := strconv.Atoi(g.Gid)
 	if err != nil {
 		return nil, err
 	}
-	if gid < 0 && gid > math.MaxInt32 {
+	if gid < 0 && gid > math.MaxUint32 {
 		return nil, fmt.Errorf("out of bound gid")
 	}
 	return &syscall.SysProcAttr{
