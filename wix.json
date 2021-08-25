@@ -11,7 +11,9 @@
     ]
   },
   "directories": [
-    "config"
+    "config",
+    "data",
+    "log"
   ],
   "env": {
     "guid": "d91111c5-c74b-40ad-bef1-4be3257b8865",
@@ -39,7 +41,19 @@
       "when": "install"
     },
     {
-      "command": "sc.exe start crowdsec",
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml hub update -b master",
+      "when": "install"
+    },
+    {
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml machines add -a",
+      "when": "install"
+    },
+    {
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml capi register",
+      "when": "install"
+    },
+    {
+      "command": "net start crowdsec",
       "when": "install"
     },
     {
