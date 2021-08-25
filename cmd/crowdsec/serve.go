@@ -49,6 +49,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
+	pluginTomb = tomb.Tomb{}
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
@@ -217,7 +218,7 @@ func Serve(cConfig *csconfig.Config) error {
 	outputsTomb = tomb.Tomb{}
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
-
+	pluginTomb = tomb.Tomb{}
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
@@ -240,6 +241,7 @@ func Serve(cConfig *csconfig.Config) error {
 	}
 	if flags.TestMode {
 		log.Infof("test done")
+		pluginBroker.Kill()
 		os.Exit(0)
 	}
 

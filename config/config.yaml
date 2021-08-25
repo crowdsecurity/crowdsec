@@ -11,6 +11,8 @@ config_paths:
   simulation_path: /etc/crowdsec/simulation.yaml
   hub_dir: /etc/crowdsec/hub/
   index_path: /etc/crowdsec/hub/.index.json
+  notification_dir: /etc/crowdsec/notifications/
+  plugin_dir: /var/lib/crowdsec/plugins/
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
