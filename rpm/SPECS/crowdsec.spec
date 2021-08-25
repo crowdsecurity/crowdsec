@@ -14,7 +14,6 @@ Patch2:         config.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  git
-BuildRequires:  golang >= 1.14
 BuildRequires:  make
 BuildRequires:  jq
 BuildRequires:  systemd
