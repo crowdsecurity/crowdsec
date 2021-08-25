@@ -3,23 +3,23 @@ common:
   pid_dir: /var/run/
   log_media: file
   log_level: info
-  log_dir: $HOME\crowdsec\config\log\
+  log_dir:  C:\Program Files\Crowdsec\log\
   working_dir: .
 config_paths:
-  config_dir: $HOME\crowdsec\config\
-  data_dir: $HOME\crowdsec\data\
-  simulation_path:  $HOME\crowdsec\config\simulation.yaml
-  hub_dir: $HOME\crowdsec\config\hub\
-  index_path: $HOME\crowdsec\config\hub\.index.json
+  config_dir:  C:\Program Files\Crowdsec\config\
+  data_dir:  C:\Program Files\Crowdsec\data\
+  simulation_path:   C:\Program Files\Crowdsec\config\simulation.yaml
+  hub_dir:  C:\Program Files\Crowdsec\hub\
+  index_path:  C:\Program Files\Crowdsec\hub\.index.json
 crowdsec_service:
-  acquisition_path: $HOME\crowdsec\config\acquis.yaml
+  acquisition_path:  C:\Program Files\Crowdsec\config\acquis.yaml
   parser_routines: 1
 cscli:
   output: human
 db_config:
   log_level: info
   type: sqlite
-  db_path: $HOME\crowdsec\data\crowdsec.db
+  db_path:  C:\Program Files\Crowdsec\data\crowdsec.db
   #user: 
   #password:
   #db_name:
@@ -31,13 +31,13 @@ db_config:
 api:
   client:
     insecure_skip_verify: false
-    credentials_path: $HOME\crowdsec\config\local_api_credentials.yaml
+    credentials_path:  C:\Program Files\Crowdsec\config\local_api_credentials.yaml
   server:
     log_level: info
     listen_uri: 127.0.0.1:8080
-    profiles_path: $HOME\crowdsec\config\profiles.yaml
+    profiles_path: C:\Program Files\Crowdsec\config\profiles.yaml
     online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
-      credentials_path: $HOME\crowdsec\config\online_api_credentials.yaml
+      credentials_path:  C:\Program Files\Crowdsec\config\online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem
 #      key_file: /etc/crowdsec/ssl/key.pem
