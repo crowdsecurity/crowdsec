@@ -29,7 +29,7 @@ CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
 
 GOOS ?= linux
-GOARCH ?= amd64
+GOARCH ?= $(shell go env GOARCH)
 
 #Golang version info
 GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
