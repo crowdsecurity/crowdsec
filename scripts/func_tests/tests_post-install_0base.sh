@@ -35,7 +35,7 @@ pidof crowdsec || fail "crowdsec process should be running"
 ${CSCLI} version || fail "cannot run cscli version"
 
 ## alerts
-# alerts list at startup should just return one entry : comunity pull
+# alerts list at startup should just return one entry : community pull
 sleep 5
 ${CSCLI} alerts list -ojson  | ${JQ} '. | length >= 1' || fail "expected at least one entry from cscli alerts list"
 ## capi

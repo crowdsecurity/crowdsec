@@ -43,15 +43,13 @@ func TestDeleteDecisionRange(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// delete by ip wrong
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=1.2.3.0/24", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
@@ -59,8 +57,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 	// delete by range
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
@@ -68,8 +65,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 	// delete by range : ensure it was already deleted
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=91.121.79.0/24", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
@@ -103,15 +99,13 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// delete by ip wrong
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=1.2.3.4", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
@@ -119,8 +113,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	// delete by ip good
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=91.121.79.179", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
@@ -128,8 +121,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	// delete by scope/value
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?scope=Ip&value=91.121.79.178", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
@@ -163,8 +155,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	APIKey, err := CreateTestBouncer()
@@ -250,8 +241,7 @@ func TestGetDecision(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	APIKey, err := CreateTestBouncer()
@@ -308,15 +298,13 @@ func TestDeleteDecisionByID(t *testing.T) {
 	}
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// Delete alert with Invalid ID
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions/test", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 400, w.Code)
@@ -325,8 +313,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	// Delete alert with ID that not exist
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions/100", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
@@ -335,8 +322,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	// Delete alert with valid ID
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions/1", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
@@ -372,15 +358,13 @@ func TestDeleteDecision(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	// Delete alert with Invalid filter
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions?test=test", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
@@ -389,8 +373,7 @@ func TestDeleteDecision(t *testing.T) {
 	// Delete alert
 	w = httptest.NewRecorder()
 	req, _ = http.NewRequest("DELETE", "/v1/decisions", strings.NewReader(""))
-	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)

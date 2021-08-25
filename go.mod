@@ -5,6 +5,9 @@ go 1.13
 require (
 	entgo.io/ent v0.7.0
 	github.com/AlecAivazis/survey/v2 v2.2.7
+	github.com/Masterminds/goutils v1.1.1 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/Microsoft/go-winio v0.4.16 // indirect
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.8.9
@@ -32,7 +35,11 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-querystring v1.0.0
 	github.com/goombaio/namegenerator v0.0.0-20181006234301-989e774b106e
+	github.com/hashicorp/go-hclog v0.14.1
+	github.com/hashicorp/go-plugin v1.4.2
 	github.com/hashicorp/go-version v1.2.1
+	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
@@ -41,6 +48,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
+	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/morikuni/aec v1.0.0 // indirect
@@ -68,7 +76,8 @@ require (
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.5 // indirect
 	google.golang.org/genproto v0.0.0-20210114201628-6edceaf6022f // indirect
-	google.golang.org/grpc v1.35.0 // indirect
+	google.golang.org/grpc v1.35.0
+	google.golang.org/protobuf v1.25.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/tomb.v2 v2.0.0-20161208151619-d5d1b5820637
 	gopkg.in/yaml.v2 v2.4.0
