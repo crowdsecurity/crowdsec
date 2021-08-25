@@ -187,3 +187,15 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	err = copyFileContents(sourceFile, destinationFile)
 	return
 }
+
+func StrPtr(s string) *string {
+	return &s
+}
+
+func Int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func BoolPtr(b bool) *bool {
+	return &b
+}
