@@ -11,9 +11,7 @@
     ]
   },
   "directories": [
-    "config",
-    "data",
-    "log"
+    "config"
   ],
   "env": {
     "guid": "d91111c5-c74b-40ad-bef1-4be3257b8865",
@@ -41,15 +39,15 @@
       "when": "install"
     },
     {
-      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml hub update -b master",
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe -c \"[INSTALLDIR]\\config\\config_win.yaml\" hub update -b master",
       "when": "install"
     },
     {
-      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml machines add -a",
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe -c \"[INSTALLDIR]\\config\\config_win.yaml\" machines add -a",
       "when": "install"
     },
     {
-      "command": "[INSTALLDIR]\\crowdsec-cli.exe .\\config\\config_win.yaml capi register",
+      "command": "[INSTALLDIR]\\crowdsec-cli.exe -c \"[INSTALLDIR]\\config\\config_win.yaml\" capi register",
       "when": "install"
     },
     {
@@ -57,7 +55,7 @@
       "when": "install"
     },
     {
-      "command": "[INSTALLDIR]\\crowdsec.exe -winsvc -Remove",
+      "command": "[INSTALLDIR]\\crowdsec.exe -winsvc Remove",
       "when": "uninstall"
     }
   ]

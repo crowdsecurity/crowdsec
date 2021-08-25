@@ -43,6 +43,21 @@
                <Directory Id="APPDIR{{$i}}" Name="{{$e}}" />
                {{end}}
                {{end}}
+               <Directory Id="DataCrowdsec" Name="data" >
+               <Component Id="CreateData" Guid="fd4c7248-0ba2-43b7-823a-df17109eae84">
+                <CreateFolder />
+               </Component>
+               </Directory>
+               <Directory Id="logCrowdsec" Name="log" >
+                <Component Id="CreateLog" Guid="bfb37d14-10c4-40fb-bafa-2a29f95e4a53">
+                <CreateFolder />
+               </Component>
+               </Directory>
+               <Directory Id="hubCrowdsec" Name="hub" >
+                <Component Id="CreateHub" Guid="ac528dd2-49f7-4448-a9e7-91c66061404b">
+                <CreateFolder />
+               </Component>
+               </Directory>
             </Directory>
          </Directory>
 
@@ -122,6 +137,9 @@
          {{range $i, $e := .Directories}}
          <ComponentGroupRef Id="AppFiles{{$i}}" />
          {{end}}
+         <ComponentRef Id="CreateData"/>
+         <ComponentRef Id="CreateLog"/>
+         <ComponentRef Id="CreateHub"/>
       </Feature>
 
       <UI>

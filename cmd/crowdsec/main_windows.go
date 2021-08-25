@@ -163,7 +163,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", "C:\\Users\\crowdsec\\dev\\crowdsec\\config\\config_win.yaml", "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", "C:\\Program Files\\CrowdSec\\config\\config_win.yaml", "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
@@ -238,7 +238,7 @@ func main() {
 
 	defer types.CatchPanic("crowdsec/main")
 	const svcName = "CrowdSec"
-	const svcDisplayName = "The massively multiplayer firewall"
+	const svcDisplayName = "massively multiplayer firewall"
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
