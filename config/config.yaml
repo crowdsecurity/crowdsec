@@ -38,7 +38,7 @@ api:
     log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
+    online_client: # Central API credentials (to push signals and receive bad IPs)
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem
