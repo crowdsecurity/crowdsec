@@ -62,7 +62,7 @@ install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
-install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
 
