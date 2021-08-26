@@ -35,7 +35,7 @@ func NewLapiCmd() *cobra.Command {
 				log.Fatalln("There is no API->client configuration")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Local API (LAPI) in '%s'", *csConfig.FilePath)
 			}
 			return nil
 		},

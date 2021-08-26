@@ -36,7 +36,7 @@ api:
     tls:
       #cert_file: ./cert.pem
       #key_file: ./key.pem
-    online_client: # Crowdsec API
+    online_client: # Central API
       credentials_path: ./config/online_api_credentials.yaml
 prometheus:
   enabled: true

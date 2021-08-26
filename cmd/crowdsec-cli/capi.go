@@ -32,7 +32,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
 			}
 
 			return nil
@@ -112,11 +112,11 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalln("There is no configuration on 'api_client:'")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
 
 			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatalf("no credentials for crowdsec API in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
+				log.Fatalf("no credentials for Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			}
 
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
