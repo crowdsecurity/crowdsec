@@ -49,6 +49,7 @@ mkdir -p %{buildroot}%{_presetdir}
 
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/plugins
 mkdir -p %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
 
 
 
