@@ -112,9 +112,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
-%config(noreplace) %{_sysconfdir}/notifications/http.yaml
-%config(noreplace) %{_sysconfdir}/notifications/slack.yaml
-%config(noreplace) %{_sysconfdir}/notifications/splunk.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
 
 %{_unitdir}/%{name}.service
 
