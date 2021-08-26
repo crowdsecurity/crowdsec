@@ -14,7 +14,7 @@ Patch2:         config.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  git
-1BuildRequires:  make
+BuildRequires:  make
 BuildRequires:  jq
 BuildRequires:  systemd
 %{?fc33:BuildRequires: systemd-rpm-macros}

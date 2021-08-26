@@ -111,7 +111,7 @@ func (c *Config) LoadAPIServer() error {
 			}
 		}
 		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to crowdsec API disabled")
+			log.Printf("push and pull to Central API disabled")
 		}
 		if err := c.LoadDBConfig(); err != nil {
 			return err
