@@ -62,9 +62,9 @@ install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
-install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_sharedstatedir}/%{name}/plugins/
-install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_sharedstatedir}/%{name}/plugins/
-install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_sharedstatedir}/%{name}/plugins/
+install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
@@ -77,9 +77,12 @@ rm -rf %{buildroot}
 
 %files
 %defattr(-,root,root,-)
-/usr/bin/%{name}
-/usr/bin/cscli
-/usr/share/%{name}/wizard.sh
+%{_bindir}/%{name}
+%{_bindir}/cscli
+%{_datadir}/%{name}/wizard.sh
+%{_libdir}/%{name}/plugins/notification-slack
+%{_libdir}/%{name}/plugins/notification-http
+%{_libdir}/%{name}/plugins/notification-splunk
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx
@@ -108,6 +111,9 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
+%config(noreplace) %{_sysconfdir}/notifications/http.yaml
+%config(noreplace) %{_sysconfdir}/notifications/slack.yaml
+%config(noreplace) %{_sysconfdir}/notifications/splunk.yaml
 
 %{_unitdir}/%{name}.service
 
