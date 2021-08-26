@@ -23,7 +23,7 @@ func NewConsoleCmd() *cobra.Command {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 
 			return nil
@@ -45,10 +45,10 @@ After running this command your will need to validate the enrollment in the weba
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure CAPI with `cscli capi register` before enrolling your instance")
+				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
 			}
 			return nil
 		},
