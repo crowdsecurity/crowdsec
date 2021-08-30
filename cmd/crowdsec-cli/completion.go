@@ -50,6 +50,7 @@ func NewCompletionCmd() *cobra.Command {
   # You will need to start a new shell for this setup to take effect.
 `,
 		DisableFlagsInUseLine: true,
+		DisableAutoGenTag:     true,
 		ValidArgs:             []string{"bash", "zsh"},
 		Args:                  cobra.ExactValidArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

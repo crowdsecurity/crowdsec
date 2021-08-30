@@ -274,15 +274,17 @@ func restoreConfigFromDirectory(dirPath string) error {
 func NewConfigCmd() *cobra.Command {
 
 	var cmdConfig = &cobra.Command{
-		Use:   "config [command]",
-		Short: "Allows to view current config",
-		Args:  cobra.ExactArgs(0),
+		Use:               "config [command]",
+		Short:             "Allows to view current config",
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 	}
 	var cmdConfigShow = &cobra.Command{
-		Use:   "show",
-		Short: "Displays current config",
-		Long:  `Displays the current cli configuration.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "show",
+		Short:             "Displays current config",
+		Long:              `Displays the current cli configuration.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
@@ -375,7 +377,7 @@ func NewConfigCmd() *cobra.Command {
 	cmdConfig.AddCommand(cmdConfigShow)
 
 	var cmdConfigBackup = &cobra.Command{
-		Use:   "backup <directory>",
+		Use:   `backup "directory"`,
 		Short: "Backup current config",
 		Long: `Backup the current crowdsec configuration including :
 
@@ -385,8 +387,9 @@ func NewConfigCmd() *cobra.Command {
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
-		Example: `cscli config backup ./my-backup`,
-		Args:    cobra.ExactArgs(1),
+		Example:           `cscli config backup ./my-backup`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadHub(); err != nil {
@@ -404,9 +407,9 @@ func NewConfigCmd() *cobra.Command {
 	cmdConfig.AddCommand(cmdConfigBackup)
 
 	var cmdConfigRestore = &cobra.Command{
-		Use:   "restore <directory>",
-		Short: "Restore config in backup <directory>",
-		Long: `Restore the crowdsec configuration from specified backup <directory> including:
+		Use:   `restore "directory"`,
+		Short: `Restore config in backup "directory"`,
+		Long: `Restore the crowdsec configuration from specified backup "directory" including:
 
 - Main config (config.yaml)
 - Simulation config (simulation.yaml)
@@ -414,7 +417,8 @@ func NewConfigCmd() *cobra.Command {
 - List of scenarios, parsers, postoverflows and collections that are up-to-date
 - Tainted/local/out-of-date scenarios, parsers, postoverflows and collections
 - Backup of API credentials (local API and online API)`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadHub(); err != nil {

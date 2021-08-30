@@ -251,6 +251,7 @@ cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
@@ -353,7 +354,8 @@ cscli alerts list --type ban`,
 		Example: `cscli alerts delete --ip 1.2.3.4
 cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
-		Args: cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		Args:              cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {
 				return
@@ -421,9 +423,10 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 
 	var details bool
 	var cmdAlertsInspect = &cobra.Command{
-		Use:     "inspect <alert_id>",
-		Short:   `Show info about an alert`,
-		Example: `cscli alerts inspect 123`,
+		Use:               `inspect "alert_id"`,
+		Short:             `Show info about an alert`,
+		Example:           `cscli alerts inspect 123`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
 				_ = cmd.Help()
