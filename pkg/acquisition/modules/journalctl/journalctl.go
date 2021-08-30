@@ -215,6 +215,8 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labelType string, logger *
 				return errors.Wrapf(err, "unknown level %s", value[0])
 			}
 			j.logger.Logger.SetLevel(lvl)
+		case "since":
+			j.args = append(j.args, "--since", value[0])
 		default:
 			return fmt.Errorf("unsupported key %s in journalctl DSN", key)
 		}
