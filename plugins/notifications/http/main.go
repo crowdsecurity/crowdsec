@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
-
 	"gopkg.in/yaml.v2"
 )
 
@@ -35,7 +35,7 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
+func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	if _, ok := s.PluginConfigByName[notification.Name]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
@@ -74,18 +74,18 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *Notification) (*E
 	}
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
 	}
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 
-	return &Empty{}, nil
+	return &protobufs.Empty{}, nil
 }
 
-func (s *HTTPPlugin) Configure(ctx context.Context, config *Config) (*Empty, error) {
+func (s *HTTPPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 	err := yaml.Unmarshal(config.Config, &d)
 	s.PluginConfigByName[d.Name] = d
-	return &Empty{}, err
+	return &protobufs.Empty{}, err
 }
 
 func main() {
@@ -99,7 +99,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"http": &NotifierPlugin{
+			"http": &protobufs.NotifierPlugin{
 				Impl: sp,
 			},
 		},

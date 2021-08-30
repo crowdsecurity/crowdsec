@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/hashicorp/go-hclog"
 	plugin "github.com/hashicorp/go-plugin"
 
@@ -28,7 +29,7 @@ var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	JSONFormat: true,
 })
 
-func (n *Notify) Notify(ctx context.Context, notification *Notification) (*Empty, error) {
+func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notification) (*protobufs.Empty, error) {
 	if _, ok := n.ConfigByName[notification.Name]; !ok {
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
@@ -48,16 +49,16 @@ func (n *Notify) Notify(ctx context.Context, notification *Notification) (*Empty
 		logger.Error(err.Error())
 	}
 
-	return &Empty{}, err
+	return &protobufs.Empty{}, err
 }
 
-func (n *Notify) Configure(ctx context.Context, config *Config) (*Empty, error) {
+func (n *Notify) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
 	d := PluginConfig{}
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
 		return nil, err
 	}
 	n.ConfigByName[d.Name] = d
-	return &Empty{}, nil
+	return &protobufs.Empty{}, nil
 }
 
 func main() {
@@ -70,7 +71,7 @@ func main() {
 	plugin.Serve(&plugin.ServeConfig{
 		HandshakeConfig: handshake,
 		Plugins: map[string]plugin.Plugin{
-			"slack": &NotifierPlugin{
+			"slack": &protobufs.NotifierPlugin{
 				Impl: &Notify{ConfigByName: make(map[string]PluginConfig)},
 			},
 		},
