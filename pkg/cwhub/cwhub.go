@@ -26,7 +26,7 @@ var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
 
 var hubIdx map[string]map[string]Item
 
-var RawFileURLTemplate = "https://d6rcaj0q1hys9.cloudfront.net/%s/%s"
+var RawFileURLTemplate = "https://cdn-hub.crowdsec.net/%s/%s"
 var HubBranch = "master"
 var HubIndexFile = ".index.json"
 
