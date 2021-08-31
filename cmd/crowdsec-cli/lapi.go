@@ -24,9 +24,10 @@ var lapiUser string
 
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
-		Use:   "lapi [action]",
-		Short: "Manage interaction with Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "lapi [action]",
+		Short:             "Manage interaction with Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %s", err.Error())
@@ -46,7 +47,8 @@ func NewLapiCmd() *cobra.Command {
 		Short: "Register a machine to Local API (LAPI)",
 		Long: `Register you machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
-		Args: cobra.MinimumNArgs(0),
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if lapiUser == "" {
@@ -124,9 +126,10 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	cmdLapi.AddCommand(cmdLapiRegister)
 
 	var cmdLapiStatus = &cobra.Command{
-		Use:   "status",
-		Short: "Check authentication to Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(0),
+		Use:               "status",
+		Short:             "Check authentication to Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 

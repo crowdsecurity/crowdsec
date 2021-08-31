@@ -45,7 +45,8 @@ func NewDashboardCmd() *cobra.Command {
 		Long: `Install/Start/Stop/Remove a metabase container exposing dashboard and metrics.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 		`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
 cscli dashboard start
@@ -87,10 +88,11 @@ cscli dashboard remove
 
 	var force bool
 	var cmdDashSetup = &cobra.Command{
-		Use:   "setup",
-		Short: "Setup a metabase container.",
-		Long:  `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "setup",
+		Short:             "Setup a metabase container.",
+		Long:              `Perform a metabase docker setup, download standard dashboards, create a fresh user and start the container`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard setup
 cscli dashboard setup --listen 0.0.0.0
@@ -176,10 +178,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashboard.AddCommand(cmdDashSetup)
 
 	var cmdDashStart = &cobra.Command{
-		Use:   "start",
-		Short: "Start the metabase container.",
-		Long:  `Stats the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "start",
+		Short:             "Start the metabase container.",
+		Long:              `Stats the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			mb, err := metabase.NewMetabase(metabaseConfigPath, metabaseContainerID)
 			if err != nil {
@@ -195,10 +198,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashboard.AddCommand(cmdDashStart)
 
 	var cmdDashStop = &cobra.Command{
-		Use:   "stop",
-		Short: "Stops the metabase container.",
-		Long:  `Stops the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "stop",
+		Short:             "Stops the metabase container.",
+		Long:              `Stops the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := metabase.StopContainer(metabaseContainerID); err != nil {
 				log.Fatalf("unable to stop container '%s': %s", metabaseContainerID, err)
@@ -208,10 +212,11 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 	cmdDashboard.AddCommand(cmdDashStop)
 
 	var cmdDashRemove = &cobra.Command{
-		Use:   "remove",
-		Short: "removes the metabase container.",
-		Long:  `removes the metabase container using docker.`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "remove",
+		Short:             "removes the metabase container.",
+		Long:              `removes the metabase container using docker.`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Example: `
 cscli dashboard remove
 cscli dashboard remove --force
