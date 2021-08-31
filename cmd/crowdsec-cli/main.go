@@ -96,7 +96,6 @@ title: %s
 `
 	name := filepath.Base(filename)
 	base := strings.TrimSuffix(name, path.Ext(name))
-	//id := fmt.Sprintf("%s", base)
 	return fmt.Sprintf(header, base, strings.Replace(base, "_", " ", -1))
 }
 
