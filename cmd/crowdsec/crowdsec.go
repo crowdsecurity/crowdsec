@@ -108,12 +108,6 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 		return nil
 	})
 	outputWg.Wait()
-	log.Warningf("Starting processing data")
-
-	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
-		log.Fatalf("starting acquisition error : %s", err)
-		return err
-	}
 
 	if cConfig.Prometheus != nil && cConfig.Prometheus.Enabled {
 		aggregated := false
@@ -124,6 +118,12 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 			return errors.Wrap(err, "while fetching prometheus metrics for datasources.")
 		}
 
+	}
+	log.Warningf("Starting processing data")
+
+	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
+		log.Fatalf("starting acquisition error : %s", err)
+		return err
 	}
 
 	return nil
