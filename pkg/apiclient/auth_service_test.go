@@ -88,7 +88,7 @@ func TestWatcherAuth(t *testing.T) {
 		MachineID: &mycfg.MachineID,
 		Password:  &mycfg.Password,
 	})
-	assert.Contains(t, err.Error(), "403 Forbidden")
+	assert.Contains(t, err.Error(), "API error: access forbidden")
 
 }
 

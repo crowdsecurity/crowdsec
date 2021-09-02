@@ -106,7 +106,7 @@ func TestNewClientKo(t *testing.T) {
 	})
 
 	_, _, err = client.Alerts.List(context.Background(), AlertsListOpts{})
-	assert.Contains(t, err.Error(), `received response status "401 Unauthorized"`)
+	assert.Contains(t, err.Error(), `API error: bad login/password`)
 	log.Printf("err-> %s", err)
 }
 
