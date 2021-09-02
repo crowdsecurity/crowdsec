@@ -266,7 +266,7 @@ cscli machines add MyTestMachine --password MyPassword
 		Use:               "delete --machine MyTestMachine",
 		Short:             "delete machines",
 		Example:           `cscli machines delete "machine_name"`,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -277,12 +277,14 @@ cscli machines add MyTestMachine --password MyPassword
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			machineID = args[0]
-			err := dbClient.DeleteWatcher(machineID)
-			if err != nil {
-				log.Errorf("unable to delete machine: %s", err)
-				return
+			for _, machineID := range args {
+				err := dbClient.DeleteWatcher(machineID)
+				if err != nil {
+					log.Errorf("unable to delete machine: %s", err)
+					return
+				}
+				log.Infof("machine '%s' deleted successfully", machineID)
 			}
-			log.Infof("machine '%s' deleted successfully", machineID)
 		},
 	}
 	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
