@@ -1,11 +1,9 @@
 module github.com/crowdsecurity/slack-plugin
 
-replace github.com/crowdsecurity/crowdsec => /home/shivam/work/crowdsec/
-
 go 1.16
 
 require (
-	github.com/crowdsecurity/crowdsec v1.1.1
+	github.com/crowdsecurity/crowdsec v1.1.2-0.20210902103512-ea640dfb6d6d
 	github.com/hashicorp/go-hclog v0.16.2
 	github.com/hashicorp/go-plugin v1.4.2
 	github.com/sirupsen/logrus v1.8.1
