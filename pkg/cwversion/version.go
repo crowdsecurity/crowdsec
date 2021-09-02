@@ -84,7 +84,7 @@ func Statisfies(strvers string, constraint string) (bool, error) {
 func Latest() (string, error) {
 	latest := make(map[string]interface{})
 
-	resp, err := http.Get("https://version.crowdsec.net")
+	resp, err := http.Get("https://version.crowdsec.net/latest")
 	if err != nil {
 		return "", err
 	}
