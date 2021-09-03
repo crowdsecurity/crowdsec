@@ -103,7 +103,8 @@ func NewDecisionsCmd() *cobra.Command {
 		Long:    `Add/List/Delete decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
 		/*TBD example*/
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIClient(); err != nil {
 				log.Fatalf(err.Error())
@@ -153,7 +154,8 @@ cscli decisions list -r 1.2.3.0/24
 cscli decisions list -s crowdsecurity/ssh-bf
 cscli decisions list -t ban
 `,
-		Args: cobra.ExactArgs(0),
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			/*take care of shorthand options*/
@@ -262,7 +264,8 @@ cscli decisions add --ip 1.2.3.4 --duration 24h --type captcha
 cscli decisions add --scope username --value foobar
 `,
 		/*TBD : fix long and example*/
-		Args: cobra.ExactArgs(0),
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			var ip, ipRange string
@@ -361,8 +364,9 @@ cscli decisions add --scope username --value foobar
 	var delDecisionId string
 	var delDecisionAll bool
 	var cmdDecisionsDelete = &cobra.Command{
-		Use:   "delete [options]",
-		Short: "Delete decisions",
+		Use:               "delete [options]",
+		Short:             "Delete decisions",
+		DisableAutoGenTag: true,
 		Example: `cscli decisions delete -r 1.2.3.0/24
 cscli decisions delete -i 1.2.3.4
 cscli decisions delete -s crowdsecurity/ssh-bf

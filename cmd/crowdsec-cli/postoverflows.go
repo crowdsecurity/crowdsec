@@ -19,7 +19,8 @@ func NewPostOverflowsCmd() *cobra.Command {
 		cscli postoverflows upgrade crowdsecurity/cdn-whitelist
 		cscli postoverflows list
 		cscli postoverflows remove crowdsecurity/cdn-whitelist`,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
 				log.Fatalf(err.Error())
@@ -47,11 +48,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 	}
 
 	var cmdPostOverflowsInstall = &cobra.Command{
-		Use:     "install [config]",
-		Short:   "Install given postoverflow(s)",
-		Long:    `Fetch and install given postoverflow(s) from hub`,
-		Example: `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "install [config]",
+		Short:             "Install given postoverflow(s)",
+		Long:              `Fetch and install given postoverflow(s) from hub`,
+		Example:           `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				InstallItem(name, cwhub.PARSERS_OVFLW, forceAction)
@@ -63,11 +65,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
 
 	var cmdPostOverflowsRemove = &cobra.Command{
-		Use:     "remove [config]",
-		Short:   "Remove given postoverflow(s)",
-		Long:    `remove given postoverflow(s)`,
-		Example: `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "remove [config]",
+		Short:             "Remove given postoverflow(s)",
+		Long:              `remove given postoverflow(s)`,
+		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
+		Args:              cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.PARSERS_OVFLW, "")
@@ -84,10 +87,11 @@ func NewPostOverflowsCmd() *cobra.Command {
 	cmdPostOverflows.AddCommand(cmdPostOverflowsRemove)
 
 	var cmdPostOverflowsUpgrade = &cobra.Command{
-		Use:     "upgrade [config]",
-		Short:   "Upgrade given postoverflow(s)",
-		Long:    `Fetch and Upgrade given postoverflow(s) from hub`,
-		Example: `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:               "upgrade [config]",
+		Short:             "Upgrade given postoverflow(s)",
+		Long:              `Fetch and Upgrade given postoverflow(s) from hub`,
+		Example:           `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceAction)
@@ -106,11 +110,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 	cmdPostOverflows.AddCommand(cmdPostOverflowsUpgrade)
 
 	var cmdPostOverflowsInspect = &cobra.Command{
-		Use:     "inspect [config]",
-		Short:   "Inspect given postoverflow",
-		Long:    `Inspect given postoverflow`,
-		Example: `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "inspect [config]",
+		Short:             "Inspect given postoverflow",
+		Long:              `Inspect given postoverflow`,
+		Example:           `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
+		Args:              cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.PARSERS_OVFLW)
 		},
@@ -123,6 +128,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:  `List all postoverflows or given one`,
 		Example: `cscli postoverflows list
 cscli postoverflows list crowdsecurity/xxx`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			ListItem(cwhub.PARSERS_OVFLW, args)
 		},

@@ -16,7 +16,8 @@ func NewCollectionsCmd() *cobra.Command {
 		Short: "Manage collections from hub",
 		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
 		/*TBD fix help*/
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
 				log.Fatalf(err.Error())
@@ -45,11 +46,12 @@ func NewCollectionsCmd() *cobra.Command {
 	}
 
 	var cmdCollectionsInstall = &cobra.Command{
-		Use:     "install collection",
-		Short:   "Install given collection(s)",
-		Long:    `Fetch and install given collection(s) from hub`,
-		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "install collection",
+		Short:             "Install given collection(s)",
+		Long:              `Fetch and install given collection(s) from hub`,
+		Example:           `cscli collections install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				InstallItem(name, cwhub.COLLECTIONS, forceAction)
@@ -61,11 +63,12 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInstall)
 
 	var cmdCollectionsRemove = &cobra.Command{
-		Use:     "remove collection",
-		Short:   "Remove given collection(s)",
-		Long:    `Remove given collection(s) from hub`,
-		Example: `cscli collections remove crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "remove collection",
+		Short:             "Remove given collection(s)",
+		Long:              `Remove given collection(s) from hub`,
+		Example:           `cscli collections remove crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.COLLECTIONS, "")
@@ -90,10 +93,11 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
 	var cmdCollectionsUpgrade = &cobra.Command{
-		Use:     "upgrade collection",
-		Short:   "Upgrade given collection(s)",
-		Long:    `Fetch and upgrade given collection(s) from hub`,
-		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:               "upgrade collection",
+		Short:             "Upgrade given collection(s)",
+		Long:              `Fetch and upgrade given collection(s) from hub`,
+		Example:           `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
@@ -112,11 +116,12 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 
 	var cmdCollectionsInspect = &cobra.Command{
-		Use:     "inspect collection",
-		Short:   "Inspect given collection",
-		Long:    `Inspect given collection`,
-		Example: `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "inspect collection",
+		Short:             "Inspect given collection",
+		Long:              `Inspect given collection`,
+		Example:           `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				InspectItem(name, cwhub.COLLECTIONS)
@@ -127,11 +132,12 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{
-		Use:     "list collection [-a]",
-		Short:   "List all collections or given one",
-		Long:    `List all collections or given one`,
-		Example: `cscli collections list`,
-		Args:    cobra.ExactArgs(0),
+		Use:               "list collection [-a]",
+		Short:             "List all collections or given one",
+		Long:              `List all collections or given one`,
+		Example:           `cscli collections list`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			ListItem(cwhub.COLLECTIONS, args)
 		},

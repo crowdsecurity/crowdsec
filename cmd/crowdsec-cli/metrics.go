@@ -377,10 +377,11 @@ func ShowPrometheus(url string) {
 func NewMetricsCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
 	var cmdMetrics = &cobra.Command{
-		Use:   "metrics",
-		Short: "Display crowdsec prometheus metrics.",
-		Long:  `Fetch metrics from the prometheus server and display them in a human-friendly way`,
-		Args:  cobra.ExactArgs(0),
+		Use:               "metrics",
+		Short:             "Display crowdsec prometheus metrics.",
+		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadPrometheus(); err != nil {
 				log.Fatalf(err.Error())
