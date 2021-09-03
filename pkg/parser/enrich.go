@@ -39,8 +39,10 @@ func Loadplugin(path string) ([]EnricherCtx, error) {
 
 	c.RuntimeCtx, err = c.Init(map[string]string{"datadir": path})
 	if err != nil {
-		log.Warningf("load (fake) plugin load : %v", err)
+		log.Warningf("Unable to load 'geoip' enrichment plugin: %v", err)
 		c.initiated = false
+		delete(c.Funcs, "GeoIpASN")
+		delete(c.Funcs, "GeoIpCity")
 	}
 	c.initiated = true
 	return []EnricherCtx{c}, nil

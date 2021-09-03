@@ -99,7 +99,7 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 				}
 			}
 			if !method_found {
-				return fmt.Errorf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
+				log.Warningf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
 			}
 		} else {
 			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
