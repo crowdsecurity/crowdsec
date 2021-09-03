@@ -15,9 +15,10 @@ import (
 
 func NewConsoleCmd() *cobra.Command {
 	var cmdConsole = &cobra.Command{
-		Use:   "console [action]",
-		Short: "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "console [action]",
+		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")

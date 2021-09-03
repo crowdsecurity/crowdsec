@@ -199,9 +199,10 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 func NewAlertsCmd() *cobra.Command {
 	/* ---- ALERTS COMMAND */
 	var cmdAlerts = &cobra.Command{
-		Use:   "alerts [action]",
-		Short: "Manage alerts",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "alerts [action]",
+		Short:             "Manage alerts",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
