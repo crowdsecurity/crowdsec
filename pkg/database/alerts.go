@@ -121,11 +121,19 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	var err error
 	var deleted, inserted int
 
+	if alertItem == nil {
+		return 0, 0, 0, fmt.Errorf("nil alert")
+	}
+	if alertItem.StartAt == nil {
+		return 0, 0, 0, fmt.Errorf("nil start_at")
+	}
 	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 	if err != nil {
 		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
 	}
-
+	if alertItem.StopAt == nil {
+		return 0, 0, 0, fmt.Errorf("nil stop_at")
+	}
 	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
 		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
@@ -170,12 +178,18 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 		for i, decisionItem := range alertItem.Decisions {
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
-
+			if decisionItem.Duration == nil {
+				log.Warningf("nil duration in community decision")
+				continue
+			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
 				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
 			}
-
+			if decisionItem.Scope == nil {
+				log.Warningf("nil scope in community decision")
+				continue
+			}
 			/*if the scope is IP or Range, convert the value to integers */
 			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
@@ -198,7 +212,12 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				SetOrigin(*decisionItem.Origin).
 				SetSimulated(*alertItem.Simulated).
 				SetOwner(alertRef))
+
 			/*for bulk delete of duplicate decisions*/
+			if decisionItem.Value == nil {
+				log.Warningf("nil value in community decision")
+				continue
+			}
 			valueList = append(valueList, *decisionItem.Value)
 
 			if len(decisionBulk) == decisionBulkSize {

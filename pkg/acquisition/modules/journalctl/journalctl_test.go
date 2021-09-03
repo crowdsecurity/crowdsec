@@ -82,6 +82,10 @@ func TestConfigureDSN(t *testing.T) {
 			dsn:         "journalctl://filters=_UID=1000&log_level=foobar",
 			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
+		{
+			dsn:         "journalctl://filters=_UID=1000&log_level=warn&since=yesterday",
+			expectedErr: "",
+		},
 	}
 	subLogger := log.WithFields(log.Fields{
 		"type": "journalctl",

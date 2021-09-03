@@ -26,11 +26,11 @@
 
 ## <TL;DR>
 
-CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/faq/) or read bellow for more.
+CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read bellow for more.
 
 ## 2 mins install
 
-Installing it through the [Package system](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) of your OS is the easiest way to proceed. 
+Installing it through the [Package system](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) of your OS is the easiest way to proceed. 
 Otherwise, you can install it from source.
 
 ### From package (Debian)
@@ -91,12 +91,12 @@ Signals sent to the curation platform are limited to the very strict minimum: IP
 
 Crowdsec is available for various platforms :
 
- - [Use our debian repositories](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-crowdsec-repository) or [the official debian packages](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-using-debian-official-packages)
+ - [Use our debian repositories](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) or the [official debian packages](https://packages.debian.org/search?keywords=crowdsec&searchon=names&suite=stable&section=all)
  - An [image](https://hub.docker.com/r/crowdsecurity/crowdsec) is available for docker
  - [Prebuilt release packages](https://github.com/crowdsecurity/crowdsec/releases) are also available (suitable for `amd64`)
- - You can as well [build it from source](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/#install-from-source)
+ - You can as well [build it from source](https://doc.crowdsec.net/docs/user_guides/building)
 
-Or look directly at [installation documentation](https://doc.crowdsec.net/Crowdsec/v1/getting_started/installation/) for other methods.
+Or look directly at [installation documentation](https://doc.crowdsec.net/docs/getting_started/install_crowdsec) for other methods and platforms.
 
 ## :tada: Key benefits
 

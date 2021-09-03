@@ -141,18 +141,16 @@ cscli bouncers add MyBouncerName -l 24`,
 	var cmdBouncersDelete = &cobra.Command{
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, arg []string) {
-			keyName := arg[0]
-			if keyName == "" {
-				log.Errorf("Please provide a bouncer name")
-				return
-			}
-			err := dbClient.DeleteBouncer(keyName)
-			if err != nil {
-				log.Errorf("unable to delete bouncer: %s", err)
-				return
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, bouncerID := range args {
+				err := dbClient.DeleteBouncer(bouncerID)
+				if err != nil {
+					log.Errorf("unable to delete bouncer: %s", err)
+					return
+				}
+				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}
 		},
 	}

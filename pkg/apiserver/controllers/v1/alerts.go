@@ -98,11 +98,13 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 }
 
 func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
-	select {
-	case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
-		log.Debugf("alert sent to Plugin channel")
-	default:
-		log.Warningf("Cannot send alert to Plugin channel")
+	if c.PluginChannel != nil {
+		select {
+		case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
+			log.Debugf("alert sent to Plugin channel")
+		default:
+			log.Warningf("Cannot send alert to Plugin channel")
+		}
 	}
 }
 
@@ -167,7 +169,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		alert.MachineID = machineID
 	}
 
-  	if c.CAPIChan != nil {
+	if c.CAPIChan != nil {
 		select {
 		case c.CAPIChan <- input:
 			log.Debug("alert sent to CAPI channel")
