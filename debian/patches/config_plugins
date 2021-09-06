@@ -1,0 +1,13 @@
+Index: crowdsec/config/config.yaml
+===================================================================
+--- crowdsec.orig/config/config.yaml
++++ crowdsec/config/config.yaml
+@@ -12,7 +12,7 @@ config_paths:
+   hub_dir: /etc/crowdsec/hub/
+   index_path: /etc/crowdsec/hub/.index.json
+   notification_dir: /etc/crowdsec/notifications/
+-  plugin_dir: /usr/local/lib/crowdsec/plugins/
++  plugin_dir: /usr/lib/crowdsec/plugins/
+ crowdsec_service:
+   acquisition_path: /etc/crowdsec/acquis.yaml
+   parser_routines: 1
