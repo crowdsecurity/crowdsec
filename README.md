@@ -1,6 +1,6 @@
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/crowdsecurity/crowdsec-docs/main/docs/assets/images/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
+<img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_logo.png" alt="CrowdSec" title="CrowdSec" width="400" height="260"/>
 </p>
 </br>
 </br>
@@ -67,10 +67,10 @@ cd crowdsec-v* && sudo ./wizard.sh -i
 
 Crowdsec is an open-source, lightweight software, detecting peers with aggressive behaviors to prevent them from accessing your systems. Its user friendly design and assistance offers a low technical barrier of entry and nevertheless a high security gain.
 
-Processing is done in 4 steps:
+The architecture is as follows :
 
 <p align="center">
- <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/CS-simplified-treatment.png?raw=true" alt="CrowdSec" title="CrowdSec" width="844" height="341"/>
+ <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_architecture.png" alt="CrowdSec" title="CrowdSec"/>
 </p>
 
 Once an unwanted behavior is detected, deal with it through a [bouncer](https://hub.crowdsec.net/browse/#bouncers). The aggressive IP, scenario triggered and timestamp are sent for curation, to avoid poisoning & false positives. (This can be disabled). If verified, this IP is then redistributed to all CrowdSec users running the same scenario.
@@ -104,35 +104,35 @@ Or look directly at [installation documentation](https://doc.crowdsec.net/docs/g
 
 <details open>
   <summary>Initial configuration is automated, providing functional out-of-the-box setup</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/crowdsec_install.gif?raw=true">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/crowdsec_install.gif?raw=true">
 </details>
 
 ### Out of the box detection
 
 <details>
   <summary>Baseline detection is effective out-of-the-box, no fine-tuning required (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/out-of-the-box-protection.gif?raw=true">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/out-of-the-box-protection.gif?raw=true">
 </details>
 
 ### Easy bouncer deployment
 
 <details>
   <summary>It's trivial to add bouncers to enforce decisions of crowdsec (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/blocker-installation.gif?raw=true">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/blocker-installation.gif?raw=true">
 </details>
 
 ### Easy dashboard access
 
 <details>
   <summary>It's easy to deploy a metabase interface to view your data simply with cscli (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/cscli-metabase.gif?raw=true">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/cscli-metabase.gif?raw=true">
 </details>
 
 ### Hot & Cold logs
 
 <details>
   <summary>Process cold logs, for forensic, tests and chasing false-positives & false negatives (click to expand)</summary>
-  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/docs/assets/images/forensic-mode.gif?raw=true">
+  <img src="https://github.com/crowdsecurity/crowdsec-docs/blob/main/crowdsec-docs/static/img/forensic-mode.gif?raw=true">
 </details>
 
 
