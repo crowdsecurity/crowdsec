@@ -57,7 +57,7 @@ function run_tests() {
     cscli decisions add --ip 1.2.3.4 --duration 30s
     cscli decisions add --ip 1.2.3.5 --duration 30s
     sleep 5
-
+    cat mock_http_server_logs.log
     log_line_count=$(cat mock_http_server_logs.log | wc -l)
     if [[ $log_line_count -ne "1" ]] ; then
         cleanup_tests
