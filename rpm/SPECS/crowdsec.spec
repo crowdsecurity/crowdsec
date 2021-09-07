@@ -39,7 +39,7 @@ BuildRequires:  systemd
 
 %build
 BUILD_VERSION=%{local_version} make
-sed -i "s#/usr/local/lib/crowdsec/plugins/#/usr/lib/crowdsec/plugins/#g" config/config.yaml
+sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install
 rm -rf %{buildroot}
