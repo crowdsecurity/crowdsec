@@ -37,10 +37,10 @@ BuildRequires:  systemd
 %patch0
 %patch1
 %patch2
-%patch3
 
 %build
 BUILD_VERSION=%{local_version} make
+sed -i "s#/usr/local/lib/crowdsec/plugins/#/usr/lib/crowdsec/plugins/#g" config/config.yaml
 
 %install
 rm -rf %{buildroot}
@@ -52,8 +52,6 @@ mkdir -p %{buildroot}%{_presetdir}
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/plugins
 mkdir -p %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 mkdir -p %{buildroot}%{_libdir}/%{name}/plugins/
-
-
 
 install -m 755 -D cmd/crowdsec/crowdsec %{buildroot}%{_bindir}/%{name}
 install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
