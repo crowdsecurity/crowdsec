@@ -11,6 +11,7 @@ Source1:        80-%{name}.preset
 Patch0:         crowdsec.unit.patch
 Patch1:         fix-wizard.patch
 Patch2:         config.patch
+Patch3:         config_plugin.patch
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildRequires:  git
@@ -36,6 +37,7 @@ BuildRequires:  systemd
 %patch0
 %patch1
 %patch2
+%patch3
 
 %build
 BUILD_VERSION=%{local_version} make
