@@ -23,7 +23,7 @@ CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 LAPI_LOG_FILE="/var/log/crowdsec_api.log"
-CROWDSEC_PLUGIN_DIR="/var/lib/crowdsec/plugins/"
+CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
