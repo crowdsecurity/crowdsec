@@ -34,6 +34,7 @@ function modify_config() {
 
 function setup_tests() {
     backup
+    cscli decisions delete --all
     python3 -u mock_http_server.py > mock_http_server_logs.log &
     MOCK_SERVER_PID=$!
     modify_config
