@@ -72,6 +72,10 @@ jobs:
       run: |
           cd scripts/func_tests/
           ./tests_post-install_5simulation.sh
+    - name: "Test post-install plugins"
+      run: |
+          cd scripts/func_tests/
+          sudo ./tests_post-install_7_plugin.sh
     - name: "Uninstall"
       run: sudo ./wizard.sh --uninstall
     - name: "Test post remove"
