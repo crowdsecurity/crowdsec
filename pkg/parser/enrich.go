@@ -44,7 +44,7 @@ func Loadplugin(path string) (EnricherCtx, error) {
 			EnrichFunc: IpToRange,
 		},
 		{
-			Name:       "ReverseDNS",
+			Name:       "reverse_dns",
 			InitFunc:   reverseDNSInit,
 			EnrichFunc: reverse_dns,
 		},
