@@ -143,29 +143,27 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 		if static.Method != "" {
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
-			for _, x := range n.EnrichFunctions {
-				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
-					clog.Tracef("Found method '%s'", static.Method)
-					ret, err := fptr(value, event, x.RuntimeCtx)
-					if err != nil {
-						clog.Fatalf("plugin function error : %v", err)
-					}
-					processed = true
-					clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
-					if len(ret) == 0 {
-						clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
-					}
-					for k, v := range ret {
-						clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
-						event.Enriched[k] = v
-					}
-					break
-				} else {
-					clog.Warningf("method '%s' doesn't exist or plugin not initialized", static.Method)
+			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
+				clog.Tracef("Found method '%s'", static.Method)
+				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx)
+				if err != nil {
+					clog.Fatalf("plugin function error : %v", err)
 				}
+				processed = true
+				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
+				if len(ret) == 0 {
+					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
+				}
+				for k, v := range ret {
+					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
+					event.Enriched[k] = v
+				}
+				break
+			} else {
+				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
 			}
 			if !processed {
-				clog.Warningf("method '%s' doesn't exist", static.Method)
+				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
 		} else if static.Parsed != "" {
 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
