@@ -208,18 +208,17 @@ func UpgradeConfig(itemType string, name string, force bool) {
 		if name != "" && name != v.Name {
 			continue
 		}
+
 		if !v.Installed {
 			log.Tracef("skip %s, not installed", v.Name)
-			if !force {
-				continue
-			}
+			continue
 		}
+
 		if !v.Downloaded {
 			log.Warningf("%s : not downloaded, please install.", v.Name)
-			if !force {
-				continue
-			}
+			continue
 		}
+
 		found = true
 		if v.UpToDate {
 			log.Infof("%s : up-to-date", v.Name)
