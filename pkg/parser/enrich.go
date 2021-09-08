@@ -29,12 +29,12 @@ func Loadplugin(path string) (EnricherCtx, error) {
 
 	EnrichersList := []*Enricher{
 		{
-			Name:       "GeoipCity",
+			Name:       "GeoIpCity",
 			InitFunc:   GeoIPCityInit,
 			EnrichFunc: GeoIpCity,
 		},
 		{
-			Name:       "GeoIPASN",
+			Name:       "GeoIpASN",
 			InitFunc:   GeoIPASNInit,
 			EnrichFunc: GeoIpASN,
 		},
