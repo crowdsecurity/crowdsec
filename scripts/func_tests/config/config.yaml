@@ -18,6 +18,9 @@ crowdsec_service:
   parser_routines: 1
 cscli:
   output: human
+plugin_config:
+  user: nobody # plugin process would be ran on behalf of this user
+  group: nogroup # plugin process would be ran on behalf of this group
 db_config:
   log_level: info
   type: sqlite

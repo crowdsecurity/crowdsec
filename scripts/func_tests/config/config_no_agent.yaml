@@ -23,6 +23,9 @@ db_config:
   flush:
     max_items: 5000
     max_age: 7d
+plugin_config:
+  user: nobody # plugin process would be ran on behalf of this user
+  group: nogroup # plugin process would be ran on behalf of this group
 api:
   client:
     insecure_skip_verify: false
