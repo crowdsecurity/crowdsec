@@ -22,6 +22,7 @@ type Config struct {
 	DbConfig     *DatabaseCfg        `yaml:"db_config,omitempty"`
 	API          *APICfg             `yaml:"api,omitempty"`
 	ConfigPaths  *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	PluginConfig *PluginCfg          `yaml:"plugin_config,omitempty"`
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
 	Hub          *Hub                `yaml:"-"`

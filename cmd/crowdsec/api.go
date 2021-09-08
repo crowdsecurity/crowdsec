@@ -18,7 +18,7 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initiating plugin broker")
-		err = pluginBroker.Init(cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
 		if err != nil {
 			return nil, fmt.Errorf("unable to run local API: %s", err)
 		}

@@ -30,6 +30,9 @@ db_config:
   flush:
     max_items: 5000
     max_age: 7d
+plugin_config:
+  user: nobody
+  group: nogroup
 api:
   client:
     insecure_skip_verify: false
