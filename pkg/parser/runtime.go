@@ -158,7 +158,6 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
 					event.Enriched[k] = v
 				}
-				break
 			} else {
 				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
 			}
