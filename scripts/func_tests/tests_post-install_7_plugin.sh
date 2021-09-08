@@ -21,23 +21,17 @@ function clear_backup() {
 }
 
 function modify_config() {
-    sed -i 's,<HTTP_url>,http://localhost:9999,g' /etc/crowdsec/notifications/http.yaml
-    echo "group_threshold: 2" >> /etc/crowdsec/notifications/http.yaml
-
-    sed -i 's,Alert.Remediation == true && Alert.GetScope() == "Ip",1==1,g' /etc/crowdsec/profiles.yaml
-    sed -i 's,# notifications,notifications,g' /etc/crowdsec/profiles.yaml
-    sed -i 's,#   - http_default,   - http_default,g' /etc/crowdsec/profiles.yaml
-    
-    cat  /etc/crowdsec/profiles.yaml
+    cp ./config/http.yaml /etc/crowdsec/notifications/http.yaml
+    cp ./config/profiles.yaml /etc/crowdsec/profiles.yaml
     systemctl restart crowdsec
 }
 
 function setup_tests() {
     backup
     cscli decisions delete --all
+    modify_config
     python3 -u mock_http_server.py > mock_http_server_logs.log &
     MOCK_SERVER_PID=$!
-    modify_config
 }
 
 function cleanup_tests() {
@@ -54,7 +48,6 @@ function run_tests() {
         cleanup_tests
         fail "expected 0 log lines fom mock http server before adding decisions"
     fi
-
     cscli decisions add --ip 1.2.3.4 --duration 30s
     cscli decisions add --ip 1.2.3.5 --duration 30s
     sleep 5
