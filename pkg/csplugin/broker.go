@@ -47,6 +47,8 @@ type PluginBroker struct {
 	notificationPluginByName        map[string]Notifier
 	watcher                         PluginWatcher
 	pluginKillMethods               []func()
+	pluginProcConfig                *csconfig.PluginCfg
+	pluginsTypesToDispatch          map[string]struct{}
 }
 
 // holder to determine where to dispatch config and how to format messages
@@ -69,7 +71,7 @@ type ProfileAlert struct {
 	Alert     *models.Alert
 }
 
-func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
+func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*csconfig.ProfileCfg, configPaths *csconfig.ConfigurationPaths) error {
 	pb.PluginChannel = make(chan ProfileAlert)
 	pb.notificationConfigsByPluginType = make(map[string][][]byte)
 	pb.notificationPluginByName = make(map[string]Notifier)
@@ -77,6 +79,8 @@ func (pb *PluginBroker) Init(profileConfigs []*csconfig.ProfileCfg, configPaths 
 	pb.pluginConfigByName = make(map[string]PluginConfig)
 	pb.alertsByPluginName = make(map[string][]*models.Alert)
 	pb.profileConfigs = profileConfigs
+	pb.pluginProcConfig = pluginCfg
+	pb.pluginsTypesToDispatch = make(map[string]struct{})
 	if err := pb.loadConfig(configPaths.NotificationDir); err != nil {
 		return errors.Wrap(err, "while loading plugin config")
 	}
@@ -178,6 +182,7 @@ func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 			if _, ok := pb.pluginConfigByName[pluginName]; !ok {
 				return fmt.Errorf("config file for plugin %s not found", pluginName)
 			}
+			pb.pluginsTypesToDispatch[pb.pluginConfigByName[pluginName].Type] = struct{}{}
 		}
 	}
 	return nil
@@ -197,6 +202,10 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			return err
 		}
 		if pType != "notification" {
+			continue
+		}
+
+		if _, ok := pb.pluginsTypesToDispatch[pSubtype]; !ok {
 			continue
 		}
 
@@ -231,7 +240,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr, err = getProccessAtr()
+	cmd.SysProcAttr, err = getProccessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting process attributes")
 	}
@@ -378,12 +387,12 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
-func getProccessAtr() (*syscall.SysProcAttr, error) {
-	u, err := user.Lookup("nobody")
+func getProccessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
+	u, err := user.Lookup(username)
 	if err != nil {
 		return nil, err
 	}
-	g, err := user.LookupGroup("nogroup")
+	g, err := user.LookupGroup(groupname)
 	if err != nil {
 		return nil, err
 	}
