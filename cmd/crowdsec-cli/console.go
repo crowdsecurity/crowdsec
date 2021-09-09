@@ -31,6 +31,9 @@ func NewConsoleCmd() *cobra.Command {
 		},
 	}
 
+	name := ""
+	tags := []string{}
+
 	cmdEnroll := &cobra.Command{
 		Use:   "enroll [enroll-key]",
 		Short: "Enroll this instance to https://app.crowdsec.net [requires local API]",
@@ -87,14 +90,15 @@ After running this command your will need to validate the enrollment in the weba
 				URL:           apiURL,
 				VersionPrefix: "v2",
 			})
-			_, err = c.Auth.EnrollWatcher(context.Background(), args[0])
+			_, err = c.Auth.EnrollWatcher(context.Background(), args[0], name, tags)
 			if err != nil {
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
 			log.Infof("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
 		},
 	}
-
+	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to appear in the console")
+	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to appear in the console")
 	cmdConsole.AddCommand(cmdEnroll)
 	return cmdConsole
 }
