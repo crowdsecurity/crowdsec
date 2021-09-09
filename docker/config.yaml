@@ -16,6 +16,9 @@ config_paths:
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
+plugin_config:
+ user: nobody
+ group: nobody
 cscli:
   output: human
   hub_branch: master
