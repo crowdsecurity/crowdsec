@@ -11,8 +11,8 @@ function backup () {
 }
 
 function restore_backup () {
-    cat ./backup_profiles.yaml > /etc/crowdsec/profiles.yaml  
-    cat ./backup_http.yaml > /etc/crowdsec/notifications/http.yaml
+    cat ./backup_profiles.yaml | sudo tee /etc/crowdsec/profiles.yaml > /dev/null
+    cat ./backup_http.yaml | sudo tee /etc/crowdsec/notifications/http.yaml > /dev/null
 }
 
 function clear_backup() {
@@ -21,9 +21,13 @@ function clear_backup() {
 }
 
 function modify_config() {
-    cp ./config/http.yaml /etc/crowdsec/notifications/http.yaml
-    cp ./config/profiles.yaml /etc/crowdsec/profiles.yaml
-    systemctl restart crowdsec
+    PLUGINS_DIR=$(find /usr -type d -wholename "*"crowdsec/plugins)
+    sed -i "s#/usr/local/lib/crowdsec/plugins#${PLUGINS_DIR}#g" ./config/config.yaml
+    cat ./config/config.yaml | sudo tee /etc/crowdsec/config.yaml > /dev/null
+    cat ./config/http.yaml | sudo tee /etc/crowdsec/notifications/http.yaml > /dev/null
+    cat ./config/profiles.yaml | sudo tee /etc/crowdsec/profiles.yaml > /dev/null
+    ${SYSTEMCTL} restart crowdsec
+    sleep 5s
 }
 
 function setup_tests() {
@@ -39,18 +43,22 @@ function cleanup_tests() {
     clear_backup
     kill -9 $MOCK_SERVER_PID
     rm mock_http_server_logs.log
-    systemctl restart crowdsec
+    ${SYSTEMCTL} restart crowdsec
+    sleep 5s
 }
 
 function run_tests() {
     log_line_count=$(cat mock_http_server_logs.log | wc -l)
+
     if [[ $log_line_count -ne "0" ]] ; then
         cleanup_tests
         fail "expected 0 log lines fom mock http server before adding decisions"
     fi
-    cscli decisions add --ip 1.2.3.4 --duration 30s
-    cscli decisions add --ip 1.2.3.5 --duration 30s
+
+    ${CSCLI} decisions add --ip 1.2.3.4 --duration 30s
+    ${CSCLI} decisions add --ip 1.2.3.5 --duration 30s
     sleep 5
+    cat mock_http_server_logs.log
     log_line_count=$(cat mock_http_server_logs.log | wc -l)
     if [[ $log_line_count -ne "1" ]] ; then
         cleanup_tests
@@ -79,3 +87,4 @@ function run_tests() {
 setup_tests
 run_tests
 cleanup_tests
+

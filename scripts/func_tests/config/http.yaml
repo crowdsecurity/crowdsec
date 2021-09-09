@@ -16,8 +16,7 @@ method: POST # eg either of "POST", "GET", "PUT" and other http verbs is valid v
 
 # skip_tls_verification:  # either true or false. Default is false
 
-# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
-
+group_wait: 5s # duration to wait collecting alerts before sending to this plugin, eg "30s"
 group_threshold: 2 # if alerts exceed this, then the plugin will be sent the message. eg "10"
 
 # max_retry: # number of tries to attempt to send message to plugins in case of error.

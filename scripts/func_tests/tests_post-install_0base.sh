@@ -5,6 +5,8 @@ source tests_base.sh
 
 echo $PATH
 
+sudo cp /etc/crowdsec/config.yaml ./config.yaml.backup
+
 ##########################
 ## TEST AGENT/LAPI/CAPI ##
 echo "CROWDSEC (AGENT+LAPI+CAPI)"
@@ -154,5 +156,7 @@ ${CSCLI} -c ./config/config_no_capi.yaml lapi status || fail "lapi status failed
 ${CSCLI_BIN} -c ./config/config_no_capi.yaml metrics || fail "failed to get metrics"
 
 sudo mv /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service 
+
+sudo cp ./config.yaml.backup /etc/crowdsec/config.yaml 
 
 ${SYSTEMCTL} restart crowdsec
