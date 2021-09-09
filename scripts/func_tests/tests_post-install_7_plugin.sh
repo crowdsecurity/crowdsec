@@ -48,6 +48,7 @@ function run_tests() {
         cleanup_tests
         fail "expected 0 log lines fom mock http server before adding decisions"
     fi
+
     ${CSCLI} decisions add --ip 1.2.3.4 --duration 30s
     ${CSCLI} decisions add --ip 1.2.3.5 --duration 30s
     sleep 5
@@ -79,3 +80,4 @@ function run_tests() {
 setup_tests
 run_tests
 cleanup_tests
+
