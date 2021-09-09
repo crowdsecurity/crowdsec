@@ -20,20 +20,19 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 		log.Info("initiating plugin broker")
 		if cConfig.PluginConfig == nil {
 			return nil, fmt.Errorf("plugins are enabled, but no plugin_config section is missing in the configuration")
-		} else {
-			if cConfig.ConfigPaths.NotificationDir == "" {
-				return nil, fmt.Errorf("plugins are enabled, but config_paths.notification_dir is not defined")
-			} else if cConfig.ConfigPaths.PluginDir == "" {
-				return nil, fmt.Errorf("plugins are enabled, but config_paths.plugin_dir is not defined")
-			} else {
-				err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
-				if err != nil {
-					return nil, fmt.Errorf("unable to run local API: %s", err)
-				}
-				log.Info("initiated plugin broker")
-				apiServer.AttachPluginBroker(&pluginBroker)
-			}
 		}
+		if cConfig.ConfigPaths.NotificationDir == "" {
+			return nil, fmt.Errorf("plugins are enabled, but config_paths.notification_dir is not defined")
+		}
+		if cConfig.ConfigPaths.PluginDir == "" {
+			return nil, fmt.Errorf("plugins are enabled, but config_paths.plugin_dir is not defined")
+		}
+		err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
+		if err != nil {
+			return nil, fmt.Errorf("unable to run local API: %s", err)
+		}
+		log.Info("initiated plugin broker")
+		apiServer.AttachPluginBroker(&pluginBroker)
 	}
 
 	err = apiServer.InitController()
