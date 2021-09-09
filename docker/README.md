@@ -14,6 +14,7 @@ You should apply following configuration before starting it :
 
 * Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
 * Mount volumes to specify your log files that should be ingested by crowdsec (set up in acquis.yaml)
+* If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 * Mount other volumes : if you want to share the database for example
 
 ```shell
