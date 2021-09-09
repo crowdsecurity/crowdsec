@@ -42,7 +42,10 @@ Enroll this instance to https://app.crowdsec.net
 		
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
-		Example:           "cscli console enroll YOUR-ENROLL-KEY",
+		Example: `cscli console enroll YOUR-ENROLL-KEY
+		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
+		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
+`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
