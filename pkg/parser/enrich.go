@@ -56,7 +56,7 @@ func Loadplugin(path string) (EnricherCtx, error) {
 	}
 
 	for _, enricher := range EnrichersList {
-		log.Infof("Initiating enricher '%s'", enricher.Name)
+		log.Debugf("Initiating enricher '%s'", enricher.Name)
 		pluginCtx, err := enricher.InitFunc(enricherConfig)
 		if err != nil {
 			log.Errorf("unable to register plugin '%s': %v", enricher.Name, err)
