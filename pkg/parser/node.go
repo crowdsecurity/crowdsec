@@ -91,12 +91,7 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 			if static.ExpValue == "" {
 				return fmt.Errorf("static %d : when method is set, expression must be present", idx)
 			}
-			method_found := false
-			if _, ok := ectx.Registered[static.Method]; ok {
-				method_found = true
-				break
-			}
-			if !method_found {
+			if _, ok := ectx.Registered[static.Method]; !ok {
 				log.Warningf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
 			}
 		} else {
