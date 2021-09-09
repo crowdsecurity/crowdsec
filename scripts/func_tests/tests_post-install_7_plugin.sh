@@ -23,9 +23,10 @@ function clear_backup() {
 function modify_config() {
     PLUGINS_DIR=$(find /usr -type d -wholename "*"crowdsec/plugins)
     sed -i "s#/usr/local/lib/crowdsec/plugins#${PLUGINS_DIR}#g" ./config/config.yaml
-    cat ./config/config.yaml | sudo tee /etc/crowdsec/config.yaml > /dev/null
+    cat ./config/config.yaml | sed 's/group: nogroup/group: '$(groups nobody | cut -d ':' -f2 | tr -d ' ')'/' | sudo tee /etc/crowdsec/config.yaml > /dev/null
     cat ./config/http.yaml | sudo tee /etc/crowdsec/notifications/http.yaml > /dev/null
     cat ./config/profiles.yaml | sudo tee /etc/crowdsec/profiles.yaml > /dev/null
+    
     ${SYSTEMCTL} restart crowdsec
     sleep 5s
 }

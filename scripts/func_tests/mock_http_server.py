@@ -5,7 +5,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         request_path = self.path
         request_body = self.rfile.read(int(self.headers['Content-Length']))
-        request_body = json.loads(request_body)
+        request_body = json.loads(request_body.decode())
         log = {
             "path": request_path,
             "status": 200, 
