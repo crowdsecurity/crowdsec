@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
-	"github.com/logrusorgru/grokky"
+	"github.com/crowdsecurity/grokky"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 

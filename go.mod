@@ -16,6 +16,7 @@ require (
 	github.com/buger/jsonparser v1.1.1
 	github.com/containerd/containerd v1.4.3 // indirect
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
+	github.com/crowdsecurity/grokky v0.0.0-20210908095311-0b3373925934
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dghubble/sling v1.3.0
@@ -43,7 +44,6 @@ require (
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
-	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
