@@ -3,11 +3,11 @@ package parser
 import (
 	"fmt"
 	"io/ioutil"
-        "path"
+	"path"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 
-	"github.com/logrusorgru/grokky"
+	"github.com/crowdsecurity/grokky"
 	log "github.com/sirupsen/logrus"
 )
 
