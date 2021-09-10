@@ -1,9 +1,27 @@
 #!/bin/sh
 
-# Check if the container has already been started
-cscli machines list | grep 127.0.0.1
-if [ $? == 1 ]; then
-    cscli machines add --force --auto -f /etc/crowdsec/local_api_credentials.yaml
+# Check if the container has already been started (ignore if agent is disabled)
+if [ "$DISABLE_AGENT" == "" ] ; then
+    echo "Check if the container has already been started (ignore if agent is disabled)"
+    cscli machines list | grep localhost
+    if [ $? == 1 ]; then
+        cscli lapi register --machine localhost
+    fi
+    if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
+        echo "set up lapi credentials for agent"
+        CONFIG_PATH=$(yq eval '.api.client.credentials_path' /etc/crowdsec/config.yaml)
+        echo "url: $LOCAL_API_URL" > $CONFIG_PATH
+        echo "login: $AGENT_USERNAME" >> $CONFIG_PATH
+        echo "password: $AGENT_PASSWORD" >> $CONFIG_PATH
+    fi
+fi
+
+# Check if lapi need to register automatically an agent
+echo Check if lapi need to register automatically an agent
+if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
+    echo registering agent $AGENT_USERNAME to lapi 
+    echo AGENT PASSWORD : $AGENT_PASSWORD
+    cscli machines add $AGENT_USERNAME --password $AGENT_PASSWORD
 fi
 
 # registration to online API for signal push
@@ -27,7 +45,7 @@ fi
 
 ## Install collections, parsers & scenarios
 cscli hub update
-cscli collections upgrade crowdsecurity/linux
+cscli collections upgrade crowdsecurity/linux || true
 if [ "$COLLECTIONS" != "" ]; then
     cscli collections install $COLLECTIONS
 fi
@@ -58,7 +76,7 @@ fi
 if [ "$DISABLE_AGENT" == "true" ] || [ "$DISABLE_AGENT" == "TRUE" ]; then
     ARGS="$ARGS -no-cs"
 fi
-if [ "$DISABLE_API" == "true" ] || [ "$DISABLE_API" == "TRUE" ]; then
+if [ "$DISABLE_LOCAL_API" == "true" ] || [ "$DISABLE_LOCAL_API" == "TRUE" ]; then
     ARGS="$ARGS -no-api"
 fi
 if [ "$LEVEL_TRACE" == "true" ] || [ "$LEVEL_TRACE" == "TRUE" ]; then
