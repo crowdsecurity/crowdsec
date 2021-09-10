@@ -21,7 +21,6 @@ plugin_config:
  group: nobody
 cscli:
   output: human
-  hub_branch: master
 db_config:
   log_level: info
   type: sqlite
