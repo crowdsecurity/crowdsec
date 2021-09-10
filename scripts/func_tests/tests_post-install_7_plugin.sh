@@ -55,10 +55,10 @@ function run_tests() {
         cleanup_tests
         fail "expected 0 log lines fom mock http server before adding decisions"
     fi
-
+    sleep 2s
     ${CSCLI} decisions add --ip 1.2.3.4 --duration 30s
     ${CSCLI} decisions add --ip 1.2.3.5 --duration 30s
-    sleep 5
+    sleep 5s
     cat mock_http_server_logs.log
     log_line_count=$(cat mock_http_server_logs.log | wc -l)
     if [[ $log_line_count -ne "1" ]] ; then
