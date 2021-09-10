@@ -159,7 +159,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 
 		pluginConfigs, err := parsePluginConfigFile(configFilePath)
 		if err != nil {
-			return errors.Wrapf(err, "got error while parsing %s", configFilePath)
+			return err
 		}
 		for _, pluginConfig := range pluginConfigs {
 			if !pb.profilesContainPlugin(pluginConfig.Name) {
@@ -309,6 +309,7 @@ func parsePluginConfigFile(path string) ([]PluginConfig, error) {
 		return parsedConfigs, errors.Wrapf(err, "while opening %s", path)
 	}
 	dec := yaml.NewDecoder(yamlFile)
+	dec.SetStrict(true)
 	for {
 		pc := PluginConfig{}
 		err = dec.Decode(&pc)
@@ -316,8 +317,7 @@ func parsePluginConfigFile(path string) ([]PluginConfig, error) {
 			if err == io.EOF {
 				break
 			}
-			log.Errorf("while decoding %s got error %s", path, err.Error())
-			continue
+			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err.Error())
 		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}
