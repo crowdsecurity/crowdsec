@@ -61,22 +61,28 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 	}
 
 	for headerName, headerValue := range cfg.Headers {
+		logger.Debug(fmt.Sprintf("adding header %s: %s", headerName, headerValue))
 		request.Header.Add(headerName, headerValue)
 	}
 	logger.Debug(fmt.Sprintf("making HTTP %s call to %s with body %s", cfg.Method, cfg.URL, string(notification.Text)))
 	resp, err := client.Do(request)
 	if err != nil {
+		logger.Error(fmt.Sprintf("Failed to make HTTP request : %s", err))
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return nil, err
-	}
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return nil, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
 	}
+
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
+
+	if resp.StatusCode != 200 {
+		logger.Warn(fmt.Sprintf("HTTP server returned non 200 status code: %d", resp.StatusCode))
+		return &protobufs.Empty{}, nil
+	}
 
 	return &protobufs.Empty{}, nil
 }
