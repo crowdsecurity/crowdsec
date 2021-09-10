@@ -3,7 +3,7 @@
 # Check if the container has already been started (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Check if the container has already been started (ignore if agent is disabled)"
-    cscli machines list | grep localhost
+    cscli machines list -o json | jq -r .[].machineId | grep ^localhost$
     if [ "$?" == 1 ]; then
         cscli machines add localhost --auto
     fi
