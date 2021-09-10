@@ -4,8 +4,8 @@
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Check if the container has already been started (ignore if agent is disabled)"
     cscli machines list | grep localhost
-    if [ $? == 1 ]; then
-        cscli lapi register --machine localhost
+    if [ "$?" == 1 ]; then
+        cscli machines add localhost --auto
     fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
@@ -46,6 +46,7 @@ fi
 ## Install collections, parsers & scenarios
 cscli hub update
 cscli collections upgrade crowdsecurity/linux || true
+cscli parsers upgrade crowdsecurity/whitelists || true
 if [ "$COLLECTIONS" != "" ]; then
     cscli collections install $COLLECTIONS
 fi
