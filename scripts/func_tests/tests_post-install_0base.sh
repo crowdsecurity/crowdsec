@@ -159,4 +159,5 @@ sudo mv /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service
 
 sudo cp ./config.yaml.backup /etc/crowdsec/config.yaml 
 
+${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} restart crowdsec
