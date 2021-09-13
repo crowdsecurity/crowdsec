@@ -15,15 +15,16 @@ import (
 
 func NewConsoleCmd() *cobra.Command {
 	var cmdConsole = &cobra.Command{
-		Use:   "console [action]",
-		Short: "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "console [action]",
+		Short:             "Manage interaction with Crowdsec console (https://app.crowdsec.net)",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 
 			return nil
@@ -38,17 +39,18 @@ Enroll this instance to https://app.crowdsec.net
 		
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
-		Example: "cscli console enroll YOUR-ENROLL-KEY",
-		Args:    cobra.ExactArgs(1),
+		Example:           "cscli console enroll YOUR-ENROLL-KEY",
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure CAPI with `cscli capi register` before enrolling your instance")
+				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
 			}
 			return nil
 		},

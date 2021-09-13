@@ -33,14 +33,15 @@ func Upper(s string) string {
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":           Atof,
-		"JsonExtract":    JsonExtract,
-		"JsonExtractLib": JsonExtractLib,
-		"File":           File,
-		"RegexpInFile":   RegexpInFile,
-		"Upper":          Upper,
-		"IpInRange":      IpInRange,
-		"TimeNow":        TimeNow,
+		"Atof":                Atof,
+		"JsonExtract":         JsonExtract,
+		"JsonExtractUnescape": JsonExtractUnescape,
+		"JsonExtractLib":      JsonExtractLib,
+		"File":                File,
+		"RegexpInFile":        RegexpInFile,
+		"Upper":               Upper,
+		"IpInRange":           IpInRange,
+		"TimeNow":             TimeNow,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v

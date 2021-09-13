@@ -1,0 +1,27 @@
+# Don't change this
+type: slack
+
+name: slack_default # this must match with the registered plugin in the profile
+log_level: info # Options include: trace, debug, info, warn, error, off
+
+format: |  # This template receives list of models.Alert objects
+  {{range . -}}
+  {{$alert := . -}}
+  {{range .Decisions -}}
+  {{if $alert.Source.Cn -}}
+  :flag-{{$alert.Source.Cn}}: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}. <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
+  {{if not $alert.Source.Cn -}}
+  :pirate_flag: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}.  <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
+  {{end -}}
+  {{end -}}
+
+
+webhook: <WEBHOOK_URL>
+
+# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
+
+# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
+
+# max_retry: # number of tries to attempt to send message to plugins in case of error.
+
+# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"

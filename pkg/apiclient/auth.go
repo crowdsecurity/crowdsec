@@ -149,7 +149,11 @@ func (t *JWTTransport) refreshJwtToken() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("received response status %q when fetching %v", resp.Status, req.URL)
+		log.Debugf("received response status %q when fetching %v", resp.Status, req.URL)
+		err = CheckResponse(resp)
+		if err != nil {
+			return err
+		}
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {

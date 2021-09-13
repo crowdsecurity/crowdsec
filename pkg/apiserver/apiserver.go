@@ -12,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
@@ -186,10 +187,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		controller.CAPIChan = nil
 	}
 
-	if err := controller.Init(); err != nil {
-		return &APIServer{}, err
-	}
-
 	return &APIServer{
 		URL:            config.ListenURI,
 		TLS:            config.TLS,
@@ -287,4 +284,13 @@ func (s *APIServer) Shutdown() error {
 		return errors.Wrap(err, "while waiting on httpServerTomb")
 	}
 	return nil
+}
+
+func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
+	s.controller.PluginChannel = broker.PluginChannel
+}
+
+func (s *APIServer) InitController() error {
+	err := s.controller.Init()
+	return err
 }

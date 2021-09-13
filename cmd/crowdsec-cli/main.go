@@ -1,6 +1,11 @@
 package main
 
 import (
+	"fmt"
+	"path"
+	"path/filepath"
+	"strings"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -83,6 +88,21 @@ var validArgs = []string{
 	"config", "completion", "version", "console",
 }
 
+func prepender(filename string) string {
+	const header = `---
+id: %s
+title: %s
+---
+`
+	name := filepath.Base(filename)
+	base := strings.TrimSuffix(name, path.Ext(name))
+	return fmt.Sprintf(header, base, strings.Replace(base, "_", " ", -1))
+}
+
+func linkHandler(name string) string {
+	return fmt.Sprintf("/cscli/%s", name)
+}
+
 func main() {
 
 	var rootCmd = &cobra.Command{
@@ -90,16 +110,18 @@ func main() {
 		Short: "cscli allows you to manage crowdsec",
 		Long: `cscli is the main command to interact with your crowdsec service, scenarios & db.
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
-		ValidArgs: validArgs,
+		ValidArgs:         validArgs,
+		DisableAutoGenTag: true,
 		/*TBD examples*/
 	}
 	var cmdDocGen = &cobra.Command{
-		Use:    "doc",
-		Short:  "Generate the documentation in `./doc/`. Directory must exist.",
-		Args:   cobra.ExactArgs(0),
-		Hidden: true,
+		Use:               "doc",
+		Short:             "Generate the documentation in `./doc/`. Directory must exist.",
+		Args:              cobra.ExactArgs(0),
+		Hidden:            true,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := doc.GenMarkdownTree(rootCmd, "./doc/"); err != nil {
+			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
 				log.Fatalf("Failed to generate cobra doc: %s", err.Error())
 			}
 		},
@@ -107,9 +129,10 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(cmdDocGen)
 	/*usage*/
 	var cmdVersion = &cobra.Command{
-		Use:   "version",
-		Short: "Display version and exit.",
-		Args:  cobra.ExactArgs(0),
+		Use:               "version",
+		Short:             "Display version and exit.",
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			cwversion.Show()
 		},

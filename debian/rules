@@ -28,10 +28,23 @@ override_dh_auto_install:
 	mkdir -p debian/crowdsec/usr/share/crowdsec
 	mkdir -p debian/crowdsec/etc/crowdsec/hub/
 	mkdir -p debian/crowdsec/usr/share/crowdsec/config
+
+
+	mkdir -p debian/crowdsec/usr/lib/crowdsec/plugins/
+	mkdir -p debian/crowdsec/etc/crowdsec/notifications/
+
+	install -m 551 plugins/notifications/slack/notification-slack debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/http/notification-http debian/crowdsec/usr/lib/crowdsec/plugins/
+	install -m 551 plugins/notifications/splunk/notification-splunk debian/crowdsec/usr/lib/crowdsec/plugins/
+
+	cp plugins/notifications/slack/slack.yaml debian/crowdsec/etc/crowdsec/notifications/
+	cp plugins/notifications/http/http.yaml debian/crowdsec/etc/crowdsec/notifications/
+	cp plugins/notifications/splunk/splunk.yaml debian/crowdsec/etc/crowdsec/notifications/
+
 	cp cmd/crowdsec/crowdsec debian/crowdsec/usr/bin
 	cp cmd/crowdsec-cli/cscli debian/crowdsec/usr/bin
 	cp wizard.sh debian/crowdsec/usr/share/crowdsec
-	cp config/config.yaml debian/crowdsec/usr/share/crowdsec/config/config.yaml
-	cp config/simulation.yaml debian/crowdsec/usr/share/crowdsec/config/simulation.yaml
-	cp config/profiles.yaml debian/crowdsec/usr/share/crowdsec/config/profiles.yaml
-	cp -a config/patterns debian/crowdsec/usr/share/crowdsec/config
+	cp config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
+	cp config/simulation.yaml debian/crowdsec/etc/crowdsec/simulation.yaml
+	cp config/profiles.yaml debian/crowdsec/etc/crowdsec/profiles.yaml
+	cp -a config/patterns debian/crowdsec/etc/crowdsec

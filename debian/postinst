@@ -20,10 +20,7 @@ if [ "$1" = configure ]; then
     fi
     
     . /usr/share/crowdsec/wizard.sh -n
-    if ! [[ -f /etc/crowdsec/config.yaml ]]; then
-        echo Creating crowdsec configuration in /etc/crowdsec
-        cp -a /usr/share/crowdsec/config/* /etc/crowdsec
-
+    if ! [[ -f /etc/crowdsec/acquis.yaml ]]; then
         echo Creating /etc/crowdsec/acquis.yaml
         set +e
         SILENT=true detect_services

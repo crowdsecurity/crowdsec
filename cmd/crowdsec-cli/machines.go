@@ -84,7 +84,8 @@ func NewMachinesCmd() *cobra.Command {
 		Long: `To list/add/delete/validate machines.
 Note: This command requires database direct access, so is intended to be run on the local API machine.
 `,
-		Example: `cscli machines [action]`,
+		Example:           `cscli machines [action]`,
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
@@ -97,11 +98,12 @@ Note: This command requires database direct access, so is intended to be run on 
 	}
 
 	var cmdMachinesList = &cobra.Command{
-		Use:     "list",
-		Short:   "List machines",
-		Long:    `List `,
-		Example: `cscli machines list`,
-		Args:    cobra.MaximumNArgs(1),
+		Use:               "list",
+		Short:             "List machines",
+		Long:              `List `,
+		Example:           `cscli machines list`,
+		Args:              cobra.MaximumNArgs(1),
+		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -156,9 +158,10 @@ Note: This command requires database direct access, so is intended to be run on 
 	cmdMachines.AddCommand(cmdMachinesList)
 
 	var cmdMachinesAdd = &cobra.Command{
-		Use:   "add",
-		Short: "add machine to the database.",
-		Long:  `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
+		Use:               "add",
+		Short:             "add machine to the database.",
+		DisableAutoGenTag: true,
+		Long:              `Register a new machine in the database. cscli should be on the same machine as LAPI.`,
 		Example: `
 cscli machines add --auto
 cscli machines add MyTestMachine --auto
@@ -260,10 +263,11 @@ cscli machines add MyTestMachine --password MyPassword
 	cmdMachines.AddCommand(cmdMachinesAdd)
 
 	var cmdMachinesDelete = &cobra.Command{
-		Use:     "delete --machine MyTestMachine",
-		Short:   "delete machines",
-		Example: `cscli machines delete <machine_name>`,
-		Args:    cobra.ExactArgs(1),
+		Use:               "delete --machine MyTestMachine",
+		Short:             "delete machines",
+		Example:           `cscli machines delete "machine_name"`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)
@@ -273,23 +277,26 @@ cscli machines add MyTestMachine --password MyPassword
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			machineID = args[0]
-			err := dbClient.DeleteWatcher(machineID)
-			if err != nil {
-				log.Errorf("unable to delete machine: %s", err)
-				return
+			for _, machineID := range args {
+				err := dbClient.DeleteWatcher(machineID)
+				if err != nil {
+					log.Errorf("unable to delete machine: %s", err)
+					return
+				}
+				log.Infof("machine '%s' deleted successfully", machineID)
 			}
-			log.Infof("machine '%s' deleted successfully", machineID)
 		},
 	}
 	cmdMachinesDelete.Flags().StringVarP(&machineID, "machine", "m", "", "machine to delete")
 	cmdMachines.AddCommand(cmdMachinesDelete)
 
 	var cmdMachinesValidate = &cobra.Command{
-		Use:     "validate",
-		Short:   "validate a machine to access the local API",
-		Long:    `validate a machine to access the local API.`,
-		Example: `cscli machines validate <machine_name>`,
-		Args:    cobra.ExactArgs(1),
+		Use:               "validate",
+		Short:             "validate a machine to access the local API",
+		Long:              `validate a machine to access the local API.`,
+		Example:           `cscli machines validate "machine_name"`,
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			dbClient, err = database.NewClient(csConfig.DbConfig)

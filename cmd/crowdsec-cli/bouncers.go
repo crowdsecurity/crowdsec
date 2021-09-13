@@ -26,7 +26,8 @@ func NewBouncersCmd() *cobra.Command {
 		Long: `To list/add/delete bouncers.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
@@ -43,11 +44,12 @@ Note: This command requires database direct access, so is intended to be run on 
 	}
 
 	var cmdBouncersList = &cobra.Command{
-		Use:     "list",
-		Short:   "List bouncers",
-		Long:    `List bouncers`,
-		Example: `cscli bouncers list`,
-		Args:    cobra.ExactArgs(0),
+		Use:               "list",
+		Short:             "List bouncers",
+		Long:              `List bouncers`,
+		Example:           `cscli bouncers list`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
 			blockers, err := dbClient.ListBouncers()
 			if err != nil {
@@ -99,7 +101,8 @@ Note: This command requires database direct access, so is intended to be run on 
 		Long:  `add bouncer`,
 		Example: `cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
 			if keyName == "" {
@@ -136,19 +139,18 @@ cscli bouncers add MyBouncerName -l 24`,
 	cmdBouncers.AddCommand(cmdBouncersAdd)
 
 	var cmdBouncersDelete = &cobra.Command{
-		Use:   "delete MyBouncerName",
-		Short: "delete bouncer",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, arg []string) {
-			keyName := arg[0]
-			if keyName == "" {
-				log.Errorf("Please provide a bouncer name")
-				return
-			}
-			err := dbClient.DeleteBouncer(keyName)
-			if err != nil {
-				log.Errorf("unable to delete bouncer: %s", err)
-				return
+		Use:               "delete MyBouncerName",
+		Short:             "delete bouncer",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, bouncerID := range args {
+				err := dbClient.DeleteBouncer(bouncerID)
+				if err != nil {
+					log.Errorf("unable to delete bouncer: %s", err)
+					return
+				}
+				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}
 		},
 	}

@@ -14,6 +14,7 @@ You should apply following configuration before starting it :
 
 * Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
 * Mount volumes to specify your log files that should be ingested by crowdsec (set up in acquis.yaml)
+* If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 * Mount other volumes : if you want to share the database for example
 
 ```shell
@@ -80,7 +81,10 @@ If you want to be able to restart/stop your container and keep the same DB `-v /
 * `TEST_MODE`               - Only test configs (default: `false`) : `-e TEST_MODE="<true|false>"`
 * `TZ`                      - Set the [timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) to ensure logs have a local timestamp.
 * `DISABLE_AGENT`           - Only test configs (default: `false`) : `-e DISABLE_AGENT="<true|false>"`
-* `DISABLE_LOCAL_API`       - Disable local API (default: `false`) : `-e DISABLE_API="<true|false>"`
+* `DISABLE_LOCAL_API`       - Disable local API (default: `false`) : `-e DISABLE_LOCAL_API="<true|false>"`
+* `AGENT_USERNAME`          - Agent username (to register if is LAPI or to use if it's an agent) : `-e AGENT_USERNAME="machine_id"`
+* `AGENT_PASSWORD`          - Agent password (to register if is LAPI or to use if it's an agent) : `-e AGENT_PASSWORD="machine_password"`
+* `LOCAL_API_URL`           - To specify when an agent needs to connect to a LAPI crowdsec (To use only when `DISABLE_LOCAL_API` is set to `true`) : `-e LOCAL_API_URL="http://lapi-address:8080"`
 * `DISABLE_ONLINE_API`      - Disable Online API registration for signal sharing (default: `false`) : `-e DISABLE_ONLINE_API="<true|false>"`
 * `LEVEL_TRACE`             - Trace-level (VERY verbose) on stdout (default: `false`) : `-e LEVEL_TRACE="<true|false>"`
 * `LEVEL_DEBUG`             - Debug-level on stdout (default: `false`) : `-e LEVEL_DEBUG="<true|false>"`
