@@ -44,7 +44,6 @@ require (
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/lib/pq v1.10.0
-	github.com/logrusorgru/grokky v0.0.0-20180829062225-47edf017d42c // indirect
 	github.com/mattn/go-colorable v0.1.8 // indirect
 	github.com/mattn/go-runewidth v0.0.10 // indirect
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
