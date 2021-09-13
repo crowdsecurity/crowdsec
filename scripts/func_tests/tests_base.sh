@@ -29,6 +29,17 @@ function pathadd {
     fi
 }
 
+function wait_for_service {
+    count=0
+    while ! nc -z localhost 6060; do   
+        sleep 0.5
+        ((count ++))
+        if [[ count == 21 ]]; then
+            fail "$@"
+        fi
+    done
+}
+
 pathadd /usr/sbin
 
 if [ -f /etc/systemd/system/crowdsec.service ]; then
