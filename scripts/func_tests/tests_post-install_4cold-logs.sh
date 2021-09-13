@@ -14,9 +14,13 @@ ${SYSTEMCTL} reload crowdsec
 # generate a fake bf log -> cold logs processing
 rm  -f ssh-bf.log
 
+sync
+
 for i in `seq 1 10` ; do 
     echo `LC_ALL=C date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
 done;
+
+sync
 
 ${CROWDSEC} -dsn "file://./ssh-bf.log" -type syslog -no-api
 
@@ -38,10 +42,9 @@ echo "  type: syslog" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
 touch /tmp/test.log
 
 ${SYSTEMCTL} restart crowdsec
-sleep 1
+wait_for_service "crowdsec should run (cold logs)"
 ${SYSTEMCTL} status crowdsec
 cat ssh-bf.log >> /tmp/test.log
 
-sleep 2
-
+sleep 1s
 ${CSCLI} decisions list -o=json | ${JQ} '.[].decisions[0].value == "1.1.1.172"' || fail "(live) expected ban on 1.1.1.172"
