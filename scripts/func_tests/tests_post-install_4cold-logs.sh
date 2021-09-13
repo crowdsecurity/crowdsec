@@ -35,6 +35,7 @@ ${CSCLI} decisions list -i 1.1.1.173 -o=json | ${JQ} '. == null' || fail "(exact
 
 ${CSCLI} decisions delete --all
 
+sudo cp /etc/crowdsec/acquis.yaml ./acquis.yaml.backup
 echo "" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
 echo "filename: /tmp/test.log" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
 echo "labels:" | sudo tee -a /etc/crowdsec/acquis.yaml > /dev/null
@@ -44,7 +45,17 @@ touch /tmp/test.log
 ${SYSTEMCTL} restart crowdsec
 wait_for_service "crowdsec should run (cold logs)"
 ${SYSTEMCTL} status crowdsec
+
+sleep 2s
+
 cat ssh-bf.log >> /tmp/test.log
 
-sleep 1s
+sleep 5s
 ${CSCLI} decisions list -o=json | ${JQ} '.[].decisions[0].value == "1.1.1.172"' || fail "(live) expected ban on 1.1.1.172"
+
+sudo cp ./acquis.yaml.backup /etc/crowdsec/acquis.yaml
+
+sync
+
+${SYSTEMCTL} restart crowdsec
+wait_for_service "crowdsec should run"
