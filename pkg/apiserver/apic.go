@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
@@ -234,6 +237,18 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 func (a *apic) PullTop() error {
 	var err error
 
+	/*only pull community blocklist if it's older than 1h30 */
+	alerts := a.dbClient.Ent.Alert.Query()
+	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
+	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
+	count, err := alerts.Count(a.dbClient.CTX)
+	if err != nil {
+		return errors.Wrap(err, "while looking for CAPI alert")
+	}
+	if count > 0 {
+		log.Printf("last CAPI pull is newer than 1h30, skip.")
+		return nil
+	}
 	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup, []string{})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
@@ -243,6 +258,7 @@ func (a *apic) PullTop() error {
 	}
 	// process deleted decisions
 	var filter map[string][]string
+	var nbDeleted int
 	for _, decision := range data.Deleted {
 		if strings.ToLower(*decision.Scope) == "ip" {
 			filter = make(map[string][]string, 1)
@@ -254,27 +270,40 @@ func (a *apic) PullTop() error {
 			filter["value"] = []string{*decision.Scope}
 		}
 
-		nbDeleted, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		dbCliRet, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "deleting decisions error")
 		}
+		dbCliDel, err := strconv.Atoi(dbCliRet)
+		if err != nil {
+			return errors.Wrapf(err, "converting db ret %d", dbCliDel)
+		}
+		nbDeleted += dbCliDel
+	}
+	log.Printf("capi/community-blocklist : %d explicit deletions", nbDeleted)
 
-		log.Printf("pull top: deleted %s entries", nbDeleted)
+	if len(data.New) == 0 {
+		log.Warnf("capi/community-blocklist : received 0 new entries, CAPI failure ?")
+		return nil
 	}
 
-	alertCreated, err := a.dbClient.Ent.Alert.
-		Create().
-		SetScenario(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted))).
-		SetSourceScope("Community blocklist").
-		Save(a.dbClient.CTX)
-	if err != nil {
-		return errors.Wrap(err, "create alert from crowdsec-api")
-	}
-
+	capiPullTopX := models.Alert{}
+	capiPullTopX.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted)))
+	capiPullTopX.Message = types.StrPtr("")
+	capiPullTopX.Source = &models.Source{}
+	capiPullTopX.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
+	capiPullTopX.Source.Value = types.StrPtr("")
+	capiPullTopX.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
+	capiPullTopX.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+	capiPullTopX.Capacity = types.Int32Ptr(0)
+	capiPullTopX.Simulated = types.BoolPtr(false)
+	capiPullTopX.EventsCount = types.Int32Ptr(int32(len(data.New)))
+	capiPullTopX.Leakspeed = types.StrPtr("")
+	capiPullTopX.ScenarioHash = types.StrPtr("")
+	capiPullTopX.ScenarioVersion = types.StrPtr("")
+	capiPullTopX.MachineID = database.CapiMachineID
 	// process new decisions
 	for _, decision := range data.New {
-		var start_ip, start_sfx, end_ip, end_sfx int64
-		var sz int
 
 		/*CAPI might send lower case scopes, unify it.*/
 		switch strings.ToLower(*decision.Scope) {
@@ -284,36 +313,16 @@ func (a *apic) PullTop() error {
 			*decision.Scope = types.Range
 		}
 
-		/*if the scope is IP or Range, convert the value to integers */
-		if strings.ToLower(*decision.Scope) == "ip" || strings.ToLower(*decision.Scope) == "range" {
-			sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decision.Value)
-			if err != nil {
-				return errors.Wrapf(err, "invalid ip/range %s", *decision.Value)
-			}
-		}
-
-		duration, err := time.ParseDuration(*decision.Duration)
-		if err != nil {
-			return errors.Wrapf(err, "parse decision duration '%s':", *decision.Duration)
-		}
-		_, err = a.dbClient.Ent.Decision.Create().
-			SetUntil(time.Now().Add(duration)).
-			SetScenario(*decision.Scenario).
-			SetType(*decision.Type).
-			SetIPSize(int64(sz)).
-			SetStartIP(start_ip).
-			SetStartSuffix(start_sfx).
-			SetEndIP(end_ip).
-			SetEndSuffix(end_sfx).
-			SetValue(*decision.Value).
-			SetScope(*decision.Scope).
-			SetOrigin(*decision.Origin).
-			SetOwner(alertCreated).Save(a.dbClient.CTX)
-		if err != nil {
-			return errors.Wrap(err, "decision creation from crowdsec-api:")
-		}
+		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
 	}
-	log.Printf("pull top: added %d entries", len(data.New))
+
+	alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(&capiPullTopX)
+	if err != nil {
+		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
+	}
+
+	log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
+
 	return nil
 }
 
@@ -379,8 +388,6 @@ func (a *apic) SendMetrics() error {
 			if err != nil {
 				return err
 			}
-			// models.metric structure : len(machines), len(bouncers), a.credentials.Login
-			// _, _, err := a.apiClient.Metrics.Add(//*models.Metrics)
 			for _, machine := range machines {
 				m := &models.MetricsSoftInfo{
 					Version: machine.Version,

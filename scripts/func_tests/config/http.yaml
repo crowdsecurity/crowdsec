@@ -1,0 +1,24 @@
+# Don't change this
+type: http
+
+name: http_default # this must match with the registered plugin in the profile
+log_level: info # Options include: trace, debug, info, warn, error, off
+
+format: |  # This template receives list of models.Alert objects. The request body would contain this. 
+  {{.|toJson}}
+
+url: http://localhost:9999 # plugin will make requests to this url. Eg value https://www.example.com/
+
+method: POST # eg either of "POST", "GET", "PUT" and other http verbs is valid value. 
+
+# headers:
+#   Authorization: token 0x64312313
+
+# skip_tls_verification:  # either true or false. Default is false
+
+group_wait: 5s # duration to wait collecting alerts before sending to this plugin, eg "30s"
+group_threshold: 2 # if alerts exceed this, then the plugin will be sent the message. eg "10"
+
+# max_retry: # number of tries to attempt to send message to plugins in case of error.
+
+# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"

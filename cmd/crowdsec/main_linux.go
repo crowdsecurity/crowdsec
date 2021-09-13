@@ -4,14 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 
 	_ "net/http/pprof"
 	"time"
 
-	"sort"
-
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -33,6 +33,7 @@ var (
 	outputsTomb  tomb.Tomb
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
+	pluginTomb   tomb.Tomb
 
 	flags *Flags
 
@@ -44,6 +45,7 @@ var (
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
+	pluginBroker      csplugin.PluginBroker
 )
 
 type Flags struct {

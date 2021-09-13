@@ -11,11 +11,16 @@ config_paths:
   simulation_path: /etc/crowdsec/simulation.yaml
   hub_dir: /etc/crowdsec/hub/
   index_path: /etc/crowdsec/hub/.index.json
+  notification_dir: /etc/crowdsec/notifications/
+  plugin_dir: /usr/local/lib/crowdsec/plugins
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
 cscli:
   output: human
+plugin_config:
+  user: nobody # plugin process would be ran on behalf of this user
+  group: nogroup # plugin process would be ran on behalf of this group
 db_config:
   log_level: info
   type: sqlite
@@ -31,7 +36,7 @@ api:
     log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
+    online_client: # Central API credentials (to push signals and receive bad IPs)
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem

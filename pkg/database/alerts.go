@@ -114,6 +114,170 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 	return ret, nil
 }
 
+/*We can't bulk both the alert and the decision at the same time. With new consensus, we want to bulk a single alert with a lot of decisions.*/
+func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
+
+	decisionBulkSize := 50
+	var err error
+	var deleted, inserted int
+
+	if alertItem == nil {
+		return 0, 0, 0, fmt.Errorf("nil alert")
+	}
+	if alertItem.StartAt == nil {
+		return 0, 0, 0, fmt.Errorf("nil start_at")
+	}
+	startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
+	if err != nil {
+		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+	}
+	if alertItem.StopAt == nil {
+		return 0, 0, 0, fmt.Errorf("nil stop_at")
+	}
+	stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
+	if err != nil {
+		return 0, 0, 0, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+	}
+
+	ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
+	if err != nil {
+		c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
+		ts = time.Now()
+	}
+
+	alertB := c.Ent.Alert.
+		Create().
+		SetScenario(*alertItem.Scenario).
+		SetMessage(*alertItem.Message).
+		SetEventsCount(*alertItem.EventsCount).
+		SetStartedAt(startAtTime).
+		SetStoppedAt(stopAtTime).
+		SetSourceScope(*alertItem.Source.Scope).
+		SetSourceValue(*alertItem.Source.Value).
+		SetSourceIp(alertItem.Source.IP).
+		SetSourceRange(alertItem.Source.Range).
+		SetSourceAsNumber(alertItem.Source.AsNumber).
+		SetSourceAsName(alertItem.Source.AsName).
+		SetSourceCountry(alertItem.Source.Cn).
+		SetSourceLatitude(alertItem.Source.Latitude).
+		SetSourceLongitude(alertItem.Source.Longitude).
+		SetCapacity(*alertItem.Capacity).
+		SetLeakSpeed(*alertItem.Leakspeed).
+		SetSimulated(*alertItem.Simulated).
+		SetScenarioVersion(*alertItem.ScenarioVersion).
+		SetScenarioHash(*alertItem.ScenarioHash)
+
+	alertRef, err := alertB.Save(c.CTX)
+	if err != nil {
+		return 0, 0, 0, errors.Wrapf(BulkError, "error creating alert : %s", err)
+	}
+
+	if len(alertItem.Decisions) > 0 {
+		decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
+		valueList := make([]string, 0, decisionBulkSize)
+		for i, decisionItem := range alertItem.Decisions {
+			var start_ip, start_sfx, end_ip, end_sfx int64
+			var sz int
+			if decisionItem.Duration == nil {
+				log.Warningf("nil duration in community decision")
+				continue
+			}
+			duration, err := time.ParseDuration(*decisionItem.Duration)
+			if err != nil {
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+			}
+			if decisionItem.Scope == nil {
+				log.Warningf("nil scope in community decision")
+				continue
+			}
+			/*if the scope is IP or Range, convert the value to integers */
+			if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+				sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+				if err != nil {
+					return 0, 0, 0, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
+				}
+			}
+			/*bulk insert some new decisions*/
+			decisionBulk = append(decisionBulk, c.Ent.Decision.Create().
+				SetUntil(ts.Add(duration)).
+				SetScenario(*decisionItem.Scenario).
+				SetType(*decisionItem.Type).
+				SetStartIP(start_ip).
+				SetStartSuffix(start_sfx).
+				SetEndIP(end_ip).
+				SetEndSuffix(end_sfx).
+				SetIPSize(int64(sz)).
+				SetValue(*decisionItem.Value).
+				SetScope(*decisionItem.Scope).
+				SetOrigin(*decisionItem.Origin).
+				SetSimulated(*alertItem.Simulated).
+				SetOwner(alertRef))
+
+			/*for bulk delete of duplicate decisions*/
+			if decisionItem.Value == nil {
+				log.Warningf("nil value in community decision")
+				continue
+			}
+			valueList = append(valueList, *decisionItem.Value)
+
+			if len(decisionBulk) == decisionBulkSize {
+				insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+				if err != nil {
+					return 0, 0, 0, errors.Wrapf(BulkError, "bulk creating decisions : %s", err)
+				}
+				inserted += len(insertedDecisions)
+
+				/*Deleting older decisions from capi*/
+				deletedDecisions, err := c.Ent.Decision.Delete().
+					Where(decision.And(
+						decision.OriginEQ(CapiMachineID),
+						decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
+						decision.ValueIn(valueList...),
+					)).Exec(c.CTX)
+				if err != nil {
+					return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
+				}
+				deleted += deletedDecisions
+
+				if len(alertItem.Decisions)-i <= decisionBulkSize {
+					decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
+					valueList = make([]string, 0, (len(alertItem.Decisions) - i))
+				} else {
+					decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+					valueList = make([]string, 0, decisionBulkSize)
+				}
+
+				// The 90's called, they want their concurrency back.
+				// This is needed for sqlite, which does not support concurrent access while writing.
+				// If we pull a large number of IPs from CAPI, and we have a slow disk, LAPI won't respond until all IPs are inserted (which can take up to a few seconds).
+				time.Sleep(100 * time.Millisecond)
+			}
+
+		}
+		insertedDecisions, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+		if err != nil {
+			return 0, 0, 0, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+		}
+		inserted += len(insertedDecisions)
+		/*Deleting older decisions from capi*/
+		if len(valueList) > 0 {
+			deletedDecisions, err := c.Ent.Decision.Delete().
+				Where(decision.And(
+					decision.OriginEQ(CapiMachineID),
+					decision.Not(decision.HasOwnerWith(alert.IDEQ(alertRef.ID))),
+					decision.ValueIn(valueList...),
+				)).Exec(c.CTX)
+			if err != nil {
+				return 0, 0, 0, errors.Wrap(err, "while deleting older community blocklist decisions")
+			}
+			deleted += deletedDecisions
+		}
+
+	}
+
+	return alertRef.ID, inserted, deleted, nil
+}
+
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 
 	ret := []string{}
@@ -403,7 +567,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ("CAPI")))
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ(CapiMachineID)))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}

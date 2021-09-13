@@ -33,7 +33,7 @@ api:
     #log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API
+    online_client: # Central API
       credentials_path: /etc/crowdsec/online_api_credentials.yaml
 prometheus:
   enabled: true

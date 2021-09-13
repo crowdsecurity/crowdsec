@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/antonmedv/expr"
-	"github.com/logrusorgru/grokky"
+	"github.com/crowdsecurity/grokky"
 	"github.com/pkg/errors"
 	yaml "gopkg.in/yaml.v2"
 
@@ -47,7 +47,7 @@ type Node struct {
 	//If node has leafs, execute all of them until one asks for a 'break'
 	LeavesNodes []Node `yaml:"nodes,omitempty"`
 	//Flag used to describe when to 'break' or return an 'error'
-	EnrichFunctions []EnricherCtx
+	EnrichFunctions EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
 	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
@@ -62,7 +62,7 @@ type Node struct {
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
-func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
+func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	//stage is being set automagically
 	if n.Stage == "" {
@@ -91,15 +91,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
 			if static.ExpValue == "" {
 				return fmt.Errorf("static %d : when method is set, expression must be present", idx)
 			}
-			method_found := false
-			for _, enricherCtx := range ectx {
-				if _, ok := enricherCtx.Funcs[static.Method]; ok && enricherCtx.initiated {
-					method_found = true
-					break
-				}
-			}
-			if !method_found {
-				return fmt.Errorf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
+			if _, ok := ectx.Registered[static.Method]; !ok {
+				log.Warningf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
 			}
 		} else {
 			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
@@ -363,7 +356,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	return NodeState, nil
 }
 
-func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
+func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	var err error
 	var valid bool
 

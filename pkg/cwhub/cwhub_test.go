@@ -386,7 +386,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Printf("---> %s", req.URL.Path)
 
 	/*FAKE PARSER*/
-	if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
+	if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
 		responseBody = `onsuccess: next_stage
 filter: evt.Parsed.program == 'foobar_parser'
 name: crowdsecurity/foobar_parser
@@ -397,7 +397,7 @@ grok:
   apply_on: message
 `
 
-	} else if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
+	} else if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
 		responseBody = `onsuccess: next_stage
 filter: evt.Parsed.program == 'foobar_parser'
 name: crowdsecurity/foobar_parser
@@ -409,19 +409,19 @@ grok:
 `
 		/*FAKE SCENARIO*/
 
-	} else if req.URL.Path == "/crowdsecurity/hub/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
+	} else if req.URL.Path == "/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
 		responseBody = `filter: true
 name: crowdsecurity/foobar_scenario`
 		/*FAKE COLLECTIONS*/
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar.yaml" {
+	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar.yaml" {
 		responseBody = `
 blah: blalala
 qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar_subcollection.yaml" {
+	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar_subcollection.yaml" {
 		responseBody = `
 blah: blalala
 qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/.index.json" {
+	} else if req.URL.Path == "/master/.index.json" {
 		responseBody =
 			`{
 				"collections": {

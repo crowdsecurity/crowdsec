@@ -5,6 +5,8 @@ source tests_base.sh
 
 echo $PATH
 
+sudo cp /etc/crowdsec/config.yaml ./config.yaml.backup
+
 ##########################
 ## TEST AGENT/LAPI/CAPI ##
 echo "CROWDSEC (AGENT+LAPI+CAPI)"
@@ -35,7 +37,7 @@ pidof crowdsec || fail "crowdsec process should be running"
 ${CSCLI} version || fail "cannot run cscli version"
 
 ## alerts
-# alerts list at startup should just return one entry : comunity pull
+# alerts list at startup should just return one entry : community pull
 sleep 5
 ${CSCLI} alerts list -ojson  | ${JQ} '. | length >= 1' || fail "expected at least one entry from cscli alerts list"
 ## capi
@@ -155,4 +157,7 @@ ${CSCLI_BIN} -c ./config/config_no_capi.yaml metrics || fail "failed to get metr
 
 sudo mv /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service 
 
+sudo cp ./config.yaml.backup /etc/crowdsec/config.yaml 
+
+${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} restart crowdsec

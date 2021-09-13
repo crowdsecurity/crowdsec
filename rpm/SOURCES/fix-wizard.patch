@@ -1,8 +1,8 @@
 generate acquis.yaml directly in place
 Index: crowdsec/wizard.sh
 ===================================================================
---- crowdsec.orig/wizard.sh
-+++ crowdsec/wizard.sh
+--- wizard.sh-orig
++++ wizard.sh
 @@ -41,7 +41,6 @@
  fi
  

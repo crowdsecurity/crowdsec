@@ -41,7 +41,6 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	log.SetLevel(logLevel)
 	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
-
 	return nil
 }
 
@@ -187,4 +186,16 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	}
 	err = copyFileContents(sourceFile, destinationFile)
 	return
+}
+
+func StrPtr(s string) *string {
+	return &s
+}
+
+func Int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func BoolPtr(b bool) *bool {
+	return &b
 }
