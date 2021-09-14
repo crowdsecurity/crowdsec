@@ -142,7 +142,28 @@ package:
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
-	@tar cvzf crowdsec-release.tgz $(RELDIR)	
+	@tar cvzf crowdsec-release.tgz $(RELDIR)
+
+package_static:
+	@echo Building Release to dir $(RELDIR)
+	@mkdir -p $(RELDIR)/cmd/crowdsec
+	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
+	@mkdir -p $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
+	@mkdir -p $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
+	@mkdir -p $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
+
+	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
+	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
+	@cp $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
+	@cp $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
+	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
+	@cp $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
+	@cp $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
+	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
+	@cp -R ./config/ $(RELDIR)
+	@cp wizard.sh $(RELDIR)
+	@cp scripts/test_env.sh $(RELDIR)
+	@tar cvzf crowdsec-release-static.tgz $(RELDIR)
 
 .PHONY: check_release
 check_release:
@@ -152,4 +173,4 @@ check_release:
 release: check_release build package
 
 .PHONY:
-release_static: check_release static package
+release_static: check_release static package_static
