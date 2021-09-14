@@ -24,14 +24,12 @@ pidof crowdsec && fail "crowdsec process shouldn't be running"
 #start it again
 ${SYSTEMCTL} start crowdsec || fail "failed to stop service"
 ${SYSTEMCTL} status crowdsec || fail "crowdsec should be up"
-sleep 5s
-pidof crowdsec || fail "crowdsec process should be running"
+wait_for_service "crowdsec process should be running"
 
 #restart it
 ${SYSTEMCTL} restart crowdsec || fail "failed to stop service"
 ${SYSTEMCTL} status crowdsec || fail "crowdsec should be up"
-sleep 5s
-pidof crowdsec || fail "crowdsec process should be running"
+wait_for_service "crowdsec process should be running"
 
 ## version
 ${CSCLI} version || fail "cannot run cscli version"
@@ -106,7 +104,7 @@ sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec 
-pidof crowdsec || fail "crowdsec LAPI should run without agent (in flag)"
+wait_for_service "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
 sed '/^ExecStart/s/-no-cs//g' ${SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service
@@ -117,7 +115,7 @@ ${SYSTEMCTL} daemon-reload
 # test with no crowdsec agent in configuration file
 sudo cp ./config/config_no_agent.yaml /etc/crowdsec/config.yaml
 ${SYSTEMCTL} start crowdsec 
-pidof crowdsec || fail "crowdsec LAPI should run without agent (in configuration file)"
+wait_for_service "crowdsec LAPI should run without agent (in configuration file)"
 
 
 ## capi
@@ -142,7 +140,7 @@ echo "CROWDSEC (AGENT+LAPI)"
 # test with no online client in configuration file
 sudo cp ./config/config_no_capi.yaml /etc/crowdsec/config.yaml
 ${SYSTEMCTL} start crowdsec 
-pidof crowdsec || fail "crowdsec LAPI should run without CAPI (in configuration file)"
+wait_for_service "crowdsec LAPI should run without CAPI (in configuration file)"
 
 ## capi
 ${CSCLI} -c ./config/config_no_capi.yaml capi status && fail "capi status should not be ok" ## if capi status success, it means that the test fail
@@ -161,3 +159,4 @@ sudo cp ./config.yaml.backup /etc/crowdsec/config.yaml
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} restart crowdsec
+wait_for_service "crowdsec should be restarted)"

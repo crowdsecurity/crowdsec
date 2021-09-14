@@ -36,6 +36,15 @@ function setup_tests() {
     cscli decisions delete --all
     modify_config
     python3 -u mock_http_server.py > mock_http_server_logs.log &
+    count=0
+    while ! nc -z localhost 9999; do   
+        sleep 0.5
+        ((count ++))
+        if [[ count == 41 ]]; then
+            fail "mock server not up after 20s"
+        fi
+    done
+
     MOCK_SERVER_PID=$!
 }
 
@@ -55,7 +64,7 @@ function run_tests() {
         cleanup_tests
         fail "expected 0 log lines fom mock http server before adding decisions"
     fi
-    sleep 2s
+    sleep 5s
     ${CSCLI} decisions add --ip 1.2.3.4 --duration 30s
     ${CSCLI} decisions add --ip 1.2.3.5 --duration 30s
     sleep 5s
