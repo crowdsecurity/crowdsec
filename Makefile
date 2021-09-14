@@ -28,7 +28,7 @@ CROWDSEC_BIN = "crowdsec"
 CSCLI_BIN = "cscli"
 BUILD_CMD = "build"
 
-GOOS ?= linux
+GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
 #Golang version info
