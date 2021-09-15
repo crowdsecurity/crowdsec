@@ -133,7 +133,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
-		x := strings.Split(path, "/")
+		x := strings.Split(path, "\\")
 		target.FileName = x[len(x)-1]
 
 		hubIdx[ftype][fname] = target
@@ -160,7 +160,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 			//wrong file
-			if v.Name+".yaml" != fauthor+"/"+fname {
+			if v.Name+".yaml" != fauthor+"\\"+fname {
 				continue
 			}
 			if path == hubdir+"/"+v.RemotePath {
@@ -203,7 +203,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 					/*if we're walking the hub, present file doesn't means installed file*/
 					v.Installed = true
 					v.LocalHash = sha
-					x := strings.Split(path, "/")
+					x := strings.Split(path, "\\")
 					target.FileName = x[len(x)-1]
 				}
 				if version == v.Version {
@@ -226,7 +226,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			x := strings.Split(path, "/")
+			x := strings.Split(path, "\\")
 			target.FileName = x[len(x)-1]
 
 		}
