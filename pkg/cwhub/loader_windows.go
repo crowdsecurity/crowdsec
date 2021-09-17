@@ -157,12 +157,14 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if inhub {
 			//wrong author
 			if fauthor != v.Author {
+				log.Tracef("wrong author")
 				continue
 			}
 			//wrong file
-			if v.Name+".yaml" != fauthor+"\\"+fname {
-				continue
-			}
+			// if v.Name+".yaml" != fauthor+"\\"+fname {
+			// 	log.Tracef("wrong name")
+			// 	continue
+			// }
 			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
@@ -170,11 +172,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		} else {
 			//wrong file
 			//<type>/<stage>/<author>/<name>.yaml
-			if !strings.HasSuffix(hubpath, v.RemotePath) {
-				//log.Printf("wrong file %s %s", hubpath, spew.Sdump(v))
-
-				continue
-			}
+			// if !strings.HasSuffix(hubpath, v.RemotePath) {
+			// 	log.Tracef("wrong file %s %s", hubpath, v.RemotePath)
+			// 	continue
+			// }
 		}
 		sha, err := getSHA256(path)
 		if err != nil {
@@ -190,7 +191,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		for _, version := range versions {
 			val := v.Versions[version]
 			if sha != val.Digest {
-				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
+				log.Tracef("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, v.Versions[version])
 				continue
 			} else {
 				/*we got an exact match, update struct*/
