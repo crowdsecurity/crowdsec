@@ -221,7 +221,7 @@ func stageidx(stage string, stages []string) int {
 }
 
 var ParseDump bool
-var StageParseCache map[string]map[string]types.Event
+var StageParseCache map[string]map[string][]types.Event
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
@@ -250,12 +250,16 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	if ParseDump {
-		StageParseCache = make(map[string]map[string]types.Event)
+		if StageParseCache == nil {
+			StageParseCache = make(map[string]map[string][]types.Event)
+		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
-			StageParseCache[stage] = make(map[string]types.Event)
+			if _, ok := StageParseCache[stage]; !ok {
+				StageParseCache[stage] = make(map[string][]types.Event)
+			}
 		}
 		/* if the node is forward in stages, seek to its stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
@@ -293,8 +297,13 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ret {
 				isStageOK = true
 				if ParseDump {
+					if len(StageParseCache[stage][node.Name]) == 0 {
+						log.Printf("init list %s/%s", stage, node.Name)
+						StageParseCache[stage][node.Name] = make([]types.Event, 0)
+					}
 					evtcopy := deepcopy.Copy(event)
-					StageParseCache[stage][node.Name] = evtcopy.(types.Event)
+					StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], evtcopy.(types.Event))
+					log.Printf("append list %s/%s, new len : %d", stage, node.Name, len(StageParseCache[stage][node.Name]))
 				}
 			}
 			if ret && node.OnSuccess == "next_stage" {

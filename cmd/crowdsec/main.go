@@ -160,6 +160,8 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
+var dumpStates bool
+
 func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
@@ -172,12 +174,17 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.BoolVar(&dumpStates, "dump-data", false, "dump parsers/buckets raw outputs")
 
 	flag.Parse()
 }
 
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+
+	if dumpStates {
+		parser.ParseDump = true
+	}
 
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {

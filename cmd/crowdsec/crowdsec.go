@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
@@ -13,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
@@ -149,8 +151,56 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 			log.Fatalf("unable to shutdown crowdsec routines: %s", err)
 		}
 		log.Debugf("everything is dead, return crowdsecTomb")
+		if dumpStates {
+			log.Printf("Dump state !")
+			dumpParserState()
+			dumpOverflowState()
+			os.Exit(1)
+		}
 		return nil
 	})
+}
+
+func dumpParserState() error {
+
+	fd, err := os.OpenFile("parser-dump.yaml", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(parser.StageParseCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+	return nil
+}
+
+func dumpOverflowState() error {
+
+	fd, err := os.OpenFile("bucket-dump.yaml", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(bucketOverflows)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+	return nil
 }
 
 func waitOnTomb() {
