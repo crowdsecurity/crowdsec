@@ -45,7 +45,7 @@ sudo apt-get install crowdsec
 
 ```sh
 curl -s https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rpm.sh | sudo bash
-yum install crowdsec
+sudo yum install crowdsec
 ```
 
 ### From package (FreeBSD)
