@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
+
 	//"golang.org/x/sys/windows"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
@@ -362,7 +363,8 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
-			l.Raw = line.Text
+			//Trim \r for windows
+			l.Raw = strings.TrimRight(line.Text, "\r") // line.Text
 			l.Labels = f.config.Labels
 			l.Time = line.Time
 			l.Src = tail.Filename
