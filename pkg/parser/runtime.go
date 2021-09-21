@@ -220,8 +220,13 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
+type parserResult struct {
+	Evt     types.Event
+	Success bool
+}
+
 var ParseDump bool
-var StageParseCache map[string]map[string][]types.Event
+var StageParseCache map[string]map[string][]parserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
@@ -251,14 +256,14 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 	if ParseDump {
 		if StageParseCache == nil {
-			StageParseCache = make(map[string]map[string][]types.Event)
+			StageParseCache = make(map[string]map[string][]parserResult)
 		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
 			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]types.Event)
+				StageParseCache[stage] = make(map[string][]parserResult)
 			}
 		}
 		/* if the node is forward in stages, seek to its stage */
@@ -294,17 +299,18 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Fatalf("Error while processing node : %v", err)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
+			if ParseDump {
+				if len(StageParseCache[stage][node.Name]) == 0 {
+					log.Printf("init list %s/%s", stage, node.Name)
+					StageParseCache[stage][node.Name] = make([]parserResult, 0)
+				}
+				evtcopy := deepcopy.Copy(event)
+				parserInfo := parserResult{Evt: evtcopy.(types.Event), Success: ret}
+				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+				log.Printf("append list %s/%s, new len : %d", stage, node.Name, len(StageParseCache[stage][node.Name]))
+			}
 			if ret {
 				isStageOK = true
-				if ParseDump {
-					if len(StageParseCache[stage][node.Name]) == 0 {
-						log.Printf("init list %s/%s", stage, node.Name)
-						StageParseCache[stage][node.Name] = make([]types.Event, 0)
-					}
-					evtcopy := deepcopy.Copy(event)
-					StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], evtcopy.(types.Event))
-					log.Printf("append list %s/%s, new len : %d", stage, node.Name, len(StageParseCache[stage][node.Name]))
-				}
 			}
 			if ret && node.OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)
