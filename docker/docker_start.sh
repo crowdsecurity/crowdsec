@@ -19,9 +19,8 @@ fi
 # Check if lapi need to register automatically an agent
 echo Check if lapi need to register automatically an agent
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-    echo registering agent $AGENT_USERNAME to lapi 
-    echo AGENT PASSWORD : $AGENT_PASSWORD
     cscli machines add $AGENT_USERNAME --password $AGENT_PASSWORD
+    echo "Agent registered to lapi"
 fi
 
 # registration to online API for signal push
@@ -31,6 +30,7 @@ if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
         yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' /etc/crowdsec/config.yaml > /etc/crowdsec/config2.yaml
         mv /etc/crowdsec/config2.yaml /etc/crowdsec/config.yaml
         cscli capi register > /etc/crowdsec/online_api_credentials.yaml
+        echo "registration to online API done"
     fi
 fi
 
@@ -40,6 +40,7 @@ if [ "$GID" != "" ]; then
     DB_PATH=$(yq eval '.db_config.db_path' /etc/crowdsec/config.yaml)
     if [ "$IS_SQLITE" == "true" ]; then
         chown :$GID $DB_PATH
+        echo "sqlite database permissions updated"
     fi
 fi
 
@@ -47,6 +48,7 @@ fi
 cscli hub update
 cscli collections upgrade crowdsecurity/linux || true
 cscli parsers upgrade crowdsecurity/whitelists || true
+cscli parsers install crowdsecurity/docker-logs || true
 if [ "$COLLECTIONS" != "" ]; then
     cscli collections install $COLLECTIONS
 fi
