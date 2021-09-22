@@ -34,17 +34,17 @@ var prometheusURL string
 
 func initConfig() {
 	var err error
-	//if trace_lvl {
-	log.SetLevel(log.TraceLevel)
-	// } else if dbg_lvl {
-	// 	log.SetLevel(log.DebugLevel)
-	// } else if nfo_lvl {
-	// 	log.SetLevel(log.InfoLevel)
-	// } else if wrn_lvl {
-	// 	log.SetLevel(log.WarnLevel)
-	// } else if err_lvl {
-	// 	log.SetLevel(log.ErrorLevel)
-	// }
+	if trace_lvl {
+		log.SetLevel(log.TraceLevel)
+	} else if dbg_lvl {
+		log.SetLevel(log.DebugLevel)
+	} else if nfo_lvl {
+		log.SetLevel(log.InfoLevel)
+	} else if wrn_lvl {
+		log.SetLevel(log.WarnLevel)
+	} else if err_lvl {
+		log.SetLevel(log.ErrorLevel)
+	}
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
 	csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)

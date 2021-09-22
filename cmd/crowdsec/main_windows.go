@@ -256,10 +256,6 @@ func main() {
 	if isRunninginService {
 		runService(svcName, false)
 		return
-	} else {
-		//fmt.Print("running outside of a windows service mode")
-		//run()
-		//return
 	}
 
 	if flags.WinSvc == "Install" {
@@ -274,11 +270,6 @@ func main() {
 	} else if flags.WinSvc == "Stop" {
 		err = controlService(svcName, svc.Stop, svc.Stopped)
 	}
-	//else if flags.WinSvc == "Restart" {
-	// } else {
-	// 	log.Fatalf("unknown windows service action: %s", flags.WinSvc)
-	// 	return
-	// }
 	if err != nil {
 		log.Fatalf("failed to %s %s: %v", flags.WinSvc, svcName, err)
 	}
@@ -332,27 +323,26 @@ func run() {
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
 		elog.Error(1, err.Error())
-		//log.Fatalf(err.Error())
+
 	}
 	if err := LoadConfig(cConfig); err != nil {
 		elog.Error(1, err.Error())
-		//log.Fatalf(err.Error())
+
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
-		//log.Fatal(err.Error())
+
 		elog.Error(1, err.Error())
 	}
 
-	//log.Infof("Crowdsec %s", cwversion.VersionStr())
 	elog.Info(1, "Crowdsec"+cwversion.VersionStr())
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
 	}
-	//go Serve(cConfig)
+
 	if err := Serve(cConfig); err != nil {
-		//log.Fatalf(err.Error())
+
 		elog.Error(1, err.Error())
 	}
 }
