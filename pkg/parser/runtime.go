@@ -226,6 +226,7 @@ type parserResult struct {
 }
 
 var ParseDump bool
+var DumpFolder string
 var StageParseCache map[string]map[string][]parserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {

@@ -160,6 +160,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
+var dumpFolder string
 var dumpStates bool
 
 func (f *Flags) Parse() {
@@ -174,7 +175,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
-	flag.BoolVar(&dumpStates, "dump-data", false, "dump parsers/buckets raw outputs")
+	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 
 	flag.Parse()
 }
@@ -182,8 +183,10 @@ func (f *Flags) Parse() {
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
 
-	if dumpStates {
+	if dumpFolder != "" {
 		parser.ParseDump = true
+		parser.DumpFolder = dumpFolder
+		dumpStates = true
 	}
 
 	if !flags.DisableAgent {

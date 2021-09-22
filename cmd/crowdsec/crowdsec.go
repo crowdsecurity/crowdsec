@@ -5,6 +5,8 @@ import (
 	"os"
 	"sync"
 
+	"path/filepath"
+
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -155,7 +157,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 			log.Printf("Dump state !")
 			dumpParserState()
 			dumpOverflowState()
-			os.Exit(1)
+			os.Exit(0)
 		}
 		return nil
 	})
@@ -163,7 +165,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 
 func dumpParserState() error {
 
-	fd, err := os.OpenFile("parser-dump.yaml", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "parser_dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatalf("open: %s", err)
 	}
