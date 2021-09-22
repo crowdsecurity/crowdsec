@@ -151,7 +151,6 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			skeys = append(skeys, k)
 		}
 		sort.Strings(skeys)
-
 		for _, k := range skeys {
 			v := evt.Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
