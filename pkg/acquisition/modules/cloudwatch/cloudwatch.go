@@ -329,7 +329,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 			}
 
 			if cw.Config.StreamRegexp != nil {
-				match, err := regexp.Match(newStream.StreamName, []byte(*cw.Config.StreamRegexp))
+				match, err := regexp.Match(*cw.Config.StreamRegexp, []byte(newStream.StreamName))
 				if err != nil {
 					cw.logger.Warningf("invalid regexp : %s", err)
 				} else {
