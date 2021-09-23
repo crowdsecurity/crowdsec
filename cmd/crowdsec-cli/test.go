@@ -38,6 +38,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatal("Please provide the --type flag to specify the log type.")
 			}
 
+			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
 				logFile = "./cscli_test_tmp.log"
 				f, err := os.Create(logFile)
@@ -73,6 +74,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatalf("fail to run crowdsec for test: %v", err)
 			}
 
+			// rm the temporary log file if only a log line was provided
 			if logLine != "" {
 				if err := os.Remove(logFile); err != nil {
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
