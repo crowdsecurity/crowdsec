@@ -356,17 +356,10 @@ func pluginIsValid(path string) error {
 	if err != nil {
 		return errors.Wrap(err, "while getting current user")
 	}
-	uid, err := strconv.Atoi(currentUser.Uid)
-	if err != nil {
-		return errors.Wrap(err, "while converting string UID to int")
-	}
-	gid, err := strconv.Atoi(currentUser.Gid)
-	if err != nil {
-		return errors.Wrap(err, "while converting string GID to int")
-	}
+	procAttr, err := getProcessAtr(currentUser.Username, currentUser.Username)
 
 	stat := details.Sys().(*syscall.Stat_t)
-	if stat.Uid != uint32(uid) || stat.Gid != uint32(gid) {
+	if stat.Uid != procAttr.Credential.Uid || stat.Gid != procAttr.Credential.Gid {
 		return fmt.Errorf("plugin at %s is not owned by %s user and group", path, currentUser.Username)
 	}
 
