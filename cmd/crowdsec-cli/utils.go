@@ -12,11 +12,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
@@ -839,4 +844,98 @@ func CopyDir(src string, dest string) error {
 	}
 
 	return nil
+}
+
+func autogenParserAsserts(parserResults parserResults) {
+	//attempt to autogen parser asserts
+	for stage, parsers := range parserResults {
+		for parser, presults := range parsers {
+			for pidx, result := range presults {
+				fmt.Printf(`results["%s"]["%s"][%d].Success == %t`+"\n", stage, parser, pidx, result.Success)
+
+				for pkey, pval := range result.Evt.Parsed {
+					if pval == "" {
+						continue
+					}
+					fmt.Printf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, pval)
+				}
+				for mkey, mval := range result.Evt.Meta {
+					if mval == "" {
+						continue
+					}
+					fmt.Printf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, mval)
+				}
+			}
+		}
+	}
+}
+
+func loadParserDump(filepath string) (map[string]map[string][]parserResult, error) {
+	var pdump parserResults
+
+	data_fd, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer data_fd.Close()
+	//umarshal full gruik
+	results, err := ioutil.ReadAll(data_fd)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal(results, &pdump); err != nil {
+		return nil, err
+	}
+	return pdump, nil
+}
+
+func autogenParserAssertsFromFile(filename string) error {
+	pdump, err := loadParserDump(filename)
+	if err != nil {
+		return err
+	}
+	autogenParserAsserts(pdump)
+	return nil
+}
+
+func runOneParserAssert(assert string, results parserResults) (bool, error, bool) {
+	var err error
+	//debug doesn't make much sense with the ability to evaluate "on the fly"
+	//var debugFilter *exprhelpers.ExprDebugger
+	var runtimeFilter *vm.Program
+	var output interface{}
+
+	env := map[string]interface{}{"results": results}
+
+	if runtimeFilter, err = expr.Compile(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+		log.Fatalf(err.Error())
+	}
+	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
+	// }
+
+	//dump opcode in trace level
+	log.Tracef("%s", runtimeFilter.Disassemble())
+
+	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": results}))
+	if err != nil {
+		log.Warningf("running : %s", assert)
+		log.Warningf("runtime error : %s", err)
+		return false, errors.Wrapf(err, "while running expression %s", assert), false
+	}
+	switch out := output.(type) {
+	case bool:
+		// if out == false || logger.Level >= log.DebugLevel {
+		// 	log.Printf("call debug thinggy")
+		// 	debugFilter.Run(logger, true, exprhelpers.GetExprEnv(map[string]interface{}{"results": results}))
+		// }
+		if output == true {
+			return true, nil, false
+		} else {
+			return false, nil, false
+		}
+	default:
+		log.Printf("%s -> %s", assert, spew.Sdump(out))
+		return true, nil, true
+	}
 }

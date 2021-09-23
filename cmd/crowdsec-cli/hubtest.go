@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -27,7 +29,8 @@ const (
 	templateConfigFile     = "template_config.yaml"
 	templateSimulationFile = "template_simulation.yaml"
 	templateProfileFile    = "template_profiles.yaml"
-
+	parserAssertFileName   = "parser.assert"
+	parserResultFileName   = "parser-dump.yaml"
 	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
 )
 
@@ -166,7 +169,25 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 	ret := cwhub.GetItemMap(cwhub.PARSERS)
 	for parserName, item := range ret {
 		if item.Installed {
-			log.Infof("Installed: %+v", parserName)
+			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
+				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
+			}
+		}
+	}
+	ret = cwhub.GetItemMap(cwhub.SCENARIOS)
+	for scenarioName, item := range ret {
+		if item.Installed {
+			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
+				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
+			}
+		}
+	}
+	ret = cwhub.GetItemMap(cwhub.PARSERS_OVFLW)
+	for postoverflowName, item := range ret {
+		if item.Installed {
+			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
+				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
+			}
 		}
 	}
 
@@ -264,6 +285,7 @@ cscli hubtest run myTest
 				log.Fatalf("unable to create folder '%s': %+v", testPath, err)
 			}
 			log.Infof("Created '%s'", testPath)
+
 			logFileName := fmt.Sprintf("%s.log", testName)
 			logFilePath := filepath.Join(testPath, logFileName)
 			logFile, err := os.Create(logFilePath)
@@ -272,6 +294,14 @@ cscli hubtest run myTest
 			}
 			logFile.Close()
 			log.Infof("Created empty log file in '%s'", logFilePath)
+
+			parserAssertFilePath := filepath.Join(testPath, "parser.assert")
+			parserAssertFile, err := os.Create(parserAssertFilePath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			parserAssertFile.Close()
+			log.Infof("Created empty log file in '%s'", parserAssertFilePath)
 
 			configFileData := &ConfigTestFile{
 				Parsers:       []string{"crowdsecurity/syslog-logs", "crowdsecurity/dateparse-enrich"},
@@ -333,7 +363,7 @@ cscli hubtest run myTest
 				HubIndexFile: hubIndexFile,
 			}
 
-			resultFolders := filepath.Join(testPath, "results")
+			resultsFolder := filepath.Join(testPath, "results")
 
 			currentDir, err = os.Getwd()
 			if err != nil {
@@ -371,19 +401,19 @@ cscli hubtest run myTest
 			}
 
 			// create results folder
-			if err := os.MkdirAll(resultFolders, os.ModePerm); err != nil {
-				log.Fatalf("unable to create folder '%s': %+v", resultFolders, err)
+			if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
+				log.Fatalf("unable to create folder '%s': %+v", resultsFolder, err)
 			}
 
 			if err := Copy(templateConfigFilePath, runtimeConfigFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath)
+				log.Fatalf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath, err)
 			}
 			if err := Copy(templateProfilePath, runtimeProfileFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath)
+				log.Fatalf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath, err)
 			}
 
 			if err := Copy(templateSimulationPath, runtimeSimulationFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath)
+				log.Fatalf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath, err)
 			}
 
 			if err := CopyDir(crowdsecPatternsFolder, runtimePatternsFolder); err != nil {
@@ -410,7 +440,7 @@ cscli hubtest run myTest
 				log.Fatalf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), testName, err)
 			}
 
-			cmdArgs = []string{"-c", runtimeConfigFilePath, "--type", logType, "--dsn", dsn, "-dump-data", resultFolders}
+			cmdArgs = []string{"-c", runtimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", resultsFolder}
 			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
 			output, err = crowdsecCmd.CombinedOutput()
 			if err != nil {
@@ -420,12 +450,55 @@ cscli hubtest run myTest
 			if err := os.Chdir(currentDir); err != nil {
 				log.Fatalf("can't 'cd' to '%s': %s", currentDir, err)
 			}
+			parserResultFile := filepath.Join(resultsFolder, parserResultFileName)
+			assertFile := filepath.Join(testPath, parserAssertFileName)
+			assertFileStat, err := os.Stat(assertFile)
+			if os.IsNotExist(err) {
+				log.Fatalf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, testName, testPath)
+			}
+			if assertFileStat.Size() == 0 {
+				log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
+				fmt.Println()
+				autogenParserAssertsFromFile(parserResultFile)
+			} else {
+				file, err := os.Open(assertFile)
 
-		},
-		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			/*if err := os.RemoveAll(runtimeFolder); err != nil {
+				if err != nil {
+					log.Fatalf("failed to open")
+				}
+
+				scanner := bufio.NewScanner(file)
+				scanner.Split(bufio.ScanLines)
+
+				for scanner.Scan() {
+					if scanner.Text() == "" {
+						continue
+					}
+					pdump, err := loadParserDump(parserResultFile)
+					if err != nil {
+						log.Fatalf("loading parser dump file: %+v", err)
+					}
+					ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
+					if err != nil {
+						log.Fatalf("unable to run assert '%s': %+v", err)
+					}
+					if !ok {
+						fmt.Printf(" %s '%s'\n\n", emoji.RedCircle, scanner.Text())
+						continue
+					}
+					fmt.Printf(" %s '%s'\n\n", emoji.GreenCircle, scanner.Text())
+
+				}
+
+				// The method os.File.Close() is called
+				// on the os.File object to close the file
+				file.Close()
+			}
+
+			// if everything went good, we can remove the runtime folder
+			if err := os.RemoveAll(runtimeFolder); err != nil {
 				log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
-			}*/
+			}
 		},
 	}
 	cmdHubTestParser.AddCommand(cmdHubTestParserRun)
