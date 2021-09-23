@@ -17,3 +17,12 @@ func (a *Alert) GetScenario() string {
 	}
 	return *a.Scenario
 }
+
+func (e *Event) GetMeta(key string) string {
+	for _, meta := range e.Meta {
+		if meta.Key == key {
+			return meta.Value
+		}
+	}
+	return ""
+}
