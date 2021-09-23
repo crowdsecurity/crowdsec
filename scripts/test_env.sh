@@ -68,7 +68,6 @@ create_arbo() {
 
 copy_files() {
 	cp "./config/profiles.yaml" "$CONFIG_DIR"
-	cp "./config/dev.yaml" "$BASE"
 	cp  "./config/simulation.yaml" "$CONFIG_DIR"
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
@@ -76,6 +75,7 @@ copy_files() {
 	cp "./config/acquis.yaml" "$CONFIG_DIR"
 	touch "$CONFIG_DIR"/local_api_credentials.yaml
 	touch "$CONFIG_DIR"/online_api_credentials.yaml
+	envsubst < "./config/dev.yaml" > $BASE/dev.yaml
 	for plugin in $PLUGINS
 	do
 		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
