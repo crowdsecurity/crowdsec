@@ -399,6 +399,9 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	}
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
+		if scanner.Text() == "" {
+			continue
+		}
 		logger.Debugf("line %s", scanner.Text())
 		l := types.Line{}
 		l.Raw = scanner.Text()
