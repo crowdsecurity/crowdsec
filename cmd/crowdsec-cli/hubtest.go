@@ -485,11 +485,14 @@ cscli hubtest run myTest
 			if os.IsNotExist(err) {
 				log.Fatalf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, testName, testPath)
 			}
+
+			var errorList []string
 			if assertFileStat.Size() == 0 {
 				log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
 				fmt.Println()
 				autogenParserAssertsFromFile(parserResultFile)
 			} else {
+				errorList = make([]string, 0)
 				file, err := os.Open(assertFile)
 
 				if err != nil {
@@ -513,15 +516,22 @@ cscli hubtest run myTest
 						log.Fatalf("unable to run assert '%s': %+v", err)
 					}
 					if !ok {
-						fmt.Printf(" %s '%s'\n\n", emoji.RedCircle, scanner.Text())
+						//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
+						errorList = append(errorList, fmt.Sprintf(" %s '%s'\n", emoji.RedSquare, scanner.Text()))
 						continue
 					}
-					fmt.Printf(" %s '%s'\n\n", emoji.GreenCircle, scanner.Text())
+					//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
 
 				}
 				file.Close()
 			}
-
+			if len(errorList) > 0 {
+				for _, err := range errorList {
+					fmt.Printf(err)
+				}
+			} else {
+				fmt.Printf("Test '%s' passed successfully %s", testName, emoji.GreenSquare)
+			}
 			// if everything went good, we can remove the runtime folder
 			if err := os.RemoveAll(runtimeFolder); err != nil {
 				log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
