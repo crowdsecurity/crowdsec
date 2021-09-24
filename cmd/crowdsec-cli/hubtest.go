@@ -44,7 +44,7 @@ func NewHubTestCmd() *cobra.Command {
 	cmdHubTest.PersistentFlags().StringVarP(&outputFormat, "output", "o", "human", "Output format (human, json)")
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "/usr/local/bin/crowdsec", "Path to crowdsec")
-	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "/usr/local/bin cscli", "Path to cscli")
+	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "/usr/local/bin/cscli", "Path to cscli")
 
 	var cmdHubTestParser = &cobra.Command{
 		Use:               "parser",
