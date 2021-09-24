@@ -116,8 +116,8 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			if err := fd.Close(); err != nil {
 				log.Fatalf(" close: %s", err)
 			}
-			fmt.Printf("  Created log file '%s', please fill with with logs", logFilePath)
-			fmt.Printf("  Created log file '%s', please fill with with assertion", parserAssertFilePath)
+			fmt.Printf("  Created log file '%s', please fill with with logs\n", logFilePath)
+			fmt.Printf("  Created log file '%s', please fill with with assertion\n", parserAssertFilePath)
 
 		},
 	}
