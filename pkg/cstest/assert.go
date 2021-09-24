@@ -30,7 +30,7 @@ func RunExpression(expression string, results ParserResults) (interface{}, error
 	env := map[string]interface{}{"results": results}
 
 	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
-		log.Fatalf(err.Error())
+		return output, err
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
 	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)

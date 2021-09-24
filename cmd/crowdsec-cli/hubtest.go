@@ -54,6 +54,9 @@ func NewHubTestCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 	}
 
+	parsers := []string{}
+	postoverflows := []string{}
+	scenarios := []string{}
 	var cmdHubTestParserAdd = &cobra.Command{
 		Use:   "add",
 		Short: "add [test_name]",
@@ -92,14 +95,24 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 			parserAssertFile.Close()
 
+			parsers = append(parsers, "crowdsecurity/syslog-logs")
+
+			if len(scenarios) == 0 {
+				scenarios = append(scenarios, "")
+			}
+
+			if len(postoverflows) == 0 {
+				postoverflows = append(postoverflows, "")
+			}
+
 			configFileData := &cstest.HubTestItemConfig{
-				Parsers:       []string{"crowdsecurity/syslog-logs"},
-				Scenarios:     []string{""},
-				Collections:   []string{""},
-				PostOVerflows: []string{""},
+				Parsers:       parsers,
+				Scenarios:     scenarios,
+				PostOVerflows: postoverflows,
 				LogFile:       logFileName,
 				LogType:       logType,
 			}
+
 			configFilePath := filepath.Join(testPath, "config.yaml")
 			fd, err := os.OpenFile(configFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 			if err != nil {
@@ -122,6 +135,9 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		},
 	}
 	cmdHubTestParserAdd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
+	cmdHubTestParserAdd.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
+	cmdHubTestParserAdd.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
+	cmdHubTestParserAdd.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
 	cmdHubTestParser.AddCommand(cmdHubTestParserAdd)
 
 	var cmdHubTestParserRun = &cobra.Command{
