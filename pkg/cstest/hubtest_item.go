@@ -29,8 +29,12 @@ type HubIndex struct {
 }
 
 type HubTestItem struct {
-	Name                      string
-	Path                      string
+	Name string
+	Path string
+
+	CrowdSecPath string
+	CscliPath    string
+
 	RuntimePath               string
 	RuntimeHubPath            string
 	RuntimeDataPath           string
@@ -87,6 +91,8 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
+		CrowdSecPath:              hubTest.CrowdSecPath,
+		CscliPath:                 hubTest.CscliPath,
 		RuntimePath:               filepath.Join(testPath, "runtime"),
 		RuntimeHubPath:            runtimeHubFolder,
 		RuntimeDataPath:           filepath.Join(runtimeFolder, "data"),
@@ -432,7 +438,7 @@ func (t *HubTestItem) Run() error {
 	}
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
-	cscliRegisterCmd := exec.Command("cscli", cmdArgs...)
+	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
@@ -441,7 +447,7 @@ func (t *HubTestItem) Run() error {
 	}
 
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
-	crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
 	if err != nil {

@@ -22,6 +22,8 @@ func NewHubTestCmd() *cobra.Command {
 	var outputFormat string
 	var hubPath string
 	var logType string
+	var crowdsecPath string
+	var cscliPath string
 
 	var cmdHubTest = &cobra.Command{
 		Use:   "hubtest",
@@ -33,7 +35,7 @@ func NewHubTestCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-			HubTest, err = cstest.NewHubTest(hubPath)
+			HubTest, err = cstest.NewHubTest(hubPath, crowdsecPath, cscliPath)
 			if err != nil {
 				log.Fatalf("unable to load hubtest: %+v", err)
 			}
@@ -41,15 +43,14 @@ func NewHubTestCmd() *cobra.Command {
 	}
 	cmdHubTest.PersistentFlags().StringVarP(&outputFormat, "output", "o", "human", "Output format (human, json)")
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
+	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "/usr/local/bin/crowdsec", "Path to crowdsec")
+	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "/usr/local/bin cscli", "Path to cscli")
 
 	var cmdHubTestParser = &cobra.Command{
 		Use:               "parser",
 		Short:             "parser",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-
-		},
 	}
 
 	var cmdHubTestParserAdd = &cobra.Command{
@@ -184,6 +185,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 		},
 	}
+
 	cmdHubTestParser.AddCommand(cmdHubTestParserRun)
 
 	var cmdHubTestParserClean = &cobra.Command{
