@@ -130,7 +130,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			for _, testName := range args {
 				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
-					log.Fatalf("unable to load test '%s': %s", err)
+					log.Fatalf("unable to load test '%s': %s", testName, err)
 				}
 
 				log.Infof("Running test '%s'", testName)
@@ -193,7 +193,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			for _, testName := range args {
 				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
-					log.Fatalf("unable to load test '%s': %s", err)
+					log.Fatalf("unable to load test '%s': %s", testName, err)
 				}
 				if err := test.Clean(); err != nil {
 					log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
@@ -202,19 +202,31 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		},
 	}
 	cmdHubTestParser.AddCommand(cmdHubTestParserClean)
+
+	var evalExpression string
 	var cmdHubTestParserEval = &cobra.Command{
-		Use:               "clean",
-		Short:             "clean [test_name]",
+		Use:               "eval",
+		Short:             "eval [test_name]",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, testName := range args {
-				_, err := HubTest.LoadTestItem(testName)
+				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
 					log.Fatalf("can't load test: %+v", err)
 				}
+				resultDump, err := cstest.LoadParserDump(test.ResultFile)
+				if err != nil {
+					log.Fatalf("can't load test results from '%s': %+v", test.ResultFile, err)
+				}
+				output, err := cstest.EvalExpression(evalExpression, resultDump)
+				if err != nil {
+					log.Fatalf(err.Error())
+				}
+				fmt.Printf(output)
 			}
 		},
 	}
+	cmdHubTestParserEval.PersistentFlags().StringVarP(&evalExpression, "eval", "e", "", "Expression to eval")
 	cmdHubTestParser.AddCommand(cmdHubTestParserEval)
 
 	cmdHubTest.AddCommand(cmdHubTestParser)

@@ -41,8 +41,8 @@ func LoadParserDump(filepath string) (map[string]map[string][]parserResult, erro
 func DumpParserTree(parser_results ParserResults) error {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
-	var state map[time.Time]map[string]map[string]bool = make(map[time.Time]map[string]map[string]bool, 0)
-	var assoc map[time.Time]string = make(map[time.Time]string, 0)
+	state := make(map[time.Time]map[string]map[string]bool, 0)
+	assoc := make(map[time.Time]string, 0)
 
 	for stage, parsers := range parser_results {
 		log.Printf("stage : %s", stage)
@@ -51,11 +51,11 @@ func DumpParserTree(parser_results ParserResults) error {
 			for _, parser_res := range results {
 				evt := parser_res.Evt
 				if _, ok := state[evt.Line.Time]; !ok {
-					state[evt.Line.Time] = make(map[string]map[string]bool, 0)
+					state[evt.Line.Time] = make(map[string]map[string]bool)
 					assoc[evt.Line.Time] = evt.Line.Raw
 				}
 				if _, ok := state[evt.Line.Time][stage]; !ok {
-					state[evt.Line.Time][stage] = make(map[string]bool, 0)
+					state[evt.Line.Time][stage] = make(map[string]bool)
 				}
 				state[evt.Line.Time][stage][parser] = parser_res.Success
 			}

@@ -97,8 +97,9 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatal(err)
 			}
 			log.Debugf("loaded parsers results %s : %d stages record", "./parser_dump.yaml", len(pdump))
-			cstest.DumpParserTree(pdump)
-
+			if err := cstest.DumpParserTree(pdump); err != nil {
+				log.Fatalf(err.Error())
+			}
 		},
 	}
 	cmdTest.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")

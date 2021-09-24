@@ -495,11 +495,6 @@ func (t *HubTestItem) Run() error {
 
 		}
 		file.Close()
-		if len(t.ErrorsList) > 0 {
-			for _, err := range t.ErrorsList {
-				fmt.Printf(err)
-			}
-		}
 	}
 	t.Success = true
 	return nil
