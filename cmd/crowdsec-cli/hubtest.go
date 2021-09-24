@@ -161,11 +161,14 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			return fmt.Errorf("scenario '%s' doesn't exist in .index.json, exiting", postoverflow)
 		}
 	}
+
+	// load installed hub
 	err := cwhub.GetHubIdx(hubConfig)
 	if err != nil {
 		log.Fatalf("can't local sync the hub: %+v", err)
 	}
 
+	// install data for parsers if needed
 	ret := cwhub.GetItemMap(cwhub.PARSERS)
 	for parserName, item := range ret {
 		if item.Installed {
@@ -174,6 +177,8 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			}
 		}
 	}
+
+	// install data for scenarios if needed
 	ret = cwhub.GetItemMap(cwhub.SCENARIOS)
 	for scenarioName, item := range ret {
 		if item.Installed {
@@ -182,6 +187,8 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			}
 		}
 	}
+
+	// install data for postoverflows if needed
 	ret = cwhub.GetItemMap(cwhub.PARSERS_OVFLW)
 	for postoverflowName, item := range ret {
 		if item.Installed {
@@ -229,10 +236,13 @@ cscli hubtest run myTest
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
+
 			hubPath, err = filepath.Abs(hubPath)
 			if err != nil {
 				log.Fatalf("can't get absolute path of hub: %+v", err)
 			}
+
+			// we can't use this command without the hub
 			if _, err := os.Stat(hubPath); os.IsNotExist(err) {
 				log.Fatalf("path to hub doesn't exist, can't run: %+v", err)
 			}
@@ -243,6 +253,8 @@ cscli hubtest run myTest
 			if err != nil {
 				log.Fatalf("unable to read index file: %s", err)
 			}
+
+			// load hub index
 			hubIndex, err = cwhub.LoadPkgIndex(bidx)
 			if err != nil {
 				log.Fatalf("unable to load hub index file: %s", err)
@@ -327,7 +339,8 @@ cscli hubtest run myTest
 			if err := fd.Close(); err != nil {
 				log.Fatalf(" close: %s", err)
 			}
-			log.Infof("Created '%s'", configFilePath)
+			fmt.Printf("  Created log file '%s', please fill with with logs", logFilePath)
+			fmt.Printf("  Created log file '%s', please fill with with assertion", parserAssertFilePath)
 
 		},
 	}
@@ -405,21 +418,27 @@ cscli hubtest run myTest
 				log.Fatalf("unable to create folder '%s': %+v", resultsFolder, err)
 			}
 
+			// copy template config file to runtime folder
 			if err := Copy(templateConfigFilePath, runtimeConfigFilePath); err != nil {
 				log.Fatalf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath, err)
 			}
+
+			// copy template profile file to runtime folder
 			if err := Copy(templateProfilePath, runtimeProfileFilePath); err != nil {
 				log.Fatalf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath, err)
 			}
 
+			// copy template simulation file to runtime folder
 			if err := Copy(templateSimulationPath, runtimeSimulationFilePath); err != nil {
 				log.Fatalf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath, err)
 			}
 
+			// copy template patterns folder to runtime folder
 			if err := CopyDir(crowdsecPatternsFolder, runtimePatternsFolder); err != nil {
 				log.Fatalf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, runtimePatternsFolder, err)
 			}
 
+			// install the hub in the runtime folder
 			if err := InstallHub(*configFileData, hubConfig, hubPath, runtimeFolder, runtimeHubFolder); err != nil {
 				log.Fatalf("unable to install hub in '%s': %s", runtimeHubFolder, err)
 			}
@@ -430,6 +449,14 @@ cscli hubtest run myTest
 
 			if err := os.Chdir(testPath); err != nil {
 				log.Fatalf("can't 'cd' to '%s': %s", testPath, err)
+			}
+
+			logFileStat, err := os.Stat(logFile)
+			if err != nil {
+				log.Fatalf("unable to stat log file '%s'", logFileStat)
+			}
+			if logFileStat.Size() == 0 {
+				log.Fatalf("Log file '%s' is empty, please fill it with log", logFile)
 			}
 
 			cmdArgs := []string{"-c", runtimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
@@ -447,9 +474,11 @@ cscli hubtest run myTest
 				fmt.Println(string(output))
 				log.Fatalf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), testName, err)
 			}
+
 			if err := os.Chdir(currentDir); err != nil {
 				log.Fatalf("can't 'cd' to '%s': %s", currentDir, err)
 			}
+
 			parserResultFile := filepath.Join(resultsFolder, parserResultFileName)
 			assertFile := filepath.Join(testPath, parserAssertFileName)
 			assertFileStat, err := os.Stat(assertFile)
@@ -470,13 +499,14 @@ cscli hubtest run myTest
 				scanner := bufio.NewScanner(file)
 				scanner.Split(bufio.ScanLines)
 
+				pdump, err := loadParserDump(parserResultFile)
+				if err != nil {
+					log.Fatalf("loading parser dump file: %+v", err)
+				}
+
 				for scanner.Scan() {
 					if scanner.Text() == "" {
 						continue
-					}
-					pdump, err := loadParserDump(parserResultFile)
-					if err != nil {
-						log.Fatalf("loading parser dump file: %+v", err)
 					}
 					ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
 					if err != nil {
@@ -489,9 +519,6 @@ cscli hubtest run myTest
 					fmt.Printf(" %s '%s'\n\n", emoji.GreenCircle, scanner.Text())
 
 				}
-
-				// The method os.File.Close() is called
-				// on the os.File object to close the file
 				file.Close()
 			}
 
