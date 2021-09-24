@@ -78,7 +78,6 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			if err := os.MkdirAll(testPath, os.ModePerm); err != nil {
 				log.Fatalf("unable to create folder '%s': %+v", testPath, err)
 			}
-			log.Infof("Created '%s'", testPath)
 
 			logFileName := fmt.Sprintf("%s.log", testName)
 			logFilePath := filepath.Join(testPath, logFileName)
@@ -129,8 +128,12 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			if err := fd.Close(); err != nil {
 				log.Fatalf(" close: %s", err)
 			}
-			fmt.Printf("  Created log file '%s', please fill with with logs\n", logFilePath)
-			fmt.Printf("  Created log file '%s', please fill with with assertion\n", parserAssertFilePath)
+			fmt.Println()
+			fmt.Printf("  Test name            :  %s\n", testName)
+			fmt.Printf("  Test path            :  %s\n", testPath)
+			fmt.Printf("  Log file             :  %s (please fill it with logs)\n", logFilePath)
+			fmt.Printf("  Assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
+			fmt.Printf("  Configuration File   :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
 
 		},
 	}
