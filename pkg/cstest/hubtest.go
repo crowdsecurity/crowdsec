@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -42,13 +43,17 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	HubTestPath := filepath.Join(hubPath, "./.tests/")
 
 	// we can't use hubtest without crowdsec binary
-	if _, err := os.Stat(crowdsecPath); os.IsNotExist(err) {
-		return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist, can't run", crowdsecPath)
+	if _, err := exec.LookPath(crowdsecPath); err != nil {
+		if _, err := os.Stat(crowdsecPath); os.IsNotExist(err) {
+			return HubTest{}, fmt.Errorf("path to crowdsec binary '%s' doesn't exist or is not in $PATH, can't run", crowdsecPath)
+		}
 	}
 
 	// we can't use hubtest without cscli binary
-	if _, err := os.Stat(cscliPath); os.IsNotExist(err) {
-		return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist, can't run", cscliPath)
+	if _, err := exec.LookPath(cscliPath); err != nil {
+		if _, err := os.Stat(cscliPath); os.IsNotExist(err) {
+			return HubTest{}, fmt.Errorf("path to cscli binary '%s' doesn't exist or is not in $PATH, can't run", cscliPath)
+		}
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
@@ -68,6 +73,8 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	templateSimulationPath := filepath.Join(HubTestPath, templateSimulationFile)
 
 	return HubTest{
+		CrowdSecPath:           crowdsecPath,
+		CscliPath:              cscliPath,
 		HubPath:                hubPath,
 		HubTestPath:            HubTestPath,
 		HubIndexFile:           hubIndexFile,
@@ -87,4 +94,18 @@ func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	h.Tests = append(h.Tests, testItem)
 
 	return testItem, nil
+}
+
+func (h *HubTest) LoadAllTests() error {
+	testsFolder, err := ioutil.ReadDir(h.HubTestPath)
+	if err != nil {
+		return err
+	}
+
+	for _, f := range testsFolder {
+		if f.IsDir() {
+			h.LoadTestItem(f.Name())
+		}
+	}
+	return nil
 }

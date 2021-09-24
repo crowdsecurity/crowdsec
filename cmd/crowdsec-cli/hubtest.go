@@ -8,6 +8,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/enescakir/emoji"
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -43,8 +44,8 @@ func NewHubTestCmd() *cobra.Command {
 	}
 	cmdHubTest.PersistentFlags().StringVarP(&outputFormat, "output", "o", "human", "Output format (human, json)")
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
-	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "/usr/local/bin/crowdsec", "Path to crowdsec")
-	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "/usr/local/bin/cscli", "Path to cscli")
+	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
+	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
 
 	var cmdHubTestParser = &cobra.Command{
 		Use:               "parser",
@@ -206,6 +207,31 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		},
 	}
 	cmdHubTestParser.AddCommand(cmdHubTestParserClean)
+
+	var cmdHubTestParserList = &cobra.Command{
+		Use:               "list",
+		Short:             "list",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := HubTest.LoadAllTests(); err != nil {
+				log.Fatalf("unable to load all tests: %+v", err)
+			}
+
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetCenterSeparator("")
+			table.SetColumnSeparator("")
+
+			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+			table.SetAlignment(tablewriter.ALIGN_LEFT)
+			table.SetHeader([]string{"Name", "Path"})
+			for _, test := range HubTest.Tests {
+				table.Append([]string{test.Name, test.Path})
+			}
+			table.Render()
+
+		},
+	}
+	cmdHubTestParser.AddCommand(cmdHubTestParserList)
 
 	var evalExpression string
 	var cmdHubTestParserEval = &cobra.Command{

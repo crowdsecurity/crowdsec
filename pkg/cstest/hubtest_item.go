@@ -77,6 +77,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
 	configFilePath := filepath.Join(testPath, "config.yaml")
 	resultPath := filepath.Join(testPath, "results")
+
 	// read test configuration file
 	configFileData := &HubTestItemConfig{}
 	yamlFile, err := ioutil.ReadFile(configFilePath)
