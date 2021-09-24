@@ -29,11 +29,6 @@ func NewHubTestCmd() *cobra.Command {
 		Long: `
 		Run fonctionnals tests on hub configurations (parsers, scenarios, collections...)
 		`,
-		Example: `
-cscli hubtest add myTest
-cscli hubtest inspect myTest 
-cscli hubtest run myTest
-		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -58,15 +53,17 @@ cscli hubtest run myTest
 	}
 
 	var cmdHubTestParserAdd = &cobra.Command{
-		Use:               "add",
-		Short:             "add [test_name]",
+		Use:   "add",
+		Short: "add [test_name]",
+		Example: `cscli hubtest parser add my-awesome-parser --type syslog
+cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			testName := args[0]
 			testPath := filepath.Join(HubTest.HubTestPath, testName)
 			if _, err := os.Stat(testPath); os.IsExist(err) {
-				log.Fatalf("test '%s' already exist in '%s', exiting", testName, testPath)
+				log.Fatalf("test '%s' already exists in '%s', exiting", testName, testPath)
 			}
 
 			if logType == "" {
@@ -94,7 +91,7 @@ cscli hubtest run myTest
 			parserAssertFile.Close()
 
 			configFileData := &cstest.HubTestItemConfig{
-				Parsers:       []string{"crowdsecurity/syslog-logs", "crowdsecurity/dateparse-enrich"},
+				Parsers:       []string{"crowdsecurity/syslog-logs"},
 				Scenarios:     []string{""},
 				Collections:   []string{""},
 				PostOVerflows: []string{""},
@@ -139,7 +136,7 @@ cscli hubtest run myTest
 				log.Infof("Running test '%s'", testName)
 				err = test.Run()
 				if err != nil {
-					log.Errorf("running test '%s' failed: %+v", err)
+					log.Errorf("running test '%s' failed: %+v", testName, err)
 					test.ErrorsList = append(test.ErrorsList, err.Error())
 				}
 			}
