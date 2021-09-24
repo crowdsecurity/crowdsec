@@ -357,7 +357,9 @@ func pluginIsValid(path string) error {
 		return errors.Wrap(err, "while getting current user")
 	}
 	procAttr, err := getProcessAtr(currentUser.Username, currentUser.Username)
-
+	if err != nil {
+		return errors.Wrap(err, "while getting process attributes")
+	}
 	stat := details.Sys().(*syscall.Stat_t)
 	if stat.Uid != procAttr.Credential.Uid || stat.Gid != procAttr.Credential.Gid {
 		return fmt.Errorf("plugin at %s is not owned by %s user and group", path, currentUser.Username)
