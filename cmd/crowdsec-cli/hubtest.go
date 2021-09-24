@@ -7,7 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/enescakir/emoji"
@@ -44,6 +46,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 		if parser == "" {
 			continue
 		}
+		var parserDirDest string
 		if hubParser, ok := hubIndex[cwhub.PARSERS][parser]; ok {
 			parserSource, err := filepath.Abs(filepath.Join(hubPath, hubParser.RemotePath))
 			if err != nil {
@@ -55,7 +58,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			hubDirParserDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubParser.RemotePath))
 
 			// runtime/parsers/s00-raw/
-			parserDirDest := fmt.Sprintf("%s/parsers/%s/", runtimeFolder, hubParser.Stage)
+			parserDirDest = fmt.Sprintf("%s/parsers/%s/", runtimeFolder, hubParser.Stage)
 
 			if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
@@ -76,7 +79,33 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 				return fmt.Errorf("unable to symlink parser '%s' to '%s': %s", hubDirParserPath, parserDirParserPath, err)
 			}
 		} else {
-			return fmt.Errorf("parser '%s' doesn't exist in .index.json, exiting", parser)
+			// we check if its a custom parser
+			customParserPath := filepath.Join(hubPath, parser)
+			if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
+				return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
+			}
+
+			customParserPathSplit := strings.Split(customParserPath, "/")
+			customParserName := customParserPathSplit[len(customParserPathSplit)-1]
+			// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
+			customParserStage := customParserPathSplit[len(customParserPathSplit)-3]
+			// check if stage exist
+			hubStagePath := filepath.Join(hubPath, fmt.Sprintf("parsers/%s", customParserStage))
+
+			if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
+				return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
+			}
+
+			parserDirDest = fmt.Sprintf("%s/parsers/%s/", runtimeFolder, customParserStage)
+			if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
+			}
+
+			customParserDest := filepath.Join(parserDirDest, customParserName)
+			// if path to parser exist, copy it
+			if err := Copy(customParserPath, customParserDest); err != nil {
+				return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
+			}
 		}
 	}
 
@@ -85,6 +114,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 		if scenario == "" {
 			continue
 		}
+		var scenarioDirDest string
 		if hubScenario, ok := hubIndex[cwhub.SCENARIOS][scenario]; ok {
 			scenarioSource, err := filepath.Abs(filepath.Join(hubPath, hubScenario.RemotePath))
 			if err != nil {
@@ -96,7 +126,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			hubDirScenarioDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubScenario.RemotePath))
 
 			// runtime/parsers/scenarios/
-			scenarioDirDest := fmt.Sprintf("%s/scenarios/", runtimeFolder)
+			scenarioDirDest = fmt.Sprintf("%s/scenarios/", runtimeFolder)
 
 			if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
@@ -117,7 +147,19 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 				return fmt.Errorf("unable to symlink scenario '%s' to '%s': %s", hubDirScenarioPath, scenarioDirParserPath, err)
 			}
 		} else {
-			return fmt.Errorf("scenario '%s' doesn't exist in .index.json, exiting", scenario)
+			// we check if its a custom scenario
+			customScenarioPath := filepath.Join(hubPath, scenario)
+			if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
+				return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
+			}
+
+			scenarioDirDest = fmt.Sprintf("%s/scenarios/", runtimeFolder)
+
+			scenarioFileName := filepath.Base(customScenarioPath)
+			scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
+			if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
+				return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
+			}
 		}
 	}
 
@@ -126,6 +168,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 		if postoverflow == "" {
 			continue
 		}
+		var postoverflowDirDest string
 		if hubPostOverflow, ok := hubIndex[cwhub.PARSERS_OVFLW][postoverflow]; ok {
 			postoverflowSource, err := filepath.Abs(filepath.Join(hubPath, hubPostOverflow.RemotePath))
 			if err != nil {
@@ -137,7 +180,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			hubDirPostoverflowDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubPostOverflow.RemotePath))
 
 			// runtime/postoverflows/s00-enrich
-			postoverflowDirDest := fmt.Sprintf("%s/postoverflows/%s/", runtimeFolder, hubPostOverflow.Stage)
+			postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", runtimeFolder, hubPostOverflow.Stage)
 
 			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
 				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
@@ -158,7 +201,34 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 				return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %s", hubDirPostoverflowPath, postoverflowDirParserPath, err)
 			}
 		} else {
-			return fmt.Errorf("scenario '%s' doesn't exist in .index.json, exiting", postoverflow)
+			// we check if its a custom postoverflow
+			customPostOverflowPath := filepath.Join(hubPath, postoverflow)
+			if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
+				return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
+			}
+
+			customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
+			customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
+			// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
+			customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
+
+			// check if stage exist
+			hubStagePath := filepath.Join(hubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
+
+			if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
+				return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
+			}
+
+			postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", runtimeFolder, customPostoverflowStage)
+			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
+				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
+			}
+
+			customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
+			// if path to postoverflow exist, copy it
+			if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
+				return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
+			}
 		}
 	}
 
@@ -175,6 +245,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
 			}
+			log.Printf("parser '%s' installed succesfully in runtime environment", parserName)
 		}
 	}
 
@@ -185,6 +256,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
 			}
+			log.Printf("scenario '%s' installed succesfully in runtime environment", scenarioName)
 		}
 	}
 
@@ -195,6 +267,7 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
 			}
+			log.Printf("postoverflow '%s' installed succesfully in runtime environment", postoverflowName)
 		}
 	}
 
@@ -347,6 +420,7 @@ cscli hubtest run myTest
 	cmdHubTestParserAdd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
 	cmdHubTestParser.AddCommand(cmdHubTestParserAdd)
 
+	testRunSuccess := false
 	var cmdHubTestParserRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
@@ -491,6 +565,9 @@ cscli hubtest run myTest
 				log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
 				fmt.Println()
 				autogenParserAssertsFromFile(parserResultFile)
+
+				// to remove the runtime folder at persistentPostRun
+				testRunSuccess = true
 			} else {
 				errorList = make([]string, 0)
 				file, err := os.Open(assertFile)
@@ -524,21 +601,57 @@ cscli hubtest run myTest
 
 				}
 				file.Close()
-			}
-			if len(errorList) > 0 {
-				for _, err := range errorList {
-					fmt.Printf(err)
+				if len(errorList) > 0 {
+					for _, err := range errorList {
+						fmt.Printf(err)
+					}
+				} else {
+					fmt.Printf("Test '%s' passed successfully %s", testName, emoji.GreenSquare)
+					testRunSuccess = true
 				}
-			} else {
-				fmt.Printf("Test '%s' passed successfully %s", testName, emoji.GreenSquare)
 			}
+		},
+		PersistentPostRun: func(cmd *cobra.Command, args []string) {
+			answer := true
+			if !testRunSuccess {
+				prompt := &survey.Confirm{
+					Message: "Test failed, do you want to remove the runtime folder? (default: Yes)",
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					log.Fatalf("unable to ask to force: %s", err)
+				}
+			}
+			if testRunSuccess || answer {
+				// if everything went good, we can remove the runtime folder
+				if err := os.RemoveAll(runtimeFolder); err != nil {
+					log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+				}
+			}
+		},
+	}
+	cmdHubTestParser.AddCommand(cmdHubTestParserRun)
+
+	var cmdHubTestParserClean = &cobra.Command{
+		Use:               "clean",
+		Short:             "clean [test_name]",
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			testName := args[0]
+			testPath := filepath.Join(HubTestPath, testName)
+			if _, err := os.Stat(testPath); os.IsNotExist(err) {
+				log.Fatalf("test '%s' doesn't exist in '%s', exiting", testName, HubTestPath)
+			}
+			runtimeFolder = filepath.Join(testPath, "runtime")
 			// if everything went good, we can remove the runtime folder
 			if err := os.RemoveAll(runtimeFolder); err != nil {
 				log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
 			}
 		},
 	}
-	cmdHubTestParser.AddCommand(cmdHubTestParserRun)
+	cmdHubTestParserClean.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
+	cmdHubTestParser.AddCommand(cmdHubTestParserClean)
 
 	cmdHubTest.AddCommand(cmdHubTestParser)
 	return cmdHubTest
