@@ -1,474 +1,27 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/enescakir/emoji"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
 
-type ConfigTestFile struct {
-	Parsers       []string `yaml:"parsers"`
-	Scenarios     []string `yaml:"scenarios"`
-	PostOVerflows []string `yaml:"postoverflows"`
-	Collections   []string `yaml:"collections"`
-	LogFile       string   `yaml:"log_file"`
-	LogType       string   `yaml:"log_type"`
-}
-
-const (
-	templateConfigFile     = "template_config.yaml"
-	templateSimulationFile = "template_simulation.yaml"
-	templateProfileFile    = "template_profiles.yaml"
-	parserAssertFileName   = "parser.assert"
-	parserResultFileName   = "parser-dump.yaml"
-	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
-)
-
 var (
-	hubIndex               map[string]map[string]cwhub.Item
-	templateConfigFilePath string
-	templateProfilePath    string
-	templateSimulationPath string
+	HubTest cstest.HubTest
 )
-
-func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath string, runtimeFolder string, runtimeHubFolder string) error {
-	// install parsers in runtime environment
-	for _, parser := range configFileData.Parsers {
-		if parser == "" {
-			continue
-		}
-		var parserDirDest string
-		if hubParser, ok := hubIndex[cwhub.PARSERS][parser]; ok {
-			parserSource, err := filepath.Abs(filepath.Join(hubPath, hubParser.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
-			}
-			parserFileName := filepath.Base(parserSource)
-
-			// runtime/hub/parsers/s00-raw/crowdsecurity/
-			hubDirParserDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubParser.RemotePath))
-
-			// runtime/parsers/s00-raw/
-			parserDirDest = fmt.Sprintf("%s/parsers/%s/", runtimeFolder, hubParser.Stage)
-
-			if err := os.MkdirAll(hubDirParserDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirParserDest, err)
-			}
-			if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
-			}
-
-			// runtime/hub/parsers/s00-raw/crowdsecurity/syslog-logs.yaml
-			hubDirParserPath := filepath.Join(hubDirParserDest, parserFileName)
-			if err := Copy(parserSource, hubDirParserPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", parserSource, hubDirParserPath, err)
-			}
-
-			// runtime/parsers/s00-raw/syslog-logs.yaml
-			parserDirParserPath := filepath.Join(parserDirDest, parserFileName)
-			if err := os.Symlink(hubDirParserPath, parserDirParserPath); err != nil {
-				return fmt.Errorf("unable to symlink parser '%s' to '%s': %s", hubDirParserPath, parserDirParserPath, err)
-			}
-		} else {
-			// we check if its a custom parser
-			customParserPath := filepath.Join(hubPath, parser)
-			if _, err := os.Stat(customParserPath); os.IsNotExist(err) {
-				return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
-			}
-
-			customParserPathSplit := strings.Split(customParserPath, "/")
-			customParserName := customParserPathSplit[len(customParserPathSplit)-1]
-			// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-			customParserStage := customParserPathSplit[len(customParserPathSplit)-3]
-			// check if stage exist
-			hubStagePath := filepath.Join(hubPath, fmt.Sprintf("parsers/%s", customParserStage))
-
-			if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-				return fmt.Errorf("stage '%s' extracted from '%s' doesn't exist in the hub", customParserStage, hubStagePath)
-			}
-
-			parserDirDest = fmt.Sprintf("%s/parsers/%s/", runtimeFolder, customParserStage)
-			if err := os.MkdirAll(parserDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", parserDirDest, err)
-			}
-
-			customParserDest := filepath.Join(parserDirDest, customParserName)
-			// if path to parser exist, copy it
-			if err := Copy(customParserPath, customParserDest); err != nil {
-				return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customParserPath, customParserDest, err)
-			}
-		}
-	}
-
-	// install scenarios in runtime environment
-	for _, scenario := range configFileData.Scenarios {
-		if scenario == "" {
-			continue
-		}
-		var scenarioDirDest string
-		if hubScenario, ok := hubIndex[cwhub.SCENARIOS][scenario]; ok {
-			scenarioSource, err := filepath.Abs(filepath.Join(hubPath, hubScenario.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
-			}
-			scenarioFileName := filepath.Base(scenarioSource)
-
-			// runtime/hub/scenarios/crowdsecurity/
-			hubDirScenarioDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubScenario.RemotePath))
-
-			// runtime/parsers/scenarios/
-			scenarioDirDest = fmt.Sprintf("%s/scenarios/", runtimeFolder)
-
-			if err := os.MkdirAll(hubDirScenarioDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirScenarioDest, err)
-			}
-			if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
-			}
-
-			// runtime/hub/scenarios/crowdsecurity/ssh-bf.yaml
-			hubDirScenarioPath := filepath.Join(hubDirScenarioDest, scenarioFileName)
-			if err := Copy(scenarioSource, hubDirScenarioPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", scenarioSource, hubDirScenarioPath, err)
-			}
-
-			// runtime/scenarios/ssh-bf.yaml
-			scenarioDirParserPath := filepath.Join(scenarioDirDest, scenarioFileName)
-			if err := os.Symlink(hubDirScenarioPath, scenarioDirParserPath); err != nil {
-				return fmt.Errorf("unable to symlink scenario '%s' to '%s': %s", hubDirScenarioPath, scenarioDirParserPath, err)
-			}
-		} else {
-			// we check if its a custom scenario
-			customScenarioPath := filepath.Join(hubPath, scenario)
-			if _, err := os.Stat(customScenarioPath); os.IsNotExist(err) {
-				return fmt.Errorf("scenarios '%s' doesn't exist in the hub and doesn't appear to be a custom one.", scenario)
-			}
-
-			scenarioDirDest = fmt.Sprintf("%s/scenarios/", runtimeFolder)
-
-			scenarioFileName := filepath.Base(customScenarioPath)
-			scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
-			if err := Copy(customScenarioPath, scenarioFileDest); err != nil {
-				return fmt.Errorf("unable to copy scenario from '%s' to '%s': %s", customScenarioPath, scenarioFileDest, err)
-			}
-		}
-	}
-
-	// install postoverflows in runtime environment
-	for _, postoverflow := range configFileData.PostOVerflows {
-		if postoverflow == "" {
-			continue
-		}
-		var postoverflowDirDest string
-		if hubPostOverflow, ok := hubIndex[cwhub.PARSERS_OVFLW][postoverflow]; ok {
-			postoverflowSource, err := filepath.Abs(filepath.Join(hubPath, hubPostOverflow.RemotePath))
-			if err != nil {
-				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
-			}
-			postoverflowFileName := filepath.Base(postoverflowSource)
-
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/
-			hubDirPostoverflowDest := filepath.Join(runtimeHubFolder, filepath.Dir(hubPostOverflow.RemotePath))
-
-			// runtime/postoverflows/s00-enrich
-			postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", runtimeFolder, hubPostOverflow.Stage)
-
-			if err := os.MkdirAll(hubDirPostoverflowDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", hubDirPostoverflowDest, err)
-			}
-			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-			}
-
-			// runtime/hub/postoverflows/s00-enrich/crowdsecurity/rdns.yaml
-			hubDirPostoverflowPath := filepath.Join(hubDirPostoverflowDest, postoverflowFileName)
-			if err := Copy(postoverflowSource, hubDirPostoverflowPath); err != nil {
-				return fmt.Errorf("unable to copy '%s' to '%s': %s", postoverflowSource, hubDirPostoverflowPath, err)
-			}
-
-			// runtime/postoverflows/s00-enrich/rdns.yaml
-			postoverflowDirParserPath := filepath.Join(postoverflowDirDest, postoverflowFileName)
-			if err := os.Symlink(hubDirPostoverflowPath, postoverflowDirParserPath); err != nil {
-				return fmt.Errorf("unable to symlink postoverflow '%s' to '%s': %s", hubDirPostoverflowPath, postoverflowDirParserPath, err)
-			}
-		} else {
-			// we check if its a custom postoverflow
-			customPostOverflowPath := filepath.Join(hubPath, postoverflow)
-			if _, err := os.Stat(customPostOverflowPath); os.IsNotExist(err) {
-				return fmt.Errorf("postoverflow '%s' doesn't exist in the hub and doesn't appear to be a custom one.", postoverflow)
-			}
-
-			customPostOverflowPathSplit := strings.Split(customPostOverflowPath, "/")
-			customPostoverflowName := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-1]
-			// because path is postoverflows/<stage>/<author>/parser.yaml and we wan't the stage
-			customPostoverflowStage := customPostOverflowPathSplit[len(customPostOverflowPathSplit)-3]
-
-			// check if stage exist
-			hubStagePath := filepath.Join(hubPath, fmt.Sprintf("postoverflows/%s", customPostoverflowStage))
-
-			if _, err := os.Stat(hubStagePath); os.IsNotExist(err) {
-				return fmt.Errorf("stage '%s' from extracted '%s' doesn't exist in the hub", customPostoverflowStage, hubStagePath)
-			}
-
-			postoverflowDirDest = fmt.Sprintf("%s/postoverflows/%s/", runtimeFolder, customPostoverflowStage)
-			if err := os.MkdirAll(postoverflowDirDest, os.ModePerm); err != nil {
-				return fmt.Errorf("unable to create folder '%s': %s", postoverflowDirDest, err)
-			}
-
-			customPostoverflowDest := filepath.Join(postoverflowDirDest, customPostoverflowName)
-			// if path to postoverflow exist, copy it
-			if err := Copy(customPostOverflowPath, customPostoverflowDest); err != nil {
-				return fmt.Errorf("unable to copy custom parser '%s' to '%s': %s", customPostOverflowPath, customPostoverflowDest, err)
-			}
-		}
-	}
-
-	// load installed hub
-	err := cwhub.GetHubIdx(hubConfig)
-	if err != nil {
-		log.Fatalf("can't local sync the hub: %+v", err)
-	}
-
-	// install data for parsers if needed
-	ret := cwhub.GetItemMap(cwhub.PARSERS)
-	for parserName, item := range ret {
-		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
-			}
-			log.Printf("parser '%s' installed succesfully in runtime environment", parserName)
-		}
-	}
-
-	// install data for scenarios if needed
-	ret = cwhub.GetItemMap(cwhub.SCENARIOS)
-	for scenarioName, item := range ret {
-		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
-			}
-			log.Printf("scenario '%s' installed succesfully in runtime environment", scenarioName)
-		}
-	}
-
-	// install data for postoverflows if needed
-	ret = cwhub.GetItemMap(cwhub.PARSERS_OVFLW)
-	for postoverflowName, item := range ret {
-		if item.Installed {
-			if err := cwhub.DownloadDataIfNeeded(hubConfig, item, true); err != nil {
-				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
-			}
-			log.Printf("postoverflow '%s' installed succesfully in runtime environment", postoverflowName)
-		}
-	}
-
-	return nil
-}
-
-func RunTest(testName string, hubPath string, HubTestPath string, hubIndexFile string) ([]string, error) {
-	assertFailedList := make([]string, 0)
-
-	testPath := filepath.Join(HubTestPath, testName)
-	if _, err := os.Stat(testPath); os.IsNotExist(err) {
-		return assertFailedList, fmt.Errorf("test '%s' doesn't exist in '%s', exiting", testName, HubTestPath)
-	}
-
-	configFilePath := filepath.Join(testPath, "config.yaml")
-	runtimeFolder := filepath.Join(testPath, "runtime")
-	runtimeDataFolder := filepath.Join(runtimeFolder, "data")
-	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
-	runtimePatternsFolder := filepath.Join(runtimeFolder, "patterns")
-
-	runtimeConfigFilePath := filepath.Join(runtimeFolder, "config.yaml")
-	runtimeProfileFilePath := filepath.Join(runtimeFolder, "profiles.yaml")
-	runtimeSimulationFilePath := filepath.Join(runtimeFolder, "simulation.yaml")
-
-	hubConfig := &csconfig.Hub{
-		HubDir:       runtimeHubFolder,
-		ConfigDir:    runtimeFolder,
-		HubIndexFile: hubIndexFile,
-	}
-
-	resultsFolder := filepath.Join(testPath, "results")
-
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return assertFailedList, fmt.Errorf("can't get current directory: %+v", err)
-	}
-
-	// read test configuration file
-	configFileData := &ConfigTestFile{}
-	yamlFile, err := ioutil.ReadFile(configFilePath)
-	if err != nil {
-		log.Printf("not config file found in '%s': %v", testPath, err)
-	}
-	err = yaml.Unmarshal(yamlFile, configFileData)
-	if err != nil {
-		return assertFailedList, fmt.Errorf("Unmarshal: %v", err)
-	}
-
-	// create runtime folder
-	if err := os.MkdirAll(runtimeFolder, os.ModePerm); err != nil {
-		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeFolder, err)
-	}
-
-	// create runtime data folder
-	if err := os.MkdirAll(runtimeDataFolder, os.ModePerm); err != nil {
-		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeDataFolder, err)
-	}
-
-	// create runtime hub folder
-	if err := os.MkdirAll(runtimeHubFolder, os.ModePerm); err != nil {
-		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeHubFolder, err)
-	}
-
-	if err := Copy(hubIndexFile, filepath.Join(runtimeHubFolder, ".index.json")); err != nil {
-		return assertFailedList, fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(runtimeHubFolder, ".index.json"), err)
-	}
-
-	// create results folder
-	if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
-		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", resultsFolder, err)
-	}
-
-	// copy template config file to runtime folder
-	if err := Copy(templateConfigFilePath, runtimeConfigFilePath); err != nil {
-		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath, err)
-	}
-
-	// copy template profile file to runtime folder
-	if err := Copy(templateProfilePath, runtimeProfileFilePath); err != nil {
-		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath, err)
-	}
-
-	// copy template simulation file to runtime folder
-	if err := Copy(templateSimulationPath, runtimeSimulationFilePath); err != nil {
-		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath, err)
-	}
-
-	// copy template patterns folder to runtime folder
-	if err := CopyDir(crowdsecPatternsFolder, runtimePatternsFolder); err != nil {
-		return assertFailedList, fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, runtimePatternsFolder, err)
-	}
-
-	// install the hub in the runtime folder
-	if err := InstallHub(*configFileData, hubConfig, hubPath, runtimeFolder, runtimeHubFolder); err != nil {
-		return assertFailedList, fmt.Errorf("unable to install hub in '%s': %s", runtimeHubFolder, err)
-	}
-
-	logFile := configFileData.LogFile
-	logType := configFileData.LogType
-	dsn := fmt.Sprintf("file://%s", logFile)
-
-	if err := os.Chdir(testPath); err != nil {
-		return assertFailedList, fmt.Errorf("can't 'cd' to '%s': %s", testPath, err)
-	}
-
-	logFileStat, err := os.Stat(logFile)
-	if err != nil {
-		return assertFailedList, fmt.Errorf("unable to stat log file '%s'", logFileStat)
-	}
-	if logFileStat.Size() == 0 {
-		return assertFailedList, fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
-	}
-
-	cmdArgs := []string{"-c", runtimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
-	cscliRegisterCmd := exec.Command("cscli", cmdArgs...)
-	output, err := cscliRegisterCmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		return assertFailedList, fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), testName, err)
-	}
-
-	cmdArgs = []string{"-c", runtimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", resultsFolder}
-	crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
-	output, err = crowdsecCmd.CombinedOutput()
-	if err != nil {
-		fmt.Println(string(output))
-		return assertFailedList, fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), testName, err)
-	}
-
-	if err := os.Chdir(currentDir); err != nil {
-		return assertFailedList, fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
-	}
-
-	parserResultFile := filepath.Join(resultsFolder, parserResultFileName)
-	assertFile := filepath.Join(testPath, parserAssertFileName)
-	assertFileStat, err := os.Stat(assertFile)
-	if os.IsNotExist(err) {
-		return assertFailedList, fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, testName, testPath)
-	}
-
-	if assertFileStat.Size() == 0 {
-		log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
-		fmt.Println()
-		autogenParserAssertsFromFile(parserResultFile)
-
-		// to remove the runtime folder at persistentPostRun
-	} else {
-		file, err := os.Open(assertFile)
-
-		if err != nil {
-			return assertFailedList, fmt.Errorf("failed to open")
-		}
-
-		scanner := bufio.NewScanner(file)
-		scanner.Split(bufio.ScanLines)
-
-		pdump, err := loadParserDump(parserResultFile)
-		if err != nil {
-			return assertFailedList, fmt.Errorf("loading parser dump file: %+v", err)
-		}
-
-		for scanner.Scan() {
-			if scanner.Text() == "" {
-				continue
-			}
-			ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
-			if err != nil {
-				return assertFailedList, fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
-			}
-			if !ok {
-				//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
-				assertFailedList = append(assertFailedList, scanner.Text())
-				continue
-			}
-			//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
-
-		}
-		file.Close()
-		if len(assertFailedList) > 0 {
-			for _, err := range assertFailedList {
-				fmt.Printf(err)
-			}
-		}
-	}
-	return assertFailedList, nil
-}
 
 func NewHubTestCmd() *cobra.Command {
 	/* ---- HUB COMMAND */
 	var outputFormat string
-
 	var hubPath string
-	var HubTestPath string
-	var hubIndexFile string
-
 	var logType string
-
-	var runtimeFolder string
 
 	var cmdHubTest = &cobra.Command{
 		Use:   "hubtest",
@@ -485,33 +38,10 @@ cscli hubtest run myTest
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-
-			hubPath, err = filepath.Abs(hubPath)
+			HubTest, err = cstest.NewHubTest(hubPath)
 			if err != nil {
-				log.Fatalf("can't get absolute path of hub: %+v", err)
+				log.Fatalf("unable to load hubtest: %+v", err)
 			}
-
-			// we can't use this command without the hub
-			if _, err := os.Stat(hubPath); os.IsNotExist(err) {
-				log.Fatalf("path to hub doesn't exist, can't run: %+v", err)
-			}
-			HubTestPath = filepath.Join(hubPath, "./.tests/")
-
-			hubIndexFile = filepath.Join(hubPath, ".index.json")
-			bidx, err := ioutil.ReadFile(hubIndexFile)
-			if err != nil {
-				log.Fatalf("unable to read index file: %s", err)
-			}
-
-			// load hub index
-			hubIndex, err = cwhub.LoadPkgIndex(bidx)
-			if err != nil {
-				log.Fatalf("unable to load hub index file: %s", err)
-			}
-
-			templateConfigFilePath = filepath.Join(HubTestPath, templateConfigFile)
-			templateProfilePath = filepath.Join(HubTestPath, templateProfileFile)
-			templateSimulationPath = filepath.Join(HubTestPath, templateSimulationFile)
 		},
 	}
 	cmdHubTest.PersistentFlags().StringVarP(&outputFormat, "output", "o", "human", "Output format (human, json)")
@@ -523,6 +53,7 @@ cscli hubtest run myTest
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+
 		},
 	}
 
@@ -533,7 +64,7 @@ cscli hubtest run myTest
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			testName := args[0]
-			testPath := filepath.Join(HubTestPath, testName)
+			testPath := filepath.Join(HubTest.HubTestPath, testName)
 			if _, err := os.Stat(testPath); os.IsExist(err) {
 				log.Fatalf("test '%s' already exist in '%s', exiting", testName, testPath)
 			}
@@ -554,7 +85,6 @@ cscli hubtest run myTest
 				log.Fatal(err)
 			}
 			logFile.Close()
-			log.Infof("Created empty log file in '%s'", logFilePath)
 
 			parserAssertFilePath := filepath.Join(testPath, "parser.assert")
 			parserAssertFile, err := os.Create(parserAssertFilePath)
@@ -562,9 +92,8 @@ cscli hubtest run myTest
 				log.Fatal(err)
 			}
 			parserAssertFile.Close()
-			log.Infof("Created empty log file in '%s'", parserAssertFilePath)
 
-			configFileData := &ConfigTestFile{
+			configFileData := &cstest.HubTestItemConfig{
 				Parsers:       []string{"crowdsecurity/syslog-logs", "crowdsecurity/dateparse-enrich"},
 				Scenarios:     []string{""},
 				Collections:   []string{""},
@@ -596,60 +125,63 @@ cscli hubtest run myTest
 	cmdHubTestParserAdd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
 	cmdHubTestParser.AddCommand(cmdHubTestParserAdd)
 
-	testRunSuccess := true
-	testFailedListStatus := make(map[string]bool, 0)
 	var cmdHubTestParserRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, testName := range args {
-				log.Infof("Running test '%s'", testName)
-				failedAssert, err := RunTest(testName, hubPath, HubTestPath, hubIndexFile)
+				test, err := HubTest.LoadTestItem(testName)
 				if err != nil {
-					testRunSuccess = false
-					log.Errorf("fail to run test '%s': %s", testName, err)
-					testFailedListStatus[testName] = false
-					continue
+					log.Fatalf("unable to load test '%s': %s", err)
 				}
-				if len(failedAssert) > 0 {
-					testRunSuccess = false
-					for _, failed := range failedAssert {
-						fmt.Printf(" %s '%s'\n", emoji.RedSquare, failed)
-					}
-					testFailedListStatus[testName] = false
-					continue
+
+				log.Infof("Running test '%s'", testName)
+				err = test.Run()
+				if err != nil {
+					log.Errorf("running test '%s' failed: %+v", err)
+					test.ErrorsList = append(test.ErrorsList, err.Error())
 				}
-				testFailedListStatus[testName] = true
 			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			for testName, success := range testFailedListStatus {
-				testPath := filepath.Join(HubTestPath, testName)
-				runtimeFolder := filepath.Join(testPath, "runtime")
-				if success {
-					fmt.Printf("Test '%s' passed successfully %s\n", testName, emoji.GreenSquare)
-					if err := os.RemoveAll(runtimeFolder); err != nil {
-						log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+			success := true
+			for _, test := range HubTest.Tests {
+				if test.AutoGenAssert {
+					log.Warningf("Assert file '%s' is empty, generating assertion:", test.AssertFile)
+					fmt.Println()
+					fmt.Printf(test.AutoGenAssertData)
+					if err := test.Clean(); err != nil {
+						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+					}
+				} else if test.Success {
+					fmt.Printf("Test '%s' passed successfully %s\n", test.Name, emoji.GreenSquare)
+					if err := test.Clean(); err != nil {
+						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
 				} else {
+					success = false
+					fmt.Printf("Test '%s' failed %s\n", test.Name, emoji.RedSquare)
+					for _, fail := range test.ErrorsList {
+						fmt.Printf("  %s  => %s", emoji.RedCircle, fail)
+					}
+
 					answer := true
-					fmt.Printf("Test '%s' failed %s\n", testName, emoji.RedSquare)
 					prompt := &survey.Confirm{
-						Message: fmt.Sprintf("Do you want to remove runtime folder for test '%s'? (default: Yes)", testName),
+						Message: fmt.Sprintf("Do you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
 						Default: true,
 					}
 					if err := survey.AskOne(prompt, &answer); err != nil {
 						log.Fatalf("unable to ask to remove runtime folder: %s", err)
 					}
 					if answer {
-						if err := os.RemoveAll(runtimeFolder); err != nil {
-							log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+						if err := test.Clean(); err != nil {
+							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 						}
 					}
 				}
 			}
-			if !testRunSuccess {
+			if !success {
 				os.Exit(1)
 			}
 		},
@@ -659,23 +191,34 @@ cscli hubtest run myTest
 	var cmdHubTestParserClean = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
-		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			testName := args[0]
-			testPath := filepath.Join(HubTestPath, testName)
-			if _, err := os.Stat(testPath); os.IsNotExist(err) {
-				log.Fatalf("test '%s' doesn't exist in '%s', exiting", testName, HubTestPath)
-			}
-			runtimeFolder = filepath.Join(testPath, "runtime")
-			// if everything went good, we can remove the runtime folder
-			if err := os.RemoveAll(runtimeFolder); err != nil {
-				log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+			for _, testName := range args {
+				test, err := HubTest.LoadTestItem(testName)
+				if err != nil {
+					log.Fatalf("unable to load test '%s': %s", err)
+				}
+				if err := test.Clean(); err != nil {
+					log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+				}
 			}
 		},
 	}
-	cmdHubTestParserClean.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
 	cmdHubTestParser.AddCommand(cmdHubTestParserClean)
+	var cmdHubTestParserEval = &cobra.Command{
+		Use:               "clean",
+		Short:             "clean [test_name]",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, testName := range args {
+				_, err := HubTest.LoadTestItem(testName)
+				if err != nil {
+					log.Fatalf("can't load test: %+v", err)
+				}
+			}
+		},
+	}
+	cmdHubTestParser.AddCommand(cmdHubTestParserEval)
 
 	cmdHubTest.AddCommand(cmdHubTestParser)
 	return cmdHubTest

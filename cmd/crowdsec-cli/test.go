@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -80,7 +81,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
 				}
 			}
-			var pdump parserResults
+			var pdump cstest.ParserResults
 
 			data_fd, err := os.Open("./parser_dump.yaml")
 			if err != nil {
@@ -96,7 +97,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatal(err)
 			}
 			log.Debugf("loaded parsers results %s : %d stages record", "./parser_dump.yaml", len(pdump))
-			dumpParserTree(pdump)
+			cstest.DumpParserTree(pdump)
 
 		},
 	}
