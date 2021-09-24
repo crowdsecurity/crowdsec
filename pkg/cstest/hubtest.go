@@ -17,7 +17,7 @@ type HubTest struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               map[string]map[string]cwhub.Item
+	HubIndex               *HubIndex
 	Tests                  []*HubTestItem
 }
 
@@ -67,7 +67,7 @@ func NewHubTest(hubPath string) (HubTest, error) {
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               hubIndex,
+		HubIndex:               &HubIndex{Data: hubIndex},
 	}, nil
 }
 

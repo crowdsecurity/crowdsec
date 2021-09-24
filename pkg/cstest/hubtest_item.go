@@ -24,6 +24,10 @@ type HubTestItemConfig struct {
 	LogType       string   `yaml:"log_type"`
 }
 
+type HubIndex struct {
+	Data map[string]map[string]cwhub.Item
+}
+
 type HubTestItem struct {
 	Name                      string
 	Path                      string
@@ -44,7 +48,7 @@ type HubTestItem struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               map[string]map[string]cwhub.Item
+	HubIndex               *HubIndex
 
 	Config *HubTestItemConfig
 
@@ -107,7 +111,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var parserDirDest string
-		if hubParser, ok := t.HubIndex[cwhub.PARSERS][parser]; ok {
+		if hubParser, ok := t.HubIndex.Data[cwhub.PARSERS][parser]; ok {
 			parserSource, err := filepath.Abs(filepath.Join(t.HubPath, hubParser.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", parserSource, err)
@@ -175,7 +179,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var scenarioDirDest string
-		if hubScenario, ok := t.HubIndex[cwhub.SCENARIOS][scenario]; ok {
+		if hubScenario, ok := t.HubIndex.Data[cwhub.SCENARIOS][scenario]; ok {
 			scenarioSource, err := filepath.Abs(filepath.Join(t.HubPath, hubScenario.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path to: %s", scenarioSource)
@@ -229,7 +233,7 @@ func (t *HubTestItem) InstallHub() error {
 			continue
 		}
 		var postoverflowDirDest string
-		if hubPostOverflow, ok := t.HubIndex[cwhub.PARSERS_OVFLW][postoverflow]; ok {
+		if hubPostOverflow, ok := t.HubIndex.Data[cwhub.PARSERS_OVFLW][postoverflow]; ok {
 			postoverflowSource, err := filepath.Abs(filepath.Join(t.HubPath, hubPostOverflow.RemotePath))
 			if err != nil {
 				return fmt.Errorf("can't get absolute path of '%s': %s", postoverflowSource, err)
