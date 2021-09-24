@@ -37,7 +37,10 @@ const (
 )
 
 var (
-	hubIndex map[string]map[string]cwhub.Item
+	hubIndex               map[string]map[string]cwhub.Item
+	templateConfigFilePath string
+	templateProfilePath    string
+	templateSimulationPath string
 )
 
 func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath string, runtimeFolder string, runtimeHubFolder string) error {
@@ -274,6 +277,187 @@ func InstallHub(configFileData ConfigTestFile, hubConfig *csconfig.Hub, hubPath 
 	return nil
 }
 
+func RunTest(testName string, hubPath string, HubTestPath string, hubIndexFile string) ([]string, error) {
+	assertFailedList := make([]string, 0)
+
+	testPath := filepath.Join(HubTestPath, testName)
+	if _, err := os.Stat(testPath); os.IsNotExist(err) {
+		return assertFailedList, fmt.Errorf("test '%s' doesn't exist in '%s', exiting", testName, HubTestPath)
+	}
+
+	configFilePath := filepath.Join(testPath, "config.yaml")
+	runtimeFolder := filepath.Join(testPath, "runtime")
+	runtimeDataFolder := filepath.Join(runtimeFolder, "data")
+	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
+	runtimePatternsFolder := filepath.Join(runtimeFolder, "patterns")
+
+	runtimeConfigFilePath := filepath.Join(runtimeFolder, "config.yaml")
+	runtimeProfileFilePath := filepath.Join(runtimeFolder, "profiles.yaml")
+	runtimeSimulationFilePath := filepath.Join(runtimeFolder, "simulation.yaml")
+
+	hubConfig := &csconfig.Hub{
+		HubDir:       runtimeHubFolder,
+		ConfigDir:    runtimeFolder,
+		HubIndexFile: hubIndexFile,
+	}
+
+	resultsFolder := filepath.Join(testPath, "results")
+
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return assertFailedList, fmt.Errorf("can't get current directory: %+v", err)
+	}
+
+	// read test configuration file
+	configFileData := &ConfigTestFile{}
+	yamlFile, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		log.Printf("not config file found in '%s': %v", testPath, err)
+	}
+	err = yaml.Unmarshal(yamlFile, configFileData)
+	if err != nil {
+		return assertFailedList, fmt.Errorf("Unmarshal: %v", err)
+	}
+
+	// create runtime folder
+	if err := os.MkdirAll(runtimeFolder, os.ModePerm); err != nil {
+		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeFolder, err)
+	}
+
+	// create runtime data folder
+	if err := os.MkdirAll(runtimeDataFolder, os.ModePerm); err != nil {
+		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeDataFolder, err)
+	}
+
+	// create runtime hub folder
+	if err := os.MkdirAll(runtimeHubFolder, os.ModePerm); err != nil {
+		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", runtimeHubFolder, err)
+	}
+
+	if err := Copy(hubIndexFile, filepath.Join(runtimeHubFolder, ".index.json")); err != nil {
+		return assertFailedList, fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(runtimeHubFolder, ".index.json"), err)
+	}
+
+	// create results folder
+	if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
+		return assertFailedList, fmt.Errorf("unable to create folder '%s': %+v", resultsFolder, err)
+	}
+
+	// copy template config file to runtime folder
+	if err := Copy(templateConfigFilePath, runtimeConfigFilePath); err != nil {
+		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath, err)
+	}
+
+	// copy template profile file to runtime folder
+	if err := Copy(templateProfilePath, runtimeProfileFilePath); err != nil {
+		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath, err)
+	}
+
+	// copy template simulation file to runtime folder
+	if err := Copy(templateSimulationPath, runtimeSimulationFilePath); err != nil {
+		return assertFailedList, fmt.Errorf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath, err)
+	}
+
+	// copy template patterns folder to runtime folder
+	if err := CopyDir(crowdsecPatternsFolder, runtimePatternsFolder); err != nil {
+		return assertFailedList, fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, runtimePatternsFolder, err)
+	}
+
+	// install the hub in the runtime folder
+	if err := InstallHub(*configFileData, hubConfig, hubPath, runtimeFolder, runtimeHubFolder); err != nil {
+		return assertFailedList, fmt.Errorf("unable to install hub in '%s': %s", runtimeHubFolder, err)
+	}
+
+	logFile := configFileData.LogFile
+	logType := configFileData.LogType
+	dsn := fmt.Sprintf("file://%s", logFile)
+
+	if err := os.Chdir(testPath); err != nil {
+		return assertFailedList, fmt.Errorf("can't 'cd' to '%s': %s", testPath, err)
+	}
+
+	logFileStat, err := os.Stat(logFile)
+	if err != nil {
+		return assertFailedList, fmt.Errorf("unable to stat log file '%s'", logFileStat)
+	}
+	if logFileStat.Size() == 0 {
+		return assertFailedList, fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+	}
+
+	cmdArgs := []string{"-c", runtimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cscliRegisterCmd := exec.Command("cscli", cmdArgs...)
+	output, err := cscliRegisterCmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		return assertFailedList, fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), testName, err)
+	}
+
+	cmdArgs = []string{"-c", runtimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", resultsFolder}
+	crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+	output, err = crowdsecCmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(string(output))
+		return assertFailedList, fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), testName, err)
+	}
+
+	if err := os.Chdir(currentDir); err != nil {
+		return assertFailedList, fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
+	}
+
+	parserResultFile := filepath.Join(resultsFolder, parserResultFileName)
+	assertFile := filepath.Join(testPath, parserAssertFileName)
+	assertFileStat, err := os.Stat(assertFile)
+	if os.IsNotExist(err) {
+		return assertFailedList, fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, testName, testPath)
+	}
+
+	if assertFileStat.Size() == 0 {
+		log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
+		fmt.Println()
+		autogenParserAssertsFromFile(parserResultFile)
+
+		// to remove the runtime folder at persistentPostRun
+	} else {
+		file, err := os.Open(assertFile)
+
+		if err != nil {
+			return assertFailedList, fmt.Errorf("failed to open")
+		}
+
+		scanner := bufio.NewScanner(file)
+		scanner.Split(bufio.ScanLines)
+
+		pdump, err := loadParserDump(parserResultFile)
+		if err != nil {
+			return assertFailedList, fmt.Errorf("loading parser dump file: %+v", err)
+		}
+
+		for scanner.Scan() {
+			if scanner.Text() == "" {
+				continue
+			}
+			ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
+			if err != nil {
+				return assertFailedList, fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
+			}
+			if !ok {
+				//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
+				assertFailedList = append(assertFailedList, scanner.Text())
+				continue
+			}
+			//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
+
+		}
+		file.Close()
+		if len(assertFailedList) > 0 {
+			for _, err := range assertFailedList {
+				fmt.Printf(err)
+			}
+		}
+	}
+	return assertFailedList, nil
+}
+
 func NewHubTestCmd() *cobra.Command {
 	/* ---- HUB COMMAND */
 	var outputFormat string
@@ -282,18 +466,10 @@ func NewHubTestCmd() *cobra.Command {
 	var HubTestPath string
 	var hubIndexFile string
 
-	var runtimeFolder string
-	var runtimeDataFolder string
-	var runtimeHubFolder string
-	var runtimePatternsFolder string
-
-	var currentDir string
-
 	var logType string
 
-	var templateConfigFilePath string
-	var templateProfilePath string
-	var templateSimulationPath string
+	var runtimeFolder string
+
 	var cmdHubTest = &cobra.Command{
 		Use:   "hubtest",
 		Short: "Run fonctionnals tests on hub configurations",
@@ -420,213 +596,61 @@ cscli hubtest run myTest
 	cmdHubTestParserAdd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
 	cmdHubTestParser.AddCommand(cmdHubTestParserAdd)
 
-	testRunSuccess := false
+	testRunSuccess := true
+	testFailedListStatus := make(map[string]bool, 0)
 	var cmdHubTestParserRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
-		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			testName := args[0]
-			testPath := filepath.Join(HubTestPath, testName)
-			if _, err := os.Stat(testPath); os.IsNotExist(err) {
-				log.Fatalf("test '%s' doesn't exist in '%s', exiting", testName, HubTestPath)
-			}
-
-			configFilePath := filepath.Join(testPath, "config.yaml")
-			runtimeFolder = filepath.Join(testPath, "runtime")
-			runtimeDataFolder = filepath.Join(runtimeFolder, "data")
-			runtimeHubFolder = filepath.Join(runtimeFolder, "hub")
-			runtimePatternsFolder = filepath.Join(runtimeFolder, "patterns")
-
-			runtimeConfigFilePath := filepath.Join(runtimeFolder, "config.yaml")
-			runtimeProfileFilePath := filepath.Join(runtimeFolder, "profiles.yaml")
-			runtimeSimulationFilePath := filepath.Join(runtimeFolder, "simulation.yaml")
-
-			hubConfig := &csconfig.Hub{
-				HubDir:       runtimeHubFolder,
-				ConfigDir:    runtimeFolder,
-				HubIndexFile: hubIndexFile,
-			}
-
-			resultsFolder := filepath.Join(testPath, "results")
-
-			currentDir, err = os.Getwd()
-			if err != nil {
-				log.Fatalf("can't get current directory: %+v", err)
-			}
-
-			// read test configuration file
-			configFileData := &ConfigTestFile{}
-			yamlFile, err := ioutil.ReadFile(configFilePath)
-			if err != nil {
-				log.Printf("not config file found in '%s': %v", testPath, err)
-			}
-			err = yaml.Unmarshal(yamlFile, configFileData)
-			if err != nil {
-				log.Fatalf("Unmarshal: %v", err)
-			}
-
-			// create runtime folder
-			if err := os.MkdirAll(runtimeFolder, os.ModePerm); err != nil {
-				log.Fatalf("unable to create folder '%s': %+v", runtimeFolder, err)
-			}
-
-			// create runtime data folder
-			if err := os.MkdirAll(runtimeDataFolder, os.ModePerm); err != nil {
-				log.Fatalf("unable to create folder '%s': %+v", runtimeDataFolder, err)
-			}
-
-			// create runtime hub folder
-			if err := os.MkdirAll(runtimeHubFolder, os.ModePerm); err != nil {
-				log.Fatalf("unable to create folder '%s': %+v", runtimeHubFolder, err)
-			}
-
-			if err := Copy(hubIndexFile, filepath.Join(runtimeHubFolder, ".index.json")); err != nil {
-				log.Fatalf("unable to copy .index.json file in '%s': %s", filepath.Join(runtimeHubFolder, ".index.json"), err)
-			}
-
-			// create results folder
-			if err := os.MkdirAll(resultsFolder, os.ModePerm); err != nil {
-				log.Fatalf("unable to create folder '%s': %+v", resultsFolder, err)
-			}
-
-			// copy template config file to runtime folder
-			if err := Copy(templateConfigFilePath, runtimeConfigFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateConfigFilePath, runtimeConfigFilePath, err)
-			}
-
-			// copy template profile file to runtime folder
-			if err := Copy(templateProfilePath, runtimeProfileFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateProfilePath, runtimeProfileFilePath, err)
-			}
-
-			// copy template simulation file to runtime folder
-			if err := Copy(templateSimulationPath, runtimeSimulationFilePath); err != nil {
-				log.Fatalf("unable to copy '%s' to '%s': %v", templateSimulationPath, runtimeSimulationFilePath, err)
-			}
-
-			// copy template patterns folder to runtime folder
-			if err := CopyDir(crowdsecPatternsFolder, runtimePatternsFolder); err != nil {
-				log.Fatalf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, runtimePatternsFolder, err)
-			}
-
-			// install the hub in the runtime folder
-			if err := InstallHub(*configFileData, hubConfig, hubPath, runtimeFolder, runtimeHubFolder); err != nil {
-				log.Fatalf("unable to install hub in '%s': %s", runtimeHubFolder, err)
-			}
-
-			logFile := configFileData.LogFile
-			logType := configFileData.LogType
-			dsn := fmt.Sprintf("file://%s", logFile)
-
-			if err := os.Chdir(testPath); err != nil {
-				log.Fatalf("can't 'cd' to '%s': %s", testPath, err)
-			}
-
-			logFileStat, err := os.Stat(logFile)
-			if err != nil {
-				log.Fatalf("unable to stat log file '%s'", logFileStat)
-			}
-			if logFileStat.Size() == 0 {
-				log.Fatalf("Log file '%s' is empty, please fill it with log", logFile)
-			}
-
-			cmdArgs := []string{"-c", runtimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
-			cscliRegisterCmd := exec.Command("cscli", cmdArgs...)
-			output, err := cscliRegisterCmd.CombinedOutput()
-			if err != nil {
-				fmt.Println(string(output))
-				log.Fatalf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), testName, err)
-			}
-
-			cmdArgs = []string{"-c", runtimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", resultsFolder}
-			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
-			output, err = crowdsecCmd.CombinedOutput()
-			if err != nil {
-				fmt.Println(string(output))
-				log.Fatalf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), testName, err)
-			}
-
-			if err := os.Chdir(currentDir); err != nil {
-				log.Fatalf("can't 'cd' to '%s': %s", currentDir, err)
-			}
-
-			parserResultFile := filepath.Join(resultsFolder, parserResultFileName)
-			assertFile := filepath.Join(testPath, parserAssertFileName)
-			assertFileStat, err := os.Stat(assertFile)
-			if os.IsNotExist(err) {
-				log.Fatalf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, testName, testPath)
-			}
-
-			var errorList []string
-			if assertFileStat.Size() == 0 {
-				log.Warningf("Empty assert file '%s', generating assertion:", assertFile)
-				fmt.Println()
-				autogenParserAssertsFromFile(parserResultFile)
-
-				// to remove the runtime folder at persistentPostRun
-				testRunSuccess = true
-			} else {
-				errorList = make([]string, 0)
-				file, err := os.Open(assertFile)
-
+			for _, testName := range args {
+				log.Infof("Running test '%s'", testName)
+				failedAssert, err := RunTest(testName, hubPath, HubTestPath, hubIndexFile)
 				if err != nil {
-					log.Fatalf("failed to open")
+					testRunSuccess = false
+					log.Errorf("fail to run test '%s': %s", testName, err)
+					testFailedListStatus[testName] = false
+					continue
 				}
-
-				scanner := bufio.NewScanner(file)
-				scanner.Split(bufio.ScanLines)
-
-				pdump, err := loadParserDump(parserResultFile)
-				if err != nil {
-					log.Fatalf("loading parser dump file: %+v", err)
+				if len(failedAssert) > 0 {
+					testRunSuccess = false
+					for _, failed := range failedAssert {
+						fmt.Printf(" %s '%s'\n", emoji.RedSquare, failed)
+					}
+					testFailedListStatus[testName] = false
+					continue
 				}
-
-				for scanner.Scan() {
-					if scanner.Text() == "" {
-						continue
-					}
-					ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
-					if err != nil {
-						log.Fatalf("unable to run assert '%s': %+v", err)
-					}
-					if !ok {
-						//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
-						errorList = append(errorList, fmt.Sprintf(" %s '%s'\n", emoji.RedSquare, scanner.Text()))
-						continue
-					}
-					//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
-
-				}
-				file.Close()
-				if len(errorList) > 0 {
-					for _, err := range errorList {
-						fmt.Printf(err)
-					}
-				} else {
-					fmt.Printf("Test '%s' passed successfully %s", testName, emoji.GreenSquare)
-					testRunSuccess = true
-				}
+				testFailedListStatus[testName] = true
 			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
-			answer := true
-			if !testRunSuccess {
-				prompt := &survey.Confirm{
-					Message: "Test failed, do you want to remove the runtime folder? (default: Yes)",
-					Default: true,
-				}
-				if err := survey.AskOne(prompt, &answer); err != nil {
-					log.Fatalf("unable to ask to force: %s", err)
+			for testName, success := range testFailedListStatus {
+				testPath := filepath.Join(HubTestPath, testName)
+				runtimeFolder := filepath.Join(testPath, "runtime")
+				if success {
+					fmt.Printf("Test '%s' passed successfully %s\n", testName, emoji.GreenSquare)
+					if err := os.RemoveAll(runtimeFolder); err != nil {
+						log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+					}
+				} else {
+					answer := true
+					fmt.Printf("Test '%s' failed %s\n", testName, emoji.RedSquare)
+					prompt := &survey.Confirm{
+						Message: fmt.Sprintf("Do you want to remove runtime folder for test '%s'? (default: Yes)", testName),
+						Default: true,
+					}
+					if err := survey.AskOne(prompt, &answer); err != nil {
+						log.Fatalf("unable to ask to remove runtime folder: %s", err)
+					}
+					if answer {
+						if err := os.RemoveAll(runtimeFolder); err != nil {
+							log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
+						}
+					}
 				}
 			}
-			if testRunSuccess || answer {
-				// if everything went good, we can remove the runtime folder
-				if err := os.RemoveAll(runtimeFolder); err != nil {
-					log.Fatalf("unable to remove folder '%s':%v", runtimeFolder, err)
-				}
+			if !testRunSuccess {
+				os.Exit(1)
 			}
 		},
 	}
