@@ -60,24 +60,16 @@ func EvalExpression(expression string, results ParserResults) (string, error) {
 	return string(ret), nil
 }
 
-func runOneParserAssert(assert string, results ParserResults) (bool, error, bool) {
+func runOneParserAssert(assert string, results ParserResults) (bool, error) {
 	output, err := RunExpression(assert, results)
 	if err != nil {
-		return false, err, false
+		return false, err
 	}
-	switch output.(type) {
+	switch out := output.(type) {
 	case bool:
-		// if out == false || logger.Level >= log.DebugLevel {
-		// 	log.Printf("call debug thinggy")
-		// 	debugFilter.Run(logger, true, exprhelpers.GetExprEnv(map[string]interface{}{"results": results}))
-		// }
-		if output == true {
-			return true, nil, false
-		} else {
-			return false, nil, false
-		}
+		return out, nil
 	default:
-		return true, fmt.Errorf("assertion '%s' is not a condition", assert), true
+		return false, fmt.Errorf("assertion '%s' is not a condition", assert)
 	}
 }
 

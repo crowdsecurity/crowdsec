@@ -433,6 +433,7 @@ func (t *HubTestItem) Run() error {
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
 	cscliRegisterCmd := exec.Command("cscli", cmdArgs...)
+	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
@@ -441,6 +442,7 @@ func (t *HubTestItem) Run() error {
 
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}
 	crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(string(output))
@@ -482,12 +484,14 @@ func (t *HubTestItem) Run() error {
 			if scanner.Text() == "" {
 				continue
 			}
-			ok, err, _ := runOneParserAssert(scanner.Text(), pdump)
+			ok, err := runOneParserAssert(scanner.Text(), pdump)
 			if err != nil {
 				return fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
 			}
 			if !ok {
+				log.Debugf("%s is FALSE", scanner.Text())
 				//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
+				t.Success = false
 				t.ErrorsList = append(t.ErrorsList, scanner.Text())
 				continue
 			}
@@ -496,6 +500,8 @@ func (t *HubTestItem) Run() error {
 		}
 		file.Close()
 	}
-	t.Success = true
+	if len(t.ErrorsList) == 0 {
+		t.Success = true
+	}
 	return nil
 }

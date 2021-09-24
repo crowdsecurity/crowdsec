@@ -45,7 +45,7 @@ func NewHubTestCmd() *cobra.Command {
 	var cmdHubTestParser = &cobra.Command{
 		Use:               "parser",
 		Short:             "parser",
-		Args:              cobra.ExactArgs(0),
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 
@@ -125,6 +125,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 	var cmdHubTestParserRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, testName := range args {
@@ -158,9 +159,9 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 					}
 				} else {
 					success = false
-					fmt.Printf("Test '%s' failed %s\n", test.Name, emoji.RedSquare)
+					fmt.Printf("Test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ErrorsList))
 					for _, fail := range test.ErrorsList {
-						fmt.Printf("  %s  => %s", emoji.RedCircle, fail)
+						fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
 					}
 
 					answer := true
@@ -188,6 +189,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 	var cmdHubTestParserClean = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, testName := range args {
@@ -207,6 +209,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 	var cmdHubTestParserEval = &cobra.Command{
 		Use:               "eval",
 		Short:             "eval [test_name]",
+		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, testName := range args {
@@ -226,7 +229,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 		},
 	}
-	cmdHubTestParserEval.PersistentFlags().StringVarP(&evalExpression, "eval", "e", "", "Expression to eval")
+	cmdHubTestParserEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 	cmdHubTestParser.AddCommand(cmdHubTestParserEval)
 
 	cmdHubTest.AddCommand(cmdHubTestParser)
