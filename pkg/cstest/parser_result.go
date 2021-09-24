@@ -19,7 +19,7 @@ type parserResult struct {
 }
 type ParserResults map[string]map[string][]parserResult
 
-func loadParserDump(filepath string) (map[string]map[string][]parserResult, error) {
+func LoadParserDump(filepath string) (map[string]map[string][]parserResult, error) {
 	var pdump ParserResults
 
 	data_fd, err := os.Open(filepath)

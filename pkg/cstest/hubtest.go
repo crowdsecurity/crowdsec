@@ -25,9 +25,6 @@ const (
 	templateConfigFile     = "template_config.yaml"
 	templateSimulationFile = "template_simulation.yaml"
 	templateProfileFile    = "template_profiles.yaml"
-	parserAssertFileName   = "parser.assert"
-	parserResultFileName   = "parser-dump.yaml"
-	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
 )
 
 func NewHubTest(hubPath string) (HubTest, error) {

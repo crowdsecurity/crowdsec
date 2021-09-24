@@ -6,13 +6,13 @@ import (
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 func autogenParserAssertsFromFile(filename string) (string, error) {
-	pdump, err := loadParserDump(filename)
+	pdump, err := LoadParserDump(filename)
 	if err != nil {
 		return "", err
 	}
@@ -20,7 +20,7 @@ func autogenParserAssertsFromFile(filename string) (string, error) {
 	return ret, nil
 }
 
-func runOneParserAssert(assert string, results ParserResults) (bool, error, bool) {
+func RunExpression(expression string, results ParserResults) (interface{}, error) {
 	var err error
 	//debug doesn't make much sense with the ability to evaluate "on the fly"
 	//var debugFilter *exprhelpers.ExprDebugger
@@ -29,7 +29,7 @@ func runOneParserAssert(assert string, results ParserResults) (bool, error, bool
 
 	env := map[string]interface{}{"results": results}
 
-	if runtimeFilter, err = expr.Compile(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
+	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
 		log.Fatalf(err.Error())
 	}
 	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
@@ -41,11 +41,31 @@ func runOneParserAssert(assert string, results ParserResults) (bool, error, bool
 
 	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": results}))
 	if err != nil {
-		log.Warningf("running : %s", assert)
+		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
-		return false, errors.Wrapf(err, "while running expression %s", assert), false
+		return output, errors.Wrapf(err, "while running expression %s", expression)
 	}
-	switch out := output.(type) {
+	return output, nil
+}
+
+func EvalExpression(expression string, results ParserResults) (string, error) {
+	output, err := RunExpression(expression, results)
+	if err != nil {
+		return "", err
+	}
+	ret, err := yaml.Marshal(output)
+	if err != nil {
+		return "", err
+	}
+	return string(ret), nil
+}
+
+func runOneParserAssert(assert string, results ParserResults) (bool, error, bool) {
+	output, err := RunExpression(assert, results)
+	if err != nil {
+		return false, err, false
+	}
+	switch output.(type) {
 	case bool:
 		// if out == false || logger.Level >= log.DebugLevel {
 		// 	log.Printf("call debug thinggy")
@@ -57,8 +77,7 @@ func runOneParserAssert(assert string, results ParserResults) (bool, error, bool
 			return false, nil, false
 		}
 	default:
-		log.Printf("%s -> %s", assert, spew.Sdump(out))
-		return true, nil, true
+		return true, fmt.Errorf("assertion '%s' is not a condition", assert), true
 	}
 }
 

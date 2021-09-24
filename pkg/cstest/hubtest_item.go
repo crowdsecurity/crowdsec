@@ -41,6 +41,7 @@ type HubTestItem struct {
 	RuntimeHubConfig          *csconfig.Hub
 
 	ResultsPath string
+	ResultFile  string
 
 	HubPath                string
 	HubTestPath            string
@@ -60,12 +61,18 @@ type HubTestItem struct {
 	AutoGenAssertData string
 }
 
+const (
+	parserAssertFileName   = "parser.assert"
+	parserResultFileName   = "parser-dump.yaml"
+	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
+)
+
 func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	testPath := filepath.Join(hubTest.HubTestPath, name)
 	runtimeFolder := filepath.Join(testPath, "runtime")
 	runtimeHubFolder := filepath.Join(runtimeFolder, "hub")
 	configFilePath := filepath.Join(testPath, "config.yaml")
-
+	resultPath := filepath.Join(testPath, "results")
 	// read test configuration file
 	configFileData := &HubTestItemConfig{}
 	yamlFile, err := ioutil.ReadFile(configFilePath)
@@ -87,7 +94,8 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		RuntimeConfigFilePath:     filepath.Join(runtimeFolder, "config.yaml"),
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
-		ResultsPath:               filepath.Join(testPath, "results"),
+		ResultsPath:               resultPath,
+		ResultFile:                filepath.Join(resultPath, parserResultFileName),
 		RuntimeHubConfig: &csconfig.Hub{
 			HubDir:       runtimeHubFolder,
 			ConfigDir:    runtimeFolder,
@@ -101,6 +109,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		TemplateProfilePath:    hubTest.TemplateProfilePath,
 		TemplateSimulationPath: hubTest.TemplateSimulationPath,
 		HubIndex:               hubTest.HubIndex,
+		AssertFile:             filepath.Join(testPath, parserAssertFileName),
 	}, nil
 }
 
@@ -442,15 +451,13 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
 	}
 
-	parserResultFile := filepath.Join(t.ResultsPath, parserResultFileName)
-	t.AssertFile = filepath.Join(testPath, parserAssertFileName)
 	assertFileStat, err := os.Stat(t.AssertFile)
 	if os.IsNotExist(err) {
 		return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", parserAssertFileName, t.Name, testPath)
 	}
 
 	if assertFileStat.Size() == 0 {
-		assertData, err := autogenParserAssertsFromFile(parserResultFile)
+		assertData, err := autogenParserAssertsFromFile(t.ResultFile)
 		if err != nil {
 			return fmt.Errorf("couldn't generate assertion: %s", err.Error())
 		}
@@ -466,7 +473,7 @@ func (t *HubTestItem) Run() error {
 		scanner := bufio.NewScanner(file)
 		scanner.Split(bufio.ScanLines)
 
-		pdump, err := loadParserDump(parserResultFile)
+		pdump, err := LoadParserDump(t.ResultFile)
 		if err != nil {
 			return fmt.Errorf("loading parser dump file: %+v", err)
 		}
