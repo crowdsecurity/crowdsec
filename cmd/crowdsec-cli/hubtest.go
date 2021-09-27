@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -253,6 +254,44 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 		},
 	}
 	cmdHubTest.AddCommand(cmdHubTestList)
+
+	var cmdHubTestCoverage = &cobra.Command{
+		Use:               "coverage",
+		Short:             "coverage",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if err := HubTest.LoadAllTests(); err != nil {
+				log.Fatalf("unable to load all tests: %+v", err)
+			}
+			coverage, err := HubTest.GetParsersCoverage()
+			if err != nil {
+				log.Fatalf("while getting coverage : %s", err)
+			}
+			if csConfig.Cscli.Output == "human" {
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetCenterSeparator("")
+				table.SetColumnSeparator("")
+
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+				table.SetHeader([]string{"Parser", "Number of tests"})
+				for _, test := range coverage {
+					table.Append([]string{test.Parser, fmt.Sprintf("%d times (accross %d tests)", test.Tests_count, len(test.Present_in))})
+				}
+				table.Render()
+			} else if csConfig.Cscli.Output == "json" {
+				dump, err := json.MarshalIndent(coverage, "", " ")
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Printf("%s", dump)
+
+			}
+
+		},
+	}
+	cmdHubTest.AddCommand(cmdHubTestCoverage)
 
 	var evalExpression string
 	var cmdHubTestEval = &cobra.Command{
