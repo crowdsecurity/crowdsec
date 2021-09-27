@@ -63,6 +63,7 @@ type HubTestItem struct {
 	AssertFile        string
 	AutoGenAssert     bool
 	AutoGenAssertData string
+	NbAssert          int
 }
 
 const (
@@ -487,6 +488,7 @@ func (t *HubTestItem) Run() error {
 			return fmt.Errorf("loading parser dump file: %+v", err)
 		}
 
+		t.NbAssert = 0
 		for scanner.Scan() {
 			if scanner.Text() == "" {
 				continue
@@ -495,6 +497,7 @@ func (t *HubTestItem) Run() error {
 			if err != nil {
 				return fmt.Errorf("unable to run assert '%s': %+v", scanner.Text(), err)
 			}
+			t.NbAssert += 1
 			if !ok {
 				log.Debugf("%s is FALSE", scanner.Text())
 				//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
@@ -506,6 +509,14 @@ func (t *HubTestItem) Run() error {
 
 		}
 		file.Close()
+		if t.NbAssert == 0 {
+			assertData, err := autogenParserAssertsFromFile(t.ResultFile)
+			if err != nil {
+				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+			}
+			t.AutoGenAssertData = assertData
+			t.AutoGenAssert = true
+		}
 	}
 	if len(t.ErrorsList) == 0 {
 		t.Success = true

@@ -174,7 +174,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
 				} else if test.Success {
-					fmt.Printf("Test '%s' passed successfully %s\n", test.Name, emoji.GreenSquare)
+					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.NbAssert, emoji.GreenSquare)
 					if err := test.Clean(); err != nil {
 						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
