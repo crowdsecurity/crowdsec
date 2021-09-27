@@ -49,6 +49,7 @@ func NewHubTestCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
+	var ignoreParsers bool
 
 	var cmdHubTestCreate = &cobra.Command{
 		Use:   "create",
@@ -115,6 +116,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				PostOVerflows: postoverflows,
 				LogFile:       logFileName,
 				LogType:       logType,
+				IgnoreParsers: ignoreParsers,
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")
@@ -147,6 +149,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	cmdHubTestCreate.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
 	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
 	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
+	cmdHubTestCreate.PersistentFlags().BoolVar(&ignoreParsers, "ignore-parsers", false, "Don't run test on parsers")
 	cmdHubTest.AddCommand(cmdHubTestCreate)
 
 	var noClean bool

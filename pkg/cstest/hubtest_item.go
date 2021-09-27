@@ -20,6 +20,7 @@ type HubTestItemConfig struct {
 	PostOVerflows []string `yaml:"postoverflows"`
 	LogFile       string   `yaml:"log_file"`
 	LogType       string   `yaml:"log_type"`
+	IgnoreParsers bool     `yaml:"ignore_parsers"` // if we test a scenario, we don't want to assert on Parser
 }
 
 type HubIndex struct {
@@ -515,24 +516,28 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
 	}
 
-	assertFileStat, err := os.Stat(t.ParserAssert.File)
-	if os.IsNotExist(err) {
-		return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", t.ParserAssert.File, t.Name, testPath)
+	// assert parsers
+	if !t.Config.IgnoreParsers {
+		assertFileStat, err := os.Stat(t.ParserAssert.File)
+		if os.IsNotExist(err) {
+			return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", t.ParserAssert.File, t.Name, testPath)
+		}
+
+		if assertFileStat.Size() == 0 {
+			assertData, err := t.ParserAssert.AutoGenFromFile(t.ParserResultFile)
+			if err != nil {
+				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+			}
+			t.ParserAssert.AutoGenAssertData = assertData
+			t.ParserAssert.AutoGenAssert = true
+		} else {
+			if err := t.ParserAssert.AssertFile(t.ParserResultFile); err != nil {
+				return fmt.Errorf("unable to run assertion on file '%s': %s", t.ParserResultFile, err)
+			}
+		}
 	}
 
-	if assertFileStat.Size() == 0 {
-		assertData, err := t.ParserAssert.AutoGenFromFile(t.ParserResultFile)
-		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err.Error())
-		}
-		t.ParserAssert.AutoGenAssertData = assertData
-		t.ParserAssert.AutoGenAssert = true
-	} else {
-		if err := t.ParserAssert.AssertFile(t.ParserResultFile); err != nil {
-			return fmt.Errorf("unable to run assertion on file '%s': %s", t.ParserResultFile, err)
-		}
-	}
-
+	// assert scenarios
 	nbScenario := 0
 	for _, scenario := range t.Config.Scenarios {
 		if scenario == "" {
@@ -565,7 +570,7 @@ func (t *HubTestItem) Run() error {
 		t.Success = true
 	}
 
-	if t.ParserAssert.Success { // && t.ScenarioAssert.Success
+	if (t.ParserAssert.Success || t.Config.IgnoreParsers) && (nbScenario == 0 || t.ScenarioAssert.Success) { // && t.ScenarioAssert.Success
 		t.Success = true
 	}
 
