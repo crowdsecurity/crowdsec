@@ -35,8 +35,8 @@ cscli test -dsn "file://myfile.log" --type nginx
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 
-			if logType == "" {
-				log.Fatal("Please provide the --type flag to specify the log type.")
+			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
+				cmd.Help()
 			}
 
 			// we create a temporary log file if a log line has been provided
