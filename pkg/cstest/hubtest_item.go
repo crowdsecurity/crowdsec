@@ -499,8 +499,10 @@ func (t *HubTestItem) Run() error {
 	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(string(output))
-		return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
+			fmt.Println(string(output))
+			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+		}
 	}
 
 	cmdArgs = []string{"-c", t.RuntimeConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", t.ResultsPath}

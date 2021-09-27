@@ -193,8 +193,10 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 					}
 				} else if test.Success {
 					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert, emoji.GreenSquare)
-					if err := test.Clean(); err != nil {
-						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+					if !noClean {
+						if err := test.Clean(); err != nil {
+							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+						}
 					}
 				} else {
 					success = false
