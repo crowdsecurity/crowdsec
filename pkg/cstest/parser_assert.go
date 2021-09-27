@@ -76,7 +76,6 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	if err := p.LoadTest(testFile); err != nil {
 		return fmt.Errorf("unable to load parser dump file '%s': %s", testFile, err)
 	}
-
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
@@ -122,7 +121,7 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	var runtimeFilter *vm.Program
 	var output interface{}
 
-	env := map[string]interface{}{"results": p.TestData}
+	env := map[string]interface{}{"results": *p.TestData}
 
 	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
 		return output, err
@@ -134,7 +133,7 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
 
-	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": p.TestData}))
+	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *p.TestData}))
 	if err != nil {
 		log.Warningf("running : %s", expression)
 		log.Warningf("runtime error : %s", err)
@@ -204,7 +203,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 }
 
 func LoadParserDump(filepath string) (*ParserResults, error) {
-	var pdump *ParserResults
+	var pdump ParserResults
 
 	dumpData, err := os.Open(filepath)
 	if err != nil {
@@ -216,10 +215,11 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal(results, pdump); err != nil {
+
+	if err := yaml.Unmarshal(results, &pdump); err != nil {
 		return nil, err
 	}
-	return pdump, nil
+	return &pdump, nil
 }
 
 func DumpParserTree(parser_results ParserResults) error {
