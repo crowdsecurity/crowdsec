@@ -2,6 +2,7 @@ package cstest
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -85,13 +86,13 @@ func autogenParserAsserts(parserResults ParserResults) string {
 					if pval == "" {
 						continue
 					}
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, pval)
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, strings.ReplaceAll(pval, "\"", "\\\""))
 				}
 				for mkey, mval := range result.Evt.Meta {
 					if mval == "" {
 						continue
 					}
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, mval)
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, strings.ReplaceAll(mval, "\"", "\\\""))
 				}
 			}
 		}
