@@ -31,7 +31,7 @@ type Event struct {
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* Overflow */
-	Overflow      RuntimeAlert `yaml:"Alert,omitempty" json:"Alert,omitempty"`
+	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``
 	StrTime       string       `yaml:"StrTime,omitempty" json:"StrTime,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
@@ -77,4 +77,9 @@ type RuntimeAlert struct {
 	Alert       *models.Alert            `yaml:"Alert,omitempty" json:"Alert,omitempty"` //this one is a pointer to APIAlerts[0] for convenience.
 	//APIAlerts will be populated at the end when there is more than one source
 	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty" json:"APIAlerts,omitempty"`
+}
+
+func (r *RuntimeAlert) SourceExists(sourceKey string) bool {
+	_, ok := r.Sources[sourceKey]
+	return ok
 }

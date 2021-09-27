@@ -49,6 +49,7 @@ func NewHubTestCmd() *cobra.Command {
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
+
 	var cmdHubTestCreate = &cobra.Command{
 		Use:   "create",
 		Short: "create [test_name]",
@@ -98,7 +99,11 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			scenarioAssertFile.Close()
 
 			parsers = append(parsers, "crowdsecurity/syslog-logs")
-			scenarios = append(scenarios, "crowdsecurity/dateparse-enrich")
+			parsers = append(parsers, "crowdsecurity/dateparse-enrich")
+
+			if len(scenarios) == 0 {
+				scenarios = append(scenarios, "")
+			}
 
 			if len(postoverflows) == 0 {
 				postoverflows = append(postoverflows, "")
@@ -144,6 +149,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
 	cmdHubTest.AddCommand(cmdHubTestCreate)
 
+	var noClean bool
 	var cmdHubTestRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
@@ -160,32 +166,42 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				err = test.Run()
 				if err != nil {
 					log.Errorf("running test '%s' failed: %+v", testName, err)
-					test.ErrorsList = append(test.ErrorsList, err.Error())
 				}
 			}
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			success := true
 			for _, test := range HubTest.Tests {
-				if test.ParserAssert.AutoGenAssert {
-					log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
-					fmt.Println()
-					fmt.Printf(test.ParserAssert.AutoGenAssertData)
-					if err := test.Clean(); err != nil {
-						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+				if test.AutoGen {
+					if test.ParserAssert.AutoGenAssert {
+						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
+						fmt.Println()
+						fmt.Printf(test.ParserAssert.AutoGenAssertData)
+					}
+					if test.ScenarioAssert.AutoGenAssert {
+						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ScenarioAssert.File)
+						fmt.Println()
+						fmt.Printf(test.ScenarioAssert.AutoGenAssertData)
+					}
+					if !noClean {
+						if err := test.Clean(); err != nil {
+							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+						}
 					}
 				} else if test.Success {
-					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert, emoji.GreenSquare)
+					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert, emoji.GreenSquare)
 					if err := test.Clean(); err != nil {
 						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
 				} else {
 					success = false
-					fmt.Printf("Test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ErrorsList))
-					for _, fail := range test.ErrorsList {
+					fmt.Printf("Test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ParserAssert.Fails)+len(test.ScenarioAssert.Fails))
+					for _, fail := range test.ParserAssert.Fails {
 						fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
 					}
-
+					for _, fail := range test.ScenarioAssert.Fails {
+						fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+					}
 					answer := true
 					prompt := &survey.Confirm{
 						Message: fmt.Sprintf("Do you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
@@ -194,6 +210,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 					if err := survey.AskOne(prompt, &answer); err != nil {
 						log.Fatalf("unable to ask to remove runtime folder: %s", err)
 					}
+
 					if answer {
 						if err := test.Clean(); err != nil {
 							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
@@ -206,7 +223,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			}
 		},
 	}
-
+	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment")
 	cmdHubTest.AddCommand(cmdHubTestRun)
 
 	var cmdHubTestClean = &cobra.Command{

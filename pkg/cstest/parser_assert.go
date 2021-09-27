@@ -106,7 +106,6 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 		p.AutoGenAssertData = assertData
 		p.AutoGenAssert = true
 	}
-
 	if len(p.Fails) == 0 {
 		p.Success = true
 	}

@@ -186,7 +186,7 @@ func dumpParserState() error {
 
 func dumpOverflowState() error {
 
-	fd, err := os.OpenFile("bucket-dump.yaml", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucket-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatalf("open: %s", err)
 	}
