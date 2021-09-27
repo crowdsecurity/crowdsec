@@ -47,21 +47,15 @@ func NewHubTestCmd() *cobra.Command {
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
 	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
 
-	var cmdHubTestParser = &cobra.Command{
-		Use:               "parser",
-		Short:             "parser",
-		Args:              cobra.MinimumNArgs(1),
-		DisableAutoGenTag: true,
-	}
-
 	parsers := []string{}
 	postoverflows := []string{}
 	scenarios := []string{}
-	var cmdHubTestParserAdd = &cobra.Command{
-		Use:   "add",
-		Short: "add [test_name]",
-		Example: `cscli hubtest parser add my-awesome-parser --type syslog
-cscli hubtest parser add my-nginx-custom-parer --type nginx`,
+	var cmdHubTestCreate = &cobra.Command{
+		Use:   "create",
+		Short: "create [test_name]",
+		Example: `cscli hubtest create my-awesome-test --type syslog
+cscli hubtest create my-nginx-custom-test --type nginx
+cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario crowdsecurity/http-probing`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -79,6 +73,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 				log.Fatalf("unable to create folder '%s': %+v", testPath, err)
 			}
 
+			// create empty log file
 			logFileName := fmt.Sprintf("%s.log", testName)
 			logFilePath := filepath.Join(testPath, logFileName)
 			logFile, err := os.Create(logFilePath)
@@ -87,6 +82,7 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 			logFile.Close()
 
+			// create empty parser assertion file
 			parserAssertFilePath := filepath.Join(testPath, "parser.assert")
 			parserAssertFile, err := os.Create(parserAssertFilePath)
 			if err != nil {
@@ -94,11 +90,16 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 			parserAssertFile.Close()
 
-			parsers = append(parsers, "crowdsecurity/syslog-logs")
-
-			if len(scenarios) == 0 {
-				scenarios = append(scenarios, "")
+			// create empty scenario assertion file
+			scenarioAssertFilePath := filepath.Join(testPath, "scenario.assert")
+			scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
+			if err != nil {
+				log.Fatal(err)
 			}
+			scenarioAssertFile.Close()
+
+			parsers = append(parsers, "crowdsecurity/syslog-logs")
+			scenarios = append(scenarios, "crowdsecurity/dateparse-enrich")
 
 			if len(postoverflows) == 0 {
 				postoverflows = append(postoverflows, "")
@@ -129,21 +130,22 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 				log.Fatalf(" close: %s", err)
 			}
 			fmt.Println()
-			fmt.Printf("  Test name            :  %s\n", testName)
-			fmt.Printf("  Test path            :  %s\n", testPath)
-			fmt.Printf("  Log file             :  %s (please fill it with logs)\n", logFilePath)
-			fmt.Printf("  Assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
-			fmt.Printf("  Configuration File   :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
+			fmt.Printf("  Test name                   :  %s\n", testName)
+			fmt.Printf("  Test path                   :  %s\n", testPath)
+			fmt.Printf("  Log file                    :  %s (please fill it with logs)\n", logFilePath)
+			fmt.Printf("  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
+			fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", parserAssertFilePath)
+			fmt.Printf("  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
 
 		},
 	}
-	cmdHubTestParserAdd.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
-	cmdHubTestParserAdd.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
-	cmdHubTestParserAdd.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
-	cmdHubTestParserAdd.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
-	cmdHubTestParser.AddCommand(cmdHubTestParserAdd)
+	cmdHubTestCreate.PersistentFlags().StringVarP(&logType, "type", "t", "", "Log type of the test")
+	cmdHubTestCreate.Flags().StringSliceVarP(&parsers, "parsers", "p", parsers, "Parsers to add to test")
+	cmdHubTestCreate.Flags().StringSliceVar(&postoverflows, "postoverflows", postoverflows, "Postoverflows to add to test")
+	cmdHubTestCreate.Flags().StringSliceVarP(&scenarios, "scenarios", "s", scenarios, "Scenarios to add to test")
+	cmdHubTest.AddCommand(cmdHubTestCreate)
 
-	var cmdHubTestParserRun = &cobra.Command{
+	var cmdHubTestRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
 		Args:              cobra.MinimumNArgs(1),
@@ -166,15 +168,15 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			success := true
 			for _, test := range HubTest.Tests {
-				if test.AutoGenAssert {
-					log.Warningf("Assert file '%s' is empty, generating assertion:", test.AssertFile)
+				if test.ParserAssert.AutoGenAssert {
+					log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.AssertFile)
 					fmt.Println()
-					fmt.Printf(test.AutoGenAssertData)
+					fmt.Printf(test.ParserAssert.AutoGenAssertData)
 					if err := test.Clean(); err != nil {
 						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
 				} else if test.Success {
-					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.NbAssert, emoji.GreenSquare)
+					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert, emoji.GreenSquare)
 					if err := test.Clean(); err != nil {
 						log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 					}
@@ -206,9 +208,9 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 		},
 	}
 
-	cmdHubTestParser.AddCommand(cmdHubTestParserRun)
+	cmdHubTest.AddCommand(cmdHubTestRun)
 
-	var cmdHubTestParserClean = &cobra.Command{
+	var cmdHubTestClean = &cobra.Command{
 		Use:               "clean",
 		Short:             "clean [test_name]",
 		Args:              cobra.MinimumNArgs(1),
@@ -225,9 +227,9 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 		},
 	}
-	cmdHubTestParser.AddCommand(cmdHubTestParserClean)
+	cmdHubTest.AddCommand(cmdHubTestClean)
 
-	var cmdHubTestParserList = &cobra.Command{
+	var cmdHubTestList = &cobra.Command{
 		Use:               "list",
 		Short:             "list",
 		DisableAutoGenTag: true,
@@ -250,10 +252,10 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 
 		},
 	}
-	cmdHubTestParser.AddCommand(cmdHubTestParserList)
+	cmdHubTest.AddCommand(cmdHubTestList)
 
 	var evalExpression string
-	var cmdHubTestParserEval = &cobra.Command{
+	var cmdHubTestEval = &cobra.Command{
 		Use:               "eval",
 		Short:             "eval [test_name]",
 		Args:              cobra.ExactArgs(1),
@@ -264,11 +266,11 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 				if err != nil {
 					log.Fatalf("can't load test: %+v", err)
 				}
-				resultDump, err := cstest.LoadParserDump(test.ResultFile)
+				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
-					log.Fatalf("can't load test results from '%s': %+v", test.ResultFile, err)
+					log.Fatalf("can't load test results from '%s': %+v", test.ParserResultFile, err)
 				}
-				output, err := cstest.EvalExpression(evalExpression, resultDump)
+				output, err := test.ParserAssert.EvalExpression(evalExpression)
 				if err != nil {
 					log.Fatalf(err.Error())
 				}
@@ -276,9 +278,8 @@ cscli hubtest parser add my-nginx-custom-parer --type nginx`,
 			}
 		},
 	}
-	cmdHubTestParserEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
-	cmdHubTestParser.AddCommand(cmdHubTestParserEval)
+	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
+	cmdHubTest.AddCommand(cmdHubTestEval)
 
-	cmdHubTest.AddCommand(cmdHubTestParser)
 	return cmdHubTest
 }
