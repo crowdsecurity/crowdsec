@@ -21,7 +21,6 @@ var (
 
 func NewHubTestCmd() *cobra.Command {
 	/* ---- HUB COMMAND */
-	var outputFormat string
 	var hubPath string
 	var logType string
 	var crowdsecPath string
@@ -43,7 +42,6 @@ func NewHubTestCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdHubTest.PersistentFlags().StringVarP(&outputFormat, "output", "o", "human", "Output format (human, json)")
 	cmdHubTest.PersistentFlags().StringVar(&hubPath, "hub", ".", "Path to hub folder")
 	cmdHubTest.PersistentFlags().StringVar(&crowdsecPath, "crowdsec", "crowdsec", "Path to crowdsec")
 	cmdHubTest.PersistentFlags().StringVar(&cscliPath, "cscli", "cscli", "Path to cscli")
@@ -287,6 +285,8 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				}
 				fmt.Printf("%s", dump)
 
+			} else {
+				log.Fatalf("only human/json output modes are supported")
 			}
 
 		},
