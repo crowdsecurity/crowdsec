@@ -108,6 +108,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			HubDir:       runtimeHubFolder,
 			ConfigDir:    runtimeFolder,
 			HubIndexFile: hubTest.HubIndexFile,
+			DataDir:      filepath.Join(runtimeFolder, "data"),
 		},
 		Config:                 configFileData,
 		HubPath:                hubTest.HubPath,
