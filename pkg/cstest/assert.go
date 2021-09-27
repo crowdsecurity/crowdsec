@@ -82,6 +82,9 @@ func autogenParserAsserts(parserResults ParserResults) string {
 			for pidx, result := range presults {
 				ret += fmt.Sprintf(`results["%s"]["%s"][%d].Success == %t`+"\n", stage, parser, pidx, result.Success)
 
+				if !result.Success {
+					continue
+				}
 				for pkey, pval := range result.Evt.Parsed {
 					if pval == "" {
 						continue
