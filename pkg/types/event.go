@@ -79,7 +79,10 @@ type RuntimeAlert struct {
 	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty" json:"APIAlerts,omitempty"`
 }
 
-func (r *RuntimeAlert) SourceExists(sourceKey string) bool {
-	_, ok := r.Sources[sourceKey]
-	return ok
+func (r RuntimeAlert) GetSources() []string {
+	ret := make([]string, 0)
+	for key, _ := range r.Sources {
+		ret = append(ret, key)
+	}
+	return ret
 }

@@ -164,20 +164,20 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 	var ret string
 	for eventIndex, event := range *s.TestData {
 		for ipSrc, source := range event.Overflow.Sources {
-			ret += fmt.Sprintf(`results[%d].Overflow.SourceExists("%s") == true`+"\n", eventIndex, ipSrc)
-			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].ip == "%s"`+"\n", eventIndex, ipSrc, source.IP)
-			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].range == "%s"`+"\n", eventIndex, ipSrc, source.Range)
-			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].scope == "%s"`+"\n", eventIndex, ipSrc, *source.Scope)
-			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].value == "%s"`+"\n", eventIndex, ipSrc, *source.Value)
+			ret += fmt.Sprintf(`"%s" in results[%d].Overflow.GetSources()`+"\n", ipSrc, eventIndex)
+			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].IP == "%s"`+"\n", eventIndex, ipSrc, source.IP)
+			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].Range == "%s"`+"\n", eventIndex, ipSrc, source.Range)
+			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].GetScope() == "%s"`+"\n", eventIndex, ipSrc, *source.Scope)
+			ret += fmt.Sprintf(`results[%d].Overflow.Sources["%s"].GetValue() == "%s"`+"\n", eventIndex, ipSrc, *source.Value)
 		}
 		for evtIndex, evt := range event.Overflow.Alert.Events {
 			for _, meta := range evt.Meta {
 				ret += fmt.Sprintf(`results[%d].Overflow.Alert.Events[%d].GetMeta("%s") == "%s"`+"\n", eventIndex, evtIndex, meta.Key, meta.Value)
 			}
 		}
-		ret += fmt.Sprintf(`results[%d].Overflow.Alert.scenario == "%s"`+"\n", eventIndex, *event.Overflow.Alert.Scenario)
-		ret += fmt.Sprintf(`results[%d].Overflow.Alert.remediation == %t`+"\n", eventIndex, *&event.Overflow.Alert.Remediation)
-		ret += fmt.Sprintf(`results[%d].Overflow.Alert.eventscount == %d`+"\n", eventIndex, *event.Overflow.Alert.EventsCount)
+		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetScenario() == "%s"`+"\n", eventIndex, *event.Overflow.Alert.Scenario)
+		ret += fmt.Sprintf(`results[%d].Overflow.Alert.Remediation == %t`+"\n", eventIndex, *&event.Overflow.Alert.Remediation)
+		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetEventsCount() == %d`+"\n", eventIndex, *event.Overflow.Alert.EventsCount)
 	}
 	return ret
 }

@@ -533,7 +533,14 @@ func (t *HubTestItem) Run() error {
 		}
 	}
 
-	if len(t.Config.Scenarios) > 0 {
+	nbScenario := 0
+	for _, scenario := range t.Config.Scenarios {
+		if scenario == "" {
+			continue
+		}
+		nbScenario += 1
+	}
+	if nbScenario > 0 {
 		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
 		if os.IsNotExist(err) {
 			return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", t.ScenarioAssert.File, t.Name, testPath)

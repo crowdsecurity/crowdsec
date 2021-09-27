@@ -166,6 +166,12 @@ func (p *ParserAssert) Run(assert string) (bool, error) {
 	}
 }
 
+func Escape(val string) string {
+	val = strings.ReplaceAll(val, `\`, `\\`)
+	val = strings.ReplaceAll(val, `"`, `\"`)
+	return val
+}
+
 func (p *ParserAssert) AutoGenParserAssert() string {
 	//attempt to autogen parser asserts
 	var ret string
@@ -181,19 +187,19 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 					if pval == "" {
 						continue
 					}
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, strings.ReplaceAll(pval, "\"", "\\\""))
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Parsed["%s"] == "%s"`+"\n", stage, parser, pidx, pkey, Escape(pval))
 				}
 				for mkey, mval := range result.Evt.Meta {
 					if mval == "" {
 						continue
 					}
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, strings.ReplaceAll(mval, "\"", "\\\""))
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, Escape(mval))
 				}
 				for ekey, eval := range result.Evt.Enriched {
 					if eval == "" {
 						continue
 					}
-					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, strings.ReplaceAll(eval, "\"", "\\\""))
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, Escape(eval))
 				}
 			}
 		}
