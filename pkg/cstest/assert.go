@@ -97,6 +97,12 @@ func autogenParserAsserts(parserResults ParserResults) string {
 					}
 					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Meta["%s"] == "%s"`+"\n", stage, parser, pidx, mkey, strings.ReplaceAll(mval, "\"", "\\\""))
 				}
+				for ekey, eval := range result.Evt.Enriched {
+					if eval == "" {
+						continue
+					}
+					ret += fmt.Sprintf(`results["%s"]["%s"][%d].Evt.Enriched["%s"] == "%s"`+"\n", stage, parser, pidx, ekey, strings.ReplaceAll(eval, "\"", "\\\""))
+				}
 			}
 		}
 	}
