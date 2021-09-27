@@ -83,7 +83,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 			}
 			var pdump cstest.ParserResults
 
-			data_fd, err := os.Open("./parser_dump.yaml")
+			data_fd, err := os.Open("./parser-dump.yaml")
 			if err != nil {
 				log.Fatal(err)
 			}
