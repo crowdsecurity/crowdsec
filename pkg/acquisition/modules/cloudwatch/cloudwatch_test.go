@@ -253,8 +253,8 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen:      2,
-			expectedResMessages: []string{"test_message_4", "test_message_5"},
+			expectedResLen:      3,
+			expectedResMessages: []string{"test_message_1", "test_message_4", "test_message_5"},
 		},
 		//have a stream generate events, reach time-out and gets polled again
 		{
@@ -345,8 +345,8 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen:      2,
-			expectedResMessages: []string{"test_message_41", "test_message_51"},
+			expectedResLen:      3,
+			expectedResMessages: []string{"test_message_1", "test_message_41", "test_message_51"},
 		},
 		//have a stream generate events, reach time-out and dead body collection
 		{
@@ -406,7 +406,7 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen: 0,
+			expectedResLen: 1,
 		},
 	}
 
