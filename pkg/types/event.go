@@ -20,7 +20,7 @@ type Event struct {
 	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             //Can be types.LOG (0) or types.OVFLOW (1)
 	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
 	Whitelisted     bool   `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
-	WhiteListReason string `yaml:"whitelist_reason,omitempty" json:"whitelist_reason,omitempty"`
+	WhitelistReason string `yaml:"WhitelistReason,omitempty" json:"whitelist_reason,omitempty"`
 	//should add whitelist reason ?
 	/* the current stage of the line being parsed */
 	Stage string `yaml:"Stage,omitempty" json:"Stage,omitempty"`
