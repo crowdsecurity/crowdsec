@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Install generated release and perform functional tests
+    name: Install generated release and perform hub tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.16
@@ -39,9 +39,9 @@ jobs:
     - name: "Clone CrowdSec Hub"
       run: |
           git clone https://github.com/crowdsecurity/hub.git
-          cd hub/
-          git checkout hub_tests
     - name: "Run tests"
       run: |
+          cd hub/
+          git checkout hub_tests
           cscli hubtest run --all
 
