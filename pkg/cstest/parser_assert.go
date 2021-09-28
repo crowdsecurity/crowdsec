@@ -182,7 +182,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 		stages = append(stages, stage)
 	}
 	sort.Strings(stages)
-
+	ret += fmt.Sprintf("len(results) == %d\n", len(*p.TestData))
 	for _, stage := range stages {
 		parsers := (*p.TestData)[stage]
 		//sort map keys for consistent ordre
@@ -193,6 +193,7 @@ func (p *ParserAssert) AutoGenParserAssert() string {
 		sort.Strings(pnames)
 		for _, parser := range pnames {
 			presults := parsers[parser]
+			ret += fmt.Sprintf(`len(results["%s"]["%s"]) == %d`+"\n", stage, parser, len(presults))
 			for pidx, result := range presults {
 				ret += fmt.Sprintf(`results["%s"]["%s"][%d].Success == %t`+"\n", stage, parser, pidx, result.Success)
 
