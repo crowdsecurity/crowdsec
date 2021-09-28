@@ -140,7 +140,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			fmt.Printf("  Test path                   :  %s\n", testPath)
 			fmt.Printf("  Log file                    :  %s (please fill it with logs)\n", logFilePath)
 			fmt.Printf("  Parser assertion file       :  %s (please fill it with assertion)\n", parserAssertFilePath)
-			fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", parserAssertFilePath)
+			fmt.Printf("  Scenario assertion file     :  %s (please fill it with assertion)\n", scenarioAssertFilePath)
 			fmt.Printf("  Configuration File          :  %s (please fill it with parsers, scenarios...)\n", configFilePath)
 
 		},
