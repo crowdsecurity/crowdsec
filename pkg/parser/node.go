@@ -108,6 +108,7 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	var NodeState bool
+	var NodeHasOKGrok bool
 	clog := n.Logger
 
 	clog.Tracef("Event entering node")
@@ -258,6 +259,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		grok := n.Grok.RunTimeRegexp.Parse(gstr)
 		if len(grok) > 0 {
+			/*tag explicitely that the *current* node had a successful grok pattern. it's important to know success state*/
+			NodeHasOKGrok = true
 			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
 			//We managed to grok stuff, merged into parse
 			for k, v := range grok {
@@ -272,7 +275,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		} else {
 			//grok failed, node failed
 			clog.Debugf("+ Grok '%s' didn't return data on '%s'", groklabel, gstr)
-			//clog.Tracef("on '%s'", gstr)
 			NodeState = false
 		}
 
@@ -283,7 +285,6 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	//Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
-			//clog.Debugf("Processing sub-node %d/%d : %s", idx, len(n.SuccessNodes), leaf.rn)
 			ret, err := leaf.process(p, ctx)
 			if err != nil {
 				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
@@ -299,7 +300,13 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 					break
 				}
 			} else {
-				NodeState = false
+				/*
+					If the parent node has a successful grok pattern, it's state will stay successfull even if one or more chil fails.
+					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
+				*/
+				if !NodeHasOKGrok {
+					NodeState = false
+				}
 			}
 		}
 	}
