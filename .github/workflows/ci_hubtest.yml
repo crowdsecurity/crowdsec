@@ -1,0 +1,47 @@
+name: Hub Tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Install generated release and perform functional tests
+    runs-on: ubuntu-latest
+    steps:
+    - name: Set up Go 1.16
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.16
+      id: go
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+    - id: keydb
+      uses: pozetroninc/github-action-get-latest-release@master
+      with:
+        owner: crowdsecurity
+        repo: crowdsec
+        excludes: draft
+    - name: Build release
+      run: BUILD_VERSION=${{ steps.keydb.outputs.release }} make release
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
+    - name: Install release
+      run: |
+        cd crowdsec-${{ steps.keydb.outputs.release }}
+        sudo ./wizard.sh --unattended
+    - name: "Clone CrowdSec Hub"
+      run: |
+          git clone https://github.com/crowdsecurity/hub.git
+          cd hub/
+          git checkout hub_tests
+    - name: "Run tests"
+      run: |
+          cscli hubtest run --all
+
