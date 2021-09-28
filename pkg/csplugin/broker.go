@@ -251,6 +251,9 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	if err != nil {
 		return nil, err
 	}
+	// We set the highest level to permit plugins to set their own log level
+	// without that, crowdsec log level is controlling plugins level
+	l.SetLevel(log.TraceLevel)
 	logger := NewHCLogAdapter(l, "")
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,
