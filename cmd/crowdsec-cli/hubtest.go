@@ -283,9 +283,13 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			if err := HubTest.LoadAllTests(); err != nil {
 				log.Fatalf("unable to load all tests: %+v", err)
 			}
-			coverage, err := HubTest.GetParsersCoverage()
+			parserCoverage, err := HubTest.GetParsersCoverage()
 			if err != nil {
-				log.Fatalf("while getting coverage : %s", err)
+				log.Fatalf("while getting parser coverage : %s", err)
+			}
+			scenarioCoverage, err := HubTest.GetScenariosCoverage()
+			if err != nil {
+				log.Fatalf("while getting scenario coverage: %s", err)
 			}
 			if csConfig.Cscli.Output == "human" {
 				table := tablewriter.NewWriter(os.Stdout)
@@ -295,13 +299,36 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
 
-				table.SetHeader([]string{"Parser", "Number of tests"})
-				for _, test := range coverage {
-					table.Append([]string{test.Parser, fmt.Sprintf("%d times (accross %d tests)", test.Tests_count, len(test.Present_in))})
+				table.SetHeader([]string{"Parser", "Status", "Number of tests"})
+				for _, test := range parserCoverage {
+					status := emoji.RedCircle.String()
+					if test.TestsCount > 0 {
+						status = emoji.GreenCircle.String()
+					}
+					table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
 				}
 				table.Render()
+
+				// scenario coverage
+				table = tablewriter.NewWriter(os.Stdout)
+				table.SetCenterSeparator("")
+				table.SetColumnSeparator("")
+
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+				table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
+				for _, test := range scenarioCoverage {
+					status := emoji.RedCircle.String()
+					if test.TestsCount > 0 {
+						status = emoji.GreenCircle.String()
+					}
+					table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
+				}
+				table.Render()
+
 			} else if csConfig.Cscli.Output == "json" {
-				dump, err := json.MarshalIndent(coverage, "", " ")
+				dump, err := json.MarshalIndent(parserCoverage, "", " ")
 				if err != nil {
 					log.Fatal(err)
 				}
