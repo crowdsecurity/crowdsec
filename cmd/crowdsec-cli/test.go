@@ -37,6 +37,9 @@ cscli test -dsn "file://myfile.log" --type nginx
 
 			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
 				cmd.Help()
+				fmt.Println()
+				fmt.Printf("Please provide --type flag\n")
+				os.Exit(1)
 			}
 
 			// we create a temporary log file if a log line has been provided
