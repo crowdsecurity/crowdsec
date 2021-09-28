@@ -153,27 +153,46 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	cmdHubTest.AddCommand(cmdHubTestCreate)
 
 	var noClean bool
+	var runAll bool
+	var forceClean bool
 	var cmdHubTestRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			for _, testName := range args {
-				test, err := HubTest.LoadTestItem(testName)
-				if err != nil {
-					log.Fatalf("unable to load test '%s': %s", testName, err)
-				}
+			if !runAll && len(args) == 0 {
+				cmd.Help()
+				fmt.Println("Please provide test to run or --all flag")
+				os.Exit(1)
+			}
 
-				log.Infof("Running test '%s'", testName)
-				err = test.Run()
-				if err != nil {
-					log.Errorf("running test '%s' failed: %+v", testName, err)
+			if runAll {
+				if err := HubTest.LoadAllTests(); err != nil {
+					log.Fatalf("unable to load all tests: %+v", err)
+				}
+			} else {
+				for _, testName := range args {
+					_, err := HubTest.LoadTestItem(testName)
+					if err != nil {
+						log.Fatalf("unable to load test '%s': %s", testName, err)
+					}
 				}
 			}
+
+			for _, test := range HubTest.Tests {
+				if csConfig.Cscli.Output == "human" {
+					log.Infof("Running test '%s'", test.Name)
+				}
+				err := test.Run()
+				if err != nil {
+					log.Errorf("running test '%s' failed: %+v", test.Name, err)
+				}
+			}
+
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			success := true
+			testResult := make(map[string]bool)
 			for _, test := range HubTest.Tests {
 				if test.AutoGen {
 					if test.ParserAssert.AutoGenAssert {
@@ -186,9 +205,19 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 						fmt.Println()
 						fmt.Printf(test.ScenarioAssert.AutoGenAssertData)
 					}
+					if !noClean {
+						if err := test.Clean(); err != nil {
+							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
+						}
+					}
+					fmt.Printf("Please fill your assert file(s) for test '%s', exiting", test.Name)
+					os.Exit(1)
 				}
+				testResult[test.Name] = test.Success
 				if test.Success {
-					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert, emoji.GreenSquare)
+					if csConfig.Cscli.Output == "human" {
+						log.Infof("Test '%s' passed successfully (%d assertions)\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert)
+					}
 					if !noClean {
 						if err := test.Clean(); err != nil {
 							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
@@ -196,42 +225,81 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 					}
 				} else {
 					success = false
-					if len(test.ParserAssert.Fails) > 0 {
-						fmt.Println()
-						fmt.Printf("Parser test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ParserAssert.Fails))
-						for _, fail := range test.ParserAssert.Fails {
-							fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+					cleanTestEnv := false
+					if csConfig.Cscli.Output == "human" {
+						if len(test.ParserAssert.Fails) > 0 {
+							fmt.Println()
+							log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
+							for _, fail := range test.ParserAssert.Fails {
+								fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+							}
 						}
-					}
-					if len(test.ScenarioAssert.Fails) > 0 {
-						fmt.Println()
-						fmt.Printf("Scenario test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ScenarioAssert.Fails))
-						for _, fail := range test.ScenarioAssert.Fails {
-							fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+						if len(test.ScenarioAssert.Fails) > 0 {
+							fmt.Println()
+							log.Errorf("Scenario test '%s' failed (%d errors)\n", test.Name, len(test.ScenarioAssert.Fails))
+							for _, fail := range test.ScenarioAssert.Fails {
+								fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+							}
 						}
-					}
-					answer := true
-					prompt := &survey.Confirm{
-						Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
-						Default: true,
-					}
-					if err := survey.AskOne(prompt, &answer); err != nil {
-						log.Fatalf("unable to ask to remove runtime folder: %s", err)
+						prompt := &survey.Confirm{
+							Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
+							Default: true,
+						}
+						if err := survey.AskOne(prompt, &cleanTestEnv); err != nil {
+							log.Fatalf("unable to ask to remove runtime folder: %s", err)
+						}
 					}
 
-					if answer {
+					if cleanTestEnv || forceClean {
 						if err := test.Clean(); err != nil {
 							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 						}
 					}
 				}
 			}
+			if csConfig.Cscli.Output == "human" {
+				table := tablewriter.NewWriter(os.Stdout)
+				table.SetCenterSeparator("")
+				table.SetColumnSeparator("")
+
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+				table.SetHeader([]string{"Test", "Result"})
+				for testName, success := range testResult {
+					status := emoji.CheckMarkButton.String()
+					if !success {
+						status = emoji.CrossMark.String()
+					}
+					table.Append([]string{testName, status})
+				}
+				table.Render()
+			} else if csConfig.Cscli.Output == "json" {
+				jsonResult := make(map[string][]string, 0)
+				jsonResult["success"] = make([]string, 0)
+				jsonResult["fail"] = make([]string, 0)
+				for testName, success := range testResult {
+					if success {
+						jsonResult["success"] = append(jsonResult["success"], testName)
+					} else {
+						jsonResult["fail"] = append(jsonResult["fail"], testName)
+					}
+				}
+				jsonStr, err := json.Marshal(jsonResult)
+				if err != nil {
+					log.Fatalf("unable to json test result: %s", err.Error())
+				}
+				fmt.Println(string(jsonStr))
+			}
+
 			if !success {
 				os.Exit(1)
 			}
 		},
 	}
-	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment")
+	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
+	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
+	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 	cmdHubTest.AddCommand(cmdHubTestRun)
 
 	var cmdHubTestClean = &cobra.Command{

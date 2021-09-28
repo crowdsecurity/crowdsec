@@ -65,18 +65,31 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 				continue
 			}
 			sidx := assertLine.SubexpIndex("parser")
-			scanner_name := match[sidx]
+			capturedParser := match[sidx]
 			for idx, pcover := range coverage {
-				if pcover.Parser == scanner_name {
+				if pcover.Parser == capturedParser {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
-				} else {
-					parserNameSplit := strings.Split(pcover.Parser, "/")
-					parserNameOnly := parserNameSplit[len(parserNameSplit)-1]
-					if parserNameOnly == scanner_name {
-						coverage[idx].TestsCount++
-						coverage[idx].PresentIn[assert] = true
-					}
+					continue
+				}
+				parserNameSplit := strings.Split(pcover.Parser, "/")
+				parserNameOnly := parserNameSplit[len(parserNameSplit)-1]
+				if parserNameOnly == capturedParser {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
+				}
+				capturedParserSplit := strings.Split(capturedParser, "/")
+				capturedParserName := capturedParserSplit[len(capturedParserSplit)-1]
+				if capturedParserName == parserNameOnly {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
+				}
+				if capturedParserName == parserNameOnly+"-logs" {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
 				}
 			}
 		}
