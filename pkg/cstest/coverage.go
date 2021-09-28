@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	log "github.com/sirupsen/logrus"
@@ -69,6 +70,13 @@ func (h *HubTest) GetParsersCoverage() ([]ParserCoverage, error) {
 				if pcover.Parser == scanner_name {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+				} else {
+					parserNameSplit := strings.Split(pcover.Parser, "/")
+					parserNameOnly := parserNameSplit[len(parserNameSplit)-1]
+					if parserNameOnly == scanner_name {
+						coverage[idx].TestsCount++
+						coverage[idx].PresentIn[assert] = true
+					}
 				}
 			}
 		}
@@ -122,6 +130,13 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 				if pcover.Scenario == scanner_name {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
+				} else {
+					scenarioNameSplit := strings.Split(pcover.Scenario, "/")
+					scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
+					if scenarioNameOnly == scanner_name {
+						coverage[idx].TestsCount++
+						coverage[idx].PresentIn[assert] = true
+					}
 				}
 			}
 		}
