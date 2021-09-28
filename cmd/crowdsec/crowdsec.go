@@ -154,7 +154,6 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 		}
 		log.Debugf("everything is dead, return crowdsecTomb")
 		if dumpStates {
-			log.Printf("Dump state !")
 			dumpParserState()
 			dumpOverflowState()
 			os.Exit(0)

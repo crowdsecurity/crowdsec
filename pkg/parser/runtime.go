@@ -302,13 +302,11 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					log.Printf("init list %s/%s", stage, node.Name)
 					StageParseCache[stage][node.Name] = make([]parserResult, 0)
 				}
 				evtcopy := deepcopy.Copy(event)
 				parserInfo := parserResult{Evt: evtcopy.(types.Event), Success: ret}
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
-				log.Printf("append list %s/%s, new len : %d", stage, node.Name, len(StageParseCache[stage][node.Name]))
 			}
 			if ret {
 				isStageOK = true
