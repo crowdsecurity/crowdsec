@@ -186,12 +186,8 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 						fmt.Println()
 						fmt.Printf(test.ScenarioAssert.AutoGenAssertData)
 					}
-					if !noClean {
-						if err := test.Clean(); err != nil {
-							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
-						}
-					}
-				} else if test.Success {
+				}
+				if test.Success {
 					fmt.Printf("Test '%s' passed successfully (%d assertions) %s\n", test.Name, test.ParserAssert.NbAssert+test.ScenarioAssert.NbAssert, emoji.GreenSquare)
 					if !noClean {
 						if err := test.Clean(); err != nil {
@@ -200,16 +196,23 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 					}
 				} else {
 					success = false
-					fmt.Printf("Test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ParserAssert.Fails)+len(test.ScenarioAssert.Fails))
-					for _, fail := range test.ParserAssert.Fails {
-						fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+					if len(test.ParserAssert.Fails) > 0 {
+						fmt.Println()
+						fmt.Printf("Parser test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ParserAssert.Fails))
+						for _, fail := range test.ParserAssert.Fails {
+							fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+						}
 					}
-					for _, fail := range test.ScenarioAssert.Fails {
-						fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+					if len(test.ScenarioAssert.Fails) > 0 {
+						fmt.Println()
+						fmt.Printf("Scenario test '%s' failed %s (%d errors)\n", test.Name, emoji.RedSquare, len(test.ScenarioAssert.Fails))
+						for _, fail := range test.ScenarioAssert.Fails {
+							fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
+						}
 					}
 					answer := true
 					prompt := &survey.Confirm{
-						Message: fmt.Sprintf("Do you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
+						Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
 						Default: true,
 					}
 					if err := survey.AskOne(prompt, &answer); err != nil {

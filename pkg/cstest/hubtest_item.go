@@ -585,10 +585,9 @@ func (t *HubTestItem) Run() error {
 
 	if t.ParserAssert.AutoGenAssert || t.ScenarioAssert.AutoGenAssert {
 		t.AutoGen = true
-		t.Success = true
 	}
 
-	if (t.ParserAssert.Success || t.Config.IgnoreParsers) && (nbScenario == 0 || t.ScenarioAssert.Success) { // && t.ScenarioAssert.Success
+	if (t.ParserAssert.Success || t.Config.IgnoreParsers) && (nbScenario == 0 || t.ScenarioAssert.Success) {
 		t.Success = true
 	}
 
