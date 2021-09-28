@@ -162,6 +162,7 @@ func (s *ScenarioAssert) Run(assert string) (bool, error) {
 func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 	//attempt to autogen parser asserts
 	var ret string
+	ret += fmt.Sprintf(`len(results) == %d`+"\n", len(*s.TestData))
 	for eventIndex, event := range *s.TestData {
 		for ipSrc, source := range event.Overflow.Sources {
 			ret += fmt.Sprintf(`"%s" in results[%d].Overflow.GetSources()`+"\n", ipSrc, eventIndex)
