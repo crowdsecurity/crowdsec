@@ -175,8 +175,24 @@ func Escape(val string) string {
 func (p *ParserAssert) AutoGenParserAssert() string {
 	//attempt to autogen parser asserts
 	var ret string
-	for stage, parsers := range *p.TestData {
-		for parser, presults := range parsers {
+
+	//sort map keys for consistent ordre
+	var stages []string
+	for stage := range *p.TestData {
+		stages = append(stages, stage)
+	}
+	sort.Strings(stages)
+
+	for _, stage := range stages {
+		parsers := (*p.TestData)[stage]
+		//sort map keys for consistent ordre
+		var pnames []string
+		for pname := range parsers {
+			pnames = append(pnames, pname)
+		}
+		sort.Strings(pnames)
+		for _, parser := range pnames {
+			presults := parsers[parser]
 			for pidx, result := range presults {
 				ret += fmt.Sprintf(`results["%s"]["%s"][%d].Success == %t`+"\n", stage, parser, pidx, result.Success)
 
