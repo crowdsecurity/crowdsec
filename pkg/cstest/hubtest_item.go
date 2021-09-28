@@ -522,7 +522,15 @@ func (t *HubTestItem) Run() error {
 	if !t.Config.IgnoreParsers {
 		assertFileStat, err := os.Stat(t.ParserAssert.File)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", t.ParserAssert.File, t.Name, testPath)
+			parserAssertFile, err := os.Create(t.ParserAssert.File)
+			if err != nil {
+				log.Fatal(err)
+			}
+			parserAssertFile.Close()
+		}
+		assertFileStat, err = os.Stat(t.ParserAssert.File)
+		if err != nil {
+			return fmt.Errorf("error while stats '%s': %s", t.ParserAssert.File, err)
 		}
 
 		if assertFileStat.Size() == 0 {
@@ -550,7 +558,15 @@ func (t *HubTestItem) Run() error {
 	if nbScenario > 0 {
 		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
 		if os.IsNotExist(err) {
-			return fmt.Errorf("assertion file '%s' for test '%s' doesn't exist in '%s', exiting", t.ScenarioAssert.File, t.Name, testPath)
+			scenarioAssertFile, err := os.Create(t.ScenarioAssert.File)
+			if err != nil {
+				log.Fatal(err)
+			}
+			scenarioAssertFile.Close()
+		}
+		assertFileStat, err = os.Stat(t.ScenarioAssert.File)
+		if err != nil {
+			return fmt.Errorf("error while stats '%s': %s", t.ScenarioAssert.File, err)
 		}
 
 		if assertFileStat.Size() == 0 {
