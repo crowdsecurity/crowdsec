@@ -241,12 +241,14 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 								fmt.Printf("  %s  => %s\n", emoji.RedCircle, fail)
 							}
 						}
-						prompt := &survey.Confirm{
-							Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
-							Default: true,
-						}
-						if err := survey.AskOne(prompt, &cleanTestEnv); err != nil {
-							log.Fatalf("unable to ask to remove runtime folder: %s", err)
+						if !forceClean {
+							prompt := &survey.Confirm{
+								Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
+								Default: true,
+							}
+							if err := survey.AskOne(prompt, &cleanTestEnv); err != nil {
+								log.Fatalf("unable to ask to remove runtime folder: %s", err)
+							}
 						}
 					}
 
