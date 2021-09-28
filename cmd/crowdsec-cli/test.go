@@ -70,7 +70,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatal("no acquisition (--file or --dsn) provided, can't run cscli test.")
 			}
 
-			cmdArgs := []string{"-c", "/etc/crowdsec/user.yaml", "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
+			cmdArgs := []string{"-c", "/etc/crowdsec/config.yaml", "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
 			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
 			output, err := crowdsecCmd.CombinedOutput()
 			if err != nil {
