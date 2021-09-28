@@ -488,7 +488,7 @@ func (t *HubTestItem) Run() error {
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
-		return fmt.Errorf("unable to stat log file '%s'", logFileStat)
+		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err.Error())
 	}
 	if logFileStat.Size() == 0 {
 		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)

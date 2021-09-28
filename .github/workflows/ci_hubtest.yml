@@ -43,5 +43,5 @@ jobs:
       run: |
           cd hub/
           git checkout hub_tests
-          cscli hubtest run --all
+          cscli hubtest run --all --clean
 
