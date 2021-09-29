@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
@@ -42,6 +43,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"Upper":               Upper,
 		"IpInRange":           IpInRange,
 		"TimeNow":             TimeNow,
+		"ParseUri":            ParseUri,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -140,4 +142,22 @@ func IpInRange(ip string, ipRange string) bool {
 
 func TimeNow() string {
 	return time.Now().Format(time.RFC3339)
+}
+
+func ParseUri(uri string) map[string][]string {
+	ret := make(map[string][]string)
+	u, err := url.Parse(uri)
+	if err != nil {
+		log.Errorf("Could not parse URI: %s", err)
+		return ret
+	}
+	parsed, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		log.Errorf("Could not parse query uri : %s", err)
+		return ret
+	}
+	for k, v := range parsed {
+		ret[k] = v
+	}
+	return ret
 }
