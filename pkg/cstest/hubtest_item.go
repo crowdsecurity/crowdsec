@@ -68,11 +68,11 @@ type HubTestItem struct {
 }
 
 const (
-	parserAssertFileName = "parser.assert"
-	parserResultFileName = "parser-dump.yaml"
+	ParserAssertFileName = "parser.assert"
+	ParserResultFileName = "parser-dump.yaml"
 
-	scenarioAssertFileName = "scenario.assert"
-	scenarioResultFileName = "bucket-dump.yaml"
+	ScenarioAssertFileName = "scenario.assert"
+	ScenarioResultFileName = "bucket-dump.yaml"
 
 	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
 )
@@ -95,10 +95,10 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		return nil, fmt.Errorf("Unmarshal: %v", err)
 	}
 
-	parserAssertFilePath := filepath.Join(testPath, parserAssertFileName)
+	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
 	ParserAssert, err := NewParserAssert(parserAssertFilePath)
 
-	scenarioAssertFilePath := filepath.Join(testPath, scenarioAssertFileName)
+	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert, err := NewScenarioAssert(scenarioAssertFilePath)
 	return &HubTestItem{
 		Name:                      name,
@@ -113,8 +113,8 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		RuntimeProfileFilePath:    filepath.Join(runtimeFolder, "profiles.yaml"),
 		RuntimeSimulationFilePath: filepath.Join(runtimeFolder, "simulation.yaml"),
 		ResultsPath:               resultPath,
-		ParserResultFile:          filepath.Join(resultPath, parserResultFileName),
-		ScenarioResultFile:        filepath.Join(resultPath, scenarioResultFileName),
+		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
+		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
 		RuntimeHubConfig: &csconfig.Hub{
 			HubDir:       runtimeHubFolder,
 			ConfigDir:    runtimeFolder,

@@ -84,7 +84,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			logFile.Close()
 
 			// create empty parser assertion file
-			parserAssertFilePath := filepath.Join(testPath, "parser.assert")
+			parserAssertFilePath := filepath.Join(testPath, cstest.ParserAssertFileName)
 			parserAssertFile, err := os.Create(parserAssertFilePath)
 			if err != nil {
 				log.Fatal(err)
@@ -92,7 +92,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			parserAssertFile.Close()
 
 			// create empty scenario assertion file
-			scenarioAssertFilePath := filepath.Join(testPath, "scenario.assert")
+			scenarioAssertFilePath := filepath.Join(testPath, cstest.ScenarioAssertFileName)
 			scenarioAssertFile, err := os.Create(scenarioAssertFilePath)
 			if err != nil {
 				log.Fatal(err)
@@ -210,7 +210,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
 						}
 					}
-					fmt.Printf("Please fill your assert file(s) for test '%s', exiting", test.Name)
+					fmt.Printf("\nPlease fill your assert file(s) for test '%s', exiting\n", test.Name)
 					os.Exit(1)
 				}
 				testResult[test.Name] = test.Success
@@ -322,6 +322,29 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 		},
 	}
 	cmdHubTest.AddCommand(cmdHubTestClean)
+
+	var cmdHubTestInfo = &cobra.Command{
+		Use:               "info",
+		Short:             "info [test_name]",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, testName := range args {
+				test, err := HubTest.LoadTestItem(testName)
+				if err != nil {
+					log.Fatalf("unable to load test '%s': %s", testName, err)
+				}
+				fmt.Println()
+				fmt.Printf("  Test name                   :  %s\n", test.Name)
+				fmt.Printf("  Test path                   :  %s\n", test.Path)
+				fmt.Printf("  Log file                    :  %s\n", filepath.Join(test.Path, test.Config.LogFile))
+				fmt.Printf("  Parser assertion file       :  %s\n", filepath.Join(test.Path, cstest.ParserAssertFileName))
+				fmt.Printf("  Scenario assertion file     :  %s\n", filepath.Join(test.Path, cstest.ScenarioAssertFileName))
+				fmt.Printf("  Configuration File          :  %s\n", filepath.Join(test.Path, "config.yaml"))
+			}
+		},
+	}
+	cmdHubTest.AddCommand(cmdHubTestInfo)
 
 	var cmdHubTestList = &cobra.Command{
 		Use:               "list",
