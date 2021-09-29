@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -19,12 +20,19 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type AssertFail struct {
+	File       string
+	Line       int
+	Expression string
+	Debug      map[string]string
+}
+
 type ParserAssert struct {
 	File              string
 	AutoGenAssert     bool
 	AutoGenAssertData string
 	NbAssert          int
-	Fails             []string
+	Fails             []AssertFail
 	Success           bool
 	TestData          *ParserResults
 }
@@ -36,11 +44,12 @@ type parserResult struct {
 type ParserResults map[string]map[string][]parserResult
 
 func NewParserAssert(file string) (*ParserAssert, error) {
+
 	ParserAssert := &ParserAssert{
 		File:          file,
 		NbAssert:      0,
 		Success:       false,
-		Fails:         make([]string, 0),
+		Fails:         make([]AssertFail, 0),
 		AutoGenAssert: false,
 		TestData:      &ParserResults{},
 	}
@@ -78,8 +87,9 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	}
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
-
+	nbLine := 0
 	for scanner.Scan() {
+		nbLine += 1
 		if scanner.Text() == "" {
 			continue
 		}
@@ -91,7 +101,25 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())
 			//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
-			p.Fails = append(p.Fails, scanner.Text())
+			failedAssert := &AssertFail{
+				File:       p.File,
+				Line:       nbLine,
+				Expression: scanner.Text(),
+				Debug:      make(map[string]string),
+			}
+			variableRE := regexp.MustCompile(`(?P<variable>[^  =]+) == .*`)
+			match := variableRE.FindStringSubmatch(scanner.Text())
+			if len(match) == 0 {
+				log.Infof("Couldn't get variable of line '%s'", scanner.Text())
+			}
+			variable := match[1]
+			result, err := p.EvalExpression(variable)
+			if err != nil {
+				log.Errorf("unable to evaluate variable '%s': %s", variable, err)
+				continue
+			}
+			failedAssert.Debug[variable] = result
+			p.Fails = append(p.Fails, *failedAssert)
 			continue
 		}
 		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())

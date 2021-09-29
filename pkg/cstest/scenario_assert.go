@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -20,7 +21,7 @@ type ScenarioAssert struct {
 	AutoGenAssert     bool
 	AutoGenAssertData string
 	NbAssert          int
-	Fails             []string
+	Fails             []AssertFail
 	Success           bool
 	TestData          *BucketResults
 }
@@ -32,7 +33,7 @@ func NewScenarioAssert(file string) (*ScenarioAssert, error) {
 		File:          file,
 		NbAssert:      0,
 		Success:       false,
-		Fails:         make([]string, 0),
+		Fails:         make([]AssertFail, 0),
 		AutoGenAssert: false,
 		TestData:      &BucketResults{},
 	}
@@ -70,8 +71,9 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	}
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
-
+	nbLine := 0
 	for scanner.Scan() {
+		nbLine += 1
 		if scanner.Text() == "" {
 			continue
 		}
@@ -82,8 +84,26 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 		s.NbAssert += 1
 		if !ok {
 			log.Debugf("%s is FALSE", scanner.Text())
-			//fmt.SPrintf(" %s '%s'\n", emoji.RedSquare, scanner.Text())
-			s.Fails = append(s.Fails, scanner.Text())
+			failedAssert := &AssertFail{
+				File:       s.File,
+				Line:       nbLine,
+				Expression: scanner.Text(),
+				Debug:      make(map[string]string),
+			}
+			variableRE := regexp.MustCompile(`(?P<variable>[^ ]+) == .*`)
+			match := variableRE.FindStringSubmatch(scanner.Text())
+			if len(match) == 0 {
+				log.Infof("Couldn't get variable of line '%s'", scanner.Text())
+				continue
+			}
+			variable := match[1]
+			result, err := s.EvalExpression(variable)
+			if err != nil {
+				log.Errorf("unable to evaluate variable '%s': %s", variable, err)
+				continue
+			}
+			failedAssert.Debug[variable] = result
+			s.Fails = append(s.Fails, *failedAssert)
 			continue
 		}
 		//fmt.Printf(" %s '%s'\n", emoji.GreenSquare, scanner.Text())
