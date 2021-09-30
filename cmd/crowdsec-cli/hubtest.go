@@ -199,12 +199,12 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 					if test.ParserAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ParserAssert.File)
 						fmt.Println()
-						fmt.Printf(test.ParserAssert.AutoGenAssertData)
+						fmt.Println(test.ParserAssert.AutoGenAssertData)
 					}
 					if test.ScenarioAssert.AutoGenAssert {
 						log.Warningf("Assert file '%s' is empty, generating assertion:", test.ScenarioAssert.File)
 						fmt.Println()
-						fmt.Printf(test.ScenarioAssert.AutoGenAssertData)
+						fmt.Println(test.ScenarioAssert.AutoGenAssertData)
 					}
 					if !noClean {
 						if err := test.Clean(); err != nil {
