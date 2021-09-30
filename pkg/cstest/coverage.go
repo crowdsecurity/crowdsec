@@ -143,13 +143,31 @@ func (h *HubTest) GetScenariosCoverage() ([]ScenarioCoverage, error) {
 				if pcover.Scenario == scanner_name {
 					coverage[idx].TestsCount++
 					coverage[idx].PresentIn[assert] = true
-				} else {
-					scenarioNameSplit := strings.Split(pcover.Scenario, "/")
-					scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
-					if scenarioNameOnly == scanner_name {
-						coverage[idx].TestsCount++
-						coverage[idx].PresentIn[assert] = true
-					}
+					continue
+				}
+				scenarioNameSplit := strings.Split(pcover.Scenario, "/")
+				scenarioNameOnly := scenarioNameSplit[len(scenarioNameSplit)-1]
+				if scenarioNameOnly == scanner_name {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
+				}
+				fixedProbingWord := strings.Replace(pcover.Scenario, "probbing", "probing", -1)
+				fixedProbingAssert := strings.Replace(scanner_name, "probbing", "probing", -1)
+				if fixedProbingWord == fixedProbingAssert {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
+				}
+				if fmt.Sprintf("%s-detection", pcover.Scenario) == scanner_name {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
+				}
+				if fmt.Sprintf("%s-detection", fixedProbingWord) == fixedProbingAssert {
+					coverage[idx].TestsCount++
+					coverage[idx].PresentIn[assert] = true
+					continue
 				}
 			}
 		}
