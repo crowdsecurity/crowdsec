@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"strings"
@@ -407,10 +408,12 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
 
 				table.SetHeader([]string{"Parser", "Status", "Number of tests"})
+				parserTested := 0
 				for _, test := range parserCoverage {
 					status := emoji.RedCircle.String()
 					if test.TestsCount > 0 {
 						status = emoji.GreenCircle.String()
+						parserTested += 1
 					}
 					table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
 				}
@@ -425,15 +428,21 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
 
 				table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
+				scenarioTested := 0
 				for _, test := range scenarioCoverage {
 					status := emoji.RedCircle.String()
 					if test.TestsCount > 0 {
 						status = emoji.GreenCircle.String()
+						scenarioTested += 1
 					}
 					table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
 				}
 				table.Render()
-
+				fmt.Println()
+				parserCov := int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
+				scenarioCov := int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
+				fmt.Printf("PARSERS    : %d%% of coverage\n", parserCov)
+				fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCov)
 			} else if csConfig.Cscli.Output == "json" {
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
 				if err != nil {
