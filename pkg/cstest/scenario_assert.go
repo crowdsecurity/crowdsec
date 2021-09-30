@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"regexp"
+	"sort"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -203,6 +204,18 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 	return ret
 }
 
+func (b BucketResults) Len() int {
+	return len(b)
+}
+
+func (b BucketResults) Less(i, j int) bool {
+	return b[i].Overflow.Alert.GetScenario() > b[j].Overflow.Alert.GetScenario()
+}
+
+func (b BucketResults) Swap(i, j int) {
+	b[i], b[j] = b[j], b[i]
+}
+
 func LoadScenarioDump(filepath string) (*BucketResults, error) {
 	var bucketDump BucketResults
 
@@ -220,5 +233,8 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 	if err := yaml.Unmarshal(results, &bucketDump); err != nil {
 		return nil, err
 	}
+
+	sort.Sort(BucketResults(bucketDump))
+
 	return &bucketDump, nil
 }
