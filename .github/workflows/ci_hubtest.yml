@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: Install generated release and perform hub tests
+    name: Hub tests
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.16
@@ -46,8 +46,10 @@ jobs:
           cscli hubtest run --all --clean
           echo "PARSERS_COV=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "SCENARIOS_COV=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2)" >> $GITHUB_ENV
-          echo "PARSER_BADGE_COLOR=$(if [ $(echo $PARSERS_COV | tr -d '%') -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
-          echo "SCENARIO_BADGE_COLOR=$(if [ $(echo $SCENARIOS_COV | tr -d '%') -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
+          echo "PARSERS_COV_NUMBER=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2 | tr -d '%')"
+          echo "SCENARIOS_COV_NUMBER=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2 | tr -d '%')"
+          echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
+          echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
     - name: Create Parsers badge
       uses: schneegans/dynamic-badges-action@v1.1.0
       with:
