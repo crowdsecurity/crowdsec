@@ -44,4 +44,21 @@ jobs:
           cd hub/
           git checkout hub_tests
           cscli hubtest run --all --clean
+      env:
+          PARSERS_COV: $(cscli hubtest coverage --parsers --percent | cut -d "=" -f2 | tr -d '%')
+          SCENARIOS_COV: $(cscli hubtest coverage --scenarios --percent | cut -d "=" -f2 | tr -d '%')
+    - name: generate badges color
+      env:
+           PARSER_BADGE_COLOR: $(if [ "${PARSERS_COV}" -lt "70" ]; then echo "red"; else echo "green"; fi)
+           SCENARIO_BADGE_COLOR: $(if [ "${SCENARIOS_COV}" -lt "70" ]; then echo "red"; else echo "green"; fi)
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v2
+      run: |
+          wget "https://img.shields.io/static/v1?label=Hub Parsers&message=$PARSERS_COV%&color=$PARSER_BADGE_COLOR" -O parsers_badge.svg
+          wget "https://img.shields.io/static/v1?label=Hub Scenarios&message=$SCENARIOS_COV%&color=$SCENARIO_BADGE_COLOR" -O scenarios_badge.svg
+      with:
+        name: code-coverage-report
+        path: |
+          ./parsers_badge.svg
+          ./scenarios_badge.svg
 
