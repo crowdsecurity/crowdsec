@@ -509,8 +509,10 @@ func (t *HubTestItem) Run() error {
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
-	if err != nil {
+	if log.GetLevel() <= log.DebugLevel || err != nil {
 		fmt.Println(string(output))
+	}
+	if err != nil {
 		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
 	}
 
