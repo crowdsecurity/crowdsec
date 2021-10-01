@@ -100,7 +100,7 @@ cscli test -dsn "file://myfile.log" --type nginx
 				log.Fatal(err)
 			}
 			log.Debugf("loaded parsers results %s : %d stages record", "./parser_dump.yaml", len(pdump))
-			if err := cstest.DumpParserTree(pdump); err != nil {
+			if err := cstest.DumpTree(pdump, nil); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
