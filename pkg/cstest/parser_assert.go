@@ -37,11 +37,11 @@ type ParserAssert struct {
 	TestData          *ParserResults
 }
 
-type parserResult struct {
+type ParserResult struct {
 	Evt     types.Event
 	Success bool
 }
-type ParserResults map[string]map[string][]parserResult
+type ParserResults map[string]map[string][]ParserResult
 
 func NewParserAssert(file string) (*ParserAssert, error) {
 
@@ -272,16 +272,14 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	return &pdump, nil
 }
 
-func DumpParserTree(parser_results ParserResults) error {
+func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
 	state := make(map[time.Time]map[string]map[string]bool, 0)
 	assoc := make(map[time.Time]string, 0)
 
 	for stage, parsers := range parser_results {
-		log.Debugf("stage : %s", stage)
 		for parser, results := range parsers {
-			log.Debugf("parser : %s", parser)
 			for _, parser_res := range results {
 				evt := parser_res.Evt
 				if _, ok := state[evt.Line.Time]; !ok {
@@ -296,24 +294,45 @@ func DumpParserTree(parser_results ParserResults) error {
 		}
 	}
 
+	for bname, evtlist := range bucket_pour {
+		for _, evt := range evtlist {
+			if evt.Line.Raw == "" {
+				continue
+			}
+			//it might be bucket oveflow being reprocessed, skip this
+			if _, ok := state[evt.Line.Time]; !ok {
+				state[evt.Line.Time] = make(map[string]map[string]bool)
+				assoc[evt.Line.Time] = evt.Line.Raw
+			}
+			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			if _, ok := state[evt.Line.Time]["buckets"]; !ok {
+				state[evt.Line.Time]["buckets"] = make(map[string]bool)
+			}
+			state[evt.Line.Time]["buckets"][bname] = true
+		}
+	}
+
 	//get each line
 	for tstamp, rawstr := range assoc {
 		fmt.Printf("line: %s\n", rawstr)
 		skeys := make([]string, 0, len(state[tstamp]))
 		for k := range state[tstamp] {
+			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			if k == "buckets" {
+				continue
+			}
 			skeys = append(skeys, k)
 		}
 		sort.Strings(skeys)
 		//iterate stage
-		for idx, stage := range skeys {
+		for _, stage := range skeys {
 			parsers := state[tstamp][stage]
 
 			sep := "├"
 			presep := "|"
-			if idx == len(skeys)-1 {
-				sep = "└"
-				presep = ""
-			}
+
 			fmt.Printf("\t%s %s\n", sep, stage)
 
 			pkeys := make([]string, 0, len(parsers))
@@ -335,6 +354,37 @@ func DumpParserTree(parser_results ParserResults) error {
 
 				}
 			}
+		}
+		sep := "└"
+		if len(state[tstamp]["buckets"]) > 0 {
+			sep = "├"
+		}
+		//did the event enter the bucket pour phase ?
+		if _, ok := state[tstamp]["buckets"]["OK"]; ok {
+			fmt.Printf("\t%s-------- parser success %s\n", sep, emoji.GreenCircle)
+		} else {
+			fmt.Printf("\t%s-------- parser failure %s\n", sep, emoji.RedCircle)
+		}
+		//now print bucket info
+		if len(state[tstamp]["buckets"]) > 0 {
+			fmt.Printf("\t├ Scenarios\n")
+		}
+		bnames := make([]string, 0, len(state[tstamp]["buckets"]))
+		for k, _ := range state[tstamp]["buckets"] {
+			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
+			if k == "OK" {
+				continue
+			}
+			bnames = append(bnames, k)
+		}
+		sort.Strings(bnames)
+		for idx, bname := range bnames {
+			sep := "├"
+			if idx == len(bnames)-1 {
+				sep = "└"
+			}
+			fmt.Printf("\t\t%s %s %s\n", sep, emoji.GreenCircle, bname)
 		}
 		fmt.Println()
 	}
