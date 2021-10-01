@@ -220,14 +220,14 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
-type parserResult struct {
+type ParserResult struct {
 	Evt     types.Event
 	Success bool
 }
 
 var ParseDump bool
 var DumpFolder string
-var StageParseCache map[string]map[string][]parserResult
+var StageParseCache map[string]map[string][]ParserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
@@ -257,14 +257,16 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 
 	if ParseDump {
 		if StageParseCache == nil {
-			StageParseCache = make(map[string]map[string][]parserResult)
+			StageParseCache = make(map[string]map[string][]ParserResult)
+			StageParseCache["success"] = make(map[string][]ParserResult)
+			StageParseCache["success"][""] = make([]ParserResult, 0)
 		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
 			if _, ok := StageParseCache[stage]; !ok {
-				StageParseCache[stage] = make(map[string][]parserResult)
+				StageParseCache[stage] = make(map[string][]ParserResult)
 			}
 		}
 		/* if the node is forward in stages, seek to its stage */
@@ -302,10 +304,10 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {
 				if len(StageParseCache[stage][node.Name]) == 0 {
-					StageParseCache[stage][node.Name] = make([]parserResult, 0)
+					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
 				}
 				evtcopy := deepcopy.Copy(event)
-				parserInfo := parserResult{Evt: evtcopy.(types.Event), Success: ret}
+				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
 				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
 			}
 			if ret {
