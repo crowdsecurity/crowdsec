@@ -51,6 +51,7 @@ jobs:
           echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
     - name: Create Parsers badge
+      if: {{ github.ref == 'ref/head/master' }}
       uses: schneegans/dynamic-badges-action@v1.1.0
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
@@ -60,6 +61,7 @@ jobs:
         message: ${{ env.PARSERS_COV }}
         color: ${{ env.SCENARIO_BADGE_COLOR }}
     - name: Create Scenarios badge
+      if: {{ github.ref == 'ref/head/master' }}
       uses: schneegans/dynamic-badges-action@v1.1.0
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
