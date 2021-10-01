@@ -44,13 +44,10 @@ jobs:
           cd hub/
           git checkout hub_tests
           cscli hubtest run --all --clean
-      env:
-          PARSERS_COV: $(cscli hubtest coverage --parsers --percent | cut -d "=" -f2 | tr -d '%')
-          SCENARIOS_COV: $(cscli hubtest coverage --scenarios --percent | cut -d "=" -f2 | tr -d '%')
-    - name: generate badges color
-      env:
-           PARSER_BADGE_COLOR: $(if [ "${PARSERS_COV}" -lt "70" ]; then echo "red"; else echo "green"; fi)
-           SCENARIO_BADGE_COLOR: $(if [ "${SCENARIOS_COV}" -lt "70" ]; then echo "red"; else echo "green"; fi)
+          echo "PARSERS_COV=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2 | tr -d '%')" >> $GITHUB_ENV
+          echo "SCENARIOS_COV=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2 | tr -d '%')" >> $GITHUB_ENV
+          echo "PARSER_BADGE_COLOR=$(if [ ${PARSERS_COV} -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
+          echo "SCENARIO_BADGE_COLOR=$(if [ ${SCENARIOS_COV} -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
     - name: Archive code coverage results
       uses: actions/upload-artifact@v2
       run: |
