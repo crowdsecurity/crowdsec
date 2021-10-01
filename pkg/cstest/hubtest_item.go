@@ -43,9 +43,10 @@ type HubTestItem struct {
 	RuntimeSimulationFilePath string
 	RuntimeHubConfig          *csconfig.Hub
 
-	ResultsPath        string
-	ParserResultFile   string
-	ScenarioResultFile string
+	ResultsPath          string
+	ParserResultFile     string
+	ScenarioResultFile   string
+	BucketPourResultFile string
 
 	HubPath                string
 	HubTestPath            string
@@ -73,6 +74,8 @@ const (
 
 	ScenarioAssertFileName = "scenario.assert"
 	ScenarioResultFileName = "bucket-dump.yaml"
+
+	BucketPourResultFileName = "bucketpour-dump.yaml"
 
 	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
 )
@@ -115,6 +118,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		ResultsPath:               resultPath,
 		ParserResultFile:          filepath.Join(resultPath, ParserResultFileName),
 		ScenarioResultFile:        filepath.Join(resultPath, ScenarioResultFileName),
+		BucketPourResultFile:      filepath.Join(resultPath, BucketPourResultFileName),
 		RuntimeHubConfig: &csconfig.Hub{
 			HubDir:       runtimeHubFolder,
 			ConfigDir:    runtimeFolder,
