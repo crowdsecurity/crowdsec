@@ -383,6 +383,9 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	}
 	cmdHubTest.AddCommand(cmdHubTestList)
 
+	var showParserCov bool
+	var showScenarioCov bool
+	var showOnlyPercent bool
 	var cmdHubTestCoverage = &cobra.Command{
 		Use:               "coverage",
 		Short:             "coverage",
@@ -391,71 +394,123 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			if err := HubTest.LoadAllTests(); err != nil {
 				log.Fatalf("unable to load all tests: %+v", err)
 			}
-			parserCoverage, err := HubTest.GetParsersCoverage()
-			if err != nil {
-				log.Fatalf("while getting parser coverage : %s", err)
-			}
-			scenarioCoverage, err := HubTest.GetScenariosCoverage()
-			if err != nil {
-				log.Fatalf("while getting scenario coverage: %s", err)
-			}
-			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
+			var err error
+			scenarioCoverage := []cstest.ScenarioCoverage{}
+			parserCoverage := []cstest.ParserCoverage{}
+			scenarioCoveragePercent := 0
+			parserCoveragePercent := 0
+			showAll := false
 
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
+			if !showScenarioCov && !showParserCov { // if both are false (flag by default), show both
+				showAll = true
+			}
 
-				table.SetHeader([]string{"Parser", "Status", "Number of tests"})
+			if showParserCov || showAll {
+				parserCoverage, err = HubTest.GetParsersCoverage()
+				if err != nil {
+					log.Fatalf("while getting parser coverage : %s", err)
+				}
 				parserTested := 0
 				for _, test := range parserCoverage {
-					status := emoji.RedCircle.String()
 					if test.TestsCount > 0 {
-						status = emoji.GreenCircle.String()
 						parserTested += 1
 					}
-					table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
 				}
-				table.Render()
+				parserCoveragePercent = int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
+			}
 
-				// scenario coverage
-				table = tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-
-				table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
+			if showScenarioCov || showAll {
+				scenarioCoverage, err = HubTest.GetScenariosCoverage()
+				if err != nil {
+					log.Fatalf("while getting scenario coverage: %s", err)
+				}
 				scenarioTested := 0
 				for _, test := range scenarioCoverage {
-					status := emoji.RedCircle.String()
 					if test.TestsCount > 0 {
-						status = emoji.GreenCircle.String()
 						scenarioTested += 1
 					}
-					table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
 				}
-				table.Render()
+				scenarioCoveragePercent = int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
+			}
+
+			if showOnlyPercent {
+				if showAll {
+					fmt.Printf("parsers=%d%%\nscenarios=%d%%", parserCoveragePercent, scenarioCoveragePercent)
+				} else if showParserCov {
+					fmt.Printf("parsers=%d%%", parserCoveragePercent)
+				} else if showScenarioCov {
+					fmt.Printf("scenarios=%d%%", scenarioCoveragePercent)
+				}
+				os.Exit(0)
+			}
+
+			if csConfig.Cscli.Output == "human" {
+				if showParserCov || showAll {
+					table := tablewriter.NewWriter(os.Stdout)
+					table.SetCenterSeparator("")
+					table.SetColumnSeparator("")
+
+					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+					table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+					table.SetHeader([]string{"Parser", "Status", "Number of tests"})
+					parserTested := 0
+					for _, test := range parserCoverage {
+						status := emoji.RedCircle.String()
+						if test.TestsCount > 0 {
+							status = emoji.GreenCircle.String()
+							parserTested += 1
+						}
+						table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
+					}
+					table.Render()
+				}
+
+				if showScenarioCov || showAll {
+					table := tablewriter.NewWriter(os.Stdout)
+					table.SetCenterSeparator("")
+					table.SetColumnSeparator("")
+
+					table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+					table.SetAlignment(tablewriter.ALIGN_LEFT)
+
+					table.SetHeader([]string{"Scenario", "Status", "Number of tests"})
+					for _, test := range scenarioCoverage {
+						status := emoji.RedCircle.String()
+						if test.TestsCount > 0 {
+							status = emoji.GreenCircle.String()
+						}
+						table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
+					}
+					table.Render()
+				}
 				fmt.Println()
-				parserCov := int(math.Round((float64(parserTested) / float64(len(parserCoverage)) * 100)))
-				scenarioCov := int(math.Round((float64(scenarioTested) / float64(len(scenarioCoverage)) * 100)))
-				fmt.Printf("PARSERS    : %d%% of coverage\n", parserCov)
-				fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCov)
+				if showParserCov || showAll {
+					fmt.Printf("PARSERS    : %d%% of coverage\n", parserCoveragePercent)
+				}
+				if showScenarioCov || showAll {
+					fmt.Printf("SCENARIOS  : %d%% of coverage\n", scenarioCoveragePercent)
+				}
 			} else if csConfig.Cscli.Output == "json" {
 				dump, err := json.MarshalIndent(parserCoverage, "", " ")
 				if err != nil {
 					log.Fatal(err)
 				}
 				fmt.Printf("%s", dump)
-
+				dump, err = json.MarshalIndent(scenarioCoverage, "", " ")
+				if err != nil {
+					log.Fatal(err)
+				}
+				fmt.Printf("%s", dump)
 			} else {
 				log.Fatalf("only human/json output modes are supported")
 			}
 
 		},
 	}
+	cmdHubTestCoverage.PersistentFlags().BoolVar(&showOnlyPercent, "percent", false, "Show only percentages of coverage")
+	cmdHubTestCoverage.PersistentFlags().BoolVar(&showParserCov, "parsers", false, "Show only parsers coverage")
+	cmdHubTestCoverage.PersistentFlags().BoolVar(&showScenarioCov, "scenarios", false, "Show only scenarios coverage")
 	cmdHubTest.AddCommand(cmdHubTestCoverage)
 
 	var evalExpression string
