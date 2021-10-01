@@ -25,9 +25,11 @@ type ScenarioAssert struct {
 	Fails             []AssertFail
 	Success           bool
 	TestData          *BucketResults
+	PourData          *BucketPourInfo
 }
 
 type BucketResults []types.Event
+type BucketPourInfo map[string][]types.Event
 
 func NewScenarioAssert(file string) (*ScenarioAssert, error) {
 	ScenarioAssert := &ScenarioAssert{
@@ -37,12 +39,13 @@ func NewScenarioAssert(file string) (*ScenarioAssert, error) {
 		Fails:         make([]AssertFail, 0),
 		AutoGenAssert: false,
 		TestData:      &BucketResults{},
+		PourData:      &BucketPourInfo{},
 	}
 	return ScenarioAssert, nil
 }
 
 func (s *ScenarioAssert) AutoGenFromFile(filename string) (string, error) {
-	err := s.LoadTest(filename)
+	err := s.LoadTest(filename, "")
 	if err != nil {
 		return "", err
 	}
@@ -50,13 +53,21 @@ func (s *ScenarioAssert) AutoGenFromFile(filename string) (string, error) {
 	return ret, nil
 }
 
-func (s *ScenarioAssert) LoadTest(filename string) error {
+func (s *ScenarioAssert) LoadTest(filename string, bucketpour string) error {
 	var err error
 	bucketDump, err := LoadScenarioDump(filename)
 	if err != nil {
 		return fmt.Errorf("loading scenario dump file '%s': %+v", filename, err)
 	}
 	s.TestData = bucketDump
+
+	if bucketpour != "" {
+		pourDump, err := LoadBucketPourDump(bucketpour)
+		if err != nil {
+			return fmt.Errorf("loading bucket pour dump file '%s': %+v", filename, err)
+		}
+		s.PourData = pourDump
+	}
 	return nil
 }
 
@@ -67,7 +78,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 		return fmt.Errorf("failed to open")
 	}
 
-	if err := s.LoadTest(testFile); err != nil {
+	if err := s.LoadTest(testFile, ""); err != nil {
 		return fmt.Errorf("unable to load parser dump file '%s': %s", testFile, err)
 	}
 	scanner := bufio.NewScanner(file)
@@ -214,6 +225,27 @@ func (b BucketResults) Less(i, j int) bool {
 
 func (b BucketResults) Swap(i, j int) {
 	b[i], b[j] = b[j], b[i]
+}
+
+func LoadBucketPourDump(filepath string) (*BucketPourInfo, error) {
+	var bucketDump BucketPourInfo
+
+	dumpData, err := os.Open(filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer dumpData.Close()
+
+	results, err := ioutil.ReadAll(dumpData)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := yaml.Unmarshal(results, &bucketDump); err != nil {
+		return nil, err
+	}
+
+	return &bucketDump, nil
 }
 
 func LoadScenarioDump(filepath string) (*BucketResults, error) {
