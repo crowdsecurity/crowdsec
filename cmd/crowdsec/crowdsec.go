@@ -156,10 +156,31 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 		if dumpStates {
 			dumpParserState()
 			dumpOverflowState()
+			dumpBucketsPour()
 			os.Exit(0)
 		}
 		return nil
 	})
+}
+
+func dumpBucketsPour() error {
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucketpour-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(leaky.BucketPourCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+	return nil
 }
 
 func dumpParserState() error {
