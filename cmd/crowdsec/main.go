@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -186,6 +187,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	if dumpFolder != "" {
 		parser.ParseDump = true
 		parser.DumpFolder = dumpFolder
+		leakybucket.BucketPourTrack = true
 		dumpStates = true
 	}
 
