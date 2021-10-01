@@ -279,9 +279,9 @@ func DumpParserTree(parser_results ParserResults) error {
 	assoc := make(map[time.Time]string, 0)
 
 	for stage, parsers := range parser_results {
-		log.Printf("stage : %s", stage)
+		log.Debugf("stage : %s", stage)
 		for parser, results := range parsers {
-			log.Printf("parser : %s", parser)
+			log.Debugf("parser : %s", parser)
 			for _, parser_res := range results {
 				evt := parser_res.Evt
 				if _, ok := state[evt.Line.Time]; !ok {
@@ -298,7 +298,7 @@ func DumpParserTree(parser_results ParserResults) error {
 
 	//get each line
 	for tstamp, rawstr := range assoc {
-		fmt.Printf("line:%s\n", rawstr)
+		fmt.Printf("line: %s\n", rawstr)
 		skeys := make([]string, 0, len(state[tstamp]))
 		for k := range state[tstamp] {
 			skeys = append(skeys, k)
@@ -336,7 +336,7 @@ func DumpParserTree(parser_results ParserResults) error {
 				}
 			}
 		}
-
+		fmt.Println()
 	}
 	return nil
 }

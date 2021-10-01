@@ -485,5 +485,34 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 	cmdHubTest.AddCommand(cmdHubTestEval)
 
+	var cmdHubTestInspect = &cobra.Command{
+		Use:               "inspect",
+		Short:             "inspect [test_name]",
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, testName := range args {
+				test, err := HubTest.LoadTestItem(testName)
+				if err != nil {
+					log.Fatalf("can't load test: %+v", err)
+				}
+				err = test.ParserAssert.LoadTest(test.ParserResultFile)
+				if err != nil {
+					err := test.Run()
+					if err != nil {
+						log.Fatalf("running test '%s' failed: %+v", test.Name, err)
+					}
+					err = test.ParserAssert.LoadTest(test.ParserResultFile)
+					if err != nil {
+						log.Fatalf("unable to load parser result after run: %s", err)
+					}
+				}
+				cstest.DumpParserTree(*test.ParserAssert.TestData)
+			}
+		},
+	}
+	cmdHubTestInspect.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
+	cmdHubTest.AddCommand(cmdHubTestInspect)
+
 	return cmdHubTest
 }
