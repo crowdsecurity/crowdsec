@@ -157,10 +157,13 @@ LOOP:
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+			if dumpStates {
+				continue
+			}
+
 			cacheMutex.Lock()
 			cache = append(cache, event.Overflow)
 			cacheMutex.Unlock()
-
 		}
 	}
 
