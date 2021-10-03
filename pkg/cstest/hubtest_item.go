@@ -274,6 +274,9 @@ func (t *HubTestItem) InstallHub() error {
 				}
 
 				scenarioDirDest = fmt.Sprintf("%s/scenarios/", t.RuntimePath)
+				if err := os.MkdirAll(scenarioDirDest, os.ModePerm); err != nil {
+					return fmt.Errorf("unable to create folder '%s': %s", scenarioDirDest, err)
+				}
 
 				scenarioFileName := filepath.Base(customScenarioPath)
 				scenarioFileDest := filepath.Join(scenarioDirDest, scenarioFileName)
