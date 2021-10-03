@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -10,26 +9,25 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
-func NewTestCmd() *cobra.Command {
+func NewExplainCmd() *cobra.Command {
 	/* ---- HUB COMMAND */
 	var logFile string
 	var dsn string
 	var logLine string
 	var logType string
 
-	var cmdTest = &cobra.Command{
-		Use:   "test",
-		Short: "Test acquisitions",
+	var cmdExplain = &cobra.Command{
+		Use:   "explain",
+		Short: "Explain log pipeline",
 		Long: `
-Test acquisitions
+Explain log pipeline 
 		`,
 		Example: `
-cscli test --file ./myfile.log --type nginx 
-cscli test --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
-cscli test -dsn "file://myfile.log" --type nginx
+cscli explain --file ./myfile.log --type nginx 
+cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
+cscli explain -dsn "file://myfile.log" --type nginx
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -84,31 +82,28 @@ cscli test -dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
 				}
 			}
-			var pdump cstest.ParserResults
+			parserDumpFile := filepath.Join("./", cstest.ParserResultFileName)
+			bucketStateDumpFile := filepath.Join("./", cstest.BucketPourResultFileName)
 
-			data_fd, err := os.Open("./parser-dump.yaml")
+			parserDump, err := cstest.LoadParserDump(parserDumpFile)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("unable to load parser dump result: %s", err)
 			}
-			defer data_fd.Close()
-			//umarshal full gruik
-			results, err := ioutil.ReadAll(data_fd)
+
+			bucketStateDump, err := cstest.LoadBucketPourDump(bucketStateDumpFile)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatalf("unable to load bucket dump result: %s", err)
 			}
-			if err := yaml.Unmarshal(results, &pdump); err != nil {
-				log.Fatal(err)
-			}
-			log.Debugf("loaded parsers results %s : %d stages record", "./parser_dump.yaml", len(pdump))
-			if err := cstest.DumpTree(pdump, nil); err != nil {
+
+			if err := cstest.DumpTree(*parserDump, *bucketStateDump); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
 	}
-	cmdTest.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")
-	cmdTest.PersistentFlags().StringVarP(&dsn, "dsn", "d", "", "DSN to test")
-	cmdTest.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Lgg line to test")
-	cmdTest.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
+	cmdExplain.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")
+	cmdExplain.PersistentFlags().StringVarP(&dsn, "dsn", "d", "", "DSN to test")
+	cmdExplain.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Lgg line to test")
+	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
 
-	return cmdTest
+	return cmdExplain
 }
