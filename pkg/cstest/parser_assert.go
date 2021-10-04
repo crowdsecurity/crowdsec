@@ -43,7 +43,7 @@ type ParserResult struct {
 }
 type ParserResults map[string]map[string][]ParserResult
 
-func NewParserAssert(file string) (*ParserAssert, error) {
+func NewParserAssert(file string) *ParserAssert {
 
 	ParserAssert := &ParserAssert{
 		File:          file,
@@ -53,7 +53,7 @@ func NewParserAssert(file string) (*ParserAssert, error) {
 		AutoGenAssert: false,
 		TestData:      &ParserResults{},
 	}
-	return ParserAssert, nil
+	return ParserAssert
 }
 
 func (p *ParserAssert) AutoGenFromFile(filename string) (string, error) {

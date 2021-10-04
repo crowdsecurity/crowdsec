@@ -31,7 +31,7 @@ type ScenarioAssert struct {
 type BucketResults []types.Event
 type BucketPourInfo map[string][]types.Event
 
-func NewScenarioAssert(file string) (*ScenarioAssert, error) {
+func NewScenarioAssert(file string) *ScenarioAssert {
 	ScenarioAssert := &ScenarioAssert{
 		File:          file,
 		NbAssert:      0,
@@ -41,7 +41,7 @@ func NewScenarioAssert(file string) (*ScenarioAssert, error) {
 		TestData:      &BucketResults{},
 		PourData:      &BucketPourInfo{},
 	}
-	return ScenarioAssert, nil
+	return ScenarioAssert
 }
 
 func (s *ScenarioAssert) AutoGenFromFile(filename string) (string, error) {

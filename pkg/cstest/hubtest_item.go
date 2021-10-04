@@ -99,10 +99,10 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	}
 
 	parserAssertFilePath := filepath.Join(testPath, ParserAssertFileName)
-	ParserAssert, err := NewParserAssert(parserAssertFilePath)
+	ParserAssert := NewParserAssert(parserAssertFilePath)
 
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
-	ScenarioAssert, err := NewScenarioAssert(scenarioAssertFilePath)
+	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
