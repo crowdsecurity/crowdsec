@@ -163,7 +163,7 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 	})
 }
 
-func dumpBucketsPour() error {
+func dumpBucketsPour() {
 	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucketpour-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
 		log.Fatalf("open: %s", err)
@@ -180,10 +180,9 @@ func dumpBucketsPour() error {
 	if err := fd.Close(); err != nil {
 		log.Fatalf(" close: %s", err)
 	}
-	return nil
 }
 
-func dumpParserState() error {
+func dumpParserState() {
 
 	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "parser-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
@@ -201,10 +200,9 @@ func dumpParserState() error {
 	if err := fd.Close(); err != nil {
 		log.Fatalf(" close: %s", err)
 	}
-	return nil
 }
 
-func dumpOverflowState() error {
+func dumpOverflowState() {
 
 	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucket-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
 	if err != nil {
@@ -222,7 +220,6 @@ func dumpOverflowState() error {
 	if err := fd.Close(); err != nil {
 		log.Fatalf(" close: %s", err)
 	}
-	return nil
 }
 
 func waitOnTomb() {
