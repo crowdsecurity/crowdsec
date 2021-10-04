@@ -88,6 +88,9 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				if err != nil {
+					log.Errorf("local api : %s", err)
+				}
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {

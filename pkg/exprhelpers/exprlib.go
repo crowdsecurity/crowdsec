@@ -141,3 +141,8 @@ func IpInRange(ip string, ipRange string) bool {
 func TimeNow() string {
 	return time.Now().Format(time.RFC3339)
 }
+
+func KeyExists(key string, dict map[string]interface{}) bool {
+	_, ok := dict[key]
+	return ok
+}

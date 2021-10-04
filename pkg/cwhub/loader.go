@@ -81,6 +81,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
+	log.Tracef("stage:%s ftype:%s", stage, ftype)
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
 	if stage == SCENARIOS {
 		ftype = SCENARIOS

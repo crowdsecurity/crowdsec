@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -144,7 +145,14 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			continue
 		}
 		meta := models.Meta{}
-		for k, v := range evt.Meta {
+		//we want consistence
+		skeys := make([]string, 0, len(evt.Meta))
+		for k := range evt.Meta {
+			skeys = append(skeys, k)
+		}
+		sort.Strings(skeys)
+		for _, k := range skeys {
+			v := evt.Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
 			meta = append(meta, &subMeta)
 		}

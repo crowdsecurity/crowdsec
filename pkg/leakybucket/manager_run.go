@@ -9,6 +9,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/mohae/deepcopy"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
@@ -18,6 +19,8 @@ import (
 )
 
 var serialized map[string]Leaky
+var BucketPourCache map[string][]types.Event
+var BucketPourTrack bool
 
 /*The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
@@ -158,6 +161,18 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	)
 	//synchronize with DumpBucketsStateAt
 
+	//to track bucket pour : track items that enter the pour routine
+	if BucketPourTrack {
+		if BucketPourCache == nil {
+			BucketPourCache = make(map[string][]types.Event)
+		}
+		if _, ok := BucketPourCache["OK"]; !ok {
+			BucketPourCache["OK"] = make([]types.Event, 0)
+		}
+		evt := deepcopy.Copy(parsed)
+		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
+	}
+
 	for idx, holder := range holders {
 
 		if holder.RunTimeFilter != nil {
@@ -290,6 +305,15 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			select {
 			case bucket.In <- parsed:
 				holder.logger.Tracef("Successfully sent !")
+				//and track item poured to each bucket
+				if BucketPourTrack {
+					if _, ok := BucketPourCache[bucket.Name]; !ok {
+						BucketPourCache[bucket.Name] = make([]types.Event, 0)
+					}
+					evt := deepcopy.Copy(parsed)
+					BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt.(types.Event))
+				}
+
 				//sent was successful !
 				sent = true
 				continue
