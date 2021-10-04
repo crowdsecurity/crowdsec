@@ -540,9 +540,9 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 	cmdHubTestEval.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
 	cmdHubTest.AddCommand(cmdHubTestEval)
 
-	var cmdHubTestInspect = &cobra.Command{
-		Use:               "inspect",
-		Short:             "inspect [test_name]",
+	var cmdHubTestExplain = &cobra.Command{
+		Use:               "explain",
+		Short:             "explain [test_name]",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -579,8 +579,7 @@ cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario cr
 			}
 		},
 	}
-	cmdHubTestInspect.PersistentFlags().StringVarP(&evalExpression, "expr", "e", "", "Expression to eval")
-	cmdHubTest.AddCommand(cmdHubTestInspect)
+	cmdHubTest.AddCommand(cmdHubTestExplain)
 
 	return cmdHubTest
 }
