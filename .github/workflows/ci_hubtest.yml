@@ -12,6 +12,8 @@ jobs:
   hubtest:
     name: Hub tests
     runs-on: ubuntu-latest
+    env:
+      PUSH_COVERAGE: ${{ github.ref == 'refs/heads/master' }}
     steps:
     - name: Set up Go 1.16
       uses: actions/setup-go@v1
@@ -50,27 +52,25 @@ jobs:
           echo "SCENARIOS_COV_NUMBER=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2 | tr -d '%')"
           echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
-  coverage:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master'
-    steps:
-      - name: Create Parsers badge
-        uses: schneegans/dynamic-badges-action@v1.1.0
-        with:
-          auth: ${{ secrets.GIST_BADGES_SECRET }}
-          gistID: ${{ secrets.GIST_BADGES_ID }}
-          filename: crowdsec_parsers_badge.json
-          label: Hub Parsers
-          message: ${{ env.PARSERS_COV }}
-          color: ${{ env.SCENARIO_BADGE_COLOR }}
-      - name: Create Scenarios badge
-        uses: schneegans/dynamic-badges-action@v1.1.0
-        with:
-          auth: ${{ secrets.GIST_BADGES_SECRET }}
-          gistID: ${{ secrets.GIST_BADGES_ID }}
-          filename: crowdsec_scenarios_badge.json
-          label: Hub Scenarios
-          message: ${{ env.SCENARIOS_COV }}
-          color: ${{ env.SCENARIO_BADGE_COLOR }}
+    - name: Create Parsers badge
+      uses: schneegans/dynamic-badges-action@v1.1.0
+      if: ${{ env.PUSH_COVERAGE }}
+      with:
+        auth: ${{ secrets.GIST_BADGES_SECRET }}
+        gistID: ${{ secrets.GIST_BADGES_ID }}
+        filename: crowdsec_parsers_badge.json
+        label: Hub Parsers
+        message: ${{ env.PARSERS_COV }}
+        color: ${{ env.SCENARIO_BADGE_COLOR }}
+    - name: Create Scenarios badge
+      uses: schneegans/dynamic-badges-action@v1.1.0
+      if: ${{ env.PUSH_COVERAGE }}
+      with:
+        auth: ${{ secrets.GIST_BADGES_SECRET }}
+        gistID: ${{ secrets.GIST_BADGES_ID }}
+        filename: crowdsec_scenarios_badge.json
+        label: Hub Scenarios
+        message: ${{ env.SCENARIOS_COV }}
+        color: ${{ env.SCENARIO_BADGE_COLOR }}
 
 
