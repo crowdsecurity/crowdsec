@@ -45,7 +45,7 @@ jobs:
       run: |
           cd hub/
           git checkout hub_tests
-          cscli hubtest run --all --clean
+          cscli hubtest run --all --parsers --clean
           echo "PARSERS_COV=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "SCENARIOS_COV=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "PARSERS_COV_NUMBER=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2 | tr -d '%')"
@@ -55,7 +55,7 @@ jobs:
     - name: test branch
       run: echo ${{ env.PUSH_BADGES }}
     - name: Create Parsers badge
-      if: ${{ PUSH_BADGES }}
+      if: ${{ env.PUSH_BADGES }}
       uses: schneegans/dynamic-badges-action@v1.1.0
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
@@ -65,7 +65,7 @@ jobs:
         message: ${{ env.PARSERS_COV }}
         color: ${{ env.SCENARIO_BADGE_COLOR }}
     - name: Create Scenarios badge
-      if: ${{ PUSH_BADGES }}
+      if: ${{ env.PUSH_BADGES }}
       uses: schneegans/dynamic-badges-action@v1.1.0
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
