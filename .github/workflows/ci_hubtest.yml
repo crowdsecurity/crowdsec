@@ -12,8 +12,6 @@ jobs:
   hubtest:
     name: Hub tests
     runs-on: ubuntu-latest
-    env:
-      PUSH_COVERAGE: ${{ github.ref == 'refs/heads/master' }}
     steps:
     - name: Set up Go 1.16
       uses: actions/setup-go@v1
@@ -54,7 +52,7 @@ jobs:
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
     - name: Create Parsers badge
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ env.PUSH_COVERAGE }}
+      if: ${{ github.ref == 'refs/heads/master' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
@@ -64,7 +62,7 @@ jobs:
         color: ${{ env.SCENARIO_BADGE_COLOR }}
     - name: Create Scenarios badge
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ env.PUSH_COVERAGE }}
+      if: ${{ github.ref == 'refs/heads/master' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
@@ -72,5 +70,3 @@ jobs:
         label: Hub Scenarios
         message: ${{ env.SCENARIOS_COV }}
         color: ${{ env.SCENARIO_BADGE_COLOR }}
-
-
