@@ -52,6 +52,8 @@ jobs:
           echo "SCENARIOS_COV_NUMBER=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2 | tr -d '%')"
           echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
+    - name: test branch
+      run: echo ${{ env.BRANCH_REF }}
     - name: Create Parsers badge
       if: ${{ env.BRANCH_REF }} == 'ref/head/master'
       uses: schneegans/dynamic-badges-action@v1.1.0
