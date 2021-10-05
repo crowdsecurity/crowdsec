@@ -51,26 +51,26 @@ jobs:
           echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
   coverage:
-  runs-on: ubuntu-latest
-  if: ${{ github.ref == 'ref/head/master' }}
-  step:
-    - name: Create Parsers badge
-      uses: schneegans/dynamic-badges-action@v1.1.0
-      with:
-        auth: ${{ secrets.GIST_BADGES_SECRET }}
-        gistID: ${{ secrets.GIST_BADGES_ID }}
-        filename: crowdsec_parsers_badge.json
-        label: Hub Parsers
-        message: ${{ env.PARSERS_COV }}
-        color: ${{ env.SCENARIO_BADGE_COLOR }}
-    - name: Create Scenarios badge
-      uses: schneegans/dynamic-badges-action@v1.1.0
-      with:
-        auth: ${{ secrets.GIST_BADGES_SECRET }}
-        gistID: ${{ secrets.GIST_BADGES_ID }}
-        filename: crowdsec_scenarios_badge.json
-        label: Hub Scenarios
-        message: ${{ env.SCENARIOS_COV }}
-        color: ${{ env.SCENARIO_BADGE_COLOR }}
+    runs-on: ubuntu-latest
+    if: ${{ github.ref == 'ref/head/master' }}
+    step:
+      - name: Create Parsers badge
+        uses: schneegans/dynamic-badges-action@v1.1.0
+        with:
+          auth: ${{ secrets.GIST_BADGES_SECRET }}
+          gistID: ${{ secrets.GIST_BADGES_ID }}
+          filename: crowdsec_parsers_badge.json
+          label: Hub Parsers
+          message: ${{ env.PARSERS_COV }}
+          color: ${{ env.SCENARIO_BADGE_COLOR }}
+      - name: Create Scenarios badge
+        uses: schneegans/dynamic-badges-action@v1.1.0
+        with:
+          auth: ${{ secrets.GIST_BADGES_SECRET }}
+          gistID: ${{ secrets.GIST_BADGES_ID }}
+          filename: crowdsec_scenarios_badge.json
+          label: Hub Scenarios
+          message: ${{ env.SCENARIOS_COV }}
+          color: ${{ env.SCENARIO_BADGE_COLOR }}
 
 
