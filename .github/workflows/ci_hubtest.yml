@@ -53,7 +53,7 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     if: ${{ github.ref == 'ref/head/master' }}
-    step:
+    steps:
       - name: Create Parsers badge
         uses: schneegans/dynamic-badges-action@v1.1.0
         with:
