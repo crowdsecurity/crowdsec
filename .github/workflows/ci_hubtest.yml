@@ -28,7 +28,7 @@ jobs:
       run: echo ${{ github.ref }}
     - name: Create Parsers badge
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ github.ref == 'refs/pull/999/merge' }}
+      if: ${{ github.ref == 'refs/pull/999/merg' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
@@ -38,7 +38,7 @@ jobs:
         color: ${{ env.SCENARIO_BADGE_COLOR }}
     - name: Create Scenarios badge
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ github.ref == 'refs/pull/999/merge' }}
+      if: ${{ github.ref == 'refs/pull/999/merg' }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
