@@ -52,7 +52,7 @@ jobs:
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
   coverage:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/head/master'
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Create Parsers badge
         uses: schneegans/dynamic-badges-action@v1.1.0
