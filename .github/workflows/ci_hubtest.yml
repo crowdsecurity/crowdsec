@@ -45,7 +45,7 @@ jobs:
       run: |
           cd hub/
           git checkout hub_tests
-          cscli hubtest run --all --parsers --clean
+          cscli hubtest run --all --clean
           echo "PARSERS_COV=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "SCENARIOS_COV=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "PARSERS_COV_NUMBER=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2 | tr -d '%')"
