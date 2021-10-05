@@ -53,7 +53,7 @@ jobs:
           echo "PARSER_BADGE_COLOR=$(if [ $PARSERS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
           echo "SCENARIO_BADGE_COLOR=$(if [ $SCENARIOS_COV_NUMBER -lt '70' ]; then echo 'red'; else echo 'green'; fi)" >> $GITHUB_ENV
     - name: debuuuug
-      run: echo ${{ env.PUSH_COVERAGE == true }}
+      run: echo ${{ env.PUSH_COVERAGE }}
     - name: debuuuuuuuuug
       run: echo ${{ github.ref }}
     - name: Create Parsers badge
