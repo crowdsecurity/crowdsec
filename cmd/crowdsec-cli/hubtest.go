@@ -58,7 +58,7 @@ func NewHubTestCmd() *cobra.Command {
 		Short: "create [test_name]",
 		Example: `cscli hubtest create my-awesome-test --type syslog
 cscli hubtest create my-nginx-custom-test --type nginx
-cscli hubtest create my-scenario-test --parser crowdsecurity/nginx --scenario crowdsecurity/http-probing`,
+cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios crowdsecurity/http-probing`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
