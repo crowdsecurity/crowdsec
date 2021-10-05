@@ -13,7 +13,7 @@ jobs:
     name: Hub tests
     runs-on: ubuntu-latest
     env:
-      PUSH_COVERAGE: ${{ github.ref == 'refs/heads/master' }}
+      PUSH_COVERAGE: ${{ github.ref == 'refs/pull/999/merge' }}
     steps:
     - name: Set up Go 1.16
       uses: actions/setup-go@v1
@@ -68,7 +68,7 @@ jobs:
         color: ${{ env.SCENARIO_BADGE_COLOR }}
     - name: Create Scenarios badge
       uses: schneegans/dynamic-badges-action@v1.1.0
-      if: ${{ env.PUSH_COVERAGE }}
+      if: ${{ env.PUSH_COVERAGE == true }}
       with:
         auth: ${{ secrets.GIST_BADGES_SECRET }}
         gistID: ${{ secrets.GIST_BADGES_ID }}
