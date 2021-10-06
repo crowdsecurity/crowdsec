@@ -199,3 +199,12 @@ func Int32Ptr(i int32) *int32 {
 func BoolPtr(b bool) *bool {
 	return &b
 }
+
+func InSlice(str string, slice []string) bool {
+	for _, item := range slice {
+		if str == item {
+			return true
+		}
+	}
+	return false
+}
