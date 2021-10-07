@@ -25,9 +25,7 @@ var Client *apiclient.ApiClient
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
-	/*process in reverse order to keep the latest item only*/
 
-	/*process in reverse order to keep the latest item only*/
 	for aIdx := 0; aIdx < len(*alerts); aIdx++ {
 		alertItem := (*alerts)[aIdx]
 		newDecisions := make([]*models.Decision, 0)
