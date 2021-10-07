@@ -45,7 +45,6 @@ paths:
           required: false
           type: string
           description: 'Comma separated scopes of decisions to fetch'
-          example: ip,range,country
       responses:
         '200':
           description: successful operation
@@ -917,6 +916,7 @@ definitions:
     - "source"
     - "start_at"
     - "stop_at"
+    - "scenario_trust"
     properties:
       scenario_hash:
         type: "string"
@@ -930,6 +930,8 @@ definitions:
         $ref: "#/definitions/Source"
       scenario_version:
         type: "string"
+      scenario_trust:
+        type: "string"
       message:
         type: "string"
         description: "a human readable message"
@@ -937,6 +939,10 @@ definitions:
         type: "string"
       stop_at:
         type: "string"
+      decisions:
+        type: array
+        items:
+          $ref: '#/definitions/Decision'
     title: "Signal"
 tags:
   - name: bouncers

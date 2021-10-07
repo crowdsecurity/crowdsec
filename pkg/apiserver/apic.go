@@ -78,7 +78,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 }
 
 func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool) *models.AddSignalsRequestItem {
-	return &models.AddSignalsRequestItem{
+	signal := &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
@@ -88,7 +88,13 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool
 		StopAt:          alert.StopAt,
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
+		ScenarioTrust:   &scenarioTrust,
 	}
+	if keepDecisions {
+		log.Printf("Keeping decisions to send to CAPI")
+		signal.Decisions = alert.Decisions
+	}
+	return signal
 }
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {

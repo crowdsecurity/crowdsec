@@ -6,6 +6,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"strconv"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -19,6 +21,9 @@ type AddSignalsRequestItem struct {
 
 	// created at
 	CreatedAt string `json:"created_at,omitempty"`
+
+	// decisions
+	Decisions []*Decision `json:"decisions"`
 
 	// machine id
 	MachineID string `json:"machine_id,omitempty"`
@@ -34,6 +39,10 @@ type AddSignalsRequestItem struct {
 	// scenario hash
 	// Required: true
 	ScenarioHash *string `json:"scenario_hash"`
+
+	// scenario trust
+	// Required: true
+	ScenarioTrust *string `json:"scenario_trust"`
 
 	// scenario version
 	// Required: true
@@ -56,6 +65,10 @@ type AddSignalsRequestItem struct {
 func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateDecisions(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateMessage(formats); err != nil {
 		res = append(res, err)
 	}
@@ -65,6 +78,10 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateScenarioHash(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenarioTrust(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -90,6 +107,30 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *AddSignalsRequestItem) validateDecisions(formats strfmt.Registry) error {
+	if swag.IsZero(m.Decisions) { // not required
+		return nil
+	}
+
+	for i := 0; i < len(m.Decisions); i++ {
+		if swag.IsZero(m.Decisions[i]) { // not required
+			continue
+		}
+
+		if m.Decisions[i] != nil {
+			if err := m.Decisions[i].Validate(formats); err != nil {
+				if ve, ok := err.(*errors.Validation); ok {
+					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
+				}
+				return err
+			}
+		}
+
+	}
+
+	return nil
+}
+
 func (m *AddSignalsRequestItem) validateMessage(formats strfmt.Registry) error {
 
 	if err := validate.Required("message", "body", m.Message); err != nil {
@@ -111,6 +152,15 @@ func (m *AddSignalsRequestItem) validateScenario(formats strfmt.Registry) error 
 func (m *AddSignalsRequestItem) validateScenarioHash(formats strfmt.Registry) error {
 
 	if err := validate.Required("scenario_hash", "body", m.ScenarioHash); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AddSignalsRequestItem) validateScenarioTrust(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario_trust", "body", m.ScenarioTrust); err != nil {
 		return err
 	}
 
