@@ -91,7 +91,7 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool
 		ScenarioTrust:   &scenarioTrust,
 	}
 	if keepDecisions {
-		log.Printf("Keeping decisions to send to CAPI")
+		log.Debugf("Keeping decisions to send to CAPI")
 		signal.Decisions = alert.Decisions
 	}
 	return signal

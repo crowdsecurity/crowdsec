@@ -150,22 +150,25 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 	}
 
-	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	alertsID, alertsToSend, err := c.DBClient.CreateAlert(machineID, input)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
+	for _, alert := range alertsToSend {
+		alert.MachineID = machineID
+	}
 
 	if c.CAPIChan != nil {
 		select {
-		case c.CAPIChan <- input:
+		case c.CAPIChan <- alertsToSend:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")
 		}
 	}
 
-	gctx.JSON(http.StatusCreated, alerts)
+	gctx.JSON(http.StatusCreated, alertsID)
 	return
 }
 
