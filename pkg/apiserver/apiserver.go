@@ -166,18 +166,19 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	})
 	router.Use(CustomRecoveryWithWriter())
 	controller := &controllers.Controller{
-		DBClient: dbClient,
-		Ectx:     context.Background(),
-		Router:   router,
-		Profiles: config.Profiles,
-		Log:      clog,
+		DBClient:      dbClient,
+		Ectx:          context.Background(),
+		Router:        router,
+		Profiles:      config.Profiles,
+		Log:           clog,
+		ConsoleConfig: config.ConsoleConfig,
 	}
 
 	var apiClient *apic
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI pusher")
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
 		if err != nil {
 			return &APIServer{}, err
 		}

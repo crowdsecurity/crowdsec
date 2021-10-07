@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/alexliesenfeld/health"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -10,17 +12,18 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	Router        *gin.Engine
-	Profiles      []*csconfig.ProfileCfg
-	CAPIChan      chan []*models.Alert
-	PluginChannel chan csplugin.ProfileAlert
-	Log           *log.Logger
+	Ectx                  context.Context
+	DBClient              *database.Client
+	Router                *gin.Engine
+	Profiles              []*csconfig.ProfileCfg
+	CAPIChan              chan []*models.Alert
+	PluginChannel         chan csplugin.ProfileAlert
+	Log                   *log.Logger
+	ConsoleConfig         *csconfig.ConsoleConfig
+	DeleteDecisionChannel chan models.Decision
 }
 
 func (c *Controller) Init() error {

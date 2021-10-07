@@ -128,34 +128,20 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 
 	for _, alert := range input {
 		alert.MachineID = machineID
-		if len(alert.Decisions) != 0 {
-			for pIdx, profile := range c.Profiles {
-				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
-				if err != nil {
-					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-					return
-				}
-				if !matched {
-					continue
-				}
-				c.sendAlertToPluginChannel(alert, uint(pIdx))
-				if profile.OnSuccess == "break" {
-					break
-				}
-			}
-			continue
-		}
-
 		for pIdx, profile := range c.Profiles {
 			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
+
 			if !matched {
 				continue
 			}
-			alert.Decisions = append(alert.Decisions, profileDecisions...)
+
+			if len(alert.Decisions) == 0 { // non manual decision
+				alert.Decisions = append(alert.Decisions, profileDecisions...)
+			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
 			if profile.OnSuccess == "break" {

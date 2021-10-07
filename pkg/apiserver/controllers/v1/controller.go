@@ -18,6 +18,7 @@ type Controller struct {
 	Profiles      []*csconfig.ProfileCfg
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
+	ConsoleConfig map[string]interface{}
 }
 
 func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert) (*Controller, error) {

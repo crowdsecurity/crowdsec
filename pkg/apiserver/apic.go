@@ -31,19 +31,21 @@ const (
 )
 
 type apic struct {
-	pullInterval    time.Duration
-	pushInterval    time.Duration
-	metricsInterval time.Duration
-	dbClient        *database.Client
-	apiClient       *apiclient.ApiClient
-	alertToPush     chan []*models.Alert
-	mu              sync.Mutex
-	pushTomb        tomb.Tomb
-	pullTomb        tomb.Tomb
-	metricsTomb     tomb.Tomb
-	startup         bool
-	credentials     *csconfig.ApiCredentialsCfg
-	scenarioList    []string
+	pullInterval      time.Duration
+	pushInterval      time.Duration
+	metricsInterval   time.Duration
+	dbClient          *database.Client
+	apiClient         *apiclient.ApiClient
+	alertToPush       chan []*models.Alert
+	mu                sync.Mutex
+	pushTomb          tomb.Tomb
+	pullTomb          tomb.Tomb
+	metricsTomb       tomb.Tomb
+	startup           bool
+	credentials       *csconfig.ApiCredentialsCfg
+	scenarioList      []string
+	consoleConfig     *csconfig.ConsoleConfig
+	decisionsToDelete chan models.Decision
 }
 
 func IsInSlice(a string, b []string) bool {
@@ -75,7 +77,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	return scenarios, nil
 }
 
-func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
+func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool) *models.AddSignalsRequestItem {
 	return &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
@@ -89,18 +91,20 @@ func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
 	}
 }
 
-func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*apic, error) {
+func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		alertToPush:  make(chan []*models.Alert),
-		dbClient:     dbClient,
-		mu:           sync.Mutex{},
-		startup:      true,
-		credentials:  config.Credentials,
-		pullTomb:     tomb.Tomb{},
-		pushTomb:     tomb.Tomb{},
-		metricsTomb:  tomb.Tomb{},
-		scenarioList: make([]string, 0),
+		alertToPush:       make(chan []*models.Alert),
+		dbClient:          dbClient,
+		mu:                sync.Mutex{},
+		startup:           true,
+		credentials:       config.Credentials,
+		pullTomb:          tomb.Tomb{},
+		pushTomb:          tomb.Tomb{},
+		metricsTomb:       tomb.Tomb{},
+		scenarioList:      make([]string, 0),
+		decisionsToDelete: make(chan models.Decision),
+		consoleConfig:     consoleConfig,
 	}
 
 	ret.pullInterval, err = time.ParseDuration(PullInterval)
@@ -167,20 +171,42 @@ func (a *apic) Push() error {
 		case alerts := <-a.alertToPush:
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
-				/*we're only interested into decisions coming from scenarios of the hub*/
-				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
-					continue
-				}
-				/*and we're not interested into tainted scenarios neither*/
-				if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
-					continue
-				}
-				/*we also ignore alerts in simulated mode*/
 				if *alert.Simulated {
 					log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
 					continue
 				}
-				signals = append(signals, AlertToSignal(alert))
+				scenarioTrust := "certified"
+				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
+					scenarioTrust = "custom"
+				}
+				if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
+					scenarioTrust = "tainted"
+				}
+				if len(alert.Decisions) > 0 {
+					if *alert.Decisions[0].Origin == "cscli" {
+						scenarioTrust = "manual"
+					}
+				}
+				switch scenarioTrust {
+				case "manual":
+					if !*a.consoleConfig.ShareManualDecisions {
+						log.Debugf("manual decision generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				case "tainted":
+					if !*a.consoleConfig.ShareTaintedScenarios {
+						log.Debugf("tainted scenario generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				case "custom":
+					if !*a.consoleConfig.ShareCustomScenarios {
+						log.Debugf("custom scenario generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				}
+
+				log.Infof("Add signals for '%s' alert", scenarioTrust)
+				signals = append(signals, AlertToSignal(alert, scenarioTrust, *a.consoleConfig.ShareDecisions))
 			}
 			a.mu.Lock()
 			cache = append(cache, signals...)

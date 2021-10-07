@@ -3,7 +3,6 @@ package csconfig
 import (
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -79,18 +78,18 @@ func (l *LocalApiClientCfg) Load() error {
 
 /*local api service configuration*/
 type LocalApiServerCfg struct {
-	ListenURI              string                 `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
-	TLS                    *TLSCfg                `yaml:"tls"`
-	DbConfig               *DatabaseCfg           `yaml:"-"`
-	LogDir                 string                 `yaml:"-"`
-	LogMedia               string                 `yaml:"-"`
-	OnlineClient           *OnlineApiClientCfg    `yaml:"online_client"`
-	ProfilesPath           string                 `yaml:"profiles_path,omitempty"`
-	ConsoleConfigPath      string                 `yaml:"console_path,omitempty"`
-	Profiles               []*ProfileCfg          `yaml:"-"`
-	LogLevel               *log.Level             `yaml:"log_level"`
-	UseForwardedForHeaders bool                   `yaml:"use_forwarded_for_headers,omitempty"`
-	ConsoleConfig          map[string]interface{} `yaml:"-"`
+	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
+	TLS                    *TLSCfg             `yaml:"tls"`
+	DbConfig               *DatabaseCfg        `yaml:"-"`
+	LogDir                 string              `yaml:"-"`
+	LogMedia               string              `yaml:"-"`
+	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
+	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath      string              `yaml:"console_path,omitempty"`
+	Profiles               []*ProfileCfg       `yaml:"-"`
+	LogLevel               *log.Level          `yaml:"log_level"`
+	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
+	ConsoleConfig          *ConsoleConfig      `yaml:"-"`
 }
 
 type TLSCfg struct {
@@ -109,6 +108,10 @@ func (c *Config) LoadAPIServer() error {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
 
+		if err := c.API.Server.LoadConsoleConfig(); err != nil {
+			return errors.Wrap(err, "while loading console options")
+		}
+
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 			if err := c.API.Server.OnlineClient.Load(); err != nil {
 				return errors.Wrap(err, "loading online client credentials")
@@ -123,24 +126,6 @@ func (c *Config) LoadAPIServer() error {
 	} else {
 		log.Warningf("crowdsec local API is disabled")
 		c.DisableAPI = true
-	}
-
-	return nil
-}
-
-func (c *LocalApiServerCfg) LoadConsoleConfig() error {
-	c.ConsoleConfig = make(map[string]interface{})
-	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {
-		return nil
-	}
-
-	yamlFile, err := ioutil.ReadFile(c.ConsoleConfigPath)
-	if err != nil {
-		return fmt.Errorf("reading console config file '%s': %s", c.ConsoleConfigPath, err)
-	}
-	err = yaml.Unmarshal(yamlFile, c.ConsoleConfig)
-	if err != nil {
-		return fmt.Errorf("unmarshaling console config file '%s': %s", c.ConsoleConfigPath, err)
 	}
 
 	return nil
