@@ -157,7 +157,7 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				fmt.Printf("Sharing options enabled:\n")
+				fmt.Printf("Sharing options:\n")
 				fmt.Printf("   - Share Decisions                  : %t\n", *csConfig.API.Server.ConsoleConfig.ShareDecisions)
 				fmt.Printf("   - Share tainted scenarios alerts   : %t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
 				fmt.Printf("   - Share custom scenarios alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
