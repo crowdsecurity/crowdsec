@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -153,10 +155,26 @@ Disable given information push to the central API.`,
 		Example:           "status alerts-tainted",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("share decisions\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareDecisions)
-			fmt.Printf("share tainted scenarios alerts\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
-			fmt.Printf("share custom scenarios alerts\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
-			fmt.Printf("share manual decisions\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)
+			switch csConfig.Cscli.Output {
+			case "human":
+				fmt.Printf("Sharing options enabled:\n")
+				fmt.Printf("   - Share Decisions                  : %t\n", *csConfig.API.Server.ConsoleConfig.ShareDecisions)
+				fmt.Printf("   - Share tainted scenarios alerts   : %t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
+				fmt.Printf("   - Share custom scenarios alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
+				fmt.Printf("   - Share manual decisions alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)
+			case "json":
+				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
+				if err != nil {
+					log.Fatalf("failed to marshal configuration: %s", err)
+				}
+				fmt.Printf("%s\n", string(data))
+			case "raw":
+				data, err := yaml.Marshal(csConfig.API.Server.ConsoleConfig)
+				if err != nil {
+					log.Fatalf("failed to marshal configuration: %s", err)
+				}
+				fmt.Printf("%s\n", string(data))
+			}
 		},
 	}
 

@@ -64,7 +64,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		log.Debugf("no share_decisions scenarios found, setting to false")
 		c.ConsoleConfig.ShareDecisions = new(bool)
 	}
-	log.Infof("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
+	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
 
 	return nil
 }
