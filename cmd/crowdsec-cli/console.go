@@ -6,8 +6,10 @@ import (
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -26,6 +28,9 @@ func NewConsoleCmd() *cobra.Command {
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
+			if csConfig.API.Server.OnlineClient.Credentials == nil {
+				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
+			}
 
 			return nil
 		},
@@ -42,18 +47,6 @@ After running this command your will need to validate the enrollment in the weba
 		Example:           "cscli console enroll YOUR-ENROLL-KEY",
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
-			}
-			if csConfig.API.Server.OnlineClient.Credentials == nil {
-				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
-			}
-			return nil
-		},
 		Run: func(cmd *cobra.Command, args []string) {
 			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
 			apiURL, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
@@ -96,5 +89,132 @@ After running this command your will need to validate the enrollment in the weba
 	}
 
 	cmdConsole.AddCommand(cmdEnroll)
+
+	var enableAll, disableAll bool
+
+	cmdEnable := &cobra.Command{
+		Use:     "enable [feature-flag]",
+		Short:   "Enable a feature flag",
+		Example: "enable alerts-tainted",
+		Long: `
+Enable given information push to the central API. Allows to empower the console`,
+		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if enableAll {
+				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
+				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(true)
+				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(true)
+				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
+
+			} else {
+				SetConsoleOpts(args, true)
+			}
+
+			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
+				log.Fatalf("failed writing console config : %s", err)
+			}
+
+		},
+	}
+	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all feature flags")
+	cmdConsole.AddCommand(cmdEnable)
+
+	cmdDisable := &cobra.Command{
+		Use:     "disable [feature-flag]",
+		Short:   "Disable a feature flag",
+		Example: "disable alerts-tainted",
+		Long: `
+Disable given information push to the central API.`,
+		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if disableAll {
+				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(false)
+				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(false)
+				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
+				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(false)
+
+			} else {
+				SetConsoleOpts(args, false)
+			}
+
+			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
+				log.Fatalf("failed writing console config : %s", err)
+			}
+		},
+	}
+	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Enable all feature flags")
+	cmdConsole.AddCommand(cmdDisable)
+
+	cmdStatus := &cobra.Command{
+		Use:               "status [feature-flag]",
+		Short:             "Shows status of one or all feature flags",
+		Example:           "status alerts-tainted",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("share decisions\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareDecisions)
+			fmt.Printf("share tainted scenarios alerts\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
+			fmt.Printf("share custom scenarios alerts\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
+			fmt.Printf("share manual decisions\t%t\n", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)
+		},
+	}
+
+	cmdConsole.AddCommand(cmdStatus)
+
 	return cmdConsole
+}
+
+func SetConsoleOpts(args []string, wanted bool) {
+	for _, arg := range args {
+		switch arg {
+		case csconfig.SEND_CUSTOM_SCENARIOS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == wanted {
+					log.Infof("%s already set to %t", wanted)
+				} else {
+					*csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = wanted
+				}
+			} else {
+				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_TAINTED_SCENARIOS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == wanted {
+					log.Infof("%s already set to %t", wanted)
+				} else {
+					*csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = wanted
+				}
+			} else {
+				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_MANUAL_SCENARIOS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareManualDecisions != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == wanted {
+					log.Infof("%s already set to %t", wanted)
+				} else {
+					*csConfig.API.Server.ConsoleConfig.ShareManualDecisions = wanted
+				}
+			} else {
+				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_LIVE_DECISIONS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareDecisions != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareDecisions == wanted {
+					log.Infof("%s already set to %t", wanted)
+				} else {
+					*csConfig.API.Server.ConsoleConfig.ShareDecisions = wanted
+				}
+			} else {
+				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(wanted)
+			}
+		default:
+			log.Fatalf("unknown flag %s", arg)
+		}
+	}
+
 }
