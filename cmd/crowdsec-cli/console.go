@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -24,7 +26,16 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+			if err := csConfig.LoadAPIServer(); err != nil {
+				var fdErr *fs.PathError
+				if errors.As(err, &fdErr) {
+					log.Fatalf("Unable to load Local API : %s", fdErr)
+				} else {
+					log.Fatalf("Unable to load required Local API Configuration : %s", err)
+				}
+			}
+
+			if csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
