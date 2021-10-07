@@ -219,8 +219,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 		itemFile   *os.File
 		err        error
 	)
-	itemFilePath := fmt.Sprintf("%s/%s", hub.HubDir, target.RemotePath)
-
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
 	if itemFile, err = os.Open(itemFilePath); err != nil {
 		return errors.Wrapf(err, "while opening %s", itemFilePath)
 	}

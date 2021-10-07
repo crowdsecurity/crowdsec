@@ -2,7 +2,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sync"
+
+	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -13,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/yaml.v2"
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
@@ -149,8 +153,73 @@ func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
 			log.Fatalf("unable to shutdown crowdsec routines: %s", err)
 		}
 		log.Debugf("everything is dead, return crowdsecTomb")
+		if dumpStates {
+			dumpParserState()
+			dumpOverflowState()
+			dumpBucketsPour()
+			os.Exit(0)
+		}
 		return nil
 	})
+}
+
+func dumpBucketsPour() {
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucketpour-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(leaky.BucketPourCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+}
+
+func dumpParserState() {
+
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "parser-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(parser.StageParseCache)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
+}
+
+func dumpOverflowState() {
+
+	fd, err := os.OpenFile(filepath.Join(parser.DumpFolder, "bucket-dump.yaml"), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		log.Fatalf("open: %s", err)
+	}
+	out, err := yaml.Marshal(bucketOverflows)
+	if err != nil {
+		log.Fatalf("marshal: %s", err)
+	}
+	b, err := fd.Write(out)
+	if err != nil {
+		log.Fatalf("write: %s", err)
+	}
+	log.Tracef("wrote %d bytes", b)
+	if err := fd.Close(); err != nil {
+		log.Fatalf(" close: %s", err)
+	}
 }
 
 func waitOnTomb() {

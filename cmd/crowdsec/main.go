@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -160,6 +161,9 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
+var dumpFolder string
+var dumpStates bool
+
 func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
@@ -172,12 +176,20 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 
 	flag.Parse()
 }
 
 // LoadConfig return configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+
+	if dumpFolder != "" {
+		parser.ParseDump = true
+		parser.DumpFolder = dumpFolder
+		leakybucket.BucketPourTrack = true
+		dumpStates = true
+	}
 
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
