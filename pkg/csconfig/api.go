@@ -107,7 +107,9 @@ func (c *Config) LoadAPIServer() error {
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
-
+		if c.API.Server.ConsoleConfigPath == "" {
+			c.API.Server.ConsoleConfigPath = DefaultConsoleConfgFilePath
+		}
 		if err := c.API.Server.LoadConsoleConfig(); err != nil {
 			return errors.Wrap(err, "while loading console options")
 		}
