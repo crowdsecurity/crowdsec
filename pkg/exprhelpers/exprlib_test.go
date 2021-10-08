@@ -385,3 +385,73 @@ func TestTimeNow(t *testing.T) {
 	}
 	log.Printf("test 'TimeNow()' : OK")
 }
+
+func TestParseUri(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result map[string][]string
+		err    string
+	}{
+		{
+			name: "ParseUri() test: basic test",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: no param",
+			env: map[string]interface{}{
+				"uri":      "/foo",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: extra question mark",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2?",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2?"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: weird params",
+			env: map[string]interface{}{
+				"uri":      "/foo?&?&&&&?=123",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"?": []string{"", "123"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: bad encoding",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=%%F",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
