@@ -30,9 +30,9 @@ func NewHubTestCmd() *cobra.Command {
 
 	var cmdHubTest = &cobra.Command{
 		Use:   "hubtest",
-		Short: "Run fonctionnals tests on hub configurations",
+		Short: "Run functional tests on hub configurations",
 		Long: `
-		Run fonctionnals tests on hub configurations (parsers, scenarios, collections...)
+		Run functional tests on hub configurations (parsers, scenarios, collections...)
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
