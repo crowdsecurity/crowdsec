@@ -767,17 +767,34 @@ definitions:
       bouncers:
         type: array
         items:
-            $ref: '#/definitions/MetricsSoftInfo'
+            $ref: '#/definitions/MetricsBouncerInfo'
       machines:
         type: array
         items:
-            $ref: '#/definitions/MetricsSoftInfo'
+            $ref: '#/definitions/MetricsAgentInfo'
     required:
       - apil_version
       - bouncers
       - machines
-  MetricsSoftInfo:
-    title: MetricsSoftInfo
+  MetricsBouncerInfo:
+    title: MetricsBouncerInfo
+    description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
+    type: object
+    properties:
+      name:
+        type: string
+        description: name of the component
+      type:
+        type: string
+        description: bouncer type (firewall, php ...)
+      version:
+        type: string
+        description: software version
+      last_pull:
+        type: string
+        description: last bouncer pull date
+  MetricsAgentInfo:
+    title: MetricsAgentInfo
     description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
     type: object
     properties:
@@ -787,6 +804,12 @@ definitions:
       version:
         type: string
         description: software version
+      last_update:
+        type: string
+        description: last agent update date
+      last_push:
+        type: string
+        description: last agent push date
   Decision:
     title: Decision
     type: object
