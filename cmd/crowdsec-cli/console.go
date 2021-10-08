@@ -119,6 +119,7 @@ Enable given information push to the central API. Allows to empower the console`
 				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(true)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(true)
 				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
+				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(true)
 
 			} else {
 				SetConsoleOpts(args, true)
@@ -147,6 +148,7 @@ Disable given information push to the central API.`,
 				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(false)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(false)
+				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(false)
 
 			} else {
 				SetConsoleOpts(args, false)
@@ -173,6 +175,8 @@ Disable given information push to the central API.`,
 				fmt.Printf("   - Share tainted scenarios alerts   : %t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
 				fmt.Printf("   - Share custom scenarios alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
 				fmt.Printf("   - Share manual decisions alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)
+				fmt.Printf("   - Share alerts in simulion mode    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions)
+
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {
@@ -240,6 +244,17 @@ func SetConsoleOpts(args []string, wanted bool) {
 				}
 			} else {
 				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_SIMULATED_DECISIONS:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions == wanted {
+					log.Infof("%s already set to %t", wanted)
+				} else {
+					*csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = wanted
+				}
+			} else {
+				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

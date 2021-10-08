@@ -11,21 +11,23 @@ import (
 )
 
 const (
-	SEND_CUSTOM_SCENARIOS  = "custom"
-	SEND_TAINTED_SCENARIOS = "tainted"
-	SEND_MANUAL_SCENARIOS  = "manual"
-	SEND_LIVE_DECISIONS    = "live_decisions"
+	SEND_CUSTOM_SCENARIOS    = "custom"
+	SEND_TAINTED_SCENARIOS   = "tainted"
+	SEND_MANUAL_SCENARIOS    = "manual"
+	SEND_LIVE_DECISIONS      = "live_decisions"
+	SEND_SIMULATED_DECISIONS = "simulated_decisions"
 )
 
 var DefaultConsoleConfgFilePath = "/etc/crowdsec/console_config.yaml"
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_LIVE_DECISIONS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_LIVE_DECISIONS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_SIMULATED_DECISIONS}
 
 type ConsoleConfig struct {
-	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
-	ShareTaintedScenarios *bool `yaml:"share_custom"`
-	ShareCustomScenarios  *bool `yaml:"share_tainted"`
-	ShareDecisions        *bool `yaml:"share_decisions"`
+	ShareManualDecisions    *bool `yaml:"share_manual_decisions"`
+	ShareTaintedScenarios   *bool `yaml:"share_custom"`
+	ShareCustomScenarios    *bool `yaml:"share_tainted"`
+	ShareDecisions          *bool `yaml:"share_decisions"`
+	ShareSimulatedDecisions *bool `yaml:"share_simulated_decisions"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -36,6 +38,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareTaintedScenarios = new(bool)
 		c.ConsoleConfig.ShareManualDecisions = new(bool)
 		c.ConsoleConfig.ShareDecisions = new(bool)
+		c.ConsoleConfig.ShareSimulatedDecisions = new(bool)
 		return nil
 	}
 
@@ -63,6 +66,10 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	if c.ConsoleConfig.ShareDecisions == nil {
 		log.Debugf("no share_decisions scenarios found, setting to false")
 		c.ConsoleConfig.ShareDecisions = new(bool)
+	}
+	if c.ConsoleConfig.ShareSimulatedDecisions == nil {
+		log.Debugf("no share_simulated_decisions scenarios found, setting to false")
+		c.ConsoleConfig.ShareSimulatedDecisions = new(bool)
 	}
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
 
