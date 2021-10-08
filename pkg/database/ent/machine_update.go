@@ -56,6 +56,20 @@ func (mu *MachineUpdate) SetNillableUpdatedAt(t *time.Time) *MachineUpdate {
 	return mu
 }
 
+// SetLastPush sets the "last_push" field.
+func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
+	mu.mutation.SetLastPush(t)
+	return mu
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
+	if t != nil {
+		mu.SetLastPush(*t)
+	}
+	return mu
+}
+
 // SetMachineId sets the "machineId" field.
 func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
 	mu.mutation.SetMachineId(s)
@@ -291,6 +305,13 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldUpdatedAt,
 		})
 	}
+	if value, ok := mu.mutation.LastPush(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+	}
 	if value, ok := mu.mutation.MachineId(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -455,6 +476,20 @@ func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
 func (muo *MachineUpdateOne) SetNillableUpdatedAt(t *time.Time) *MachineUpdateOne {
 	if t != nil {
 		muo.SetUpdatedAt(*t)
+	}
+	return muo
+}
+
+// SetLastPush sets the "last_push" field.
+func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
+	muo.mutation.SetLastPush(t)
+	return muo
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne {
+	if t != nil {
+		muo.SetLastPush(*t)
 	}
 	return muo
 }
@@ -716,6 +751,13 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Type:   field.TypeTime,
 			Value:  value,
 			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if value, ok := muo.mutation.LastPush(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
 		})
 	}
 	if value, ok := muo.mutation.MachineId(); ok {

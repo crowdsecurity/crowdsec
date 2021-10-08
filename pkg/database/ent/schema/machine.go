@@ -20,6 +20,8 @@ func (Machine) Fields() []ent.Field {
 			Default(time.Now),
 		field.Time("updated_at").
 			Default(time.Now),
+		field.Time("last_push").
+			Default(time.Now),
 		field.String("machineId").Unique(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),

@@ -107,6 +107,13 @@ func UpdatedAt(v time.Time) predicate.Machine {
 	})
 }
 
+// LastPush applies equality check predicate on the "last_push" field. It's identical to LastPushEQ.
+func LastPush(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldLastPush), v))
+	})
+}
+
 // MachineId applies equality check predicate on the "machineId" field. It's identical to MachineIdEQ.
 func MachineId(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
@@ -305,6 +312,82 @@ func UpdatedAtLT(v time.Time) predicate.Machine {
 func UpdatedAtLTE(v time.Time) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldUpdatedAt), v))
+	})
+}
+
+// LastPushEQ applies the EQ predicate on the "last_push" field.
+func LastPushEQ(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldLastPush), v))
+	})
+}
+
+// LastPushNEQ applies the NEQ predicate on the "last_push" field.
+func LastPushNEQ(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldLastPush), v))
+	})
+}
+
+// LastPushIn applies the In predicate on the "last_push" field.
+func LastPushIn(vs ...time.Time) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldLastPush), v...))
+	})
+}
+
+// LastPushNotIn applies the NotIn predicate on the "last_push" field.
+func LastPushNotIn(vs ...time.Time) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldLastPush), v...))
+	})
+}
+
+// LastPushGT applies the GT predicate on the "last_push" field.
+func LastPushGT(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldLastPush), v))
+	})
+}
+
+// LastPushGTE applies the GTE predicate on the "last_push" field.
+func LastPushGTE(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldLastPush), v))
+	})
+}
+
+// LastPushLT applies the LT predicate on the "last_push" field.
+func LastPushLT(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldLastPush), v))
+	})
+}
+
+// LastPushLTE applies the LTE predicate on the "last_push" field.
+func LastPushLTE(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldLastPush), v))
 	})
 }
 
