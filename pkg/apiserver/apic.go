@@ -425,6 +425,7 @@ func (a *apic) SendMetrics() error {
 					Version:    machine.Version,
 					Name:       machine.MachineId,
 					LastUpdate: machine.UpdatedAt.String(),
+					LastPush:   machine.LastPush.String(),
 				}
 				metric.Machines = append(metric.Machines, m)
 			}
