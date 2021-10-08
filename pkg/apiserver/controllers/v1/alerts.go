@@ -126,6 +126,11 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 
+	if err := c.DBClient.UpdateMachineLastPush(machineID); err != nil {
+		c.HandleDBErrors(gctx, err)
+		return
+	}
+
 	for _, alert := range input {
 		alert.MachineID = machineID
 		for pIdx, profile := range c.Profiles {
