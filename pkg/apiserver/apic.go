@@ -431,10 +431,10 @@ func (a *apic) SendMetrics() error {
 
 			for _, bouncer := range bouncers {
 				m := &models.MetricsBouncerInfo{
-					Version:  bouncer.Version,
-					Name:     bouncer.Name,
-					Type:     bouncer.Type,
-					LastPull: bouncer.LastPull.String(),
+					Version:    bouncer.Version,
+					CustomName: bouncer.Name,
+					Name:       bouncer.Type,
+					LastPull:   bouncer.LastPull.String(),
 				}
 				metric.Bouncers = append(metric.Bouncers, m)
 			}

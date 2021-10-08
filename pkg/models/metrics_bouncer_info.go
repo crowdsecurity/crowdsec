@@ -19,14 +19,14 @@ import (
 // swagger:model MetricsBouncerInfo
 type MetricsBouncerInfo struct {
 
+	// name of the component
+	CustomName string `json:"custom_name,omitempty"`
+
 	// last bouncer pull date
 	LastPull string `json:"last_pull,omitempty"`
 
-	// name of the component
-	Name string `json:"name,omitempty"`
-
 	// bouncer type (firewall, php ...)
-	Type string `json:"type,omitempty"`
+	Name string `json:"name,omitempty"`
 
 	// software version
 	Version string `json:"version,omitempty"`

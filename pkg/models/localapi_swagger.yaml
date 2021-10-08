@@ -781,10 +781,10 @@ definitions:
     description: Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
     type: object
     properties:
-      name:
+      custom_name:
         type: string
         description: name of the component
-      type:
+      name:
         type: string
         description: bouncer type (firewall, php ...)
       version:
