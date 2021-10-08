@@ -115,12 +115,7 @@ Enable given information push to the central API. Allows to empower the console`
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if enableAll {
-				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
-				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(true)
-				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(true)
-				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
-				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(true)
-
+				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
 			} else {
 				SetConsoleOpts(args, true)
 			}
@@ -144,12 +139,7 @@ Disable given information push to the central API.`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if disableAll {
-				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(false)
-				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(false)
-				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
-				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(false)
-				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(false)
-
+				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, false)
 			} else {
 				SetConsoleOpts(args, false)
 			}
@@ -205,55 +195,65 @@ func SetConsoleOpts(args []string, wanted bool) {
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareCustomScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == wanted {
-					log.Infof("%s already set to %t", wanted)
+					log.Infof("%s already set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				} else {
+					log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = wanted
 				}
 			} else {
+				log.Infof("%s set to %t", csconfig.SEND_CUSTOM_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(wanted)
 			}
 		case csconfig.SEND_TAINTED_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == wanted {
-					log.Infof("%s already set to %t", wanted)
+					log.Infof("%s already set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				} else {
+					log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = wanted
 				}
 			} else {
+				log.Infof("%s set to %t", csconfig.SEND_TAINTED_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(wanted)
 			}
 		case csconfig.SEND_MANUAL_SCENARIOS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareManualDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == wanted {
-					log.Infof("%s already set to %t", wanted)
+					log.Infof("%s already set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				} else {
+					log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareManualDecisions = wanted
 				}
 			} else {
+				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
 			}
 		case csconfig.SEND_LIVE_DECISIONS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareDecisions == wanted {
-					log.Infof("%s already set to %t", wanted)
+					log.Infof("%s already set to %t", csconfig.SEND_LIVE_DECISIONS, wanted)
 				} else {
+					log.Infof("%s set to %t", csconfig.SEND_LIVE_DECISIONS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareDecisions = wanted
 				}
 			} else {
+				log.Infof("%s set to %t", csconfig.SEND_LIVE_DECISIONS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareDecisions = types.BoolPtr(wanted)
 			}
 		case csconfig.SEND_SIMULATED_DECISIONS:
 			/*for each flag check if it's already set before setting it*/
 			if csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions != nil {
 				if *csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions == wanted {
-					log.Infof("%s already set to %t", wanted)
+					log.Infof("%s already set to %t", csconfig.SEND_SIMULATED_DECISIONS, wanted)
 				} else {
+					log.Infof("%s set to %t", csconfig.SEND_SIMULATED_DECISIONS, wanted)
 					*csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = wanted
 				}
 			} else {
+				log.Infof("%s set to %t", csconfig.SEND_SIMULATED_DECISIONS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions = types.BoolPtr(wanted)
 			}
 		default:
