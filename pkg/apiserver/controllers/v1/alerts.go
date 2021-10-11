@@ -127,6 +127,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	for _, alert := range input {
+		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
@@ -167,9 +168,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
-	}
-	for _, alert := range input {
-		alert.MachineID = machineID
 	}
 
 	if c.CAPIChan != nil {
