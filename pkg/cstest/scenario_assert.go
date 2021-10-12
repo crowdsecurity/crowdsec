@@ -221,8 +221,7 @@ func (b BucketResults) Len() int {
 }
 
 func (b BucketResults) Less(i, j int) bool {
-
-	return b[i].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@") > b[j].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@")
+	return b[i].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@") > b[j].Overflow.Alert.GetScenario()+strings.Join(b[j].Overflow.GetSources(), "@")
 }
 
 func (b BucketResults) Swap(i, j int) {
