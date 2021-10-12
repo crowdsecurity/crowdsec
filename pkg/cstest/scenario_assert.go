@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strings"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -220,7 +221,8 @@ func (b BucketResults) Len() int {
 }
 
 func (b BucketResults) Less(i, j int) bool {
-	return b[i].Overflow.Alert.GetScenario() > b[j].Overflow.Alert.GetScenario()
+
+	return b[i].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@") > b[j].Overflow.Alert.GetScenario()+strings.Join(b[i].Overflow.GetSources(), "@")
 }
 
 func (b BucketResults) Swap(i, j int) {
