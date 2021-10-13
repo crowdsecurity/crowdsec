@@ -7,17 +7,50 @@ import (
 	"fmt"
 	"io/fs"
 	"net/url"
+	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 )
+
+func IsInSlice(a string, b []string) bool {
+	for _, v := range b {
+		if a == v {
+			return true
+		}
+	}
+	return false
+}
+
+func FetchScenariosListFromDB() ([]string, error) {
+	scenarios := make([]string, 0)
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return nil, fmt.Errorf("while listing machines: %s", err)
+	}
+	//merge all scenarios together
+	for _, v := range machines {
+		machineScenarios := strings.Split(v.Scenarios, ",")
+		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
+		for _, sv := range machineScenarios {
+			if !IsInSlice(sv, scenarios) && sv != "" {
+				scenarios = append(scenarios, sv)
+			}
+		}
+	}
+	log.Debugf("Returning list of scenarios : %+v", scenarios)
+	return scenarios, nil
+}
 
 func NewConsoleCmd() *cobra.Command {
 	var cmdConsole = &cobra.Command{
@@ -184,6 +217,85 @@ Disable given information push to the central API.`,
 	}
 
 	cmdConsole.AddCommand(cmdStatus)
+	cmdSync := &cobra.Command{
+		Use:               "sync",
+		Short:             "Sync current decisions to console",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Errorf("This command requires direct database access (must be run on the local API machine)")
+				log.Fatalf(err.Error())
+			}
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+
+			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
+			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
+			if err != nil {
+				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
+			}
+
+			if err := csConfig.LoadHub(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
+				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+			}
+			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+			if err != nil {
+				log.Fatalf("failed to get scenarios : %s", err.Error())
+			}
+			if len(scenarios) == 0 {
+				log.Fatalf("no scenarios installed, abort")
+			}
+
+			Client, err = apiclient.NewClient(&apiclient.Config{
+				MachineID:      csConfig.API.Server.OnlineClient.Credentials.Login,
+				Password:       password,
+				UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:            apiurl,
+				VersionPrefix:  "v2",
+				Scenarios:      scenarios,
+				UpdateScenario: FetchScenariosListFromDB,
+			})
+			if err != nil {
+				log.Fatalf("init default client: %s", err)
+			}
+
+			filter := make(map[string][]string)
+			decisionsInDb, err := dbClient.QueryDecisionWithFilter(filter)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			decisionsList := make([]*models.Decision, 0)
+			for _, dbDecision := range decisionsInDb {
+				duration := dbDecision.Until.Sub(time.Now()).String()
+				decision := &models.Decision{
+					ID:       int64(dbDecision.ID),
+					Duration: &duration,
+					Scenario: &dbDecision.Scenario,
+					Scope:    &dbDecision.Scope,
+					Value:    &dbDecision.Value,
+					Type:     &dbDecision.Type,
+					Origin:   &dbDecision.Origin,
+					Until:    dbDecision.Until.String(),
+				}
+				decisionsList = append(decisionsList, decision)
+			}
+			resp, _, err := Client.Decisions.SyncDecisions(context.Background(), decisionsList)
+			if err != nil {
+				log.Fatalf("unable to sync decisions with console: %s", err.Error())
+			}
+			log.Infof("Decisions sync: %+v", resp)
+		},
+	}
+
+	cmdConsole.AddCommand(cmdSync)
 
 	return cmdConsole
 }

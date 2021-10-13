@@ -32,6 +32,10 @@ type DecisionsDeleteOpts struct {
 	ListOpts
 }
 
+type SuccessReponse struct {
+	Message string `json:"message"`
+}
+
 //to demo query arguments
 func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*models.GetDecisionsResponse, *Response, error) {
 	var decisions models.GetDecisionsResponse
@@ -121,4 +125,36 @@ func (s *DecisionsService) DeleteOne(ctx context.Context, decision_id string) (*
 		return nil, resp, err
 	}
 	return &deleteDecisionResponse, resp, nil
+}
+
+func (s *DecisionsService) DeleteDecisions(ctx context.Context, decisionsID []string) (*SuccessReponse, *Response, error) {
+	var successReponse SuccessReponse
+	u := fmt.Sprintf("%s/decisions/delete", s.client.URLPrefix)
+
+	req, err := s.client.NewRequest("POST", u, &decisionsID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resp, err := s.client.Do(ctx, req, &successReponse)
+	if err != nil {
+		return nil, resp, err
+	}
+	return &successReponse, resp, nil
+}
+
+func (s *DecisionsService) SyncDecisions(ctx context.Context, decisions []*models.Decision) (*SuccessReponse, *Response, error) {
+	var successReponse SuccessReponse
+
+	u := fmt.Sprintf("%s/decisions/sync", s.client.URLPrefix)
+	req, err := s.client.NewRequest("POST", u, &decisions)
+	if err != nil {
+		return nil, nil, err
+	}
+	resp, err := s.client.Do(ctx, req, &successReponse)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return &successReponse, resp, nil
 }
