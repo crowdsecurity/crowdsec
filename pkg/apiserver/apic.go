@@ -31,21 +31,22 @@ const (
 )
 
 type apic struct {
-	pullInterval      time.Duration
-	pushInterval      time.Duration
-	metricsInterval   time.Duration
-	dbClient          *database.Client
-	apiClient         *apiclient.ApiClient
-	alertToPush       chan []*models.Alert
-	mu                sync.Mutex
-	pushTomb          tomb.Tomb
-	pullTomb          tomb.Tomb
-	metricsTomb       tomb.Tomb
-	startup           bool
-	credentials       *csconfig.ApiCredentialsCfg
-	scenarioList      []string
-	consoleConfig     *csconfig.ConsoleConfig
-	decisionsToDelete chan models.Decision
+	pullInterval        time.Duration
+	pushInterval        time.Duration
+	metricsInterval     time.Duration
+	dbClient            *database.Client
+	apiClient           *apiclient.ApiClient
+	alertToPush         chan []*models.Alert
+	mu                  sync.Mutex
+	pushTomb            tomb.Tomb
+	pullTomb            tomb.Tomb
+	metricsTomb         tomb.Tomb
+	deleteDecisionsTomb tomb.Tomb
+	startup             bool
+	credentials         *csconfig.ApiCredentialsCfg
+	scenarioList        []string
+	consoleConfig       *csconfig.ConsoleConfig
+	decisionsToDelete   chan []string
 }
 
 func IsInSlice(a string, b []string) bool {
@@ -109,7 +110,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		pushTomb:          tomb.Tomb{},
 		metricsTomb:       tomb.Tomb{},
 		scenarioList:      make([]string, 0),
-		decisionsToDelete: make(chan models.Decision),
+		decisionsToDelete: make(chan []string),
 		consoleConfig:     consoleConfig,
 	}
 
@@ -159,6 +160,7 @@ func (a *apic) Push() error {
 		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
+			a.deleteDecisionsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			if len(cache) == 0 {
 				return nil
@@ -218,6 +220,57 @@ func (a *apic) Push() error {
 			cache = append(cache, signals...)
 			a.mu.Unlock()
 		}
+	}
+}
+
+func (a *apic) DeleteDecisions() error {
+	defer types.CatchPanic("lapi/deleteDecisionsCAPI")
+
+	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
+
+	for {
+		select {
+		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
+			a.pullTomb.Kill(nil)
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
+			return nil
+		case decisions := <-a.decisionsToDelete:
+			go a.SendDeletedDecisions(decisions)
+		}
+	}
+}
+
+func (a *apic) SendDeletedDecisions(deletedDecisions []string) {
+	var send []string
+
+	bulkSize := 50
+	pageStart := 0
+	pageEnd := bulkSize
+
+	for {
+
+		if pageEnd >= len(deletedDecisions) {
+			send = deletedDecisions[pageStart:]
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, _, err := a.apiClient.Decisions.DeleteManualDecisions(ctx, send)
+			if err != nil {
+				log.Errorf("Error while sending final chunk to central API : %s", err)
+				return
+			}
+			break
+		}
+		send = deletedDecisions[pageStart:pageEnd]
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _, err := a.apiClient.Decisions.DeleteManualDecisions(ctx, send)
+		if err != nil {
+			//we log it here as well, because the return value of func might be discarded
+			log.Errorf("Error while sending chunk to central API : %s", err)
+		}
+		pageStart += bulkSize
+		pageEnd += bulkSize
 	}
 }
 
@@ -393,6 +446,7 @@ func (a *apic) Pull() error {
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+			a.deleteDecisionsTomb.Kill(nil)
 			return nil
 		}
 	}
@@ -447,6 +501,7 @@ func (a *apic) SendMetrics() error {
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+			a.deleteDecisionsTomb.Kill(nil)
 			return nil
 		}
 	}

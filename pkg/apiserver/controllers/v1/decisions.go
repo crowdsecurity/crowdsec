@@ -83,12 +83,34 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		NbDeleted: "1",
 	}
 
+	if *c.ConsoleConfig.ShareDecisions {
+		if c.DeleteDecisionsChannel != nil {
+			select {
+			case c.DeleteDecisionsChannel <- []string{decisionIDStr}:
+				log.Debug("alert sent to delete decisions channel")
+			default:
+				log.Warning("Cannot send alert to delete decisions channel")
+			}
+		}
+	}
+
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
 	return
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	var err error
+	decisionsIDToDelete := make([]string, 0)
+
+	if *c.ConsoleConfig.ShareDecisions {
+		decisionsToDelete, err := c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
+		if err != nil {
+			log.Errorf("unable to list decisions to delete to send to console: %s", err)
+		}
+		for _, decision := range decisionsToDelete {
+			decisionsIDToDelete = append(decisionsIDToDelete, strconv.Itoa(decision.ID))
+		}
+	}
 
 	nbDeleted, err := c.DBClient.SoftDeleteDecisionsWithFilter(gctx.Request.URL.Query())
 	if err != nil {
@@ -97,6 +119,17 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	}
 	deleteDecisionResp := models.DeleteDecisionResponse{
 		NbDeleted: nbDeleted,
+	}
+
+	if len(decisionsIDToDelete) > 0 {
+		if c.DeleteDecisionsChannel != nil {
+			select {
+			case c.DeleteDecisionsChannel <- decisionsIDToDelete:
+				log.Debug("alert sent to delete decisions channel")
+			default:
+				log.Warning("Cannot send alert to delete decisions channel")
+			}
+		}
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)

@@ -11,25 +11,28 @@ import (
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	APIKeyHeader  string
-	Middlewares   *middlewares.Middlewares
-	Profiles      []*csconfig.ProfileCfg
-	CAPIChan      chan []*models.Alert
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig map[string]interface{}
+	Ectx                   context.Context
+	DBClient               *database.Client
+	APIKeyHeader           string
+	Middlewares            *middlewares.Middlewares
+	Profiles               []*csconfig.ProfileCfg
+	CAPIChan               chan []*models.Alert
+	PluginChannel          chan csplugin.ProfileAlert
+	DeleteDecisionsChannel chan []string
+	ConsoleConfig          csconfig.ConsoleConfig
 }
 
-func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert) (*Controller, error) {
+func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, deleteDecisionsChannel chan []string) (*Controller, error) {
 	var err error
 	v1 := &Controller{
-		Ectx:          ctx,
-		DBClient:      dbClient,
-		APIKeyHeader:  middlewares.APIKeyHeader,
-		Profiles:      profiles,
-		CAPIChan:      capiChan,
-		PluginChannel: pluginChannel,
+		Ectx:                   ctx,
+		DBClient:               dbClient,
+		APIKeyHeader:           middlewares.APIKeyHeader,
+		Profiles:               profiles,
+		CAPIChan:               capiChan,
+		PluginChannel:          pluginChannel,
+		DeleteDecisionsChannel: deleteDecisionsChannel,
+		ConsoleConfig:          consoleConfig,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(dbClient)
 	if err != nil {

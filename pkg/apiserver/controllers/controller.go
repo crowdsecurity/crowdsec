@@ -23,7 +23,7 @@ type Controller struct {
 	PluginChannel         chan csplugin.ProfileAlert
 	Log                   *log.Logger
 	ConsoleConfig         *csconfig.ConsoleConfig
-	DeleteDecisionChannel chan models.Decision
+	DeleteDecisionChannel chan []string
 }
 
 func (c *Controller) Init() error {
@@ -54,7 +54,7 @@ func serveHealth() http.HandlerFunc {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel)
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig, c.DeleteDecisionChannel)
 	if err != nil {
 		return err
 	}

@@ -127,7 +127,8 @@ func (s *DecisionsService) DeleteOne(ctx context.Context, decision_id string) (*
 	return &deleteDecisionResponse, resp, nil
 }
 
-func (s *DecisionsService) DeleteDecisions(ctx context.Context, decisionsID []string) (*SuccessReponse, *Response, error) {
+// send to CAPI manually deleted decisions
+func (s *DecisionsService) DeleteManualDecisions(ctx context.Context, decisionsID []string) (*SuccessReponse, *Response, error) {
 	var successReponse SuccessReponse
 	u := fmt.Sprintf("%s/decisions/delete", s.client.URLPrefix)
 
@@ -135,7 +136,6 @@ func (s *DecisionsService) DeleteDecisions(ctx context.Context, decisionsID []st
 	if err != nil {
 		return nil, nil, err
 	}
-
 	resp, err := s.client.Do(ctx, req, &successReponse)
 	if err != nil {
 		return nil, resp, err

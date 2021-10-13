@@ -38,6 +38,7 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	httpServerTomb tomb.Tomb
+	consoleConfig  *csconfig.ConsoleConfig
 }
 
 // RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
@@ -165,6 +166,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return
 	})
 	router.Use(CustomRecoveryWithWriter())
+
 	controller := &controllers.Controller{
 		DBClient:      dbClient,
 		Ectx:          context.Background(),
@@ -183,9 +185,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 			return &APIServer{}, err
 		}
 		controller.CAPIChan = apiClient.alertToPush
+		if *config.ConsoleConfig.ShareDecisions {
+			controller.DeleteDecisionChannel = apiClient.decisionsToDelete
+		} else {
+			controller.DeleteDecisionChannel = nil
+		}
 	} else {
 		apiClient = nil
 		controller.CAPIChan = nil
+		controller.DeleteDecisionChannel = nil
 	}
 
 	return &APIServer{
@@ -198,6 +206,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		router:         router,
 		apic:           apiClient,
 		httpServerTomb: tomb.Tomb{},
+		consoleConfig:  config.ConsoleConfig,
 	}, nil
 
 }
@@ -236,6 +245,15 @@ func (s *APIServer) Run() error {
 			}
 			return nil
 		})
+		if *s.apic.consoleConfig.ShareDecisions {
+			s.apic.deleteDecisionsTomb.Go(func() error {
+				if err := s.apic.DeleteDecisions(); err != nil {
+					log.Errorf("capi send deleted decisions: %s", err)
+					return err
+				}
+				return nil
+			})
+		}
 	}
 
 	s.httpServerTomb.Go(func() error {
