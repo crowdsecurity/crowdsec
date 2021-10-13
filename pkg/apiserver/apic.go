@@ -226,7 +226,7 @@ func (a *apic) Push() error {
 func (a *apic) DeleteDecisions() error {
 	defer types.CatchPanic("lapi/deleteDecisionsCAPI")
 
-	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
+	log.Infof("start goroutine for manual deleted decisions")
 
 	for {
 		select {
