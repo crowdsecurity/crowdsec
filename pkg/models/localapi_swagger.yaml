@@ -831,7 +831,11 @@ definitions:
         description: 'the value of the decision scope : an IP, a range, a username, etc'
         type: string
       duration:
+        description: 'the duration of the decisions'
         type: string
+      until:
+        type: string
+        description: 'the date until the decisions must be active'
       scenario:
         type: string
       simulated:
