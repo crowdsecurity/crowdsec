@@ -1,15 +1,19 @@
 #!/bin/sh
 
-# Check if the container has already been started (ignore if agent is disabled)
+# Set the crowdsec config file
+CS_CONFIG_FILE="/etc/crowdsec/config.yaml"
+if [ "$CONFIG_FILE" != "" ]; then
+    CS_CONFIG_FILE="$CONFIG_FILE"
+fi
+
+# regenerate lcaol agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
-    echo "Check if the container has already been started (ignore if agent is disabled)"
-    cscli machines list | grep localhost
-    if [ "$?" == 1 ]; then
-        cscli machines add localhost --auto
-    fi
+    echo "Regenerate local agent credentials"
+    cscli -c "$CS_CONFIG_FILE" machines delete localhost
+    cscli -c "$CS_CONFIG_FILE" machines add localhost --auto
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
-        CONFIG_PATH=$(yq eval '.api.client.credentials_path' /etc/crowdsec/config.yaml)
+        CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CS_CONFIG_FILE" )
         echo "url: $LOCAL_API_URL" > $CONFIG_PATH
         echo "login: $AGENT_USERNAME" >> $CONFIG_PATH
         echo "password: $AGENT_PASSWORD" >> $CONFIG_PATH
@@ -19,25 +23,25 @@ fi
 # Check if lapi need to register automatically an agent
 echo Check if lapi need to register automatically an agent
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-    cscli machines add $AGENT_USERNAME --password $AGENT_PASSWORD
+    cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD
     echo "Agent registered to lapi"
 fi
 
 # registration to online API for signal push
 if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
-    CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' /etc/crowdsec/config.yaml)
+    CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' "$CS_CONFIG_FILE")
     if [ "$CONFIG_EXIST" != "true" ]; then
-        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' /etc/crowdsec/config.yaml > /etc/crowdsec/config2.yaml
-        mv /etc/crowdsec/config2.yaml /etc/crowdsec/config.yaml
-        cscli capi register > /etc/crowdsec/online_api_credentials.yaml
+        yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CS_CONFIG_FILE" > /etc/crowdsec/config2.yaml
+        mv /etc/crowdsec/config2.yaml "$CS_CONFIG_FILE"
+        cscli -c "$CS_CONFIG_FILE" capi register > /etc/crowdsec/online_api_credentials.yaml
         echo "registration to online API done"
     fi
 fi
 
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
-    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' /etc/crowdsec/config.yaml)
-    DB_PATH=$(yq eval '.db_config.db_path' /etc/crowdsec/config.yaml)
+    IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' "$CS_CONFIG_FILE")
+    DB_PATH=$(yq eval '.db_config.db_path' "$CS_CONFIG_FILE")
     if [ "$IS_SQLITE" == "true" ]; then
         chown :$GID $DB_PATH
         echo "sqlite database permissions updated"
@@ -45,21 +49,21 @@ if [ "$GID" != "" ]; then
 fi
 
 ## Install collections, parsers & scenarios
-cscli hub update
-cscli collections upgrade crowdsecurity/linux || true
-cscli parsers upgrade crowdsecurity/whitelists || true
-cscli parsers install crowdsecurity/docker-logs || true
+cscli -c "$CS_CONFIG_FILE" hub update
+cscli -c "$CS_CONFIG_FILE" collections upgrade crowdsecurity/linux || true
+cscli -c "$CS_CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
+cscli -c "$CS_CONFIG_FILE" parsers install crowdsecurity/docker-logs || true
 if [ "$COLLECTIONS" != "" ]; then
-    cscli collections install $COLLECTIONS
+    cscli -c "$CS_CONFIG_FILE" collections install $COLLECTIONS
 fi
 if [ "$PARSERS" != "" ]; then
-    cscli parsers install $PARSERS
+    cscli -c "$CS_CONFIG_FILE" parsers install $PARSERS
 fi
 if [ "$SCENARIOS" != "" ]; then
-    cscli scenarios install $SCENARIOS
+    cscli -c "$CS_CONFIG_FILE" scenarios install $SCENARIOS
 fi
 if [ "$POSTOVERFLOWS" != "" ]; then
-    cscli postoverflows install $POSTOVERFLOWS
+    cscli -c "$CS_CONFIG_FILE" postoverflows install $POSTOVERFLOWS
 fi
 
 ARGS=""
