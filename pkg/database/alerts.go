@@ -436,6 +436,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			for i, decisionItem := range alertItem.Decisions {
 				decisionItem.ID = int64(decisions[i].ID)
+				decisionItem.Until = decisions[i].Until.String()
 			}
 		}
 
