@@ -163,7 +163,12 @@ Enable given information push to the central API. Allows to empower the console`
 			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
 				log.Fatalf("failed writing console config : %s", err)
 			}
-
+			if disableAll {
+				log.Infof("All features have been enabled successfully")
+			} else {
+				log.Infof("%v have been enabled successfully", args)
+			}
+			log.Infof(ReloadMessage())
 		},
 	}
 	cmdEnable.Flags().BoolVarP(&enableAll, "all", "a", false, "Enable all feature flags")
@@ -187,12 +192,18 @@ Disable given information push to the central API.`,
 			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
 				log.Fatalf("failed writing console config : %s", err)
 			}
+			if disableAll {
+				log.Infof("All features have been disabled successfully")
+			} else {
+				log.Infof("%v have been disabled successfully", args)
+			}
+			log.Infof(ReloadMessage())
 		},
 	}
 	cmdDisable.Flags().BoolVarP(&disableAll, "all", "a", false, "Enable all feature flags")
 	cmdConsole.AddCommand(cmdDisable)
 
-	cmdStatus := &cobra.Command{
+	cmdConsoleStatus := &cobra.Command{
 		Use:               "status [feature-flag]",
 		Short:             "Shows status of one or all feature flags",
 		Example:           "status alerts-tainted",
@@ -223,8 +234,9 @@ Disable given information push to the central API.`,
 		},
 	}
 
-	cmdConsole.AddCommand(cmdStatus)
-	cmdSync := &cobra.Command{
+	cmdConsole.AddCommand(cmdConsoleStatus)
+
+	cmdConsoleSync := &cobra.Command{
 		Use:               "sync",
 		Short:             "Sync current decisions to console",
 		DisableAutoGenTag: true,
@@ -294,15 +306,15 @@ Disable given information push to the central API.`,
 				}
 				decisionsList = append(decisionsList, decision)
 			}
-			resp, _, err := Client.Decisions.SyncDecisions(context.Background(), decisionsList)
+			_, _, err = Client.Decisions.SyncDecisions(context.Background(), decisionsList)
 			if err != nil {
 				log.Fatalf("unable to sync decisions with console: %s", err.Error())
 			}
-			log.Infof("Decisions sync: %+v", resp)
+			log.Infof("Decisions have been synchronized successfully")
 		},
 	}
 
-	cmdConsole.AddCommand(cmdSync)
+	cmdConsole.AddCommand(cmdConsoleSync)
 
 	return cmdConsole
 }
