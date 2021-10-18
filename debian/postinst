@@ -33,7 +33,7 @@ if [ "$1" = configure ]; then
         chmod 600 /etc/crowdsec/local_api_credentials.yaml
     fi
 
-    if [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]]; then
+    if [[ -f /etc/crowdsec/online_api_credentials.yaml ]]; then
         chmod 600 /etc/crowdsec/online_api_credentials.yaml
     fi
     
