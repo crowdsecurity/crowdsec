@@ -271,7 +271,7 @@ cscli decisions add --scope username --value foobar
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var ip, ipRange string
+			var ipRange string
 			alerts := models.AddAlertsRequest{}
 			origin := "cscli"
 			capacity := int32(0)
