@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -17,7 +18,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
+	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -211,13 +214,40 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {
 			case "human":
-				fmt.Printf("Sharing options:\n")
-				fmt.Printf("   - Share Decisions                  : %t\n", *csConfig.API.Server.ConsoleConfig.ShareDecisions)
-				fmt.Printf("   - Share tainted scenarios alerts   : %t\n", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)
-				fmt.Printf("   - Share custom scenarios alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)
-				fmt.Printf("   - Share manual decisions alerts    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)
-				fmt.Printf("   - Share alerts in simulion mode    : %t\n", *csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions)
+				table := tablewriter.NewWriter(os.Stdout)
 
+				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+				table.SetAlignment(tablewriter.ALIGN_LEFT)
+				table.SetHeader([]string{"Option Name", "Activated", "Description"})
+				for _, option := range csconfig.CONSOLE_CONFIGS {
+					switch option {
+					case csconfig.SEND_CUSTOM_SCENARIOS:
+						activated := fmt.Sprintf("%s", emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == true {
+							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Send alerts from custom scenarios to the console"})
+					case csconfig.SEND_MANUAL_SCENARIOS:
+						activated := fmt.Sprintf("%s", emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == true {
+							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Send manual decisions to the console"})
+					case csconfig.SEND_TAINTED_SCENARIOS:
+						activated := fmt.Sprintf("%s", emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == true {
+							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
+					case csconfig.SEND_SIMULATED_DECISIONS:
+						activated := fmt.Sprintf("%s", emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareSimulatedDecisions == true {
+							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Send alerts from scenarios in simulation mode to the console"})
+					}
+				}
+				table.Render()
 			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {
@@ -287,26 +317,58 @@ Disable given information push to the central API.`,
 			}
 
 			filter := make(map[string][]string)
-			decisionsInDb, err := dbClient.QueryDecisionWithFilter(filter)
+			filter["has_active_decision"] = []string{"true"}
+			alertsWithDecisions, err := dbClient.QueryAlertWithFilter(filter)
 			if err != nil {
 				log.Fatalf(err.Error())
 			}
-			decisionsList := make([]*models.Decision, 0)
-			for _, dbDecision := range decisionsInDb {
-				duration := dbDecision.Until.Sub(time.Now()).String()
-				decision := &models.Decision{
-					ID:       int64(dbDecision.ID),
-					Duration: &duration,
-					Scenario: &dbDecision.Scenario,
-					Scope:    &dbDecision.Scope,
-					Value:    &dbDecision.Value,
-					Type:     &dbDecision.Type,
-					Origin:   &dbDecision.Origin,
-					Until:    dbDecision.Until.String(),
+
+			alertList := make([]*models.Alert, 0)
+			for _, alert := range alertsWithDecisions {
+				startAt := alert.StartedAt.String()
+				StopAt := alert.StoppedAt.String()
+				formatedAlert := models.Alert{
+					ID:              int64(alert.ID),
+					MachineID:       machineID,
+					CreatedAt:       alert.CreatedAt.Format(time.RFC3339),
+					Scenario:        &alert.Scenario,
+					ScenarioVersion: &alert.ScenarioVersion,
+					ScenarioHash:    &alert.ScenarioHash,
+					Message:         &alert.Message,
+					EventsCount:     &alert.EventsCount,
+					StartAt:         &startAt,
+					StopAt:          &StopAt,
+					Capacity:        &alert.Capacity,
+					Leakspeed:       &alert.LeakSpeed,
+					Simulated:       &alert.Simulated,
+					Source: &models.Source{
+						Scope:     &alert.SourceScope,
+						Value:     &alert.SourceValue,
+						IP:        alert.SourceIp,
+						Range:     alert.SourceRange,
+						AsNumber:  alert.SourceAsNumber,
+						AsName:    alert.SourceAsName,
+						Cn:        alert.SourceCountry,
+						Latitude:  alert.SourceLatitude,
+						Longitude: alert.SourceLongitude,
+					},
 				}
-				decisionsList = append(decisionsList, decision)
+				for _, decisionItem := range alert.Edges.Decisions {
+					duration := decisionItem.Until.Sub(time.Now()).String()
+					formatedAlert.Decisions = append(formatedAlert.Decisions, &models.Decision{
+						Duration:  &duration, // transform into time.Time ?
+						Scenario:  &decisionItem.Scenario,
+						Type:      &decisionItem.Type,
+						Scope:     &decisionItem.Scope,
+						Value:     &decisionItem.Value,
+						Origin:    &decisionItem.Origin,
+						Simulated: formatedAlert.Simulated,
+						ID:        int64(decisionItem.ID),
+					})
+				}
+				alertList = append(alertList, &formatedAlert)
 			}
-			_, _, err = Client.Decisions.SyncDecisions(context.Background(), decisionsList)
+			_, _, err = Client.Decisions.SyncDecisions(context.Background(), alertList)
 			if err != nil {
 				log.Fatalf("unable to sync decisions with console: %s", err.Error())
 			}

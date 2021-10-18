@@ -143,7 +143,7 @@ func (s *DecisionsService) DeleteManualDecisions(ctx context.Context, decisionsI
 	return &successReponse, resp, nil
 }
 
-func (s *DecisionsService) SyncDecisions(ctx context.Context, decisions []*models.Decision) (*SuccessReponse, *Response, error) {
+func (s *DecisionsService) SyncDecisions(ctx context.Context, decisions []*models.Alert) (*SuccessReponse, *Response, error) {
 	var successReponse SuccessReponse
 
 	u := fmt.Sprintf("%s/decisions/sync", s.client.URLPrefix)
