@@ -90,6 +90,7 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
 		ScenarioTrust:   &scenarioTrust,
+		AlertID:         &alert.ID,
 	}
 	if keepDecisions {
 		log.Debugf("Keeping decisions to send to CAPI")

@@ -496,6 +496,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		ret = append(ret, strconv.Itoa(alert.ID))
 	}
 
+	for i, alertID := range ret {
+		alertIDInt, err := strconv.Atoi(alertID)
+		if err != nil {
+			log.Errorf("unable to convert alert ID '%s' to int: %s", alertID, err)
+		}
+		alertList[i].ID = int64(alertIDInt)
+	}
+
 	return ret, alertList, nil
 }
 

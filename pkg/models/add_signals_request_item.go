@@ -19,6 +19,10 @@ import (
 // swagger:model AddSignalsRequestItem
 type AddSignalsRequestItem struct {
 
+	// alert id
+	// Required: true
+	AlertID *int64 `json:"alert_id"`
+
 	// created at
 	CreatedAt string `json:"created_at,omitempty"`
 
@@ -65,6 +69,10 @@ type AddSignalsRequestItem struct {
 func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateAlertID(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateDecisions(formats); err != nil {
 		res = append(res, err)
 	}
@@ -104,6 +112,15 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *AddSignalsRequestItem) validateAlertID(formats strfmt.Registry) error {
+
+	if err := validate.Required("alert_id", "body", m.AlertID); err != nil {
+		return err
+	}
+
 	return nil
 }
 

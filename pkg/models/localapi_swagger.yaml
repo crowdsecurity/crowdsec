@@ -944,9 +944,12 @@ definitions:
     - "start_at"
     - "stop_at"
     - "scenario_trust"
+    - "alert_id"
     properties:
       scenario_hash:
         type: "string"
+      alert_id:
+        type: "integer"
       scenario:
         type: "string"
       created_at:
