@@ -160,9 +160,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-	for _, alert := range alertsToSend {
-		alert.MachineID = machineID
-	}
 
 	if c.CAPIChan != nil {
 		select {
