@@ -68,10 +68,12 @@ smb
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
 SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
 SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
+EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
 
 HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
 SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
 SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
+EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
 
 BACKUP_DIR=$(mktemp -d)
 rm -rf $BACKUP_DIR
@@ -499,6 +501,9 @@ install_plugins(){
 
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications
+
+    cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications
 }
 
 check_running_bouncers() {
