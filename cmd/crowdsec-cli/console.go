@@ -163,10 +163,10 @@ Enable given information push to the central API. Allows to empower the console`
 			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
 				log.Fatalf("failed writing console config : %s", err)
 			}
-			if disableAll {
+			if enableAll {
 				log.Infof("All features have been enabled successfully")
 			} else {
-				log.Infof("%v have been enabled successfully", args)
+				log.Infof("%v have been enabled", args)
 			}
 			log.Infof(ReloadMessage())
 		},
@@ -193,9 +193,9 @@ Disable given information push to the central API.`,
 				log.Fatalf("failed writing console config : %s", err)
 			}
 			if disableAll {
-				log.Infof("All features have been disabled successfully")
+				log.Infof("All features have been disabled")
 			} else {
-				log.Infof("%v have been disabled successfully", args)
+				log.Infof("%v have been disabled", args)
 			}
 			log.Infof(ReloadMessage())
 		},
