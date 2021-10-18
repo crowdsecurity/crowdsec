@@ -327,7 +327,7 @@ cscli decisions add --scope username --value foobar
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
-					IP:       ip,
+					IP:       addValue,
 					Range:    ipRange,
 					Scope:    &addScope,
 					Value:    &addValue,
