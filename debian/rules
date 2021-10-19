@@ -47,4 +47,5 @@ override_dh_auto_install:
 	cp config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
 	cp config/simulation.yaml debian/crowdsec/etc/crowdsec/simulation.yaml
 	cp config/profiles.yaml debian/crowdsec/etc/crowdsec/profiles.yaml
+	cp config/console_config.yaml debian/crowdsec/etc/crowdsec/console_config.yaml
 	cp -a config/patterns debian/crowdsec/etc/crowdsec

@@ -1,4 +1,4 @@
 share_manual_decisions: false
-share_custom: true
+share_custom: false
 share_tainted: false
-share_decisions: true
+share_decisions: false

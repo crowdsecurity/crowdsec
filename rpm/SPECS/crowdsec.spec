@@ -60,6 +60,7 @@ install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patte
 install -m 644 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 644 -D config/console_config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
