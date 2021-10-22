@@ -50,7 +50,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
-	//start go-routines for parsing, buckets pour and ouputs.
+	//start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 	parsersTomb.Go(func() error {
 		parserWg.Add(1)
