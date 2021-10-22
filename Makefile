@@ -88,6 +88,9 @@ clean:
 	@rm -f $(CSCLI_BIN)
 	@rm -f *.log
 	@rm -f crowdsec-release.tgz
+	@rm -f $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
+	@rm -f $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
+	@rm -f $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
 
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
