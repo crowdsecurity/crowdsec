@@ -43,7 +43,7 @@ const (
 	EdgeOwner = "owner"
 	// Table holds the table name of the decision in the database.
 	Table = "decisions"
-	// OwnerTable is the table the holds the owner relation/edge.
+	// OwnerTable is the table that holds the owner relation/edge.
 	OwnerTable = "decisions"
 	// OwnerInverseTable is the table name for the Alert entity.
 	// It exists in this package in order to avoid circular dependency with the "alert" package.

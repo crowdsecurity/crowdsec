@@ -22,9 +22,9 @@ type DecisionUpdate struct {
 	mutation *DecisionMutation
 }
 
-// Where adds a new predicate for the DecisionUpdate builder.
+// Where appends a list predicates to the DecisionUpdate builder.
 func (du *DecisionUpdate) Where(ps ...predicate.Decision) *DecisionUpdate {
-	du.mutation.predicates = append(du.mutation.predicates, ps...)
+	du.mutation.Where(ps...)
 	return du
 }
 
@@ -291,6 +291,9 @@ func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(du.hooks) - 1; i >= 0; i-- {
+			if du.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = du.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, du.mutation); err != nil {
@@ -541,8 +544,8 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, du.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -552,6 +555,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // DecisionUpdateOne is the builder for updating a single Decision entity.
 type DecisionUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *DecisionMutation
 }
@@ -799,6 +803,13 @@ func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 	return duo
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (duo *DecisionUpdateOne) Select(field string, fields ...string) *DecisionUpdateOne {
+	duo.fields = append([]string{field}, fields...)
+	return duo
+}
+
 // Save executes the query and returns the updated Decision entity.
 func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 	var (
@@ -819,6 +830,9 @@ func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 			return node, err
 		})
 		for i := len(duo.hooks) - 1; i >= 0; i-- {
+			if duo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = duo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, duo.mutation); err != nil {
@@ -866,6 +880,18 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Decision.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := duo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, decision.FieldID)
+		for _, f := range fields {
+			if !decision.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != decision.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := duo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -1077,8 +1103,8 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	if err = sqlgraph.UpdateNode(ctx, duo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

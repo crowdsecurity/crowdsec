@@ -65,10 +65,9 @@ var (
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
-		Name:        "bouncers",
-		Columns:     BouncersColumns,
-		PrimaryKey:  []*schema.Column{BouncersColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{},
+		Name:       "bouncers",
+		Columns:    BouncersColumns,
+		PrimaryKey: []*schema.Column{BouncersColumns[0]},
 	}
 	// DecisionsColumns holds the columns for the "decisions" table.
 	DecisionsColumns = []*schema.Column{
@@ -109,7 +108,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "time", Type: field.TypeTime},
-		{Name: "serialized", Type: field.TypeString, Size: 4095},
+		{Name: "serialized", Type: field.TypeString, Size: 8191},
 		{Name: "alert_events", Type: field.TypeInt, Nullable: true},
 	}
 	// EventsTable holds the schema information for the "events" table.
@@ -141,10 +140,9 @@ var (
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{
-		Name:        "machines",
-		Columns:     MachinesColumns,
-		PrimaryKey:  []*schema.Column{MachinesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{},
+		Name:       "machines",
+		Columns:    MachinesColumns,
+		PrimaryKey: []*schema.Column{MachinesColumns[0]},
 	}
 	// MetaColumns holds the columns for the "meta" table.
 	MetaColumns = []*schema.Column{

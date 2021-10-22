@@ -60,13 +60,13 @@ func (*Event) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case event.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case event.FieldSerialized:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case event.FieldCreatedAt, event.FieldUpdatedAt, event.FieldTime:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case event.ForeignKeys[0]: // alert_events
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Event", columns[i])
 		}
