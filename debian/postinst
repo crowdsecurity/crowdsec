@@ -28,9 +28,23 @@ if [ "$1" = configure ]; then
         set -e
         COLLECTIONS=true
     fi
+
+    if [[ -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+        chmod 600 /etc/crowdsec/local_api_credentials.yaml
+    fi
+
+    if [[ -f /etc/crowdsec/online_api_credentials.yaml ]]; then
+        chmod 600 /etc/crowdsec/online_api_credentials.yaml
+    fi
+    
     if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] || [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]]; then
-        touch /etc/crowdsec/local_api_credentials.yaml
-        touch /etc/crowdsec/online_api_credentials.yaml
+        if [[ ! -f /etc/crowdsec/local_api_credentials.yaml ]] ; then
+            install -m 600 /dev/null  /etc/crowdsec/local_api_credentials.yaml
+        fi
+        if [[ ! -f /etc/crowdsec/online_api_credentials.yaml ]] ; then
+            install -m 600 /dev/null  /etc/crowdsec/online_api_credentials.yaml
+        fi
+
         db_input medium crowdsec/lapi || true
         db_go || true
         
