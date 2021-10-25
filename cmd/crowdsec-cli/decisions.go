@@ -143,6 +143,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
+		Limit:          new(int),
 	}
 	NoSimu := new(bool)
 	contained := new(bool)
@@ -196,6 +197,9 @@ cscli decisions list -t ban
 					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 				}
 			}
+			if *filter.IncludeCAPI {
+				*filter.Limit = 0
+			}
 			if *filter.TypeEquals == "" {
 				filter.TypeEquals = nil
 			}
@@ -240,6 +244,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	cmdDecisionsList.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
 	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
