@@ -206,6 +206,14 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./tests/test.db",
 					Type:   "sqlite",
 				},
+				ConsoleConfigPath: "/etc/crowdsec/console_config.yaml",
+				ConsoleConfig: &ConsoleConfig{
+					ShareManualDecisions:    new(bool),
+					ShareTaintedScenarios:   new(bool),
+					ShareCustomScenarios:    new(bool),
+					ShareDecisions:          new(bool),
+					ShareSimulatedDecisions: new(bool),
+				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
 				OnlineClient: &OnlineApiClientCfg{
