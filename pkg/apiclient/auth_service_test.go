@@ -192,7 +192,7 @@ func TestWatcherEnroll(t *testing.T) {
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		log.Debugf("body -> %s", newStr)
-		if newStr == `{"attachment_key":"goodkey"}
+		if newStr == `{"attachment_key":"goodkey","name":"","tags":[]}
 ` {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
