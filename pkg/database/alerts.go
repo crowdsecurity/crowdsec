@@ -730,6 +730,24 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 	return ret, nil
 }
 
+func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
+	idList := make([]int, 0)
+	for _, alert := range alertItems {
+		idList = append(idList, int(alert.ID))
+	}
+
+	deleted, err := c.Ent.Alert.Delete().
+		Where(alert.IDIn(idList...)).Exec(c.CTX)
+	if err != nil {
+		c.Log.Warningf("DeleteAlertGraph : %s", err)
+		return deleted, errors.Wrapf(DeleteFail, "alert graph delete batch")
+	}
+
+	c.Log.Debug("Done batch delete alerts")
+
+	return deleted, nil
+}
+
 func (c *Client) DeleteAlertGraph(alertItem *ent.Alert) error {
 	// delete the associated events
 	_, err := c.Ent.Event.Delete().
@@ -810,12 +828,15 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var totalAlerts int
 	var err error
 
+	c.Log.Info("Flushing orphan alerts")
 	c.FlushOrphans()
+	c.Log.Info("Done flushing orphan alerts")
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
 		return errors.Wrap(err, "unable to get alerts count")
 	}
+	c.Log.Infof("FlushAlerts (Total alerts): %d", totalAlerts)
 	if MaxAge != "" {
 		filter := map[string][]string{
 			"created_before": {MaxAge},
@@ -825,29 +846,38 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			c.Log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
+		c.Log.Infof("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
 	}
 	if MaxItems > 0 {
 		if totalAlerts > MaxItems {
 			nbToDelete := totalAlerts - MaxItems
-			alerts, err := c.QueryAlertWithFilter(map[string][]string{
-				"sort":  {"ASC"},
-				"limit": {strconv.Itoa(nbToDelete)},
-			}) // we want to delete older alerts if we reach the max number of items
-			if err != nil {
-				c.Log.Warningf("FlushAlerts (max items query) : %s", err)
-				return errors.Wrap(err, "unable to get all alerts")
+			batchSize := 500
+			if batchSize > nbToDelete {
+				batchSize = nbToDelete
 			}
-			for itemNb, alert := range alerts {
-				if itemNb < nbToDelete {
-					err := c.DeleteAlertGraph(alert)
-					if err != nil {
-						c.Log.Warningf("FlushAlerts : %s", err)
-						return errors.Wrap(err, "unable to flush alert")
-					}
-					deletedByNbItem++
+			deleted := 0
+			for deleted < nbToDelete {
+				c.Log.Infof("FlushAlerts (before query with filter) to delete: %d", nbToDelete)
+				alerts, err := c.QueryAlertWithFilter(map[string][]string{
+					"sort":  {"ASC"},
+					"limit": {strconv.Itoa(batchSize)},
+				}) // we want to delete older alerts if we reach the max number of items
+				if err != nil {
+					c.Log.Warningf("FlushAlerts (max items query) : %s", err)
+					return errors.Wrap(err, "unable to get all alerts")
+				}
+				deletedAlerts, err := c.DeleteAlertGraphBatch(alerts)
+				if err != nil {
+					c.Log.Warningf("FlushAlerts (max items query) : %s", err)
+					return errors.Wrap(err, "unable to delete alerts")
+				}
+				deleted += deletedAlerts
+				if nbToDelete-deleted < batchSize {
+					batchSize = nbToDelete - deleted
 				}
 			}
+			deletedByNbItem = deleted
 		}
 	}
 	if deletedByNbItem > 0 {

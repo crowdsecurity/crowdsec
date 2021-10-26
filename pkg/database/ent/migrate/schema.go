@@ -48,6 +48,13 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "alert_id",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[0]},
+			},
+		},
 	}
 	// BouncersColumns holds the columns for the "bouncers" table.
 	BouncersColumns = []*schema.Column{
@@ -98,7 +105,7 @@ var (
 				Symbol:     "decisions_alerts_decisions",
 				Columns:    []*schema.Column{DecisionsColumns[15]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -121,7 +128,7 @@ var (
 				Symbol:     "events_alerts_events",
 				Columns:    []*schema.Column{EventsColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -163,7 +170,7 @@ var (
 				Symbol:     "meta_alerts_metas",
 				Columns:    []*schema.Column{MetaColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}

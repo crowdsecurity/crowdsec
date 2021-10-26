@@ -100,7 +100,8 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	}
 	// Init & Start cronjob every minute
 	scheduler := gocron.NewScheduler(time.UTC)
-	scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job, _ := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job.SingletonMode()
 	scheduler.StartAsync()
 
 	return scheduler, nil
