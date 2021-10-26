@@ -296,11 +296,11 @@ func NewConfigCmd() *cobra.Command {
 			if key != "" {
 				program, err := expr.Compile(key, expr.Env(Env{}))
 				if err != nil {
-					log.Fatalf(err)
+					log.Fatal(err)
 				}
 				output, err := expr.Run(program, Env{Config: csConfig})
 				if err != nil {
-					log.Fatalf(err)
+					log.Fatal(err)
 				}
 				switch csConfig.Cscli.Output {
 				case "human", "raw":
@@ -315,7 +315,7 @@ func NewConfigCmd() *cobra.Command {
 				case "json":
 					data, err := json.MarshalIndent(output, "", "  ")
 					if err != nil {
-						log.Fatalf("failed to marshal configuration: %s", err)
+						log.Fatal("failed to marshal configuration: %s", err)
 					}
 					fmt.Printf("%s\n", string(data))
 				}
