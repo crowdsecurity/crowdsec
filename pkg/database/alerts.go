@@ -877,6 +877,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 					batchSize = nbToDelete - deleted
 				}
 			}
+			deletedByNbItem = deleted
 		}
 	}
 	if deletedByNbItem > 0 {
