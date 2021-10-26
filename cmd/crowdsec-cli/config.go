@@ -315,7 +315,7 @@ func NewConfigCmd() *cobra.Command {
 				case "json":
 					data, err := json.MarshalIndent(output, "", "  ")
 					if err != nil {
-						log.Fatal("failed to marshal configuration: %s", err)
+						log.Fatalf("failed to marshal configuration: %s", err)
 					}
 					fmt.Printf("%s\n", string(data))
 				}
