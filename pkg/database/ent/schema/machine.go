@@ -21,7 +21,7 @@ func (Machine) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now),
 		field.Time("last_push").
-			Default(time.Now),
+			Default(time.Now).Optional(),
 		field.String("machineId").Unique(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),

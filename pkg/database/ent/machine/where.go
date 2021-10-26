@@ -391,6 +391,20 @@ func LastPushLTE(v time.Time) predicate.Machine {
 	})
 }
 
+// LastPushIsNil applies the IsNil predicate on the "last_push" field.
+func LastPushIsNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldLastPush)))
+	})
+}
+
+// LastPushNotNil applies the NotNil predicate on the "last_push" field.
+func LastPushNotNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldLastPush)))
+	})
+}
+
 // MachineIdEQ applies the EQ predicate on the "machineId" field.
 func MachineIdEQ(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {

@@ -249,9 +249,6 @@ func (mc *MachineCreate) check() error {
 	if _, ok := mc.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "updated_at"`)}
 	}
-	if _, ok := mc.mutation.LastPush(); !ok {
-		return &ValidationError{Name: "last_push", err: errors.New("ent: missing required field \"last_push\"")}
-	}
 	if _, ok := mc.mutation.MachineId(); !ok {
 		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "machineId"`)}
 	}

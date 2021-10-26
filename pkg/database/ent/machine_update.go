@@ -70,6 +70,12 @@ func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
 	return mu
 }
 
+// ClearLastPush clears the value of the "last_push" field.
+func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
+	mu.mutation.ClearLastPush()
+	return mu
+}
+
 // SetMachineId sets the "machineId" field.
 func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
 	mu.mutation.SetMachineId(s)
@@ -312,6 +318,12 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldLastPush,
 		})
 	}
+	if mu.mutation.LastPushCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldLastPush,
+		})
+	}
 	if value, ok := mu.mutation.MachineId(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -491,6 +503,12 @@ func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne
 	if t != nil {
 		muo.SetLastPush(*t)
 	}
+	return muo
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
+	muo.mutation.ClearLastPush()
 	return muo
 }
 
@@ -757,6 +775,12 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+	}
+	if muo.mutation.LastPushCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: machine.FieldLastPush,
 		})
 	}

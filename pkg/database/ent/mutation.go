@@ -5185,9 +5185,22 @@ func (m *MachineMutation) OldLastPush(ctx context.Context) (v time.Time, err err
 	return oldValue.LastPush, nil
 }
 
+// ClearLastPush clears the value of the "last_push" field.
+func (m *MachineMutation) ClearLastPush() {
+	m.last_push = nil
+	m.clearedFields[machine.FieldLastPush] = struct{}{}
+}
+
+// LastPushCleared returns if the "last_push" field was cleared in this mutation.
+func (m *MachineMutation) LastPushCleared() bool {
+	_, ok := m.clearedFields[machine.FieldLastPush]
+	return ok
+}
+
 // ResetLastPush resets all changes to the "last_push" field.
 func (m *MachineMutation) ResetLastPush() {
 	m.last_push = nil
+	delete(m.clearedFields, machine.FieldLastPush)
 }
 
 // SetMachineId sets the "machineId" field.
@@ -5751,6 +5764,9 @@ func (m *MachineMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *MachineMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(machine.FieldLastPush) {
+		fields = append(fields, machine.FieldLastPush)
+	}
 	if m.FieldCleared(machine.FieldScenarios) {
 		fields = append(fields, machine.FieldScenarios)
 	}
@@ -5774,6 +5790,9 @@ func (m *MachineMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *MachineMutation) ClearField(name string) error {
 	switch name {
+	case machine.FieldLastPush:
+		m.ClearLastPush()
+		return nil
 	case machine.FieldScenarios:
 		m.ClearScenarios()
 		return nil
