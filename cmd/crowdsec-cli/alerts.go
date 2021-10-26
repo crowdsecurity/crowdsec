@@ -475,7 +475,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	var cmdAlertsFlush = &cobra.Command{
 		Use: `flush`,
 		Short: `Flush alerts
-/!\ This command can be use only on the same machine than the local API`,
+/!\ This command can be used only on the same machine than the local API`,
 		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
