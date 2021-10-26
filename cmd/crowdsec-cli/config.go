@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/antonmedv/expr"
+
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -279,6 +281,10 @@ func NewConfigCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 	}
+	var key string
+	type Env struct {
+		Config *csconfig.Config
+	}
 	var cmdConfigShow = &cobra.Command{
 		Use:               "show",
 		Short:             "Displays current config",
@@ -286,6 +292,36 @@ func NewConfigCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+
+			if key != "" {
+				program, err := expr.Compile(key, expr.Env(Env{}))
+				if err != nil {
+					log.Fatalf(err)
+				}
+				output, err := expr.Run(program, Env{Config: csConfig})
+				if err != nil {
+					log.Fatalf(err)
+				}
+				switch csConfig.Cscli.Output {
+				case "human", "raw":
+					switch output.(type) {
+					case string:
+						fmt.Printf("%s\n", output)
+					case int:
+						fmt.Printf("%d\n", output)
+					default:
+						fmt.Printf("%v\n", output)
+					}
+				case "json":
+					data, err := json.MarshalIndent(output, "", "  ")
+					if err != nil {
+						log.Fatalf("failed to marshal configuration: %s", err)
+					}
+					fmt.Printf("%s\n", string(data))
+				}
+				return
+			}
+
 			switch csConfig.Cscli.Output {
 			case "human":
 				fmt.Printf("Global:\n")
@@ -374,6 +410,7 @@ func NewConfigCmd() *cobra.Command {
 			}
 		},
 	}
+	cmdConfigShow.Flags().StringVar(&key, "key", "", "Display only this value (config.API.Server.ListenURI")
 	cmdConfig.AddCommand(cmdConfigShow)
 
 	var cmdConfigBackup = &cobra.Command{
