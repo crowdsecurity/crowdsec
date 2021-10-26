@@ -495,6 +495,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if err != nil {
 				log.Fatalf("unable to flush alerts: %s", err)
 			}
+			log.Info("Alerts flushed")
 		},
 	}
 
