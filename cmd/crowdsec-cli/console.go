@@ -100,8 +100,8 @@ After running this command your will need to validate the enrollment in the weba
 			log.Infof("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
 		},
 	}
-	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to appear in the console")
-	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to appear in the console")
+	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
+	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	cmdConsole.AddCommand(cmdEnroll)
 	return cmdConsole
 }
