@@ -100,9 +100,9 @@ Note: This command requires database direct access, so is intended to be run on 
 		Use:   "add MyBouncerName [--length 16]",
 		Short: "add bouncer",
 		Long:  `add bouncer`,
-		Example: `cscli bouncers add MyBouncerName
+		Example: fmt.Sprintf(`cscli bouncers add MyBouncerName
 cscli bouncers add MyBouncerName -l 24
-cscli bouncers add MyBouncerName -k 3g2y4s9nmcdgrtr`,
+cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
