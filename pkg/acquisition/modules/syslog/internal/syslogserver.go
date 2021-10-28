@@ -37,6 +37,7 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not listen on port %d", s.port)
 	}
+	s.Logger.Debugf("listening on %s:%d", s.listenAddr, s.port)
 	s.udpConn = udpConn
 	err = s.udpConn.SetReadBuffer(s.MaxMessageLen) // FIXME probably
 	if err != nil {
