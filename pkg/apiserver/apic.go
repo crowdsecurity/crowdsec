@@ -422,9 +422,10 @@ func (a *apic) SendMetrics() error {
 			}
 			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
 			if err != nil {
-				return errors.Wrap(err, "sending metrics failed")
+				log.Errorf("Sending metrics failed: %s", err.Error())
+			} else {
+				log.Infof("capi metrics: metrics sent successfully")
 			}
-			log.Infof("capi metrics: metrics sent successfully")
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
