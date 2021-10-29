@@ -366,44 +366,61 @@ func (a *apic) Pull() error {
 	}
 }
 
+func (a *apic) GetMetrics() (*models.Metrics, error) {
+	version := cwversion.VersionStr()
+	metric := &models.Metrics{
+		ApilVersion: &version,
+		Machines:    make([]*models.MetricsSoftInfo, 0),
+		Bouncers:    make([]*models.MetricsSoftInfo, 0),
+	}
+	machines, err := a.dbClient.ListMachines()
+	if err != nil {
+		return metric, err
+	}
+	bouncers, err := a.dbClient.ListBouncers()
+	if err != nil {
+		return metric, err
+	}
+	for _, machine := range machines {
+		m := &models.MetricsSoftInfo{
+			Version: machine.Version,
+			Name:    machine.MachineId,
+		}
+		metric.Machines = append(metric.Machines, m)
+	}
+
+	for _, bouncer := range bouncers {
+		m := &models.MetricsSoftInfo{
+			Version: bouncer.Version,
+			Name:    bouncer.Type,
+		}
+		metric.Bouncers = append(metric.Bouncers, m)
+	}
+	return metric, nil
+}
+
 func (a *apic) SendMetrics() error {
 	defer types.CatchPanic("lapi/metricsToAPIC")
 
+	metrics, err := a.GetMetrics()
+	if err != nil {
+		log.Errorf("unable to get metrics (%s), will retry", err)
+	}
+	_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
+	if err != nil {
+		log.Errorf("unable to send metrics (%s), will retry", err)
+	}
+	log.Infof("capi metrics: metrics sent successfully")
 	log.Infof("start crowdsec api send metrics (interval: %s)", MetricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
 		select {
 		case <-ticker.C:
-			version := cwversion.VersionStr()
-			metric := &models.Metrics{
-				ApilVersion: &version,
-				Machines:    make([]*models.MetricsSoftInfo, 0),
-				Bouncers:    make([]*models.MetricsSoftInfo, 0),
-			}
-			machines, err := a.dbClient.ListMachines()
+			metrics, err := a.GetMetrics()
 			if err != nil {
-				return err
+				log.Errorf("unable to get metrics (%s), will retry", err)
 			}
-			bouncers, err := a.dbClient.ListBouncers()
-			if err != nil {
-				return err
-			}
-			for _, machine := range machines {
-				m := &models.MetricsSoftInfo{
-					Version: machine.Version,
-					Name:    machine.MachineId,
-				}
-				metric.Machines = append(metric.Machines, m)
-			}
-
-			for _, bouncer := range bouncers {
-				m := &models.MetricsSoftInfo{
-					Version: bouncer.Version,
-					Name:    bouncer.Type,
-				}
-				metric.Bouncers = append(metric.Bouncers, m)
-			}
-			_, _, err = a.apiClient.Metrics.Add(context.Background(), metric)
+			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
 			if err != nil {
 				return errors.Wrap(err, "sending metrics failed")
 			}
