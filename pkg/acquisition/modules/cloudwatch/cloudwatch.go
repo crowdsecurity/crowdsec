@@ -71,6 +71,7 @@ type CloudwatchSourceConfiguration struct {
 	AwsProfile                        *string        `yaml:"aws_profile,omitempty"`
 	PrependCloudwatchTimestamp        *bool          `yaml:"prepend_cloudwatch_timestamp,omitempty"`
 	AwsConfigDir                      *string        `yaml:"aws_config_dir,omitempty"`
+	AwsRegion                         *string        `yaml:"aws_region,omitempty"`
 }
 
 //LogStreamTailConfig is the configuration for one given stream within one group
@@ -97,7 +98,7 @@ var (
 	def_StreamReadTimeout       = 10 * time.Minute
 	def_PollDeadStreamInterval  = 10 * time.Second
 	def_GetLogEventsPagesLimit  = int64(1000)
-	def_AwsConfigDir            = "/root/.aws/"
+	def_AwsConfigDir            = ""
 )
 
 func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
@@ -151,20 +152,28 @@ func (cw *CloudwatchSource) Configure(cfg []byte, logger *log.Entry) error {
 		cw.Config.AwsConfigDir = &def_AwsConfigDir
 	}
 	logger.Tracef("aws_config_dir set to %s", *cw.Config.AwsConfigDir)
-	_, err := os.Stat(*cw.Config.AwsConfigDir)
-	if os.IsNotExist(err) {
-		logger.Errorf("aws_config_dir '%s' : directory does not exists", *cw.Config.AwsConfigDir)
-		return fmt.Errorf("aws_config_dir %s does not exist", *cw.Config.AwsConfigDir)
+	if *cw.Config.AwsConfigDir != "" {
+		_, err := os.Stat(*cw.Config.AwsConfigDir)
+		if err != nil {
+			logger.Errorf("can't read aws_config_dir '%s' got err %s", *cw.Config.AwsConfigDir, err)
+			return fmt.Errorf("can't read aws_config_dir %s got err %s ", *cw.Config.AwsConfigDir, err)
+		}
+		os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
+		//as aws sdk relies on $HOME, let's allow the user to override it :)
+		os.Setenv("AWS_CONFIG_FILE", fmt.Sprintf("%s/config", *cw.Config.AwsConfigDir))
+		os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
+	} else {
+		if cw.Config.AwsRegion == nil {
+			logger.Errorf("aws_region is not specified, specify it or aws_config_dir")
+			return fmt.Errorf("aws_region is not specified, specify it or aws_config_dir")
+		}
+		os.Setenv("AWS_REGION", *cw.Config.AwsRegion)
 	}
-	os.Setenv("AWS_SDK_LOAD_CONFIG", "1")
-	//as aws sdk relies on $HOME, let's allow the user to override it :)
-	os.Setenv("AWS_CONFIG_FILE", fmt.Sprintf("%s/config", *cw.Config.AwsConfigDir))
-	os.Setenv("AWS_SHARED_CREDENTIALS_FILE", fmt.Sprintf("%s/credentials", *cw.Config.AwsConfigDir))
+
 	if err := cw.newClient(); err != nil {
 		return err
 	}
 	cw.streamIndexes = make(map[string]string)
-
 	if cw.Config.StreamRegexp != nil {
 		if _, err := regexp.Compile(*cw.Config.StreamRegexp); err != nil {
 			return errors.Wrapf(err, "error while compiling regexp '%s'", *cw.Config.StreamRegexp)
