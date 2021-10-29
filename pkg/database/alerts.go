@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
-	defaultLimit   = 100 // default limit of element to returns when query alerts
-	bulkSize       = 50  // bulk size when create alerts
+	paginationSize   = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit     = 100 // default limit of element to returns when query alerts
+	bulkSize         = 50  // bulk size when create alerts
+	decisionBulkSize = 50
 )
 
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
@@ -117,7 +118,6 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 /*We can't bulk both the alert and the decision at the same time. With new consensus, we want to bulk a single alert with a lot of decisions.*/
 func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
 
-	decisionBulkSize := 50
 	var err error
 	var deleted, inserted int
 
@@ -394,8 +394,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
 			ts = time.Now()
 		}
+
+		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
-			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
+			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 			for i, decisionItem := range alertItem.Decisions {
 				var start_ip, start_sfx, end_ip, end_sfx int64
 				var sz int
@@ -412,7 +414,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
-				decisionBulk[i] = c.Ent.Decision.Create().
+
+				decisionCreate := c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
@@ -425,11 +428,30 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
 					SetSimulated(*alertItem.Simulated)
+
+				decisionBulk = append(decisionBulk, decisionCreate)
+				if len(decisionBulk) == decisionBulkSize {
+					decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+					if err != nil {
+						return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+
+					}
+					for _, decision := range decisionsCreateRet {
+						decisions = append(decisions, decision)
+					}
+					if len(alertItem.Decisions)-i <= decisionBulkSize {
+						decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
+					} else {
+						decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+					}
+				}
 			}
-			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
 			if err != nil {
 				return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
-
+			}
+			for _, decision := range decisionsCreateRet {
+				decisions = append(decisions, decision)
 			}
 		}
 
