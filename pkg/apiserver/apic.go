@@ -422,7 +422,7 @@ func (a *apic) SendMetrics() error {
 			}
 			_, _, err = a.apiClient.Metrics.Add(context.Background(), metrics)
 			if err != nil {
-				log.Errorf("Sending metrics failed: %s", err.Error())
+				log.Errorf("capi metrics: failed: %s", err.Error())
 			} else {
 				log.Infof("capi metrics: metrics sent successfully")
 			}
