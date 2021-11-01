@@ -15,7 +15,9 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
+	"github.com/fatih/color"
 	"github.com/pkg/errors"
+	diff "github.com/r3labs/diff/v2"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -275,7 +277,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
-	state := make(map[time.Time]map[string]map[string]bool, 0)
+	state := make(map[time.Time]map[string]map[string]ParserResult, 0)
 	assoc := make(map[time.Time]string, 0)
 
 	for stage, parsers := range parser_results {
@@ -283,14 +285,16 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 			for _, parser_res := range results {
 				evt := parser_res.Evt
 				if _, ok := state[evt.Line.Time]; !ok {
-					state[evt.Line.Time] = make(map[string]map[string]bool)
+					state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 					assoc[evt.Line.Time] = evt.Line.Raw
 				}
 				if _, ok := state[evt.Line.Time][stage]; !ok {
-					state[evt.Line.Time][stage] = make(map[string]bool)
+					state[evt.Line.Time][stage] = make(map[string]ParserResult)
 				}
-				state[evt.Line.Time][stage][parser] = parser_res.Success
+				// changes.Success = parser_res.Success
+				state[evt.Line.Time][stage][parser] = ParserResult{Evt: evt, Success: parser_res.Success}
 			}
+
 		}
 	}
 
@@ -301,18 +305,20 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 			}
 			//it might be bucket oveflow being reprocessed, skip this
 			if _, ok := state[evt.Line.Time]; !ok {
-				state[evt.Line.Time] = make(map[string]map[string]bool)
+				state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 				assoc[evt.Line.Time] = evt.Line.Raw
 			}
 			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
 			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if _, ok := state[evt.Line.Time]["buckets"]; !ok {
-				state[evt.Line.Time]["buckets"] = make(map[string]bool)
+				state[evt.Line.Time]["buckets"] = make(map[string]ParserResult)
 			}
-			state[evt.Line.Time]["buckets"][bname] = true
+			state[evt.Line.Time]["buckets"][bname] = ParserResult{Success: true}
 		}
 	}
-
+	yellow := color.New(color.FgYellow).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
 	//get each line
 	for tstamp, rawstr := range assoc {
 		fmt.Printf("line: %s\n", rawstr)
@@ -327,6 +333,8 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 		}
 		sort.Strings(skeys)
 		//iterate stage
+		var prev_item types.Event
+		//prev_parser := nil
 		for _, stage := range skeys {
 			parsers := state[tstamp][stage]
 
@@ -342,13 +350,68 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 			sort.Strings(pkeys)
 
 			for idx, parser := range pkeys {
-				res := parsers[parser]
+				res := parsers[parser].Success
 				sep := "├"
 				if idx == len(pkeys)-1 {
 					sep = "└"
 				}
+				created := 0
+				updated := 0
+				deleted := 0
+				whitelisted := false
+				changeStr := ""
+
 				if res {
-					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.GreenCircle, parser)
+					if prev_item.Stage == "" {
+						changeStr = "first_parser"
+					} else {
+						changelog, _ := diff.Diff(prev_item, parsers[parser].Evt)
+						for _, change := range changelog {
+							switch change.Type {
+							case "create":
+								created++
+								log.Debugf("%s %s : %s", change.Type, strings.Join(change.Path, "."), green(change.To))
+							case "update":
+								log.Debugf("%s %s : %s -> %s", change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
+								if change.Path[0] == "Whitelisted" && change.To == true {
+									whitelisted = true
+								}
+								updated++
+							case "delete":
+								deleted++
+								log.Debugf("%s %s", change.Type, red(strings.Join(change.Path, ".")))
+							}
+						}
+					}
+					prev_item = parsers[parser].Evt
+				}
+
+				if created > 0 {
+					changeStr += green(fmt.Sprintf("+%d", created))
+				}
+				if updated > 0 {
+					if len(changeStr) > 0 {
+						changeStr += " "
+					}
+					changeStr += yellow(fmt.Sprintf("~%d", updated))
+				}
+				if deleted > 0 {
+					if len(changeStr) > 0 {
+						changeStr += " "
+					}
+					changeStr += red(fmt.Sprintf("-%d", deleted))
+				}
+				if whitelisted {
+					if len(changeStr) > 0 {
+						changeStr += " "
+					}
+					changeStr += red(fmt.Sprintf("[whitelisted]"))
+				}
+				if changeStr == "" {
+					changeStr = yellow("unchanged")
+				}
+				if res {
+					fmt.Printf("\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
 				} else {
 					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
 
