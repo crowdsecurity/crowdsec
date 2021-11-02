@@ -155,9 +155,6 @@ func (p *ParserAssert) RunExpression(expression string) (interface{}, error) {
 	if runtimeFilter, err = expr.Compile(expression, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
 		return output, err
 	}
-	// if debugFilter, err = exprhelpers.NewDebugger(assert, expr.Env(exprhelpers.GetExprEnv(env))); err != nil {
-	// 	log.Warningf("Failed building debugher for %s : %s", assert, err)
-	// }
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
@@ -291,7 +288,6 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details 
 				if _, ok := state[evt.Line.Time][stage]; !ok {
 					state[evt.Line.Time][stage] = make(map[string]ParserResult)
 				}
-				// changes.Success = parser_res.Success
 				state[evt.Line.Time][stage][parser] = ParserResult{Evt: evt, Success: parser_res.Success}
 			}
 
