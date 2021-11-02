@@ -67,6 +67,7 @@ func TestWatchLogGroupForStreams(t *testing.T) {
 			name: "group_does_not_exists",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: b
@@ -92,6 +93,7 @@ stream_name: test_stream`),
 			name: "group_exists_bad_stream_name",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group1
@@ -136,6 +138,7 @@ stream_name: test_stream_bad`),
 			name: "group_exists_bad_stream_regexp",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group1
@@ -182,6 +185,7 @@ stream_regexp: test_bad[0-9]+`),
 			name: "group_exists_stream_exists_has_events",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -261,6 +265,7 @@ stream_name: test_stream`),
 			name: "group_exists_stream_exists_has_events+timeout",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -353,6 +358,7 @@ stream_name: test_stream`),
 			name: "group_exists_stream_exists_has_events+timeout+GC",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -527,6 +533,7 @@ func TestConfiguration(t *testing.T) {
 			name: "group_does_not_exists",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group
@@ -546,6 +553,7 @@ stream_name: test_stream`),
 			name: "missing_group_name",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 stream_name: test_stream`),
