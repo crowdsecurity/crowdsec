@@ -575,7 +575,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 					}
 				}
 
-				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData)
+				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, false)
 			}
 		},
 	}

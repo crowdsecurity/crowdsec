@@ -274,7 +274,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	return &pdump, nil
 }
 
-func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
+func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details bool) error {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
 	state := make(map[time.Time]map[string]map[string]ParserResult)
@@ -360,6 +360,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 				deleted := 0
 				whitelisted := false
 				changeStr := ""
+				detailsDisplay := ""
 
 				if res {
 					if prev_item.Stage == "" {
@@ -370,16 +371,16 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 							switch change.Type {
 							case "create":
 								created++
-								log.Debugf("%s %s : %s", change.Type, strings.Join(change.Path, "."), green(change.To))
+								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s %s : %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), green(change.To))
 							case "update":
-								log.Debugf("%s %s : %s -> %s", change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
+								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s %s : %s -> %s\n", presep, sep, change.Type, strings.Join(change.Path, "."), change.From, yellow(change.To))
 								if change.Path[0] == "Whitelisted" && change.To == true {
 									whitelisted = true
 								}
 								updated++
 							case "delete":
 								deleted++
-								log.Debugf("%s %s", change.Type, red(strings.Join(change.Path, ".")))
+								detailsDisplay += fmt.Sprintf("\t%s\t\t%s %s %s\n", presep, sep, change.Type, red(strings.Join(change.Path, ".")))
 							}
 						}
 					}
@@ -412,6 +413,9 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 				}
 				if res {
 					fmt.Printf("\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
+					if details {
+						fmt.Print(detailsDisplay)
+					}
 				} else {
 					fmt.Printf("\t%s\t%s %s %s\n", presep, sep, emoji.RedCircle, parser)
 
