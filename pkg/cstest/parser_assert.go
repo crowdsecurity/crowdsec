@@ -277,7 +277,7 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
-	state := make(map[time.Time]map[string]map[string]ParserResult, 0)
+	state := make(map[time.Time]map[string]map[string]ParserResult)
 	assoc := make(map[time.Time]string, 0)
 
 	for stage, parsers := range parser_results {
@@ -405,7 +405,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 					if len(changeStr) > 0 {
 						changeStr += " "
 					}
-					changeStr += red(fmt.Sprintf("[whitelisted]"))
+					changeStr += red("[whitelisted]")
 				}
 				if changeStr == "" {
 					changeStr = yellow("unchanged")
