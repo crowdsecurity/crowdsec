@@ -334,7 +334,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo) error {
 		sort.Strings(skeys)
 		//iterate stage
 		var prev_item types.Event
-		//prev_parser := nil
+
 		for _, stage := range skeys {
 			parsers := state[tstamp][stage]
 
