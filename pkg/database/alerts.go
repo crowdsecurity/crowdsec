@@ -828,15 +828,15 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var totalAlerts int
 	var err error
 
-	c.Log.Info("Flushing orphan alerts")
+	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans()
-	c.Log.Info("Done flushing orphan alerts")
+	c.Log.Debug("Done flushing orphan alerts")
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
 		return errors.Wrap(err, "unable to get alerts count")
 	}
-	c.Log.Infof("FlushAlerts (Total alerts): %d", totalAlerts)
+	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 	if MaxAge != "" {
 		filter := map[string][]string{
 			"created_before": {MaxAge},
@@ -846,7 +846,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			c.Log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
-		c.Log.Infof("FlushAlerts (deleted max age alerts): %d", nbDeleted)
+		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
 	}
 	if MaxItems > 0 {
@@ -858,7 +858,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			}
 			deleted := 0
 			for deleted < nbToDelete {
-				c.Log.Infof("FlushAlerts (before query with filter) to delete: %d", nbToDelete)
+				c.Log.Debugf("FlushAlerts (before query with filter) to delete: %d", nbToDelete)
 				alerts, err := c.QueryAlertWithFilter(map[string][]string{
 					"sort":  {"ASC"},
 					"limit": {strconv.Itoa(batchSize)},
