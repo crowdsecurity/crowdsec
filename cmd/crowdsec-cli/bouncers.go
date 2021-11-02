@@ -17,6 +17,7 @@ import (
 var keyName string
 var keyIP string
 var keyLength int
+var key string
 
 func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
@@ -99,17 +100,23 @@ Note: This command requires database direct access, so is intended to be run on 
 		Use:   "add MyBouncerName [--length 16]",
 		Short: "add bouncer",
 		Long:  `add bouncer`,
-		Example: `cscli bouncers add MyBouncerName
-cscli bouncers add MyBouncerName -l 24`,
+		Example: fmt.Sprintf(`cscli bouncers add MyBouncerName
+cscli bouncers add MyBouncerName -l 24
+cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
+			var apiKey string
+			var err error
 			if keyName == "" {
 				log.Errorf("Please provide a name for the api key")
 				return
 			}
-			apiKey, err := middlewares.GenerateAPIKey(keyLength)
+			apiKey = key
+			if key == "" {
+				apiKey, err = middlewares.GenerateAPIKey(keyLength)
+			}
 			if err != nil {
 				log.Errorf("unable to generate api key: %s", err)
 				return
@@ -136,6 +143,7 @@ cscli bouncers add MyBouncerName -l 24`,
 		},
 	}
 	cmdBouncersAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
+	cmdBouncersAdd.Flags().StringVarP(&key, "key", "k", "", "api key for the bouncer")
 	cmdBouncers.AddCommand(cmdBouncersAdd)
 
 	var cmdBouncersDelete = &cobra.Command{
