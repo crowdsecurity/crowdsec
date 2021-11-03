@@ -4,7 +4,8 @@ FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-RUN apk update && apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold
+# wizard.sh requires GNU coreutils
+RUN apk update && apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold coreutils
 
 COPY . .
 
