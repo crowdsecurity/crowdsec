@@ -351,9 +351,9 @@ func pluginIsValid(path string) error {
 	}
 
 	// check if it is owned by root
-	stat := details.Sys().(*syscall.Stat_t)
-	if stat.Uid != 0 || stat.Gid != 0 {
-		return fmt.Errorf("plugin at %s is not owned by root user and group", path)
+	err = CheckOwner(details, path)
+	if err != nil {
+		return err
 	}
 
 	if (int(details.Mode()) & 2) != 0 {
@@ -410,12 +410,7 @@ func getProccessAtr(username string, groupname string) (*syscall.SysProcAttr, er
 	if gid < 0 && gid > math.MaxUint32 {
 		return nil, fmt.Errorf("out of bound gid")
 	}
-	return &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
-		},
-	}, nil
+	return CheckCredential(uid, gid), nil
 }
 
 func getUUID() (string, error) {

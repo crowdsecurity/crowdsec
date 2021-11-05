@@ -4,11 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 
 	_ "net/http/pprof"
 	"time"
-
-	"sort"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -19,7 +18,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	"golang.org/x/sys/windows/svc"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/writer"
@@ -28,7 +26,6 @@ import (
 )
 
 var (
-
 	/*tombs for the parser, buckets and outputs.*/
 	acquisTomb   tomb.Tomb
 	parsersTomb  tomb.Tomb
@@ -166,7 +163,7 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", "C:\\Program Files\\CrowdSec\\config\\config_win.yaml", "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", defaultConfigFile, "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
@@ -240,8 +237,7 @@ func main() {
 	)
 
 	defer types.CatchPanic("crowdsec/main")
-	const svcName = "CrowdSec"
-	const svcDisplayName = "massively multiplayer firewall"
+
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
@@ -249,31 +245,7 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
-	isRunninginService, err := svc.IsWindowsService()
-	if err != nil {
-		log.Fatalf("failed to determine if we are running in windows service mode: %v", err)
-	}
-	if isRunninginService {
-		runService(svcName, false)
-		return
-	}
-
-	if flags.WinSvc == "Install" {
-		err = installService(svcName, svcDisplayName)
-		return
-	} else if flags.WinSvc == "Remove" {
-		err = removeService(svcName)
-		return
-	} else if flags.WinSvc == "Start" {
-		err = startService(svcName)
-		return
-	} else if flags.WinSvc == "Stop" {
-		err = controlService(svcName, svc.Stop, svc.Stopped)
-	}
-	if err != nil {
-		log.Fatalf("failed to %s %s: %v", flags.WinSvc, svcName, err)
-	}
-
+	start_RunSvc()
 	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
 		Writer: os.Stderr,
 		LogLevels: []log.Level{
@@ -300,49 +272,11 @@ func main() {
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
 	}
+
 	if err := Serve(cConfig); err != nil {
 		log.Fatalf(err.Error())
 	}
 
 }
-func run() {
 
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
 
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
-		Writer: os.Stderr,
-		LogLevels: []log.Level{
-			log.PanicLevel,
-			log.FatalLevel,
-		},
-	})
-
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
-	if err != nil {
-		elog.Error(1, err.Error())
-
-	}
-	if err := LoadConfig(cConfig); err != nil {
-		elog.Error(1, err.Error())
-
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
-
-		elog.Error(1, err.Error())
-	}
-
-	elog.Info(1, "Crowdsec"+cwversion.VersionStr())
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
-	}
-
-	if err := Serve(cConfig); err != nil {
-
-		elog.Error(1, err.Error())
-	}
-}
