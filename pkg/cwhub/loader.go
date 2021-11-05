@@ -47,7 +47,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 
-	subs := strings.Split(path, "\\")
+	subs := strings.Split(path, PathSeparator)
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.hub/hub/)*/
@@ -133,7 +133,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
-		x := strings.Split(path, "\\")
+		x := strings.Split(path, PathSeparator)
 		target.FileName = x[len(x)-1]
 
 		hubIdx[ftype][fname] = target
@@ -157,14 +157,13 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if inhub {
 			//wrong author
 			if fauthor != v.Author {
-				log.Tracef("wrong author")
 				continue
 			}
 			//wrong file
-			// if v.Name+".yaml" != fauthor+"\\"+fname {
-			// 	log.Tracef("wrong name")
-			// 	continue
-			// }
+			if CheckName(v.Name, fauthor, fname) {
+				continue
+			}
+
 			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
@@ -172,10 +171,9 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		} else {
 			//wrong file
 			//<type>/<stage>/<author>/<name>.yaml
-			// if !strings.HasSuffix(hubpath, v.RemotePath) {
-			// 	log.Tracef("wrong file %s %s", hubpath, v.RemotePath)
-			// 	continue
-			// }
+			if CheckSuffix(hubpath, v.RemotePath) {
+				continue
+			}
 		}
 		sha, err := getSHA256(path)
 		if err != nil {
@@ -191,7 +189,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		for _, version := range versions {
 			val := v.Versions[version]
 			if sha != val.Digest {
-				log.Tracef("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, v.Versions[version])
+				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
 			} else {
 				/*we got an exact match, update struct*/
@@ -204,7 +202,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 					/*if we're walking the hub, present file doesn't means installed file*/
 					v.Installed = true
 					v.LocalHash = sha
-					x := strings.Split(path, "\\")
+					x := strings.Split(path, PathSeparator)
 					target.FileName = x[len(x)-1]
 				}
 				if version == v.Version {
@@ -227,7 +225,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			x := strings.Split(path, "\\")
+			x := strings.Split(path, PathSeparator)
 			target.FileName = x[len(x)-1]
 
 		}

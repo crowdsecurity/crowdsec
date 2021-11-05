@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -230,7 +229,7 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
-		err := unix.Access(file, unix.R_OK)
+		err := checkAccess(file)
 		if err != nil {
 			f.logger.Errorf("unable to read %s : %s", file, err)
 			continue
@@ -300,7 +299,7 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
-				err = unix.Access(event.Name, unix.R_OK)
+				err = checkAccess(event.Name)
 				if err != nil {
 					logger.Errorf("unable to read %s : %s", event.Name, err)
 					continue
@@ -362,7 +361,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
-			l.Raw = line.Text
+			l.Raw = trimLine(line.Text)
 			l.Labels = f.config.Labels
 			l.Time = line.Time
 			l.Src = tail.Filename
