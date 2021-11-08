@@ -271,7 +271,12 @@ func LoadParserDump(filepath string) (*ParserResults, error) {
 	return &pdump, nil
 }
 
-func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details bool) error {
+type DumpOpts struct {
+	Details bool
+	SkipOk  bool
+}
+
+func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
 	state := make(map[time.Time]map[string]map[string]ParserResult)
@@ -317,6 +322,11 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details 
 	green := color.New(color.FgGreen).SprintFunc()
 	//get each line
 	for tstamp, rawstr := range assoc {
+		if opts.SkipOk {
+			if _, ok := state[tstamp]["buckets"]["OK"]; ok {
+				continue
+			}
+		}
 		fmt.Printf("line: %s\n", rawstr)
 		skeys := make([]string, 0, len(state[tstamp]))
 		for k := range state[tstamp] {
@@ -409,7 +419,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details 
 				}
 				if res {
 					fmt.Printf("\t%s\t%s %s %s (%s)\n", presep, sep, emoji.GreenCircle, parser, changeStr)
-					if details {
+					if opts.Details {
 						fmt.Print(detailsDisplay)
 					}
 				} else {
@@ -451,5 +461,4 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, details 
 		}
 		fmt.Println()
 	}
-	return nil
 }
