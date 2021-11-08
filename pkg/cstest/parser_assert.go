@@ -461,5 +461,4 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		}
 		fmt.Println()
 	}
-	return
 }
