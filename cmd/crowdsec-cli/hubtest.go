@@ -574,8 +574,8 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 						log.Fatalf("unable to load scenario result after run: %s", err)
 					}
 				}
-
-				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, false)
+				opts := cstest.DumpOpts{}
+				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
 			}
 		},
 	}

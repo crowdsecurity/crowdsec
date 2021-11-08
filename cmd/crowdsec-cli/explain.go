@@ -17,7 +17,7 @@ func NewExplainCmd() *cobra.Command {
 	var dsn string
 	var logLine string
 	var logType string
-	var details bool
+	var opts cstest.DumpOpts
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -96,7 +96,7 @@ cscli explain -dsn "file://myfile.log" --type nginx
 				log.Fatalf("unable to load bucket dump result: %s", err)
 			}
 
-			if err := cstest.DumpTree(*parserDump, *bucketStateDump, details); err != nil {
+			if err := cstest.DumpTree(*parserDump, *bucketStateDump, opts); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
@@ -105,7 +105,8 @@ cscli explain -dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().StringVarP(&dsn, "dsn", "d", "", "DSN to test")
 	cmdExplain.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Lgg line to test")
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
-	cmdExplain.PersistentFlags().BoolVarP(&details, "verbose", "v", false, "Display individual changes")
+	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
+	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
 
 	return cmdExplain
 }
