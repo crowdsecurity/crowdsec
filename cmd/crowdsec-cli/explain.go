@@ -96,9 +96,7 @@ cscli explain -dsn "file://myfile.log" --type nginx
 				log.Fatalf("unable to load bucket dump result: %s", err)
 			}
 
-			if err := cstest.DumpTree(*parserDump, *bucketStateDump, opts); err != nil {
-				log.Fatalf(err.Error())
-			}
+			cstest.DumpTree(*parserDump, *bucketStateDump, opts)
 		},
 	}
 	cmdExplain.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")

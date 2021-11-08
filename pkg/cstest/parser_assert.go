@@ -276,7 +276,7 @@ type DumpOpts struct {
 	SkipOk  bool
 }
 
-func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) error {
+func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts DumpOpts) {
 	//note : we can use line -> time as the unique identifier (of acquisition)
 
 	state := make(map[time.Time]map[string]map[string]ParserResult)
@@ -461,5 +461,5 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		}
 		fmt.Println()
 	}
-	return nil
+	return
 }
