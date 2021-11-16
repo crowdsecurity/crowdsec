@@ -865,17 +865,19 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			return errors.Wrap(err, "could not get last alert")
 		}
 
-		maxid := lastAlert[0].ID - MaxItems
+		if len(lastAlert) != 0 {
+			maxid := lastAlert[0].ID - MaxItems
 
-		c.Log.Debugf("FlushAlerts (max id): %d", maxid)
+			c.Log.Debugf("FlushAlerts (max id): %d", maxid)
 
-		if maxid > 0 {
-			//This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
-			deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
+			if maxid > 0 {
+				//This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
+				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
 
-			if err != nil {
-				c.Log.Errorf("FlushAlerts: Could not delete alerts : %s", err)
-				return errors.Wrap(err, "could not delete alerts")
+				if err != nil {
+					c.Log.Errorf("FlushAlerts: Could not delete alerts : %s", err)
+					return errors.Wrap(err, "could not delete alerts")
+				}
 			}
 		}
 	}
