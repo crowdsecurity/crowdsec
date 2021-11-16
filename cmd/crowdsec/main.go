@@ -64,7 +64,7 @@ type Flags struct {
 	DisableAPI     bool
 }
 
-type labelsArray [][]string
+type labelsMap map[string]string
 
 type parsers struct {
 	ctx             *parser.UnixParserCtx
@@ -150,11 +150,8 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
-		flags.Labels = make(map[string]string, 0)
+		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
-		for _, label := range labels {
-			flags.Labels[label[0]] = label[1]
-		}
 
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
 		if err != nil {
@@ -172,16 +169,16 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 var dumpFolder string
 var dumpStates bool
-var labels labelsArray
+var labels = make(labelsMap)
 
-func (l *labelsArray) String() string {
+func (l *labelsMap) String() string {
 	return "labels"
 }
 
-func (l *labelsArray) Set(label string) error {
+func (l labelsMap) Set(label string) error {
 	split := strings.Split(label, ":")
 	if len(split) == 2 {
-		*l = append(*l, split)
+		l[split[0]] = split[1]
 	} else {
 		log.Fatalf("Bad format for Label '%s'", label)
 	}

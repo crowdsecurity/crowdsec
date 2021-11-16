@@ -20,7 +20,7 @@ type HubTestItemConfig struct {
 	PostOVerflows []string 			`yaml:"postoverflows"`
 	LogFile       string   			`yaml:"log_file"`
 	LogType       string   			`yaml:"log_type"`
-	Labels        map[string]string	`yaml:"labels,omitempty"`
+	Labels        map[string]string	`yaml:"labels"`
 	IgnoreParsers bool     			`yaml:"ignore_parsers"` // if we test a scenario, we don't want to assert on Parser
 }
 
