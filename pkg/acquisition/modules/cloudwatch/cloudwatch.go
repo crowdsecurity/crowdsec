@@ -484,7 +484,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 	}
 }
 
-func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *log.Entry) error {
+func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	cw.logger = logger
 
 	dsn = strings.TrimPrefix(dsn, cw.GetName()+"://")
@@ -498,9 +498,7 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, logtype string, logger *l
 	}
 	cw.Config.GroupName = frags[0]
 	cw.Config.StreamName = &frags[1]
-	cw.Config.Labels = make(map[string]string)
-	cw.Config.Labels["type"] = logtype
-
+	cw.Config.Labels = labels
 	u, err := url.ParseQuery(args[1])
 	if err != nil {
 		return errors.Wrapf(err, "while parsing %s", dsn)
