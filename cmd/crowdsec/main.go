@@ -180,7 +180,8 @@ func (l labelsMap) Set(label string) error {
 	if len(split) == 2 {
 		l[split[0]] = split[1]
 	} else {
-		log.Fatalf("Bad format for Label '%s'", label)
+		err := errors.New("Bad Format")
+		return errors.Wrapf(err, "for Label '%s'", label)
 	}
 	return nil
 }

@@ -154,7 +154,6 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 
 	f.config = FileConfiguration{}
 	f.config.Labels = labels
-	fmt.Printf("LABELS : %+v", labels)
 	f.config.Mode = configuration.CAT_MODE
 
 	f.logger.Debugf("Will try pattern %s", args[0])
