@@ -177,12 +177,10 @@ func (l *labelsMap) String() string {
 
 func (l labelsMap) Set(label string) error {
 	split := strings.Split(label, ":")
-	if len(split) == 2 {
-		l[split[0]] = split[1]
-	} else {
-		err := errors.New("Bad Format")
-		return errors.Wrapf(err, "for Label '%s'", label)
+	if len(split) != 2 {
+		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
 	}
+	l[split[0]] = split[1]
 	return nil
 }
 
