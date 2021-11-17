@@ -454,9 +454,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 
 					}
-					for _, decision := range decisionsCreateRet {
-						decisions = append(decisions, decision)
-					}
+					decisions = append(decisions, decisionsCreateRet...)
 					if len(alertItem.Decisions)-i <= decisionBulkSize {
 						decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
 					} else {
@@ -468,9 +466,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			if err != nil {
 				return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 			}
-			for _, decision := range decisionsCreateRet {
-				decisions = append(decisions, decision)
-			}
+			decisions = append(decisions, decisionsCreateRet...)
 		}
 
 		alertB := c.Ent.Alert.
@@ -513,7 +509,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d := range alertDecisions {
 					decisionsChunk := chunkDecisions(d, bulkSize)
 					for _, d2 := range decisionsChunk {
-						c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+						_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+						if err != nil {
+							return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+						}
 					}
 				}
 			}
@@ -537,7 +536,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d := range alertDecisions {
 			decisionsChunk := chunkDecisions(d, bulkSize)
 			for _, d2 := range decisionsChunk {
-				c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+				if err != nil {
+					return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+				}
 			}
 		}
 	}
