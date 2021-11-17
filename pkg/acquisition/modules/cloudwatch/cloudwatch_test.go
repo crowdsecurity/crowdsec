@@ -609,7 +609,8 @@ func TestConfigureByDSN(t *testing.T) {
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
-		dsn, logtype   string
+		dsn            string
+		labels         map[string]string
 		expectedCfgErr string
 		name           string
 	}{
@@ -640,7 +641,7 @@ func TestConfigureByDSN(t *testing.T) {
 		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		log.Printf("%d/%d", idx, len(tests))
 		cw := CloudwatchSource{}
-		err = cw.ConfigureByDSN(test.dsn, test.logtype, dbgLogger)
+		err = cw.ConfigureByDSN(test.dsn, test.labels, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
 				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
@@ -769,7 +770,7 @@ func TestOneShotAcquisition(t *testing.T) {
 		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		dbgLogger.Infof("starting test")
 		cw := CloudwatchSource{}
-		err = cw.ConfigureByDSN(test.dsn, "test", dbgLogger)
+		err = cw.ConfigureByDSN(test.dsn, map[string]string{"type": "test"}, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
 				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())

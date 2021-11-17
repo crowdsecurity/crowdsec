@@ -27,7 +27,7 @@ type DataSource interface {
 	GetMetrics() []prometheus.Collector                      // Returns pointers to metrics that are managed by the module
 	GetAggregMetrics() []prometheus.Collector                // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
 	Configure([]byte, *log.Entry) error                      // Configure the datasource
-	ConfigureByDSN(string, string, *log.Entry) error         // Configure the datasource
+	ConfigureByDSN(string, map[string]string, *log.Entry) error	// Configure the datasource
 	GetMode() string                                         // Get the mode (TAIL, CAT or SERVER)
 	GetName() string                                         // Get the name of the module
 	OneShotAcquisition(chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
@@ -120,7 +120,7 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 	return ""
 }
 
-func LoadAcquisitionFromDSN(dsn string, label string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource, error) {
 	var sources []DataSource
 
 	frags := strings.Split(dsn, ":")
@@ -139,7 +139,7 @@ func LoadAcquisitionFromDSN(dsn string, label string) ([]DataSource, error) {
 	subLogger := clog.WithFields(log.Fields{
 		"type": dsn,
 	})
-	err := dataSrc.ConfigureByDSN(dsn, label, subLogger)
+	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "while configuration datasource for %s", dsn)
 	}

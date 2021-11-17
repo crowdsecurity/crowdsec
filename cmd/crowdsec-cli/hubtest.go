@@ -52,6 +52,7 @@ func NewHubTestCmd() *cobra.Command {
 	postoverflows := []string{}
 	scenarios := []string{}
 	var ignoreParsers bool
+	var labels map[string]string
 
 	var cmdHubTestCreate = &cobra.Command{
 		Use:   "create",
@@ -119,6 +120,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				LogFile:       logFileName,
 				LogType:       logType,
 				IgnoreParsers: ignoreParsers,
+				Labels: 	   labels,
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")

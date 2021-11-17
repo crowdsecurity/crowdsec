@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	_ "net/http/pprof"
 	"time"
@@ -56,11 +57,14 @@ type Flags struct {
 	InfoLevel      bool
 	PrintVersion   bool
 	SingleFileType string
+	Labels         map[string]string
 	OneShotDSN     string
 	TestMode       bool
 	DisableAgent   bool
 	DisableAPI     bool
 }
+
+type labelsMap map[string]string
 
 type parsers struct {
 	ctx             *parser.UnixParserCtx
@@ -146,8 +150,10 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
+		flags.Labels = labels
+		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
 		if err != nil {
 			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
@@ -163,6 +169,20 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 var dumpFolder string
 var dumpStates bool
+var labels = make(labelsMap)
+
+func (l *labelsMap) String() string {
+	return "labels"
+}
+
+func (l labelsMap) Set(label string) error {
+	split := strings.Split(label, ":")
+	if len(split) != 2 {
+		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	}
+	l[split[0]] = split[1]
+	return nil
+}
 
 func (f *Flags) Parse() {
 
@@ -173,6 +193,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
+	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
