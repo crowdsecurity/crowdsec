@@ -278,6 +278,23 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	return alertRef.ID, inserted, deleted, nil
 }
 
+func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision {
+	var ret [][]*ent.Decision
+	var chunk []*ent.Decision
+
+	for _, d := range decisions {
+		chunk = append(chunk, d)
+		if len(chunk) == chunkSize {
+			ret = append(ret, chunk)
+			chunk = nil
+		}
+	}
+	if len(chunk) > 0 {
+		ret = append(ret, chunk)
+	}
+	return ret
+}
+
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 
 	ret := []string{}
@@ -285,6 +302,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 	c.Log.Debugf("writting %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
+	alertDecisions := make([][]*ent.Decision, 0, bulkSize)
 	for i, alertItem := range alertList {
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
@@ -476,7 +494,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
-			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
 
@@ -484,20 +501,28 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			alertB.SetOwner(owner)
 		}
 		bulk = append(bulk, alertB)
+		alertDecisions = append(alertDecisions, decisions)
 
 		if len(bulk) == bulkSize {
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
 				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
-			for _, alert := range alerts {
-				ret = append(ret, strconv.Itoa(alert.ID))
+			for _, a := range alerts {
+				ret = append(ret, strconv.Itoa(a.ID))
+				for _, d := range alertDecisions {
+					decisionsChunk := chunkDecisions(d, bulkSize)
+					for _, d2 := range decisionsChunk {
+						c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+					}
+				}
 			}
-
 			if len(alertList)-i <= bulkSize {
 				bulk = make([]*ent.AlertCreate, 0, (len(alertList) - i))
+				alertDecisions = make([][]*ent.Decision, 0, (len(alertList) - i))
 			} else {
 				bulk = make([]*ent.AlertCreate, 0, bulkSize)
+				alertDecisions = make([][]*ent.Decision, 0, bulkSize)
 			}
 		}
 	}
@@ -507,8 +532,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
-	for _, alert := range alerts {
-		ret = append(ret, strconv.Itoa(alert.ID))
+	for _, a := range alerts {
+		ret = append(ret, strconv.Itoa(a.ID))
+		for _, d := range alertDecisions {
+			decisionsChunk := chunkDecisions(d, bulkSize)
+			for _, d2 := range decisionsChunk {
+				c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+			}
+		}
 	}
 
 	return ret, nil
