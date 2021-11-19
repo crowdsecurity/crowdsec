@@ -34,7 +34,7 @@ function wait_for_service {
     while ! nc -z localhost 6060; do   
         sleep 0.5
         ((count ++))
-        if [[ count == 21 ]]; then
+        if [[ $count == 21 ]]; then
             fail "$@"
         fi
     done
