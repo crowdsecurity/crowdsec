@@ -19,7 +19,7 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	if hasPlugins(cConfig.API.Server.Profiles) {
 		log.Info("initiating plugin broker")
 		if cConfig.PluginConfig == nil {
-			return nil, fmt.Errorf("plugins are enabled, but no plugin_config section is missing in the configuration")
+			return nil, fmt.Errorf("plugins are enabled, but the plugin_config section is missing in the configuration")
 		}
 		if cConfig.ConfigPaths.NotificationDir == "" {
 			return nil, fmt.Errorf("plugins are enabled, but config_paths.notification_dir is not defined")
