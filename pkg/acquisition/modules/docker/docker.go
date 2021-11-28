@@ -183,6 +183,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				l.Src = containerConfig.Name
 				l.Process = true
 				l.Module = d.GetName()
+				linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 				out <- evt
 			}
@@ -324,6 +325,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			l.Process = true
 			l.Module = d.GetName()
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
 			d.logger.Debugf("Send event to parsing: %+v", evt)
 		}
