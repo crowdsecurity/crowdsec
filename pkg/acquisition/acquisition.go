@@ -8,10 +8,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
+	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -24,15 +24,15 @@ import (
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                      // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	Configure([]byte, *log.Entry) error                      // Configure the datasource
-	ConfigureByDSN(string, map[string]string, *log.Entry) error	// Configure the datasource
-	GetMode() string                                         // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                         // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
-	CanRun() error                                           // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetMetrics() []prometheus.Collector                         // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                   // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	Configure([]byte, *log.Entry) error                         // Configure the datasource
+	ConfigureByDSN(string, map[string]string, *log.Entry) error // Configure the datasource
+	GetMode() string                                            // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                            // Get the name of the module
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error      // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
+	CanRun() error                                              // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
 }
 
@@ -55,6 +55,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "syslog",
 		iface: func() DataSource { return &syslogacquisition.SyslogSource{} },
+	},
+	{
+		name:  "docker",
+		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
 	},
 }
 
