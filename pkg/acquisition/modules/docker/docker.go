@@ -31,6 +31,9 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type DockerConfiguration struct {
+	Until                             []string `yaml:"until"`
+	Since                             []string `yaml:"since"`
+	DockerHost                        []string `yaml:"docker_host"`
 	ContainerName                     []string `yaml:"container_name"`
 	ContainerID                       []string `yaml:"container_id"`
 	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
@@ -101,28 +104,28 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 }
 
 func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
-	if !strings.HasPrefix(dsn, "file://") {
+	if !strings.HasPrefix(dsn, "docker://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
 	d.Config.Mode = configuration.CAT_MODE
 	d.logger = logger
 
-	dsn = strings.TrimPrefix(dsn, "file://")
+	dsn = strings.TrimPrefix(dsn, "docker://")
 
 	args := strings.Split(dsn, "?")
 
 	if len(args[0]) == 0 {
-		return fmt.Errorf("empty file:// DSN")
+		return fmt.Errorf("empty docker:// DSN")
 	}
 
 	if len(args) == 2 && len(args[1]) != 0 {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
-			return fmt.Errorf("could not parse file args : %s", err)
+			return fmt.Errorf("could not parse docker args : %s", err)
 		}
 		for key, value := range params {
 			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in file DSN", key)
+				return fmt.Errorf("unsupported key %s in docker DSN", key)
 			}
 			if len(value) != 1 {
 				return fmt.Errorf("expected zero or one value for 'log_level'")
