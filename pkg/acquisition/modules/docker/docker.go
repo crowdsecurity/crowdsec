@@ -31,9 +31,9 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type DockerConfiguration struct {
-	Until                             []string `yaml:"until"`
-	Since                             []string `yaml:"since"`
-	DockerHost                        []string `yaml:"docker_host"`
+	Until                             string   `yaml:"until"`
+	Since                             string   `yaml:"since"`
+	DockerHost                        string   `yaml:"docker_host"`
 	ContainerName                     []string `yaml:"container_name"`
 	ContainerID                       []string `yaml:"container_id"`
 	ContainerNameRegexp               []string `yaml:"container_name_regexp"`
@@ -43,16 +43,14 @@ type DockerConfiguration struct {
 }
 
 type DockerSource struct {
-	Config               DockerConfiguration
-	watcherDockersByName map[string]bool
-	watcherDockersByID   map[string]bool
-	runningDockersByID   map[string]*ContainerConfig
-	compileContainerName []*regexp.Regexp
-	compileContainerID   []*regexp.Regexp
-	logger               *log.Entry
-	docker               []string
-	Client               *client.Client
-	t                    *tomb.Tomb
+	Config                DockerConfiguration
+	runningContainerState map[string]*ContainerConfig
+	compiledContainerName []*regexp.Regexp
+	compiledContainerID   []*regexp.Regexp
+	logger                *log.Entry
+	Client                *client.Client
+	t                     *tomb.Tomb
+	containerLogsOptions  *dockerTypes.ContainerLogsOptions
 }
 
 type ContainerConfig struct {
@@ -66,38 +64,61 @@ type ContainerConfig struct {
 
 func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	var err error
-	dockerConfig := DockerConfiguration{}
+
+	d.Config = DockerConfiguration{}
 	d.logger = logger
-	d.Client, err = client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		return err
-	}
-	d.runningDockersByID = make(map[string]*ContainerConfig)
-	d.watcherDockersByName = make(map[string]bool)
-	d.watcherDockersByID = make(map[string]bool)
-	err = yaml.UnmarshalStrict(Config, &dockerConfig)
+
+	d.runningContainerState = make(map[string]*ContainerConfig)
+
+	err = yaml.UnmarshalStrict(Config, &d.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse DockerAcquisition configuration")
 	}
-	d.logger.Tracef("DockerAcquisition configuration: %+v", dockerConfig)
-	if len(dockerConfig.ContainerName) == 0 && len(dockerConfig.ContainerID) == 0 {
+	d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
+	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
 	}
-	d.Config = dockerConfig
+
 	if d.Config.Mode == "" {
 		d.Config.Mode = configuration.TAIL_MODE
 	}
 	if d.Config.Mode != configuration.CAT_MODE && d.Config.Mode != configuration.TAIL_MODE {
-		return fmt.Errorf("unsupported mode %s for file source", d.Config.Mode)
+		return fmt.Errorf("unsupported mode %s for docker datasource", d.Config.Mode)
 	}
-	d.logger.Tracef("Actual FileAcquisition Configuration %+v", d.Config)
+	d.logger.Tracef("Actual DockerAcquisition configuration %+v", d.Config)
 
 	for _, cont := range d.Config.ContainerNameRegexp {
-		d.compileContainerName = append(d.compileContainerName, regexp.MustCompile(cont))
+		d.compiledContainerName = append(d.compiledContainerName, regexp.MustCompile(cont))
 	}
 
 	for _, cont := range d.Config.ContainerIDRegexp {
-		d.compileContainerID = append(d.compileContainerID, regexp.MustCompile(cont))
+		d.compiledContainerID = append(d.compiledContainerID, regexp.MustCompile(cont))
+	}
+
+	d.Client, err = client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+
+	if d.Config.Since == "" {
+		d.Config.Since = time.Now().Format(time.RFC3339)
+	}
+
+	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: false,
+		Follow:     true,
+		Since:      d.Config.Since,
+	}
+
+	if d.Config.Until != "" {
+		d.containerLogsOptions.Until = d.Config.Until
+	}
+
+	if d.Config.DockerHost != "" {
+		if err := client.WithHost(d.Config.DockerHost)(d.Client); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -216,6 +237,9 @@ func (d *DockerSource) CanRun() error {
 func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*ContainerConfig, bool) {
 	for _, containerName := range d.Config.ContainerName {
 		for _, name := range container.Names {
+			if strings.HasPrefix(name, "/") && len(name) > 0 {
+				name = name[1:]
+			}
 			if name == containerName {
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels}, true
 			}
@@ -229,7 +253,7 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 		}
 	}
 
-	for _, cont := range d.compileContainerName {
+	for _, cont := range d.compiledContainerName {
 		for _, name := range container.Names {
 			if matched := cont.Match([]byte(name)); matched {
 				return &ContainerConfig{ID: container.ID, Name: name, Labels: d.Config.Labels}, true
@@ -238,10 +262,9 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 
 	}
 
-	for _, cont := range d.compileContainerID {
+	for _, cont := range d.compiledContainerID {
 		if matched := cont.Match([]byte(container.ID)); matched {
 			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels}, true
-
 		}
 	}
 
@@ -262,10 +285,15 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
 				return err
 			}
 			for _, container := range runningContainer {
+				// don't need to re eval an already monitored container
+				if _, ok := d.runningContainerState[container.ID]; ok {
+					continue
+				}
 				if containerConfig, ok := d.EvalContainer(container); ok {
 					monitChan <- containerConfig
 				}
 			}
+			ticker.Reset(1 * time.Second)
 		}
 	}
 }
@@ -319,9 +347,8 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			container.logger.Infof("tail stopped for container %s", container.Name)
 			return fmt.Errorf("killed")
 		case line := <-readerChan:
-			d.logger.Infof("Line: %s", line)
 			l := types.Line{}
-			l.Raw = line
+			l.Raw = line[8:]
 			l.Labels = d.Config.Labels
 			l.Time = time.Now()
 			l.Src = container.Name
@@ -330,7 +357,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
-			d.logger.Debugf("Send event to parsing: %+v", evt)
+			d.logger.Infof("Send event to parsing: %+v", evt)
 		}
 	}
 }
@@ -340,26 +367,26 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, outChan chan type
 	for {
 		select {
 		case newContainer := <-in:
-			if _, ok := d.runningDockersByID[newContainer.ID]; !ok {
+			if _, ok := d.runningContainerState[newContainer.ID]; !ok {
 				newContainer.t = &tomb.Tomb{}
 				newContainer.logger = d.logger.WithFields(log.Fields{"container_name": newContainer.Name})
 				d.logger.Debugf("starting tail of docker %s", newContainer.Name)
 				newContainer.t.Go(func() error {
 					return d.TailDocker(newContainer, outChan)
 				})
-				d.runningDockersByID[newContainer.ID] = newContainer
+				d.runningContainerState[newContainer.ID] = newContainer
 			}
 		case <-d.t.Dying():
-			for idx, container := range d.runningDockersByID {
-				if d.runningDockersByID[idx].t.Alive() {
+			for idx, container := range d.runningContainerState {
+				if d.runningContainerState[idx].t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
-					d.runningDockersByID[idx].t.Kill(nil)
-					if err := d.runningDockersByID[idx].t.Wait(); err != nil {
+					d.runningContainerState[idx].t.Kill(nil)
+					if err := d.runningContainerState[idx].t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
 					}
 				}
 			}
-			d.runningDockersByID = nil
+			d.runningContainerState = nil
 			d.logger.Debugf("routine cleanup done, return")
 			return nil
 		}
