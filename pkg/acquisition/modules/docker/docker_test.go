@@ -331,7 +331,7 @@ func TestOneShot(t *testing.T) {
 			dsn:            "docker://" + testContainerName,
 			expectedErr:    "",
 			expectedOutput: "",
-			expectedLines:  1,
+			expectedLines:  3,
 			logType:        "test",
 			logLevel:       log.InfoLevel,
 		},
