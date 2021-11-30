@@ -324,7 +324,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 	container.logger.Infof("start tail for container %s", container.Name)
 	reader, err := d.Client.ContainerLogs(context.Background(), container.ID, *d.containerLogsOptions)
 	if err != nil {
-		container.logger.Error("unable to read logs from container: %+v", err)
+		container.logger.Errorf("unable to read logs from container: %+v", err)
 		return err
 	}
 	scanner := bufio.NewScanner(reader)
