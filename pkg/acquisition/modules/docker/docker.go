@@ -192,7 +192,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 		if containerConfig, ok := d.EvalContainer(container); ok {
 			reader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
 			if err != nil {
-				d.logger.Error("unable to read logs from container: %+v", err)
+				d.logger.Errorf("unable to read logs from container: %+v", err)
 				return err
 			}
 			scanner := bufio.NewScanner(reader)
@@ -321,14 +321,8 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 }
 
 func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types.Event) error {
-	options := dockerTypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: false,
-		Follow:     true,
-		Since:      time.Now().Format(time.RFC3339),
-	}
 	container.logger.Infof("start tail for container %s", container.Name)
-	reader, err := d.Client.ContainerLogs(context.Background(), container.ID, options)
+	reader, err := d.Client.ContainerLogs(context.Background(), container.ID, *d.containerLogsOptions)
 	if err != nil {
 		container.logger.Error("unable to read logs from container: %+v", err)
 		return err
