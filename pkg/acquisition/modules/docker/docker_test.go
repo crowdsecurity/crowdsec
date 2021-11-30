@@ -1,18 +1,9 @@
 package dockeracquisition
 
 import (
-	"context"
-	"strings"
 	"testing"
-	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
-
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -113,8 +104,9 @@ func TestConfigureDSN(t *testing.T) {
 	}
 }
 
+/*
 func TestStreamingAcquisition(t *testing.T) {
-	/*tests := []struct {
+	tests := []struct {
 			config         string
 			expectedErr    string
 			expectedOutput string
@@ -213,7 +205,6 @@ func TestStreamingAcquisition(t *testing.T) {
 		if err := StopContainer(containerID); err != nil {
 			t.Fatalf("unable to stop testing container '%s' : %s", testContainerName, err.Error())
 		}
-	*/
 }
 
 func StartContainer(containerName string) (string, error) {
@@ -386,3 +377,4 @@ func TestOneShot(t *testing.T) {
 	}
 
 }
+*/
