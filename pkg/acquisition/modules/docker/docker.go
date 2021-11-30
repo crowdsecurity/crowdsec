@@ -125,42 +125,83 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 }
 
 func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
-	if !strings.HasPrefix(dsn, "docker://") {
-		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
-	}
-	d.Config.Mode = configuration.CAT_MODE
-	d.logger = logger
+	var err error
 
-	dsn = strings.TrimPrefix(dsn, "docker://")
-
-	args := strings.Split(dsn, "?")
-
-	if len(args[0]) == 0 {
-		return fmt.Errorf("empty docker:// DSN")
-	}
-
-	if len(args) == 2 && len(args[1]) != 0 {
-		params, err := url.ParseQuery(args[1])
-		if err != nil {
-			return fmt.Errorf("could not parse docker args : %s", err)
-		}
-		for key, value := range params {
-			if key != "log_level" {
-				return fmt.Errorf("unsupported key %s in docker DSN", key)
-			}
-			if len(value) != 1 {
-				return fmt.Errorf("expected zero or one value for 'log_level'")
-			}
-			lvl, err := log.ParseLevel(value[0])
-			if err != nil {
-				return errors.Wrapf(err, "unknown level %s", value[0])
-			}
-			d.logger.Logger.SetLevel(lvl)
-		}
+	if !strings.HasPrefix(dsn, d.GetName()+"://") {
+		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
 	}
 
 	d.Config = DockerConfiguration{}
+	d.Config.ContainerName = make([]string, 0)
+	d.Config.ContainerID = make([]string, 0)
+	d.runningContainerState = make(map[string]*ContainerConfig)
+	d.Config.Mode = configuration.CAT_MODE
+	d.logger = logger
 	d.Config.Labels = labels
+	d.Client, err = client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+
+	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: false,
+		Follow:     false,
+	}
+	dsn = strings.TrimPrefix(dsn, d.GetName()+"://")
+	args := strings.Split(dsn, "?")
+
+	if len(args) == 0 {
+		return fmt.Errorf("invalid dsn: %s", dsn)
+	}
+
+	if len(args) == 1 && args[0] == "" {
+		return fmt.Errorf("empty %s DSN", d.GetName()+"://")
+	}
+	d.Config.ContainerName = append(d.Config.ContainerName, args[0])
+	// we add it as an ID also so user can provide docker name or docker ID
+	d.Config.ContainerID = append(d.Config.ContainerID, args[0])
+
+	// no parameters
+	if len(args) == 1 {
+		return nil
+	}
+
+	parameters, err := url.ParseQuery(args[1])
+	if err != nil {
+		return errors.Wrapf(err, "while parsing parameters %s: %s", dsn, err)
+	}
+
+	for k, v := range parameters {
+		switch k {
+		case "log_level":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'log_level' parameters is required, not many")
+			}
+			lvl, err := log.ParseLevel(v[0])
+			if err != nil {
+				return errors.Wrapf(err, "unknown level %s", v[0])
+			}
+			d.logger.Logger.SetLevel(lvl)
+		case "until":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'until' parameters is required, not many")
+			}
+			d.containerLogsOptions.Until = v[0]
+		case "since":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'since' parameters is required, not many")
+			}
+			d.containerLogsOptions.Until = v[0]
+		case "docker_host":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'docker_host' parameters is required, not many")
+			}
+			if err := client.WithHost(v[0])(d.Client); err != nil {
+				return err
+			}
+		}
+	}
 
 	return nil
 }
@@ -188,13 +229,20 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	if err != nil {
 		return err
 	}
+
+	foundOne := false
 	for _, container := range runningContainer {
+		if _, ok := d.runningContainerState[container.ID]; ok {
+			d.logger.Debugf("container with id %s was already read", container.ID)
+			continue
+		}
 		if containerConfig, ok := d.EvalContainer(container); ok {
 			reader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
 			if err != nil {
 				d.logger.Errorf("unable to read logs from container: %+v", err)
 				return err
 			}
+			foundOne = true
 			scanner := bufio.NewScanner(reader)
 			for scanner.Scan() {
 				if scanner.Text() == "" {
@@ -211,9 +259,15 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 				out <- evt
 			}
+			d.runningContainerState[container.ID] = containerConfig
 		}
 	}
-	d.t.Kill(nil)
+
+	t.Kill(nil)
+
+	if !foundOne {
+		return fmt.Errorf("no docker found, can't run one shot acquisition")
+	}
 
 	return nil
 }
@@ -235,6 +289,12 @@ func (d *DockerSource) CanRun() error {
 }
 
 func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*ContainerConfig, bool) {
+	for _, containerID := range d.Config.ContainerID {
+		if containerID == container.ID {
+			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels}, true
+		}
+	}
+
 	for _, containerName := range d.Config.ContainerName {
 		for _, name := range container.Names {
 			if strings.HasPrefix(name, "/") && len(name) > 0 {
@@ -247,8 +307,8 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 
 	}
 
-	for _, containerID := range d.Config.ContainerID {
-		if containerID == container.ID {
+	for _, cont := range d.compiledContainerID {
+		if matched := cont.Match([]byte(container.ID)); matched {
 			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels}, true
 		}
 	}
@@ -260,12 +320,6 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 			}
 		}
 
-	}
-
-	for _, cont := range d.compiledContainerID {
-		if matched := cont.Match([]byte(container.ID)); matched {
-			return &ContainerConfig{ID: container.ID, Name: container.Names[0], Labels: d.Config.Labels}, true
-		}
 	}
 
 	return &ContainerConfig{}, false
