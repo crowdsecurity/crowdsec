@@ -48,7 +48,7 @@ type DockerSource struct {
 	compiledContainerName []*regexp.Regexp
 	compiledContainerID   []*regexp.Regexp
 	logger                *log.Entry
-	Client                *client.Client
+	Client                client.CommonAPIClient
 	t                     *tomb.Tomb
 	containerLogsOptions  *dockerTypes.ContainerLogsOptions
 }
@@ -95,7 +95,7 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 		d.compiledContainerID = append(d.compiledContainerID, regexp.MustCompile(cont))
 	}
 
-	d.Client, err = client.NewClientWithOpts(client.FromEnv)
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
@@ -116,10 +116,11 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 
 	if d.Config.DockerHost != "" {
-		if err := client.WithHost(d.Config.DockerHost)(d.Client); err != nil {
+		if err := client.WithHost(d.Config.DockerHost)(dockerClient); err != nil {
 			return err
 		}
 	}
+	d.Client = dockerClient
 
 	return nil
 }
@@ -138,7 +139,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	d.Config.Mode = configuration.CAT_MODE
 	d.logger = logger
 	d.Config.Labels = labels
-	d.Client, err = client.NewClientWithOpts(client.FromEnv)
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
@@ -197,12 +198,12 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			if len(v) != 1 {
 				return fmt.Errorf("only one 'docker_host' parameters is required, not many")
 			}
-			if err := client.WithHost(v[0])(d.Client); err != nil {
+			if err := client.WithHost(v[0])(dockerClient); err != nil {
 				return err
 			}
 		}
 	}
-
+	d.Client = dockerClient
 	return nil
 }
 

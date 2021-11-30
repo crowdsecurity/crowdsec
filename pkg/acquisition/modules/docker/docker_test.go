@@ -1,9 +1,18 @@
 package dockeracquisition
 
 import (
+	"context"
+	"fmt"
+	"io"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	dockerTypes "github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -102,6 +111,10 @@ func TestConfigureDSN(t *testing.T) {
 			assert.Equal(t, err, nil)
 		}
 	}
+}
+
+type mockDockerCli struct {
+	client.Client
 }
 
 /*
@@ -272,6 +285,28 @@ func StopContainer(containerID string) error {
 
 	return nil
 }
+*/
+
+func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
+	containers := make([]dockerTypes.Container, 0)
+	container := &dockerTypes.Container{
+		ID:    "12456",
+		Names: []string{testContainerName},
+	}
+	containers = append(containers, *container)
+
+	return containers, nil
+}
+
+func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
+	data := fmt.Sprintf(`
+hello
+world
+	`)
+	r := io.NopCloser(strings.NewReader(data)) // r type is io.ReadCloser
+
+	return r, nil
+}
 
 func TestOneShot(t *testing.T) {
 	log.Infof("Test 'TestOneShot'")
@@ -302,11 +337,6 @@ func TestOneShot(t *testing.T) {
 		},
 	}
 
-	containerID, err := StartContainer(testContainerName)
-	if err != nil {
-		t.Fatalf("unable to start docker for test: %s", err.Error())
-	}
-
 	for _, ts := range tests {
 		var subLogger *log.Entry
 		var logger *log.Logger
@@ -327,12 +357,9 @@ func TestOneShot(t *testing.T) {
 		labels["type"] = ts.logType
 
 		if err := dockerClient.ConfigureByDSN(ts.dsn, labels, subLogger); err != nil {
-			if err := StopContainer(containerID); err != nil {
-				t.Fatalf("unable to stop testing container '%s' : %s", testContainerName, err.Error())
-			}
 			t.Fatalf("unable to configure dsn '%s': %s", ts.dsn, err)
 		}
-
+		dockerClient.Client = new(mockDockerCli)
 		out := make(chan types.Event)
 		actualLines := 0
 		if ts.expectedLines != 0 {
@@ -352,17 +379,11 @@ func TestOneShot(t *testing.T) {
 		err := dockerClient.OneShotAcquisition(out, &tomb)
 
 		if ts.expectedErr == "" && err != nil {
-			if err := StopContainer(containerID); err != nil {
-				t.Fatalf("unable to stop testing container '%s' : %s", testContainerName, err.Error())
-			}
 			t.Fatalf("Unexpected error : %s", err)
 		} else if ts.expectedErr != "" && err != nil {
 			assert.Contains(t, err.Error(), ts.expectedErr)
 			continue
 		} else if ts.expectedErr != "" && err == nil {
-			if err := StopContainer(containerID); err != nil {
-				t.Fatalf("unable to stop testing container '%s' : %s", testContainerName, err.Error())
-			}
 			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
 		}
 		// else we do the check before actualLines is incremented ...
@@ -372,9 +393,4 @@ func TestOneShot(t *testing.T) {
 		}
 	}
 
-	if err := StopContainer(containerID); err != nil {
-		t.Fatalf("unable to stop testing container '%s' : %s", testContainerName, err.Error())
-	}
-
 }
-*/
