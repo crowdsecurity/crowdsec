@@ -54,12 +54,11 @@ type DockerSource struct {
 }
 
 type ContainerConfig struct {
-	Name       string
-	ID         string
-	t          *tomb.Tomb
-	logger     *log.Entry
-	readerTomb *tomb.Tomb
-	Labels     map[string]string
+	Name   string
+	ID     string
+	t      *tomb.Tomb
+	logger *log.Entry
+	Labels map[string]string
 }
 
 func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
