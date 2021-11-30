@@ -40,7 +40,7 @@ function setup_tests() {
     while ! nc -z localhost 9999; do   
         sleep 0.5
         ((count ++))
-        if [[ count == 41 ]]; then
+        if [[ $count == 41 ]]; then
             fail "mock server not up after 20s"
         fi
     done
