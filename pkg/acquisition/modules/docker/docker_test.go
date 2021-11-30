@@ -116,7 +116,7 @@ type mockDockerCli struct {
 	client.Client
 }
 
-func TestStreamingAcquisition(t *testing.T) {
+/*func TestStreamingAcquisition(t *testing.T) {
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -193,7 +193,7 @@ container_name:
 
 	}
 
-}
+}*/
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
 	containers := make([]dockerTypes.Container, 0)
