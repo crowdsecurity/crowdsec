@@ -82,6 +82,7 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse DockerAcquisition configuration")
 	}
+
 	d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
 	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
@@ -369,20 +370,25 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 	return &ContainerConfig{}, false
 }
 
-func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
+func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteChan chan *ContainerConfig) error {
 	ticker := time.NewTicker(d.CheckIntervalDuration)
-
+	d.logger.Infof("Container watcher started, interval: %s", d.CheckIntervalDuration.String())
 	for {
 		select {
 		case <-d.t.Dying():
 			d.logger.Infof("stopping container watcher")
 			return nil
 		case <-ticker.C:
+			// to track for garbage collection
+			runningContainersID := make(map[string]bool)
 			runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
 			if err != nil {
 				return err
 			}
+
 			for _, container := range runningContainer {
+				runningContainersID[container.ID] = true
+
 				// don't need to re eval an already monitored container
 				if _, ok := d.runningContainerState[container.ID]; ok {
 					continue
@@ -391,6 +397,14 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
 					monitChan <- containerConfig
 				}
 			}
+
+			for containerStateID, containerConfig := range d.runningContainerState {
+				if _, ok := runningContainersID[containerStateID]; !ok {
+					deleteChan <- containerConfig
+				}
+			}
+			d.logger.Tracef("Reading logs from %d containers", len(d.runningContainerState))
+
 			ticker.Reset(d.CheckIntervalDuration)
 		}
 	}
@@ -399,12 +413,13 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
 func (d *DockerSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	d.t = t
 	monitChan := make(chan *ContainerConfig)
+	deleteChan := make(chan *ContainerConfig)
 	d.logger.Infof("Starting docker acquisition")
 	t.Go(func() error {
-		return d.DockerManager(monitChan, out)
+		return d.DockerManager(monitChan, deleteChan, out)
 	})
 
-	return d.WatchContainer(monitChan)
+	return d.WatchContainer(monitChan, deleteChan)
 }
 
 func (d *DockerSource) Dump() interface{} {
@@ -438,7 +453,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 		case <-container.t.Dying():
 			readerTomb.Kill(nil)
 			container.logger.Infof("tail stopped for container %s", container.Name)
-			return fmt.Errorf("killed")
+			return nil
 		case line := <-readerChan:
 			if line == "" {
 				continue
@@ -458,7 +473,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 	}
 }
 
-func (d *DockerSource) DockerManager(in chan *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *ContainerConfig, outChan chan types.Event) error {
 	d.logger.Info("DockerSource Manager started")
 	for {
 		select {
@@ -466,20 +481,25 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, outChan chan type
 			if _, ok := d.runningContainerState[newContainer.ID]; !ok {
 				newContainer.t = &tomb.Tomb{}
 				newContainer.logger = d.logger.WithFields(log.Fields{"container_name": newContainer.Name})
-				d.logger.Debugf("starting tail of docker %s", newContainer.Name)
 				newContainer.t.Go(func() error {
 					return d.TailDocker(newContainer, outChan)
 				})
 				d.runningContainerState[newContainer.ID] = newContainer
+			}
+		case containerToDelete := <-deleteChan:
+			if containerConfig, ok := d.runningContainerState[containerToDelete.ID]; ok {
+				log.Infof("container acquisition stopped for container '%s'", containerConfig.Name)
+				containerConfig.t.Kill(nil)
+				delete(d.runningContainerState, containerToDelete.ID)
 			}
 		case <-d.t.Dying():
 			for idx, container := range d.runningContainerState {
 				if d.runningContainerState[idx].t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
 					d.runningContainerState[idx].t.Kill(nil)
-					/*if err := d.runningContainerState[idx].t.Wait(); err != nil {
+					if err := d.runningContainerState[idx].t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
-					}*/
+					}
 				}
 			}
 			d.runningContainerState = nil
