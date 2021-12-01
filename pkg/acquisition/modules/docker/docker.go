@@ -249,7 +249,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 					continue
 				}
 				l := types.Line{}
-				l.Raw = scanner.Text()
+				l.Raw = scanner.Text()[8:]
 				l.Labels = d.Config.Labels
 				l.Time = time.Now()
 				l.Src = containerConfig.Name
