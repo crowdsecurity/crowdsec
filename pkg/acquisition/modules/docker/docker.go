@@ -406,7 +406,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			}
 
 			l := types.Line{}
-			l.Raw = line[8:]
+			l.Raw = line
 			l.Labels = d.Config.Labels
 			l.Time = time.Now()
 			l.Src = container.Name
