@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,9 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type DockerConfiguration struct {
+	CheckInterval                     string   `yaml:"check_interval"`
+	FollowStdout                      bool     `yaml:"follow_stdout"`
+	FollowStdErr                      bool     `yaml:"follow_stderr"`
 	Until                             string   `yaml:"until"`
 	Since                             string   `yaml:"since"`
 	DockerHost                        string   `yaml:"docker_host"`
@@ -47,6 +51,7 @@ type DockerSource struct {
 	runningContainerState map[string]*ContainerConfig
 	compiledContainerName []*regexp.Regexp
 	compiledContainerID   []*regexp.Regexp
+	CheckIntervalDuration time.Duration
 	logger                *log.Entry
 	Client                client.CommonAPIClient
 	t                     *tomb.Tomb
@@ -64,7 +69,11 @@ type ContainerConfig struct {
 func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	var err error
 
-	d.Config = DockerConfiguration{}
+	d.Config = DockerConfiguration{
+		FollowStdout:  true,
+		FollowStdErr:  true,
+		CheckInterval: "1s",
+	}
 	d.logger = logger
 
 	d.runningContainerState = make(map[string]*ContainerConfig)
@@ -76,6 +85,11 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	d.logger.Tracef("DockerAcquisition configuration: %+v", d.Config)
 	if len(d.Config.ContainerName) == 0 && len(d.Config.ContainerID) == 0 && len(d.Config.ContainerIDRegexp) == 0 && len(d.Config.ContainerNameRegexp) == 0 {
 		return fmt.Errorf("no containers names or containers ID configuration provided")
+	}
+
+	d.CheckIntervalDuration, err = time.ParseDuration(d.Config.CheckInterval)
+	if err != nil {
+		return fmt.Errorf("parsing 'check_interval' parameters: %s", d.CheckIntervalDuration)
 	}
 
 	if d.Config.Mode == "" {
@@ -104,8 +118,8 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 
 	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: false,
+		ShowStdout: d.Config.FollowStdout,
+		ShowStderr: d.Config.FollowStdErr,
 		Follow:     true,
 		Since:      d.Config.Since,
 	}
@@ -131,21 +145,26 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 		return fmt.Errorf("invalid DSN %s for docker source, must start with %s://", dsn, d.GetName())
 	}
 
-	d.Config = DockerConfiguration{}
+	d.Config = DockerConfiguration{
+		FollowStdout:  true,
+		FollowStdErr:  true,
+		CheckInterval: "1s",
+	}
 	d.Config.ContainerName = make([]string, 0)
 	d.Config.ContainerID = make([]string, 0)
 	d.runningContainerState = make(map[string]*ContainerConfig)
 	d.Config.Mode = configuration.CAT_MODE
 	d.logger = logger
 	d.Config.Labels = labels
+
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return err
 	}
 
 	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: false,
+		ShowStdout: d.Config.FollowStdout,
+		ShowStderr: d.Config.FollowStdErr,
 		Follow:     false,
 	}
 	dsn = strings.TrimPrefix(dsn, d.GetName()+"://")
@@ -194,6 +213,26 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 				return fmt.Errorf("only one 'since' parameters is required, not many")
 			}
 			d.containerLogsOptions.Until = v[0]
+		case "follow_stdout":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'follow_stdout' parameters is required, not many")
+			}
+			followStdout, err := strconv.ParseBool(v[0])
+			if err != nil {
+				return fmt.Errorf("parsing 'follow_stdout' parameters: %s", err)
+			}
+			d.Config.FollowStdout = followStdout
+			d.containerLogsOptions.ShowStdout = followStdout
+		case "follow_stderr":
+			if len(v) != 1 {
+				return fmt.Errorf("only one 'follow_stderr' parameters is required, not many")
+			}
+			followStdErr, err := strconv.ParseBool(v[0])
+			if err != nil {
+				return fmt.Errorf("parsing 'follow_stderr' parameters: %s", err)
+			}
+			d.Config.FollowStdErr = followStdErr
+			d.containerLogsOptions.ShowStderr = followStdErr
 		case "docker_host":
 			if len(v) != 1 {
 				return fmt.Errorf("only one 'docker_host' parameters is required, not many")
@@ -233,11 +272,11 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	foundOne := false
 	for _, container := range runningContainer {
 		if _, ok := d.runningContainerState[container.ID]; ok {
-			d.logger.Debugf("container with id %s was already read", container.ID)
+			d.logger.Debugf("container with id %s is already being read from", container.ID)
 			continue
 		}
 		if containerConfig, ok := d.EvalContainer(container); ok {
-			d.logger.Infof("Reading logs from docker %s", containerConfig.Name)
+			d.logger.Infof("reading logs from container %s", containerConfig.Name)
 			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
 			if err != nil {
 				d.logger.Errorf("unable to read logs from container: %+v", err)
@@ -262,7 +301,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 				out <- evt
-				d.logger.Debugf("Send line to parsing: %+v", evt.Line.Raw)
+				d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 			}
 			d.runningContainerState[container.ID] = containerConfig
 		}
@@ -331,12 +370,12 @@ func (d *DockerSource) EvalContainer(container dockerTypes.Container) (*Containe
 }
 
 func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(d.CheckIntervalDuration)
 
 	for {
 		select {
 		case <-d.t.Dying():
-			d.logger.Infof("stopping group watch")
+			d.logger.Infof("stopping container watcher")
 			return nil
 		case <-ticker.C:
 			runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
@@ -352,7 +391,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig) error {
 					monitChan <- containerConfig
 				}
 			}
-			ticker.Reset(1 * time.Second)
+			ticker.Reset(d.CheckIntervalDuration)
 		}
 	}
 }
@@ -397,7 +436,6 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 	for {
 		select {
 		case <-container.t.Dying():
-			container.logger.Infof("stop tail for container %s", container.Name)
 			readerTomb.Kill(nil)
 			container.logger.Infof("tail stopped for container %s", container.Name)
 			return fmt.Errorf("killed")
@@ -415,7 +453,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
-			d.logger.Debugf("Send line to parsing: %+v", evt.Line.Raw)
+			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		}
 	}
 }
