@@ -70,9 +70,9 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	var err error
 
 	d.Config = DockerConfiguration{
-		FollowStdout:  true,
-		FollowStdErr:  true,
-		CheckInterval: "1s",
+		FollowStdout:  true, // default
+		FollowStdErr:  true, // default
+		CheckInterval: "1s", // default
 	}
 	d.logger = logger
 
@@ -260,12 +260,6 @@ func (d *DockerSource) SupportedModes() []string {
 func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
 
-	options := dockerTypes.ContainerLogsOptions{
-		ShowStdout: true,
-		ShowStderr: false,
-		Follow:     false,
-	}
-
 	runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
 	if err != nil {
 		return err
@@ -278,7 +272,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 		}
 		if containerConfig, ok := d.EvalContainer(container); ok {
 			d.logger.Infof("reading logs from container %s", containerConfig.Name)
-			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
+			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, *d.containerLogsOptions)
 			if err != nil {
 				d.logger.Errorf("unable to read logs from container: %+v", err)
 				return err
