@@ -142,6 +142,18 @@ container_name:
 			logType:        "test",
 			logLevel:       log.InfoLevel,
 		},
+		{
+			config: `
+source: docker
+mode: cat
+container_name_regexp:
+ - docker_*`,
+			expectedErr:    "",
+			expectedOutput: "",
+			expectedLines:  3,
+			logType:        "test",
+			logLevel:       log.InfoLevel,
+		},
 	}
 
 	for _, ts := range tests {

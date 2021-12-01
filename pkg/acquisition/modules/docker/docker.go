@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	dockerTypes "github.com/docker/docker/api/types"
-
+	"github.com/ahmetb/dlog"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 
 	"github.com/pkg/errors"
@@ -230,7 +230,6 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	if err != nil {
 		return err
 	}
-
 	foundOne := false
 	for _, container := range runningContainer {
 		if _, ok := d.runningContainerState[container.ID]; ok {
@@ -238,21 +237,18 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 			continue
 		}
 		if containerConfig, ok := d.EvalContainer(container); ok {
-			reader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
+			d.logger.Infof("Reading logs from docker %s", containerConfig.Name)
+			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, options)
 			if err != nil {
 				d.logger.Errorf("unable to read logs from container: %+v", err)
 				return err
 			}
+			reader := dlog.NewReader(dockerReader)
 			foundOne = true
 			scanner := bufio.NewScanner(reader)
 			for scanner.Scan() {
+				d.logger.Debugf("Send line to parsing: %+v", scanner.Text())
 				line := scanner.Text()
-				if line == "" {
-					continue
-				}
-				if len(line) > 8 {
-					line = line[8:]
-				}
 				if line == "" {
 					continue
 				}
@@ -385,11 +381,12 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 
 func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types.Event) error {
 	container.logger.Infof("start tail for container %s", container.Name)
-	reader, err := d.Client.ContainerLogs(context.Background(), container.ID, *d.containerLogsOptions)
+	dockerReader, err := d.Client.ContainerLogs(context.Background(), container.ID, *d.containerLogsOptions)
 	if err != nil {
 		container.logger.Errorf("unable to read logs from container: %+v", err)
 		return err
 	}
+	reader := dlog.NewReader(dockerReader)
 	scanner := bufio.NewScanner(reader)
 	readerChan := make(chan string)
 	readerTomb := &tomb.Tomb{}
@@ -407,13 +404,6 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			if line == "" {
 				continue
 			}
-			if len(line) > 8 {
-				line = line[8:]
-			}
-			if line == "" {
-				continue
-			}
-
 			l := types.Line{}
 			l.Raw = line
 			l.Labels = d.Config.Labels
@@ -424,7 +414,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
-			d.logger.Infof("Send line to parsing: %+v", evt.Line.Raw)
+			d.logger.Debugf("Send line to parsing: %+v", evt.Line.Raw)
 		}
 	}
 }
