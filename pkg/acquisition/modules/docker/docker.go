@@ -164,6 +164,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 
 	// no parameters
 	if len(args) == 1 {
+		d.Client = dockerClient
 		return nil
 	}
 
