@@ -1,0 +1,555 @@
+From 6365cf98fb894a716685b761ed678d90232a987a Mon Sep 17 00:00:00 2001
+From: AlteredCoder <64792091+AlteredCoder@users.noreply.github.com>
+Date: Thu, 9 Sep 2021 16:27:30 +0200
+Subject: [PATCH] fix stacktrace when mmdb file are not present (#935)
+
+* fix stacktrace when mmdb file are not present
+---
+ pkg/exprhelpers/visitor.go |   2 +-
+ pkg/parser/enrich.go       | 122 ++++++++++++++-----------------------
+ pkg/parser/enrich_date.go  |  70 +++++++++++++++++++++
+ pkg/parser/enrich_dns.go   |   4 ++
+ pkg/parser/enrich_geoip.go |  39 ++++++------
+ pkg/parser/node.go         |  17 ++----
+ pkg/parser/node_test.go    |   4 +-
+ pkg/parser/parsing_test.go |   8 +--
+ pkg/parser/runtime.go      |  37 ++++++-----
+ pkg/parser/stage.go        |   2 +-
+ pkg/parser/unix_parser.go  |   2 +-
+ 11 files changed, 171 insertions(+), 136 deletions(-)
+ create mode 100644 pkg/parser/enrich_date.go
+
+diff --git a/pkg/exprhelpers/visitor.go b/pkg/exprhelpers/visitor.go
+index 86bea79..7a65c06 100644
+--- a/pkg/exprhelpers/visitor.go
++++ b/pkg/exprhelpers/visitor.go
+@@ -124,7 +124,7 @@ func (e *ExprDebugger) Run(logger *logrus.Entry, filterResult bool, exprEnv map[
+ 		if err != nil {
+ 			logger.Errorf("unable to print debug expression for '%s': %s", expression.Str, err)
+ 		}
+-		logger.Debugf("       %s = '%s'", expression.Str, debug)
++		logger.Debugf("       %s = '%v'", expression.Str, debug)
+ 	}
+ }
+ 
+diff --git a/pkg/parser/enrich.go b/pkg/parser/enrich.go
+index 4aa8a34..43331c6 100644
+--- a/pkg/parser/enrich.go
++++ b/pkg/parser/enrich.go
+@@ -1,9 +1,6 @@
+ package parser
+ 
+ import (
+-	"plugin"
+-	"time"
+-
+ 	"github.com/crowdsecurity/crowdsec/pkg/types"
+ 	log "github.com/sirupsen/logrus"
+ )
+@@ -13,87 +10,62 @@ type EnrichFunc func(string, *types.Event, interface{}) (map[string]string, erro
+ type InitFunc func(map[string]string) (interface{}, error)
+ 
+ type EnricherCtx struct {
+-	Funcs      map[string]EnrichFunc
+-	Init       InitFunc
+-	Plugin     *plugin.Plugin //pointer to the actual plugin
++	Registered map[string]*Enricher
++}
++
++type Enricher struct {
+ 	Name       string
+-	Path       string      //path to .so ?
+-	RuntimeCtx interface{} //the internal context of plugin, given back over every call
+-	initiated  bool
++	InitFunc   InitFunc
++	EnrichFunc EnrichFunc
++	Ctx        interface{}
+ }
+ 
+ /* mimic plugin loading */
+-// TODO fix this shit with real plugin loading
+-func Loadplugin(path string) ([]EnricherCtx, error) {
+-	var err error
++func Loadplugin(path string) (EnricherCtx, error) {
++	enricherCtx := EnricherCtx{}
++	enricherCtx.Registered = make(map[string]*Enricher)
+ 
+-	c := EnricherCtx{}
+-	c.Name = path
+-	c.Path = path
+-	/* we don't want to deal with plugin loading for now :p */
+-	c.Funcs = map[string]EnrichFunc{
+-		"GeoIpASN":    GeoIpASN,
+-		"GeoIpCity":   GeoIpCity,
+-		"reverse_dns": reverse_dns,
+-		"ParseDate":   ParseDate,
+-		"IpToRange":   IpToRange,
+-	}
+-	c.Init = GeoIpInit
++	enricherConfig := map[string]string{"datadir": path}
+ 
+-	c.RuntimeCtx, err = c.Init(map[string]string{"datadir": path})
+-	if err != nil {
+-		log.Warningf("load (fake) plugin load : %v", err)
+-		c.initiated = false
++	EnrichersList := []*Enricher{
++		{
++			Name:       "GeoIpCity",
++			InitFunc:   GeoIPCityInit,
++			EnrichFunc: GeoIpCity,
++		},
++		{
++			Name:       "GeoIpASN",
++			InitFunc:   GeoIPASNInit,
++			EnrichFunc: GeoIpASN,
++		},
++		{
++			Name:       "IpToRange",
++			InitFunc:   IpToRangeInit,
++			EnrichFunc: IpToRange,
++		},
++		{
++			Name:       "reverse_dns",
++			InitFunc:   reverseDNSInit,
++			EnrichFunc: reverse_dns,
++		},
++		{
++			Name:       "ParseDate",
++			InitFunc:   parseDateInit,
++			EnrichFunc: ParseDate,
++		},
+ 	}
+-	c.initiated = true
+-	return []EnricherCtx{c}, nil
+-}
+ 
+-func GenDateParse(date string) (string, time.Time) {
+-	var retstr string
+-	var layouts = [...]string{
+-		time.RFC3339,
+-		"02/Jan/2006:15:04:05 -0700",
+-		"Mon Jan 2 15:04:05 2006",
+-		"02-Jan-2006 15:04:05 europe/paris",
+-		"01/02/2006 15:04:05",
+-		"2006-01-02 15:04:05.999999999 -0700 MST",
+-		//Jan  5 06:25:11
+-		"Jan  2 15:04:05",
+-		"Mon Jan 02 15:04:05.000000 2006",
+-		"2006-01-02T15:04:05Z07:00",
+-		"2006/01/02",
+-		"2006/01/02 15:04",
+-		"2006-01-02",
+-		"2006-01-02 15:04",
+-	}
+-
+-	for _, dateFormat := range layouts {
+-		t, err := time.Parse(dateFormat, date)
+-		if err == nil && !t.IsZero() {
+-			//if the year isn't set, set it to current date :)
+-			if t.Year() == 0 {
+-				t = t.AddDate(time.Now().Year(), 0, 0)
+-			}
+-			retstr, err := t.MarshalText()
+-			if err != nil {
+-				log.Warningf("Failed marshaling '%v'", t)
+-				continue
+-			}
+-			return string(retstr), t
++	for _, enricher := range EnrichersList {
++		log.Debugf("Initiating enricher '%s'", enricher.Name)
++		pluginCtx, err := enricher.InitFunc(enricherConfig)
++		if err != nil {
++			log.Errorf("unable to register plugin '%s': %v", enricher.Name, err)
++			continue
+ 		}
++		enricher.Ctx = pluginCtx
++		log.Infof("Successfully registered enricher '%s'", enricher.Name)
++		enricherCtx.Registered[enricher.Name] = enricher
+ 	}
+-	return retstr, time.Time{}
+-}
+-
+-func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
+ 
+-	var ret map[string]string = make(map[string]string)
+-
+-	tstr, tbin := GenDateParse(in)
+-	if !tbin.IsZero() {
+-		ret["MarshaledTime"] = string(tstr)
+-		return ret, nil
+-	}
+-	return nil, nil
++	return enricherCtx, nil
+ }
+diff --git a/pkg/parser/enrich_date.go b/pkg/parser/enrich_date.go
+new file mode 100644
+index 0000000..bc3b946
+--- /dev/null
++++ b/pkg/parser/enrich_date.go
+@@ -0,0 +1,70 @@
++package parser
++
++import (
++	"time"
++
++	"github.com/crowdsecurity/crowdsec/pkg/types"
++	log "github.com/sirupsen/logrus"
++)
++
++func GenDateParse(date string) (string, time.Time) {
++	var (
++		layouts = [...]string{
++			time.RFC3339,
++			"02/Jan/2006:15:04:05 -0700",
++			"Mon Jan 2 15:04:05 2006",
++			"02-Jan-2006 15:04:05 europe/paris",
++			"01/02/2006 15:04:05",
++			"2006-01-02 15:04:05.999999999 -0700 MST",
++			"Jan  2 15:04:05",
++			"Mon Jan 02 15:04:05.000000 2006",
++			"2006-01-02T15:04:05Z07:00",
++			"2006/01/02",
++			"2006/01/02 15:04",
++			"2006-01-02",
++			"2006-01-02 15:04",
++			"2006/01/02 15:04:05",
++			"2006-01-02 15:04:05",
++		}
++	)
++
++	for _, dateFormat := range layouts {
++		t, err := time.Parse(dateFormat, date)
++		if err == nil && !t.IsZero() {
++			//if the year isn't set, set it to current date :)
++			if t.Year() == 0 {
++				t = t.AddDate(time.Now().Year(), 0, 0)
++			}
++			retstr, err := t.MarshalText()
++			if err != nil {
++				log.Warningf("Failed marshaling '%v'", t)
++				continue
++			}
++			return string(retstr), t
++		}
++	}
++
++	now := time.Now()
++	retstr, err := now.MarshalText()
++	if err != nil {
++		log.Warningf("Failed marshaling current time")
++		return "", time.Time{}
++	}
++	return string(retstr), now
++}
++
++func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
++
++	var ret map[string]string = make(map[string]string)
++	tstr, tbin := GenDateParse(in)
++	if !tbin.IsZero() {
++		ret["MarshaledTime"] = string(tstr)
++		return ret, nil
++	}
++
++	return nil, nil
++}
++
++func parseDateInit(cfg map[string]string) (interface{}, error) {
++	return nil, nil
++}
+diff --git a/pkg/parser/enrich_dns.go b/pkg/parser/enrich_dns.go
+index 86944a7..d568a00 100644
+--- a/pkg/parser/enrich_dns.go
++++ b/pkg/parser/enrich_dns.go
+@@ -25,3 +25,7 @@ func reverse_dns(field string, p *types.Event, ctx interface{}) (map[string]stri
+ 	ret["reverse_dns"] = rets[0]
+ 	return ret, nil
+ }
++
++func reverseDNSInit(cfg map[string]string) (interface{}, error) {
++	return nil, nil
++}
+diff --git a/pkg/parser/enrich_geoip.go b/pkg/parser/enrich_geoip.go
+index c07fead..7a33e0b 100644
+--- a/pkg/parser/enrich_geoip.go
++++ b/pkg/parser/enrich_geoip.go
+@@ -13,15 +13,6 @@ import (
+ 	//"github.com/crowdsecurity/crowdsec/pkg/parser"
+ )
+ 
+-type GeoIpEnricherCtx struct {
+-	dbc   *geoip2.Reader
+-	dba   *geoip2.Reader
+-	dbraw *maxminddb.Reader
+-}
+-
+-/* All plugins must export a list of function pointers for exported symbols */
+-var ExportedFuncs = []string{"GeoIpASN", "GeoIpCity"}
+-
+ func IpToRange(field string, p *types.Event, ctx interface{}) (map[string]string, error) {
+ 	var dummy interface{}
+ 	ret := make(map[string]string)
+@@ -34,7 +25,7 @@ func IpToRange(field string, p *types.Event, ctx interface{}) (map[string]string
+ 		log.Infof("Can't parse ip %s, no range enrich", field)
+ 		return nil, nil
+ 	}
+-	net, ok, err := ctx.(GeoIpEnricherCtx).dbraw.LookupNetwork(ip, &dummy)
++	net, ok, err := ctx.(*maxminddb.Reader).LookupNetwork(ip, &dummy)
+ 	if err != nil {
+ 		log.Errorf("Failed to fetch network for %s : %v", ip.String(), err)
+ 		return nil, nil
+@@ -58,14 +49,16 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}) (map[string]string,
+ 		log.Infof("Can't parse ip %s, no ASN enrich", ip)
+ 		return nil, nil
+ 	}
+-	record, err := ctx.(GeoIpEnricherCtx).dba.ASN(ip)
++	record, err := ctx.(*geoip2.Reader).ASN(ip)
+ 	if err != nil {
+ 		log.Errorf("Unable to enrich ip '%s'", field)
+ 		return nil, nil
+ 	}
+ 	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+ 	ret["ASNOrg"] = record.AutonomousSystemOrganization
++
+ 	log.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])
++
+ 	return ret, nil
+ }
+ 
+@@ -79,7 +72,7 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
+ 		log.Infof("Can't parse ip %s, no City enrich", ip)
+ 		return nil, nil
+ 	}
+-	record, err := ctx.(GeoIpEnricherCtx).dbc.City(ip)
++	record, err := ctx.(*geoip2.Reader).City(ip)
+ 	if err != nil {
+ 		log.Debugf("Unable to enrich ip '%s'", ip)
+ 		return nil, nil
+@@ -94,26 +87,32 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
+ 	return ret, nil
+ }
+ 
+-/* All plugins must export an Init function */
+-func GeoIpInit(cfg map[string]string) (interface{}, error) {
+-	var ctx GeoIpEnricherCtx
+-	var err error
+-	ctx.dbc, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
++func GeoIPCityInit(cfg map[string]string) (interface{}, error) {
++	dbCityReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
+ 	if err != nil {
+ 		log.Debugf("couldn't open geoip : %v", err)
+ 		return nil, err
+ 	}
+-	ctx.dba, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
++
++	return dbCityReader, nil
++}
++
++func GeoIPASNInit(cfg map[string]string) (interface{}, error) {
++	dbASReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
+ 	if err != nil {
+ 		log.Debugf("couldn't open geoip : %v", err)
+ 		return nil, err
+ 	}
+ 
+-	ctx.dbraw, err = maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
++	return dbASReader, nil
++}
++
++func IpToRangeInit(cfg map[string]string) (interface{}, error) {
++	ipToRangeReader, err := maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
+ 	if err != nil {
+ 		log.Debugf("couldn't open geoip : %v", err)
+ 		return nil, err
+ 	}
+ 
+-	return ctx, nil
++	return ipToRangeReader, nil
+ }
+diff --git a/pkg/parser/node.go b/pkg/parser/node.go
+index 0593907..5d3d345 100644
+--- a/pkg/parser/node.go
++++ b/pkg/parser/node.go
+@@ -44,7 +44,7 @@ type Node struct {
+ 	//If node has leafs, execute all of them until one asks for a 'break'
+ 	LeavesNodes []Node `yaml:"nodes,omitempty"`
+ 	//Flag used to describe when to 'break' or return an 'error'
+-	EnrichFunctions []EnricherCtx
++	EnrichFunctions EnricherCtx
+ 
+ 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
+ 	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
+@@ -58,7 +58,7 @@ type Node struct {
+ 	Data      []*types.DataSource `yaml:"data,omitempty"`
+ }
+ 
+-func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
++func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
+ 
+ 	//stage is being set automagically
+ 	if n.Stage == "" {
+@@ -87,15 +87,8 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx []EnricherCtx) error {
+ 			if static.ExpValue == "" {
+ 				return fmt.Errorf("static %d : when method is set, expression must be present", idx)
+ 			}
+-			method_found := false
+-			for _, enricherCtx := range ectx {
+-				if _, ok := enricherCtx.Funcs[static.Method]; ok && enricherCtx.initiated {
+-					method_found = true
+-					break
+-				}
+-			}
+-			if !method_found {
+-				return fmt.Errorf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
++			if _, ok := ectx.Registered[static.Method]; !ok {
++				log.Warningf("the method '%s' doesn't exist or the plugin has not been initialized", static.Method)
+ 			}
+ 		} else {
+ 			if static.Meta == "" && static.Parsed == "" && static.TargetByName == "" {
+@@ -350,7 +343,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
+ 	return NodeState, nil
+ }
+ 
+-func (n *Node) compile(pctx *UnixParserCtx, ectx []EnricherCtx) error {
++func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
+ 	var err error
+ 	var valid bool
+ 
+diff --git a/pkg/parser/node_test.go b/pkg/parser/node_test.go
+index 4724fc7..f8fdea1 100644
+--- a/pkg/parser/node_test.go
++++ b/pkg/parser/node_test.go
+@@ -41,7 +41,7 @@ func TestParserConfigs(t *testing.T) {
+ 		//{&Node{Debug: true, Grok: []GrokPattern{ GrokPattern{}, }}, false},
+ 	}
+ 	for idx := range CfgTests {
+-		err := CfgTests[idx].NodeCfg.compile(pctx, []EnricherCtx{})
++		err := CfgTests[idx].NodeCfg.compile(pctx, EnricherCtx{})
+ 		if CfgTests[idx].Compiles == true && err != nil {
+ 			t.Fatalf("Compile: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
+ 		}
+@@ -49,7 +49,7 @@ func TestParserConfigs(t *testing.T) {
+ 			t.Fatalf("Compile: (%d/%d) expected errror", idx+1, len(CfgTests))
+ 		}
+ 
+-		err = CfgTests[idx].NodeCfg.validate(pctx, []EnricherCtx{})
++		err = CfgTests[idx].NodeCfg.validate(pctx, EnricherCtx{})
+ 		if CfgTests[idx].Valid == true && err != nil {
+ 			t.Fatalf("Valid: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
+ 		}
+diff --git a/pkg/parser/parsing_test.go b/pkg/parser/parsing_test.go
+index 2a57b3a..bcf3919 100644
+--- a/pkg/parser/parsing_test.go
++++ b/pkg/parser/parsing_test.go
+@@ -89,7 +89,7 @@ func BenchmarkParser(t *testing.B) {
+ 	}
+ }
+ 
+-func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testing.B) error {
++func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
+ 
+ 	var (
+ 		err    error
+@@ -139,11 +139,11 @@ func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testi
+ }
+ 
+ //prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
+-func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
++func prepTests() (*UnixParserCtx, EnricherCtx, error) {
+ 	var (
+ 		err  error
+ 		pctx *UnixParserCtx
+-		ectx []EnricherCtx
++		ectx EnricherCtx
+ 	)
+ 
+ 	err = exprhelpers.Init()
+@@ -166,7 +166,7 @@ func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
+ 	// Init the parser
+ 	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
+ 	if err != nil {
+-		return nil, nil, fmt.Errorf("failed to initialize parser : %v", err)
++		return nil, ectx, fmt.Errorf("failed to initialize parser : %v", err)
+ 	}
+ 	return pctx, ectx, nil
+ }
+diff --git a/pkg/parser/runtime.go b/pkg/parser/runtime.go
+index a701ff2..2ce3059 100644
+--- a/pkg/parser/runtime.go
++++ b/pkg/parser/runtime.go
+@@ -140,29 +140,26 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
+ 		if static.Method != "" {
+ 			processed := false
+ 			/*still way too hackish, but : inject all the results in enriched, and */
+-			for _, x := range n.EnrichFunctions {
+-				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
+-					clog.Tracef("Found method '%s'", static.Method)
+-					ret, err := fptr(value, event, x.RuntimeCtx)
+-					if err != nil {
+-						clog.Fatalf("plugin function error : %v", err)
+-					}
+-					processed = true
+-					clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
+-					if len(ret) == 0 {
+-						clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
+-					}
+-					for k, v := range ret {
+-						clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
+-						event.Enriched[k] = v
+-					}
+-					break
+-				} else {
+-					clog.Warningf("method '%s' doesn't exist or plugin not initialized", static.Method)
++			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
++				clog.Tracef("Found method '%s'", static.Method)
++				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx)
++				if err != nil {
++					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
+ 				}
++				processed = true
++				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
++				if len(ret) == 0 {
++					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
++				}
++				for k, v := range ret {
++					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
++					event.Enriched[k] = v
++				}
++			} else {
++				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
+ 			}
+ 			if !processed {
+-				clog.Warningf("method '%s' doesn't exist", static.Method)
++				clog.Debugf("method '%s' doesn't exist", static.Method)
+ 			}
+ 		} else if static.Parsed != "" {
+ 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
+diff --git a/pkg/parser/stage.go b/pkg/parser/stage.go
+index a5635b4..fe1e2d4 100644
+--- a/pkg/parser/stage.go
++++ b/pkg/parser/stage.go
+@@ -37,7 +37,7 @@ type Stagefile struct {
+ 	Stage    string `yaml:"stage"`
+ }
+ 
+-func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx) ([]Node, error) {
++func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) ([]Node, error) {
+ 	var nodes []Node
+ 	tmpstages := make(map[string]bool)
+ 	pctx.Stages = []string{}
+diff --git a/pkg/parser/unix_parser.go b/pkg/parser/unix_parser.go
+index c21d4ed..892c2f3 100644
+--- a/pkg/parser/unix_parser.go
++++ b/pkg/parser/unix_parser.go
+@@ -24,7 +24,7 @@ type Parsers struct {
+ 	PovfwStageFiles []Stagefile
+ 	Nodes           []Node
+ 	Povfwnodes      []Node
+-	EnricherCtx     []EnricherCtx
++	EnricherCtx     EnricherCtx
+ }
+ 
+ func Init(c map[string]interface{}) (*UnixParserCtx, error) {
+-- 
+2.30.2
+

@@ -7,3 +7,5 @@
 0007-automatically-enable-online-hub.patch
 0008-hub-disable-broken-scenario.patch
 0009-Improve-http-bad-user-agent-use-regexp-197.patch
+0010-5ae69aa293-fix-stacktrace-when-mmdb-files-are-not-present.patch
+0011-4dbbd4b3c4-automatically-download-files-when-needed.patch

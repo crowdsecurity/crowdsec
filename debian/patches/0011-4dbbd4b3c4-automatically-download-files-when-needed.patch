@@ -1,0 +1,122 @@
+From 5fc744d27dbffc852eb4d2c5874a7b981aad6335 Mon Sep 17 00:00:00 2001
+From: Manuel Sabban <github@sabban.eu>
+Date: Thu, 19 Aug 2021 09:08:20 +0200
+Subject: [PATCH] Download datafile (#895)
+
+* add the ability to download datafile on cscli hub upgrade on files are missing
+* fix stuff + lint
+* fix error management
+
+Co-authored-by: sabban <15465465+sabban@users.noreply.github.com>
+---
+ cmd/crowdsec-cli/utils.go |  4 +++
+ pkg/cwhub/download.go     | 54 +++++++++++++++++++++++++++++++++------
+ 2 files changed, 50 insertions(+), 8 deletions(-)
+
+diff --git a/cmd/crowdsec-cli/utils.go b/cmd/crowdsec-cli/utils.go
+index 003181b..925f779 100644
+--- a/cmd/crowdsec-cli/utils.go
++++ b/cmd/crowdsec-cli/utils.go
+@@ -216,7 +216,11 @@ func UpgradeConfig(itemType string, name string, force bool) {
+ 		found = true
+ 		if v.UpToDate {
+ 			log.Infof("%s : up-to-date", v.Name)
++
+ 			if !force {
++				if err = cwhub.DownloadDataIfNeeded(csConfig.Cscli.DataDir, csConfig.Cscli.HubDir, v, false); err != nil {
++					log.Fatalf("%s : download failed : %v", v.Name, err)
++				}
+ 				continue
+ 			}
+ 		}
+diff --git a/pkg/cwhub/download.go b/pkg/cwhub/download.go
+index 91fb8ec..64df7e8 100644
+--- a/pkg/cwhub/download.go
++++ b/pkg/cwhub/download.go
+@@ -3,6 +3,7 @@ package cwhub
+ import (
+ 	"bytes"
+ 	"crypto/sha256"
++	"path"
+ 	"path/filepath"
+ 
+ 	//"errors"
+@@ -134,7 +135,7 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item,
+ 		}
+ 		if target.UpToDate {
+ 			log.Debugf("%s : up-to-date, not updated", target.Name)
+-			return target, nil
++			//  We still have to check if data files are present
+ 		}
+ 	}
+ 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
+@@ -204,7 +205,34 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item,
+ 	target.Tainted = false
+ 	target.UpToDate = true
+ 
+-	dec := yaml.NewDecoder(bytes.NewReader(body))
++	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
++		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
++	}
++
++	hubIdx[target.Type][target.Name] = target
++	return target, nil
++}
++
++func DownloadDataIfNeeded(dataFolder string, hubdir string, target Item, force bool) error {
++	var (
++		itemFile *os.File
++		err      error
++	)
++	itemFilePath := fmt.Sprintf("%s/%s", hubdir, target.RemotePath)
++
++	if itemFile, err = os.Open(itemFilePath); err != nil {
++		return errors.Wrapf(err, "while opening %s", itemFilePath)
++	}
++	if err = downloadData(dataFolder, force, itemFile); err != nil {
++		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
++	}
++	return nil
++}
++
++func downloadData(dataFolder string, force bool, reader io.Reader) error {
++	var err error
++	dec := yaml.NewDecoder(reader)
++
+ 	for {
+ 		data := &types.DataSet{}
+ 		err = dec.Decode(data)
+@@ -212,14 +240,24 @@ func DownloadItem(cscli *csconfig.CscliCfg, target Item, overwrite bool) (Item,
+ 			if err == io.EOF {
+ 				break
+ 			} else {
+-				return target, errors.Wrap(err, "while reading file")
++				return errors.Wrap(err, "while reading file")
+ 			}
+ 		}
+-		err = types.GetData(data.Data, dataFolder)
+-		if err != nil {
+-			return target, errors.Wrap(err, "while getting data")
++
++		download := false
++		if !force {
++			for _, dataS := range data.Data {
++				if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
++					download = true
++				}
++			}
++		}
++		if download || force {
++			err = types.GetData(data.Data, dataFolder)
++			if err != nil {
++				return errors.Wrap(err, "while getting data")
++			}
+ 		}
+ 	}
+-	hubIdx[target.Type][target.Name] = target
+-	return target, nil
++	return nil
+ }
+-- 
+2.30.2
+
