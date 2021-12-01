@@ -395,6 +395,16 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			container.logger.Infof("tail stopped for container %s", container.Name)
 			return fmt.Errorf("killed")
 		case line := <-readerChan:
+			if line == "" {
+				continue
+			}
+			if len(line) > 8 {
+				line = line[8:]
+			}
+			if line == "" {
+				continue
+			}
+
 			l := types.Line{}
 			l.Raw = line[8:]
 			l.Labels = d.Config.Labels
@@ -429,9 +439,9 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, outChan chan type
 				if d.runningContainerState[idx].t.Alive() {
 					d.logger.Infof("killing tail for container %s", container.Name)
 					d.runningContainerState[idx].t.Kill(nil)
-					if err := d.runningContainerState[idx].t.Wait(); err != nil {
+					/*if err := d.runningContainerState[idx].t.Wait(); err != nil {
 						d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
-					}
+					}*/
 				}
 			}
 			d.runningContainerState = nil
