@@ -266,6 +266,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				linesRead.With(prometheus.Labels{"source": containerConfig.Name}).Inc()
 				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 				out <- evt
+				d.logger.Infof("Send line to parsing: %+v", evt.Line.Raw)
 			}
 			d.runningContainerState[container.ID] = containerConfig
 		}
