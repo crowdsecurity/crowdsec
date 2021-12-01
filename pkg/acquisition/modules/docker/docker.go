@@ -422,7 +422,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 			linesRead.With(prometheus.Labels{"source": container.Name}).Inc()
 			outChan <- evt
-			d.logger.Infof("Send event to parsing: %+v", evt)
+			d.logger.Infof("Send line to parsing: %+v", evt.Line.Raw)
 		}
 	}
 }
