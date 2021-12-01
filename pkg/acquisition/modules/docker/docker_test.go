@@ -21,11 +21,7 @@ import (
 const testContainerName = "docker_test"
 
 func TestConfigure(t *testing.T) {
-
-}
-
-func TestBadConfiguration(t *testing.T) {
-	log.Infof("Test 'TestBadConfiguration'")
+	log.Infof("Test 'TestConfigure'")
 
 	tests := []struct {
 		config      string
