@@ -243,11 +243,11 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				d.logger.Errorf("unable to read logs from container: %+v", err)
 				return err
 			}
+			// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
 			reader := dlog.NewReader(dockerReader)
 			foundOne = true
 			scanner := bufio.NewScanner(reader)
 			for scanner.Scan() {
-				d.logger.Debugf("Send line to parsing: %+v", scanner.Text())
 				line := scanner.Text()
 				if line == "" {
 					continue
@@ -386,6 +386,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 		container.logger.Errorf("unable to read logs from container: %+v", err)
 		return err
 	}
+	// we use this library to normalize docker API logs (cf. https://ahmet.im/blog/docker-logs-api-binary-format-explained/)
 	reader := dlog.NewReader(dockerReader)
 	scanner := bufio.NewScanner(reader)
 	readerChan := make(chan string)
