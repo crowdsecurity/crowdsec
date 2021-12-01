@@ -245,11 +245,18 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 			foundOne = true
 			scanner := bufio.NewScanner(reader)
 			for scanner.Scan() {
-				if scanner.Text() == "" {
+				line := scanner.Text()
+				if line == "" {
+					continue
+				}
+				if len(line) > 8 {
+					line = line[8:]
+				}
+				if line == "" {
 					continue
 				}
 				l := types.Line{}
-				l.Raw = scanner.Text()[8:]
+				l.Raw = line
 				l.Labels = d.Config.Labels
 				l.Time = time.Now()
 				l.Src = containerConfig.Name

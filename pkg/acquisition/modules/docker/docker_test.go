@@ -2,7 +2,9 @@ package dockeracquisition
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -116,7 +118,10 @@ type mockDockerCli struct {
 	client.Client
 }
 
-/*func TestStreamingAcquisition(t *testing.T) {
+func TestStreamingAcquisition(t *testing.T) {
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+	log.Info("Test 'TestStreamingAcquisition'")
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -153,28 +158,36 @@ container_name:
 			})
 		}
 
-		tomb := tomb.Tomb{}
+		dockerTomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
 		err := dockerSource.Configure([]byte(ts.config), subLogger)
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
+		dockerSource.Client = new(mockDockerCli)
 		actualLines := 0
-		if ts.expectedLines != 0 {
-			go func() {
-			READLOOP:
-				for {
-					select {
-					case <-out:
-						actualLines++
-					case <-time.After(1 * time.Second):
-						break READLOOP
-					}
+		readerTomb := &tomb.Tomb{}
+		streamTomb := tomb.Tomb{}
+		streamTomb.Go(func() error {
+			return dockerSource.StreamingAcquisition(out, &dockerTomb)
+		})
+		readerTomb.Go(func() error {
+			time.Sleep(1 * time.Second)
+			ticker := time.NewTicker(1 * time.Second)
+			for {
+				select {
+				case <-out:
+					actualLines++
+					ticker.Reset(1 * time.Second)
+				case <-ticker.C:
+					log.Infof("no more line to read")
+					readerTomb.Kill(nil)
+					return nil
 				}
-			}()
-		}
-		err = dockerSource.StreamingAcquisition(out, &tomb)
+			}
+		})
+		time.Sleep(10 * time.Second)
 		if ts.expectedErr == "" && err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		} else if ts.expectedErr != "" && err != nil {
@@ -183,17 +196,21 @@ container_name:
 		} else if ts.expectedErr != "" && err == nil {
 			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
 		}
-
+		if err := readerTomb.Wait(); err != nil {
+			t.Fatal(err)
+		}
+		//time.Sleep(4 * time.Second)
 		if ts.expectedLines != 0 {
-			time.Sleep(1 * time.Second)
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
-		tomb.Kill(nil)
-		tomb.Wait()
-
+		dockerSource.t.Kill(nil)
+		err = streamTomb.Wait()
+		if err != nil {
+			t.Fatalf("docker acquisition error: %s", err)
+		}
 	}
 
-}*/
+}
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
 	containers := make([]dockerTypes.Container, 0)
@@ -207,12 +224,13 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	data := `
-hello
-world
-	`
-	r := io.NopCloser(strings.NewReader(data)) // r type is io.ReadCloser
-
+	startLineByte := "\x01\x00\x00\x00\x00\x00\x00\x1f"
+	data := []string{"docker", "test", "1234"}
+	ret := ""
+	for _, line := range data {
+		ret += fmt.Sprintf("%s%s\n", startLineByte, line)
+	}
+	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
 	return r, nil
 }
 
