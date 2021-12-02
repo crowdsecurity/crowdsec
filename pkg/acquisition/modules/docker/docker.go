@@ -377,7 +377,21 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 			runningContainersID := make(map[string]bool)
 			runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
 			if err != nil {
-				return err
+				if strings.Contains(strings.ToLower(err.Error()), "cannot connect to the docker daemon at") {
+					for idx, container := range d.runningContainerState {
+						if d.runningContainerState[idx].t.Alive() {
+							d.logger.Infof("killing tail for container %s", container.Name)
+							d.runningContainerState[idx].t.Kill(nil)
+							if err := d.runningContainerState[idx].t.Wait(); err != nil {
+								d.logger.Infof("error while waiting for death of %s : %s", container.Name, err)
+							}
+						}
+						delete(d.runningContainerState, idx)
+					}
+				} else {
+					log.Debugf("container list err: %s", err.Error())
+				}
+				continue
 			}
 
 			for _, container := range runningContainer {
