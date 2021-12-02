@@ -213,7 +213,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 			if len(v) != 1 {
 				return fmt.Errorf("only one 'since' parameters is required, not many")
 			}
-			d.containerLogsOptions.Until = v[0]
+			d.containerLogsOptions.Since = v[0]
 		case "follow_stdout":
 			if len(v) != 1 {
 				return fmt.Errorf("only one 'follow_stdout' parameters is required, not many")
@@ -259,7 +259,6 @@ func (d *DockerSource) SupportedModes() []string {
 //OneShotAcquisition reads a set of file and returns when done
 func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	d.logger.Debug("In oneshot")
-
 	runningContainer, err := d.Client.ContainerList(context.Background(), dockerTypes.ContainerListOptions{})
 	if err != nil {
 		return err
@@ -272,6 +271,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 		}
 		if containerConfig, ok := d.EvalContainer(container); ok {
 			d.logger.Infof("reading logs from container %s", containerConfig.Name)
+			d.logger.Debugf("logs options: %+v", *d.containerLogsOptions)
 			dockerReader, err := d.Client.ContainerLogs(context.Background(), containerConfig.ID, *d.containerLogsOptions)
 			if err != nil {
 				d.logger.Errorf("unable to read logs from container: %+v", err)
