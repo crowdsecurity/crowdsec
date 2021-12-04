@@ -1,4 +1,4 @@
-crowdsec (1.0.9-3) UNRELEASED; urgency=medium
+crowdsec (1.0.9-3) unstable; urgency=medium
 
   * Backport upstream patches to deal with missing MMDB files gracefully
     (geolocation files aren't shipped by default):
@@ -7,7 +7,7 @@ crowdsec (1.0.9-3) UNRELEASED; urgency=medium
         that switching to the online hub doesn't require extra steps to
         fetch files.
 
- -- Cyril Brulebois <cyril@debamax.com>  Wed, 01 Dec 2021 12:25:01 +0100
+ -- Cyril Brulebois <cyril@debamax.com>  Sat, 04 Dec 2021 05:03:33 +0100
 
 crowdsec (1.0.9-2) unstable; urgency=medium
 
