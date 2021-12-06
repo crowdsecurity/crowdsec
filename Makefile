@@ -42,7 +42,7 @@ BUILD_VERSION?="$(shell git describe --tags `git rev-list --tags --max-count=1`)
 BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
 BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP=$(shell date +%F"_"%T)
-BUILD_TAG="$(shell git rev-parse HEAD)"
+BUILD_TAG?="$(shell git rev-parse HEAD)"
 
 export LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.System=$(SYSTEM) \
