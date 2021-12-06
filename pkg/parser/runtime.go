@@ -198,7 +198,7 @@ var NodesHits = prometheus.NewCounterVec(
 var NodesHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ok_total",
-		Help: "Total events successfuly exited node.",
+		Help: "Total events successfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
@@ -206,7 +206,7 @@ var NodesHitsOk = prometheus.NewCounterVec(
 var NodesHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ko_total",
-		Help: "Total events unsuccessfuly exited node.",
+		Help: "Total events unsuccessfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
