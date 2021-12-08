@@ -256,10 +256,35 @@ func (a *apic) PullTop() error {
 	if a.startup {
 		a.startup = false
 	}
+	/*to count additions/deletions accross lists*/
+	var add_counters map[string]map[string]int
+	var delete_counters map[string]map[string]int
+
+	add_counters = make(map[string]map[string]int)
+	add_counters["CAPI"] = make(map[string]int)
+	add_counters["lists"] = make(map[string]int)
+	delete_counters = make(map[string]map[string]int)
+	delete_counters["CAPI"] = make(map[string]int)
+	delete_counters["lists"] = make(map[string]int)
 	// process deleted decisions
 	var filter map[string][]string
 	var nbDeleted int
 	for _, decision := range data.Deleted {
+		if *decision.Origin == "CAPI" {
+			if _, ok := delete_counters["CAPI"][*decision.Scenario]; ok {
+				delete_counters["CAPI"][*decision.Scenario]++
+			} else {
+				delete_counters["CAPI"][*decision.Scenario] = 1
+			}
+		} else if *decision.Origin == "lists" {
+			if _, ok := delete_counters["lists"][*decision.Scenario]; ok {
+				delete_counters["lists"][*decision.Scenario]++
+			} else {
+				delete_counters["lists"][*decision.Scenario] = 1
+			}
+		} else {
+			log.Warningf("Unknown origin %s", *decision.Origin)
+		}
 		if strings.ToLower(*decision.Scope) == "ip" {
 			filter = make(map[string][]string, 1)
 			filter["value"] = []string{*decision.Value}
@@ -287,23 +312,63 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	capiPullTopX := models.Alert{}
-	capiPullTopX.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted)))
-	capiPullTopX.Message = types.StrPtr("")
-	capiPullTopX.Source = &models.Source{}
-	capiPullTopX.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
-	capiPullTopX.Source.Value = types.StrPtr("")
-	capiPullTopX.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
-	capiPullTopX.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
-	capiPullTopX.Capacity = types.Int32Ptr(0)
-	capiPullTopX.Simulated = types.BoolPtr(false)
-	capiPullTopX.EventsCount = types.Int32Ptr(int32(len(data.New)))
-	capiPullTopX.Leakspeed = types.StrPtr("")
-	capiPullTopX.ScenarioHash = types.StrPtr("")
-	capiPullTopX.ScenarioVersion = types.StrPtr("")
-	capiPullTopX.MachineID = database.CapiMachineID
-	// process new decisions
+	//let's process X chunks of decisions : CAPI and lists subscriptions
+	var alertsFromCapi []*models.Alert
+	alertsFromCapi = make([]*models.Alert, 0)
+
 	for _, decision := range data.New {
+		log.Debugf("Checking origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
+		found := false
+		for _, sub := range alertsFromCapi {
+			//we already have it
+			if *sub.Source.Scope == *decision.Origin && *sub.Scenario == *decision.Scenario {
+				found = true
+				break
+			}
+		}
+		//let's add the missing alert
+		if !found {
+			newAlert := models.Alert{}
+			newAlert.Message = types.StrPtr("")
+			newAlert.Source = &models.Source{}
+			if *decision.Origin == "CAPI" {
+				newAlert.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
+			} else if *decision.Origin == "list" {
+				newAlert.Source.Scope = types.StrPtr("list")
+			} else {
+				log.Warningf("unknown origin %s", *decision.Origin)
+			}
+			newAlert.Source.Value = types.StrPtr("")
+			newAlert.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.Capacity = types.Int32Ptr(0)
+			newAlert.Simulated = types.BoolPtr(false)
+			newAlert.EventsCount = types.Int32Ptr(int32(len(data.New)))
+			newAlert.Leakspeed = types.StrPtr("")
+			newAlert.ScenarioHash = types.StrPtr("")
+			newAlert.ScenarioVersion = types.StrPtr("")
+			newAlert.MachineID = database.CapiMachineID
+			alertsFromCapi = append(alertsFromCapi, &newAlert)
+		}
+	}
+
+	for _, decision := range data.New {
+		//count and create separate alerts for each list
+		if *decision.Origin == "CAPI" {
+			if _, ok := add_counters["CAPI"][*decision.Scenario]; ok {
+				add_counters["CAPI"][*decision.Scenario]++
+			} else {
+				add_counters["CAPI"][*decision.Scenario] = 1
+			}
+		} else if *decision.Origin == "lists" {
+			if _, ok := add_counters["lists"][*decision.Scenario]; ok {
+				add_counters["lists"][*decision.Scenario]++
+			} else {
+				add_counters["lists"][*decision.Scenario] = 1
+			}
+		} else {
+			log.Warningf("Unknown origin %s", *decision.Origin)
+		}
 
 		/*CAPI might send lower case scopes, unify it.*/
 		switch strings.ToLower(*decision.Scope) {
@@ -312,16 +377,33 @@ func (a *apic) PullTop() error {
 		case "range":
 			*decision.Scope = types.Range
 		}
-
-		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
+		found := false
+		for idx, alert := range alertsFromCapi {
+			if *alert.Scenario == *decision.Scenario && *alert.Source.Scope == *decision.Origin {
+				alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Warningf("Orphaned decision for %s %s", *decision.Origin, *decision.Scenario)
+		}
 	}
 
-	alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(&capiPullTopX)
-	if err != nil {
-		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
-	}
+	for idx, alert := range alertsFromCapi {
+		alertsFromCapi[idx].Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[*alert.Source.Scope][*alert.Scenario], delete_counters[*alert.Source.Scope][*alert.Scenario]))
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
+		if err != nil {
+			return errors.Wrap(err, "while saving alert from capi/community-blocklist")
+		}
+		//newAlert.Source.Scope
+		if *alert.Source.Scope == "crowdsec/community-blocklist" {
+			log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
+		} else if *alert.Source.Scope == "list" {
+			log.Printf("list: %s : added %d entries, deleted %d entries (alert:%d)", *alert.Scenario, inserted, deleted, alertID)
+		}
 
-	log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
+	}
 
 	return nil
 }
