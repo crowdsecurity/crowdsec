@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -234,6 +235,10 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 	}
 }
 
+var SCOPE_CAPI string = "CAPI"
+var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
+var SCOPE_LISTS string = "lists"
+
 func (a *apic) PullTop() error {
 	var err error
 
@@ -261,26 +266,27 @@ func (a *apic) PullTop() error {
 	var delete_counters map[string]map[string]int
 
 	add_counters = make(map[string]map[string]int)
-	add_counters["CAPI"] = make(map[string]int)
-	add_counters["lists"] = make(map[string]int)
+	add_counters[SCOPE_CAPI] = make(map[string]int)
+	add_counters[SCOPE_LISTS] = make(map[string]int)
 	delete_counters = make(map[string]map[string]int)
-	delete_counters["CAPI"] = make(map[string]int)
-	delete_counters["lists"] = make(map[string]int)
-	// process deleted decisions
+	delete_counters[SCOPE_CAPI] = make(map[string]int)
+	delete_counters[SCOPE_LISTS] = make(map[string]int)
 	var filter map[string][]string
 	var nbDeleted int
+	// process deleted decisions
 	for _, decision := range data.Deleted {
-		if *decision.Origin == "CAPI" {
-			if _, ok := delete_counters["CAPI"][*decision.Scenario]; ok {
-				delete_counters["CAPI"][*decision.Scenario]++
+		//count individual deletions
+		if *decision.Origin == SCOPE_CAPI {
+			if _, ok := delete_counters[SCOPE_CAPI][*decision.Scenario]; ok {
+				delete_counters[SCOPE_CAPI][*decision.Scenario]++
 			} else {
-				delete_counters["CAPI"][*decision.Scenario] = 1
+				delete_counters[SCOPE_CAPI][*decision.Scenario] = 1
 			}
-		} else if *decision.Origin == "lists" {
-			if _, ok := delete_counters["lists"][*decision.Scenario]; ok {
-				delete_counters["lists"][*decision.Scenario]++
+		} else if *decision.Origin == SCOPE_LISTS {
+			if _, ok := delete_counters[SCOPE_LISTS][*decision.Scenario]; ok {
+				delete_counters[SCOPE_LISTS][*decision.Scenario]++
 			} else {
-				delete_counters["lists"][*decision.Scenario] = 1
+				delete_counters[SCOPE_LISTS][*decision.Scenario] = 1
 			}
 		} else {
 			log.Warningf("Unknown origin %s", *decision.Origin)
@@ -316,25 +322,47 @@ func (a *apic) PullTop() error {
 	var alertsFromCapi []*models.Alert
 	alertsFromCapi = make([]*models.Alert, 0)
 
+	//iterate over new decisions, and create :
+	// one alert for all CAPI (community-blocklist) decisions
+	// one alert per individual list subscription
 	for _, decision := range data.New {
-		log.Debugf("Checking origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
 		found := false
 		for _, sub := range alertsFromCapi {
-			//we already have it
-			if *sub.Source.Scope == *decision.Origin && *sub.Scenario == *decision.Scenario {
-				found = true
-				break
+			if sub.Source.Scope == nil {
+				log.Warningf("nil scope in %s", spew.Sdump(sub))
+				continue
+			}
+			if *decision.Origin == SCOPE_CAPI {
+				if *sub.Source.Scope == SCOPE_CAPI {
+					found = true
+					break
+				}
+			} else if *decision.Origin == SCOPE_LISTS {
+				if *sub.Source.Scope == *decision.Origin {
+					if sub.Scenario == nil {
+						log.Warningf("nil scenario in %s", spew.Sdump(sub))
+					}
+					if *sub.Scenario == *decision.Scenario {
+						found = true
+						break
+					}
+				}
+
+			} else {
+				log.Warningf("unknown origin %s : %s", *decision.Origin, spew.Sdump(decision))
 			}
 		}
-		//let's add the missing alert
 		if !found {
+			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
 			newAlert := models.Alert{}
 			newAlert.Message = types.StrPtr("")
 			newAlert.Source = &models.Source{}
-			if *decision.Origin == "CAPI" {
-				newAlert.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
-			} else if *decision.Origin == "list" {
-				newAlert.Source.Scope = types.StrPtr("list")
+			if *decision.Origin == SCOPE_CAPI { //to make things more user friendly, we replace CAPI with community-blocklist
+				newAlert.Source.Scope = types.StrPtr(SCOPE_CAPI)
+				newAlert.Scenario = types.StrPtr(SCOPE_CAPI)
+			} else if *decision.Origin == SCOPE_LISTS {
+				newAlert.Source.Scope = types.StrPtr(SCOPE_LISTS)
+				newAlert.Scenario = types.StrPtr(*decision.Scenario)
 			} else {
 				log.Warningf("unknown origin %s", *decision.Origin)
 			}
@@ -354,17 +382,17 @@ func (a *apic) PullTop() error {
 
 	for _, decision := range data.New {
 		//count and create separate alerts for each list
-		if *decision.Origin == "CAPI" {
-			if _, ok := add_counters["CAPI"][*decision.Scenario]; ok {
-				add_counters["CAPI"][*decision.Scenario]++
+		if *decision.Origin == SCOPE_CAPI {
+			if _, ok := add_counters[SCOPE_CAPI][*decision.Scenario]; ok {
+				add_counters[SCOPE_CAPI][*decision.Scenario]++
 			} else {
-				add_counters["CAPI"][*decision.Scenario] = 1
+				add_counters[SCOPE_CAPI][*decision.Scenario] = 1
 			}
-		} else if *decision.Origin == "lists" {
-			if _, ok := add_counters["lists"][*decision.Scenario]; ok {
-				add_counters["lists"][*decision.Scenario]++
+		} else if *decision.Origin == SCOPE_LISTS {
+			if _, ok := add_counters[SCOPE_LISTS][*decision.Scenario]; ok {
+				add_counters[SCOPE_LISTS][*decision.Scenario]++
 			} else {
-				add_counters["lists"][*decision.Scenario] = 1
+				add_counters[SCOPE_LISTS][*decision.Scenario] = 1
 			}
 		} else {
 			log.Warningf("Unknown origin %s", *decision.Origin)
@@ -378,31 +406,42 @@ func (a *apic) PullTop() error {
 			*decision.Scope = types.Range
 		}
 		found := false
+		//add the individual decisions to the right list
 		for idx, alert := range alertsFromCapi {
-			if *alert.Scenario == *decision.Scenario && *alert.Source.Scope == *decision.Origin {
-				alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
-				found = true
-				break
+			if *decision.Origin == SCOPE_CAPI {
+				if *alert.Source.Scope == SCOPE_CAPI {
+					alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
+					found = true
+					break
+				}
+			} else if *decision.Origin == SCOPE_LISTS {
+				if *alert.Source.Scope == SCOPE_LISTS && *alert.Scenario == *decision.Scenario {
+					alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
+					found = true
+					break
+				}
+			} else {
+				log.Warningf("unknown origin %s", *decision.Origin)
 			}
 		}
 		if !found {
-			log.Warningf("Orphaned decision for %s %s", *decision.Origin, *decision.Scenario)
+			log.Warningf("Orphaned decision for %s - %s", *decision.Origin, *decision.Scenario)
 		}
 	}
 
 	for idx, alert := range alertsFromCapi {
-		alertsFromCapi[idx].Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", add_counters[*alert.Source.Scope][*alert.Scenario], delete_counters[*alert.Source.Scope][*alert.Scenario]))
+		formatted_update := fmt.Sprintf("update : +%d/-%d IPs", add_counters[*alert.Source.Scope][*alert.Scenario], delete_counters[*alert.Source.Scope][*alert.Scenario])
+		if *alertsFromCapi[idx].Source.Scope == SCOPE_CAPI {
+			*alertsFromCapi[idx].Source.Scope = SCOPE_CAPI_ALIAS
+		} else if *alertsFromCapi[idx].Source.Scope == SCOPE_LISTS {
+			*alertsFromCapi[idx].Source.Scope = fmt.Sprintf("%s:%s", SCOPE_LISTS, *alertsFromCapi[idx].Scenario)
+		}
+		alertsFromCapi[idx].Scenario = types.StrPtr(formatted_update)
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
-			return errors.Wrap(err, "while saving alert from capi/community-blocklist")
+			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
 		}
-		//newAlert.Source.Scope
-		if *alert.Source.Scope == "crowdsec/community-blocklist" {
-			log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
-		} else if *alert.Source.Scope == "list" {
-			log.Printf("list: %s : added %d entries, deleted %d entries (alert:%d)", *alert.Scenario, inserted, deleted, alertID)
-		}
-
+		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
 	}
 
 	return nil
