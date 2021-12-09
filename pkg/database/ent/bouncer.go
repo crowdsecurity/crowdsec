@@ -44,13 +44,13 @@ func (*Bouncer) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case bouncer.FieldRevoked:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Bouncer", columns[i])
 		}

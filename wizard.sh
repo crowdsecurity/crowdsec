@@ -462,7 +462,7 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
-    systemctl is-active --quiet crowdsec
+    which systemctl && systemctl is-active --quiet crowdsec
     if [ $? -eq 0 ]; then
         systemctl stop crowdsec 
     fi
@@ -494,16 +494,16 @@ install_plugins(){
     mkdir -p /etc/crowdsec/notifications
 
     cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications
-
     cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications
-
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications
-
     cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications
+
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications
+    fi
 }
 
 check_running_bouncers() {

@@ -63,13 +63,13 @@ func (*Machine) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case machine.FieldIsValidated:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case machine.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Machine", columns[i])
 		}

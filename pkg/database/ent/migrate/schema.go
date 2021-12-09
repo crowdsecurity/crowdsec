@@ -48,6 +48,13 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "alert_id",
+				Unique:  false,
+				Columns: []*schema.Column{AlertsColumns[0]},
+			},
+		},
 	}
 	// BouncersColumns holds the columns for the "bouncers" table.
 	BouncersColumns = []*schema.Column{
@@ -65,10 +72,9 @@ var (
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
-		Name:        "bouncers",
-		Columns:     BouncersColumns,
-		PrimaryKey:  []*schema.Column{BouncersColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{},
+		Name:       "bouncers",
+		Columns:    BouncersColumns,
+		PrimaryKey: []*schema.Column{BouncersColumns[0]},
 	}
 	// DecisionsColumns holds the columns for the "decisions" table.
 	DecisionsColumns = []*schema.Column{
@@ -99,7 +105,7 @@ var (
 				Symbol:     "decisions_alerts_decisions",
 				Columns:    []*schema.Column{DecisionsColumns[15]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -109,7 +115,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "time", Type: field.TypeTime},
-		{Name: "serialized", Type: field.TypeString, Size: 4095},
+		{Name: "serialized", Type: field.TypeString, Size: 8191},
 		{Name: "alert_events", Type: field.TypeInt, Nullable: true},
 	}
 	// EventsTable holds the schema information for the "events" table.
@@ -122,7 +128,7 @@ var (
 				Symbol:     "events_alerts_events",
 				Columns:    []*schema.Column{EventsColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}
@@ -141,10 +147,9 @@ var (
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{
-		Name:        "machines",
-		Columns:     MachinesColumns,
-		PrimaryKey:  []*schema.Column{MachinesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{},
+		Name:       "machines",
+		Columns:    MachinesColumns,
+		PrimaryKey: []*schema.Column{MachinesColumns[0]},
 	}
 	// MetaColumns holds the columns for the "meta" table.
 	MetaColumns = []*schema.Column{
@@ -165,7 +170,7 @@ var (
 				Symbol:     "meta_alerts_metas",
 				Columns:    []*schema.Column{MetaColumns[5]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
-				OnDelete:   schema.SetNull,
+				OnDelete:   schema.Cascade,
 			},
 		},
 	}

@@ -6,7 +6,7 @@ if [ "$CONFIG_FILE" != "" ]; then
     CS_CONFIG_FILE="$CONFIG_FILE"
 fi
 
-# regenerate lcaol agent credentials (ignore if agent is disabled)
+# regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
     cscli -c "$CS_CONFIG_FILE" machines delete localhost
@@ -20,7 +20,7 @@ if [ "$DISABLE_AGENT" == "" ] ; then
     fi
 fi
 
-# Check if lapi need to register automatically an agent
+# Check if lapi needs to automatically register an agent
 echo Check if lapi need to register automatically an agent
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
     cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD

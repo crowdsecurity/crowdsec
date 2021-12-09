@@ -22,9 +22,9 @@ type EventUpdate struct {
 	mutation *EventMutation
 }
 
-// Where adds a new predicate for the EventUpdate builder.
+// Where appends a list predicates to the EventUpdate builder.
 func (eu *EventUpdate) Where(ps ...predicate.Event) *EventUpdate {
-	eu.mutation.predicates = append(eu.mutation.predicates, ps...)
+	eu.mutation.Where(ps...)
 	return eu
 }
 
@@ -124,6 +124,9 @@ func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(eu.hooks) - 1; i >= 0; i-- {
+			if eu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = eu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, eu.mutation); err != nil {
@@ -249,8 +252,8 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, eu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -260,6 +263,7 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // EventUpdateOne is the builder for updating a single Event entity.
 type EventUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *EventMutation
 }
@@ -334,6 +338,13 @@ func (euo *EventUpdateOne) ClearOwner() *EventUpdateOne {
 	return euo
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (euo *EventUpdateOne) Select(field string, fields ...string) *EventUpdateOne {
+	euo.fields = append([]string{field}, fields...)
+	return euo
+}
+
 // Save executes the query and returns the updated Event entity.
 func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 	var (
@@ -360,6 +371,9 @@ func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 			return node, err
 		})
 		for i := len(euo.hooks) - 1; i >= 0; i-- {
+			if euo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = euo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, euo.mutation); err != nil {
@@ -417,6 +431,18 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Event.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := euo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, event.FieldID)
+		for _, f := range fields {
+			if !event.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != event.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := euo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -493,8 +519,8 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	if err = sqlgraph.UpdateNode(ctx, euo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{event.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

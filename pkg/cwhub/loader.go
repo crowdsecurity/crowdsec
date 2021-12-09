@@ -109,7 +109,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
-		//the symlink target doesn't exist, user might have remove ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
+		//the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
 		_, err := os.Lstat(hubpath)
 		if os.IsNotExist(err) {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)

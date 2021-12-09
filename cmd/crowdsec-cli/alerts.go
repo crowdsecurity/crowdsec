@@ -13,6 +13,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -468,6 +469,41 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsInspect.Flags().BoolVarP(&details, "details", "d", false, "show alerts with events")
 
 	cmdAlerts.AddCommand(cmdAlertsInspect)
+
+	var maxItems int
+	var maxAge string
+	var cmdAlertsFlush = &cobra.Command{
+		Use: `flush`,
+		Short: `Flush alerts
+/!\ This command can be used only on the same machine than the local API`,
+		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+			log.Info("Flushing alerts. !! This may take a long time !!")
+			err = dbClient.FlushAlerts(maxAge, maxItems)
+			if err != nil {
+				log.Fatalf("unable to flush alerts: %s", err)
+			}
+			log.Info("Alerts flushed")
+		},
+	}
+
+	cmdAlertsFlush.Flags().SortFlags = false
+	cmdAlertsFlush.Flags().IntVar(&maxItems, "max-items", 5000, "Maximum number of alert items to keep in the database")
+	cmdAlertsFlush.Flags().StringVar(&maxAge, "max-age", "7d", "Maximum age of alert items to keep in the database")
+
+	cmdAlerts.AddCommand(cmdAlertsFlush)
 
 	return cmdAlerts
 }

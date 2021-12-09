@@ -25,9 +25,9 @@ type AlertUpdate struct {
 	mutation *AlertMutation
 }
 
-// Where adds a new predicate for the AlertUpdate builder.
+// Where appends a list predicates to the AlertUpdate builder.
 func (au *AlertUpdate) Where(ps ...predicate.Alert) *AlertUpdate {
-	au.mutation.predicates = append(au.mutation.predicates, ps...)
+	au.mutation.Where(ps...)
 	return au
 }
 
@@ -625,6 +625,9 @@ func (au *AlertUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(au.hooks) - 1; i >= 0; i-- {
+			if au.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = au.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, au.mutation); err != nil {
@@ -1164,8 +1167,8 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, au.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -1175,6 +1178,7 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // AlertUpdateOne is the builder for updating a single Alert entity.
 type AlertUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *AlertMutation
 }
@@ -1753,6 +1757,13 @@ func (auo *AlertUpdateOne) RemoveMetas(m ...*Meta) *AlertUpdateOne {
 	return auo.RemoveMetaIDs(ids...)
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (auo *AlertUpdateOne) Select(field string, fields ...string) *AlertUpdateOne {
+	auo.fields = append([]string{field}, fields...)
+	return auo
+}
+
 // Save executes the query and returns the updated Alert entity.
 func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
 	var (
@@ -1773,6 +1784,9 @@ func (auo *AlertUpdateOne) Save(ctx context.Context) (*Alert, error) {
 			return node, err
 		})
 		for i := len(auo.hooks) - 1; i >= 0; i-- {
+			if auo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = auo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, auo.mutation); err != nil {
@@ -1820,6 +1834,18 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Alert.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := auo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, alert.FieldID)
+		for _, f := range fields {
+			if !alert.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != alert.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := auo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -2320,8 +2346,8 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 	if err = sqlgraph.UpdateNode(ctx, auo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{alert.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

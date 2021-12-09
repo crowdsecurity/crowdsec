@@ -140,7 +140,7 @@ function down
   rm -rf cs-firewall-bouncer-*
   rm -f crowdsec-release.tgz
   rm -f cs-firewall-bouncer.tgz
-  rm *.md5
+  rm -- *.md5
 }
 
 function assert_equal
