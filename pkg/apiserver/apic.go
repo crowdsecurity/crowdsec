@@ -431,12 +431,14 @@ func (a *apic) PullTop() error {
 
 	for idx, alert := range alertsFromCapi {
 		formatted_update := fmt.Sprintf("update : +%d/-%d IPs", add_counters[*alert.Source.Scope][*alert.Scenario], delete_counters[*alert.Source.Scope][*alert.Scenario])
+
 		if *alertsFromCapi[idx].Source.Scope == SCOPE_CAPI {
 			*alertsFromCapi[idx].Source.Scope = SCOPE_CAPI_ALIAS
 		} else if *alertsFromCapi[idx].Source.Scope == SCOPE_LISTS {
 			*alertsFromCapi[idx].Source.Scope = fmt.Sprintf("%s:%s", SCOPE_LISTS, *alertsFromCapi[idx].Scenario)
 		}
 		alertsFromCapi[idx].Scenario = types.StrPtr(formatted_update)
+		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
 		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
 		if err != nil {
 			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
