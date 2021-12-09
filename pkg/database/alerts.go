@@ -509,6 +509,10 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		delete(filter, "simulated")
 	}
 
+	if _, ok := filter["origin"]; ok {
+		filter["include_capi"] = []string{"true"}
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "contains":
