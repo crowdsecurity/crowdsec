@@ -383,10 +383,10 @@ func (a *apic) PullTop() error {
 	for _, decision := range data.New {
 		//count and create separate alerts for each list
 		if *decision.Origin == SCOPE_CAPI {
-			if _, ok := add_counters[SCOPE_CAPI][*decision.Scenario]; ok {
-				add_counters[SCOPE_CAPI][*decision.Scenario]++
+			if _, ok := add_counters[SCOPE_CAPI]["all"]; ok {
+				add_counters[SCOPE_CAPI]["all"]++
 			} else {
-				add_counters[SCOPE_CAPI][*decision.Scenario] = 1
+				add_counters[SCOPE_CAPI]["all"] = 1
 			}
 		} else if *decision.Origin == SCOPE_LISTS {
 			if _, ok := add_counters[SCOPE_LISTS][*decision.Scenario]; ok {
@@ -430,12 +430,14 @@ func (a *apic) PullTop() error {
 	}
 
 	for idx, alert := range alertsFromCapi {
-		formatted_update := fmt.Sprintf("update : +%d/-%d IPs", add_counters[*alert.Source.Scope][*alert.Scenario], delete_counters[*alert.Source.Scope][*alert.Scenario])
+		formatted_update := ""
 
 		if *alertsFromCapi[idx].Source.Scope == SCOPE_CAPI {
 			*alertsFromCapi[idx].Source.Scope = SCOPE_CAPI_ALIAS
+			formatted_update = fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_CAPI]["all"], delete_counters[SCOPE_CAPI]["all"])
 		} else if *alertsFromCapi[idx].Source.Scope == SCOPE_LISTS {
 			*alertsFromCapi[idx].Source.Scope = fmt.Sprintf("%s:%s", SCOPE_LISTS, *alertsFromCapi[idx].Scenario)
+			formatted_update = fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_LISTS][*alert.Scenario], delete_counters[SCOPE_LISTS][*alert.Scenario])
 		}
 		alertsFromCapi[idx].Scenario = types.StrPtr(formatted_update)
 		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
@@ -445,7 +447,6 @@ func (a *apic) PullTop() error {
 		}
 		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
 	}
-
 	return nil
 }
 
