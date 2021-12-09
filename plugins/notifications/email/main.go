@@ -70,7 +70,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		logger.SetLevel(hclog.Info)
 	}
 	logger = logger.Named(cfg.Name)
-	logger.Info("got notification")
+	logger.Debug("got notification")
 
 	server := mail.NewSMTPClient()
 	server.Host = cfg.SMTPHost
