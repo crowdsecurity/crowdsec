@@ -67,7 +67,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Country
 	case "as":
 		*scope = types.AS
-
 	}
 	return nil
 }
