@@ -161,6 +161,9 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
+var dumpFolder string
+var dumpStates bool
+
 func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", defaultConfigFile, "configuration file")
@@ -174,6 +177,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
+	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.Parse()
 }
 
@@ -278,5 +282,3 @@ func main() {
 	}
 
 }
-
-
