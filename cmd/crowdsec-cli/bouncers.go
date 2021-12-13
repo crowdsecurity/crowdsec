@@ -123,8 +123,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			}
 			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
 			if err != nil {
-				log.Errorf("unable to create bouncer: %s", err)
-				return
+				log.Fatalf("unable to create bouncer: %s", err)
 			}
 
 			if csConfig.Cscli.Output == "human" {
