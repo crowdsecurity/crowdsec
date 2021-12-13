@@ -208,7 +208,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	item, err = EnableItem(cfg, item)
 	if err != nil {
-		t.Fatalf("error while enabled %s : %v.", item.Name, err)
+		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
