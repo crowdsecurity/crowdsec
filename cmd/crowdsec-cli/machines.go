@@ -144,6 +144,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
+				fmt.Printf("machine_id,ip_address,updated_at,validated,version\n")
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {

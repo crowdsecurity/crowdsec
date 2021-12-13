@@ -131,8 +131,9 @@ func ListItem(itemType string, args []string) {
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
+		fmt.Printf("name,status,version,description\n")
 		for _, v := range hubStatus {
-			fmt.Printf("%s %s\n", v["name"], v["description"])
+			fmt.Printf("%s,%s,%s,%s\n", v["name"], v["status"], v["local_version"], v["description"])
 		}
 	}
 }
