@@ -459,7 +459,7 @@ cscli decisions delete --type captcha
 
 	var cmdDecisionImport = &cobra.Command{
 		Use:   "import [options]",
-		Short: "import decisions from json or csv file",
+		Short: "Import decisions from json or csv file",
 		Long: "expected format :\n" +
 			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
 			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
