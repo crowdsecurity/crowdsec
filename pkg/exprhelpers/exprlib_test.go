@@ -615,3 +615,43 @@ func TestQueryUnescape(t *testing.T) {
 		log.Printf("test '%s' : OK", test.name)
 	}
 }
+
+func TestLower(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "Lower() test: basic test",
+			env: map[string]interface{}{
+				"name":  "ABCDEFG",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg",
+			err:    "",
+		},
+		{
+			name: "Lower() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"name":  "AbcDefG!#",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg!#",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
