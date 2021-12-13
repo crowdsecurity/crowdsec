@@ -24,6 +24,13 @@ import (
 
 var Client *apiclient.ApiClient
 
+var (
+	defaultDuration = "4h"
+	defaultScope    = "ip"
+	defaultType     = "ban"
+	defaultReason   = "manual"
+)
+
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
@@ -451,10 +458,20 @@ cscli decisions delete --type captcha
 	var importFile string
 
 	var cmdDecisionImport = &cobra.Command{
-		Use:               "import [options]",
-		Short:             "import decisions from file",
+		Use:   "import [options]",
+		Short: "import decisions from json or csv file",
+		Long: "expected format :\n" +
+			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
+			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
 		DisableAutoGenTag: true,
-		Example: `cscli decisions import -i decisions.csv
+		Example: `decisions.csv :
+duration,scope,value
+24h,ip,1.2.3.4
+
+cscsli decisions import -i decisions.csv
+
+decisions.json :
+[{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			if importFile == "" {
@@ -465,18 +482,18 @@ cscli decisions delete --type captcha
 				log.Fatalf("unable to open '%s': %s", importFile, err)
 			}
 			type decisionRaw struct {
-				Duration string `csv:"duration" json:"duration"`
-				Origin   string `csv:"origin" json:"origin"`
-				Scenario string `csv:"reason" json:"reason"`
-				Scope    string `csv:"scope" json:"scope"`
-				Type     string `csv:"type" json:"type"`
+				Duration string `csv:"duration,omitempty" json:"duration"`
+				Origin   string `csv:"origin,omitempty" json:"origin"`
+				Scenario string `csv:"reason,omitempty" json:"reason"`
+				Scope    string `csv:"scope,omitempty" json:"scope"`
+				Type     string `csv:"type,omitempty" json:"type"`
 				Value    string `csv:"value" json:"value"`
 			}
 			var decisionsListRaw []decisionRaw
 			switch fileFormat := filepath.Ext(importFile); fileFormat {
 			case ".json":
 				if err := json.Unmarshal(csvData, &decisionsListRaw); err != nil {
-					log.Fatalf("unable to unmarshall csv: '%s'", err)
+					log.Fatalf("unable to unmarshall json: '%s'", err)
 				}
 			case ".csv":
 				if err := csvutil.Unmarshal(csvData, &decisionsListRaw); err != nil {
@@ -492,30 +509,42 @@ cscli decisions delete --type captcha
 				if decisionLine.Value == "" {
 					log.Fatalf("please provide a 'value' in your csv line %d", line)
 				}
+				/*deal with defaults and cli-override*/
 				if decisionLine.Duration == "" {
+					decisionLine.Duration = defaultDuration
+					log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
+				}
+				if addDuration != "" {
 					decisionLine.Duration = addDuration
-					log.Debugf("No 'duration' line %d, using default value: '%s'", line, addDuration)
+					log.Debugf("'duration' line %d, using supplied value: '%s'", line, addDuration)
 				}
 				if decisionLine.Origin == "" {
-					decisionLine.Duration = "cscli"
+					decisionLine.Origin = "cscli"
 					log.Debugf("No 'origin' line %d, using default value: 'cscli'", line)
 				}
 				if decisionLine.Scenario == "" {
-					if addReason != "" {
-						decisionLine.Scenario = addReason
-					} else {
-						decisionLine.Scenario = "manual import"
-					}
+					decisionLine.Scenario = defaultReason
 					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
 				}
+				if addReason != "" {
+					decisionLine.Scenario = addReason
+					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, addReason)
+				}
 				if decisionLine.Type == "" {
-					decisionLine.Type = addType
+					decisionLine.Type = defaultType
 					log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
-
+				}
+				if addType != "" {
+					decisionLine.Type = addType
+					log.Debugf("'type' line %d, using supplied value: '%s'", line, addType)
 				}
 				if decisionLine.Scope == "" {
-					decisionLine.Scope = addScope
+					decisionLine.Scope = defaultScope
 					log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
+				}
+				if addScope != "" {
+					decisionLine.Scope = addScope
+					log.Debugf("'scope' line %d, using supplied value: '%s'", line, addScope)
 				}
 				decision := models.Decision{
 					Value:     types.StrPtr(decisionLine.Value),
@@ -550,7 +579,9 @@ cscli decisions delete --type captcha
 			}
 
 			alerts = append(alerts, &importAlert)
-
+			if len(decisionsList) > 1000 {
+				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
+			}
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
 				log.Fatalf(err.Error())
@@ -561,10 +592,10 @@ cscli decisions delete --type captcha
 
 	cmdDecisionImport.Flags().SortFlags = false
 	cmdDecisionImport.Flags().StringVarP(&importFile, "input", "i", "", "Input file")
-	cmdDecisionImport.Flags().StringVarP(&addDuration, "duration", "d", "4h", "Decision duration (ie. 1h,4h,30m)")
+	cmdDecisionImport.Flags().StringVarP(&addDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
 	cmdDecisionImport.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
 	cmdDecisionImport.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmdDecisionImport.Flags().StringVarP(&addType, "type", "t", "ban", "Decision type (ie. ban,captcha,throttle)")
+	cmdDecisionImport.Flags().StringVarP(&addType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
 	cmdDecisions.AddCommand(cmdDecisionImport)
 
 	return cmdDecisions
