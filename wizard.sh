@@ -255,7 +255,7 @@ install_collection() {
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
-        ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
+        ${CSCLI_BIN_INSTALLED} collections install "${collection}" #> /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
     ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
