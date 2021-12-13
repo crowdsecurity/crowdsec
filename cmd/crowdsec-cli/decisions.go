@@ -482,11 +482,11 @@ decisions.json :
 				log.Fatalf("unable to open '%s': %s", importFile, err)
 			}
 			type decisionRaw struct {
-				Duration string `csv:"duration,omitempty" json:"duration"`
-				Origin   string `csv:"origin,omitempty" json:"origin"`
-				Scenario string `csv:"reason,omitempty" json:"reason"`
-				Scope    string `csv:"scope,omitempty" json:"scope"`
-				Type     string `csv:"type,omitempty" json:"type"`
+				Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
+				Origin   string `csv:"origin,omitempty" json:"origin,omitempty"`
+				Scenario string `csv:"reason,omitempty" json:"reason,omitempty"`
+				Scope    string `csv:"scope,omitempty" json:"scope,omitempty"`
+				Type     string `csv:"type,omitempty" json:"type,omitempty"`
 				Value    string `csv:"value" json:"value"`
 			}
 			var decisionsListRaw []decisionRaw
