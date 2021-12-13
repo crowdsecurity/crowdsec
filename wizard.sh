@@ -226,9 +226,9 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-        collection="$(echo ${collect_info} | cut -d " " -f1)"
-        description="$(echo ${collect_info} | cut -d " " -f2-)"
+    for collect_info in "${AVAILABLE_COLLECTION[@]:1}"; do
+        collection="$(echo ${collect_info} | cut -d "," -f1)"
+        description="$(echo ${collect_info} | cut -d "," -f4)"
         in_array $collection "${DETECTED_SERVICES[@]}"
         if [[ $? == 0 ]]; then
             HMENU+=("${collection}" "${description}" "ON")
@@ -255,7 +255,7 @@ install_collection() {
 
     for collection in "${COLLECTION_TO_INSTALL[@]}"; do
         log_info "Installing collection '${collection}'"
-        ${CSCLI_BIN_INSTALLED} collections install "${collection}" #> /dev/null 2>&1 || log_err "fail to install collection ${collection}"
+        ${CSCLI_BIN_INSTALLED} collections install "${collection}" > /dev/null 2>&1 || log_err "fail to install collection ${collection}"
     done
 
     ${CSCLI_BIN_INSTALLED} parsers install "crowdsecurity/whitelists" > /dev/null 2>&1 || log_err "fail to install collection crowdsec/whitelists"
