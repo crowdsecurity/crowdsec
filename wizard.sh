@@ -553,6 +553,8 @@ function show_link {
     echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
     echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
     echo ""
+    echo "Be sure as well to checkout : https://app.crowdsec.net to see your dashboard and access CTI information."
+    echo ""
 }
 
 main() {
