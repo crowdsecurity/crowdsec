@@ -86,7 +86,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					if val.Installed == false && updateOnly == true {
+					if !val.Installed && updateOnly {
 						log.Debugf("skipping upgrade of %s : not installed", target.Name)
 						continue
 					}
@@ -122,7 +122,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
-		if target.Installed == false && updateOnly == true {
+		if !target.Installed && updateOnly {
 			log.Debugf("skipping upgrade of %s : not installed", target.Name)
 			return target, nil
 		}
