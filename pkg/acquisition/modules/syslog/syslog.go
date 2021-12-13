@@ -73,7 +73,7 @@ func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesReceived, linesParsed}
 }
 
-func (s *SyslogSource) ConfigureByDSN(dsn string, labelType string, logger *log.Entry) error {
+func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	return fmt.Errorf("syslog datasource does not support one shot acquisition")
 }
 
@@ -136,14 +136,19 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	appname *string, pid *string, msg *string) (string, error) {
 	ret := ""
+	if msg == nil {
+		return "", errors.Errorf("missing message field in syslog message")
+	}
 	if ts != nil {
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
+		s.logger.Tracef("%s - missing TS", *msg)
 		ret += time.Now().Format("Jan 2 15:04:05")
 	}
 	if hostname != nil {
 		ret += " " + *hostname
 	} else {
+		s.logger.Tracef("%s - missing host", *msg)
 		ret += " unknownhost"
 	}
 	if appname != nil {
@@ -169,8 +174,6 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	}
 	if msg != nil {
 		ret += *msg
-	} else {
-		return "", errors.Errorf("missing message field in syslog message")
 	}
 	return ret, nil
 
@@ -194,6 +197,7 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			var ts time.Time
 
 			logger := s.logger.WithField("client", syslogLine.Client)
+			logger.Tracef("raw: %s", syslogLine)
 			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
 			p := rfc5424.NewParser()
 			m, err := p.Parse(syslogLine.Message)

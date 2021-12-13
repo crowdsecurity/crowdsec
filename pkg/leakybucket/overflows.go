@@ -77,6 +77,8 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
+		} else if v, ok := evt.Enriched["ASNNumber"]; ok {
+			src.AsNumber = v
 		}
 		if v, ok := evt.Enriched["IsoCode"]; ok {
 			src.Cn = v

@@ -22,9 +22,9 @@ type MetaUpdate struct {
 	mutation *MetaMutation
 }
 
-// Where adds a new predicate for the MetaUpdate builder.
+// Where appends a list predicates to the MetaUpdate builder.
 func (mu *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
-	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
+	mu.mutation.Where(ps...)
 	return mu
 }
 
@@ -124,6 +124,9 @@ func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(mu.hooks) - 1; i >= 0; i-- {
+			if mu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mu.mutation); err != nil {
@@ -249,8 +252,8 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -260,6 +263,7 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // MetaUpdateOne is the builder for updating a single Meta entity.
 type MetaUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *MetaMutation
 }
@@ -334,6 +338,13 @@ func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
 	return muo
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (muo *MetaUpdateOne) Select(field string, fields ...string) *MetaUpdateOne {
+	muo.fields = append([]string{field}, fields...)
+	return muo
+}
+
 // Save executes the query and returns the updated Meta entity.
 func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 	var (
@@ -360,6 +371,9 @@ func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 			return node, err
 		})
 		for i := len(muo.hooks) - 1; i >= 0; i-- {
+			if muo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = muo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, muo.mutation); err != nil {
@@ -417,6 +431,18 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Meta.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := muo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
+		for _, f := range fields {
+			if !meta.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != meta.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := muo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -493,8 +519,8 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

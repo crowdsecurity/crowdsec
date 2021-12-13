@@ -181,7 +181,7 @@ cscli machines add MyTestMachine --password MyPassword
 			var dumpFile string
 			var err error
 
-			// create machineID if doesn't specified by user
+			// create machineID if not specified by user
 			if len(args) == 0 {
 				if !autoAdd {
 					err = cmd.Help()
@@ -312,7 +312,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
 			}
-			log.Infof("machine '%s' validated successfuly", machineID)
+			log.Infof("machine '%s' validated successfully", machineID)
 		},
 	}
 	cmdMachines.AddCommand(cmdMachinesValidate)

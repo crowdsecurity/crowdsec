@@ -2,6 +2,14 @@
 
 BASE="./tests"
 
+usage() {
+	  echo "Usage:"
+	  echo "    ./wizard.sh -h                               Display this help message."
+	  echo "    ./test_env.sh -d ./tests                     Create test environment in './tests' folder"
+	  exit 0
+}
+
+
 while [[ $# -gt 0 ]]
 do
 	key="${1}"
@@ -109,16 +117,6 @@ main() {
 	cd $CURRENT_PWD
 	log_info "Environment is ready in $BASE"
 }
-
-
-
-usage() {
-	  echo "Usage:"
-	  echo "    ./wizard.sh -h                               Display this help message."
-	  echo "    ./env_test.sh -d ./tests                     Create test environment in './tests' folder"
-	  exit 0  
-}
-
 
 
 main

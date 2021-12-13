@@ -160,7 +160,7 @@ func InstallItem(name string, obtype string, force bool) {
 	}
 	item, err = cwhub.EnableItem(csConfig.Hub, item)
 	if err != nil {
-		log.Fatalf("error while enabled %s : %v.", item.Name, err)
+		log.Fatalf("error while enabling  %s : %v.", item.Name, err)
 	}
 	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
@@ -528,7 +528,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	}
 	it, err = cwhub.EnableItem(csConfig.Hub, it)
 	if err != nil {
-		return "", fmt.Errorf("error while enabled %s : %v", it.Name, err)
+		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
 	}
 	if err := cwhub.AddItem(obtype, it); err != nil {
 		return "", err

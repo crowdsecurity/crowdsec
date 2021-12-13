@@ -31,6 +31,9 @@ func NewConsoleCmd() *cobra.Command {
 		},
 	}
 
+	name := ""
+	tags := []string{}
+
 	cmdEnroll := &cobra.Command{
 		Use:   "enroll [enroll-key]",
 		Short: "Enroll this instance to https://app.crowdsec.net [requires local API]",
@@ -39,7 +42,10 @@ Enroll this instance to https://app.crowdsec.net
 		
 You can get your enrollment key by creating an account on https://app.crowdsec.net.
 After running this command your will need to validate the enrollment in the webapp.`,
-		Example:           "cscli console enroll YOUR-ENROLL-KEY",
+		Example: `cscli console enroll YOUR-ENROLL-KEY
+		cscli console enroll --name [instance_name] YOUR-ENROLL-KEY
+		cscli console enroll --name [instance_name] --tags [tag_1] --tags [tag_2] YOUR-ENROLL-KEY
+`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
@@ -87,14 +93,15 @@ After running this command your will need to validate the enrollment in the weba
 				URL:           apiURL,
 				VersionPrefix: "v2",
 			})
-			_, err = c.Auth.EnrollWatcher(context.Background(), args[0])
+			_, err = c.Auth.EnrollWatcher(context.Background(), args[0], name, tags)
 			if err != nil {
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
 			log.Infof("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
 		},
 	}
-
+	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
+	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	cmdConsole.AddCommand(cmdEnroll)
 	return cmdConsole
 }
