@@ -250,7 +250,9 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		cConfig.API.Server.OnlineClient = nil
+		if cConfig.API != nil && cConfig.API.Server != nil {
+			cConfig.API.Server.OnlineClient = nil
+		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
