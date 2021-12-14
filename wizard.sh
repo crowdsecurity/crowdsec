@@ -340,9 +340,8 @@ check_cs_version () {
 
     if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
         if [[ ${FORCE_MODE} == "false" ]]; then
-            log_warn "new version ($NEW_CS_VERSION) is a major, you need to follow documentation to upgrade !"
+            log_warn "new version ($NEW_CS_VERSION) is a major, you should follow documentation to upgrade !"
             echo ""
-            echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
             exit 1
         fi
     elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
@@ -542,16 +541,15 @@ function show_link {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
-    echo "  - Documentation : https://docs.crowdsec.net/Crowdsec/v1/getting_started/crowdsec-tour/"
+    echo "  - Documentation : https://doc.crowdsec.net/docs/getting_started/crowdsec_tour"
     echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
     echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
     echo ""
     echo "Useful commands to start with Crowdsec:"
     echo ""
-    echo "  - sudo cscli metrics             : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_metrics/"
-    echo "  - sudo cscli decisions list      : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_decisions_list/"
-    echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
-    echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
+    echo "  - sudo cscli metrics             : https://doc.crowdsec.net/docs/observability/cscli"
+    echo "  - sudo cscli decisions list      : https://doc.crowdsec.net/docs/user_guides/decisions_mgmt"
+    echo "  - sudo cscli hub list            : https://doc.crowdsec.net/docs/user_guides/hub_mgmt"
     echo ""
     echo "Next step:  visualize all your alerts and explore our community CTI : https://app.crowdsec.net"
     echo ""
