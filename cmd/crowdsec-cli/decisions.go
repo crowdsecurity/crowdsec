@@ -523,10 +523,8 @@ decisions.json :
 					decisionLine.Duration = importDuration
 					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
 				}
-				if decisionLine.Origin == "" {
-					decisionLine.Origin = "cscli"
-					log.Debugf("No 'origin' line %d, using default value: 'cscli'", line)
-				}
+				decisionLine.Origin = "cscli-import"
+
 				if decisionLine.Scenario == "" {
 					decisionLine.Scenario = defaultReason
 					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
@@ -582,11 +580,12 @@ decisions.json :
 				ScenarioVersion: types.StrPtr(""),
 				Decisions:       decisionsList,
 			}
-
 			alerts = append(alerts, &importAlert)
+
 			if len(decisionsList) > 1000 {
 				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
 			}
+
 			_, _, err = Client.Alerts.Add(context.Background(), alerts)
 			if err != nil {
 				log.Fatalf(err.Error())

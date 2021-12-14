@@ -867,7 +867,9 @@ func (c *Client) FlushOrphans() {
 		c.Log.Infof("%d deleted orphan events", events_count)
 	}
 
-	events_count, err = c.Ent.Decision.Delete().Where(decision.Not(decision.HasOwner())).Exec(c.CTX)
+	events_count, err = c.Ent.Decision.Delete().Where(
+		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now())).Exec(c.CTX)
+
 	if err != nil {
 		c.Log.Warningf("error while deleting orphan decisions : %s", err)
 		return
@@ -882,6 +884,11 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var deletedByNbItem int
 	var totalAlerts int
 	var err error
+
+	if !c.CanFlush {
+		c.Log.Debug("a list is being imported, flushing later")
+		return nil
+	}
 
 	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans()
