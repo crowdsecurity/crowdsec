@@ -109,7 +109,7 @@ func NewDecisionsCmd() *cobra.Command {
 	var cmdDecisions = &cobra.Command{
 		Use:     "decisions [action]",
 		Short:   "Manage decisions",
-		Long:    `Add/List/Delete decisions from LAPI`,
+		Long:    `Add/List/Delete/Import decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
@@ -314,7 +314,6 @@ cscli decisions add --scope username --value foobar
 			if addReason == "" {
 				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
 			}
-
 			decision := models.Decision{
 				Duration: &addDuration,
 				Scope:    &addScope,
@@ -455,7 +454,13 @@ cscli decisions delete --type captcha
 
 	cmdDecisions.AddCommand(cmdDecisionsDelete)
 
-	var importFile string
+	var (
+		importDuration string
+		importScope    string
+		importReason   string
+		importType     string
+		importFile     string
+	)
 
 	var cmdDecisionImport = &cobra.Command{
 		Use:   "import [options]",
@@ -514,9 +519,9 @@ decisions.json :
 					decisionLine.Duration = defaultDuration
 					log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
 				}
-				if addDuration != "" {
-					decisionLine.Duration = addDuration
-					log.Debugf("'duration' line %d, using supplied value: '%s'", line, addDuration)
+				if importDuration != "" {
+					decisionLine.Duration = importDuration
+					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
 				}
 				if decisionLine.Origin == "" {
 					decisionLine.Origin = "cscli"
@@ -526,25 +531,25 @@ decisions.json :
 					decisionLine.Scenario = defaultReason
 					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
 				}
-				if addReason != "" {
-					decisionLine.Scenario = addReason
-					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, addReason)
+				if importReason != "" {
+					decisionLine.Scenario = importReason
+					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
 				}
 				if decisionLine.Type == "" {
 					decisionLine.Type = defaultType
 					log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
 				}
-				if addType != "" {
-					decisionLine.Type = addType
-					log.Debugf("'type' line %d, using supplied value: '%s'", line, addType)
+				if importType != "" {
+					decisionLine.Type = importType
+					log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
 				}
 				if decisionLine.Scope == "" {
 					decisionLine.Scope = defaultScope
 					log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
 				}
-				if addScope != "" {
-					decisionLine.Scope = addScope
-					log.Debugf("'scope' line %d, using supplied value: '%s'", line, addScope)
+				if importScope != "" {
+					decisionLine.Scope = importScope
+					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
 				}
 				decision := models.Decision{
 					Value:     types.StrPtr(decisionLine.Value),
@@ -592,10 +597,10 @@ decisions.json :
 
 	cmdDecisionImport.Flags().SortFlags = false
 	cmdDecisionImport.Flags().StringVarP(&importFile, "input", "i", "", "Input file")
-	cmdDecisionImport.Flags().StringVarP(&addDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
-	cmdDecisionImport.Flags().StringVar(&addScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
-	cmdDecisionImport.Flags().StringVarP(&addReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
-	cmdDecisionImport.Flags().StringVarP(&addType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
+	cmdDecisionImport.Flags().StringVarP(&importDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
+	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
+	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
 	cmdDecisions.AddCommand(cmdDecisionImport)
 
 	return cmdDecisions

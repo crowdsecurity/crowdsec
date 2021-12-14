@@ -64,12 +64,12 @@ function test_ipv4_ip
 
     #add ip decision
     echo "adding decision for 1.2.3.4"
-    ${CSCLI} decisions add -i 1.2.3.4  #> /dev/null 2>&1 || fail
+    ${CSCLI} decisions add -i 1.2.3.4  > /dev/null 2>&1 || fail
     
-    ${CSCLI} decisions list -o json | ${JQ} '.[].decisions[0].value == "1.2.3.4"' #> /dev/null || fail
+    ${CSCLI} decisions list -o json | ${JQ} '.[].decisions[0].value == "1.2.3.4"' > /dev/null || fail
     cscli_echo "getting all decision"
     
-    docurl /v1/decisions | ${JQ} '.[0].value == "1.2.3.4"' #> /dev/null || fail
+    docurl /v1/decisions | ${JQ} '.[0].value == "1.2.3.4"' > /dev/null || fail
     bouncer_echo "getting all decision"
 
     #check ip match
