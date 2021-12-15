@@ -48,6 +48,7 @@ type Leaky struct {
 	Mapkey string
 	// chan for signaling
 	Signal       chan bool `json:"-"`
+	Suicide      chan bool `json:"-"`
 	Reprocess    bool
 	Simulated    bool
 	Uuid         string
@@ -153,6 +154,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),
+		Suicide:         make(chan bool, 1),
 		AllOut:          bucketFactory.ret,
 		Capacity:        bucketFactory.Capacity,
 		Leakspeed:       bucketFactory.leakspeed,
@@ -237,7 +239,16 @@ func LeakRoutine(leaky *Leaky) error {
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
 			return nil
-			/*we underflow or reach bucket deadline (timers)*/
+		/*suiciiiide*/
+		case <-leaky.Suicide:
+			leaky.Ovflw_ts = time.Now()
+			close(leaky.Signal)
+			BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+			leaky.logger.Debugf("Suicide triggered")
+			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
+			leaky.logger.Tracef("Returning from leaky routine.")
+			return nil
+		/*we underflow or reach bucket deadline (timers)*/
 		case <-durationTicker:
 			var (
 				alert types.RuntimeAlert
