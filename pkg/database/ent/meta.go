@@ -60,13 +60,13 @@ func (*Meta) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case meta.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case meta.FieldKey, meta.FieldValue:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case meta.FieldCreatedAt, meta.FieldUpdatedAt:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case meta.ForeignKeys[0]: // alert_metas
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Meta", columns[i])
 		}

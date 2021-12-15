@@ -198,7 +198,7 @@ var NodesHits = prometheus.NewCounterVec(
 var NodesHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ok_total",
-		Help: "Total events successfuly exited node.",
+		Help: "Total events successfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
@@ -206,7 +206,7 @@ var NodesHitsOk = prometheus.NewCounterVec(
 var NodesHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ko_total",
-		Help: "Total events unsuccessfuly exited node.",
+		Help: "Total events unsuccessfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
@@ -220,8 +220,14 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
+type ParserResult struct {
+	Evt     types.Event
+	Success bool
+}
+
 var ParseDump bool
-var StageParseCache map[string]map[string]types.Event
+var DumpFolder string
+var StageParseCache map[string]map[string][]ParserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
@@ -250,12 +256,18 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	if ParseDump {
-		StageParseCache = make(map[string]map[string]types.Event)
+		if StageParseCache == nil {
+			StageParseCache = make(map[string]map[string][]ParserResult)
+			StageParseCache["success"] = make(map[string][]ParserResult)
+			StageParseCache["success"][""] = make([]ParserResult, 0)
+		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
-			StageParseCache[stage] = make(map[string]types.Event)
+			if _, ok := StageParseCache[stage]; !ok {
+				StageParseCache[stage] = make(map[string][]ParserResult)
+			}
 		}
 		/* if the node is forward in stages, seek to its stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
@@ -290,12 +302,16 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Fatalf("Error while processing node : %v", err)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
+			if ParseDump {
+				if len(StageParseCache[stage][node.Name]) == 0 {
+					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
+				}
+				evtcopy := deepcopy.Copy(event)
+				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+			}
 			if ret {
 				isStageOK = true
-				if ParseDump {
-					evtcopy := deepcopy.Copy(event)
-					StageParseCache[stage][node.Name] = evtcopy.(types.Event)
-				}
 			}
 			if ret && node.OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)

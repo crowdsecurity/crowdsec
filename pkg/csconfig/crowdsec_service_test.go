@@ -139,9 +139,16 @@ func TestLoadCrowdsec(t *testing.T) {
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
 			expectedResult: &CrowdsecServiceCfg{
-				BucketsRoutinesCount: 0,
-				ParserRoutinesCount:  0,
-				OutputRoutinesCount:  0,
+				BucketsRoutinesCount: 1,
+				ParserRoutinesCount:  1,
+				OutputRoutinesCount:  1,
+				ConfigDir:            configDirFullPath,
+				HubIndexFile:         hubIndexFileFullPath,
+				DataDir:              dataFullPath,
+				HubDir:               hubFullPath,
+				SimulationConfig: &SimulationConfig{
+					Simulation: &falseBoolPtr,
+				},
 			},
 		},
 		{

@@ -125,8 +125,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-
+	stopFlush := false
 	for _, alert := range input {
+		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
@@ -138,6 +139,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					continue
 				}
 				c.sendAlertToPluginChannel(alert, uint(pIdx))
+				if profile.OnSuccess == "break" {
+					break
+				}
+			}
+			decision := alert.Decisions[0]
+			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+				stopFlush = true
 			}
 			continue
 		}
@@ -160,13 +168,16 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 	}
 
+	if stopFlush {
+		c.DBClient.CanFlush = false
+	}
+
 	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	c.DBClient.CanFlush = true
+
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
-	}
-	for _, alert := range input {
-		alert.MachineID = machineID
 	}
 
 	if c.CAPIChan != nil {

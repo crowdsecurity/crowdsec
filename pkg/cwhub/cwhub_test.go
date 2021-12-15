@@ -189,7 +189,7 @@ func test_prepenv() *csconfig.Config {
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	//Install the parser
-	item, err := DownloadLatest(cfg, item, false)
+	item, err := DownloadLatest(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -208,7 +208,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	item, err = EnableItem(cfg, item)
 	if err != nil {
-		t.Fatalf("error while enabled %s : %v.", item.Name, err)
+		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
@@ -246,7 +246,7 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
-	item, err := DownloadLatest(cfg, item, true)
+	item, err := DownloadLatest(cfg, item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}

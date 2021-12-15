@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -15,12 +16,20 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
+	"github.com/jszwec/csvutil"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
 var Client *apiclient.ApiClient
+
+var (
+	defaultDuration = "4h"
+	defaultScope    = "ip"
+	defaultType     = "ban"
+	defaultReason   = "manual"
+)
 
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
@@ -100,7 +109,7 @@ func NewDecisionsCmd() *cobra.Command {
 	var cmdDecisions = &cobra.Command{
 		Use:     "decisions [action]",
 		Short:   "Manage decisions",
-		Long:    `Add/List/Delete decisions from LAPI`,
+		Long:    `Add/List/Delete/Import decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
@@ -143,6 +152,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Until:          new(string),
 		TypeEquals:     new(string),
 		IncludeCAPI:    new(bool),
+		Limit:          new(int),
 	}
 	NoSimu := new(bool)
 	contained := new(bool)
@@ -196,6 +206,9 @@ cscli decisions list -t ban
 					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
 				}
 			}
+			if *filter.IncludeCAPI {
+				*filter.Limit = 0
+			}
 			if *filter.TypeEquals == "" {
 				filter.TypeEquals = nil
 			}
@@ -240,6 +253,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
+	cmdDecisionsList.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
 	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
 	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
@@ -300,7 +314,6 @@ cscli decisions add --scope username --value foobar
 			if addReason == "" {
 				addReason = fmt.Sprintf("manual '%s' from '%s'", addType, csConfig.API.Client.Credentials.Login)
 			}
-
 			decision := models.Decision{
 				Duration: &addDuration,
 				Scope:    &addScope,
@@ -440,6 +453,154 @@ cscli decisions delete --type captcha
 	cmdDecisionsDelete.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	cmdDecisions.AddCommand(cmdDecisionsDelete)
+
+	var (
+		importDuration string
+		importScope    string
+		importReason   string
+		importType     string
+		importFile     string
+	)
+
+	var cmdDecisionImport = &cobra.Command{
+		Use:   "import [options]",
+		Short: "Import decisions from json or csv file",
+		Long: "expected format :\n" +
+			"csv  : any of duration,origin,reason,scope,type,value, with a header line\n" +
+			`json : {"duration" : "24h", "origin" : "my-list", "reason" : "my_scenario", "scope" : "ip", "type" : "ban", "value" : "x.y.z.z"}`,
+		DisableAutoGenTag: true,
+		Example: `decisions.csv :
+duration,scope,value
+24h,ip,1.2.3.4
+
+cscsli decisions import -i decisions.csv
+
+decisions.json :
+[{"duration" : "4h", "scope" : "ip", "type" : "ban", "value" : "1.2.3.4"}]
+`,
+		Run: func(cmd *cobra.Command, args []string) {
+			if importFile == "" {
+				log.Fatalf("Please provide a input file contaning decisions with -i flag")
+			}
+			csvData, err := os.ReadFile(importFile)
+			if err != nil {
+				log.Fatalf("unable to open '%s': %s", importFile, err)
+			}
+			type decisionRaw struct {
+				Duration string `csv:"duration,omitempty" json:"duration,omitempty"`
+				Origin   string `csv:"origin,omitempty" json:"origin,omitempty"`
+				Scenario string `csv:"reason,omitempty" json:"reason,omitempty"`
+				Scope    string `csv:"scope,omitempty" json:"scope,omitempty"`
+				Type     string `csv:"type,omitempty" json:"type,omitempty"`
+				Value    string `csv:"value" json:"value"`
+			}
+			var decisionsListRaw []decisionRaw
+			switch fileFormat := filepath.Ext(importFile); fileFormat {
+			case ".json":
+				if err := json.Unmarshal(csvData, &decisionsListRaw); err != nil {
+					log.Fatalf("unable to unmarshall json: '%s'", err)
+				}
+			case ".csv":
+				if err := csvutil.Unmarshal(csvData, &decisionsListRaw); err != nil {
+					log.Fatalf("unable to unmarshall csv: '%s'", err)
+				}
+			default:
+				log.Fatalf("file format not supported for '%s'. supported format are 'json' and 'csv'", importFile)
+			}
+
+			decisionsList := make([]*models.Decision, 0)
+			for i, decisionLine := range decisionsListRaw {
+				line := i + 2
+				if decisionLine.Value == "" {
+					log.Fatalf("please provide a 'value' in your csv line %d", line)
+				}
+				/*deal with defaults and cli-override*/
+				if decisionLine.Duration == "" {
+					decisionLine.Duration = defaultDuration
+					log.Debugf("No 'duration' line %d, using default value: '%s'", line, defaultDuration)
+				}
+				if importDuration != "" {
+					decisionLine.Duration = importDuration
+					log.Debugf("'duration' line %d, using supplied value: '%s'", line, importDuration)
+				}
+				decisionLine.Origin = "cscli-import"
+
+				if decisionLine.Scenario == "" {
+					decisionLine.Scenario = defaultReason
+					log.Debugf("No 'reason' line %d, using value: '%s'", line, decisionLine.Scenario)
+				}
+				if importReason != "" {
+					decisionLine.Scenario = importReason
+					log.Debugf("No 'reason' line %d, using supplied value: '%s'", line, importReason)
+				}
+				if decisionLine.Type == "" {
+					decisionLine.Type = defaultType
+					log.Debugf("No 'type' line %d, using default value: '%s'", line, decisionLine.Type)
+				}
+				if importType != "" {
+					decisionLine.Type = importType
+					log.Debugf("'type' line %d, using supplied value: '%s'", line, importType)
+				}
+				if decisionLine.Scope == "" {
+					decisionLine.Scope = defaultScope
+					log.Debugf("No 'scope' line %d, using default value: '%s'", line, decisionLine.Scope)
+				}
+				if importScope != "" {
+					decisionLine.Scope = importScope
+					log.Debugf("'scope' line %d, using supplied value: '%s'", line, importScope)
+				}
+				decision := models.Decision{
+					Value:     types.StrPtr(decisionLine.Value),
+					Duration:  types.StrPtr(decisionLine.Duration),
+					Origin:    types.StrPtr(decisionLine.Origin),
+					Scenario:  types.StrPtr(decisionLine.Scenario),
+					Type:      types.StrPtr(decisionLine.Type),
+					Scope:     types.StrPtr(decisionLine.Scope),
+					Simulated: new(bool),
+				}
+				decisionsList = append(decisionsList, &decision)
+			}
+			alerts := models.AddAlertsRequest{}
+			importAlert := models.Alert{
+				CreatedAt: time.Now().Format(time.RFC3339),
+				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
+				Message:   types.StrPtr(""),
+				Events:    []*models.Event{},
+				Source: &models.Source{
+					Scope: types.StrPtr("cscli/manual-import"),
+					Value: types.StrPtr(""),
+				},
+				StartAt:         types.StrPtr(time.Now().Format(time.RFC3339)),
+				StopAt:          types.StrPtr(time.Now().Format(time.RFC3339)),
+				Capacity:        types.Int32Ptr(0),
+				Simulated:       types.BoolPtr(false),
+				EventsCount:     types.Int32Ptr(int32(len(decisionsList))),
+				Leakspeed:       types.StrPtr(""),
+				ScenarioHash:    types.StrPtr(""),
+				ScenarioVersion: types.StrPtr(""),
+				Decisions:       decisionsList,
+			}
+			alerts = append(alerts, &importAlert)
+
+			if len(decisionsList) > 1000 {
+				log.Infof("You are about to add %d decisions, this may take a while", len(decisionsList))
+			}
+
+			_, _, err = Client.Alerts.Add(context.Background(), alerts)
+			if err != nil {
+				log.Fatalf(err.Error())
+			}
+			log.Infof("%d decisions successfully imported", len(decisionsList))
+		},
+	}
+
+	cmdDecisionImport.Flags().SortFlags = false
+	cmdDecisionImport.Flags().StringVarP(&importFile, "input", "i", "", "Input file")
+	cmdDecisionImport.Flags().StringVarP(&importDuration, "duration", "d", "", "Decision duration (ie. 1h,4h,30m)")
+	cmdDecisionImport.Flags().StringVar(&importScope, "scope", types.Ip, "Decision scope (ie. ip,range,username)")
+	cmdDecisionImport.Flags().StringVarP(&importReason, "reason", "R", "", "Decision reason (ie. scenario-name)")
+	cmdDecisionImport.Flags().StringVarP(&importType, "type", "t", "", "Decision type (ie. ban,captcha,throttle)")
+	cmdDecisions.AddCommand(cmdDecisionImport)
 
 	return cmdDecisions
 }

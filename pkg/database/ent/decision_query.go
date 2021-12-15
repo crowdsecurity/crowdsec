@@ -21,6 +21,7 @@ type DecisionQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Decision
@@ -47,6 +48,13 @@ func (dq *DecisionQuery) Limit(limit int) *DecisionQuery {
 // Offset adds an offset step to the query.
 func (dq *DecisionQuery) Offset(offset int) *DecisionQuery {
 	dq.offset = &offset
+	return dq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (dq *DecisionQuery) Unique(unique bool) *DecisionQuery {
+	dq.unique = &unique
 	return dq
 }
 
@@ -317,8 +325,8 @@ func (dq *DecisionQuery) GroupBy(field string, fields ...string) *DecisionGroupB
 //		Select(decision.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (dq *DecisionQuery) Select(field string, fields ...string) *DecisionSelect {
-	dq.fields = append([]string{field}, fields...)
+func (dq *DecisionQuery) Select(fields ...string) *DecisionSelect {
+	dq.fields = append(dq.fields, fields...)
 	return &DecisionSelect{DecisionQuery: dq}
 }
 
@@ -377,11 +385,14 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context) ([]*Decision, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Decision)
 		for i := range nodes {
-			fk := nodes[i].alert_decisions
-			if fk != nil {
-				ids = append(ids, *fk)
-				nodeids[*fk] = append(nodeids[*fk], nodes[i])
+			if nodes[i].alert_decisions == nil {
+				continue
 			}
+			fk := *nodes[i].alert_decisions
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
 		}
 		query.Where(alert.IDIn(ids...))
 		neighbors, err := query.All(ctx)
@@ -428,6 +439,9 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   dq.sql,
 		Unique: true,
 	}
+	if unique := dq.unique; unique != nil {
+		_spec.Unique = *unique
+	}
 	if fields := dq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, decision.FieldID)
@@ -453,7 +467,7 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := dq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, decision.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -463,16 +477,20 @@ func (dq *DecisionQuery) querySpec() *sqlgraph.QuerySpec {
 func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(dq.driver.Dialect())
 	t1 := builder.Table(decision.Table)
-	selector := builder.Select(t1.Columns(decision.Columns...)...).From(t1)
+	columns := dq.fields
+	if len(columns) == 0 {
+		columns = decision.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if dq.sql != nil {
 		selector = dq.sql
-		selector.Select(selector.Columns(decision.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
 	}
 	for _, p := range dq.predicates {
 		p(selector)
 	}
 	for _, p := range dq.order {
-		p(selector, decision.ValidColumn)
+		p(selector)
 	}
 	if offset := dq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -734,13 +752,24 @@ func (dgb *DecisionGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (dgb *DecisionGroupBy) sqlQuery() *sql.Selector {
-	selector := dgb.sql
-	columns := make([]string, 0, len(dgb.fields)+len(dgb.fns))
-	columns = append(columns, dgb.fields...)
+	selector := dgb.sql.Select()
+	aggregation := make([]string, 0, len(dgb.fns))
 	for _, fn := range dgb.fns {
-		columns = append(columns, fn(selector, decision.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(dgb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(dgb.fields)+len(dgb.fns))
+		for _, f := range dgb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		for _, c := range aggregation {
+			columns = append(columns, c)
+		}
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(dgb.fields...)...)
 }
 
 // DecisionSelect is the builder for selecting fields of Decision entities.
@@ -956,16 +985,10 @@ func (ds *DecisionSelect) BoolX(ctx context.Context) bool {
 
 func (ds *DecisionSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := ds.sqlQuery().Query()
+	query, args := ds.sql.Query()
 	if err := ds.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (ds *DecisionSelect) sqlQuery() sql.Querier {
-	selector := ds.sql
-	selector.Select(selector.Columns(ds.fields...)...)
-	return selector
 }

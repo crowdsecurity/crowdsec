@@ -240,7 +240,8 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr, err = getProccessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
+	cmd.SysProcAttr, err = getProcessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
+	cmd.SysProcAttr.Credential.NoSetGroups = true
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting process attributes")
 	}
@@ -250,6 +251,9 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	if err != nil {
 		return nil, err
 	}
+	// We set the highest level to permit plugins to set their own log level
+	// without that, crowdsec log level is controlling plugins level
+	l.SetLevel(log.TraceLevel)
 	logger := NewHCLogAdapter(l, "")
 	c := plugin.NewClient(&plugin.ClientConfig{
 		HandshakeConfig:  handshake,
@@ -387,7 +391,7 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
-func getProccessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
+func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
 	u, err := user.Lookup(username)
 	if err != nil {
 		return nil, err
@@ -400,14 +404,14 @@ func getProccessAtr(username string, groupname string) (*syscall.SysProcAttr, er
 	if err != nil {
 		return nil, err
 	}
-	if uid < 0 && uid > math.MaxUint32 {
+	if uid < 0 && uid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound uid")
 	}
 	gid, err := strconv.Atoi(g.Gid)
 	if err != nil {
 		return nil, err
 	}
-	if gid < 0 && gid > math.MaxUint32 {
+	if gid < 0 && gid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound gid")
 	}
 	return CheckCredential(uid, gid), nil

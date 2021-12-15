@@ -129,17 +129,17 @@ func (*Alert) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case alert.FieldSimulated:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case alert.FieldSourceLatitude, alert.FieldSourceLongitude:
-			values[i] = &sql.NullFloat64{}
+			values[i] = new(sql.NullFloat64)
 		case alert.FieldID, alert.FieldEventsCount, alert.FieldCapacity:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case alert.ForeignKeys[0]: // machine_alerts
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Alert", columns[i])
 		}

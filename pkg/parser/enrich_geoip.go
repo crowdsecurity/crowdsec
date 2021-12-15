@@ -54,6 +54,7 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}) (map[string]string,
 		return nil, nil
 	}
 	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
 	ret["ASNOrg"] = record.AutonomousSystemOrganization
 
 	log.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])
