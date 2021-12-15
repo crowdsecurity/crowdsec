@@ -58,6 +58,8 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	return nil
 }
 
+var bucketOverflows []types.Event
+
 func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky.Buckets,
 	postOverflowCTX parser.UnixParserCtx, postOverflowNodes []parser.Node, apiConfig csconfig.ApiCredentialsCfg) error {
 
@@ -129,7 +131,13 @@ LOOP:
 			}
 			break LOOP
 		case event := <-overflow:
-
+			//if the Alert is nil, it's to signal bucket is ready for GC, don't track this
+			if dumpStates && event.Overflow.Alert != nil {
+				if bucketOverflows == nil {
+					bucketOverflows = make([]types.Event, 0)
+				}
+				bucketOverflows = append(bucketOverflows, event)
+			}
 			/*if alert is empty and mapKey is present, the overflow is just to cleanup bucket*/
 			if event.Overflow.Alert == nil && event.Overflow.Mapkey != "" {
 				buckets.Bucket_map.Delete(event.Overflow.Mapkey)
@@ -149,10 +157,13 @@ LOOP:
 				log.Printf("[%s] is whitelisted, skip.", *event.Overflow.Alert.Message)
 				continue
 			}
+			if dumpStates {
+				continue
+			}
+
 			cacheMutex.Lock()
 			cache = append(cache, event.Overflow)
 			cacheMutex.Unlock()
-
 		}
 	}
 

@@ -33,7 +33,7 @@ const (
 	EdgeAlerts = "alerts"
 	// Table holds the table name of the machine in the database.
 	Table = "machines"
-	// AlertsTable is the table the holds the alerts relation/edge.
+	// AlertsTable is the table that holds the alerts relation/edge.
 	AlertsTable = "alerts"
 	// AlertsInverseTable is the table name for the Alert entity.
 	// It exists in this package in order to avoid circular dependency with the "alert" package.

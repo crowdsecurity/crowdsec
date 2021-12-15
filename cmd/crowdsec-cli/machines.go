@@ -88,6 +88,9 @@ Note: This command requires database direct access, so is intended to be run on 
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				if err != nil {
+					log.Errorf("local api : %s", err)
+				}
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if err := csConfig.LoadDBConfig(); err != nil {
@@ -141,6 +144,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
+				fmt.Printf("machine_id,ip_address,updated_at,validated,version\n")
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -178,7 +182,7 @@ cscli machines add MyTestMachine --password MyPassword
 			var dumpFile string
 			var err error
 
-			// create machineID if doesn't specified by user
+			// create machineID if not specified by user
 			if len(args) == 0 {
 				if !autoAdd {
 					err = cmd.Help()
@@ -309,7 +313,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
 			}
-			log.Infof("machine '%s' validated successfuly", machineID)
+			log.Infof("machine '%s' validated successfully", machineID)
 		},
 	}
 	cmdMachines.AddCommand(cmdMachinesValidate)

@@ -25,6 +25,7 @@ type AlertQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Alert
@@ -54,6 +55,13 @@ func (aq *AlertQuery) Limit(limit int) *AlertQuery {
 // Offset adds an offset step to the query.
 func (aq *AlertQuery) Offset(offset int) *AlertQuery {
 	aq.offset = &offset
+	return aq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (aq *AlertQuery) Unique(unique bool) *AlertQuery {
+	aq.unique = &unique
 	return aq
 }
 
@@ -426,8 +434,8 @@ func (aq *AlertQuery) GroupBy(field string, fields ...string) *AlertGroupBy {
 //		Select(alert.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (aq *AlertQuery) Select(field string, fields ...string) *AlertSelect {
-	aq.fields = append([]string{field}, fields...)
+func (aq *AlertQuery) Select(fields ...string) *AlertSelect {
+	aq.fields = append(aq.fields, fields...)
 	return &AlertSelect{AlertQuery: aq}
 }
 
@@ -489,11 +497,14 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Alert)
 		for i := range nodes {
-			fk := nodes[i].machine_alerts
-			if fk != nil {
-				ids = append(ids, *fk)
-				nodeids[*fk] = append(nodeids[*fk], nodes[i])
+			if nodes[i].machine_alerts == nil {
+				continue
 			}
+			fk := *nodes[i].machine_alerts
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
 		}
 		query.Where(machine.IDIn(ids...))
 		neighbors, err := query.All(ctx)
@@ -627,6 +638,9 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   aq.sql,
 		Unique: true,
 	}
+	if unique := aq.unique; unique != nil {
+		_spec.Unique = *unique
+	}
 	if fields := aq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, alert.FieldID)
@@ -652,7 +666,7 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := aq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, alert.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -662,16 +676,20 @@ func (aq *AlertQuery) querySpec() *sqlgraph.QuerySpec {
 func (aq *AlertQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(aq.driver.Dialect())
 	t1 := builder.Table(alert.Table)
-	selector := builder.Select(t1.Columns(alert.Columns...)...).From(t1)
+	columns := aq.fields
+	if len(columns) == 0 {
+		columns = alert.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if aq.sql != nil {
 		selector = aq.sql
-		selector.Select(selector.Columns(alert.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
 	}
 	for _, p := range aq.predicates {
 		p(selector)
 	}
 	for _, p := range aq.order {
-		p(selector, alert.ValidColumn)
+		p(selector)
 	}
 	if offset := aq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -933,13 +951,24 @@ func (agb *AlertGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (agb *AlertGroupBy) sqlQuery() *sql.Selector {
-	selector := agb.sql
-	columns := make([]string, 0, len(agb.fields)+len(agb.fns))
-	columns = append(columns, agb.fields...)
+	selector := agb.sql.Select()
+	aggregation := make([]string, 0, len(agb.fns))
 	for _, fn := range agb.fns {
-		columns = append(columns, fn(selector, alert.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(agb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(agb.fields)+len(agb.fns))
+		for _, f := range agb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		for _, c := range aggregation {
+			columns = append(columns, c)
+		}
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(agb.fields...)...)
 }
 
 // AlertSelect is the builder for selecting fields of Alert entities.
@@ -1155,16 +1184,10 @@ func (as *AlertSelect) BoolX(ctx context.Context) bool {
 
 func (as *AlertSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := as.sqlQuery().Query()
+	query, args := as.sql.Query()
 	if err := as.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (as *AlertSelect) sqlQuery() sql.Querier {
-	selector := as.sql
-	selector.Select(selector.Columns(as.fields...)...)
-	return selector
 }

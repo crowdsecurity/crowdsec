@@ -2,6 +2,14 @@
 
 BASE="./tests"
 
+usage() {
+	  echo "Usage:"
+	  echo "    ./wizard.sh -h                               Display this help message."
+	  echo "    ./test_env.sh -d ./tests                     Create test environment in './tests' folder"
+	  exit 0
+}
+
+
 while [[ $# -gt 0 ]]
 do
 	key="${1}"
@@ -39,6 +47,9 @@ PARSER_S02="$PARSER_DIR/s02-enrich"
 SCENARIOS_DIR="$CONFIG_DIR/scenarios"
 POSTOVERFLOWS_DIR="$CONFIG_DIR/postoverflows"
 HUB_DIR="$CONFIG_DIR/hub"
+PLUGINS="http slack splunk"
+PLUGINS_DIR="plugins"
+NOTIF_DIR="notifications"
 
 log_info() {
 	msg=$1
@@ -59,11 +70,12 @@ create_arbo() {
 	mkdir -p "$POSTOVERFLOWS_DIR"
 	mkdir -p "$CSCLI_DIR"
 	mkdir -p "$HUB_DIR"
+	mkdir -p $CONFIG_DIR/$NOTIF_DIR/$plugin
+	mkdir -p $BASE/$PLUGINS_DIR
 }
 
 copy_files() {
 	cp "./config/profiles.yaml" "$CONFIG_DIR"
-	cp "./config/dev.yaml" "$BASE"
 	cp  "./config/simulation.yaml" "$CONFIG_DIR"
 	cp "./cmd/crowdsec/crowdsec" "$BASE"
 	cp "./cmd/crowdsec-cli/cscli" "$BASE"
@@ -71,6 +83,12 @@ copy_files() {
 	cp "./config/acquis.yaml" "$CONFIG_DIR"
 	touch "$CONFIG_DIR"/local_api_credentials.yaml
 	touch "$CONFIG_DIR"/online_api_credentials.yaml
+	envsubst < "./config/dev.yaml" > $BASE/dev.yaml
+	for plugin in $PLUGINS
+	do
+		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/notification-$plugin $BASE/$PLUGINS_DIR/notification-$plugin
+		cp $PLUGINS_DIR/$NOTIF_DIR/$plugin/$plugin.yaml $CONFIG_DIR/$NOTIF_DIR/$plugin.yaml
+	done
 }
 
 
@@ -99,16 +117,6 @@ main() {
 	cd $CURRENT_PWD
 	log_info "Environment is ready in $BASE"
 }
-
-
-
-usage() {
-	  echo "Usage:"
-	  echo "    ./wizard.sh -h                               Display this help message."
-	  echo "    ./env_test.sh -d ./tests                     Create test environment in './tests' folder"
-	  exit 0  
-}
-
 
 
 main

@@ -22,9 +22,9 @@ type MachineUpdate struct {
 	mutation *MachineMutation
 }
 
-// Where adds a new predicate for the MachineUpdate builder.
+// Where appends a list predicates to the MachineUpdate builder.
 func (mu *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
-	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
+	mu.mutation.Where(ps...)
 	return mu
 }
 
@@ -215,6 +215,9 @@ func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(mu.hooks) - 1; i >= 0; i-- {
+			if mu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mu.mutation); err != nil {
@@ -412,8 +415,8 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -423,6 +426,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // MachineUpdateOne is the builder for updating a single Machine entity.
 type MachineUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *MachineMutation
 }
@@ -588,6 +592,13 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 	return muo.RemoveAlertIDs(ids...)
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (muo *MachineUpdateOne) Select(field string, fields ...string) *MachineUpdateOne {
+	muo.fields = append([]string{field}, fields...)
+	return muo
+}
+
 // Save executes the query and returns the updated Machine entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 	var (
@@ -614,6 +625,9 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 			return node, err
 		})
 		for i := len(muo.hooks) - 1; i >= 0; i-- {
+			if muo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = muo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, muo.mutation); err != nil {
@@ -671,6 +685,18 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Machine.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := muo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, machine.FieldID)
+		for _, f := range fields {
+			if !machine.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != machine.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := muo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -819,8 +845,8 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

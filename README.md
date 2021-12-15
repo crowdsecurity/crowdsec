@@ -11,7 +11,8 @@
 <a href='https://coveralls.io/github/crowdsecurity/crowdsec?branch=master'><img src='https://coveralls.io/repos/github/crowdsecurity/crowdsec/badge.svg?branch=master' alt='Coverage Status' /></a>
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
-<img src="https://github.com/crowdsecurity/crowdsec/workflows/Hub-CI/badge.svg">
+<img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_parsers_badge.json">
+<img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_scenarios_badge.json">
 </p>
 
 <p align="center">
@@ -26,7 +27,7 @@
 
 ## <TL;DR>
 
-CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read bellow for more.
+CrowdSec is a free, modern & collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security. See [FAQ](https://doc.crowdsec.net/docs/faq) or read below for more.
 
 ## 2 mins install
 

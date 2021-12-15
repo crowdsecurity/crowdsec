@@ -76,7 +76,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 }
 
 //DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
+func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -86,11 +86,15 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
+					if !val.Installed && updateOnly {
+						log.Debugf("skipping upgrade of %s : not installed", target.Name)
+						continue
+					}
+					log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
 					//recurse as it's a collection
 					if ptrtype == COLLECTIONS {
 						log.Tracef("collection, recurse")
-						hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite)
+						hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
 						if err != nil {
 							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 						}
@@ -118,6 +122,10 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
+		if !target.Installed && updateOnly {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			return target, nil
+		}
 		return DownloadItem(hub, target, overwrite)
 	}
 	return target, nil
@@ -219,8 +227,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 		itemFile   *os.File
 		err        error
 	)
-	itemFilePath := fmt.Sprintf("%s/%s", hub.HubDir, target.RemotePath)
-
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
 	if itemFile, err = os.Open(itemFilePath); err != nil {
 		return errors.Wrapf(err, "while opening %s", itemFilePath)
 	}

@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -76,6 +77,8 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
+		} else if v, ok := evt.Enriched["ASNNumber"]; ok {
+			src.AsNumber = v
 		}
 		if v, ok := evt.Enriched["IsoCode"]; ok {
 			src.Cn = v
@@ -144,7 +147,14 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			continue
 		}
 		meta := models.Meta{}
-		for k, v := range evt.Meta {
+		//we want consistence
+		skeys := make([]string, 0, len(evt.Meta))
+		for k := range evt.Meta {
+			skeys = append(skeys, k)
+		}
+		sort.Strings(skeys)
+		for _, k := range skeys {
+			v := evt.Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
 			meta = append(meta, &subMeta)
 		}
