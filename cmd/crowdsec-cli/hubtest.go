@@ -120,7 +120,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				LogFile:       logFileName,
 				LogType:       logType,
 				IgnoreParsers: ignoreParsers,
-				Labels: 	   labels,
+				Labels:        labels,
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")
@@ -255,7 +255,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 								fmt.Println()
 							}
 						}
-						if !forceClean {
+						if !forceClean && !noClean {
 							prompt := &survey.Confirm{
 								Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
 								Default: true,

@@ -131,8 +131,12 @@ func ListItem(itemType string, args []string) {
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
+		fmt.Printf("name,status,version,description\n")
 		for _, v := range hubStatus {
-			fmt.Printf("%s %s\n", v["name"], v["description"])
+			if v["local_version"] == "" {
+				v["local_version"] = "n/a"
+			}
+			fmt.Printf("%s,%s,%s,%s\n", v["name"], v["status"], v["local_version"], v["description"])
 		}
 	}
 }
@@ -149,7 +153,7 @@ func InstallItem(name string, obtype string, force bool) {
 			return
 		}
 	}
-	item, err := cwhub.DownloadLatest(csConfig.Hub, item, force)
+	item, err := cwhub.DownloadLatest(csConfig.Hub, item, force, false)
 	if err != nil {
 		log.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -230,7 +234,7 @@ func UpgradeConfig(itemType string, name string, force bool) {
 				continue
 			}
 		}
-		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force)
+		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, true)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
@@ -515,7 +519,7 @@ func silenceInstallItem(name string, obtype string) (string, error) {
 	if downloadOnly && it.Downloaded && it.UpToDate {
 		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
 	}
-	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction)
+	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
 	if err != nil {
 		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
 	}

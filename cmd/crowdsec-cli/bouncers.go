@@ -110,16 +110,14 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			var apiKey string
 			var err error
 			if keyName == "" {
-				log.Errorf("Please provide a name for the api key")
-				return
+				log.Fatalf("Please provide a name for the api key")
 			}
 			apiKey = key
 			if key == "" {
 				apiKey, err = middlewares.GenerateAPIKey(keyLength)
 			}
 			if err != nil {
-				log.Errorf("unable to generate api key: %s", err)
-				return
+				log.Fatalf("unable to generate api key: %s", err)
 			}
 			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
 			if err != nil {
@@ -154,8 +152,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			for _, bouncerID := range args {
 				err := dbClient.DeleteBouncer(bouncerID)
 				if err != nil {
-					log.Errorf("unable to delete bouncer: %s", err)
-					return
+					log.Fatalf("unable to delete bouncer: %s", err)
 				}
 				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}
