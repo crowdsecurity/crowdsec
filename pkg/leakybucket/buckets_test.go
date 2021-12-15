@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,10 +39,13 @@ func TestBucket(t *testing.T) {
 	}
 
 	if envSetting != "" {
+		//log.SetLevel(log.TraceLevel)
+		log.Infof("Running test on %s", envSetting)
 		if err := testOneBucket(t, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
+		wg := new(sync.WaitGroup)
 		fds, err := ioutil.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
@@ -50,12 +54,15 @@ func TestBucket(t *testing.T) {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
+				wg.Add(1)
+				defer wg.Done()
 				if err := testOneBucket(t, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
 				return nil
 			})
 		}
+		wg.Wait()
 	}
 }
 
@@ -136,6 +143,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		if err == io.EOF {
 			log.Warningf("end of test file")
 		} else {
+			log.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
