@@ -95,7 +95,23 @@
     {
       "Alert": {
       }
+    },
+    {
+      "Alert": {
+        "sources": {
+          "2.2.3.4": {
+              "scope": "Ip",
+              "value": "2.2.3.4",
+            "ip": "2.2.3.4"
+          }
+        },
+        "Alert" : {
+        "scenario": "test/simple-leaky-cancel",
+        "events_count": 2
+        }
+      }
     }
+
   ]
 }
 

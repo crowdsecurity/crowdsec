@@ -1,6 +1,6 @@
 type: leaky
 debug: true
-name: test/simple-leaky
+name: test/simple-leaky-cancel
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
 cancel_on: evt.Parsed.random_value == '42'

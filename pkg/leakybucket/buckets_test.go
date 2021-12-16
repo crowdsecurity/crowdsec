@@ -121,7 +121,10 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
-	go watchTomb(tomb)
+	tomb.Go(func() error {
+		watchTomb(tomb)
+		return nil
+	})
 	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}
