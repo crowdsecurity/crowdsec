@@ -1,8 +1,6 @@
 package leakybucket
 
 import (
-	"time"
-
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 
@@ -18,20 +16,24 @@ import (
 // ....
 // Thus, if the bucket receives a request that matches fetching a static ressource (here css), it cancels itself
 
-type ResetFilter struct {
-	ResetFilter          *vm.Program
-	ResetFilterSafeGuard map[string]time.Time
+type CancelOnFilter struct {
+	CancelOnFilter      *vm.Program
+	CancelOnFilterDebug *exprhelpers.ExprDebugger
 }
 
-func (u *ResetFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
+func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {
 		var condition, ok bool
-		if u.ResetFilter != nil {
+		if u.CancelOnFilter != nil {
 			leaky.logger.Tracef("running cancel_on filter")
-			output, err := expr.Run(u.ResetFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
+			output, err := expr.Run(u.CancelOnFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
 			if err != nil {
 				leaky.logger.Warningf("cancel_on error : %s", err)
 				return &msg
+			}
+			//only run debugger expression if condition is false
+			if u.CancelOnFilterDebug != nil {
+				u.CancelOnFilterDebug.Run(leaky.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &msg}))
 			}
 			if condition, ok = output.(bool); !ok {
 				leaky.logger.Warningf("cancel_on, unexpected non-bool return : %T", output)
@@ -49,18 +51,26 @@ func (u *ResetFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Even
 	}
 }
 
-func (u *ResetFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
+func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
 		return alert, queue
 	}
 }
 
-func (u *ResetFilter) OnBucketInit(bucketFactory *BucketFactory) error {
+func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 
-	u.ResetFilter, err = expr.Compile(bucketFactory.ResetFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	u.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 	if err != nil {
-		bucketFactory.logger.Debugf("reset_filter compile error : %s", err)
+		bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
+		return err
+	}
+	if bucketFactory.Debug {
+		u.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		if err != nil {
+			bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
+			return err
+		}
 	}
 	return err
 }
