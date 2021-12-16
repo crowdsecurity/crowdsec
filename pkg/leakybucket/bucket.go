@@ -89,6 +89,14 @@ var BucketsOverflow = prometheus.NewCounterVec(
 	[]string{"name"},
 )
 
+var BucketsCanceled = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_bucket_canceled_total",
+		Help: "Total buckets canceled.",
+	},
+	[]string{"name"},
+)
+
 var BucketsUnderflow = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_bucket_underflowed_total",
@@ -242,7 +250,7 @@ func LeakRoutine(leaky *Leaky) error {
 		/*suiciiiide*/
 		case <-leaky.Suicide:
 			close(leaky.Signal)
-			BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
+			BucketsCanceled.With(prometheus.Labels{"name": leaky.Name}).Inc()
 			leaky.logger.Debugf("Suicide triggered")
 			leaky.AllOut <- types.Event{Type: types.OVFLW, Overflow: types.RuntimeAlert{Mapkey: leaky.Mapkey}}
 			leaky.logger.Tracef("Returning from leaky routine.")
