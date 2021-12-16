@@ -39,8 +39,6 @@ func TestBucket(t *testing.T) {
 	}
 
 	if envSetting != "" {
-		//
-		log.Infof("Running test on %s", envSetting)
 		if err := testOneBucket(t, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
