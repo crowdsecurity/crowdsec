@@ -30,16 +30,17 @@ type TestFile struct {
 
 func TestBucket(t *testing.T) {
 	var (
-		envSetting            = os.Getenv("TEST_ONLY")
+		envSetting            = "tests/simple-leaky-cancel_on/" //os.Getenv("TEST_ONLY")
 		tomb       *tomb.Tomb = &tomb.Tomb{}
 	)
+	log.SetLevel(log.TraceLevel)
 	err := exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
 	if envSetting != "" {
-		//log.SetLevel(log.TraceLevel)
+		//
 		log.Infof("Running test on %s", envSetting)
 		if err := testOneBucket(t, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
@@ -66,6 +67,16 @@ func TestBucket(t *testing.T) {
 	}
 }
 
+func watchTomb(tomb *tomb.Tomb) {
+	for true {
+		if tomb.Alive() == false {
+			log.Warningf("Tomb is deaaaaaaaad")
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
 func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 
 	var (
@@ -78,6 +89,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 		buckets    *Buckets
 	)
 	buckets = NewBuckets()
+	log.Printf("orig -> %p", tomb)
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
@@ -109,6 +121,7 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
+	go watchTomb(tomb)
 	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}

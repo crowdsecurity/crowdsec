@@ -42,6 +42,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			discard += 1
 			val.logger.Debugf("overflowed at %s.", val.Ovflw_ts)
 			toflush = append(toflush, key)
+			log.Infof("OVERFLOWED, KILL")
 			val.tomb.Kill(nil)
 			return true
 		}
@@ -56,6 +57,7 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			BucketsUnderflow.With(prometheus.Labels{"name": val.Name}).Inc()
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			toflush = append(toflush, key)
+			log.Infof("UNDERFLOWED, KILL")
 			val.tomb.Kill(nil)
 			return true
 		} else {
@@ -147,6 +149,7 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	buckets.Bucket_map.Range(func(rkey, rvalue interface{}) bool {
 		key := rkey.(string)
 		val := rvalue.(*Leaky)
+		log.Infof("MASS SHUTDOWN, KILL")
 		val.tomb.Kill(nil)
 		log.Infof("killed %s", key)
 		return true
@@ -251,6 +254,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				fresh_bucket.Mapkey = buckey
 				fresh_bucket.Signal = make(chan bool, 1)
 				buckets.Bucket_map.Store(buckey, fresh_bucket)
+				log.Printf("holder.tomb -> %p", holder.tomb)
 				holder.tomb.Go(func() error {
 					return LeakRoutine(fresh_bucket)
 				})
