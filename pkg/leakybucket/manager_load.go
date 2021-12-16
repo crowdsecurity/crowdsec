@@ -60,7 +60,7 @@ type BucketFactory struct {
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
 	DataDir         string                    `yaml:"-"`
-	ResetFilter     string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
+	CancelOnFilter  string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
 	leakspeed       time.Duration             //internal representation of `Leakspeed`
 	duration        time.Duration             //internal representation of `Duration`
 	ret             chan types.Event          //the bucket-specific output chan for overflows
@@ -293,9 +293,9 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
 	}
 
-	if bucketFactory.ResetFilter != "" {
+	if bucketFactory.CancelOnFilter != "" {
 		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
-		bucketFactory.processors = append(bucketFactory.processors, &ResetFilter{})
+		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
 	if bucketFactory.OverflowFilter != "" {
