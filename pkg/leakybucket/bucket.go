@@ -241,7 +241,6 @@ func LeakRoutine(leaky *Leaky) error {
 			return nil
 		/*suiciiiide*/
 		case <-leaky.Suicide:
-			//leaky.Ovflw_ts = time.Now()
 			close(leaky.Signal)
 			BucketsUnderflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 			leaky.logger.Debugf("Suicide triggered")
