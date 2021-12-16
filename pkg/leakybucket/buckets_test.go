@@ -30,10 +30,9 @@ type TestFile struct {
 
 func TestBucket(t *testing.T) {
 	var (
-		envSetting            = "tests/simple-leaky-cancel_on/" //os.Getenv("TEST_ONLY")
+		envSetting            = os.Getenv("TEST_ONLY")
 		tomb       *tomb.Tomb = &tomb.Tomb{}
 	)
-	log.SetLevel(log.TraceLevel)
 	err := exprhelpers.Init()
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
@@ -70,7 +69,7 @@ func TestBucket(t *testing.T) {
 func watchTomb(tomb *tomb.Tomb) {
 	for true {
 		if tomb.Alive() == false {
-			log.Warningf("Tomb is deaaaaaaaad")
+			log.Warningf("Tomb is dead")
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
@@ -89,7 +88,6 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 		buckets    *Buckets
 	)
 	buckets = NewBuckets()
-	log.Printf("orig -> %p", tomb)
 
 	/*load the scenarios*/
 	stagecfg = dir + "/scenarios.yaml"
@@ -159,7 +157,6 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 		if err == io.EOF {
 			log.Warningf("end of test file")
 		} else {
-			log.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
