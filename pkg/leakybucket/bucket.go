@@ -254,7 +254,6 @@ func LeakRoutine(leaky *Leaky) error {
 				alert types.RuntimeAlert
 				err   error
 			)
-			leaky.logger.Infof("duration ticker")
 			leaky.Ovflw_ts = time.Now()
 			close(leaky.Signal)
 			ofw := leaky.Queue
