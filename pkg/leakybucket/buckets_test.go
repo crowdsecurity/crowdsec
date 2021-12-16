@@ -66,13 +66,15 @@ func TestBucket(t *testing.T) {
 	}
 }
 
+//during tests, we're likely to have only one scenario, and thus only one holder.
+//we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
-	for true {
+	for {
 		if tomb.Alive() == false {
 			log.Warningf("Tomb is dead")
 			break
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
