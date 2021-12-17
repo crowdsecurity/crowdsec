@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
@@ -183,15 +184,24 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 			}
 
+			wg := sync.WaitGroup{}
 			for _, test := range HubTest.Tests {
 				if csConfig.Cscli.Output == "human" {
 					log.Infof("Running test '%s'", test.Name)
 				}
-				err := test.Run()
-				if err != nil {
-					log.Errorf("running test '%s' failed: %+v", test.Name, err)
-				}
+				wg.Add(1)
+				testx := *test
+				go (func() {
+					defer wg.Done()
+					err := testx.Run()
+					if err != nil {
+						log.Errorf("running test '%s' failed: %+v", testx.Name, err)
+					}
+				})()
 			}
+			log.Printf("waiting for all tests to finish")
+			wg.Wait()
+			log.Printf("all tests finished")
 
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {

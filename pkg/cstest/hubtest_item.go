@@ -2,11 +2,13 @@ package cstest
 
 import (
 	"fmt"
+	"html/template"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
@@ -43,6 +45,7 @@ type HubTestItem struct {
 	RuntimeProfileFilePath    string
 	RuntimeSimulationFilePath string
 	RuntimeHubConfig          *csconfig.Hub
+	TemporaryPort             int
 
 	ResultsPath          string
 	ParserResultFile     string
@@ -104,6 +107,18 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 
 	scenarioAssertFilePath := filepath.Join(testPath, ScenarioAssertFileName)
 	ScenarioAssert := NewScenarioAssert(scenarioAssertFilePath)
+
+	// load hub index
+	bidx, err := ioutil.ReadFile(hubTest.HubIndexFile)
+	if err != nil {
+		return nil, fmt.Errorf("unable to read index file: %s", err)
+	}
+
+	hubIndex, err := cwhub.LoadPkgIndex(bidx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to load hub index file: %s", err)
+	}
+
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
@@ -133,7 +148,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		TemplateConfigPath:     hubTest.TemplateConfigPath,
 		TemplateProfilePath:    hubTest.TemplateProfilePath,
 		TemplateSimulationPath: hubTest.TemplateSimulationPath,
-		HubIndex:               hubTest.HubIndex,
+		HubIndex:               &HubIndex{Data: hubIndex},
 		ScenarioAssert:         ScenarioAssert,
 		ParserAssert:           ParserAssert,
 		CustomItemsLocation:    []string{hubTest.HubPath, testPath},
@@ -423,6 +438,9 @@ func (t *HubTestItem) Clean() error {
 	return os.RemoveAll(t.RuntimePath)
 }
 
+var tmpPort = 10000
+var HubMutex = sync.Mutex{}
+
 func (t *HubTestItem) Run() error {
 	t.Success = false
 	t.ErrorsList = make([]string, 0)
@@ -461,10 +479,32 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
 	}
 
-	// copy template config file to runtime folder
-	if err := Copy(t.TemplateConfigPath, t.RuntimeConfigFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateConfigPath, t.RuntimeConfigFilePath, err)
+	// edit the config file to use a temporary port
+	// Declare type pointer to a template
+	replace := struct {
+		Port       int
+		RuntimeDir string
+	}{
+		Port:       tmpPort,
+		RuntimeDir: t.RuntimePath,
 	}
+
+	tmpPort++
+
+	var temp *template.Template
+
+	temp = template.Must(template.ParseFiles(t.TemplateConfigPath))
+
+	fd, err := os.Create(t.RuntimeConfigFilePath)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	err = temp.Execute(fd, replace)
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	fd.Close()
 
 	// copy template profile file to runtime folder
 	if err := Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
@@ -481,18 +521,16 @@ func (t *HubTestItem) Run() error {
 		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
 	}
 
+	HubMutex.Lock()
 	// install the hub in the runtime folder
 	if err := t.InstallHub(); err != nil {
 		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
 	}
+	HubMutex.Unlock()
 
-	logFile := t.Config.LogFile
+	logFile := fmt.Sprintf(".tests/%s/%s", t.Name, t.Config.LogFile)
 	logType := t.Config.LogType
 	dsn := fmt.Sprintf("file://%s", logFile)
-
-	if err := os.Chdir(testPath); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %s", testPath, err)
-	}
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
@@ -518,6 +556,7 @@ func (t *HubTestItem) Run() error {
 		arg := fmt.Sprintf("%s:%s", labelKey, labelValue)
 		cmdArgs = append(cmdArgs, "-label", arg)
 	}
+
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
 	log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()

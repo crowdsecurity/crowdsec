@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +19,6 @@ type HubTest struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	HubIndex               *HubIndex
 	Tests                  []*HubTestItem
 }
 
@@ -58,22 +56,12 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 	}
 
 	hubIndexFile := filepath.Join(hubPath, ".index.json")
-	bidx, err := ioutil.ReadFile(hubIndexFile)
-	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to read index file: %s", err)
-	}
-
-	// load hub index
-	hubIndex, err := cwhub.LoadPkgIndex(bidx)
-	if err != nil {
-		return HubTest{}, fmt.Errorf("unable to load hub index file: %s", err)
-	}
 
 	templateConfigFilePath := filepath.Join(HubTestPath, templateConfigFile)
 	templateProfilePath := filepath.Join(HubTestPath, templateProfileFile)
 	templateSimulationPath := filepath.Join(HubTestPath, templateSimulationFile)
 
-	return HubTest{
+	retHubTest := HubTest{
 		CrowdSecPath:           crowdsecPath,
 		CscliPath:              cscliPath,
 		HubPath:                hubPath,
@@ -82,8 +70,9 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		HubIndex:               &HubIndex{Data: hubIndex},
-	}, nil
+	}
+
+	return retHubTest, nil
 }
 
 func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
