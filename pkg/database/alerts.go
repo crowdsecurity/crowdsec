@@ -296,7 +296,6 @@ func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision 
 }
 
 func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
-
 	ret := []string{}
 	bulkSize := 20
 
@@ -504,15 +503,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			if err != nil {
 				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
-			for _, a := range alerts {
+			for alertIndex, a := range alerts {
 				ret = append(ret, strconv.Itoa(a.ID))
-				for _, d := range alertDecisions {
-					decisionsChunk := chunkDecisions(d, bulkSize)
-					for _, d2 := range decisionsChunk {
-						_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
-						if err != nil {
-							return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
-						}
+				d := alertDecisions[alertIndex]
+				decisionsChunk := chunkDecisions(d, bulkSize)
+				for _, d2 := range decisionsChunk {
+					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+					if err != nil {
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
 					}
 				}
 			}
@@ -531,15 +529,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
-	for _, a := range alerts {
+	for alertIndex, a := range alerts {
 		ret = append(ret, strconv.Itoa(a.ID))
-		for _, d := range alertDecisions {
-			decisionsChunk := chunkDecisions(d, bulkSize)
-			for _, d2 := range decisionsChunk {
-				_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
-				if err != nil {
-					return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
-				}
+		d := alertDecisions[alertIndex]
+		decisionsChunk := chunkDecisions(d, bulkSize)
+		for _, d2 := range decisionsChunk {
+			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+			if err != nil {
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
 			}
 		}
 	}
