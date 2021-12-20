@@ -127,6 +127,7 @@ func (h *HubTest) Run() error {
 				go h.Tests[testCpt].Run(h.TestDone)
 				testCpt++
 				runningTest++
+				log.Infof("TestCPT: %+v | RunningTest: %+v", testCpt, runningTest)
 			}
 			if testCpt == len(h.Tests) && runningTest == 0 {
 				log.Infof("Test are done, breaking")
