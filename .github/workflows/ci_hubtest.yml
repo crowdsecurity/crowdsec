@@ -45,7 +45,7 @@ jobs:
     - name: "Run tests"
       run: |
           cd hub/
-          cscli hubtest run --all --clean -p 10
+          cscli hubtest run --all --clean -p 5
           echo "PARSERS_COV=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           echo "SCENARIOS_COV=$(cscli hubtest coverage --scenarios --percent | cut -d '=' -f2)" >> $GITHUB_ENV
           PARSERS_COV_NUMBER=$(cscli hubtest coverage --parsers --percent | cut -d '=' -f2 | tr -d '%' | tr -d '[[:space:]]')
