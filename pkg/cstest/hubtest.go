@@ -131,7 +131,9 @@ func (h *HubTest) Run() error {
 				toBreak = true
 				break
 			}
-			log.Infof("Running test '%d' | TestCpt: '%d/%d'", runningTest, testCpt, len(h.Tests))
+			if runningTest == 0 {
+				log.Infof("Running test '%d' | TestCpt: '%d/%d'", runningTest, testCpt, len(h.Tests))
+			}
 		}
 		if toBreak {
 			break
