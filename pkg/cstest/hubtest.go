@@ -125,8 +125,11 @@ func (h *HubTest) Run() error {
 			log.Infof("Running test (%d): %+v", runningTest, runningTestMap)
 		default:
 			if runningTest < h.Parallel && testCpt < len(h.Tests) {
+				log.Infof("Starting test '%s'", h.Tests[testCpt].Name)
+
 				go h.Tests[testCpt].Run(h.TestDone)
 				runningTestMap[h.Tests[testCpt].Name] = true
+
 				testCpt++
 				runningTest++
 			}
