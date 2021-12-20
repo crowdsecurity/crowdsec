@@ -1,4 +1,4 @@
-name: Hub Tests
+dname: Hub Tests
 
 on:
   push:
@@ -39,6 +39,7 @@ jobs:
     - name: "Clone CrowdSec Hub"
       run: |
           git clone https://github.com/crowdsecurity/hub.git
+          git fetch
           git checkout parrellelism
     - name: "Run tests"
       run: |
