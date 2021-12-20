@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type HubTest struct {
@@ -116,6 +117,7 @@ func (h *HubTest) Run() error {
 			runningTest--
 		default:
 			if runningTest < h.Parallel && testCpt < len(h.Tests) {
+				log.Infof("Starting test '%s'", h.Tests[testCpt].Name)
 				go h.Tests[testCpt].Run(h.TestDone)
 				testCpt++
 				runningTest++
