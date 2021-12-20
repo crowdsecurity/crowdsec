@@ -225,6 +225,9 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 					success = false
 					cleanTestEnv := false
 					if csConfig.Cscli.Output == "human" {
+						if test.Err != nil {
+							log.Errorf("Test '%s' fail with error: %s", test.Name, test.Err)
+						}
 						if len(test.ParserAssert.Fails) > 0 {
 							fmt.Println()
 							log.Errorf("Parser test '%s' failed (%d errors)\n", test.Name, len(test.ParserAssert.Fails))
