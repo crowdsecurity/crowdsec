@@ -1,4 +1,4 @@
-dname: Hub Tests
+name: Hub Tests
 
 on:
   push:
