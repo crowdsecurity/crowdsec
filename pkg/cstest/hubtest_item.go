@@ -660,8 +660,8 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 	if t.Err != nil {
 		t.log.Errorf("Test failed: %s", t.Err)
 	}
-	testChannel <- *t
-
 	t.log.Infof("Test '%s' done", t.Name)
+
+	testChannel <- *t
 
 }
