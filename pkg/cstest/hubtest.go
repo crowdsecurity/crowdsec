@@ -113,7 +113,12 @@ func (h *HubTest) Run() error {
 	toBreak := false
 	for {
 		select {
-		case _ = <-h.TestDone:
+		case test := <-h.TestDone:
+			if test.Success {
+				log.Infof("Test '%s' successful")
+			} else {
+				log.Infof("Test '%s' failed")
+			}
 			runningTest--
 		default:
 			if runningTest < h.Parallel && testCpt < len(h.Tests) {
@@ -126,6 +131,7 @@ func (h *HubTest) Run() error {
 				toBreak = true
 				break
 			}
+			log.Infof("Running test '%d' | TestCpt: '%d/%d'", runningTest, testCpt, len(h.Tests))
 		}
 		if toBreak {
 			break

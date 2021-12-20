@@ -65,6 +65,8 @@ type HubTestItem struct {
 	Success bool
 	Err     error
 
+	log *log.Logger
+
 	AutoGen        bool
 	ParserAssert   *ParserAssert
 	ScenarioAssert *ScenarioAssert
@@ -119,6 +121,9 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 		return nil, fmt.Errorf("unable to load hub index file: %s", err)
 	}
 
+	logger := log.New()
+	logger.WithField("test_name", name)
+
 	return &HubTestItem{
 		Name:                      name,
 		Path:                      testPath,
@@ -141,6 +146,7 @@ func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 			HubIndexFile: hubTest.HubIndexFile,
 			DataDir:      filepath.Join(runtimeFolder, "data"),
 		},
+		log:                    logger,
 		Config:                 configFileData,
 		HubPath:                hubTest.HubPath,
 		HubTestPath:            hubTest.HubTestPath,
@@ -575,7 +581,7 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 
 	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto", "--debug"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
-	log.Debugf("%s", cscliRegisterCmd.String())
+	t.log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
@@ -593,7 +599,7 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 	}
 
 	crowdsecCmd := exec.Command(t.CrowdSecPath, cmdArgs...)
-	log.Debugf("%s", crowdsecCmd.String())
+	t.log.Debugf("%s", crowdsecCmd.String())
 	output, err = crowdsecCmd.CombinedOutput()
 	if log.GetLevel() >= log.DebugLevel || err != nil {
 		fmt.Println(string(output))
