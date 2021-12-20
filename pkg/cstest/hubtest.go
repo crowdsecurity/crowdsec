@@ -120,6 +120,7 @@ func (h *HubTest) Run() error {
 				log.Infof("Test '%s' failed", test.Name)
 			}
 			runningTest--
+			log.Infof("Running test: %d", runningTest)
 		default:
 			if runningTest < h.Parallel && testCpt < len(h.Tests) {
 				log.Infof("Starting test '%s'", h.Tests[testCpt].Name)
