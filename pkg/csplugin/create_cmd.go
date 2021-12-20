@@ -1,7 +1,7 @@
+// +build linux
 package csplugin
 
 import (
-	"io/fs"
 	"os/exec"
 
 	"github.com/pkg/errors"

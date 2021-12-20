@@ -1,8 +1,12 @@
+// +build linux
+
 package csplugin
 
 import (
 	"fmt"
 	"io/fs"
+	"os/user"
+	"github.com/pkg/errors"
 	"syscall"
 )
 
@@ -20,6 +24,7 @@ func CheckOwner(details fs.FileInfo, path string) error {
 	if stat.Uid != procAttr.Credential.Uid || stat.Gid != procAttr.Credential.Gid {
 		return fmt.Errorf("plugin at %s is not owned by %s user and group", path, currentUser.Username)
 	}
+	return nil
 }
 
 func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
