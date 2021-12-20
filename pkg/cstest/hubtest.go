@@ -115,9 +115,9 @@ func (h *HubTest) Run() error {
 		select {
 		case test := <-h.TestDone:
 			if test.Success {
-				log.Infof("Test '%s' successful")
+				log.Infof("Test '%s' successful", test.Name)
 			} else {
-				log.Infof("Test '%s' failed")
+				log.Infof("Test '%s' failed", test.Name)
 			}
 			runningTest--
 		default:
@@ -128,6 +128,7 @@ func (h *HubTest) Run() error {
 				runningTest++
 			}
 			if testCpt == len(h.Tests) && runningTest == 0 {
+				log.Infof("Test are done, breaking")
 				toBreak = true
 				break
 			}
