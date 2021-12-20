@@ -73,7 +73,6 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
-		TestDone:               make(chan HubTestItem),
 		Parallel:               10,
 	}
 
@@ -111,6 +110,8 @@ func (h *HubTest) Run() error {
 	runningTest := 0
 	testCpt := 0
 	toBreak := false
+	h.TestDone = make(chan HubTestItem, len(h.Tests))
+
 	for {
 		select {
 		case test := <-h.TestDone:
