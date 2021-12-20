@@ -395,7 +395,7 @@ func (t *HubTestItem) InstallHub() error {
 	// load installed hub
 	err := cwhub.GetHubIdx(t.RuntimeHubConfig)
 	if err != nil {
-		log.Fatalf("can't local sync the hub: %+v", err)
+		return fmt.Errorf("can't local sync the hub: %+v", err)
 	}
 
 	// install data for parsers if needed
@@ -512,11 +512,15 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 
 	fd, err := os.Create(t.RuntimeConfigFilePath)
 	if err != nil {
-		log.Fatalln(err)
+		t.Err = err
+		testChannel <- *t
+		return
 	}
 	err = temp.Execute(fd, replace)
 	if err != nil {
-		log.Fatalln(err)
+		t.Err = err
+		testChannel <- *t
+		return
 	}
 
 	fd.Close()
@@ -611,10 +615,12 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 		assertFileStat, err := os.Stat(t.ParserAssert.File)
 		if os.IsNotExist(err) {
 			parserAssertFile, err := os.Create(t.ParserAssert.File)
-			if err != nil {
-				log.Fatal(err)
-			}
 			parserAssertFile.Close()
+			if err != nil {
+				t.Err = err
+				testChannel <- *t
+				return
+			}
 		}
 		assertFileStat, err = os.Stat(t.ParserAssert.File)
 		if err != nil {
@@ -653,10 +659,12 @@ func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 		assertFileStat, err := os.Stat(t.ScenarioAssert.File)
 		if os.IsNotExist(err) {
 			scenarioAssertFile, err := os.Create(t.ScenarioAssert.File)
-			if err != nil {
-				log.Fatal(err)
-			}
 			scenarioAssertFile.Close()
+			if err != nil {
+				t.Err = err
+				testChannel <- *t
+				return
+			}
 		}
 		assertFileStat, err = os.Stat(t.ScenarioAssert.File)
 		if err != nil {
