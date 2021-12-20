@@ -39,6 +39,7 @@ jobs:
     - name: "Clone CrowdSec Hub"
       run: |
           git clone https://github.com/crowdsecurity/hub.git
+          git checkout parrellelism
     - name: "Run tests"
       run: |
           cd hub/
