@@ -111,7 +111,7 @@ func (h *HubTest) Run() error {
 	testCpt := 0
 	toBreak := false
 	h.TestDone = make(chan HubTestItem, len(h.Tests))
-
+	runningTestMap := make(map[string]bool)
 	for {
 		select {
 		case test := <-h.TestDone:
@@ -121,14 +121,16 @@ func (h *HubTest) Run() error {
 				log.Infof("Test '%s' failed", test.Name)
 			}
 			runningTest--
-			log.Infof("Running test: %d", runningTest)
+			delete(runningTestMap, test.Name)
+			log.Infof("Running test (%d): %+v", runningTest, runningTestMap)
 		default:
 			if runningTest < h.Parallel && testCpt < len(h.Tests) {
 				log.Infof("Starting test '%s'", h.Tests[testCpt].Name)
 				go h.Tests[testCpt].Run(h.TestDone)
 				testCpt++
 				runningTest++
-				log.Infof("TestCPT: %+v | RunningTest: %+v", testCpt, runningTest)
+				runningTestMap[h.Tests[testCpt].Name] = true
+				log.Infof("TestCPT: %+v | RunningTest (%d): %+v", testCpt, runningTest, runningTestMap)
 			}
 			if testCpt == len(h.Tests) && runningTest == 0 {
 				log.Infof("Test are done, breaking")
