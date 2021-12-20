@@ -187,7 +187,7 @@ func (l labelsMap) Set(label string) error {
 
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", defaultConfigFile, "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", DefaultConfigFile, "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
@@ -280,7 +280,7 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
-	start_RunSvc()
+	StartRunSvc()
 	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
 		Writer: os.Stderr,
 		LogLevels: []log.Level{

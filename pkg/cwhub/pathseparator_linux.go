@@ -1,3 +1,4 @@
+// +build linux
 package cwhub
 
 import "strings"

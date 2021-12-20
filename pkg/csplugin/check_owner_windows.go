@@ -10,5 +10,7 @@ func CheckOwner(details fs.FileInfo, path string) error {
 }
 
 func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
-	return nil
+	return &syscall.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+	}
 }
