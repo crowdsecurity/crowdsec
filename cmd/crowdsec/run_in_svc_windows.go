@@ -1,18 +1,17 @@
 package main
 
 import (
-
-	"golang.org/x/sys/windows/svc"
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/sirupsen/logrus/hooks/writer"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"os"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
-	
+	"github.com/sirupsen/logrus/hooks/writer"
+	"golang.org/x/sys/windows/svc"
 )
 
-func start_RunSvc(){
+func StartRunSvc() {
 
 	const svcName = "CrowdSec"
 	const svcDisplayName = "massively multiplayer firewall"
@@ -44,7 +43,7 @@ func start_RunSvc(){
 
 }
 
-func windows_run() {
+func WindowsRun() {
 
 	var (
 		cConfig *csconfig.Config

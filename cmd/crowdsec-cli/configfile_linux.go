@@ -1,4 +1,3 @@
 package main
 
-const defaultConfigFile="/etc/crowdsec/config.yaml"
-
+const DefaultConfigFile = "/etc/crowdsec/config.yaml"
