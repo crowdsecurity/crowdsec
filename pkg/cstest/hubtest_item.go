@@ -62,8 +62,8 @@ type HubTestItem struct {
 
 	Config *HubTestItemConfig
 
-	Success    bool
-	ErrorsList []string
+	Success bool
+	Err     error
 
 	AutoGen        bool
 	ParserAssert   *ParserAssert
@@ -441,54 +441,69 @@ func (t *HubTestItem) Clean() error {
 var tmpPort = 10000
 var HubMutex = sync.Mutex{}
 
-func (t *HubTestItem) Run() error {
+func (t *HubTestItem) Run(testChannel chan HubTestItem) {
 	t.Success = false
-	t.ErrorsList = make([]string, 0)
+	t.Err = nil
 
 	testPath := filepath.Join(t.HubTestPath, t.Name)
 	if _, err := os.Stat(testPath); os.IsNotExist(err) {
-		return fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
+		t.Err = fmt.Errorf("test '%s' doesn't exist in '%s', exiting", t.Name, t.HubTestPath)
+		testChannel <- *t
+		return
 	}
 
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("can't get current directory: %+v", err)
+		t.Err = fmt.Errorf("can't get current directory: %+v", err)
+		testChannel <- *t
+		return
 	}
 
 	// create runtime folder
 	if err := os.MkdirAll(t.RuntimePath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+		t.Err = fmt.Errorf("unable to create folder '%s': %+v", t.RuntimePath, err)
+		testChannel <- *t
+		return
 	}
 
 	// create runtime data folder
 	if err := os.MkdirAll(t.RuntimeDataPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
+		t.Err = fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeDataPath, err)
+		testChannel <- *t
+		return
 	}
 
 	// create runtime hub folder
 	if err := os.MkdirAll(t.RuntimeHubPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+		t.Err = fmt.Errorf("unable to create folder '%s': %+v", t.RuntimeHubPath, err)
+		testChannel <- *t
+		return
 	}
 
 	if err := Copy(t.HubIndexFile, filepath.Join(t.RuntimeHubPath, ".index.json")); err != nil {
-		return fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
+		t.Err = fmt.Errorf("unable to copy .index.json file in '%s': %s", filepath.Join(t.RuntimeHubPath, ".index.json"), err)
+		testChannel <- *t
+		return
 	}
 
 	// create results folder
 	if err := os.MkdirAll(t.ResultsPath, os.ModePerm); err != nil {
-		return fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
+		t.Err = fmt.Errorf("unable to create folder '%s': %+v", t.ResultsPath, err)
+		testChannel <- *t
+		return
 	}
 
+	HubMutex.Lock()
+	testPort := tmpPort
 	// edit the config file to use a temporary port
 	// Declare type pointer to a template
 	replace := struct {
 		Port       int
 		RuntimeDir string
 	}{
-		Port:       tmpPort,
+		Port:       testPort,
 		RuntimeDir: t.RuntimePath,
 	}
-
 	tmpPort++
 
 	var temp *template.Template
@@ -506,25 +521,35 @@ func (t *HubTestItem) Run() error {
 
 	fd.Close()
 
+	HubMutex.Unlock()
+
 	// copy template profile file to runtime folder
 	if err := Copy(t.TemplateProfilePath, t.RuntimeProfileFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
+		t.Err = fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateProfilePath, t.RuntimeProfileFilePath, err)
+		testChannel <- *t
+		return
 	}
 
 	// copy template simulation file to runtime folder
 	if err := Copy(t.TemplateSimulationPath, t.RuntimeSimulationFilePath); err != nil {
-		return fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
+		t.Err = fmt.Errorf("unable to copy '%s' to '%s': %v", t.TemplateSimulationPath, t.RuntimeSimulationFilePath, err)
+		testChannel <- *t
+		return
 	}
 
 	// copy template patterns folder to runtime folder
 	if err := CopyDir(crowdsecPatternsFolder, t.RuntimePatternsPath); err != nil {
-		return fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+		t.Err = fmt.Errorf("unable to copy 'patterns' from '%s' to '%s': %s", crowdsecPatternsFolder, t.RuntimePatternsPath, err)
+		testChannel <- *t
+		return
 	}
 
 	HubMutex.Lock()
 	// install the hub in the runtime folder
 	if err := t.InstallHub(); err != nil {
-		return fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
+		t.Err = fmt.Errorf("unable to install hub in '%s': %s", t.RuntimeHubPath, err)
+		testChannel <- *t
+		return
 	}
 	HubMutex.Unlock()
 
@@ -534,20 +559,26 @@ func (t *HubTestItem) Run() error {
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
-		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err.Error())
+		t.Err = fmt.Errorf("unable to stat log file '%s': %s", logFile, err.Error())
+		testChannel <- *t
+		return
 	}
 	if logFileStat.Size() == 0 {
-		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+		t.Err = fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
+		testChannel <- *t
+		return
 	}
 
-	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto"}
+	cmdArgs := []string{"-c", t.RuntimeConfigFilePath, "machines", "add", "testMachine", "--auto", "--debug"}
 	cscliRegisterCmd := exec.Command(t.CscliPath, cmdArgs...)
 	log.Debugf("%s", cscliRegisterCmd.String())
 	output, err := cscliRegisterCmd.CombinedOutput()
 	if err != nil {
 		if !strings.Contains(string(output), "unable to create machine: user 'testMachine': user already exist") {
 			fmt.Println(string(output))
-			return fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			t.Err = fmt.Errorf("fail to run '%s' for test '%s': %v", cscliRegisterCmd.String(), t.Name, err)
+			testChannel <- *t
+			return
 		}
 	}
 
@@ -564,11 +595,15 @@ func (t *HubTestItem) Run() error {
 		fmt.Println(string(output))
 	}
 	if err != nil {
-		return fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
+		t.Err = fmt.Errorf("fail to run '%s' for test '%s': %v", crowdsecCmd.String(), t.Name, err)
+		testChannel <- *t
+		return
 	}
 
 	if err := os.Chdir(currentDir); err != nil {
-		return fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
+		t.Err = fmt.Errorf("can't 'cd' to '%s': %s", currentDir, err)
+		testChannel <- *t
+		return
 	}
 
 	// assert parsers
@@ -583,19 +618,25 @@ func (t *HubTestItem) Run() error {
 		}
 		assertFileStat, err = os.Stat(t.ParserAssert.File)
 		if err != nil {
-			return fmt.Errorf("error while stats '%s': %s", t.ParserAssert.File, err)
+			t.Err = fmt.Errorf("error while stats '%s': %s", t.ParserAssert.File, err)
+			testChannel <- *t
+			return
 		}
 
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ParserAssert.AutoGenFromFile(t.ParserResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				t.Err = fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				testChannel <- *t
+				return
 			}
 			t.ParserAssert.AutoGenAssertData = assertData
 			t.ParserAssert.AutoGenAssert = true
 		} else {
 			if err := t.ParserAssert.AssertFile(t.ParserResultFile); err != nil {
-				return fmt.Errorf("unable to run assertion on file '%s': %s", t.ParserResultFile, err)
+				t.Err = fmt.Errorf("unable to run assertion on file '%s': %s", t.ParserResultFile, err)
+				testChannel <- *t
+				return
 			}
 		}
 	}
@@ -619,19 +660,25 @@ func (t *HubTestItem) Run() error {
 		}
 		assertFileStat, err = os.Stat(t.ScenarioAssert.File)
 		if err != nil {
-			return fmt.Errorf("error while stats '%s': %s", t.ScenarioAssert.File, err)
+			t.Err = fmt.Errorf("error while stats '%s': %s", t.ScenarioAssert.File, err)
+			testChannel <- *t
+			return
 		}
 
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ScenarioAssert.AutoGenFromFile(t.ScenarioResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				t.Err = fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				testChannel <- *t
+				return
 			}
 			t.ScenarioAssert.AutoGenAssertData = assertData
 			t.ScenarioAssert.AutoGenAssert = true
 		} else {
 			if err := t.ScenarioAssert.AssertFile(t.ScenarioResultFile); err != nil {
-				return fmt.Errorf("unable to run assertion on file '%s': %s", t.ScenarioResultFile, err)
+				t.Err = fmt.Errorf("unable to run assertion on file '%s': %s", t.ScenarioResultFile, err)
+				testChannel <- *t
+				return
 			}
 		}
 	}
@@ -639,10 +686,10 @@ func (t *HubTestItem) Run() error {
 	if t.ParserAssert.AutoGenAssert || t.ScenarioAssert.AutoGenAssert {
 		t.AutoGen = true
 	}
-
 	if (t.ParserAssert.Success || t.Config.IgnoreParsers) && (nbScenario == 0 || t.ScenarioAssert.Success) {
 		t.Success = true
 	}
 
-	return nil
+	testChannel <- *t
+	return
 }

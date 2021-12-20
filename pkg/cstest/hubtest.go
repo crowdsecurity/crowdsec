@@ -19,7 +19,9 @@ type HubTest struct {
 	TemplateConfigPath     string
 	TemplateProfilePath    string
 	TemplateSimulationPath string
-	Tests                  []*HubTestItem
+	Tests                  []HubTestItem
+	Parallel               int
+	TestDone               chan HubTestItem
 }
 
 const (
@@ -70,6 +72,8 @@ func NewHubTest(hubPath string, crowdsecPath string, cscliPath string) (HubTest,
 		TemplateConfigPath:     templateConfigFilePath,
 		TemplateProfilePath:    templateProfilePath,
 		TemplateSimulationPath: templateSimulationPath,
+		TestDone:               make(chan HubTestItem),
+		Parallel:               10,
 	}
 
 	return retHubTest, nil
@@ -81,7 +85,7 @@ func (h *HubTest) LoadTestItem(name string) (*HubTestItem, error) {
 	if err != nil {
 		return HubTestItem, err
 	}
-	h.Tests = append(h.Tests, testItem)
+	h.Tests = append(h.Tests, *testItem)
 
 	return testItem, nil
 }
@@ -99,5 +103,32 @@ func (h *HubTest) LoadAllTests() error {
 			}
 		}
 	}
+	return nil
+}
+
+func (h *HubTest) Run() error {
+	runningTest := 0
+	testCpt := 0
+	toBreak := false
+	for {
+		select {
+		case _ = <-h.TestDone:
+			runningTest--
+		default:
+			if runningTest < h.Parallel && testCpt < len(h.Tests) {
+				go h.Tests[testCpt].Run(h.TestDone)
+				testCpt++
+				runningTest++
+			}
+			if testCpt == len(h.Tests) && runningTest == 0 {
+				toBreak = true
+				break
+			}
+		}
+		if toBreak {
+			break
+		}
+	}
+
 	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
@@ -160,6 +159,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	var noClean bool
 	var runAll bool
 	var forceClean bool
+	var parallel int
 	var cmdHubTestRun = &cobra.Command{
 		Use:               "run",
 		Short:             "run [test_name]",
@@ -170,7 +170,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				fmt.Println("Please provide test to run or --all flag")
 				os.Exit(1)
 			}
-
+			HubTest.Parallel = parallel
 			if runAll {
 				if err := HubTest.LoadAllTests(); err != nil {
 					log.Fatalf("unable to load all tests: %+v", err)
@@ -183,26 +183,10 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 					}
 				}
 			}
-
-			wg := sync.WaitGroup{}
-			for _, test := range HubTest.Tests {
-				if csConfig.Cscli.Output == "human" {
-					log.Infof("Running test '%s'", test.Name)
-				}
-				wg.Add(1)
-				testx := *test
-				go (func() {
-					defer wg.Done()
-					err := testx.Run()
-					if err != nil {
-						log.Errorf("running test '%s' failed: %+v", testx.Name, err)
-					}
-				})()
+			err := HubTest.Run()
+			if err != nil {
+				log.Fatalf(err.Error())
 			}
-			log.Printf("waiting for all tests to finish")
-			wg.Wait()
-			log.Printf("all tests finished")
-
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			success := true
@@ -325,6 +309,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	}
 	cmdHubTestRun.Flags().BoolVar(&noClean, "no-clean", false, "Don't clean runtime environment if test succeed")
 	cmdHubTestRun.Flags().BoolVar(&forceClean, "clean", false, "Clean runtime environment if test fail")
+	cmdHubTestRun.Flags().IntVarP(&parallel, "parallel", "p", 10, "Number of test to run in parallel")
 	cmdHubTestRun.Flags().BoolVar(&runAll, "all", false, "Run all tests")
 	cmdHubTest.AddCommand(cmdHubTestRun)
 
@@ -565,7 +550,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 				err = test.ParserAssert.LoadTest(test.ParserResultFile)
 				if err != nil {
-					err := test.Run()
+					err := HubTest.Run()
 					if err != nil {
 						log.Fatalf("running test '%s' failed: %+v", test.Name, err)
 					}
@@ -577,7 +562,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 
 				err = test.ScenarioAssert.LoadTest(test.ScenarioResultFile, test.BucketPourResultFile)
 				if err != nil {
-					err := test.Run()
+					err := HubTest.Run()
 					if err != nil {
 						log.Fatalf("running test '%s' failed: %+v", test.Name, err)
 					}
