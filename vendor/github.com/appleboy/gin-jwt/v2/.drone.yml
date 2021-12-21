@@ -1,0 +1,69 @@
+kind: pipeline
+name: lint
+
+clone:
+  depth: 50
+
+steps:
+- name: testing
+  image: golang:1.14
+  pull: true
+  commands:
+  - make vet
+  - make lint
+  - make embedmd-check
+  - make misspell-check
+
+trigger:
+  event:
+  - push
+  - pull_request
+
+---
+kind: pipeline
+name: testing
+
+clone:
+  depth: 50
+
+steps:
+- name: testing
+  image: golang:1.14
+  pull: true
+  commands:
+  - make test
+
+- name: codecov
+  image: robertstettner/drone-codecov
+  settings:
+    token:
+      from_secret: codecov_token
+
+trigger:
+  event:
+  - push
+
+---
+kind: pipeline
+name: notification
+
+clone:
+  disable: true
+
+steps:
+- name: discord
+  pull: always
+  image: appleboy/drone-discord
+  environment:
+    DISCORD_WEBHOOK_ID:
+      from_secret: discord_webhook_id
+    DISCORD_WEBHOOK_TOKEN:
+      from_secret: discord_webhook_token
+  when:
+    status:
+    - success
+    - failure
+
+depends_on:
+- testing
+- lint
