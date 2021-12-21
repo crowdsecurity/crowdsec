@@ -23,7 +23,7 @@ static: clean
 	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
 	rm -f $(CROWDSEC_BIN)
