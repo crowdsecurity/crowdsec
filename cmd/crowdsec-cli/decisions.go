@@ -34,6 +34,7 @@ var (
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
+	var skipped = 0
 
 	/*process in reverse order to keep the latest item only*/
 	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
@@ -42,6 +43,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		for _, decisionItem := range alertItem.Decisions {
 			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
+				skipped++
 				continue
 			}
 			spamLimit[spamKey] = true
@@ -100,6 +102,9 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 			}
 		}
 		table.Render() // Send output
+		if skipped > 0 {
+			fmt.Printf("%d duplicated entries skipped\n", skipped)
+		}
 	}
 	return nil
 }
