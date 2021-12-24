@@ -52,10 +52,10 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		alertItem.Decisions = newDecisions
 	}
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated,alert_id\n")
+		fmt.Printf("id;source;ip;reason;action;country;as;events_count;expiration;simulated;alert_id\n")
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v;%v;%v;%v;%v;%v;%v;%v;%v;%v;%v\n",
 					decisionItem.ID,
 					*decisionItem.Origin,
 					*decisionItem.Scope+":"+*decisionItem.Value,
