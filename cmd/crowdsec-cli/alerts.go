@@ -143,7 +143,9 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
+		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
+		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
+		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
 		foundActive := false
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
