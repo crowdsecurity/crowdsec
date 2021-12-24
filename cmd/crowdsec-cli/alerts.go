@@ -49,13 +49,13 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
 		if printMachine {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at,machine\n")
+			fmt.Printf("id;scope;value;reason;country;as;decisions;created_at;machine\n")
 		} else {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
+			fmt.Printf("id;scope;value;reason;country;as;decisions;created_at\n")
 		}
 		for _, alertItem := range *alerts {
 			if printMachine {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v;%v;%v;%v;%v;%v;%v;%v;%v\n",
 					alertItem.ID,
 					*alertItem.Source.Scope,
 					*alertItem.Source.Value,
@@ -66,7 +66,7 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 					*alertItem.StartAt,
 					alertItem.MachineID)
 			} else {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
+				fmt.Printf("%v;%v;%v;%v;%v;%v;%v;%v\n",
 					alertItem.ID,
 					*alertItem.Source.Scope,
 					*alertItem.Source.Value,
