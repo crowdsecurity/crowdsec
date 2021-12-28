@@ -57,7 +57,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		csvwriter.Write([]string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"})
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				csvwriter.Write([]string{
+				err := csvwriter.Write([]string{
 					fmt.Sprintf("%d", decisionItem.ID),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
@@ -70,6 +70,9 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					fmt.Sprintf("%t", *decisionItem.Simulated),
 					fmt.Sprintf("%d", alertItem.ID),
 				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 		csvwriter.Flush()

@@ -154,7 +154,10 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
+					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
+					if err != nil {
+						log.Fatalf("failed to write raw output : %s", err)
+					}
 				}
 				csvwriter.Flush()
 			} else {

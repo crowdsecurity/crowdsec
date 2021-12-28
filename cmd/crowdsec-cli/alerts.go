@@ -69,7 +69,10 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			if printMachine {
 				row = append(row, alertItem.MachineID)
 			}
-			csvwriter.Write(row)
+			err := csvwriter.Write(row)
+			if err != nil {
+				return err
+			}
 		}
 		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {

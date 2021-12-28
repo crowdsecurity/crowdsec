@@ -153,7 +153,10 @@ func ListItem(itemType string, args []string, showType bool, showHeader bool) {
 			if showType {
 				row = append(row, itemType)
 			}
-			csvwriter.Write(row)
+			err := csvwriter.Write(row)
+			if err != nil {
+				log.Fatalf("failed to write raw output : %s", err)
+			}
 		}
 		csvwriter.Flush()
 	}
