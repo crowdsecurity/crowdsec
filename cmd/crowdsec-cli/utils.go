@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -131,13 +132,20 @@ func ListItem(itemType string, args []string) {
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("name,status,version,description\n")
+		csvwriter := csv.NewWriter(os.Stdout)
+		csvwriter.Write([]string{"name", "status", "version", "description"})
 		for _, v := range hubStatus {
 			if v["local_version"] == "" {
 				v["local_version"] = "n/a"
 			}
-			fmt.Printf("%s,%s,%s,%s\n", v["name"], v["status"], v["local_version"], v["description"])
+			csvwriter.Write([]string{
+				v["name"],
+				v["status"],
+				v["local_version"],
+				v["description"],
+			})
 		}
+		csvwriter.Flush()
 	}
 }
 
