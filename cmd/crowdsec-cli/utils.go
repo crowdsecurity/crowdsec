@@ -102,7 +102,7 @@ func setHubBranch() error {
 	return nil
 }
 
-func ListItem(itemType string, args []string) {
+func ListItem(itemType string, args []string, showType bool, showHeader bool) {
 
 	var hubStatus []map[string]string
 
@@ -133,17 +133,27 @@ func ListItem(itemType string, args []string) {
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
-		csvwriter.Write([]string{"name", "status", "version", "description"})
+		if showHeader {
+			if showType {
+				csvwriter.Write([]string{"name", "status", "version", "description", "type"})
+			} else {
+				csvwriter.Write([]string{"name", "status", "version", "description"})
+			}
+		}
 		for _, v := range hubStatus {
 			if v["local_version"] == "" {
 				v["local_version"] = "n/a"
 			}
-			csvwriter.Write([]string{
+			row := []string{
 				v["name"],
 				v["status"],
 				v["local_version"],
 				v["description"],
-			})
+			}
+			if showType {
+				row = append(row, itemType)
+			}
+			csvwriter.Write(row)
 		}
 		csvwriter.Flush()
 	}
