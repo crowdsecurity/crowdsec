@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -48,36 +49,29 @@ func DecisionsFromAlert(alert *models.Alert) string {
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(os.Stdout)
 		if printMachine {
-			fmt.Printf("id;scope;value;reason;country;as;decisions;created_at;machine\n")
+			csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
 		} else {
-			fmt.Printf("id;scope;value;reason;country;as;decisions;created_at\n")
+			csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
 		}
 		for _, alertItem := range *alerts {
-			if printMachine {
-				fmt.Printf("%v;%v;%v;%v;%v;%v;%v;%v;%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID)
-			} else {
-				fmt.Printf("%v;%v;%v;%v;%v;%v;%v;%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt)
+			row := []string{
+				fmt.Sprintf("%d", alertItem.ID),
+				*alertItem.Source.Scope,
+				*alertItem.Source.Value,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
-
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			csvwriter.Write(row)
 		}
+		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
