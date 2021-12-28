@@ -146,7 +146,10 @@ Note: This command requires database direct access, so is intended to be run on 
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
-				csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version"})
+				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {

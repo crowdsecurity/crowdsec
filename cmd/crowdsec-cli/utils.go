@@ -135,10 +135,17 @@ func ListItem(itemType string, args []string, showType bool, showHeader bool) {
 		csvwriter := csv.NewWriter(os.Stdout)
 		if showHeader {
 			if showType {
-				csvwriter.Write([]string{"name", "status", "version", "description", "type"})
+				err := csvwriter.Write([]string{"name", "status", "version", "description", "type"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
 			} else {
-				csvwriter.Write([]string{"name", "status", "version", "description"})
+				err := csvwriter.Write([]string{"name", "status", "version", "description"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
 			}
+
 		}
 		for _, v := range hubStatus {
 			if v["local_version"] == "" {
