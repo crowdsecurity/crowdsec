@@ -22,16 +22,33 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool) error {
 
 	/*Configure logs*/
 	if cfgMode == "file" {
+		_maxsize := 500
+		if maxSize != 0 {
+			_maxsize = maxSize
+		}
+		_maxfiles := 3
+		if maxFiles != 0 {
+			_maxfiles = maxFiles
+		}
+		_maxage := 28
+		if maxAge != 0 {
+			_maxage = maxAge
+		}
+		_compress := true
+		if compress != nil {
+			_compress = *compress
+		}
+
 		LogOutput = &lumberjack.Logger{
 			Filename:   cfgFolder + "/crowdsec.log",
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
+			MaxSize:    _maxsize,
+			MaxBackups: _maxfiles,
+			MaxAge:     _maxage,
+			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
 	} else if cfgMode != "stdout" {

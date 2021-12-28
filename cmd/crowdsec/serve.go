@@ -60,7 +60,8 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
 		log.Fatal(err.Error())
 	}
 
