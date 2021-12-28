@@ -27,7 +27,7 @@ Default buckets have two main configuration options:
  * leakspeed: duration needed for an event to leak. When an event
    leaks, it disappear from the bucket.
 
-## Trigger
+## Trigger
 
 It's a special type of bucket with a zero capacity. Thus, when an
 event is poured in a trigger, it always raises an overflow.
