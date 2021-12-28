@@ -84,7 +84,10 @@ Note: This command requires database direct access, so is intended to be run on 
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
-				csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version"})
+				err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version"})
+				if err != nil {
+					log.Fatalf("failed to write raw header: %s", err)
+				}
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
@@ -92,7 +95,10 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						revoked = "pending"
 					}
-					csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
+					err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
+					if err != nil {
+						log.Fatalf("failed to write raw: %s", err)
+					}
 				}
 				csvwriter.Flush()
 			}

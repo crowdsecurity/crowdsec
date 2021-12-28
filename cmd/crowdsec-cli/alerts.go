@@ -51,9 +51,15 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
 		if printMachine {
-			csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
+			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
+			if err != nil {
+				return err
+			}
 		} else {
-			csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
+			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
+			if err != nil {
+				return err
+			}
 		}
 		for _, alertItem := range *alerts {
 			row := []string{
