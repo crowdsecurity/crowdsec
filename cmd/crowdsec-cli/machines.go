@@ -2,6 +2,7 @@ package main
 
 import (
 	saferand "crypto/rand"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -144,7 +145,8 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
-				fmt.Printf("machine_id,ip_address,updated_at,validated,version\n")
+				csvwriter := csv.NewWriter(os.Stdout)
+				csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version"})
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -152,8 +154,9 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					fmt.Printf("%s,%s,%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version)
+					csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
 				}
+				csvwriter.Flush()
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 			}
