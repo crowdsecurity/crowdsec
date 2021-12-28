@@ -38,7 +38,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		if maxAge != 0 {
 			_maxage = maxAge
 		}
-		_compress := false
+		_compress := true
 		if compress != nil {
 			_compress = *compress
 		}
