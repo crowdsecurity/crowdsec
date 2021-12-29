@@ -57,13 +57,13 @@ cscli hub update # Download list of available configurations from the hub
 			}
 			cwhub.DisplaySummary()
 			log.Printf("PARSERS:")
-			ListItem(cwhub.PARSERS, args)
+			ListItem(cwhub.PARSERS, args, true, true)
 			log.Printf("SCENARIOS:")
-			ListItem(cwhub.SCENARIOS, args)
+			ListItem(cwhub.SCENARIOS, args, true, false)
 			log.Printf("COLLECTIONS:")
-			ListItem(cwhub.COLLECTIONS, args)
+			ListItem(cwhub.COLLECTIONS, args, true, false)
 			log.Printf("POSTOVERFLOWS:")
-			ListItem(cwhub.PARSERS_OVFLW, args)
+			ListItem(cwhub.PARSERS_OVFLW, args, true, false)
 		},
 	}
 	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")

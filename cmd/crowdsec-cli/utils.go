@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -101,7 +102,7 @@ func setHubBranch() error {
 	return nil
 }
 
-func ListItem(itemType string, args []string) {
+func ListItem(itemType string, args []string, showType bool, showHeader bool) {
 
 	var hubStatus []map[string]string
 
@@ -131,13 +132,40 @@ func ListItem(itemType string, args []string) {
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("name,status,version,description\n")
+		csvwriter := csv.NewWriter(os.Stdout)
+		if showHeader {
+			if showType {
+				err := csvwriter.Write([]string{"name", "status", "version", "description", "type"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
+			} else {
+				err := csvwriter.Write([]string{"name", "status", "version", "description"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
+			}
+
+		}
 		for _, v := range hubStatus {
 			if v["local_version"] == "" {
 				v["local_version"] = "n/a"
 			}
-			fmt.Printf("%s,%s,%s,%s\n", v["name"], v["status"], v["local_version"], v["description"])
+			row := []string{
+				v["name"],
+				v["status"],
+				v["local_version"],
+				v["description"],
+			}
+			if showType {
+				row = append(row, itemType)
+			}
+			err := csvwriter.Write(row)
+			if err != nil {
+				log.Fatalf("failed to write raw output : %s", err)
+			}
 		}
+		csvwriter.Flush()
 	}
 }
 
