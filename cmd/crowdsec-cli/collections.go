@@ -76,6 +76,9 @@ func NewCollectionsCmd() *cobra.Command {
 				for _, name := range args {
 					if !forceAction {
 						item := cwhub.GetItem(cwhub.COLLECTIONS, name)
+						if item == nil {
+							log.Fatalf("unable to retrieve: %s\n", name)
+						}
 						if len(item.BelongsToCollections) > 0 {
 							log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
 							log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
