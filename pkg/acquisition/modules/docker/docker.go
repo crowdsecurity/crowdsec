@@ -109,7 +109,7 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 		d.compiledContainerID = append(d.compiledContainerID, regexp.MustCompile(cont))
 	}
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
 	}
@@ -136,6 +136,12 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 	d.Client = dockerClient
 
+	_, err = d.Client.Info(context.Background())
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to configure docker datasource %s", d.Config.DockerHost)
+	}
+
 	return nil
 }
 
@@ -158,7 +164,7 @@ func (d *DockerSource) ConfigureByDSN(dsn string, labels map[string]string, logg
 	d.logger = logger
 	d.Config.Labels = labels
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv)
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return err
 	}
@@ -389,7 +395,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 						delete(d.runningContainerState, idx)
 					}
 				} else {
-					log.Debugf("container list err: %s", err.Error())
+					log.Errorf("container list err: %s", err.Error())
 				}
 				continue
 			}
