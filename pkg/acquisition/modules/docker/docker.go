@@ -136,6 +136,12 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 	d.Client = dockerClient
 
+	_, err = d.Client.Info(context.Background())
+
+	if err != nil {
+		return errors.Wrapf(err, "failed to configure docker datasource %s", d.Config.DockerHost)
+	}
+
 	return nil
 }
 
