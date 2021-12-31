@@ -135,7 +135,7 @@ cscli parser list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS, args, false, true)
 		},
 	}
-	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdParsers.AddCommand(cmdParsersList)
 
 	return cmdParsers

@@ -135,7 +135,7 @@ cscli scenarios list crowdsecurity/xxx`,
 			ListItem(cwhub.SCENARIOS, args, false, true)
 		},
 	}
-	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdScenarios.AddCommand(cmdScenariosList)
 
 	return cmdScenarios
