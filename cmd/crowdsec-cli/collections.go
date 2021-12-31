@@ -136,8 +136,8 @@ func NewCollectionsCmd() *cobra.Command {
 
 	var cmdCollectionsList = &cobra.Command{
 		Use:               "list collection [-a]",
-		Short:             "List all collections or given one",
-		Long:              `List all collections or given one`,
+		Short:             "List all collections",
+		Long:              `List all collections`,
 		Example:           `cscli collections list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -145,7 +145,7 @@ func NewCollectionsCmd() *cobra.Command {
 			ListItem(cwhub.COLLECTIONS, args, false, true)
 		},
 	}
-	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdCollections.AddCommand(cmdCollectionsList)
 
 	return cmdCollections
