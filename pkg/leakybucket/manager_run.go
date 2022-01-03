@@ -154,13 +154,16 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	return nil
 }
 
+var eventNum = 0
+
 func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buckets) (bool, error) {
 	var (
 		ok, condition, sent bool
 		err                 error
 	)
 	//synchronize with DumpBucketsStateAt
-
+	eventNum++
+	log.Infof("event num %d", eventNum)
 	//to track bucket pour : track items that enter the pour routine
 	if BucketPourTrack {
 		if BucketPourCache == nil {
@@ -176,6 +179,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 	for idx, holder := range holders {
 
 		if holder.RunTimeFilter != nil {
+			holder.logger = holder.logger.WithFields(log.Fields{"event_num": eventNum})
 			holder.logger.Tracef("event against holder %d/%d", idx, len(holders))
 			output, err := expr.Run(holder.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
 			if err != nil {
@@ -218,48 +222,53 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		failed_sent := 0
 		attempts := 0
 		start := time.Now()
+
+	FetchBucketAgain:
+		/*Try to load the bucket in the map*/
+		biface, ok := buckets.Bucket_map.Load(buckey)
+		holder.logger.Infof("map fetch %s : %v", buckey, ok)
+		//biface, bigout
+		/* the bucket doesn't exist, create it !*/
+		if !ok {
+			/*
+				not found in map
+			*/
+
+			holder.logger.Infof("Creating bucket %s", buckey)
+			keymiss += 1
+			var fresh_bucket *Leaky
+
+			switch parsed.ExpectMode {
+			case TIMEMACHINE:
+				fresh_bucket = NewTimeMachine(holder)
+				holder.logger.Debugf("Creating TimeMachine bucket")
+			case LIVE:
+				fresh_bucket = NewLeaky(holder)
+				holder.logger.Debugf("Creating Live bucket")
+			default:
+				holder.logger.Fatalf("input event has no expected mode, malformed : %+v", parsed)
+			}
+			fresh_bucket.In = make(chan types.Event)
+			fresh_bucket.Mapkey = buckey
+			fresh_bucket.Signal = make(chan bool, 1)
+			buckets.Bucket_map.Store(buckey, fresh_bucket)
+			holder.tomb.Go(func() error {
+				return LeakRoutine(fresh_bucket)
+			})
+
+			holder.logger.Infof("Created new bucket %s", buckey)
+
+			//wait for signal to be opened
+			<-fresh_bucket.Signal
+			biface = fresh_bucket
+		}
+
 		for !sent {
 			attempts += 1
 			/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 			if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now()) {
 				holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d keymiss:%d failed_sent:%d attempts:%d)", time.Since(start),
 					buckey, sigclosed, keymiss, failed_sent, attempts)
-			}
-			biface, ok := buckets.Bucket_map.Load(buckey)
-			//biface, bigout
-			/* the bucket doesn't exist, create it !*/
-			if !ok {
-				/*
-					not found in map
-				*/
-
-				holder.logger.Debugf("Creating bucket %s", buckey)
-				keymiss += 1
-				var fresh_bucket *Leaky
-
-				switch parsed.ExpectMode {
-				case TIMEMACHINE:
-					fresh_bucket = NewTimeMachine(holder)
-					holder.logger.Debugf("Creating TimeMachine bucket")
-				case LIVE:
-					fresh_bucket = NewLeaky(holder)
-					holder.logger.Debugf("Creating Live bucket")
-				default:
-					holder.logger.Fatalf("input event has no expected mode, malformed : %+v", parsed)
-				}
-				fresh_bucket.In = make(chan types.Event)
-				fresh_bucket.Mapkey = buckey
-				fresh_bucket.Signal = make(chan bool, 1)
-				buckets.Bucket_map.Store(buckey, fresh_bucket)
-				holder.tomb.Go(func() error {
-					return LeakRoutine(fresh_bucket)
-				})
-
-				holder.logger.Debugf("Created new bucket %s", buckey)
-
-				//wait for signal to be opened
-				<-fresh_bucket.Signal
-				continue
 			}
 
 			bucket := biface.(*Leaky)
@@ -268,10 +277,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			case _, ok := <-bucket.Signal:
 				if !ok {
 					//it's closed, delete it
-					bucket.logger.Debugf("Bucket %s found dead, cleanup the body", buckey)
+					bucket.logger.Infof("Bucket %s found dead, cleanup the body", buckey)
 					buckets.Bucket_map.Delete(buckey)
 					sigclosed += 1
-					continue
+					goto FetchBucketAgain
 				}
 				holder.logger.Tracef("Signal exists, try to pour :)")
 
@@ -304,7 +313,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 
 			select {
 			case bucket.In <- parsed:
-				holder.logger.Tracef("Successfully sent !")
+				holder.logger.Infof("Successfully sent !")
 				//and track item poured to each bucket
 				if BucketPourTrack {
 					if _, ok := BucketPourCache[bucket.Name]; !ok {
@@ -319,7 +328,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 				continue
 			default:
 				failed_sent += 1
-				holder.logger.Tracef("Failed to send, try again")
+				holder.logger.Infof("Failed to send, try again")
 				continue
 
 			}
