@@ -133,7 +133,7 @@ cscli postoverflows list crowdsecurity/xxx`,
 			ListItem(cwhub.PARSERS_OVFLW, args, false, true)
 		},
 	}
-	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsList)
 
 	return cmdPostOverflows
