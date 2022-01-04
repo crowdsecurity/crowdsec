@@ -35,6 +35,15 @@ type ItemVersion struct {
 	Deprecated bool
 }
 
+type ItemHubStatus struct {
+	Name         string `json:"name"`
+	LocalVersion string `json:"local_version"`
+	LocalPath    string `json:"local_path"`
+	Description  string `json:"description"`
+	UTF8_Status  string `json:"utf8_status"`
+	Status       string `json:"status"`
+}
+
 //Item can be : parsed, scenario, collection
 type Item struct {
 	/*descriptive info*/
@@ -70,6 +79,27 @@ type Item struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty"`
 	Scenarios     []string `yaml:"scenarios,omitempty"`
 	Collections   []string `yaml:"collections,omitempty"`
+}
+
+func (i *Item) toHubStatus() ItemHubStatus {
+	hubStatus := ItemHubStatus{}
+	hubStatus.Name = i.Name
+	hubStatus.LocalVersion = i.LocalVersion
+	hubStatus.LocalPath = i.LocalPath
+	hubStatus.Description = i.Description
+
+	status, ok, warning, managed := ItemStatus(*i)
+	hubStatus.Status = status
+	if !managed {
+		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.House, status)
+	} else if !i.Installed {
+		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
+	} else if warning {
+		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.Warning, status)
+	} else if ok {
+		hubStatus.UTF8_Status = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
+	}
+	return hubStatus
 }
 
 var skippedLocal = 0
@@ -240,18 +270,18 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 }
 
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
-func HubStatus(itemType string, name string, all bool) []map[string]string {
+func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
 	if _, ok := hubIdx[itemType]; !ok {
 		log.Errorf("type %s doesn't exist", itemType)
 
 		return nil
 	}
 
-	var ret []map[string]string
+	var ret = make([]ItemHubStatus, 0)
 	/*remember, you do it for the user :)*/
 	for _, item := range hubIdx[itemType] {
 		if name != "" && name != item.Name {
-			//user has required a specific name
+			//user has requested a specific name
 			continue
 		}
 		//Only enabled items ?
@@ -259,23 +289,7 @@ func HubStatus(itemType string, name string, all bool) []map[string]string {
 			continue
 		}
 		//Check the item status
-		status, ok, warning, managed := ItemStatus(item)
-		tmp := make(map[string]string)
-		tmp["name"] = item.Name
-		tmp["status"] = status
-		tmp["local_version"] = item.LocalVersion
-		tmp["local_path"] = item.LocalPath
-		tmp["description"] = item.Description
-		if !managed {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.House, status)
-		} else if !item.Installed {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Prohibited, status)
-		} else if warning {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.Warning, status)
-		} else if ok {
-			tmp["utf8_status"] = fmt.Sprintf("%v  %s", emoji.CheckMark, status)
-		}
-		ret = append(ret, tmp)
+		ret = append(ret, item.toHubStatus())
 	}
 	return ret
 }

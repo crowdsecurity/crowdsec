@@ -321,10 +321,10 @@ func TestInstallParser(t *testing.T) {
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
@@ -361,7 +361,7 @@ func TestInstallCollection(t *testing.T) {
 		testDisableItem(cfg.Hub, t, it)
 
 		it = hubIdx[COLLECTIONS][it.Name]
-		x := HubStatus(COLLECTIONS, it.Name, false)
+		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)
 		break
 	}

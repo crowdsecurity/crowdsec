@@ -102,31 +102,35 @@ func setHubBranch() error {
 	return nil
 }
 
-func ListItem(itemType string, args []string, showType bool, showHeader bool) {
+func ListItems(itemTypes []string, args []string, showType bool, showHeader bool) {
 
-	var hubStatus []map[string]string
+	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
-	if len(args) == 1 {
-		hubStatus = cwhub.HubStatus(itemType, args[0], all)
-	} else {
-		hubStatus = cwhub.HubStatus(itemType, "", all)
+	for _, itemType := range itemTypes {
+		if len(args) == 1 {
+			// This means that user requested a specific item by name
+			hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, args[0], all)
+		} else {
+			hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, "", all)
+		}
 	}
 
 	if csConfig.Cscli.Output == "human" {
-
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-		for _, v := range hubStatus {
-			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
+		for itemType, statuses := range hubStatusByItemType {
+			fmt.Println(strings.ToUpper(itemType))
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetCenterSeparator("")
+			table.SetColumnSeparator("")
+			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+			table.SetAlignment(tablewriter.ALIGN_LEFT)
+			table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
+			for _, status := range statuses {
+				table.Append([]string{status.Name, status.UTF8_Status, status.LocalVersion, status.LocalPath})
+			}
+			table.Render()
 		}
-		table.Render()
 	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(hubStatus, "", " ")
+		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
@@ -147,22 +151,24 @@ func ListItem(itemType string, args []string, showType bool, showHeader bool) {
 			}
 
 		}
-		for _, v := range hubStatus {
-			if v["local_version"] == "" {
-				v["local_version"] = "n/a"
-			}
-			row := []string{
-				v["name"],
-				v["status"],
-				v["local_version"],
-				v["description"],
-			}
-			if showType {
-				row = append(row, itemType)
-			}
-			err := csvwriter.Write(row)
-			if err != nil {
-				log.Fatalf("failed to write raw output : %s", err)
+		for itemType, statuses := range hubStatusByItemType {
+			for _, status := range statuses {
+				if status.LocalVersion == "" {
+					status.LocalVersion = "n/a"
+				}
+				row := []string{
+					status.Name,
+					status.Status,
+					status.LocalVersion,
+					status.Description,
+				}
+				if showType {
+					row = append(row, itemType)
+				}
+				err := csvwriter.Write(row)
+				if err != nil {
+					log.Fatalf("failed to write raw output : %s", err)
+				}
 			}
 		}
 		csvwriter.Flush()
