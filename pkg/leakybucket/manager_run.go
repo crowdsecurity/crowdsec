@@ -161,7 +161,6 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	var err error
 
 	sigclosed := 0
-	keymiss := 0
 	failed_sent := 0
 	attempts := 0
 	start := time.Now()
@@ -170,8 +169,8 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		attempts += 1
 		/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
 		if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now()) {
-			holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d keymiss:%d failed_sent:%d attempts:%d)", time.Since(start),
-				buckey, sigclosed, keymiss, failed_sent, attempts)
+			holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d failed_sent:%d attempts:%d)", time.Since(start),
+				buckey, sigclosed, failed_sent, attempts)
 		}
 
 		/* check if leak routine is up */
@@ -246,13 +245,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 
 func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder BucketFactory, expectMode int) (*Leaky, error) {
 
-	keymiss := 0
-
 	biface, ok := buckets.Bucket_map.Load(partitionKey)
 
 	/* the bucket doesn't exist, create it !*/
 	if !ok {
-		keymiss += 1
 		var fresh_bucket *Leaky
 
 		switch expectMode {
