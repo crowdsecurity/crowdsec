@@ -2,7 +2,6 @@ package kinesisacquisition
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -27,7 +26,8 @@ type KinesisConfiguration struct {
 	ShardCount                        int     `yaml:"shard_count"`
 	UseEnhancedFanOut                 bool    `yaml:"use_enhanced_fanout"` //Use RegisterStreamConsumer and SubscribeToShard instead of GetRecords
 	AwsProfile                        *string `yaml:"aws_profile"`
-	AwsRegion                         *string `yaml:"aws_region"`
+	AwsRegion                         string  `yaml:"aws_region"`
+	AwsEndpoint                       string  `yaml:"aws_endpoint"`
 	ShardsRefreshInterval             int     `yaml:"shards_refresh_interval"`
 	ConsumerName                      string  `yaml:"consumer_name"`
 }
@@ -37,6 +37,13 @@ type KinesisSource struct {
 	logger          *log.Entry
 	kClient         *kinesis.Kinesis
 	shardReaderTomb *tomb.Tomb
+}
+
+type ShardClosedError struct {
+}
+
+func (e ShardClosedError) Error() string {
+	return "Shard is closed"
 }
 
 func (k *KinesisSource) newClient() error {
@@ -56,12 +63,14 @@ func (k *KinesisSource) newClient() error {
 	if sess == nil {
 		return fmt.Errorf("failed to create aws session")
 	}
-	if v := os.Getenv("AWS_ENDPOINT_FORCE"); v != "" {
-		k.logger.Debugf("[testing] overloading endpoint with %s", v)
-		k.kClient = kinesis.New(sess, aws.NewConfig().WithEndpoint(v))
-	} else {
-		k.kClient = kinesis.New(sess)
+	config := aws.NewConfig()
+	if k.Config.AwsRegion != "" {
+		config = config.WithRegion(k.Config.AwsRegion)
 	}
+	if k.Config.AwsEndpoint != "" {
+		config = config.WithEndpoint(k.Config.AwsEndpoint)
+	}
+	k.kClient = kinesis.New(sess, config)
 	if k.kClient == nil {
 		return fmt.Errorf("failed to create kinesis client")
 	}
@@ -170,6 +179,7 @@ func (k *KinesisSource) WaitForConsumerRegistration(consumerARN string) error {
 			return errors.Wrap(err, "Cannot describe stream consumer")
 		}
 		if *describeOutput.ConsumerDescription.ConsumerStatus == "ACTIVE" {
+			k.logger.Infof("Consumer %s is active", consumerARN)
 			return nil
 		}
 		time.Sleep(time.Millisecond * 200 * time.Duration(i+1))
@@ -194,11 +204,12 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 	return streamConsumer, nil
 }
 
-func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event) error {
+func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardId string, streamName string) error {
+	logger := k.logger.WithFields(log.Fields{"shard_id": shardId})
 	for {
 		select {
 		case <-k.shardReaderTomb.Dying():
-			k.logger.Infof("Kinesis subscribed shard reader is dying")
+			logger.Infof("Subscribed shard reader is dying")
 			err := reader.Close()
 			if err != nil {
 				return errors.Wrap(err, "Cannot close kinesis subscribed shard reader")
@@ -206,13 +217,13 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 			return nil
 		case event, ok := <-reader.Events():
 			if !ok {
-				k.logger.Infof("Kinesis subscribed shard reader is closed")
+				logger.Infof("Event chan has been closed")
 				return nil
 			}
 			switch event := event.(type) {
 			case *kinesis.SubscribeToShardEvent:
 				for _, record := range event.Records {
-					k.logger.Infof("Received record %s", record.Data)
+					logger.Infof("Received record %s", record.Data)
 					l := types.Line{}
 					l.Raw = string(record.Data)
 					l.Labels = k.Config.Labels
@@ -224,7 +235,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 					out <- evt
 				}
 			case *kinesis.SubscribeToShardEventStreamUnknownEvent:
-				k.logger.Infof("got an unknown event, what to do ?")
+				logger.Infof("got an unknown event, what to do ?")
 			}
 		}
 	}
@@ -249,7 +260,7 @@ func (k *KinesisSource) SubscribeToShards(arn arn.ARN, streamConsumer *kinesis.R
 			return errors.Wrap(err, "Cannot subscribe to shard")
 		}
 		k.shardReaderTomb.Go(func() error {
-			return k.ReadFromSubscription(r.GetEventStream().Reader, out)
+			return k.ReadFromSubscription(r.GetEventStream().Reader, out, shardId, arn.Resource[7:])
 		})
 	}
 	return nil
@@ -264,6 +275,8 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		return errors.New("Stream ARN does not start with stream/")
 	}
 
+	k.logger = k.logger.WithFields(log.Fields{"stream": parsedARN.Resource[7:]})
+	k.logger.Info("starting kinesis acquisition with enhanced fan-out")
 	err = k.DeregisterConsumer()
 	if err != nil {
 		return errors.Wrap(err, "Cannot deregister consumer")
@@ -284,6 +297,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			k.logger.Infof("Kinesis source is dying")
 			k.shardReaderTomb.Kill(nil)
+			k.shardReaderTomb.Wait()
 			return nil
 		case <-k.shardReaderTomb.Dying():
 			k.logger.Infof("Kinesis subscribed shard reader is dying")
@@ -298,13 +312,13 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 }
 
 func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) error {
-	logger := k.logger.WithFields(log.Fields{"shard": shardId, "stream": k.Config.StreamName})
+	logger := k.logger.WithFields(log.Fields{"shard": shardId})
 	logger.Infof("Starting to read shard")
 	sharIt, err := k.kClient.GetShardIterator(&kinesis.GetShardIteratorInput{ShardId: aws.String(shardId),
 		StreamName:        &k.Config.StreamName,
 		ShardIteratorType: aws.String(kinesis.ShardIteratorTypeLatest)})
 	if err != nil {
-		logger.Error("Cannot get shard iterator")
+		logger.Errorf("Cannot get shard iterator: %s", err)
 		return errors.Wrap(err, "Cannot get shard iterator")
 	}
 	it := sharIt.ShardIterator
@@ -346,6 +360,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 				return nil
 			}
 		case <-k.shardReaderTomb.Dying():
+			logger.Infof("shardReaderTomb is dying, exiting ReadFromShard")
 			ticker.Stop()
 			return nil
 		}
@@ -355,33 +370,43 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 //TODO: Handle KMS
 //TODO: Handle shard closing without exiting (eg, when the user scales up the datastream)
 func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error {
-	shards, err := k.kClient.ListShards(&kinesis.ListShardsInput{
-		StreamName: aws.String(k.Config.StreamName),
-	})
-	if err != nil {
-		return errors.Wrap(err, "Cannot list shards")
-	}
-	for _, shard := range shards.Shards {
-		shardId := *shard.ShardId
-		k.shardReaderTomb.Go(func() error {
-			defer types.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
-			return k.ReadFromShard(out, shardId)
-		})
-	}
+	k.logger = k.logger.WithFields(log.Fields{"stream": k.Config.StreamName})
+	k.logger.Info("starting kinesis acquisition from shards")
 	for {
+		shards, err := k.kClient.ListShards(&kinesis.ListShardsInput{
+			StreamName: aws.String(k.Config.StreamName),
+		})
+		if err != nil {
+			return errors.Wrap(err, "Cannot list shards")
+		}
+		k.shardReaderTomb = &tomb.Tomb{}
+		for _, shard := range shards.Shards {
+			shardId := *shard.ShardId
+			k.shardReaderTomb.Go(func() error {
+				defer types.CatchPanic("crowdsec/acquis/kinesis/streaming/shard")
+				return k.ReadFromShard(out, shardId)
+			})
+		}
 		select {
 		case <-t.Dying():
-			k.logger.Info("[kinesis] dying")
+			k.logger.Info("kinesis source is dying")
+			k.shardReaderTomb.Kill(nil)
+			k.shardReaderTomb.Wait()
 			return nil
 		case <-k.shardReaderTomb.Dying():
-			k.logger.Info("[kinesis] shard dying")
-			return nil
+			reason := k.shardReaderTomb.Err()
+			if reason == nil {
+				k.logger.Infof("All shards have been closed, probably a resharding event, restarting acquisition")
+				continue
+			} else {
+				k.logger.Errorf("Unexpected error from shard reader : %s", reason)
+				return reason
+			}
 		}
 	}
 }
 
 func (k *KinesisSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	k.logger.Info("[kinesis] starting kinesis acquisition")
 	t.Go(func() error {
 		defer types.CatchPanic("crowdsec/acquis/kinesis/streaming")
 		if k.Config.UseEnhancedFanOut {
