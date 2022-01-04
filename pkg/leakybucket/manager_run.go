@@ -252,7 +252,6 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 
 	/* the bucket doesn't exist, create it !*/
 	if !ok {
-		holder.logger.Debugf("Creating bucket %s", partitionKey)
 		keymiss += 1
 		var fresh_bucket *Leaky
 
