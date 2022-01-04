@@ -142,7 +142,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.COLLECTIONS, args, false, true)
+			ListItems([]string{cwhub.COLLECTIONS}, args, false, true)
 		},
 	}
 	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
