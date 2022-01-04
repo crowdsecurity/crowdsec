@@ -206,6 +206,9 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 
 func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardId string, streamName string) error {
 	logger := k.logger.WithFields(log.Fields{"shard_id": shardId})
+	//ghetto sync, kinesis allows to subscribe to a closed shard, which will make the goroutine exit immediately
+	//and we won't be able to start a new one if this is the first one started by the tomb
+	time.Sleep(time.Second)
 	for {
 		select {
 		case <-k.shardReaderTomb.Dying():
@@ -287,12 +290,13 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		return errors.Wrap(err, "Cannot register consumer")
 	}
 
-	err = k.SubscribeToShards(parsedARN, streamConsumer, out)
-	if err != nil {
-		return errors.Wrap(err, "Cannot subscribe to shards")
-	}
-
 	for {
+		k.shardReaderTomb = &tomb.Tomb{}
+
+		err = k.SubscribeToShards(parsedARN, streamConsumer, out)
+		if err != nil {
+			return errors.Wrap(err, "Cannot subscribe to shards")
+		}
 		select {
 		case <-t.Dying():
 			k.logger.Infof("Kinesis source is dying")
@@ -304,9 +308,9 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 			if k.shardReaderTomb.Err() != nil {
 				return k.shardReaderTomb.Err()
 			}
-			//As all goroutines have exited, we cannot call .Go() again, so just recreate the tomb
-			k.shardReaderTomb = &tomb.Tomb{}
-			k.SubscribeToShards(parsedARN, streamConsumer, out)
+			//All goroutines have exited without error, so a resharding event, start again
+			k.logger.Infof("All shards have been closed, probably a resharding event, restarting acquisition.")
+			continue
 		}
 	}
 }
@@ -368,7 +372,6 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 }
 
 //TODO: Handle KMS
-//TODO: Handle shard closing without exiting (eg, when the user scales up the datastream)
 func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error {
 	k.logger = k.logger.WithFields(log.Fields{"stream": k.Config.StreamName})
 	k.logger.Info("starting kinesis acquisition from shards")
@@ -395,13 +398,12 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 			return nil
 		case <-k.shardReaderTomb.Dying():
 			reason := k.shardReaderTomb.Err()
-			if reason == nil {
-				k.logger.Infof("All shards have been closed, probably a resharding event, restarting acquisition")
-				continue
-			} else {
+			if reason != nil {
 				k.logger.Errorf("Unexpected error from shard reader : %s", reason)
 				return reason
 			}
+			k.logger.Infof("All shards have been closed, probably a resharding event, restarting acquisition")
+			continue
 		}
 	}
 }
