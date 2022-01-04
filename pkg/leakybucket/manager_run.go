@@ -264,16 +264,19 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		fresh_bucket.In = make(chan types.Event)
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
-		buckets.Bucket_map.Store(partitionKey, fresh_bucket)
-		holder.tomb.Go(func() error {
-			return LeakRoutine(fresh_bucket)
-		})
-
+		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)
+		if !stored {
+			holder.tomb.Go(func() error {
+				return LeakRoutine(fresh_bucket)
+			})
+			biface = fresh_bucket
+			//once the created goroutine is ready to process event, we can return it
+			<-fresh_bucket.Signal
+		} else {
+			holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
+			biface = actual
+		}
 		holder.logger.Debugf("Created new bucket %s", partitionKey)
-
-		//once the created goroutine is ready to process event, we can return it
-		<-fresh_bucket.Signal
-		biface = fresh_bucket
 	}
 	return biface.(*Leaky), nil
 }
