@@ -1,7 +1,11 @@
 package kinesisacquisition
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"time"
 
@@ -12,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -30,6 +35,7 @@ type KinesisConfiguration struct {
 	AwsEndpoint                       string  `yaml:"aws_endpoint"`
 	ShardsRefreshInterval             int     `yaml:"shards_refresh_interval"`
 	ConsumerName                      string  `yaml:"consumer_name"`
+	FromSubscription                  bool    `yaml:"from_subscription"`
 }
 
 type KinesisSource struct {
@@ -39,11 +45,19 @@ type KinesisSource struct {
 	shardReaderTomb *tomb.Tomb
 }
 
-type ShardClosedError struct {
+type CloudWatchSubscriptionRecord struct {
+	MessageType         string                           `json:"messageType"`
+	Owner               string                           `json:"owner"`
+	LogGroup            string                           `json:"logGroup"`
+	LogStream           string                           `json:"logStream"`
+	SubscriptionFilters []string                         `json:"subscriptionFilters"`
+	LogEvents           []CloudwatchSubscriptionLogEvent `json:"logEvents"`
 }
 
-func (e ShardClosedError) Error() string {
-	return "Shard is closed"
+type CloudwatchSubscriptionLogEvent struct {
+	ID        string `json:"id"`
+	Message   string `json:"message"`
+	Timestamp int64  `json:"timestamp"`
 }
 
 func (k *KinesisSource) newClient() error {
@@ -128,6 +142,28 @@ func (k *KinesisSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) e
 	return nil
 }
 
+func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubscriptionLogEvent, error) {
+	b := bytes.NewBuffer(record)
+	r, err := gzip.NewReader(b)
+
+	if err != nil {
+		k.logger.Error(err)
+		return nil, err
+	}
+	decompressed, err := ioutil.ReadAll(r)
+	if err != nil {
+		k.logger.Error(err)
+		return nil, err
+	}
+	var subscriptionRecord CloudWatchSubscriptionRecord
+	err = json.Unmarshal(decompressed, &subscriptionRecord)
+	if err != nil {
+		k.logger.Error(err)
+		return nil, err
+	}
+	return subscriptionRecord.LogEvents, nil
+}
+
 func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, streamARN string) error {
 	maxTries := 10
 	for i := 0; i < maxTries; i++ {
@@ -204,10 +240,40 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 	return streamConsumer, nil
 }
 
+func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry) {
+	for _, record := range records {
+		var data []CloudwatchSubscriptionLogEvent
+		var err error
+		if k.Config.FromSubscription {
+			//The AWS docs says that the data is base64 encoded
+			//but apparently GetRecords decodes it for us ?
+			data, err = k.decodeFromSubscription(record.Data)
+			if err != nil {
+				logger.Errorf("Cannot decode data: %s", err)
+			}
+		} else {
+			data = []CloudwatchSubscriptionLogEvent{{Message: string(record.Data)}}
+		}
+		for _, event := range data {
+			logger.Infof("got record %s", event.Message)
+			l := types.Line{}
+			l.Raw = event.Message
+			l.Labels = k.Config.Labels
+			l.Time = time.Now()
+			l.Process = true
+			l.Module = k.GetName()
+			//linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
+			out <- evt
+		}
+	}
+}
+
 func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEventStreamReader, out chan types.Event, shardId string, streamName string) error {
 	logger := k.logger.WithFields(log.Fields{"shard_id": shardId})
 	//ghetto sync, kinesis allows to subscribe to a closed shard, which will make the goroutine exit immediately
 	//and we won't be able to start a new one if this is the first one started by the tomb
+	//TODO: look into parent shards to see if a shard is closed before starting to read it ?
 	time.Sleep(time.Second)
 	for {
 		select {
@@ -225,18 +291,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 			}
 			switch event := event.(type) {
 			case *kinesis.SubscribeToShardEvent:
-				for _, record := range event.Records {
-					logger.Infof("Received record %s", record.Data)
-					l := types.Line{}
-					l.Raw = string(record.Data)
-					l.Labels = k.Config.Labels
-					l.Time = time.Now()
-					l.Process = true
-					l.Module = k.GetName()
-					//linesRead.With(prometheus.Labels{"source": j.src}).Inc()
-					evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
-					out <- evt
-				}
+				k.ParseAndPushRecords(event.Records, out, logger)
 			case *kinesis.SubscribeToShardEventStreamUnknownEvent:
 				logger.Infof("got an unknown event, what to do ?")
 			}
@@ -347,18 +402,8 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 					return errors.Wrap(err, "Cannot get records")
 				}
 			}
-			for _, record := range records.Records {
-				logger.Infof("got record %s", record.Data)
-				l := types.Line{}
-				l.Raw = string(record.Data)
-				l.Labels = k.Config.Labels
-				l.Time = time.Now()
-				l.Process = true
-				l.Module = k.GetName()
-				//linesRead.With(prometheus.Labels{"source": j.src}).Inc()
-				evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
-				out <- evt
-			}
+			k.ParseAndPushRecords(records.Records, out, logger)
+
 			if it == nil {
 				logger.Warnf("Shard has been closed")
 				return nil
@@ -379,6 +424,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 		shards, err := k.kClient.ListShards(&kinesis.ListShardsInput{
 			StreamName: aws.String(k.Config.StreamName),
 		})
+		spew.Dump(shards)
 		if err != nil {
 			return errors.Wrap(err, "Cannot list shards")
 		}
