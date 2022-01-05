@@ -28,12 +28,10 @@ type KinesisConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	StreamName                        string  `yaml:"stream_name"`
 	StreamARN                         string  `yaml:"stream_arn"`
-	ShardCount                        int     `yaml:"shard_count"`
 	UseEnhancedFanOut                 bool    `yaml:"use_enhanced_fanout"` //Use RegisterStreamConsumer and SubscribeToShard instead of GetRecords
 	AwsProfile                        *string `yaml:"aws_profile"`
 	AwsRegion                         string  `yaml:"aws_region"`
 	AwsEndpoint                       string  `yaml:"aws_endpoint"`
-	ShardsRefreshInterval             int     `yaml:"shards_refresh_interval"`
 	ConsumerName                      string  `yaml:"consumer_name"`
 	FromSubscription                  bool    `yaml:"from_subscription"`
 }
