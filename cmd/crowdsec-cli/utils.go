@@ -306,11 +306,25 @@ func InspectItem(name string, objecitemType string) {
 	if hubItem == nil {
 		log.Fatalf("unable to retrieve item.")
 	}
-	buff, err := yaml.Marshal(*hubItem)
-	if err != nil {
-		log.Fatalf("unable to marshal item : %s", err)
+	var b []byte
+	var err error
+	switch csConfig.Cscli.Output {
+	case "human":
+		b, err = yaml.Marshal(*hubItem)
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
+	case "json":
+		b, err = json.MarshalIndent(*hubItem, "", " ")
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
 	}
-	fmt.Printf("%s", string(buff))
+	fmt.Printf("%s", string(b))
+	if csConfig.Cscli.Output == "json" {
+		return
+	}
+
 	if csConfig.Prometheus.Enabled {
 		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
 			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
