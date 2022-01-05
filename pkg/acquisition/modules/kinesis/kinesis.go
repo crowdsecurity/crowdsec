@@ -125,7 +125,7 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 }
 
 func (k *KinesisSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
-	return nil
+	return fmt.Errorf("kinesis datasource does not support command-line acquisition")
 }
 
 func (k *KinesisSource) GetMode() string {
@@ -137,7 +137,7 @@ func (k *KinesisSource) GetName() string {
 }
 
 func (k *KinesisSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	return nil
+	return fmt.Errorf("kinesis datasource does not support one-shot acquisition")
 }
 
 func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubscriptionLogEvent, error) {
