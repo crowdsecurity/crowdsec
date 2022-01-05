@@ -22,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -266,10 +265,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 }
 
 func main() {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
 
 	defer types.CatchPanic("crowdsec/main")
 
