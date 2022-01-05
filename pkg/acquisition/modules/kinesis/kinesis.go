@@ -16,7 +16,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -422,7 +421,6 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 		shards, err := k.kClient.ListShards(&kinesis.ListShardsInput{
 			StreamName: aws.String(k.Config.StreamName),
 		})
-		spew.Dump(shards)
 		if err != nil {
 			return errors.Wrap(err, "Cannot list shards")
 		}
