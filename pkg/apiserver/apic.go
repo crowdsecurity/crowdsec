@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -277,17 +276,9 @@ func (a *apic) PullTop() error {
 	for _, decision := range data.Deleted {
 		//count individual deletions
 		if *decision.Origin == SCOPE_CAPI {
-			if _, ok := delete_counters[SCOPE_CAPI][*decision.Scenario]; ok {
-				delete_counters[SCOPE_CAPI][*decision.Scenario]++
-			} else {
-				delete_counters[SCOPE_CAPI][*decision.Scenario] = 1
-			}
+			delete_counters[SCOPE_CAPI][*decision.Scenario]++
 		} else if *decision.Origin == SCOPE_LISTS {
-			if _, ok := delete_counters[SCOPE_LISTS][*decision.Scenario]; ok {
-				delete_counters[SCOPE_LISTS][*decision.Scenario]++
-			} else {
-				delete_counters[SCOPE_LISTS][*decision.Scenario] = 1
-			}
+			delete_counters[SCOPE_LISTS][*decision.Scenario]++
 		} else {
 			log.Warningf("Unknown origin %s", *decision.Origin)
 		}
@@ -318,18 +309,18 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	//let's process X chunks of decisions : CAPI and lists subscriptions
+	//we receive only one list of decisions, that we need to break-up :
+	// one alert for "community blocklist"
+	// one alert per list we're subscribed to
 	var alertsFromCapi []*models.Alert
 	alertsFromCapi = make([]*models.Alert, 0)
 
-	//iterate over new decisions, and create :
-	// one alert for all CAPI (community-blocklist) decisions
-	// one alert per individual list subscription
+	//iterate over all new decisions, and simply create corresponding alerts
 	for _, decision := range data.New {
 		found := false
 		for _, sub := range alertsFromCapi {
 			if sub.Source.Scope == nil {
-				log.Warningf("nil scope in %s", spew.Sdump(sub))
+				log.Warningf("nil scope in %+v", sub)
 				continue
 			}
 			if *decision.Origin == SCOPE_CAPI {
@@ -340,16 +331,15 @@ func (a *apic) PullTop() error {
 			} else if *decision.Origin == SCOPE_LISTS {
 				if *sub.Source.Scope == *decision.Origin {
 					if sub.Scenario == nil {
-						log.Warningf("nil scenario in %s", spew.Sdump(sub))
+						log.Warningf("nil scenario in %+v", sub)
 					}
 					if *sub.Scenario == *decision.Scenario {
 						found = true
 						break
 					}
 				}
-
 			} else {
-				log.Warningf("unknown origin %s : %s", *decision.Origin, spew.Sdump(decision))
+				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
 			}
 		}
 		if !found {
@@ -380,20 +370,13 @@ func (a *apic) PullTop() error {
 		}
 	}
 
+	//iterate a second time and fill the alerts with the new decisions
 	for _, decision := range data.New {
 		//count and create separate alerts for each list
 		if *decision.Origin == SCOPE_CAPI {
-			if _, ok := add_counters[SCOPE_CAPI]["all"]; ok {
-				add_counters[SCOPE_CAPI]["all"]++
-			} else {
-				add_counters[SCOPE_CAPI]["all"] = 1
-			}
+			add_counters[SCOPE_CAPI]["all"]++
 		} else if *decision.Origin == SCOPE_LISTS {
-			if _, ok := add_counters[SCOPE_LISTS][*decision.Scenario]; ok {
-				add_counters[SCOPE_LISTS][*decision.Scenario]++
-			} else {
-				add_counters[SCOPE_LISTS][*decision.Scenario] = 1
-			}
+			add_counters[SCOPE_LISTS][*decision.Scenario]++
 		} else {
 			log.Warningf("Unknown origin %s", *decision.Origin)
 		}
