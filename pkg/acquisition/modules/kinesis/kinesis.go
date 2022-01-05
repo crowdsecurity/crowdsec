@@ -328,7 +328,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		return errors.Wrap(err, "Cannot parse stream ARN")
 	}
 	if !strings.HasPrefix(parsedARN.Resource, "stream/") {
-		return errors.New("Stream ARN does not start with stream/")
+		return fmt.Errorf("Resource part of stream ARN %s does not start with stream/", k.Config.StreamARN)
 	}
 
 	k.logger = k.logger.WithFields(log.Fields{"stream": parsedARN.Resource[7:]})
