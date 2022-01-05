@@ -309,7 +309,7 @@ func InspectItem(name string, objecitemType string) {
 	var b []byte
 	var err error
 	switch csConfig.Cscli.Output {
-	case "human":
+	case "human", "raw":
 		b, err = yaml.Marshal(*hubItem)
 		if err != nil {
 			log.Fatalf("unable to marshal item : %s", err)
@@ -321,7 +321,7 @@ func InspectItem(name string, objecitemType string) {
 		}
 	}
 	fmt.Printf("%s", string(b))
-	if csConfig.Cscli.Output == "json" {
+	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
 		return
 	}
 

@@ -31,8 +31,8 @@ var HubBranch = "master"
 var HubIndexFile = ".index.json"
 
 type ItemVersion struct {
-	Digest     string
-	Deprecated bool
+	Digest     string `json:"digest,omitempty"`
+	Deprecated bool   `json:"deprecated,omitempty"`
 }
 
 type ItemHubStatus struct {
@@ -47,38 +47,38 @@ type ItemHubStatus struct {
 //Item can be : parsed, scenario, collection
 type Item struct {
 	/*descriptive info*/
-	Type                 string   `yaml:"type,omitempty"`                         //parser|postoverflows|scenario|collection(|enrich)
-	Stage                string   `json:"stage" yaml:"stage,omitempty,omitempty"` //Stage for parser|postoverflow : s00-raw/s01-...
-	Name                 string   //as seen in .config.json, usually "author/name"
-	FileName             string   //the filename, ie. apache2-logs.yaml
-	Description          string   `yaml:"description,omitempty"`            //as seen in .config.json
-	Author               string   `json:"author"`                           //as seen in .config.json
-	References           []string `yaml:"references,omitempty"`             //as seen in .config.json
-	BelongsToCollections []string `yaml:"belongs_to_collections,omitempty"` /*if it's part of collections, track name here*/
+	Type                 string   `yaml:"type,omitempty" json:"type,omitempty"`                                     //parser|postoverflows|scenario|collection(|enrich)
+	Stage                string   `json:"stage,omitempty" yaml:"stage,omitempty,omitempty"`                         //Stage for parser|postoverflow : s00-raw/s01-...
+	Name                 string   `json:"name,omitempty"`                                                           //as seen in .config.json, usually "author/name"
+	FileName             string   `json:"file_name,omitempty"`                                                      //the filename, ie. apache2-logs.yaml
+	Description          string   `yaml:"description,omitempty" json:"description,omitempty"`                       //as seen in .config.json
+	Author               string   `json:"author,omitempty"`                                                         //as seen in .config.json
+	References           []string `yaml:"references,omitempty" json:"references,omitempty"`                         //as seen in .config.json
+	BelongsToCollections []string `yaml:"belongs_to_collections,omitempty" json:"belongs_to_collections,omitempty"` /*if it's part of collections, track name here*/
 
 	/*remote (hub) infos*/
-	RemoteURL  string                 `yaml:"remoteURL,omitempty"`               //the full remote uri of file in http
-	RemotePath string                 `json:"path" yaml:"remote_path,omitempty"` //the path relative to git ie. /parsers/stage/author/file.yaml
-	RemoteHash string                 `yaml:"hash,omitempty"`                    //the meow
-	Version    string                 `json:"version"`                           //the last version
-	Versions   map[string]ItemVersion `json:"versions" yaml:"-"`                 //the list of existing versions
+	RemoteURL  string                 `yaml:"remoteURL,omitempty" json:"remoteURL,omitempty"` //the full remote uri of file in http
+	RemotePath string                 `json:"path,omitempty" yaml:"remote_path,omitempty"`    //the path relative to git ie. /parsers/stage/author/file.yaml
+	RemoteHash string                 `yaml:"hash,omitempty" json:"hash,omitempty"`           //the meow
+	Version    string                 `json:"version,omitempty"`                              //the last version
+	Versions   map[string]ItemVersion `json:"versions,omitempty" yaml:"-"`                    //the list of existing versions
 
 	/*local (deployed) infos*/
-	LocalPath string `yaml:"local_path,omitempty"` //the local path relative to ${CFG_DIR}
+	LocalPath string `yaml:"local_path,omitempty" json:"local_path,omitempty"` //the local path relative to ${CFG_DIR}
 	//LocalHubPath string
-	LocalVersion string
-	LocalHash    string //the local meow
-	Installed    bool
-	Downloaded   bool
-	UpToDate     bool
-	Tainted      bool //has it been locally modified
-	Local        bool //if it's a non versioned control one
+	LocalVersion string `json:"local_version,omitempty"`
+	LocalHash    string `json:"local_hash,omitempty"` //the local meow
+	Installed    bool   `json:"installed,omitempty"`
+	Downloaded   bool   `json:"downloaded,omitempty"`
+	UpToDate     bool   `json:"up_to_date,omitempty"`
+	Tainted      bool   `json:"tainted,omitempty"` //has it been locally modified
+	Local        bool   `json:"local,omitempty"`   //if it's a non versioned control one
 
 	/*if it's a collection, it not a single file*/
-	Parsers       []string `yaml:"parsers,omitempty"`
-	PostOverflows []string `yaml:"postoverflows,omitempty"`
-	Scenarios     []string `yaml:"scenarios,omitempty"`
-	Collections   []string `yaml:"collections,omitempty"`
+	Parsers       []string `yaml:"parsers,omitempty" json:"parsers,omitempty"`
+	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
+	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
+	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
