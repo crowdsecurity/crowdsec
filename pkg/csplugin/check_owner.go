@@ -1,4 +1,4 @@
-// +build linux
+// +build linux freebsd netbsd openbsd solaris !windows
 
 package csplugin
 
@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io/fs"
 	"os/user"
-	"github.com/pkg/errors"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 func CheckOwner(details fs.FileInfo, path string) error {
