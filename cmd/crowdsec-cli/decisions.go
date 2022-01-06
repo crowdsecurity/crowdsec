@@ -54,6 +54,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	}
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
+		csvwriter.Comma = ';'
 		err := csvwriter.Write([]string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"})
 		if err != nil {
 			return err
