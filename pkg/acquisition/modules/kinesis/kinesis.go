@@ -33,6 +33,7 @@ type KinesisConfiguration struct {
 	AwsEndpoint                       string  `yaml:"aws_endpoint"`
 	ConsumerName                      string  `yaml:"consumer_name"`
 	FromSubscription                  bool    `yaml:"from_subscription"`
+	MaxRetries                        int     `yaml:"max_retries"`
 }
 
 type KinesisSource struct {
@@ -127,6 +128,9 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	if k.Config.StreamARN != "" && k.Config.StreamName != "" {
 		return fmt.Errorf("stream_arn and stream_name are mutually exclusive")
 	}
+	if k.Config.MaxRetries <= 0 {
+		k.Config.MaxRetries = 10
+	}
 	err = k.newClient()
 	if err != nil {
 		return errors.Wrap(err, "Cannot create kinesis client")
@@ -174,7 +178,7 @@ func (k *KinesisSource) decodeFromSubscription(record []byte) ([]CloudwatchSubsc
 }
 
 func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, streamARN string) error {
-	maxTries := 10
+	maxTries := k.Config.MaxRetries
 	for i := 0; i < maxTries; i++ {
 		_, err := k.kClient.DescribeStreamConsumer(&kinesis.DescribeStreamConsumerInput{
 			ConsumerName: aws.String(consumerName),
@@ -215,7 +219,7 @@ func (k *KinesisSource) DeregisterConsumer() error {
 }
 
 func (k *KinesisSource) WaitForConsumerRegistration(consumerARN string) error {
-	maxTries := 10
+	maxTries := k.Config.MaxRetries
 	for i := 0; i < maxTries; i++ {
 		describeOutput, err := k.kClient.DescribeStreamConsumer(&kinesis.DescribeStreamConsumerInput{
 			ConsumerARN: aws.String(consumerARN),
@@ -349,7 +353,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		return errors.Wrap(err, "Cannot parse stream ARN")
 	}
 	if !strings.HasPrefix(parsedARN.Resource, "stream/") {
-		return fmt.Errorf("Resource part of stream ARN %s does not start with stream/", k.Config.StreamARN)
+		return fmt.Errorf("resource part of stream ARN %s does not start with stream/", k.Config.StreamARN)
 	}
 
 	k.logger = k.logger.WithFields(log.Fields{"stream": parsedARN.Resource[7:]})
