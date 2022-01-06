@@ -120,8 +120,8 @@ func TestMain(m *testing.M) {
 	os.Setenv("AWS_ACCESS_KEY_ID", "foobar")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "foobar")
 
-	delete_streams()
-	create_streams()
+	//delete_streams()
+	//create_streams()
 	code := m.Run()
 	//delete_streams()
 	os.Exit(code)
@@ -261,7 +261,8 @@ stream_name: stream-2-shards`,
 	}
 }
 
-/*func TestSubscribeToStream(t *testing.T) {
+/*
+func TestSubscribeToStream(t *testing.T) {
 	tests := []struct {
 		config string
 		count  int

@@ -9,7 +9,8 @@ env:
   AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY 
   AWS_REGION: us-east-1 
   #and to override our endpoint in aws sdk
-  AWS_ENDPOINT_FORCE: http://localhost:4566 
+  AWS_ENDPOINT_FORCE: http://localhost:4566
+  KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2" 
 
 on:
   push:
