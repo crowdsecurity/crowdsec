@@ -31,6 +31,7 @@ var apiURL string
 var outputFile string
 var forceAdd bool
 var autoAdd bool
+var print bool
 
 var (
 	passwordLength = 64
@@ -256,7 +257,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err != nil {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
-			if dumpFile != "" {
+			if dumpFile != "" && dumpFile != "-" {
 				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
