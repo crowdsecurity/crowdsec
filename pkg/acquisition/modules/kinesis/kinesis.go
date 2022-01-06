@@ -57,6 +57,14 @@ type CloudwatchSubscriptionLogEvent struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_kinesis_stream_hits_total",
+		Help: "Number of event read from stream.",
+	},
+	[]string{"stream", "shard"},
+)
+
 func (k *KinesisSource) newClient() error {
 	var sess *session.Session
 
@@ -89,10 +97,11 @@ func (k *KinesisSource) newClient() error {
 }
 
 func (k *KinesisSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
+
 }
 func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
@@ -114,6 +123,9 @@ func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	}
 	if k.Config.ConsumerName == "" && k.Config.UseEnhancedFanOut {
 		return fmt.Errorf("consumer_name is mandatory when use_enhanced_fanout is true")
+	}
+	if k.Config.StreamARN != "" && k.Config.StreamName != "" {
+		return fmt.Errorf("stream_arn and stream_name are mutually exclusive")
 	}
 	err = k.newClient()
 	if err != nil {
@@ -237,8 +249,13 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 	return streamConsumer, nil
 }
 
-func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry) {
+func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardId string) {
 	for _, record := range records {
+		if k.Config.StreamARN != "" {
+			linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+		} else {
+			linesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+		}
 		var data []CloudwatchSubscriptionLogEvent
 		var err error
 		if k.Config.FromSubscription {
@@ -260,7 +277,11 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			l.Time = time.Now()
 			l.Process = true
 			l.Module = k.GetName()
-			//linesRead.With(prometheus.Labels{"source": j.src}).Inc()
+			if k.Config.StreamARN != "" {
+				l.Src = k.Config.StreamARN
+			} else {
+				l.Src = k.Config.StreamName
+			}
 			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
 			out <- evt
 		}
@@ -289,7 +310,7 @@ func (k *KinesisSource) ReadFromSubscription(reader kinesis.SubscribeToShardEven
 			}
 			switch event := event.(type) {
 			case *kinesis.SubscribeToShardEvent:
-				k.ParseAndPushRecords(event.Records, out, logger)
+				k.ParseAndPushRecords(event.Records, out, logger, shardId)
 			case *kinesis.SubscribeToShardEventStreamUnknownEvent:
 				logger.Infof("got an unknown event, what to do ?")
 			}
@@ -404,7 +425,7 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 					return errors.Wrap(err, "Cannot get records")
 				}
 			}
-			k.ParseAndPushRecords(records.Records, out, logger)
+			k.ParseAndPushRecords(records.Records, out, logger, shardId)
 
 			if it == nil {
 				logger.Warnf("Shard has been closed")

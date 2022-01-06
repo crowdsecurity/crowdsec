@@ -152,6 +152,13 @@ use_enhanced_fanout: true
 stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 			expectedErr: "consumer_name is mandatory when use_enhanced_fanout is true",
 		},
+		{
+			config: `
+source: kinesis
+stream_name: foobar
+stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
+			expectedErr: "stream_arn and stream_name are mutually exclusive",
+		},
 	}
 
 	subLogger := log.WithFields(log.Fields{
@@ -207,6 +214,8 @@ stream_name: stream-1-shard`,
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
 		}
+		tomb.Kill(nil)
+		tomb.Wait()
 	}
 }
 
@@ -250,6 +259,8 @@ stream_name: stream-2-shards`,
 			c += 1
 		}
 		assert.Equal(t, test.count, c)
+		tomb.Kill(nil)
+		tomb.Wait()
 	}
 }
 
