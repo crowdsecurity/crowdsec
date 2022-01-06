@@ -173,7 +173,7 @@ func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, strea
 			case *kinesis.ResourceNotFoundException:
 				return nil
 			default:
-				k.logger.Infof("Error while waiting for consumer deregistration: %s", err)
+				k.logger.Errorf("Error while waiting for consumer deregistration: %s", err)
 				return errors.Wrap(err, "Cannot describe stream consumer")
 			}
 		}
@@ -183,7 +183,7 @@ func (k *KinesisSource) WaitForConsumerDeregistration(consumerName string, strea
 }
 
 func (k *KinesisSource) DeregisterConsumer() error {
-	k.logger.Infof("Deregistering consumer %s if it exists", k.Config.ConsumerName)
+	k.logger.Debugf("Deregistering consumer %s if it exists", k.Config.ConsumerName)
 	_, err := k.kClient.DeregisterStreamConsumer(&kinesis.DeregisterStreamConsumerInput{
 		ConsumerName: aws.String(k.Config.ConsumerName),
 		StreamARN:    aws.String(k.Config.StreamARN),
@@ -212,17 +212,17 @@ func (k *KinesisSource) WaitForConsumerRegistration(consumerARN string) error {
 			return errors.Wrap(err, "Cannot describe stream consumer")
 		}
 		if *describeOutput.ConsumerDescription.ConsumerStatus == "ACTIVE" {
-			k.logger.Infof("Consumer %s is active", consumerARN)
+			k.logger.Debugf("Consumer %s is active", consumerARN)
 			return nil
 		}
 		time.Sleep(time.Millisecond * 200 * time.Duration(i+1))
-		k.logger.Infof("Waiting for consumer registration %d", i)
+		k.logger.Debugf("Waiting for consumer registration %d", i)
 	}
 	return fmt.Errorf("consumer %s is not active after %d tries", consumerARN, maxTries)
 }
 
 func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutput, error) {
-	k.logger.Infof("Registering consumer %s", k.Config.ConsumerName)
+	k.logger.Debugf("Registering consumer %s", k.Config.ConsumerName)
 	streamConsumer, err := k.kClient.RegisterStreamConsumer(&kinesis.RegisterStreamConsumerInput{
 		ConsumerName: aws.String(k.Config.ConsumerName),
 		StreamARN:    aws.String(k.Config.StreamARN),
@@ -247,12 +247,13 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			data, err = k.decodeFromSubscription(record.Data)
 			if err != nil {
 				logger.Errorf("Cannot decode data: %s", err)
+				continue
 			}
 		} else {
 			data = []CloudwatchSubscriptionLogEvent{{Message: string(record.Data)}}
 		}
 		for _, event := range data {
-			logger.Infof("got record %s", event.Message)
+			logger.Tracef("got record %s", event.Message)
 			l := types.Line{}
 			l.Raw = event.Message
 			l.Labels = k.Config.Labels
@@ -373,7 +374,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 
 func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) error {
 	logger := k.logger.WithFields(log.Fields{"shard": shardId})
-	logger.Infof("Starting to read shard")
+	logger.Debugf("Starting to read shard")
 	sharIt, err := k.kClient.GetShardIterator(&kinesis.GetShardIteratorInput{ShardId: aws.String(shardId),
 		StreamName:        &k.Config.StreamName,
 		ShardIteratorType: aws.String(kinesis.ShardIteratorTypeLatest)})
