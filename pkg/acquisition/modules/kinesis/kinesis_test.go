@@ -45,19 +45,13 @@ func createAndWaitForStream(streamName string, shards int64) {
 		log.Fatal(err)
 	}
 	fmt.Printf("Waiting for stream %s to be created\n", streamName)
-	/*	for {
-		a, err := kinesisClient.DescribeStream(&kinesis.DescribeStreamInput{
-			StreamName: aws.String(streamName),
-		})
-		if err != nil {
-			fmt.Printf("Error describing stream: %s\n", err)
-			log.Fatal(err)
-		}
-		spew.Dump(a)
-	}*/
-	kinesisClient.WaitUntilStreamExists(&kinesis.DescribeStreamInput{
+
+	err = kinesisClient.WaitUntilStreamExists(&kinesis.DescribeStreamInput{
 		StreamName: aws.String(streamName),
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func deleteAndWaitForStream(streamName string) {
@@ -80,9 +74,12 @@ func deleteAndWaitForStream(streamName string) {
 			return
 		}
 	}
-	kinesisClient.WaitUntilStreamNotExists(&kinesis.DescribeStreamInput{
+	err = kinesisClient.WaitUntilStreamNotExists(&kinesis.DescribeStreamInput{
 		StreamName: aws.String(streamName),
 	})
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func create_streams() {

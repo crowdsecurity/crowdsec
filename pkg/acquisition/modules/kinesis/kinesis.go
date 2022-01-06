@@ -379,7 +379,7 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			k.logger.Infof("Kinesis source is dying")
 			k.shardReaderTomb.Kill(nil)
-			k.shardReaderTomb.Wait()
+			_ = k.shardReaderTomb.Wait() //we don't care about the error as we kill the tomb ourselves
 			err = k.DeregisterConsumer()
 			if err != nil {
 				return errors.Wrap(err, "Cannot deregister consumer")
@@ -466,7 +466,7 @@ func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error
 		case <-t.Dying():
 			k.logger.Info("kinesis source is dying")
 			k.shardReaderTomb.Kill(nil)
-			k.shardReaderTomb.Wait()
+			_ = k.shardReaderTomb.Wait() //we don't care about the error as we kill the tomb ourselves
 			return nil
 		case <-k.shardReaderTomb.Dying():
 			reason := k.shardReaderTomb.Err()
