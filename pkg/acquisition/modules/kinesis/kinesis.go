@@ -361,12 +361,12 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 			}
 			return nil
 		case <-k.shardReaderTomb.Dying():
-			k.logger.Infof("Kinesis subscribed shard reader is dying")
+			k.logger.Debugf("Kinesis subscribed shard reader is dying")
 			if k.shardReaderTomb.Err() != nil {
 				return k.shardReaderTomb.Err()
 			}
 			//All goroutines have exited without error, so a resharding event, start again
-			k.logger.Infof("All shards have been closed, probably a resharding event, restarting acquisition.")
+			k.logger.Debugf("All reader goroutines have exited, resharding event or periodic resubscribe")
 			continue
 		}
 	}
