@@ -3,7 +3,7 @@ name: tests
 #those env variables are for localstack, so we can emulate aws services
 env:
   AWS_HOST: localstack
-  SERVICES: cloudwatch,logs 
+  SERVICES: cloudwatch,logs,kinesis
   #those are to mimic aws config
   AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE 
   AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY 
