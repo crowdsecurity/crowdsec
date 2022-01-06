@@ -253,7 +253,7 @@ stream_name: stream-2-shards`,
 	}
 }
 
-func TestSubscribeToStream(t *testing.T) {
+/*func TestSubscribeToStream(t *testing.T) {
 	tests := []struct {
 		config string
 		count  int
@@ -295,3 +295,4 @@ use_enhanced_fanout: true`,
 		}
 	}
 }
+*/
