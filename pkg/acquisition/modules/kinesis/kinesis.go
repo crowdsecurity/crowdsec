@@ -354,6 +354,10 @@ func (k *KinesisSource) EnhancedRead(out chan types.Event, t *tomb.Tomb) error {
 			k.logger.Infof("Kinesis source is dying")
 			k.shardReaderTomb.Kill(nil)
 			k.shardReaderTomb.Wait()
+			err = k.DeregisterConsumer()
+			if err != nil {
+				return errors.Wrap(err, "Cannot deregister consumer")
+			}
 			return nil
 		case <-k.shardReaderTomb.Dying():
 			k.logger.Infof("Kinesis subscribed shard reader is dying")
