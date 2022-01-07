@@ -31,7 +31,6 @@ var apiURL string
 var outputFile string
 var forceAdd bool
 var autoAdd bool
-var print bool
 
 var (
 	passwordLength = 64
