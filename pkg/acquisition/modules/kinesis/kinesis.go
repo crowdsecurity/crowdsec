@@ -443,7 +443,6 @@ func (k *KinesisSource) ReadFromShard(out chan types.Event, shardId string) erro
 	}
 }
 
-//TODO: Handle KMS
 func (k *KinesisSource) ReadFromStream(out chan types.Event, t *tomb.Tomb) error {
 	k.logger = k.logger.WithFields(log.Fields{"stream": k.Config.StreamName})
 	k.logger.Info("starting kinesis acquisition from shards")

@@ -1,6 +1,9 @@
 package kinesisacquisition
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	"net"
 	"os"
@@ -29,70 +32,35 @@ func getLocalStackEndpoint() (string, error) {
 	return endpoint, nil
 }
 
-func createAndWaitForStream(streamName string, shards int64) {
-	endpoint, err := getLocalStackEndpoint()
+func GenSubObject(i int) []byte {
+	r := CloudWatchSubscriptionRecord{
+		MessageType:         "subscription",
+		Owner:               "test",
+		LogGroup:            "test",
+		LogStream:           "test",
+		SubscriptionFilters: []string{"filter1"},
+		LogEvents: []CloudwatchSubscriptionLogEvent{
+			{
+				ID:        "testid",
+				Message:   fmt.Sprintf("%d", i),
+				Timestamp: time.Now().Unix(),
+			},
+		},
+	}
+	body, err := json.Marshal(r)
 	if err != nil {
 		log.Fatal(err)
 	}
-	sess := session.Must(session.NewSession())
-	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
-	_, err = kinesisClient.CreateStream(&kinesis.CreateStreamInput{
-		ShardCount: aws.Int64(shards),
-		StreamName: aws.String(streamName),
-	})
-	if err != nil {
-		fmt.Printf("Error creating stream: %s\n", err)
-		log.Fatal(err)
-	}
-	fmt.Printf("Waiting for stream %s to be created\n", streamName)
-
-	err = kinesisClient.WaitUntilStreamExists(&kinesis.DescribeStreamInput{
-		StreamName: aws.String(streamName),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	var b bytes.Buffer
+	gz := gzip.NewWriter(&b)
+	gz.Write(body)
+	gz.Close()
+	//AWS actually base64 encodes the data, but it looks like kinesis automatically decodes it at some point
+	//localstack does not do it, so let's just write a raw gzipped stream
+	return b.Bytes()
 }
 
-func deleteAndWaitForStream(streamName string) {
-	fmt.Printf("Waiting for stream %s to be deleted\n", streamName)
-	endpoint, err := getLocalStackEndpoint()
-	if err != nil {
-		log.Fatal(err)
-	}
-	sess := session.Must(session.NewSession())
-	kinesisClient := kinesis.New(sess, aws.NewConfig().WithEndpoint(endpoint).WithRegion("us-east-1"))
-	_, err = kinesisClient.DeleteStream(&kinesis.DeleteStreamInput{
-		StreamName: aws.String(streamName),
-	})
-	if err != nil {
-		switch err.(type) {
-		case *kinesis.ResourceNotFoundException:
-			return
-		default:
-			fmt.Printf("Error deleting stream: %s\n", err)
-			return
-		}
-	}
-	err = kinesisClient.WaitUntilStreamNotExists(&kinesis.DescribeStreamInput{
-		StreamName: aws.String(streamName),
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func create_streams() {
-	createAndWaitForStream("stream-1-shard", 1)
-	createAndWaitForStream("stream-2-shards", 2)
-}
-
-func delete_streams() {
-	deleteAndWaitForStream("stream-1-shard")
-	deleteAndWaitForStream("stream-2-shards")
-}
-
-func WriteToStream(streamName string, count int, shards int) {
+func WriteToStream(streamName string, count int, shards int, sub bool) {
 	endpoint, err := getLocalStackEndpoint()
 	if err != nil {
 		log.Fatal(err)
@@ -104,8 +72,14 @@ func WriteToStream(streamName string, count int, shards int) {
 		if shards != 1 {
 			partition = fmt.Sprintf("partition-%d", i%shards)
 		}
+		var data []byte
+		if sub {
+			data = GenSubObject(i)
+		} else {
+			data = []byte(fmt.Sprintf("%d", i))
+		}
 		_, err = kinesisClient.PutRecord(&kinesis.PutRecordInput{
-			Data:         []byte(fmt.Sprintf("%d", i)),
+			Data:         data,
 			PartitionKey: aws.String(partition),
 			StreamName:   aws.String(streamName),
 		})
@@ -206,7 +180,7 @@ stream_name: stream-1-shard`,
 		}
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(f.Config.StreamName, test.count, test.shards)
+		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		for i := 0; i < test.count; i++ {
 			e := <-out
 			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
@@ -249,13 +223,57 @@ stream_name: stream-2-shards`,
 		}
 		//Allow the datasource to start listening to the stream
 		time.Sleep(4 * time.Second)
-		WriteToStream(f.Config.StreamName, test.count, test.shards)
+		WriteToStream(f.Config.StreamName, test.count, test.shards, false)
 		c := 0
 		for i := 0; i < test.count; i++ {
 			<-out
 			c += 1
 		}
 		assert.Equal(t, test.count, c)
+		tomb.Kill(nil)
+		tomb.Wait()
+	}
+}
+
+func TestFromSubscription(t *testing.T) {
+	tests := []struct {
+		config string
+		count  int
+		shards int
+	}{
+		{
+			config: `source: kinesis
+aws_endpoint: %s
+aws_region: us-east-1
+stream_name: stream-1-shard
+from_subscription: true`,
+			count:  10,
+			shards: 1,
+		},
+	}
+	endpoint, _ := getLocalStackEndpoint()
+	for _, test := range tests {
+		f := KinesisSource{}
+		config := fmt.Sprintf(test.config, endpoint)
+		err := f.Configure([]byte(config), log.WithFields(log.Fields{
+			"type": "kinesis",
+		}))
+		if err != nil {
+			t.Fatalf("Error configuring source: %s", err)
+		}
+		tomb := &tomb.Tomb{}
+		out := make(chan types.Event)
+		err = f.StreamingAcquisition(out, tomb)
+		if err != nil {
+			t.Fatalf("Error starting source: %s", err)
+		}
+		//Allow the datasource to start listening to the stream
+		time.Sleep(4 * time.Second)
+		WriteToStream(f.Config.StreamName, test.count, test.shards, true)
+		for i := 0; i < test.count; i++ {
+			e := <-out
+			assert.Equal(t, fmt.Sprintf("%d", i), e.Line.Raw)
+		}
 		tomb.Kill(nil)
 		tomb.Wait()
 	}
