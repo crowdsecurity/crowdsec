@@ -76,7 +76,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	return scenarios, nil
 }
 
-func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool) *models.AddSignalsRequestItem {
+func AlertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignalsRequestItem {
 	signal := &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
