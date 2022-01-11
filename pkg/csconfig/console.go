@@ -20,7 +20,7 @@ const (
 
 var DefaultConsoleConfgFilePath = "/etc/crowdsec/console_config.yaml"
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_LIVE_DECISIONS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_SIMULATED_DECISIONS}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS}
 
 type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
