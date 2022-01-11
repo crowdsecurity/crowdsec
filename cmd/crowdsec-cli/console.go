@@ -8,7 +8,6 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
-	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -30,26 +29,6 @@ func IsInSlice(a string, b []string) bool {
 		}
 	}
 	return false
-}
-
-func FetchScenariosListFromDB() ([]string, error) {
-	scenarios := make([]string, 0)
-	machines, err := dbClient.ListMachines()
-	if err != nil {
-		return nil, fmt.Errorf("while listing machines: %s", err)
-	}
-	//merge all scenarios together
-	for _, v := range machines {
-		machineScenarios := strings.Split(v.Scenarios, ",")
-		log.Debugf("%d scenarios for machine %d", len(machineScenarios), v.ID)
-		for _, sv := range machineScenarios {
-			if !IsInSlice(sv, scenarios) && sv != "" {
-				scenarios = append(scenarios, sv)
-			}
-		}
-	}
-	log.Debugf("Returning list of scenarios : %+v", scenarios)
-	return scenarios, nil
 }
 
 func NewConsoleCmd() *cobra.Command {
