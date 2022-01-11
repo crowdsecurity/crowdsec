@@ -6,7 +6,6 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
-	"strconv"
 	"context"
 
 	"github.com/go-openapi/errors"
@@ -20,15 +19,8 @@ import (
 // swagger:model AddSignalsRequestItem
 type AddSignalsRequestItem struct {
 
-	// alert id
-	// Required: true
-	AlertID *int64 `json:"alert_id"`
-
 	// created at
 	CreatedAt string `json:"created_at,omitempty"`
-
-	// decisions
-	Decisions []*Decision `json:"decisions"`
 
 	// machine id
 	MachineID string `json:"machine_id,omitempty"`
@@ -70,14 +62,6 @@ type AddSignalsRequestItem struct {
 func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
-	if err := m.validateAlertID(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateDecisions(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateMessage(formats); err != nil {
 		res = append(res, err)
 	}
@@ -113,39 +97,6 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *AddSignalsRequestItem) validateAlertID(formats strfmt.Registry) error {
-
-	if err := validate.Required("alert_id", "body", m.AlertID); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *AddSignalsRequestItem) validateDecisions(formats strfmt.Registry) error {
-	if swag.IsZero(m.Decisions) { // not required
-		return nil
-	}
-
-	for i := 0; i < len(m.Decisions); i++ {
-		if swag.IsZero(m.Decisions[i]) { // not required
-			continue
-		}
-
-		if m.Decisions[i] != nil {
-			if err := m.Decisions[i].Validate(formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("decisions" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
 	return nil
 }
 

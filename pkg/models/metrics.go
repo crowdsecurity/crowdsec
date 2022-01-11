@@ -176,60 +176,6 @@ func (m *Metrics) contextValidateMachines(ctx context.Context, formats strfmt.Re
 	return nil
 }
 
-// ContextValidate validate this metrics based on the context it is used
-func (m *Metrics) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
-	var res []error
-
-	if err := m.contextValidateBouncers(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.contextValidateMachines(ctx, formats); err != nil {
-		res = append(res, err)
-	}
-
-	if len(res) > 0 {
-		return errors.CompositeValidationError(res...)
-	}
-	return nil
-}
-
-func (m *Metrics) contextValidateBouncers(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Bouncers); i++ {
-
-		if m.Bouncers[i] != nil {
-			if err := m.Bouncers[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("bouncers" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
-func (m *Metrics) contextValidateMachines(ctx context.Context, formats strfmt.Registry) error {
-
-	for i := 0; i < len(m.Machines); i++ {
-
-		if m.Machines[i] != nil {
-			if err := m.Machines[i].ContextValidate(ctx, formats); err != nil {
-				if ve, ok := err.(*errors.Validation); ok {
-					return ve.ValidateName("machines" + "." + strconv.Itoa(i))
-				}
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
 // MarshalBinary interface implementation
 func (m *Metrics) MarshalBinary() ([]byte, error) {
 	if m == nil {
