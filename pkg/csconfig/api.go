@@ -86,6 +86,7 @@ type LocalApiServerCfg struct {
 	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
 	ConsoleConfigPath      string              `yaml:"console_path,omitempty"`
+	ConsoleConfig          *ConsoleConfig      `yaml:"-"`
 	Profiles               []*ProfileCfg       `yaml:"-"`
 	LogLevel               *log.Level          `yaml:"log_level"`
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`

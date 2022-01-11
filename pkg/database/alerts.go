@@ -91,31 +91,28 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	return retStr
 }
 
-func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, []*models.Alert, error) {
+func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
 	pageStart := 0
 	pageEnd := bulkSize
 	ret := []string{}
-	alertListRet := make([]*models.Alert, 0)
 	for {
 		if pageEnd >= len(alertList) {
-			results, alerts, err := c.CreateAlertBulk(machineID, alertList[pageStart:])
+			results, err := c.CreateAlertBulk(machineID, alertList[pageStart:])
 			if err != nil {
-				return []string{}, alertListRet, fmt.Errorf("unable to create alerts: %s", err)
+				return []string{}, fmt.Errorf("unable to create alerts: %s", err)
 			}
 			ret = append(ret, results...)
-			alertListRet = append(alertListRet, alerts...)
 			break
 		}
-		results, alerts, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd])
+		results, err := c.CreateAlertBulk(machineID, alertList[pageStart:pageEnd])
 		if err != nil {
-			return []string{}, alertListRet, fmt.Errorf("unable to create alerts: %s", err)
+			return []string{}, fmt.Errorf("unable to create alerts: %s", err)
 		}
 		ret = append(ret, results...)
-		alertListRet = append(alertListRet, alerts...)
 		pageStart += bulkSize
 		pageEnd += bulkSize
 	}
-	return ret, alertListRet, nil
+	return ret, nil
 }
 
 /*We can't bulk both the alert and the decision at the same time. With new consensus, we want to bulk a single alert with a lot of decisions.*/
@@ -313,19 +310,19 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		owner, err := c.QueryMachineByID(machineId)
 		if err != nil {
 			if errors.Cause(err) != UserNotExists {
-				return []string{}, alertList, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
+				return []string{}, errors.Wrapf(QueryFail, "machine '%s': %s", alertItem.MachineID, err)
 			}
 			c.Log.Debugf("CreateAlertBulk: Machine Id %s doesn't exist", machineId)
 			owner = nil
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			return []string{}, alertList, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+			return []string{}, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			return []string{}, alertList, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
 		}
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
@@ -341,11 +338,11 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					return []string{}, alertList, errors.Wrapf(ParseTimeFail, "event timestamp '%s' : %s", *eventItem.Timestamp, err)
+					return []string{}, errors.Wrapf(ParseTimeFail, "event timestamp '%s' : %s", *eventItem.Timestamp, err)
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
-					return []string{}, alertList, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+					return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 				}
 
 				//the serialized field is too big, let's try to progressively strip it
@@ -363,7 +360,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 						marshallMetas, err = json.Marshal(eventItem.Meta)
 						if err != nil {
-							return []string{}, alertList, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
+							return []string{}, errors.Wrapf(MarshalFail, "event meta '%v' : %s", eventItem.Meta, err)
 						}
 						if event.SerializedValidator(string(marshallMetas)) == nil {
 							valid = true
@@ -392,7 +389,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			events, err = c.Ent.Event.CreateBulk(eventBulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, alertList, errors.Wrapf(BulkError, "creating alert events: %s", err)
+				return []string{}, errors.Wrapf(BulkError, "creating alert events: %s", err)
 			}
 		}
 
@@ -405,7 +402,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 			metas, err = c.Ent.Meta.CreateBulk(metaBulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, alertList, errors.Wrapf(BulkError, "creating alert meta: %s", err)
+				return []string{}, errors.Wrapf(BulkError, "creating alert meta: %s", err)
 			}
 		}
 
@@ -424,14 +421,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, alertList, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */
 				if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
 					sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
 					if err != nil {
-						return []string{}, alertList, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
+						return []string{}, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
 
@@ -504,7 +501,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		if len(bulk) == bulkSize {
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
-				return []string{}, alertList, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
+				return []string{}, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
 			for alertIndex, a := range alerts {
 				ret = append(ret, strconv.Itoa(a.ID))
@@ -529,7 +526,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
-		return []string{}, alertList, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
+		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
 	for alertIndex, a := range alerts {
@@ -544,15 +541,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 	}
 
-	for i, alertID := range ret {
-		alertIDInt, err := strconv.Atoi(alertID)
-		if err != nil {
-			log.Errorf("unable to convert alert ID '%s' to int: %s", alertID, err)
-		}
-		alertList[i].ID = int64(alertIDInt)
-	}
-
-	return ret, alertList, nil
+	return ret, nil
 }
 
 func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]string) (*ent.AlertQuery, error) {
