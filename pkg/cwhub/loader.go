@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"sort"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
 
@@ -181,7 +180,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			//<type>/<stage>/<author>/<name>.yaml
 			if ftype != DATA_FILES {
 				if !strings.HasSuffix(hubpath, v.RemotePath) {
-					log.Printf("wrong file hubpath=%s  hubIdx[%s]=%s", hubpath, spew.Sdump(v))
+					// log.Printf("wrong file hubpath=%s  hubIdx[%s]=%s", hubpath, spew.Sdump(v))
 					continue
 				}
 			} else {
