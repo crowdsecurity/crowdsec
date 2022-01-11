@@ -50,11 +50,9 @@ func LoadTestConfig() csconfig.Config {
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
 		ConsoleConfig: &csconfig.ConsoleConfig{
-			ShareManualDecisions:    new(bool),
-			ShareTaintedScenarios:   new(bool),
-			ShareCustomScenarios:    new(bool),
-			ShareDecisions:          new(bool),
-			ShareSimulatedDecisions: new(bool),
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
 		},
 	}
 	apiConfig := csconfig.APICfg{
@@ -84,11 +82,9 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		ProfilesPath:           "./tests/profiles.yaml",
 		UseForwardedForHeaders: true,
 		ConsoleConfig: &csconfig.ConsoleConfig{
-			ShareManualDecisions:    new(bool),
-			ShareTaintedScenarios:   new(bool),
-			ShareCustomScenarios:    new(bool),
-			ShareDecisions:          new(bool),
-			ShareSimulatedDecisions: new(bool),
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
 		},
 	}
 	apiConfig := csconfig.APICfg{

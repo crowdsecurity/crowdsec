@@ -31,22 +31,20 @@ const (
 )
 
 type apic struct {
-	pullInterval        time.Duration
-	pushInterval        time.Duration
-	metricsInterval     time.Duration
-	dbClient            *database.Client
-	apiClient           *apiclient.ApiClient
-	alertToPush         chan []*models.Alert
-	mu                  sync.Mutex
-	pushTomb            tomb.Tomb
-	pullTomb            tomb.Tomb
-	metricsTomb         tomb.Tomb
-	deleteDecisionsTomb tomb.Tomb
-	startup             bool
-	credentials         *csconfig.ApiCredentialsCfg
-	scenarioList        []string
-	consoleConfig       *csconfig.ConsoleConfig
-	decisionsToDelete   chan []string
+	pullInterval    time.Duration
+	pushInterval    time.Duration
+	metricsInterval time.Duration
+	dbClient        *database.Client
+	apiClient       *apiclient.ApiClient
+	alertToPush     chan []*models.Alert
+	mu              sync.Mutex
+	pushTomb        tomb.Tomb
+	pullTomb        tomb.Tomb
+	metricsTomb     tomb.Tomb
+	startup         bool
+	credentials     *csconfig.ApiCredentialsCfg
+	scenarioList    []string
+	consoleConfig   *csconfig.ConsoleConfig
 }
 
 func IsInSlice(a string, b []string) bool {
@@ -90,11 +88,6 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
 		ScenarioTrust:   &scenarioTrust,
-		AlertID:         &alert.ID,
-	}
-	if keepDecisions {
-		log.Debugf("Keeping decisions to send to CAPI")
-		signal.Decisions = alert.Decisions
 	}
 	return signal
 }
@@ -102,17 +95,16 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string, keepDecisions bool
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		alertToPush:       make(chan []*models.Alert),
-		dbClient:          dbClient,
-		mu:                sync.Mutex{},
-		startup:           true,
-		credentials:       config.Credentials,
-		pullTomb:          tomb.Tomb{},
-		pushTomb:          tomb.Tomb{},
-		metricsTomb:       tomb.Tomb{},
-		scenarioList:      make([]string, 0),
-		decisionsToDelete: make(chan []string),
-		consoleConfig:     consoleConfig,
+		alertToPush:   make(chan []*models.Alert),
+		dbClient:      dbClient,
+		mu:            sync.Mutex{},
+		startup:       true,
+		credentials:   config.Credentials,
+		pullTomb:      tomb.Tomb{},
+		pushTomb:      tomb.Tomb{},
+		metricsTomb:   tomb.Tomb{},
+		scenarioList:  make([]string, 0),
+		consoleConfig: consoleConfig,
 	}
 
 	ret.pullInterval, err = time.ParseDuration(PullInterval)
@@ -161,7 +153,6 @@ func (a *apic) Push() error {
 		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
-			a.deleteDecisionsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			if len(cache) == 0 {
 				return nil
@@ -215,63 +206,12 @@ func (a *apic) Push() error {
 				}
 
 				log.Infof("Add signals for '%s' alert", scenarioTrust)
-				signals = append(signals, AlertToSignal(alert, scenarioTrust, *a.consoleConfig.ShareDecisions))
+				signals = append(signals, AlertToSignal(alert, scenarioTrust))
 			}
 			a.mu.Lock()
 			cache = append(cache, signals...)
 			a.mu.Unlock()
 		}
-	}
-}
-
-func (a *apic) DeleteDecisions() error {
-	defer types.CatchPanic("lapi/deleteDecisionsCAPI")
-
-	log.Infof("start goroutine for manual deleted decisions")
-
-	for {
-		select {
-		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
-			a.pullTomb.Kill(nil)
-			a.metricsTomb.Kill(nil)
-			a.pushTomb.Kill(nil)
-			return nil
-		case decisions := <-a.decisionsToDelete:
-			go a.SendDeletedDecisions(decisions)
-		}
-	}
-}
-
-func (a *apic) SendDeletedDecisions(deletedDecisions []string) {
-	var send []string
-
-	bulkSize := 50
-	pageStart := 0
-	pageEnd := bulkSize
-
-	for {
-
-		if pageEnd >= len(deletedDecisions) {
-			send = deletedDecisions[pageStart:]
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-			_, _, err := a.apiClient.Decisions.DeleteManualDecisions(ctx, send)
-			if err != nil {
-				log.Errorf("Error while sending final chunk to central API : %s", err)
-				return
-			}
-			break
-		}
-		send = deletedDecisions[pageStart:pageEnd]
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, _, err := a.apiClient.Decisions.DeleteManualDecisions(ctx, send)
-		if err != nil {
-			//we log it here as well, because the return value of func might be discarded
-			log.Errorf("Error while sending chunk to central API : %s", err)
-		}
-		pageStart += bulkSize
-		pageEnd += bulkSize
 	}
 }
 
@@ -554,7 +494,6 @@ func (a *apic) Pull() error {
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
-			a.deleteDecisionsTomb.Kill(nil)
 			return nil
 		}
 	}
@@ -623,7 +562,6 @@ func (a *apic) SendMetrics() error {
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
-			a.deleteDecisionsTomb.Kill(nil)
 			return nil
 		}
 	}

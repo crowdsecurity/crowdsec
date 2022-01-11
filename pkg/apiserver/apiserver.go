@@ -185,15 +185,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 			return &APIServer{}, err
 		}
 		controller.CAPIChan = apiClient.alertToPush
-		if *config.ConsoleConfig.ShareDecisions {
-			controller.DeleteDecisionChannel = apiClient.decisionsToDelete
-		} else {
-			controller.DeleteDecisionChannel = nil
-		}
 	} else {
 		apiClient = nil
 		controller.CAPIChan = nil
-		controller.DeleteDecisionChannel = nil
 	}
 
 	return &APIServer{
@@ -245,15 +239,6 @@ func (s *APIServer) Run() error {
 			}
 			return nil
 		})
-		if *s.apic.consoleConfig.ShareDecisions {
-			s.apic.deleteDecisionsTomb.Go(func() error {
-				if err := s.apic.DeleteDecisions(); err != nil {
-					log.Errorf("capi send deleted decisions: %s", err)
-					return err
-				}
-				return nil
-			})
-		}
 	}
 
 	s.httpServerTomb.Go(func() error {

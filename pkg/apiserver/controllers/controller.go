@@ -15,15 +15,14 @@ import (
 )
 
 type Controller struct {
-	Ectx                  context.Context
-	DBClient              *database.Client
-	Router                *gin.Engine
-	Profiles              []*csconfig.ProfileCfg
-	CAPIChan              chan []*models.Alert
-	PluginChannel         chan csplugin.ProfileAlert
-	Log                   *log.Logger
-	ConsoleConfig         *csconfig.ConsoleConfig
-	DeleteDecisionChannel chan []string
+	Ectx          context.Context
+	DBClient      *database.Client
+	Router        *gin.Engine
+	Profiles      []*csconfig.ProfileCfg
+	CAPIChan      chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
+	Log           *log.Logger
+	ConsoleConfig *csconfig.ConsoleConfig
 }
 
 func (c *Controller) Init() error {
@@ -54,7 +53,7 @@ func serveHealth() http.HandlerFunc {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig, c.DeleteDecisionChannel)
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig)
 	if err != nil {
 		return err
 	}
