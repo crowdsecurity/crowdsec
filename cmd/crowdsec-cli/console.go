@@ -59,7 +59,7 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				var fdErr *fs.PathError
 				if errors.As(err, &fdErr) {
 					log.Fatalf("Unable to load Local API : %s", fdErr)
