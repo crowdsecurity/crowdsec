@@ -3,13 +3,14 @@ name: tests
 #those env variables are for localstack, so we can emulate aws services
 env:
   AWS_HOST: localstack
-  SERVICES: cloudwatch,logs 
+  SERVICES: cloudwatch,logs,kinesis
   #those are to mimic aws config
   AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE 
   AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY 
   AWS_REGION: us-east-1 
   #and to override our endpoint in aws sdk
-  AWS_ENDPOINT_FORCE: http://localhost:4566 
+  AWS_ENDPOINT_FORCE: http://localhost:4566
+  KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2" 
 
 on:
   push:
@@ -32,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       localstack:
-        image: localstack/localstack:0.12.11
+        image: localstack/localstack:0.13.3
         ports:
           - 4566:4566 # Localstack exposes all services on same port
         env:
@@ -43,6 +44,7 @@ jobs:
           KINESIS_ERROR_PROBABILITY: ""
           DOCKER_HOST: unix:///var/run/docker.sock
           HOST_TMP_FOLDER: "/tmp"
+          KINESIS_INITIALIZE_STREAMS: ${{ env.KINESIS_INITIALIZE_STREAMS }}
           HOSTNAME_EXTERNAL: ${{ env.AWS_HOST }} # Required so that resource urls are provided properly 
                                                  # e.g sqs url will get localhost if we don't set this env to map our service
         options: >-
