@@ -7,6 +7,7 @@ package models
 
 import (
 	"strconv"
+	"context"
 
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
@@ -203,6 +204,8 @@ func (m *AddSignalsRequestItem) validateSource(formats strfmt.Registry) error {
 		if err := m.Source.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("source")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("source")
 			}
 			return err
 		}
@@ -224,6 +227,36 @@ func (m *AddSignalsRequestItem) validateStopAt(formats strfmt.Registry) error {
 
 	if err := validate.Required("stop_at", "body", m.StopAt); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this add signals request item based on the context it is used
+func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateSource(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Source != nil {
+		if err := m.Source.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("source")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("source")
+			}
+			return err
+		}
 	}
 
 	return nil

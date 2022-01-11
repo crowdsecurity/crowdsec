@@ -24,7 +24,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.9
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-co-op/gocron v1.9.0
-	github.com/go-openapi/errors v0.19.9
+	github.com/go-openapi/errors v0.20.1
 	github.com/go-openapi/strfmt v0.19.11
 	github.com/go-openapi/swag v0.19.12
 	github.com/go-openapi/validate v0.20.0
