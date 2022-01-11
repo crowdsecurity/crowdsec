@@ -561,6 +561,10 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		delete(filter, "simulated")
 	}
 
+	if _, ok := filter["origin"]; ok {
+		filter["include_capi"] = []string{"true"}
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "contains":
@@ -579,7 +583,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		case "value":
 			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
 		case "scenario":
-			alerts = alerts.Where(alert.ScenarioEQ(value[0]))
+			alerts = alerts.Where(alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
@@ -617,9 +621,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.StartedAtLTE(until))
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
+		case "origin":
+			alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ(CapiMachineID)))
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
