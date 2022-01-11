@@ -503,8 +503,8 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	version := cwversion.VersionStr()
 	metric := &models.Metrics{
 		ApilVersion: &version,
-		Machines:    make([]*models.MetricsSoftInfo, 0),
-		Bouncers:    make([]*models.MetricsSoftInfo, 0),
+		Machines:    make([]*models.MetricsAgentInfo, 0),
+		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
 	}
 	machines, err := a.dbClient.ListMachines()
 	if err != nil {
@@ -515,17 +515,21 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 		return metric, err
 	}
 	for _, machine := range machines {
-		m := &models.MetricsSoftInfo{
-			Version: machine.Version,
-			Name:    machine.MachineId,
+		m := &models.MetricsAgentInfo{
+			Version:    machine.Version,
+			Name:       machine.MachineId,
+			LastUpdate: machine.UpdatedAt.String(),
+			LastPush:   machine.LastPush.String(),
 		}
 		metric.Machines = append(metric.Machines, m)
 	}
 
 	for _, bouncer := range bouncers {
-		m := &models.MetricsSoftInfo{
-			Version: bouncer.Version,
-			Name:    bouncer.Type,
+		m := &models.MetricsBouncerInfo{
+			Version:    bouncer.Version,
+			CustomName: bouncer.Name,
+			Name:       bouncer.Type,
+			LastPull:   bouncer.LastPull.String(),
 		}
 		metric.Bouncers = append(metric.Bouncers, m)
 	}
