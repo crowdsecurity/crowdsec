@@ -11,11 +11,9 @@ import (
 )
 
 const (
-	SEND_CUSTOM_SCENARIOS    = "custom"
-	SEND_TAINTED_SCENARIOS   = "tainted"
-	SEND_MANUAL_SCENARIOS    = "manual"
-	SEND_LIVE_DECISIONS      = "live_decisions"
-	SEND_SIMULATED_DECISIONS = "simulated_decisions"
+	SEND_CUSTOM_SCENARIOS  = "custom"
+	SEND_TAINTED_SCENARIOS = "tainted"
+	SEND_MANUAL_SCENARIOS  = "manual"
 )
 
 var DefaultConsoleConfgFilePath = "/etc/crowdsec/console_config.yaml"
