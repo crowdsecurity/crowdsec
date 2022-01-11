@@ -204,8 +204,6 @@ func (a *apic) Push() error {
 						continue
 					}
 				}
-
-				log.Infof("Add signals for '%s' alert", scenarioTrust)
 				signals = append(signals, AlertToSignal(alert, scenarioTrust))
 			}
 			a.mu.Lock()
