@@ -9,14 +9,11 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
@@ -259,119 +256,6 @@ Disable given information push to the central API.`,
 	}
 
 	cmdConsole.AddCommand(cmdConsoleStatus)
-
-	cmdConsoleSync := &cobra.Command{
-		Use:               "sync",
-		Short:             "Sync current decisions to console",
-		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
-			var err error
-			if err := csConfig.LoadDBConfig(); err != nil {
-				log.Errorf("This command requires direct database access (must be run on the local API machine)")
-				log.Fatalf(err.Error())
-			}
-			dbClient, err = database.NewClient(csConfig.DbConfig)
-			if err != nil {
-				log.Fatalf("unable to create new database client: %s", err)
-			}
-
-			password := strfmt.Password(csConfig.API.Server.OnlineClient.Credentials.Password)
-			apiurl, err := url.Parse(csConfig.API.Server.OnlineClient.Credentials.URL)
-			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Server.OnlineClient.Credentials.URL, err)
-			}
-
-			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
-			}
-
-			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
-			}
-			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
-			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
-			}
-			if len(scenarios) == 0 {
-				log.Fatalf("no scenarios installed, abort")
-			}
-
-			Client, err = apiclient.NewClient(&apiclient.Config{
-				MachineID:      csConfig.API.Server.OnlineClient.Credentials.Login,
-				Password:       password,
-				UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
-				URL:            apiurl,
-				VersionPrefix:  "v2",
-				Scenarios:      scenarios,
-				UpdateScenario: FetchScenariosListFromDB,
-			})
-			if err != nil {
-				log.Fatalf("init default client: %s", err)
-			}
-
-			filter := make(map[string][]string)
-			filter["has_active_decision"] = []string{"true"}
-			alertsWithDecisions, err := dbClient.QueryAlertWithFilter(filter)
-			if err != nil {
-				log.Fatalf(err.Error())
-			}
-
-			alertList := make([]*models.Alert, 0)
-			for _, alert := range alertsWithDecisions {
-				startAt := alert.StartedAt.String()
-				StopAt := alert.StoppedAt.String()
-				formatedAlert := models.Alert{
-					ID:              int64(alert.ID),
-					MachineID:       machineID,
-					CreatedAt:       alert.CreatedAt.Format(time.RFC3339),
-					Scenario:        &alert.Scenario,
-					ScenarioVersion: &alert.ScenarioVersion,
-					ScenarioHash:    &alert.ScenarioHash,
-					Message:         &alert.Message,
-					EventsCount:     &alert.EventsCount,
-					StartAt:         &startAt,
-					StopAt:          &StopAt,
-					Capacity:        &alert.Capacity,
-					Leakspeed:       &alert.LeakSpeed,
-					Simulated:       &alert.Simulated,
-					Source: &models.Source{
-						Scope:     &alert.SourceScope,
-						Value:     &alert.SourceValue,
-						IP:        alert.SourceIp,
-						Range:     alert.SourceRange,
-						AsNumber:  alert.SourceAsNumber,
-						AsName:    alert.SourceAsName,
-						Cn:        alert.SourceCountry,
-						Latitude:  alert.SourceLatitude,
-						Longitude: alert.SourceLongitude,
-					},
-				}
-				for _, decisionItem := range alert.Edges.Decisions {
-					duration := decisionItem.Until.Sub(time.Now()).String()
-					formatedAlert.Decisions = append(formatedAlert.Decisions, &models.Decision{
-						Duration:  &duration, // transform into time.Time ?
-						Scenario:  &decisionItem.Scenario,
-						Type:      &decisionItem.Type,
-						Scope:     &decisionItem.Scope,
-						Value:     &decisionItem.Value,
-						Origin:    &decisionItem.Origin,
-						Simulated: formatedAlert.Simulated,
-						ID:        int64(decisionItem.ID),
-					})
-				}
-				alertList = append(alertList, &formatedAlert)
-			}
-			_, _, err = Client.Decisions.SyncDecisions(context.Background(), alertList)
-			if err != nil {
-				log.Fatalf("unable to sync decisions with console: %s", err.Error())
-			}
-			log.Infof("Decisions have been synchronized successfully")
-		},
-	}
-
-	cmdConsole.AddCommand(cmdConsoleSync)
-
 	return cmdConsole
 }
 
