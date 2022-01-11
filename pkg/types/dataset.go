@@ -60,14 +60,12 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []*DataSource, dataDir string) error {
-	for _, dataS := range data {
-		destPath := path.Join(dataDir, dataS.DestPath)
-		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
-			return err
-		}
+func GetData(dataS *DataSource, dataDir string) error {
+	destPath := path.Join(dataDir, dataS.DestPath)
+	log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
+	err := downloadFile(dataS.SourceURL, destPath)
+	if err != nil {
+		return err
 	}
 
 	return nil
