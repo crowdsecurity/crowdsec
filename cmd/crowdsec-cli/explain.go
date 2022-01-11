@@ -17,6 +17,7 @@ func NewExplainCmd() *cobra.Command {
 	var dsn string
 	var logLine string
 	var logType string
+	var opts cstest.DumpOpts
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -27,7 +28,7 @@ Explain log pipeline
 		Example: `
 cscli explain --file ./myfile.log --type nginx 
 cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
-cscli explain -dsn "file://myfile.log" --type nginx
+cscli explain --dsn "file://myfile.log" --type nginx
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
@@ -95,15 +96,15 @@ cscli explain -dsn "file://myfile.log" --type nginx
 				log.Fatalf("unable to load bucket dump result: %s", err)
 			}
 
-			if err := cstest.DumpTree(*parserDump, *bucketStateDump); err != nil {
-				log.Fatalf(err.Error())
-			}
+			cstest.DumpTree(*parserDump, *bucketStateDump, opts)
 		},
 	}
 	cmdExplain.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")
 	cmdExplain.PersistentFlags().StringVarP(&dsn, "dsn", "d", "", "DSN to test")
 	cmdExplain.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Lgg line to test")
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
+	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
+	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
 
 	return cmdExplain
 }

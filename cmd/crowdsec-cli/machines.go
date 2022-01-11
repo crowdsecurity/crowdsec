@@ -2,6 +2,7 @@ package main
 
 import (
 	saferand "crypto/rand"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -144,6 +145,11 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
+				csvwriter := csv.NewWriter(os.Stdout)
+				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -151,8 +157,12 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					fmt.Printf("%s,%s,%s,%s,%s\n", w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version)
+					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
+					if err != nil {
+						log.Fatalf("failed to write raw output : %s", err)
+					}
 				}
+				csvwriter.Flush()
 			} else {
 				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
 			}
@@ -181,7 +191,7 @@ cscli machines add MyTestMachine --password MyPassword
 			var dumpFile string
 			var err error
 
-			// create machineID if doesn't specified by user
+			// create machineID if not specified by user
 			if len(args) == 0 {
 				if !autoAdd {
 					err = cmd.Help()
@@ -246,7 +256,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err != nil {
 				log.Fatalf("unable to marshal api credentials: %s", err)
 			}
-			if dumpFile != "" {
+			if dumpFile != "" && dumpFile != "-" {
 				err = ioutil.WriteFile(dumpFile, apiConfigDump, 0644)
 				if err != nil {
 					log.Fatalf("write api credentials in '%s' failed: %s", dumpFile, err)
@@ -312,7 +322,7 @@ cscli machines add MyTestMachine --password MyPassword
 			if err := dbClient.ValidateMachine(machineID); err != nil {
 				log.Fatalf("unable to validate machine '%s': %s", machineID, err)
 			}
-			log.Infof("machine '%s' validated successfuly", machineID)
+			log.Infof("machine '%s' validated successfully", machineID)
 		},
 	}
 	cmdMachines.AddCommand(cmdMachinesValidate)

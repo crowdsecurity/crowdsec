@@ -1,10 +1,11 @@
-ARG GOVERSION=1.16
+ARG GOVERSION=1.17
 
 FROM golang:${GOVERSION}-alpine AS build
 
 WORKDIR /go/src/crowdsec
 
-RUN apk update && apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold
+# wizard.sh requires GNU coreutils
+RUN apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold coreutils
 
 COPY . .
 
@@ -12,7 +13,7 @@ RUN SYSTEM="docker" make release
 RUN cd crowdsec-v* && ./wizard.sh --docker-mode && cd -
 RUN cscli hub update && cscli collections install crowdsecurity/linux && cscli parsers install crowdsecurity/whitelists
 FROM alpine:latest
-RUN apk update --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community && apk add --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq
 COPY --from=build /etc/crowdsec /etc/crowdsec
 COPY --from=build /var/lib/crowdsec /var/lib/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec

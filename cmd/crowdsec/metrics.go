@@ -82,7 +82,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			globalCsInfo,
-			leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow,
+			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount)
 	} else {
@@ -91,7 +91,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			globalCsInfo,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions,
-			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
+			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
 
 	}
 	http.Handle("/metrics", promhttp.Handler())

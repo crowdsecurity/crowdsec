@@ -69,7 +69,7 @@ func TestConfigureDSN(t *testing.T) {
 	})
 	for _, test := range tests {
 		f := FileSource{}
-		err := f.ConfigureByDSN(test.dsn, "testtype", subLogger)
+		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
 		if test.expectedErr != "" {
 			assert.Contains(t, err.Error(), test.expectedErr)
 		} else {

@@ -20,9 +20,10 @@ import (
 )
 
 const (
-	paginationSize = 100 // used to queryAlert to avoid 'too many SQL variable'
-	defaultLimit   = 100 // default limit of element to returns when query alerts
-	bulkSize       = 50  // bulk size when create alerts
+	paginationSize   = 100 // used to queryAlert to avoid 'too many SQL variable'
+	defaultLimit     = 100 // default limit of element to returns when query alerts
+	bulkSize         = 50  // bulk size when create alerts
+	decisionBulkSize = 50
 )
 
 func formatAlertAsString(machineId string, alert *models.Alert) []string {
@@ -120,7 +121,6 @@ func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]str
 /*We can't bulk both the alert and the decision at the same time. With new consensus, we want to bulk a single alert with a lot of decisions.*/
 func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, int, error) {
 
-	decisionBulkSize := 50
 	var err error
 	var deleted, inserted int
 
@@ -281,13 +281,30 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	return alertRef.ID, inserted, deleted, nil
 }
 
-func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, []*models.Alert, error) {
+func chunkDecisions(decisions []*ent.Decision, chunkSize int) [][]*ent.Decision {
+	var ret [][]*ent.Decision
+	var chunk []*ent.Decision
 
+	for _, d := range decisions {
+		chunk = append(chunk, d)
+		if len(chunk) == chunkSize {
+			ret = append(ret, chunk)
+			chunk = nil
+		}
+	}
+	if len(chunk) > 0 {
+		ret = append(ret, chunk)
+	}
+	return ret
+}
+
+func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([]string, error) {
 	ret := []string{}
 	bulkSize := 20
 
 	c.Log.Debugf("writting %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
+	alertDecisions := make([][]*ent.Decision, 0, bulkSize)
 	for i, alertItem := range alertList {
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
@@ -397,8 +414,10 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
 			ts = time.Now()
 		}
+
+		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
-			decisionBulk := make([]*ent.DecisionCreate, len(alertItem.Decisions))
+			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
 			for i, decisionItem := range alertItem.Decisions {
 				var start_ip, start_sfx, end_ip, end_sfx int64
 				var sz int
@@ -415,7 +434,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 						return []string{}, alertList, errors.Wrapf(ParseDurationFail, "invalid addr/range %s : %s", *decisionItem.Value, err)
 					}
 				}
-				decisionBulk[i] = c.Ent.Decision.Create().
+
+				decisionCreate := c.Ent.Decision.Create().
 					SetUntil(ts.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
@@ -428,16 +448,27 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
 					SetSimulated(*alertItem.Simulated)
-			}
-			decisions, err = c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
-			if err != nil {
-				return []string{}, alertList, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 
+				decisionBulk = append(decisionBulk, decisionCreate)
+				if len(decisionBulk) == decisionBulkSize {
+					decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+					if err != nil {
+						return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
+
+					}
+					decisions = append(decisions, decisionsCreateRet...)
+					if len(alertItem.Decisions)-i <= decisionBulkSize {
+						decisionBulk = make([]*ent.DecisionCreate, 0, (len(alertItem.Decisions) - i))
+					} else {
+						decisionBulk = make([]*ent.DecisionCreate, 0, decisionBulkSize)
+					}
+				}
 			}
-			for i, decisionItem := range alertItem.Decisions {
-				decisionItem.ID = int64(decisions[i].ID)
-				decisionItem.Until = decisions[i].Until.String()
+			decisionsCreateRet, err := c.Ent.Decision.CreateBulk(decisionBulk...).Save(c.CTX)
+			if err != nil {
+				return []string{}, errors.Wrapf(BulkError, "creating alert decisions: %s", err)
 			}
+			decisions = append(decisions, decisionsCreateRet...)
 		}
 
 		alertB := c.Ent.Alert.
@@ -461,7 +492,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
-			AddDecisions(decisions...).
 			AddEvents(events...).
 			AddMetas(metas...)
 
@@ -469,20 +499,30 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			alertB.SetOwner(owner)
 		}
 		bulk = append(bulk, alertB)
+		alertDecisions = append(alertDecisions, decisions)
 
 		if len(bulk) == bulkSize {
 			alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 			if err != nil {
 				return []string{}, alertList, errors.Wrapf(BulkError, "bulk creating alert : %s", err)
 			}
-			for _, alert := range alerts {
-				ret = append(ret, strconv.Itoa(alert.ID))
+			for alertIndex, a := range alerts {
+				ret = append(ret, strconv.Itoa(a.ID))
+				d := alertDecisions[alertIndex]
+				decisionsChunk := chunkDecisions(d, bulkSize)
+				for _, d2 := range decisionsChunk {
+					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+					if err != nil {
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+					}
+				}
 			}
-
 			if len(alertList)-i <= bulkSize {
 				bulk = make([]*ent.AlertCreate, 0, (len(alertList) - i))
+				alertDecisions = make([][]*ent.Decision, 0, (len(alertList) - i))
 			} else {
 				bulk = make([]*ent.AlertCreate, 0, bulkSize)
+				alertDecisions = make([][]*ent.Decision, 0, bulkSize)
 			}
 		}
 	}
@@ -492,8 +532,16 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		return []string{}, alertList, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
 
-	for _, alert := range alerts {
-		ret = append(ret, strconv.Itoa(alert.ID))
+	for alertIndex, a := range alerts {
+		ret = append(ret, strconv.Itoa(a.ID))
+		d := alertDecisions[alertIndex]
+		decisionsChunk := chunkDecisions(d, bulkSize)
+		for _, d2 := range decisionsChunk {
+			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
+			if err != nil {
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+			}
+		}
 	}
 
 	for i, alertID := range ret {
@@ -524,6 +572,10 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		delete(filter, "simulated")
 	}
 
+	if _, ok := filter["origin"]; ok {
+		filter["include_capi"] = []string{"true"}
+	}
+
 	for param, value := range filter {
 		switch param {
 		case "contains":
@@ -542,7 +594,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		case "value":
 			alerts = alerts.Where(alert.SourceValueEQ(value[0]))
 		case "scenario":
-			alerts = alerts.Where(alert.ScenarioEQ(value[0]))
+			alerts = alerts.Where(alert.HasDecisionsWith(decision.ScenarioEQ(value[0])))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
@@ -580,9 +632,11 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			alerts = alerts.Where(alert.StartedAtLTE(until))
 		case "decision_type":
 			alerts = alerts.Where(alert.HasDecisionsWith(decision.TypeEQ(value[0])))
+		case "origin":
+			alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(value[0])))
 		case "include_capi": //allows to exclude one or more specific origins
 			if value[0] == "false" {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginNEQ(CapiMachineID)))
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.Or(decision.OriginEQ("crowdsec"), decision.OriginEQ("cscli"))))
 			} else if value[0] != "true" {
 				log.Errorf("Invalid bool '%s' for include_capi", value[0])
 			}
@@ -827,7 +881,9 @@ func (c *Client) FlushOrphans() {
 		c.Log.Infof("%d deleted orphan events", events_count)
 	}
 
-	events_count, err = c.Ent.Decision.Delete().Where(decision.Not(decision.HasOwner())).Exec(c.CTX)
+	events_count, err = c.Ent.Decision.Delete().Where(
+		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now())).Exec(c.CTX)
+
 	if err != nil {
 		c.Log.Warningf("error while deleting orphan decisions : %s", err)
 		return
@@ -843,15 +899,20 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	var totalAlerts int
 	var err error
 
-	c.Log.Info("Flushing orphan alerts")
+	if !c.CanFlush {
+		c.Log.Debug("a list is being imported, flushing later")
+		return nil
+	}
+
+	c.Log.Debug("Flushing orphan alerts")
 	c.FlushOrphans()
-	c.Log.Info("Done flushing orphan alerts")
+	c.Log.Debug("Done flushing orphan alerts")
 	totalAlerts, err = c.TotalAlerts()
 	if err != nil {
 		c.Log.Warningf("FlushAlerts (max items count) : %s", err)
 		return errors.Wrap(err, "unable to get alerts count")
 	}
-	c.Log.Infof("FlushAlerts (Total alerts): %d", totalAlerts)
+	c.Log.Debugf("FlushAlerts (Total alerts): %d", totalAlerts)
 	if MaxAge != "" {
 		filter := map[string][]string{
 			"created_before": {MaxAge},
@@ -861,38 +922,39 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 			c.Log.Warningf("FlushAlerts (max age) : %s", err)
 			return errors.Wrapf(err, "unable to flush alerts with filter until: %s", MaxAge)
 		}
-		c.Log.Infof("FlushAlerts (deleted max age alerts): %d", nbDeleted)
+		c.Log.Debugf("FlushAlerts (deleted max age alerts): %d", nbDeleted)
 		deletedByAge = nbDeleted
 	}
 	if MaxItems > 0 {
-		if totalAlerts > MaxItems {
-			nbToDelete := totalAlerts - MaxItems
-			batchSize := 500
-			if batchSize > nbToDelete {
-				batchSize = nbToDelete
-			}
-			deleted := 0
-			for deleted < nbToDelete {
-				c.Log.Infof("FlushAlerts (before query with filter) to delete: %d", nbToDelete)
-				alerts, err := c.QueryAlertWithFilter(map[string][]string{
-					"sort":  {"ASC"},
-					"limit": {strconv.Itoa(batchSize)},
-				}) // we want to delete older alerts if we reach the max number of items
+		//We get the highest id for the alerts
+		//We substract MaxItems to avoid deleting alerts that are not old enough
+		//This gives us the oldest alert that we want to keep
+		//We then delete all the alerts with an id lower than this one
+		//We can do this because the id is auto-increment, and the database won't reuse the same id twice
+		lastAlert, err := c.QueryAlertWithFilter(map[string][]string{
+			"sort":  {"DESC"},
+			"limit": {"1"},
+		})
+		c.Log.Debugf("FlushAlerts (last alert): %+v", lastAlert)
+		if err != nil {
+			c.Log.Errorf("FlushAlerts: could not get last alert: %s", err)
+			return errors.Wrap(err, "could not get last alert")
+		}
+
+		if len(lastAlert) != 0 {
+			maxid := lastAlert[0].ID - MaxItems
+
+			c.Log.Debugf("FlushAlerts (max id): %d", maxid)
+
+			if maxid > 0 {
+				//This may lead to orphan alerts (at least on MySQL), but the next time the flush job will run, they will be deleted
+				deletedByNbItem, err = c.Ent.Alert.Delete().Where(alert.IDLT(maxid)).Exec(c.CTX)
+
 				if err != nil {
-					c.Log.Warningf("FlushAlerts (max items query) : %s", err)
-					return errors.Wrap(err, "unable to get all alerts")
-				}
-				deletedAlerts, err := c.DeleteAlertGraphBatch(alerts)
-				if err != nil {
-					c.Log.Warningf("FlushAlerts (max items query) : %s", err)
-					return errors.Wrap(err, "unable to delete alerts")
-				}
-				deleted += deletedAlerts
-				if nbToDelete-deleted < batchSize {
-					batchSize = nbToDelete - deleted
+					c.Log.Errorf("FlushAlerts: Could not delete alerts : %s", err)
+					return errors.Wrap(err, "could not delete alerts")
 				}
 			}
-			deletedByNbItem = deleted
 		}
 	}
 	if deletedByNbItem > 0 {

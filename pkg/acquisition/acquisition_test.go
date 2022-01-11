@@ -47,7 +47,7 @@ func (f *MockSource) GetMetrics() []prometheus.Collector                      { 
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSource) Dump() interface{}                                       { return f }
 func (f *MockSource) GetName() string                                         { return "mock" }
-func (f *MockSource) ConfigureByDSN(string, string, *log.Entry) error {
+func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
@@ -342,7 +342,7 @@ func (f *MockCat) CanRun() error                                   { return nil 
 func (f *MockCat) GetMetrics() []prometheus.Collector              { return nil }
 func (f *MockCat) GetAggregMetrics() []prometheus.Collector        { return nil }
 func (f *MockCat) Dump() interface{}                               { return f }
-func (f *MockCat) ConfigureByDSN(string, string, *log.Entry) error { return fmt.Errorf("not supported") }
+func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error { return fmt.Errorf("not supported") }
 
 //----
 
@@ -381,7 +381,7 @@ func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() interface{}                        { return f }
-func (f *MockTail) ConfigureByDSN(string, string, *log.Entry) error {
+func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
@@ -511,7 +511,7 @@ func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                   
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
 func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
-func (f *MockSourceByDSN) ConfigureByDSN(dsn string, logType string, logger *log.Entry) error {
+func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return fmt.Errorf("unexpected value")
@@ -555,7 +555,7 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		srcs, err := LoadAcquisitionFromDSN(test.dsn, "test_label")
+		srcs, err := LoadAcquisitionFromDSN(test.dsn, map[string]string{"type": "test_label"})
 		if err != nil && test.ExpectedError != "" {
 			if !strings.Contains(err.Error(), test.ExpectedError) {
 				t.Fatalf("expected '%s', got '%s'", test.ExpectedError, err.Error())

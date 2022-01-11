@@ -289,7 +289,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	os.Remove(expectedFile)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -351,7 +351,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	os.Remove(expectedFile)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)

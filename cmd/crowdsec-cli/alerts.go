@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -48,36 +49,38 @@ func DecisionsFromAlert(alert *models.Alert) string {
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(os.Stdout)
 		if printMachine {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at,machine\n")
+			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
+			if err != nil {
+				return err
+			}
 		} else {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
+			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
+			if err != nil {
+				return err
+			}
 		}
 		for _, alertItem := range *alerts {
-			if printMachine {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID)
-			} else {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt)
+			row := []string{
+				fmt.Sprintf("%d", alertItem.ID),
+				*alertItem.Source.Scope,
+				*alertItem.Source.Value,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
-
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			err := csvwriter.Write(row)
+			if err != nil {
+				return err
+			}
 		}
+		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
@@ -143,7 +146,9 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
+		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
+		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
+		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
 		foundActive := false
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})

@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+*~
+.pc
 
 # Test binary, built with `go test -c`
 *.test
@@ -18,3 +20,7 @@
 # crowdsec binaries
 cmd/crowdsec-cli/cscli
 cmd/crowdsec/crowdsec
+plugins/notifications/http/notification-http
+plugins/notifications/slack/notification-slack
+plugins/notifications/splunk/notification-splunk
+plugins/notifications/email/notification-email
