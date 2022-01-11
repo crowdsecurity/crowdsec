@@ -61,7 +61,15 @@ type CloudwatchSubscriptionLogEvent struct {
 var linesRead = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_kinesis_stream_hits_total",
-		Help: "Number of event read from stream.",
+		Help: "Number of event read per stream.",
+	},
+	[]string{"stream"},
+)
+
+var linesReadShards = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_kinesis_shards_hits_total",
+		Help: "Number of event read per shards.",
 	},
 	[]string{"stream", "shard"},
 )
@@ -98,11 +106,11 @@ func (k *KinesisSource) newClient() error {
 }
 
 func (k *KinesisSource) GetMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{linesRead, linesReadShards}
 
 }
 func (k *KinesisSource) GetAggregMetrics() []prometheus.Collector {
-	return []prometheus.Collector{linesRead}
+	return []prometheus.Collector{linesRead, linesReadShards}
 }
 
 func (k *KinesisSource) Configure(yamlConfig []byte, logger *log.Entry) error {
@@ -256,9 +264,11 @@ func (k *KinesisSource) RegisterConsumer() (*kinesis.RegisterStreamConsumerOutpu
 func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan types.Event, logger *log.Entry, shardId string) {
 	for _, record := range records {
 		if k.Config.StreamARN != "" {
-			linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+			linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamARN, "shard": shardId}).Inc()
+			linesRead.With(prometheus.Labels{"stream": k.Config.StreamARN}).Inc()
 		} else {
-			linesRead.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+			linesReadShards.With(prometheus.Labels{"stream": k.Config.StreamName, "shard": shardId}).Inc()
+			linesRead.With(prometheus.Labels{"stream": k.Config.StreamName}).Inc()
 		}
 		var data []CloudwatchSubscriptionLogEvent
 		var err error
