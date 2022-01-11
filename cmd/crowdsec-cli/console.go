@@ -22,15 +22,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func IsInSlice(a string, b []string) bool {
-	for _, v := range b {
-		if a == v {
-			return true
-		}
-	}
-	return false
-}
-
 func NewConsoleCmd() *cobra.Command {
 	var cmdConsole = &cobra.Command{
 		Use:               "console [action]",
