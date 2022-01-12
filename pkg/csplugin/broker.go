@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"math"
 	"os"
-	"os/exec"
 	"os/user"
 	"path/filepath"
 	"strconv"
@@ -239,12 +238,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr, err = getProcessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
-	cmd.SysProcAttr.Credential.NoSetGroups = true
-	if err != nil {
-		return nil, errors.Wrap(err, "while getting process attributes")
-	}
+	cmd, err := pb.CreateCmd(binaryPath)
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 	err = types.ConfigureLogger(l)
@@ -354,18 +348,10 @@ func pluginIsValid(path string) error {
 		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
 	}
 
-	// check if it is owned by current user
-	currentUser, err := user.Current()
+	// check if it is owned by root
+	err = CheckOwner(details, path)
 	if err != nil {
-		return errors.Wrap(err, "while getting current user")
-	}
-	procAttr, err := getProcessAtr(currentUser.Username, currentUser.Username)
-	if err != nil {
-		return errors.Wrap(err, "while getting process attributes")
-	}
-	stat := details.Sys().(*syscall.Stat_t)
-	if stat.Uid != procAttr.Credential.Uid || stat.Gid != procAttr.Credential.Gid {
-		return fmt.Errorf("plugin at %s is not owned by %s user and group", path, currentUser.Username)
+		return err
 	}
 
 	if (int(details.Mode()) & 2) != 0 {
@@ -412,22 +398,17 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 	if err != nil {
 		return nil, err
 	}
-	if uid < 0 && uid > math.MaxUint32 {
+	if uid < 0 && uid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound uid")
 	}
 	gid, err := strconv.Atoi(g.Gid)
 	if err != nil {
 		return nil, err
 	}
-	if gid < 0 && gid > math.MaxUint32 {
+	if gid < 0 && gid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound gid")
 	}
-	return &syscall.SysProcAttr{
-		Credential: &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
-		},
-	}, nil
+	return CheckCredential(uid, gid), nil
 }
 
 func getUUID() (string, error) {

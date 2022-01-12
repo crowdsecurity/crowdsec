@@ -52,6 +52,7 @@ func NewHubTestCmd() *cobra.Command {
 	postoverflows := []string{}
 	scenarios := []string{}
 	var ignoreParsers bool
+	var labels map[string]string
 
 	var cmdHubTestCreate = &cobra.Command{
 		Use:   "create",
@@ -119,6 +120,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				LogFile:       logFileName,
 				LogType:       logType,
 				IgnoreParsers: ignoreParsers,
+				Labels:        labels,
 			}
 
 			configFilePath := filepath.Join(testPath, "config.yaml")
@@ -253,7 +255,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 								fmt.Println()
 							}
 						}
-						if !forceClean {
+						if !forceClean && !noClean {
 							prompt := &survey.Confirm{
 								Message: fmt.Sprintf("\nDo you want to remove runtime folder for test '%s'? (default: Yes)", test.Name),
 								Default: true,
@@ -574,8 +576,8 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 						log.Fatalf("unable to load scenario result after run: %s", err)
 					}
 				}
-
-				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData)
+				opts := cstest.DumpOpts{}
+				cstest.DumpTree(*test.ParserAssert.TestData, *test.ScenarioAssert.PourData, opts)
 			}
 		},
 	}

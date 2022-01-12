@@ -80,15 +80,15 @@ func (*Decision) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case decision.FieldSimulated:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldStartSuffix, decision.FieldEndSuffix, decision.FieldIPSize:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case decision.ForeignKeys[0]: // alert_decisions
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Decision", columns[i])
 		}

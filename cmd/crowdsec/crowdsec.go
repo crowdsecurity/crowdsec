@@ -50,7 +50,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
-	//start go-routines for parsing, buckets pour and ouputs.
+	//start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 	parsersTomb.Go(func() error {
 		parserWg.Add(1)
@@ -72,7 +72,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	bucketWg := &sync.WaitGroup{}
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
-		/*restore as well previous state if present*/
+		/*restore previous state as well if present*/
 		if cConfig.Crowdsec.BucketStateFile != "" {
 			log.Warningf("Restoring buckets state from %s", cConfig.Crowdsec.BucketStateFile)
 			if err := leaky.LoadBucketsState(cConfig.Crowdsec.BucketStateFile, buckets, holders); err != nil {

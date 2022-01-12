@@ -47,7 +47,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 
-	subs := strings.Split(path, "/")
+	subs := strings.Split(path, PathSeparator)
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
 	/*we're in hub (~/.hub/hub/)*/
@@ -109,7 +109,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
-		//the symlink target doesn't exist, user might have remove ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
+		//the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
 		_, err := os.Lstat(hubpath)
 		if os.IsNotExist(err) {
 			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
@@ -134,7 +134,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
-		x := strings.Split(path, "/")
+		x := strings.Split(path, PathSeparator)
 		target.FileName = x[len(x)-1]
 
 		hubIdx[ftype][fname] = target
@@ -161,9 +161,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 			//wrong file
-			if v.Name+".yaml" != fauthor+"/"+fname {
+			if CheckName(v.Name, fauthor, fname) {
 				continue
 			}
+
 			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
@@ -171,9 +172,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		} else {
 			//wrong file
 			//<type>/<stage>/<author>/<name>.yaml
-			if !strings.HasSuffix(hubpath, v.RemotePath) {
-				//log.Printf("wrong file %s %s", hubpath, spew.Sdump(v))
-
+			if CheckSuffix(hubpath, v.RemotePath) {
 				continue
 			}
 		}
@@ -204,7 +203,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 					/*if we're walking the hub, present file doesn't means installed file*/
 					v.Installed = true
 					v.LocalHash = sha
-					x := strings.Split(path, "/")
+					x := strings.Split(path, PathSeparator)
 					target.FileName = x[len(x)-1]
 				}
 				if version == v.Version {
@@ -227,7 +226,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			x := strings.Split(path, "/")
+			x := strings.Split(path, PathSeparator)
 			target.FileName = x[len(x)-1]
 
 		}

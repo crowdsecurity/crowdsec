@@ -32,6 +32,10 @@ func Upper(s string) string {
 	return strings.ToUpper(s)
 }
 
+func Lower(s string) string {
+	return strings.ToLower(s)
+}
+
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
 		"Atof":                Atof,
@@ -41,9 +45,14 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"File":                File,
 		"RegexpInFile":        RegexpInFile,
 		"Upper":               Upper,
+		"Lower":               Lower,
 		"IpInRange":           IpInRange,
 		"TimeNow":             TimeNow,
 		"ParseUri":            ParseUri,
+		"PathUnescape":        PathUnescape,
+		"QueryUnescape":       QueryUnescape,
+		"PathEscape":          PathEscape,
+		"QueryEscape":         QueryEscape,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -97,6 +106,32 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
+func QueryEscape(s string) string {
+	return url.QueryEscape(s)
+}
+
+func PathEscape(s string) string {
+	return url.PathEscape(s)
+}
+
+func PathUnescape(s string) string {
+	ret, err := url.PathUnescape(s)
+	if err != nil {
+		log.Errorf("unable to PathUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
+func QueryUnescape(s string) string {
+	ret, err := url.QueryUnescape(s)
+	if err != nil {
+		log.Errorf("unable to QueryUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
 func File(filename string) []string {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename]
@@ -143,7 +178,6 @@ func IpInRange(ip string, ipRange string) bool {
 func TimeNow() string {
 	return time.Now().Format(time.RFC3339)
 }
-
 
 func ParseUri(uri string) map[string][]string {
 	ret := make(map[string][]string)

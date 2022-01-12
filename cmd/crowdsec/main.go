@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	_ "net/http/pprof"
 	"time"
@@ -21,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -56,11 +56,15 @@ type Flags struct {
 	InfoLevel      bool
 	PrintVersion   bool
 	SingleFileType string
+	Labels         map[string]string
 	OneShotDSN     string
 	TestMode       bool
 	DisableAgent   bool
 	DisableAPI     bool
+	WinSvc         string
 }
+
+type labelsMap map[string]string
 
 type parsers struct {
 	ctx             *parser.UnixParserCtx
@@ -146,8 +150,10 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
+		flags.Labels = labels
+		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
 		if err != nil {
 			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
@@ -163,21 +169,36 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 
 var dumpFolder string
 var dumpStates bool
+var labels = make(labelsMap)
+
+func (l *labelsMap) String() string {
+	return "labels"
+}
+
+func (l labelsMap) Set(label string) error {
+	split := strings.Split(label, ":")
+	if len(split) != 2 {
+		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	}
+	l[split[0]] = split[1]
+	return nil
+}
 
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", DefaultConfigFile, "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
+	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-
 	flag.Parse()
 }
 
@@ -229,7 +250,9 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		cConfig.API.Server.OnlineClient = nil
+		if cConfig.API != nil && cConfig.API.Server != nil {
+			cConfig.API.Server.OnlineClient = nil
+		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
@@ -242,10 +265,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 }
 
 func main() {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
 
 	defer types.CatchPanic("crowdsec/main")
 
@@ -256,35 +275,6 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
-		Writer: os.Stderr,
-		LogLevels: []log.Level{
-			log.PanicLevel,
-			log.FatalLevel,
-		},
-	})
-
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
-	}
-
-	if err := Serve(cConfig); err != nil {
-		log.Fatalf(err.Error())
-	}
+	StartRunSvc()
 
 }

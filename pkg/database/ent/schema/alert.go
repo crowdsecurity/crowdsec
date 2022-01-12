@@ -4,8 +4,10 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // Alert holds the schema definition for the Alert entity.
@@ -56,8 +58,23 @@ func (Alert) Edges() []ent.Edge {
 		edge.From("owner", Machine.Type).
 			Ref("alerts").
 			Unique(),
-		edge.To("decisions", Decision.Type),
-		edge.To("events", Event.Type),
-		edge.To("metas", Meta.Type),
+		edge.To("decisions", Decision.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
+		edge.To("events", Event.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
+		edge.To("metas", Meta.Type).
+			Annotations(entsql.Annotation{
+				OnDelete: entsql.Cascade,
+			}),
+	}
+}
+
+func (Alert) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("id"),
 	}
 }

@@ -155,8 +155,8 @@ func (m AlertMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *AlertMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -1284,7 +1284,7 @@ func (m *AlertMutation) ClearOwner() {
 	m.clearedowner = true
 }
 
-// OwnerCleared returns if the "owner" edge to the Machine entity was cleared.
+// OwnerCleared reports if the "owner" edge to the Machine entity was cleared.
 func (m *AlertMutation) OwnerCleared() bool {
 	return m.clearedowner
 }
@@ -1328,7 +1328,7 @@ func (m *AlertMutation) ClearDecisions() {
 	m.cleareddecisions = true
 }
 
-// DecisionsCleared returns if the "decisions" edge to the Decision entity was cleared.
+// DecisionsCleared reports if the "decisions" edge to the Decision entity was cleared.
 func (m *AlertMutation) DecisionsCleared() bool {
 	return m.cleareddecisions
 }
@@ -1339,6 +1339,7 @@ func (m *AlertMutation) RemoveDecisionIDs(ids ...int) {
 		m.removeddecisions = make(map[int]struct{})
 	}
 	for i := range ids {
+		delete(m.decisions, ids[i])
 		m.removeddecisions[ids[i]] = struct{}{}
 	}
 }
@@ -1381,7 +1382,7 @@ func (m *AlertMutation) ClearEvents() {
 	m.clearedevents = true
 }
 
-// EventsCleared returns if the "events" edge to the Event entity was cleared.
+// EventsCleared reports if the "events" edge to the Event entity was cleared.
 func (m *AlertMutation) EventsCleared() bool {
 	return m.clearedevents
 }
@@ -1392,6 +1393,7 @@ func (m *AlertMutation) RemoveEventIDs(ids ...int) {
 		m.removedevents = make(map[int]struct{})
 	}
 	for i := range ids {
+		delete(m.events, ids[i])
 		m.removedevents[ids[i]] = struct{}{}
 	}
 }
@@ -1434,7 +1436,7 @@ func (m *AlertMutation) ClearMetas() {
 	m.clearedmetas = true
 }
 
-// MetasCleared returns if the "metas" edge to the Meta entity was cleared.
+// MetasCleared reports if the "metas" edge to the Meta entity was cleared.
 func (m *AlertMutation) MetasCleared() bool {
 	return m.clearedmetas
 }
@@ -1445,6 +1447,7 @@ func (m *AlertMutation) RemoveMetaIDs(ids ...int) {
 		m.removedmetas = make(map[int]struct{})
 	}
 	for i := range ids {
+		delete(m.metas, ids[i])
 		m.removedmetas[ids[i]] = struct{}{}
 	}
 }
@@ -1470,6 +1473,11 @@ func (m *AlertMutation) ResetMetas() {
 	m.metas = nil
 	m.clearedmetas = false
 	m.removedmetas = nil
+}
+
+// Where appends a list predicates to the AlertMutation builder.
+func (m *AlertMutation) Where(ps ...predicate.Alert) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.
@@ -2348,8 +2356,8 @@ func (m BouncerMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *BouncerMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -2767,6 +2775,11 @@ func (m *BouncerMutation) OldLastPull(ctx context.Context) (v time.Time, err err
 // ResetLastPull resets all changes to the "last_pull" field.
 func (m *BouncerMutation) ResetLastPull() {
 	m.last_pull = nil
+}
+
+// Where appends a list predicates to the BouncerMutation builder.
+func (m *BouncerMutation) Where(ps ...predicate.Bouncer) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.
@@ -3211,8 +3224,8 @@ func (m DecisionMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *DecisionMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -3904,7 +3917,7 @@ func (m *DecisionMutation) ClearOwner() {
 	m.clearedowner = true
 }
 
-// OwnerCleared returns if the "owner" edge to the Alert entity was cleared.
+// OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *DecisionMutation) OwnerCleared() bool {
 	return m.clearedowner
 }
@@ -3931,6 +3944,11 @@ func (m *DecisionMutation) OwnerIDs() (ids []int) {
 func (m *DecisionMutation) ResetOwner() {
 	m.owner = nil
 	m.clearedowner = false
+}
+
+// Where appends a list predicates to the DecisionMutation builder.
+func (m *DecisionMutation) Where(ps ...predicate.Decision) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.
@@ -4525,8 +4543,8 @@ func (m EventMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *EventMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -4688,7 +4706,7 @@ func (m *EventMutation) ClearOwner() {
 	m.clearedowner = true
 }
 
-// OwnerCleared returns if the "owner" edge to the Alert entity was cleared.
+// OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *EventMutation) OwnerCleared() bool {
 	return m.clearedowner
 }
@@ -4715,6 +4733,11 @@ func (m *EventMutation) OwnerIDs() (ids []int) {
 func (m *EventMutation) ResetOwner() {
 	m.owner = nil
 	m.clearedowner = false
+}
+
+// Where appends a list predicates to the EventMutation builder.
+func (m *EventMutation) Where(ps ...predicate.Event) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.
@@ -5049,8 +5072,8 @@ func (m MachineMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *MachineMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -5436,7 +5459,7 @@ func (m *MachineMutation) ClearAlerts() {
 	m.clearedalerts = true
 }
 
-// AlertsCleared returns if the "alerts" edge to the Alert entity was cleared.
+// AlertsCleared reports if the "alerts" edge to the Alert entity was cleared.
 func (m *MachineMutation) AlertsCleared() bool {
 	return m.clearedalerts
 }
@@ -5447,6 +5470,7 @@ func (m *MachineMutation) RemoveAlertIDs(ids ...int) {
 		m.removedalerts = make(map[int]struct{})
 	}
 	for i := range ids {
+		delete(m.alerts, ids[i])
 		m.removedalerts[ids[i]] = struct{}{}
 	}
 }
@@ -5472,6 +5496,11 @@ func (m *MachineMutation) ResetAlerts() {
 	m.alerts = nil
 	m.clearedalerts = false
 	m.removedalerts = nil
+}
+
+// Where appends a list predicates to the MachineMutation builder.
+func (m *MachineMutation) Where(ps ...predicate.Machine) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.
@@ -5914,8 +5943,8 @@ func (m MetaMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
-// ID returns the ID value in the mutation. Note that the ID
-// is only available if it was provided to the builder.
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
 func (m *MetaMutation) ID() (id int, exists bool) {
 	if m.id == nil {
 		return
@@ -6077,7 +6106,7 @@ func (m *MetaMutation) ClearOwner() {
 	m.clearedowner = true
 }
 
-// OwnerCleared returns if the "owner" edge to the Alert entity was cleared.
+// OwnerCleared reports if the "owner" edge to the Alert entity was cleared.
 func (m *MetaMutation) OwnerCleared() bool {
 	return m.clearedowner
 }
@@ -6104,6 +6133,11 @@ func (m *MetaMutation) OwnerIDs() (ids []int) {
 func (m *MetaMutation) ResetOwner() {
 	m.owner = nil
 	m.clearedowner = false
+}
+
+// Where appends a list predicates to the MetaMutation builder.
+func (m *MetaMutation) Where(ps ...predicate.Meta) {
+	m.predicates = append(m.predicates, ps...)
 }
 
 // Op returns the operation name.

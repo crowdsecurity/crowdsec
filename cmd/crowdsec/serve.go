@@ -104,11 +104,13 @@ func ShutdownCrowdsecRoutines() error {
 	var reterr error
 
 	log.Debugf("Shutting down crowdsec sub-routines")
-	acquisTomb.Kill(nil)
-	log.Debugf("waiting for acquisition to finish")
-	if err := acquisTomb.Wait(); err != nil {
-		log.Warningf("Acquisition returned error : %s", err)
-		reterr = err
+	if len(dataSources) > 0 {
+		acquisTomb.Kill(nil)
+		log.Debugf("waiting for acquisition to finish")
+		if err := acquisTomb.Wait(); err != nil {
+			log.Warningf("Acquisition returned error : %s", err)
+			reterr = err
+		}
 	}
 	log.Debugf("acquisition is finished, wait for parser/bucket/ouputs.")
 	parsersTomb.Kill(nil)

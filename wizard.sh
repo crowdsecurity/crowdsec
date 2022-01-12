@@ -226,9 +226,9 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-        collection="$(echo ${collect_info} | cut -d " " -f1)"
-        description="$(echo ${collect_info} | cut -d " " -f2-)"
+    for collect_info in "${AVAILABLE_COLLECTION[@]:1}"; do
+        collection="$(echo ${collect_info} | cut -d "," -f1)"
+        description="$(echo ${collect_info} | cut -d "," -f4)"
         in_array $collection "${DETECTED_SERVICES[@]}"
         if [[ $? == 0 ]]; then
             HMENU+=("${collection}" "${description}" "ON")
@@ -340,9 +340,8 @@ check_cs_version () {
 
     if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
         if [[ ${FORCE_MODE} == "false" ]]; then
-            log_warn "new version ($NEW_CS_VERSION) is a major, you need to follow documentation to upgrade !"
+            log_warn "new version ($NEW_CS_VERSION) is a major, you should follow documentation to upgrade !"
             echo ""
-            echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
             exit 1
         fi
     elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
@@ -460,7 +459,7 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
-    systemctl is-active --quiet crowdsec
+    which systemctl && systemctl is-active --quiet crowdsec
     if [ $? -eq 0 ]; then
         systemctl stop crowdsec 
     fi
@@ -492,13 +491,14 @@ install_plugins(){
     mkdir -p /etc/crowdsec/notifications
 
     cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications
-
     cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications
-
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
-    cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications
+
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+    fi
 }
 
 check_running_bouncers() {
@@ -541,16 +541,17 @@ function show_link {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
-    echo "  - Documentation : https://docs.crowdsec.net/Crowdsec/v1/getting_started/crowdsec-tour/"
+    echo "  - Documentation : https://doc.crowdsec.net/docs/getting_started/crowdsec_tour"
     echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
     echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
     echo ""
     echo "Useful commands to start with Crowdsec:"
     echo ""
-    echo "  - sudo cscli metrics             : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_metrics/"
-    echo "  - sudo cscli decisions list      : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_decisions_list/"
-    echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
-    echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
+    echo "  - sudo cscli metrics             : https://doc.crowdsec.net/docs/observability/cscli"
+    echo "  - sudo cscli decisions list      : https://doc.crowdsec.net/docs/user_guides/decisions_mgmt"
+    echo "  - sudo cscli hub list            : https://doc.crowdsec.net/docs/user_guides/hub_mgmt"
+    echo ""
+    echo "Next step:  visualize all your alerts and explore our community CTI : https://app.crowdsec.net"
     echo ""
 }
 

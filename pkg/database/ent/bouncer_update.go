@@ -21,9 +21,9 @@ type BouncerUpdate struct {
 	mutation *BouncerMutation
 }
 
-// Where adds a new predicate for the BouncerUpdate builder.
+// Where appends a list predicates to the BouncerUpdate builder.
 func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
-	bu.mutation.predicates = append(bu.mutation.predicates, ps...)
+	bu.mutation.Where(ps...)
 	return bu
 }
 
@@ -192,6 +192,9 @@ func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(bu.hooks) - 1; i >= 0; i-- {
+			if bu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = bu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, bu.mutation); err != nil {
@@ -338,8 +341,8 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -349,6 +352,7 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // BouncerUpdateOne is the builder for updating a single Bouncer entity.
 type BouncerUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *BouncerMutation
 }
@@ -498,6 +502,13 @@ func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (buo *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpdateOne {
+	buo.fields = append([]string{field}, fields...)
+	return buo
+}
+
 // Save executes the query and returns the updated Bouncer entity.
 func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 	var (
@@ -518,6 +529,9 @@ func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 			return node, err
 		})
 		for i := len(buo.hooks) - 1; i >= 0; i-- {
+			if buo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = buo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, buo.mutation); err != nil {
@@ -565,6 +579,18 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Bouncer.ID for update")}
 	}
 	_spec.Node.ID.Value = id
+	if fields := buo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, bouncer.FieldID)
+		for _, f := range fields {
+			if !bouncer.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != bouncer.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := buo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -672,8 +698,8 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

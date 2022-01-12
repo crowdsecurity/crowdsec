@@ -21,6 +21,7 @@ type MetaQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Meta
@@ -47,6 +48,13 @@ func (mq *MetaQuery) Limit(limit int) *MetaQuery {
 // Offset adds an offset step to the query.
 func (mq *MetaQuery) Offset(offset int) *MetaQuery {
 	mq.offset = &offset
+	return mq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (mq *MetaQuery) Unique(unique bool) *MetaQuery {
+	mq.unique = &unique
 	return mq
 }
 
@@ -317,8 +325,8 @@ func (mq *MetaQuery) GroupBy(field string, fields ...string) *MetaGroupBy {
 //		Select(meta.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (mq *MetaQuery) Select(field string, fields ...string) *MetaSelect {
-	mq.fields = append([]string{field}, fields...)
+func (mq *MetaQuery) Select(fields ...string) *MetaSelect {
+	mq.fields = append(mq.fields, fields...)
 	return &MetaSelect{MetaQuery: mq}
 }
 
@@ -377,11 +385,14 @@ func (mq *MetaQuery) sqlAll(ctx context.Context) ([]*Meta, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Meta)
 		for i := range nodes {
-			fk := nodes[i].alert_metas
-			if fk != nil {
-				ids = append(ids, *fk)
-				nodeids[*fk] = append(nodeids[*fk], nodes[i])
+			if nodes[i].alert_metas == nil {
+				continue
 			}
+			fk := *nodes[i].alert_metas
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
 		}
 		query.Where(alert.IDIn(ids...))
 		neighbors, err := query.All(ctx)
@@ -428,6 +439,9 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 		From:   mq.sql,
 		Unique: true,
 	}
+	if unique := mq.unique; unique != nil {
+		_spec.Unique = *unique
+	}
 	if fields := mq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
 		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
@@ -453,7 +467,7 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := mq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, meta.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -463,16 +477,20 @@ func (mq *MetaQuery) querySpec() *sqlgraph.QuerySpec {
 func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(meta.Table)
-	selector := builder.Select(t1.Columns(meta.Columns...)...).From(t1)
+	columns := mq.fields
+	if len(columns) == 0 {
+		columns = meta.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if mq.sql != nil {
 		selector = mq.sql
-		selector.Select(selector.Columns(meta.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
 	}
 	for _, p := range mq.predicates {
 		p(selector)
 	}
 	for _, p := range mq.order {
-		p(selector, meta.ValidColumn)
+		p(selector)
 	}
 	if offset := mq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -734,13 +752,24 @@ func (mgb *MetaGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (mgb *MetaGroupBy) sqlQuery() *sql.Selector {
-	selector := mgb.sql
-	columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
-	columns = append(columns, mgb.fields...)
+	selector := mgb.sql.Select()
+	aggregation := make([]string, 0, len(mgb.fns))
 	for _, fn := range mgb.fns {
-		columns = append(columns, fn(selector, meta.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(mgb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
+		for _, f := range mgb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		for _, c := range aggregation {
+			columns = append(columns, c)
+		}
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(mgb.fields...)...)
 }
 
 // MetaSelect is the builder for selecting fields of Meta entities.
@@ -956,16 +985,10 @@ func (ms *MetaSelect) BoolX(ctx context.Context) bool {
 
 func (ms *MetaSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := ms.sqlQuery().Query()
+	query, args := ms.sql.Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (ms *MetaSelect) sqlQuery() sql.Querier {
-	selector := ms.sql
-	selector.Select(selector.Columns(ms.fields...)...)
-	return selector
 }

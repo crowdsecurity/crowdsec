@@ -18,9 +18,10 @@ import (
 )
 
 type Client struct {
-	Ent *ent.Client
-	CTX context.Context
-	Log *log.Logger
+	Ent      *ent.Client
+	CTX      context.Context
+	Log      *log.Logger
+	CanFlush bool
 }
 
 func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
@@ -82,7 +83,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 	if err = client.Schema.Create(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed creating schema resources: %v", err)
 	}
-	return &Client{Ent: client, CTX: context.Background(), Log: clog}, nil
+	return &Client{Ent: client, CTX: context.Background(), Log: clog, CanFlush: true}, nil
 }
 
 func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Scheduler, error) {
@@ -100,7 +101,8 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	}
 	// Init & Start cronjob every minute
 	scheduler := gocron.NewScheduler(time.UTC)
-	scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job, _ := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job.SingletonMode()
 	scheduler.StartAsync()
 
 	return scheduler, nil

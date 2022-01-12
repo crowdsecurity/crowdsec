@@ -155,8 +155,8 @@ if [ $1 == 1 ]; then
         set +e
     fi
     if [ ! -f "%{_sysconfdir}/crowdsec/online_api_credentials.yaml" ] && [ ! -f "%{_sysconfdir}/crowdsec/local_api_credentials.yaml" ] ; then
-        touch %{_sysconfdir}/crowdsec/online_api_credentials.yaml
-        touch %{_sysconfdir}/crowdsec/local_api_credentials.yaml
+        install -m 600 /dev/null %{_sysconfdir}/crowdsec/online_api_credentials.yaml
+        install -m 600 /dev/null %{_sysconfdir}/crowdsec/local_api_credentials.yaml
         cscli capi register
         cscli machines add -a
     fi
@@ -180,6 +180,13 @@ elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
        rm -rf /var/lib/crowdsec/backup
     fi
 
+    if [[ -f %{_sysconfdir}/crowdsec/online_api_credentials.yaml ]] ; then
+        chmod 600 %{_sysconfdir}/crowdsec/online_api_credentials.yaml
+    fi
+    
+    if [[ -f %{_sysconfdir}/crowdsec/local_api_credentials.yaml ]] ; then
+        chmod 600 %{_sysconfdir}/crowdsec/local_api_credentials.yaml
+    fi
 fi
 
 %systemd_post %{name}.service
