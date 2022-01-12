@@ -7,6 +7,6 @@ CURRENT_DIR=$(pwd)
 
 git clone https://github.com/crowdsecurity/hub.git
 cd hub/
-${CSCLI} hubtest run --all
+${CSCLI} hubtest run --all --clean
 
 cd "${CURRENT_DIR}"

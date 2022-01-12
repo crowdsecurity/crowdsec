@@ -45,7 +45,6 @@ paths:
           required: false
           type: string
           description: 'Comma separated scopes of decisions to fetch'
-          example: ip,range,country
       responses:
         '200':
           description: successful operation
@@ -406,6 +405,11 @@ paths:
           required: false
           type: number
           description: 'number of alerts to return' 
+        - name: origin
+          in: query
+          required: false
+          type: string
+          description: 'restrict results to this origin (ie. lists,CAPI,cscli)'
       responses:
         '200':
           description: successful operation
@@ -485,6 +489,11 @@ paths:
           required: false
           type: number
           description: 'number of alerts to return' 
+        - name: origin
+          in: query
+          required: false
+          type: string
+          description: 'restrict results to this origin (ie. lists,CAPI,cscli)'
       responses:
         '200':
           description: successful operation

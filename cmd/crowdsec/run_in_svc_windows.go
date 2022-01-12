@@ -60,27 +60,25 @@ func WindowsRun() {
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		elog.Error(1, err.Error())
-
+		log.Fatalf(err.Error())
 	}
 	if err := LoadConfig(cConfig); err != nil {
-		elog.Error(1, err.Error())
-
+		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
-
-		elog.Error(1, err.Error())
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
+		log.Fatal(err.Error())
 	}
 
-	elog.Info(1, "Crowdsec"+cwversion.VersionStr())
+	log.Infof("Crowdsec %s", cwversion.VersionStr())
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
 	if err := Serve(cConfig); err != nil {
-
-		elog.Error(1, err.Error())
+		log.Fatalf(err.Error())
 	}
 }

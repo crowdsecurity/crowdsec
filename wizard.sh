@@ -68,10 +68,12 @@ smb
 HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
 SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
 SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
+EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
 
 HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
 SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
 SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
+EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
 
 BACKUP_DIR=$(mktemp -d)
 rm -rf $BACKUP_DIR
@@ -132,7 +134,7 @@ detect_services () {
             fi;
         done;
     done;
-    if [[ ${OSTYPE} == "linux-gnu" ]]; then
+    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]]; then
         DETECTED_SERVICES+=("linux")
         HMENU+=("linux" "on")
     else 
@@ -164,7 +166,7 @@ log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
 log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
-log_locations[nginx]='/var/log/nginx/*.log'
+log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
@@ -493,11 +495,13 @@ install_plugins(){
     cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
     cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
 
     if [[ ${DOCKER_MODE} == "false" ]]; then
         cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications
     fi
 }
 

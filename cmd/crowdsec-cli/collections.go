@@ -76,6 +76,9 @@ func NewCollectionsCmd() *cobra.Command {
 				for _, name := range args {
 					if !forceAction {
 						item := cwhub.GetItem(cwhub.COLLECTIONS, name)
+						if item == nil {
+							log.Fatalf("unable to retrieve: %s\n", name)
+						}
 						if len(item.BelongsToCollections) > 0 {
 							log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
 							log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
@@ -133,16 +136,16 @@ func NewCollectionsCmd() *cobra.Command {
 
 	var cmdCollectionsList = &cobra.Command{
 		Use:               "list collection [-a]",
-		Short:             "List all collections or given one",
-		Long:              `List all collections or given one`,
+		Short:             "List all collections",
+		Long:              `List all collections`,
 		Example:           `cscli collections list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.COLLECTIONS, args)
+			ListItems([]string{cwhub.COLLECTIONS}, args, false, true)
 		},
 	}
-	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdCollections.AddCommand(cmdCollectionsList)
 
 	return cmdCollections

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -34,6 +35,7 @@ var (
 func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
+	var skipped = 0
 
 	/*process in reverse order to keep the latest item only*/
 	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
@@ -42,6 +44,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		for _, decisionItem := range alertItem.Decisions {
 			spamKey := fmt.Sprintf("%t:%s:%s:%s", *decisionItem.Simulated, *decisionItem.Type, *decisionItem.Scope, *decisionItem.Value)
 			if _, ok := spamLimit[spamKey]; ok {
+				skipped++
 				continue
 			}
 			spamLimit[spamKey] = true
@@ -50,23 +53,32 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		alertItem.Decisions = newDecisions
 	}
 	if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("id,source,ip,reason,action,country,as,events_count,expiration,simulated,alert_id\n")
+		csvwriter := csv.NewWriter(os.Stdout)
+		err := csvwriter.Write([]string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"})
+		if err != nil {
+			return err
+		}
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
-					decisionItem.ID,
+				err := csvwriter.Write([]string{
+					fmt.Sprintf("%d", decisionItem.ID),
 					*decisionItem.Origin,
-					*decisionItem.Scope+":"+*decisionItem.Value,
+					*decisionItem.Scope + ":" + *decisionItem.Value,
 					*decisionItem.Scenario,
 					*decisionItem.Type,
 					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					*alertItem.EventsCount,
+					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+					fmt.Sprintf("%d", *alertItem.EventsCount),
 					*decisionItem.Duration,
-					*decisionItem.Simulated,
-					alertItem.ID)
+					fmt.Sprintf("%t", *decisionItem.Simulated),
+					fmt.Sprintf("%d", alertItem.ID),
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
+		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
@@ -100,6 +112,9 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 			}
 		}
 		table.Render() // Send output
+		if skipped > 0 {
+			fmt.Printf("%d duplicated entries skipped\n", skipped)
+		}
 	}
 	return nil
 }
@@ -146,6 +161,7 @@ func NewDecisionsCmd() *cobra.Command {
 		ValueEquals:    new(string),
 		ScopeEquals:    new(string),
 		ScenarioEquals: new(string),
+		OriginEquals:   new(string),
 		IPEquals:       new(string),
 		RangeEquals:    new(string),
 		Since:          new(string),
@@ -228,6 +244,10 @@ cscli decisions list -t ban
 				filter.RangeEquals = nil
 			}
 
+			if *filter.OriginEquals == "" {
+				filter.OriginEquals = nil
+			}
+
 			if contained != nil && *contained {
 				filter.Contains = new(bool)
 			}
@@ -249,6 +269,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
+	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli)")
 	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")

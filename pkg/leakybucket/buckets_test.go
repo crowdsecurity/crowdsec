@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -42,6 +43,7 @@ func TestBucket(t *testing.T) {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
 		}
 	} else {
+		wg := new(sync.WaitGroup)
 		fds, err := ioutil.ReadDir("./tests/")
 		if err != nil {
 			t.Fatalf("Unable to read test directory : %s", err)
@@ -50,12 +52,27 @@ func TestBucket(t *testing.T) {
 			fname := "./tests/" + fd.Name()
 			log.Infof("Running test on %s", fname)
 			tomb.Go(func() error {
+				wg.Add(1)
+				defer wg.Done()
 				if err := testOneBucket(t, fname, tomb); err != nil {
 					t.Fatalf("Test '%s' failed : %s", fname, err)
 				}
 				return nil
 			})
 		}
+		wg.Wait()
+	}
+}
+
+//during tests, we're likely to have only one scenario, and thus only one holder.
+//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+func watchTomb(tomb *tomb.Tomb) {
+	for {
+		if tomb.Alive() == false {
+			log.Warningf("Tomb is dead")
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 
@@ -102,6 +119,10 @@ func testOneBucket(t *testing.T, dir string, tomb *tomb.Tomb) error {
 	if err != nil {
 		t.Fatalf("failed loading bucket : %s", err)
 	}
+	tomb.Go(func() error {
+		watchTomb(tomb)
+		return nil
+	})
 	if !testFile(t, dir+"/test.json", dir+"/in-buckets_state.json", holders, response, buckets) {
 		return fmt.Errorf("tests from %s failed", dir)
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -67,7 +68,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Country
 	case "as":
 		*scope = types.AS
-
 	}
 	return nil
 }
@@ -101,43 +101,76 @@ func setHubBranch() error {
 	return nil
 }
 
-func ListItem(itemType string, args []string) {
+func ListItems(itemTypes []string, args []string, showType bool, showHeader bool) {
 
-	var hubStatus []map[string]string
+	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
-	if len(args) == 1 {
-		hubStatus = cwhub.HubStatus(itemType, args[0], all)
-	} else {
-		hubStatus = cwhub.HubStatus(itemType, "", all)
+	for _, itemType := range itemTypes {
+		if len(args) == 1 {
+			// This means that user requested a specific item by name
+			hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, args[0], all)
+		} else {
+			hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, "", all)
+		}
 	}
 
 	if csConfig.Cscli.Output == "human" {
-
-		table := tablewriter.NewWriter(os.Stdout)
-		table.SetCenterSeparator("")
-		table.SetColumnSeparator("")
-
-		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-		table.SetAlignment(tablewriter.ALIGN_LEFT)
-		table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
-		for _, v := range hubStatus {
-			table.Append([]string{v["name"], v["utf8_status"], v["local_version"], v["local_path"]})
+		for itemType, statuses := range hubStatusByItemType {
+			fmt.Println(strings.ToUpper(itemType))
+			table := tablewriter.NewWriter(os.Stdout)
+			table.SetCenterSeparator("")
+			table.SetColumnSeparator("")
+			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+			table.SetAlignment(tablewriter.ALIGN_LEFT)
+			table.SetHeader([]string{"Name", fmt.Sprintf("%v Status", emoji.Package), "Version", "Local Path"})
+			for _, status := range statuses {
+				table.Append([]string{status.Name, status.UTF8_Status, status.LocalVersion, status.LocalPath})
+			}
+			table.Render()
 		}
-		table.Render()
 	} else if csConfig.Cscli.Output == "json" {
-		x, err := json.MarshalIndent(hubStatus, "", " ")
+		x, err := json.MarshalIndent(hubStatusByItemType, "", " ")
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "raw" {
-		fmt.Printf("name,status,version,description\n")
-		for _, v := range hubStatus {
-			if v["local_version"] == "" {
-				v["local_version"] = "n/a"
+		csvwriter := csv.NewWriter(os.Stdout)
+		if showHeader {
+			if showType {
+				err := csvwriter.Write([]string{"name", "status", "version", "description", "type"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
+			} else {
+				err := csvwriter.Write([]string{"name", "status", "version", "description"})
+				if err != nil {
+					log.Fatalf("failed to write header: %s", err)
+				}
 			}
-			fmt.Printf("%s,%s,%s,%s\n", v["name"], v["status"], v["local_version"], v["description"])
+
 		}
+		for itemType, statuses := range hubStatusByItemType {
+			for _, status := range statuses {
+				if status.LocalVersion == "" {
+					status.LocalVersion = "n/a"
+				}
+				row := []string{
+					status.Name,
+					status.Status,
+					status.LocalVersion,
+					status.Description,
+				}
+				if showType {
+					row = append(row, itemType)
+				}
+				err := csvwriter.Write(row)
+				if err != nil {
+					log.Fatalf("failed to write raw output : %s", err)
+				}
+			}
+		}
+		csvwriter.Flush()
 	}
 }
 
@@ -272,11 +305,25 @@ func InspectItem(name string, objecitemType string) {
 	if hubItem == nil {
 		log.Fatalf("unable to retrieve item.")
 	}
-	buff, err := yaml.Marshal(*hubItem)
-	if err != nil {
-		log.Fatalf("unable to marshal item : %s", err)
+	var b []byte
+	var err error
+	switch csConfig.Cscli.Output {
+	case "human", "raw":
+		b, err = yaml.Marshal(*hubItem)
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
+	case "json":
+		b, err = json.MarshalIndent(*hubItem, "", " ")
+		if err != nil {
+			log.Fatalf("unable to marshal item : %s", err)
+		}
 	}
-	fmt.Printf("%s", string(buff))
+	fmt.Printf("%s", string(b))
+	if csConfig.Cscli.Output == "json" || csConfig.Cscli.Output == "raw" {
+		return
+	}
+
 	if csConfig.Prometheus.Enabled {
 		if csConfig.Prometheus.ListenAddr == "" || csConfig.Prometheus.ListenPort == 0 {
 			log.Warningf("No prometheus address or port specified in '%s', can't show metrics", *csConfig.FilePath)
