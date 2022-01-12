@@ -24,7 +24,6 @@ import (
 var hubdir, installdir, indexpath, datadir string
 
 func parser_visit(path string, f os.FileInfo, err error) error {
-
 	var target Item
 	var local bool
 	var hubpath string
@@ -42,8 +41,8 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	if f == nil || f.IsDir() {
 		return nil
 	}
-	//we only care about yaml files if we are not in datadir
-	if !strings.HasPrefix(path, datadir) && !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
+	// yamls -> collections, parsers, overflows etc. txt, mmdb -> data files
+	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") && !strings.HasSuffix(f.Name(), ".txt") && !strings.HasSuffix(f.Name(), ".mmdb") {
 		return nil
 	}
 
