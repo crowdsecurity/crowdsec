@@ -106,7 +106,11 @@ After running this command your will need to validate the enrollment in the weba
 			if err != nil {
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
+
+			SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
+			log.Infof("Enabled tainted&manual alerts sharing, see 'cscli console status'.")
 			log.Infof("Watcher successfully enrolled. Visit https://app.crowdsec.net to accept it.")
+			log.Infof("Please restart crowdsec after accepting the enrollment.")
 		},
 	}
 	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
