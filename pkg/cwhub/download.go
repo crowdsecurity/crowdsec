@@ -260,37 +260,17 @@ func downloadData(dataFolder string, parentItemAuthor string, force bool, reader
 			if downloadFromHub {
 				dataS.SourceURL = fmt.Sprintf(RawFileURLTemplate, HubBranch, hubIdx[DATA_FILES][dataFileName].RemotePath)
 			}
+
 			if _, err := os.Stat(dfPath); os.IsNotExist(err) {
 				download = true
-			} else {
-				// data file exists. But is it the newest ? To check this we will first check whether it is in hub,
-				// then check whether it is the latest. 
-				if downloadFromHub {
-					sha, err := getSHA256(dfPath)
-					if err != nil {
-						return err
-					}
-					dataItem := hubIdx[DATA_FILES][dataFileName]
-					versions := make([]string, 0, len(dataItem.Versions))
-					for k := range dataItem.Versions {
-						versions = append(versions, k)
-					}
-					sort.Sort(sort.Reverse(sort.StringSlice(versions)))
-
-					for i, version := range versions {
-						if sha != dataItem.Versions[version].Digest {
-							continue
-						}
-						log.Debugf("data file %s matched sha with %s's version %s", dfPath, dataFileName, version)
-						if i != 0 {
-							download = true
-							log.Debugf("data file %s is outdated, updating to version %s", dfPath, version)
-						}
-						break
-					}
-					// if we don't find a match in the above loop then the datafile is tainted. Don't bother
+			} else if downloadFromHub {
+				sha, err := getSHA256(dfPath)
+				if err != nil {
+					return err
 				}
+				download = dataFileHasUpdates(sha, dataFileName)
 			}
+
 			if download || force {
 				err = types.GetData(dataS, dataFolder)
 				if err != nil {
@@ -302,4 +282,27 @@ func downloadData(dataFolder string, parentItemAuthor string, force bool, reader
 	}
 
 	return nil
+}
+
+// Checks if the provided data file is latest. Only files which  are available in hub should
+// be checked for.
+func dataFileHasUpdates(fileSha string, dataFileName string) bool {
+	dataItem := hubIdx[DATA_FILES][dataFileName]
+	versions := make([]string, 0, len(dataItem.Versions))
+	for k := range dataItem.Versions {
+		versions = append(versions, k)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+	for i, version := range versions {
+		if fileSha != dataItem.Versions[version].Digest {
+			continue
+		}
+		log.Debugf("data file %s matched sha with version %s", dataFileName, version)
+		if i != 0 {
+			log.Debugf("data file %s is outdated, updating to version %s", dataFileName, version)
+			return false
+		}
+		break
+	}
+	return true
 }
