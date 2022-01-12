@@ -48,8 +48,9 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s datadir%s", path, hubdir, installdir, datadir)
 	/*we're in hub (~/.hub/hub/)*/
+	// FIXME: This doesn't consider that path has prefix of two of the hubdir, installdir, datadir
 	if strings.HasPrefix(path, hubdir) {
 		log.Tracef("in hub dir")
 		inhub = true
@@ -63,6 +64,12 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
+	} else if strings.HasPrefix(path, datadir) { // we are in data dir
+		fauthor = ""
+		fname = subs[len(subs)-1]
+		stage = ""
+		ftype = DATA_FILES
+		fauthor = ""
 	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
@@ -75,12 +82,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
-		fauthor = ""
-	} else if strings.HasPrefix(path, datadir) { // we are in data dir
-		fname = subs[len(subs)-1]
-		stage = ""
-		ftype = DATA_FILES
-		fauthor = ""
 	} else {
 		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
