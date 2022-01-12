@@ -77,7 +77,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 }
 
 func AlertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignalsRequestItem {
-	signal := &models.AddSignalsRequestItem{
+	return &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
@@ -89,7 +89,6 @@ func AlertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 		MachineID:       alert.MachineID,
 		ScenarioTrust:   &scenarioTrust,
 	}
-	return signal
 }
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
@@ -178,8 +177,7 @@ func (a *apic) Push() error {
 				scenarioTrust := "certified"
 				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
 					scenarioTrust = "custom"
-				}
-				if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
+				} else if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
 					scenarioTrust = "tainted"
 				}
 				if len(alert.Decisions) > 0 {
