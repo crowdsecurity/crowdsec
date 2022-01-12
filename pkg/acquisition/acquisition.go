@@ -11,6 +11,7 @@ import (
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
+	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -59,6 +60,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "docker",
 		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
+	},
+	{
+		name:  "kinesis",
+		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
 	},
 }
 

@@ -77,9 +77,12 @@ func (c *Client) ListMachines() ([]*ent.Machine, error) {
 }
 
 func (c *Client) ValidateMachine(machineID string) error {
-	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
+	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
+	}
+	if rets == 0 {
+		return fmt.Errorf("machine not found")
 	}
 	return nil
 }

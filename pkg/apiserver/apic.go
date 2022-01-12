@@ -234,6 +234,10 @@ func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
 	}
 }
 
+var SCOPE_CAPI string = "CAPI"
+var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use "CAPI" directly, to make it less confusing for the user
+var SCOPE_LISTS string = "lists"
+
 func (a *apic) PullTop() error {
 	var err error
 
@@ -256,10 +260,28 @@ func (a *apic) PullTop() error {
 	if a.startup {
 		a.startup = false
 	}
-	// process deleted decisions
+	/*to count additions/deletions accross lists*/
+	var add_counters map[string]map[string]int
+	var delete_counters map[string]map[string]int
+
+	add_counters = make(map[string]map[string]int)
+	add_counters[SCOPE_CAPI] = make(map[string]int)
+	add_counters[SCOPE_LISTS] = make(map[string]int)
+	delete_counters = make(map[string]map[string]int)
+	delete_counters[SCOPE_CAPI] = make(map[string]int)
+	delete_counters[SCOPE_LISTS] = make(map[string]int)
 	var filter map[string][]string
 	var nbDeleted int
+	// process deleted decisions
 	for _, decision := range data.Deleted {
+		//count individual deletions
+		if *decision.Origin == SCOPE_CAPI {
+			delete_counters[SCOPE_CAPI][*decision.Scenario]++
+		} else if *decision.Origin == SCOPE_LISTS {
+			delete_counters[SCOPE_LISTS][*decision.Scenario]++
+		} else {
+			log.Warningf("Unknown origin %s", *decision.Origin)
+		}
 		if strings.ToLower(*decision.Scope) == "ip" {
 			filter = make(map[string][]string, 1)
 			filter["value"] = []string{*decision.Value}
@@ -287,23 +309,77 @@ func (a *apic) PullTop() error {
 		return nil
 	}
 
-	capiPullTopX := models.Alert{}
-	capiPullTopX.Scenario = types.StrPtr(fmt.Sprintf("update : +%d/-%d IPs", len(data.New), len(data.Deleted)))
-	capiPullTopX.Message = types.StrPtr("")
-	capiPullTopX.Source = &models.Source{}
-	capiPullTopX.Source.Scope = types.StrPtr("crowdsec/community-blocklist")
-	capiPullTopX.Source.Value = types.StrPtr("")
-	capiPullTopX.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
-	capiPullTopX.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
-	capiPullTopX.Capacity = types.Int32Ptr(0)
-	capiPullTopX.Simulated = types.BoolPtr(false)
-	capiPullTopX.EventsCount = types.Int32Ptr(int32(len(data.New)))
-	capiPullTopX.Leakspeed = types.StrPtr("")
-	capiPullTopX.ScenarioHash = types.StrPtr("")
-	capiPullTopX.ScenarioVersion = types.StrPtr("")
-	capiPullTopX.MachineID = database.CapiMachineID
-	// process new decisions
+	//we receive only one list of decisions, that we need to break-up :
+	// one alert for "community blocklist"
+	// one alert per list we're subscribed to
+	var alertsFromCapi []*models.Alert
+	alertsFromCapi = make([]*models.Alert, 0)
+
+	//iterate over all new decisions, and simply create corresponding alerts
 	for _, decision := range data.New {
+		found := false
+		for _, sub := range alertsFromCapi {
+			if sub.Source.Scope == nil {
+				log.Warningf("nil scope in %+v", sub)
+				continue
+			}
+			if *decision.Origin == SCOPE_CAPI {
+				if *sub.Source.Scope == SCOPE_CAPI {
+					found = true
+					break
+				}
+			} else if *decision.Origin == SCOPE_LISTS {
+				if *sub.Source.Scope == *decision.Origin {
+					if sub.Scenario == nil {
+						log.Warningf("nil scenario in %+v", sub)
+					}
+					if *sub.Scenario == *decision.Scenario {
+						found = true
+						break
+					}
+				}
+			} else {
+				log.Warningf("unknown origin %s : %+v", *decision.Origin, decision)
+			}
+		}
+		if !found {
+			log.Debugf("Create entry for origin:%s scenario:%s", *decision.Origin, *decision.Scenario)
+			newAlert := models.Alert{}
+			newAlert.Message = types.StrPtr("")
+			newAlert.Source = &models.Source{}
+			if *decision.Origin == SCOPE_CAPI { //to make things more user friendly, we replace CAPI with community-blocklist
+				newAlert.Source.Scope = types.StrPtr(SCOPE_CAPI)
+				newAlert.Scenario = types.StrPtr(SCOPE_CAPI)
+			} else if *decision.Origin == SCOPE_LISTS {
+				newAlert.Source.Scope = types.StrPtr(SCOPE_LISTS)
+				newAlert.Scenario = types.StrPtr(*decision.Scenario)
+			} else {
+				log.Warningf("unknown origin %s", *decision.Origin)
+			}
+			newAlert.Source.Value = types.StrPtr("")
+			newAlert.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.Capacity = types.Int32Ptr(0)
+			newAlert.Simulated = types.BoolPtr(false)
+			newAlert.EventsCount = types.Int32Ptr(int32(len(data.New)))
+			newAlert.Leakspeed = types.StrPtr("")
+			newAlert.ScenarioHash = types.StrPtr("")
+			newAlert.ScenarioVersion = types.StrPtr("")
+			newAlert.MachineID = database.CapiMachineID
+			alertsFromCapi = append(alertsFromCapi, &newAlert)
+		}
+	}
+
+	//iterate a second time and fill the alerts with the new decisions
+	for _, decision := range data.New {
+		//count and create separate alerts for each list
+		if *decision.Origin == SCOPE_CAPI {
+			add_counters[SCOPE_CAPI]["all"]++
+		} else if *decision.Origin == SCOPE_LISTS {
+			add_counters[SCOPE_LISTS][*decision.Scenario]++
+		} else {
+			log.Warningf("Unknown origin %s", *decision.Origin)
+		}
 
 		/*CAPI might send lower case scopes, unify it.*/
 		switch strings.ToLower(*decision.Scope) {
@@ -312,17 +388,48 @@ func (a *apic) PullTop() error {
 		case "range":
 			*decision.Scope = types.Range
 		}
-
-		capiPullTopX.Decisions = append(capiPullTopX.Decisions, decision)
+		found := false
+		//add the individual decisions to the right list
+		for idx, alert := range alertsFromCapi {
+			if *decision.Origin == SCOPE_CAPI {
+				if *alert.Source.Scope == SCOPE_CAPI {
+					alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
+					found = true
+					break
+				}
+			} else if *decision.Origin == SCOPE_LISTS {
+				if *alert.Source.Scope == SCOPE_LISTS && *alert.Scenario == *decision.Scenario {
+					alertsFromCapi[idx].Decisions = append(alertsFromCapi[idx].Decisions, decision)
+					found = true
+					break
+				}
+			} else {
+				log.Warningf("unknown origin %s", *decision.Origin)
+			}
+		}
+		if !found {
+			log.Warningf("Orphaned decision for %s - %s", *decision.Origin, *decision.Scenario)
+		}
 	}
 
-	alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(&capiPullTopX)
-	if err != nil {
-		return errors.Wrap(err, "while saving alert from capi/community-blocklist")
+	for idx, alert := range alertsFromCapi {
+		formatted_update := ""
+
+		if *alertsFromCapi[idx].Source.Scope == SCOPE_CAPI {
+			*alertsFromCapi[idx].Source.Scope = SCOPE_CAPI_ALIAS
+			formatted_update = fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_CAPI]["all"], delete_counters[SCOPE_CAPI]["all"])
+		} else if *alertsFromCapi[idx].Source.Scope == SCOPE_LISTS {
+			*alertsFromCapi[idx].Source.Scope = fmt.Sprintf("%s:%s", SCOPE_LISTS, *alertsFromCapi[idx].Scenario)
+			formatted_update = fmt.Sprintf("update : +%d/-%d IPs", add_counters[SCOPE_LISTS][*alert.Scenario], delete_counters[SCOPE_LISTS][*alert.Scenario])
+		}
+		alertsFromCapi[idx].Scenario = types.StrPtr(formatted_update)
+		log.Debugf("%s has %d decisions", *alertsFromCapi[idx].Source.Scope, len(alertsFromCapi[idx].Decisions))
+		alertID, inserted, deleted, err := a.dbClient.UpdateCommunityBlocklist(alertsFromCapi[idx])
+		if err != nil {
+			return errors.Wrapf(err, "while saving alert from %s", *alertsFromCapi[idx].Source.Scope)
+		}
+		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
 	}
-
-	log.Printf("capi/community-blocklist : added %d entries, deleted %d entries (alert:%d)", inserted, deleted, alertID)
-
 	return nil
 }
 

@@ -132,10 +132,10 @@ cscli scenarios remove crowdsecurity/ssh-bf
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.SCENARIOS, args)
+			ListItems([]string{cwhub.SCENARIOS}, args, false, true)
 		},
 	}
-	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdScenarios.AddCommand(cmdScenariosList)
 
 	return cmdScenarios

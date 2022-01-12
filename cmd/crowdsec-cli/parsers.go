@@ -132,10 +132,10 @@ cscli parsers remove crowdsecurity/sshd-logs
 cscli parser list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.PARSERS, args)
+			ListItems([]string{cwhub.PARSERS}, args, false, true)
 		},
 	}
-	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdParsers.AddCommand(cmdParsersList)
 
 	return cmdParsers
