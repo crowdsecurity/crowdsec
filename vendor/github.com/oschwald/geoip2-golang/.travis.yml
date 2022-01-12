@@ -1,0 +1,48 @@
+language: go
+
+go:
+  - 1.9.x
+  - 1.10.x
+  - 1.11.x
+  - 1.12.x
+  - 1.13.x
+  - tip
+
+os:
+  - linux
+  - linux-ppc64le
+  - osx
+  - windows
+
+matrix:
+  allow_failures:
+    - go: tip
+
+install:
+  - go get -v -t ./...
+
+before_script:
+  - |
+    if [[ $TRAVIS_GO_VERSION == '1.13.x' && $TRAVIS_OS_NAME == 'linux' && $(arch) != 'ppc64le' ]]; then
+      curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s -- -b $(go env GOPATH)/bin
+    fi
+
+script:
+  - |
+    if [ $(arch) == "ppc64le" ]; then
+      go test -cpu 1,4 -v
+    else
+      go test -race -cpu 1,4 -v
+    fi
+  - |
+    if [ $(arch) == "ppc64le" ]; then
+      go test -v -tags appengine
+    else
+      go test -race -v -tags appengine
+    fi
+  - |
+    if [[ $TRAVIS_GO_VERSION == '1.13.x' && $TRAVIS_OS_NAME == 'linux' && $(arch) != 'ppc64le' ]]; then
+      golangci-lint run
+    fi
+
+sudo: false
