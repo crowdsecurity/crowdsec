@@ -29,7 +29,10 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+			if csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+			if err := csConfig.LoadAPIServer(); err != nil {
 				var fdErr *fs.PathError
 				if errors.As(err, &fdErr) {
 					log.Fatalf("Unable to load Local API : %s", fdErr)
@@ -37,17 +40,12 @@ func NewConsoleCmd() *cobra.Command {
 					log.Fatalf("Unable to load required Local API Configuration : %s", err)
 				}
 			}
-
-			if csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
 			if csConfig.API.Server.OnlineClient == nil {
-				log.Fatalf("no configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
+				log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
 			}
 			if csConfig.API.Server.OnlineClient.Credentials == nil {
 				log.Fatal("You must configure Central API (CAPI) with `cscli capi register` before enrolling your instance")
 			}
-
 			return nil
 		},
 	}
@@ -189,21 +187,21 @@ Disable given information push to the central API.`,
 				for _, option := range csconfig.CONSOLE_CONFIGS {
 					switch option {
 					case csconfig.SEND_CUSTOM_SCENARIOS:
-						activated := fmt.Sprintf("%s", emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios == true {
-							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						activated := string(emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios {
+							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send alerts from custom scenarios to the console"})
 					case csconfig.SEND_MANUAL_SCENARIOS:
-						activated := fmt.Sprintf("%s", emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions == true {
-							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						activated := string(emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareManualDecisions {
+							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send manual decisions to the console"})
 					case csconfig.SEND_TAINTED_SCENARIOS:
-						activated := fmt.Sprintf("%s", emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios == true {
-							activated = fmt.Sprintf("%s", emoji.CheckMarkButton)
+						activated := string(emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios {
+							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
 					}
