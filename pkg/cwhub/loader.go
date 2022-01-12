@@ -23,6 +23,7 @@ import (
 /*the walk/parser_visit function can't receive extra args*/
 var hubdir, installdir, indexpath, datadir string
 
+// TODO: Break this function into smaller functions.
 func parser_visit(path string, f os.FileInfo, err error) error {
 	var target Item
 	var local bool
@@ -50,7 +51,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s datadir%s", path, hubdir, installdir, datadir)
 	/*we're in hub (~/.hub/hub/)*/
-	// FIXME: This doesn't consider that path has prefix of two of the hubdir, installdir, datadir
 
 	hubDirSetter := func() {
 		log.Tracef("in hub dir")
@@ -66,6 +66,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
 	}
+
 	dataDirSetter := func() {
 		log.Tracef("in data dir")
 		fauthor = ""
@@ -110,41 +111,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	if !foundMatch {
 		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
-	// if strings.HasPrefix(path, hubdir) {
-	// 	log.Tracef("in hub dir")
-	// 	inhub = true
-	// 	//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-	// 	//.../hub/scenarios/crowdsec/ssh_bf.yaml
-	// 	//.../hub/profiles/crowdsec/linux.yaml
-	// 	if len(subs) < 4 {
-	// 		log.Fatalf("path is too short : %s (%d)", path, len(subs))
-	// 	}
-	// 	fname = subs[len(subs)-1]
-	// 	fauthor = subs[len(subs)-2]
-	// 	stage = subs[len(subs)-3]
-	// 	ftype = subs[len(subs)-4]
-	// } else if strings.HasPrefix(path, datadir) { // we are in data dir
-	// 	fauthor = ""
-	// 	fname = subs[len(subs)-1]
-	// 	stage = ""
-	// 	ftype = DATA_FILES
-	// 	fauthor = ""
-	// } else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
-	// 	log.Tracef("in install dir")
-	// 	if len(subs) < 3 {
-	// 		log.Fatalf("path is too short : %s (%d)", path, len(subs))
-	// 	}
-	// 	///.../config/parser/stage/file.yaml
-	// 	///.../config/postoverflow/stage/file.yaml
-	// 	///.../config/scenarios/scenar.yaml
-	// 	///.../config/collections/linux.yaml //file is empty
-	// 	fname = subs[len(subs)-1]
-	// 	stage = subs[len(subs)-2]
-	// 	ftype = subs[len(subs)-3]
-	// } else {
-	// 	return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
-	// }
-
 	log.Tracef("stage:%s ftype:%s", stage, ftype)
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
 
