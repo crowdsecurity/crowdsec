@@ -29,16 +29,18 @@ func NewConsoleCmd() *cobra.Command {
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
-			}
-			if err := csConfig.LoadAPIServer(); err != nil {
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				var fdErr *fs.PathError
 				if errors.As(err, &fdErr) {
 					log.Fatalf("Unable to load Local API : %s", fdErr)
-				} else {
+				} else if err != nil {
 					log.Fatalf("Unable to load required Local API Configuration : %s", err)
+				} else {
+					log.Fatal("Local API is disabled, please run this command on the local API machine")
 				}
+			}
+			if csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("No configuration for Central API (CAPI) in '%s'", *csConfig.FilePath)
