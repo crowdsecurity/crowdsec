@@ -284,7 +284,6 @@ func downloadData(dataFolder string, parentItemAuthor string, force bool, reader
 						log.Debugf("data file %s matched sha with %s's version %s", dfPath, dataFileName, version)
 						if i != 0 {
 							download = true
-							downloadFromHub = true
 							log.Debugf("data file %s is outdated, updating to version %s", dfPath, version)
 						}
 						break

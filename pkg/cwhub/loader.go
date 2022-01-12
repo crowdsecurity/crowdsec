@@ -200,17 +200,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
 			}
-		} else {
-			//wrong file
-			//<type>/<stage>/<author>/<name>.yaml
-			if ftype != DATA_FILES {
-				if !strings.HasSuffix(hubpath, v.RemotePath) {
-					// log.Printf("wrong file hubpath=%s  hubIdx[%s]=%s", hubpath, spew.Sdump(v))
-					continue
-				}
-			} else {
-
-			}
 		}
 		sha, err := getSHA256(path)
 		if err != nil {
