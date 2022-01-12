@@ -51,7 +51,8 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	log.Tracef("path:%s, hubdir:%s, installdir:%s datadir%s", path, hubdir, installdir, datadir)
 	/*we're in hub (~/.hub/hub/)*/
 	// FIXME: This doesn't consider that path has prefix of two of the hubdir, installdir, datadir
-	if strings.HasPrefix(path, hubdir) {
+
+	hubDirSetter := func() {
 		log.Tracef("in hub dir")
 		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
@@ -64,13 +65,17 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-	} else if strings.HasPrefix(path, datadir) { // we are in data dir
+	}
+	dataDirSetter := func() {
+		log.Tracef("in data dir")
 		fauthor = ""
 		fname = subs[len(subs)-1]
 		stage = ""
 		ftype = DATA_FILES
 		fauthor = ""
-	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
+	}
+
+	installDirSetter := func() {
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s (%d)", path, len(subs))
@@ -82,9 +87,63 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
-	} else {
-		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
+
+	setterByPath := map[string]func(){
+		installdir: installDirSetter,
+		hubdir:     hubDirSetter,
+		datadir:    dataDirSetter,
+	}
+
+	paths := []string{installdir, hubdir, datadir}
+	sort.Slice(paths, func(i, j int) bool {
+		return len(paths[i]) > len(paths[j])
+	})
+	foundMatch := false
+	for _, p := range paths {
+		if strings.HasPrefix(path, p) {
+			setterByPath[p]()
+			foundMatch = true
+			break
+		}
+	}
+	if !foundMatch {
+		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+	}
+	// if strings.HasPrefix(path, hubdir) {
+	// 	log.Tracef("in hub dir")
+	// 	inhub = true
+	// 	//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+	// 	//.../hub/scenarios/crowdsec/ssh_bf.yaml
+	// 	//.../hub/profiles/crowdsec/linux.yaml
+	// 	if len(subs) < 4 {
+	// 		log.Fatalf("path is too short : %s (%d)", path, len(subs))
+	// 	}
+	// 	fname = subs[len(subs)-1]
+	// 	fauthor = subs[len(subs)-2]
+	// 	stage = subs[len(subs)-3]
+	// 	ftype = subs[len(subs)-4]
+	// } else if strings.HasPrefix(path, datadir) { // we are in data dir
+	// 	fauthor = ""
+	// 	fname = subs[len(subs)-1]
+	// 	stage = ""
+	// 	ftype = DATA_FILES
+	// 	fauthor = ""
+	// } else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
+	// 	log.Tracef("in install dir")
+	// 	if len(subs) < 3 {
+	// 		log.Fatalf("path is too short : %s (%d)", path, len(subs))
+	// 	}
+	// 	///.../config/parser/stage/file.yaml
+	// 	///.../config/postoverflow/stage/file.yaml
+	// 	///.../config/scenarios/scenar.yaml
+	// 	///.../config/collections/linux.yaml //file is empty
+	// 	fname = subs[len(subs)-1]
+	// 	stage = subs[len(subs)-2]
+	// 	ftype = subs[len(subs)-3]
+	// } else {
+	// 	return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+	// }
 
 	log.Tracef("stage:%s ftype:%s", stage, ftype)
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
