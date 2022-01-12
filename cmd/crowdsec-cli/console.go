@@ -122,6 +122,7 @@ After running this command your will need to validate the enrollment in the weba
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if enableAll {
@@ -151,6 +152,7 @@ Enable given information push to the central API. Allows to empower the console`
 		Long: `
 Disable given information push to the central API.`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
+		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if disableAll {
