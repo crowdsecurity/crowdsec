@@ -137,6 +137,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	} else if ip_sz != 0 {
 		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
+
 	return query, nil
 }
 
@@ -162,6 +163,11 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		decision.FieldValue,
 		decision.FieldScope,
 		decision.FieldOrigin,
+	).GroupBy( /*group by value + scope, we don't want duplicate*/
+		decision.FieldValue,
+		decision.FieldScope,
+	).Aggregate( /*and we want the decision with longest validity*/
+		ent.Max(decision.FieldUntil),
 	).Scan(c.CTX, &data)
 	if err != nil {
 		c.Log.Warningf("QueryDecisionWithFilter : %s", err)
