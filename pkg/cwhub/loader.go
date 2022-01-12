@@ -21,7 +21,7 @@ import (
 )
 
 /*the walk/parser_visit function can't receive extra args*/
-var hubdir, installdir, indexpath, datadir string
+var hubdir, installdir, datadir string
 
 // TODO: Break this function into smaller functions.
 func parser_visit(path string, f os.FileInfo, err error) error {
@@ -328,7 +328,6 @@ func CollecDepsCheck(v *Item) error {
 func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	hubdir = hub.HubDir
 	installdir = hub.ConfigDir
-	indexpath = hub.HubIndexFile
 	datadir = hub.DataDir
 	warnings := []string{}
 
