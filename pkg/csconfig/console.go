@@ -23,8 +23,8 @@ var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEN
 
 type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
-	ShareTaintedScenarios *bool `yaml:"share_custom"`
-	ShareCustomScenarios  *bool `yaml:"share_tainted"`
+	ShareTaintedScenarios *bool `yaml:"share_tainted"`
+	ShareCustomScenarios  *bool `yaml:"share_custom"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
