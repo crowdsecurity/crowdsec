@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -208,9 +209,9 @@ func TestLoadAPIServer(t *testing.T) {
 				},
 				ConsoleConfigPath: "/etc/crowdsec/console_config.yaml",
 				ConsoleConfig: &ConsoleConfig{
-					ShareManualDecisions:  new(bool),
-					ShareTaintedScenarios: new(bool),
-					ShareCustomScenarios:  new(bool),
+					ShareManualDecisions:  types.BoolPtr(false),
+					ShareTaintedScenarios: types.BoolPtr(true),
+					ShareCustomScenarios:  types.BoolPtr(true),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",
