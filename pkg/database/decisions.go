@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -152,7 +153,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	if err != nil {
 		return []*ent.Decision{}, err
 	}
-
+	log.Printf("here yo")
 	err = decisions.Select(
 		decision.FieldID,
 		decision.FieldUntil,
@@ -178,6 +179,8 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+	var data []*ent.Decision
+
 	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now()))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
@@ -186,7 +189,22 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
-	data, err := query.All(c.CTX)
+	err = query.Select(
+		decision.FieldID,
+		decision.FieldUntil,
+		decision.FieldScenario,
+		decision.FieldType,
+		decision.FieldStartIP,
+		decision.FieldEndIP,
+		decision.FieldValue,
+		decision.FieldScope,
+		decision.FieldOrigin,
+	).GroupBy( /*group by value + scope, we don't want duplicate*/
+		decision.FieldValue,
+		decision.FieldScope,
+	).Aggregate( /*and we want the decision with longest validity*/
+		ent.Max(decision.FieldUntil),
+	).Scan(c.CTX, &data)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
@@ -228,13 +246,30 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+	var data []*ent.Decision
+
 	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now()))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
 	}
-	data, err := query.All(c.CTX)
+	err = query.Select(
+		decision.FieldID,
+		decision.FieldUntil,
+		decision.FieldScenario,
+		decision.FieldType,
+		decision.FieldStartIP,
+		decision.FieldEndIP,
+		decision.FieldValue,
+		decision.FieldScope,
+		decision.FieldOrigin,
+	).GroupBy( /*group by value + scope, we don't want duplicate*/
+		decision.FieldValue,
+		decision.FieldScope,
+	).Aggregate( /*and we want the decision with longest validity*/
+		ent.Max(decision.FieldUntil),
+	).Scan(c.CTX, &data)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())

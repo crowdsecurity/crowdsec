@@ -37,6 +37,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	var results []*models.Decision
 	var data []*ent.Decision
 
+	log.Printf("hey yoyoy #1")
 	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
