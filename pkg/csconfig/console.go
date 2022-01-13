@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -30,9 +31,9 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	c.ConsoleConfig = &ConsoleConfig{}
 	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {
 		log.Debugf("no console configuration to load")
-		c.ConsoleConfig.ShareCustomScenarios = new(bool)
-		c.ConsoleConfig.ShareTaintedScenarios = new(bool)
-		c.ConsoleConfig.ShareManualDecisions = new(bool)
+		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
+		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
+		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 		return nil
 	}
 
@@ -46,16 +47,16 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	}
 
 	if c.ConsoleConfig.ShareCustomScenarios == nil {
-		log.Debugf("no share_custom scenarios found, setting to false")
-		c.ConsoleConfig.ShareCustomScenarios = new(bool)
+		log.Debugf("no share_custom scenarios found, setting to true")
+		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
 	}
 	if c.ConsoleConfig.ShareTaintedScenarios == nil {
-		log.Debugf("no share_tainted scenarios found, setting to false")
-		c.ConsoleConfig.ShareTaintedScenarios = new(bool)
+		log.Debugf("no share_tainted scenarios found, setting to true")
+		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 	}
 	if c.ConsoleConfig.ShareManualDecisions == nil {
 		log.Debugf("no share_manual scenarios found, setting to false")
-		c.ConsoleConfig.ShareManualDecisions = new(bool)
+		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 	}
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
 
