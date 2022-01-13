@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,7 +20,6 @@ import (
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -215,18 +215,31 @@ Disable given information push to the central API.`,
 					}
 				}
 				table.Render()
-			case "json": //TBD : fix this
+			case "json":
 				data, err := json.MarshalIndent(csConfig.API.Server.ConsoleConfig, "", "  ")
 				if err != nil {
 					log.Fatalf("failed to marshal configuration: %s", err)
 				}
 				fmt.Printf("%s\n", string(data))
 			case "raw":
-				data, err := yaml.Marshal(csConfig.API.Server.ConsoleConfig)
+				csvwriter := csv.NewWriter(os.Stdout)
+				err := csvwriter.Write([]string{"option", "enabled"})
 				if err != nil {
-					log.Fatalf("failed to marshal configuration: %s", err)
+					log.Fatal(err)
 				}
-				fmt.Printf("%s\n", string(data))
+
+				rows := [][]string{
+					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
+					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
+					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+				}
+				for _, row := range rows {
+					err = csvwriter.Write(row)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+				csvwriter.Flush()
 			}
 		},
 	}
