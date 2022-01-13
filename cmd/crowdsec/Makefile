@@ -1,3 +1,9 @@
+ifeq ($(OS),Windows_NT)
+SHELL := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
+EXT=.exe
+endif
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -5,7 +11,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
-CROWDSEC_BIN=crowdsec
+CROWDSEC_BIN=crowdsec$(EXT)
 PREFIX?="/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
@@ -26,7 +32,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	rm -f $(CROWDSEC_BIN)
+	$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
@@ -61,7 +67,7 @@ systemd: install
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(CFG_PREFIX)
-	rm -rf $(DATA_PREFIX)
-	rm -f "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
-	rm -f "$(SYSTEMD_PATH_FILE)"
+	$(RM) $(CFG_PREFIX) $(WIN_IGNORE_ERR)
+	$(RM) $(DATA_PREFIX) $(WIN_IGNORE_ERR) 
+	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)" $(WIN_IGNORE_ERR)
+	$(RM) "$(SYSTEMD_PATH_FILE)" $(WIN_IGNORE_ERR)

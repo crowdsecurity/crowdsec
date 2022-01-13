@@ -1,10 +1,17 @@
+ifeq ($(OS),Windows_NT)
+SHELL := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
+EXT=.exe
+endif
+
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
-BINARY_NAME=cscli
+BINARY_NAME=cscli$(EXT)
 PREFIX?="/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 
@@ -24,8 +31,8 @@ install-bin:
 	@install -v -m 755 -D "$(BINARY_NAME)" "$(BIN_PREFIX)/$(BINARY_NAME)" || exit
 
 uninstall:
-	@rm -rf $(CSCLI_CONFIG)
-	@rm -rf $(BIN_PREFIX)$(BINARY_NAME)
+	@$(RM) $(CSCLI_CONFIG)
+	@$(RM) $(BIN_PREFIX)$(BINARY_NAME) $(WIN_IGNORE_ERR)
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)

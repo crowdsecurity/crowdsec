@@ -1,3 +1,8 @@
+ifeq ($(OS),Windows_NT)
+SHELL := powershell.exe
+.SHELLFLAGS := -NoProfile -Command
+EXT=.exe
+endif
 
 # Go parameters
 GOCMD=go
@@ -5,13 +10,13 @@ GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
-BINARY_NAME=notification-slack
+BINARY_NAME=notification-slack$(EXT)
 
 build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)
 
 
 static: clean
