@@ -24,3 +24,6 @@ plugins/notifications/http/notification-http
 plugins/notifications/slack/notification-slack
 plugins/notifications/splunk/notification-splunk
 plugins/notifications/email/notification-email
+
+#release stuff
+crowdsec-v*
