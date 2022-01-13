@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"net/http"
+
 	"github.com/alexliesenfeld/health"
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -10,7 +12,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
-	"net/http"
 )
 
 type Controller struct {
@@ -21,6 +22,7 @@ type Controller struct {
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
 	Log           *log.Logger
+	ConsoleConfig *csconfig.ConsoleConfig
 }
 
 func (c *Controller) Init() error {
@@ -51,7 +53,7 @@ func serveHealth() http.HandlerFunc {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel)
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig)
 	if err != nil {
 		return err
 	}

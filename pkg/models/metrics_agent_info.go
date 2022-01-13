@@ -12,12 +12,18 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// MetricsSoftInfo MetricsSoftInfo
+// MetricsAgentInfo MetricsAgentInfo
 //
 // Software version info (so we can warn users about out-of-date software). The software name and the version are "guessed" from the user-agent
 //
-// swagger:model MetricsSoftInfo
-type MetricsSoftInfo struct {
+// swagger:model MetricsAgentInfo
+type MetricsAgentInfo struct {
+
+	// last agent push date
+	LastPush string `json:"last_push,omitempty"`
+
+	// last agent update date
+	LastUpdate string `json:"last_update,omitempty"`
 
 	// name of the component
 	Name string `json:"name,omitempty"`
@@ -26,18 +32,18 @@ type MetricsSoftInfo struct {
 	Version string `json:"version,omitempty"`
 }
 
-// Validate validates this metrics soft info
-func (m *MetricsSoftInfo) Validate(formats strfmt.Registry) error {
+// Validate validates this metrics agent info
+func (m *MetricsAgentInfo) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this metrics soft info based on context it is used
-func (m *MetricsSoftInfo) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this metrics agent info based on context it is used
+func (m *MetricsAgentInfo) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *MetricsSoftInfo) MarshalBinary() ([]byte, error) {
+func (m *MetricsAgentInfo) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -45,8 +51,8 @@ func (m *MetricsSoftInfo) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *MetricsSoftInfo) UnmarshalBinary(b []byte) error {
-	var res MetricsSoftInfo
+func (m *MetricsAgentInfo) UnmarshalBinary(b []byte) error {
+	var res MetricsAgentInfo
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

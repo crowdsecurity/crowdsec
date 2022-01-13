@@ -85,6 +85,8 @@ type LocalApiServerCfg struct {
 	LogMedia               string              `yaml:"-"`
 	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath      string              `yaml:"console_path,omitempty"`
+	ConsoleConfig          *ConsoleConfig      `yaml:"-"`
 	Profiles               []*ProfileCfg       `yaml:"-"`
 	LogLevel               *log.Level          `yaml:"log_level"`
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
@@ -114,6 +116,13 @@ func (c *Config) LoadAPIServer() error {
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
+		if c.API.Server.ConsoleConfigPath == "" {
+			c.API.Server.ConsoleConfigPath = DefaultConsoleConfgFilePath
+		}
+		if err := c.API.Server.LoadConsoleConfig(); err != nil {
+			return errors.Wrap(err, "while loading console options")
+		}
+
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 			if err := c.API.Server.OnlineClient.Load(); err != nil {
 				return errors.Wrap(err, "loading online client credentials")

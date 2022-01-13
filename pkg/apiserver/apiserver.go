@@ -38,6 +38,7 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	httpServerTomb tomb.Tomb
+	consoleConfig  *csconfig.ConsoleConfig
 }
 
 // RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
@@ -165,19 +166,21 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return
 	})
 	router.Use(CustomRecoveryWithWriter())
+
 	controller := &controllers.Controller{
-		DBClient: dbClient,
-		Ectx:     context.Background(),
-		Router:   router,
-		Profiles: config.Profiles,
-		Log:      clog,
+		DBClient:      dbClient,
+		Ectx:          context.Background(),
+		Router:        router,
+		Profiles:      config.Profiles,
+		Log:           clog,
+		ConsoleConfig: config.ConsoleConfig,
 	}
 
 	var apiClient *apic
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI pusher")
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
 		if err != nil {
 			return &APIServer{}, err
 		}
@@ -197,6 +200,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		router:         router,
 		apic:           apiClient,
 		httpServerTomb: tomb.Tomb{},
+		consoleConfig:  config.ConsoleConfig,
 	}, nil
 
 }

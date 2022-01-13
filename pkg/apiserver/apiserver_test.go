@@ -49,6 +49,11 @@ func LoadTestConfig() csconfig.Config {
 		ListenURI:    "http://127.0.0.1:8080",
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
@@ -76,6 +81,11 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		DbConfig:               &dbconfig,
 		ProfilesPath:           "./tests/profiles.yaml",
 		UseForwardedForHeaders: true,
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,

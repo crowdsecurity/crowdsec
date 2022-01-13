@@ -156,10 +156,14 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
+
 			if !matched {
 				continue
 			}
-			alert.Decisions = append(alert.Decisions, profileDecisions...)
+
+			if len(alert.Decisions) == 0 { // non manual decision
+				alert.Decisions = append(alert.Decisions, profileDecisions...)
+			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
 			if profile.OnSuccess == "break" {

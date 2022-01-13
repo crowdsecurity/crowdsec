@@ -26,11 +26,11 @@ type Metrics struct {
 
 	// bouncers
 	// Required: true
-	Bouncers []*MetricsSoftInfo `json:"bouncers"`
+	Bouncers []*MetricsBouncerInfo `json:"bouncers"`
 
 	// machines
 	// Required: true
-	Machines []*MetricsSoftInfo `json:"machines"`
+	Machines []*MetricsAgentInfo `json:"machines"`
 }
 
 // Validate validates this metrics

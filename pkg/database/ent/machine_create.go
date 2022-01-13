@@ -49,6 +49,20 @@ func (mc *MachineCreate) SetNillableUpdatedAt(t *time.Time) *MachineCreate {
 	return mc
 }
 
+// SetLastPush sets the "last_push" field.
+func (mc *MachineCreate) SetLastPush(t time.Time) *MachineCreate {
+	mc.mutation.SetLastPush(t)
+	return mc
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableLastPush(t *time.Time) *MachineCreate {
+	if t != nil {
+		mc.SetLastPush(*t)
+	}
+	return mc
+}
+
 // SetMachineId sets the "machineId" field.
 func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
 	mc.mutation.SetMachineId(s)
@@ -217,6 +231,10 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultUpdatedAt()
 		mc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := mc.mutation.LastPush(); !ok {
+		v := machine.DefaultLastPush()
+		mc.mutation.SetLastPush(v)
+	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
@@ -290,6 +308,14 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Column: machine.FieldUpdatedAt,
 		})
 		_node.UpdatedAt = value
+	}
+	if value, ok := mc.mutation.LastPush(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+		_node.LastPush = value
 	}
 	if value, ok := mc.mutation.MachineId(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

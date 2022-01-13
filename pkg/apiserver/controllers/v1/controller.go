@@ -18,9 +18,10 @@ type Controller struct {
 	Profiles      []*csconfig.ProfileCfg
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
+	ConsoleConfig csconfig.ConsoleConfig
 }
 
-func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert) (*Controller, error) {
+func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig) (*Controller, error) {
 	var err error
 	v1 := &Controller{
 		Ectx:          ctx,
@@ -29,6 +30,7 @@ func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.Pr
 		Profiles:      profiles,
 		CAPIChan:      capiChan,
 		PluginChannel: pluginChannel,
+		ConsoleConfig: consoleConfig,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(dbClient)
 	if err != nil {
