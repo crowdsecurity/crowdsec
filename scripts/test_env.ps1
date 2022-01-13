@@ -21,8 +21,7 @@ function create_arbo() {
 	$null = New-Item -ItemType Directory $postoverflows_dir
 	$null = New-Item -ItemType Directory $cscli_dir
 	$null = New-Item -ItemType Directory $hub_dir
-    #$plugin does not exists, how do test_env.sh works ?
-    #New-Item -ItemType Directory $config_dir\$notif_dir\$plugin
+    $null = New-Item -ItemType Directory $config_dir\$notif_dir
 	$null = New-Item -ItemType Directory $base\$plugins_dir
 }
 
@@ -37,7 +36,7 @@ function copy_file() {
 	$null = New-Item -ItemType File $config_dir\online_api_credentials.yaml
 	#envsubst < "./config/dev.yaml" > $BASE/dev.yaml
     Copy-Item .\config\dev.yaml $base\dev.yaml
-    $data | ForEach-Object {
+    $plugins | ForEach-Object {
         Copy-Item $plugins_dir\$notif_dir\$_\notification-$_.exe $base\$plugins_dir\notification-$_.exe
 		Copy-Item $plugins_dir\$notif_dir\$_\$_.yaml $config_dir\$notif_dir\$_.yaml
     }
