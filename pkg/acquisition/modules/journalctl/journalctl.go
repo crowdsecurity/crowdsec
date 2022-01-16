@@ -126,7 +126,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Raw = stdoutLine
 			logger.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
-			l.Time = time.Now()
+			l.Time = time.Now().UTC()
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()

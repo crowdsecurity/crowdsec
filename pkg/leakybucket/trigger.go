@@ -20,16 +20,16 @@ func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *type
 			err := d.UnmarshalText([]byte(msg.MarshaledTime))
 			if err != nil {
 				log.Warningf("Failed unmarshaling event time (%s) : %v", msg.MarshaledTime, err)
-				d = time.Now()
+				d = time.Now().UTC()
 			}
 			l.logger.Debugf("yay timemachine overflow time : %s --> %s", d, msg.MarshaledTime)
 			l.Last_ts = d
 			l.First_ts = d
 			l.Ovflw_ts = d
 		} else {
-			l.Last_ts = time.Now()
-			l.First_ts = time.Now()
-			l.Ovflw_ts = time.Now()
+			l.Last_ts = time.Now().UTC()
+			l.First_ts = time.Now().UTC()
+			l.Ovflw_ts = time.Now().UTC()
 		}
 		l.Total_count = 1
 

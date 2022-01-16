@@ -43,7 +43,7 @@ func GenSubObject(i int) []byte {
 			{
 				ID:        "testid",
 				Message:   fmt.Sprintf("%d", i),
-				Timestamp: time.Now().Unix(),
+				Timestamp: time.Now().UTC().Unix(),
 			},
 		},
 	}

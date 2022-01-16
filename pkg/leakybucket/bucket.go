@@ -158,7 +158,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
+		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UTC().UnixNano()).Generate(),
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),
@@ -261,7 +261,7 @@ func LeakRoutine(leaky *Leaky) error {
 				alert types.RuntimeAlert
 				err   error
 			)
-			leaky.Ovflw_ts = time.Now()
+			leaky.Ovflw_ts = time.Now().UTC()
 			close(leaky.Signal)
 			ofw := leaky.Queue
 			alert = types.RuntimeAlert{Mapkey: leaky.Mapkey}
@@ -315,13 +315,13 @@ func Pour(leaky *Leaky, msg types.Event) {
 
 	leaky.Total_count += 1
 	if leaky.First_ts.IsZero() {
-		leaky.First_ts = time.Now()
+		leaky.First_ts = time.Now().UTC()
 	}
-	leaky.Last_ts = time.Now()
+	leaky.Last_ts = time.Now().UTC()
 	if leaky.Limiter.Allow() {
 		leaky.Queue.Add(msg)
 	} else {
-		leaky.Ovflw_ts = time.Now()
+		leaky.Ovflw_ts = time.Now().UTC()
 		leaky.logger.Debugf("Last event to be poured, bucket overflow.")
 		leaky.Queue.Add(msg)
 		leaky.Out <- leaky.Queue

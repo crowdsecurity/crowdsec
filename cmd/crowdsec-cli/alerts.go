@@ -157,8 +157,8 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 			if err != nil {
 				log.Errorf(err.Error())
 			}
-			expire := time.Now().Add(parsedDuration)
-			if time.Now().After(expire) {
+			expire := time.Now().UTC().Add(parsedDuration)
+			if time.Now().UTC().After(expire) {
 				continue
 			}
 			foundActive = true

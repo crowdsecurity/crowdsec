@@ -134,7 +134,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		response chan types.Event
 	)
 
-	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
+	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UTC().UnixNano())
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {

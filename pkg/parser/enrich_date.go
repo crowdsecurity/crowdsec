@@ -33,7 +33,7 @@ func GenDateParse(date string) (string, time.Time) {
 		if err == nil && !t.IsZero() {
 			//if the year isn't set, set it to current date :)
 			if t.Year() == 0 {
-				t = t.AddDate(time.Now().Year(), 0, 0)
+				t = t.AddDate(time.Now().UTC().Year(), 0, 0)
 			}
 			retstr, err := t.MarshalText()
 			if err != nil {
@@ -44,7 +44,7 @@ func GenDateParse(date string) (string, time.Time) {
 		}
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 	retstr, err := now.MarshalText()
 	if err != nil {
 		log.Warningf("Failed marshaling current time")

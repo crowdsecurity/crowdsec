@@ -310,9 +310,9 @@ cscli decisions add --scope username --value foobar
 			eventsCount := int32(1)
 			empty := ""
 			simulated := false
-			startAt := time.Now().Format(time.RFC3339)
-			stopAt := time.Now().Format(time.RFC3339)
-			createdAt := time.Now().Format(time.RFC3339)
+			startAt := time.Now().UTC().Format(time.RFC3339)
+			stopAt := time.Now().UTC().Format(time.RFC3339)
+			createdAt := time.Now().UTC().Format(time.RFC3339)
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
@@ -582,7 +582,7 @@ decisions.json :
 			}
 			alerts := models.AddAlertsRequest{}
 			importAlert := models.Alert{
-				CreatedAt: time.Now().Format(time.RFC3339),
+				CreatedAt: time.Now().UTC().Format(time.RFC3339),
 				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
@@ -590,8 +590,8 @@ decisions.json :
 					Scope: types.StrPtr("cscli/manual-import"),
 					Value: types.StrPtr(""),
 				},
-				StartAt:         types.StrPtr(time.Now().Format(time.RFC3339)),
-				StopAt:          types.StrPtr(time.Now().Format(time.RFC3339)),
+				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
+				StopAt:          types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
 				Capacity:        types.Int32Ptr(0),
 				Simulated:       types.BoolPtr(false),
 				EventsCount:     types.Int32Ptr(int32(len(decisionsList))),

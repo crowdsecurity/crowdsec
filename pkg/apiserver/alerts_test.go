@@ -201,8 +201,8 @@ func TestAlertListFilters(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)

@@ -225,3 +225,7 @@ func InSlice(str string, slice []string) bool {
 	}
 	return false
 }
+
+func UtcNow() time.Time {
+	return time.Now().UTC()
+}

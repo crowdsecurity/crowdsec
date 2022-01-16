@@ -117,7 +117,7 @@ stream_name: test_stream_bad`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -163,7 +163,7 @@ stream_regexp: test_bad[0-9]+`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -213,7 +213,7 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -230,12 +230,12 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_4"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 						//and add an event in the future that will be popped
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_5"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -292,7 +292,7 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -310,7 +310,7 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_41"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -325,7 +325,7 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_51"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -384,7 +384,7 @@ stream_name: test_stream`),
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -718,7 +718,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -732,7 +732,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_2"),
-							Timestamp: aws.Int64(time.Now().UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -746,7 +746,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_3"),
-							Timestamp: aws.Int64(time.Now().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {

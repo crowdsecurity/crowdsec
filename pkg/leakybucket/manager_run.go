@@ -163,12 +163,12 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 	sigclosed := 0
 	failed_sent := 0
 	attempts := 0
-	start := time.Now()
+	start := time.Now().UTC()
 
 	for !sent {
 		attempts += 1
 		/* Warn the user if we used more than a 100 ms to pour an event, it's at least an half lock*/
-		if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now()) {
+		if attempts%100000 == 0 && start.Add(100*time.Millisecond).Before(time.Now().UTC()) {
 			holder.logger.Warningf("stuck for %s sending event to %s (sigclosed:%d failed_sent:%d attempts:%d)", time.Since(start),
 				buckey, sigclosed, failed_sent, attempts)
 		}
