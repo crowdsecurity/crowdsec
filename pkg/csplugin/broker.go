@@ -5,14 +5,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math"
 	"os"
-	"os/user"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"text/template"
 	"time"
 
@@ -21,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/google/uuid"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -193,9 +190,9 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 		return err
 	}
 	for _, binaryPath := range binaryPaths {
-		if err := pluginIsValid(binaryPath); err != nil {
+		/*if err := pluginIsValid(binaryPath); err != nil {
 			return err
-		}
+		}*/
 		pType, pSubtype, err := getPluginTypeAndSubtypeFromPath(binaryPath) // eg pType="notification" , pSubtype="slack"
 		if err != nil {
 			return err
@@ -239,6 +236,9 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 		return nil, err
 	}
 	cmd, err := pb.CreateCmd(binaryPath)
+	if err != nil {
+		return nil, err
+	}
 	pb.pluginMap[name] = &NotifierPlugin{}
 	l := log.New()
 	err = types.ConfigureLogger(l)
@@ -376,47 +376,12 @@ func listFilesAtPath(path string) ([]string, error) {
 	return filePaths, nil
 }
 
-func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
-	pluginFileName := filepath.Base(path)
-	parts := strings.Split(pluginFileName, "-")
-	if len(parts) < 2 {
-		return "", "", fmt.Errorf("plugin name %s is invalid. Name should be like {type-name}", path)
-	}
-	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
-}
-
-func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
-	u, err := user.Lookup(username)
-	if err != nil {
-		return nil, err
-	}
-	g, err := user.LookupGroup(groupname)
-	if err != nil {
-		return nil, err
-	}
-	uid, err := strconv.Atoi(u.Uid)
-	if err != nil {
-		return nil, err
-	}
-	if uid < 0 && uid > math.MaxInt32 {
-		return nil, fmt.Errorf("out of bound uid")
-	}
-	gid, err := strconv.Atoi(g.Gid)
-	if err != nil {
-		return nil, err
-	}
-	if gid < 0 && gid > math.MaxInt32 {
-		return nil, fmt.Errorf("out of bound gid")
-	}
-	return CheckCredential(uid, gid), nil
-}
-
 func getUUID() (string, error) {
-	if d, err := os.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
+	uuidv4, err := uuid.NewRandom()
+	if err != nil {
 		return "", err
-	} else {
-		return string(d), nil
 	}
+	return uuidv4.String(), nil
 }
 
 func getHandshake() (plugin.HandshakeConfig, error) {
