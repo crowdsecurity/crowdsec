@@ -1,4 +1,4 @@
-name: tests-winwdows
+name: tests-windows
 
 #those env variables are for localstack, so we can emulate aws services
 env:
