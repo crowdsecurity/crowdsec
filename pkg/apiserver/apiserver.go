@@ -116,7 +116,9 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	router := gin.New()
 
 	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
-		router.SetTrustedProxies(*config.TrustedProxies)
+		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
+			return &APIServer{}, errors.Wrap(err, "while setting trusted_proxies")
+		}
 		router.ForwardedByClientIP = true
 	} else {
 		router.ForwardedByClientIP = false
