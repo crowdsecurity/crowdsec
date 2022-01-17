@@ -77,7 +77,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
 	for _, pattern := range f.config.Filenames {
 		if f.config.ForceInotify {
-			directory := path.Dir(pattern)
+			directory := filepath.Dir(pattern)
 			f.logger.Infof("Force add watch on %s", directory)
 			if !f.watchedDirectories[directory] {
 				err = f.watcher.Add(directory)
@@ -98,7 +98,8 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		}
 		for _, file := range files {
 			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
-				directory := path.Dir(file)
+				directory := filepath.Dir(file)
+				f.logger.Debugf("Will add watch to directory: %s", directory)
 				if !f.watchedDirectories[directory] {
 
 					err = f.watcher.Add(directory)
@@ -107,6 +108,8 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 						continue
 					}
 					f.watchedDirectories[directory] = true
+				} else {
+					f.logger.Debugf("Watch for directory %s already exists", directory)
 				}
 			}
 			f.logger.Infof("Adding file %s to datasources", file)
