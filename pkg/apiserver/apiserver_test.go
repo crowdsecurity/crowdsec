@@ -81,6 +81,7 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		DbConfig:               &dbconfig,
 		ProfilesPath:           "./tests/profiles.yaml",
 		UseForwardedForHeaders: true,
+		TrustedProxies:         &[]string{"0.0.0.0/0"},
 		ConsoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  new(bool),
 			ShareTaintedScenarios: new(bool),
