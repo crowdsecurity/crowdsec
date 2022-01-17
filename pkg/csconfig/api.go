@@ -113,6 +113,9 @@ func (c *Config) LoadAPIServer() error {
 		c.API.Server.LogMaxSize = c.Common.LogMaxSize
 		c.API.Server.LogMaxAge = c.Common.LogMaxAge
 		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+		}
 		if c.API.Server.TrustedProxies != nil {
 			c.API.Server.UseForwardedForHeaders = true
 		}
