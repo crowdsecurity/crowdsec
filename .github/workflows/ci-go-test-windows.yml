@@ -1,17 +1,5 @@
 name: tests-windows
 
-#those env variables are for localstack, so we can emulate aws services
-env:
-  AWS_HOST: localstack
-  SERVICES: cloudwatch,logs,kinesis
-  #those are to mimic aws config
-  AWS_ACCESS_KEY_ID: AKIAIOSFODNN7EXAMPLE 
-  AWS_SECRET_ACCESS_KEY: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY 
-  AWS_REGION: us-east-1 
-  #and to override our endpoint in aws sdk
-  AWS_ENDPOINT_FORCE: http://localhost:4566
-  KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2" 
-
 on:
   push:
     branches: [ master ]
