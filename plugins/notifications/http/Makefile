@@ -17,7 +17,6 @@ clean:
 	@$(RM) $(BINARY_NAME) $(WIN_IGNORE_ERR)
 
 build: clean
-	$(warning $(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v)
 	$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 static: clean
