@@ -90,6 +90,7 @@ type LocalApiServerCfg struct {
 	Profiles               []*ProfileCfg       `yaml:"-"`
 	LogLevel               *log.Level          `yaml:"log_level"`
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies         *[]string           `yaml:"trusted_proxies,omitempty"`
 	CompressLogs           *bool               `yaml:"-"`
 	LogMaxSize             int                 `yaml:"-"`
 	LogMaxAge              int                 `yaml:"-"`
@@ -112,7 +113,12 @@ func (c *Config) LoadAPIServer() error {
 		c.API.Server.LogMaxSize = c.Common.LogMaxSize
 		c.API.Server.LogMaxAge = c.Common.LogMaxAge
 		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
-
+		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+		}
+		if c.API.Server.TrustedProxies != nil {
+			c.API.Server.UseForwardedForHeaders = true
+		}
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
