@@ -1,5 +1,5 @@
 ifeq ($(OS),Windows_NT)
-SHELL := powershell.exe
+SHELL := pwsh.exe
 .SHELLFLAGS := -NoProfile -Command
 ROOT= $(shell (Get-Location).Path)
 SYSTEM?=windows
