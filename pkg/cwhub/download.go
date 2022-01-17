@@ -269,8 +269,8 @@ func downloadData(dataFolder string, parentItemAuthor string, force bool, reader
 					return err
 				}
 				download = dataFileHasUpdates(sha, dataFileName)
-
 			}
+
 			log.Infof("%v has updates=%v", dataFileName, download)
 
 			if download || force {
@@ -301,7 +301,7 @@ func dataFileHasUpdates(fileSha string, dataFileName string) bool {
 		}
 		log.Debugf("data file %s matched sha with version %s", dataFileName, version)
 		if i != 0 {
-			log.Debugf("data file %s is outdated, updating to version %s", dataFileName, version)
+			log.Debugf("data file %s is outdated, updating to version %s", dataFileName, versions[0])
 			return true
 		}
 		break
