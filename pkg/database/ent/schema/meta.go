@@ -16,9 +16,11 @@ type Meta struct {
 func (Meta) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("updated_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("key"),
 		field.String("value").MaxLen(4095),
 	}

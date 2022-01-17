@@ -18,9 +18,11 @@ type Alert struct {
 func (Alert) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("updated_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("scenario"),
 		field.String("bucketId").Default("").Optional(),
 		field.String("message").Default("").Optional(),

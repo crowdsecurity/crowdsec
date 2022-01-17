@@ -15,9 +15,11 @@ type Bouncer struct {
 func (Bouncer) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("updated_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("name").Unique(),
 		field.String("api_key"), // hash of api_key
 		field.Bool("revoked"),

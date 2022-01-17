@@ -34,11 +34,9 @@ func (eu *EventUpdate) SetCreatedAt(t time.Time) *EventUpdate {
 	return eu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableCreatedAt(t *time.Time) *EventUpdate {
-	if t != nil {
-		eu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (eu *EventUpdate) ClearCreatedAt() *EventUpdate {
+	eu.mutation.ClearCreatedAt()
 	return eu
 }
 
@@ -48,11 +46,9 @@ func (eu *EventUpdate) SetUpdatedAt(t time.Time) *EventUpdate {
 	return eu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (eu *EventUpdate) SetNillableUpdatedAt(t *time.Time) *EventUpdate {
-	if t != nil {
-		eu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (eu *EventUpdate) ClearUpdatedAt() *EventUpdate {
+	eu.mutation.ClearUpdatedAt()
 	return eu
 }
 
@@ -104,6 +100,7 @@ func (eu *EventUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	eu.defaults()
 	if len(eu.hooks) == 0 {
 		if err = eu.check(); err != nil {
 			return 0, err
@@ -158,6 +155,18 @@ func (eu *EventUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (eu *EventUpdate) defaults() {
+	if _, ok := eu.mutation.CreatedAt(); !ok && !eu.mutation.CreatedAtCleared() {
+		v := event.UpdateDefaultCreatedAt()
+		eu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := eu.mutation.UpdatedAt(); !ok && !eu.mutation.UpdatedAtCleared() {
+		v := event.UpdateDefaultUpdatedAt()
+		eu.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (eu *EventUpdate) check() error {
 	if v, ok := eu.mutation.Serialized(); ok {
@@ -193,10 +202,22 @@ func (eu *EventUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: event.FieldCreatedAt,
 		})
 	}
+	if eu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: event.FieldCreatedAt,
+		})
+	}
 	if value, ok := eu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: event.FieldUpdatedAt,
+		})
+	}
+	if eu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: event.FieldUpdatedAt,
 		})
 	}
@@ -274,11 +295,9 @@ func (euo *EventUpdateOne) SetCreatedAt(t time.Time) *EventUpdateOne {
 	return euo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableCreatedAt(t *time.Time) *EventUpdateOne {
-	if t != nil {
-		euo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (euo *EventUpdateOne) ClearCreatedAt() *EventUpdateOne {
+	euo.mutation.ClearCreatedAt()
 	return euo
 }
 
@@ -288,11 +307,9 @@ func (euo *EventUpdateOne) SetUpdatedAt(t time.Time) *EventUpdateOne {
 	return euo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (euo *EventUpdateOne) SetNillableUpdatedAt(t *time.Time) *EventUpdateOne {
-	if t != nil {
-		euo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (euo *EventUpdateOne) ClearUpdatedAt() *EventUpdateOne {
+	euo.mutation.ClearUpdatedAt()
 	return euo
 }
 
@@ -351,6 +368,7 @@ func (euo *EventUpdateOne) Save(ctx context.Context) (*Event, error) {
 		err  error
 		node *Event
 	)
+	euo.defaults()
 	if len(euo.hooks) == 0 {
 		if err = euo.check(); err != nil {
 			return nil, err
@@ -402,6 +420,18 @@ func (euo *EventUpdateOne) Exec(ctx context.Context) error {
 func (euo *EventUpdateOne) ExecX(ctx context.Context) {
 	if err := euo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (euo *EventUpdateOne) defaults() {
+	if _, ok := euo.mutation.CreatedAt(); !ok && !euo.mutation.CreatedAtCleared() {
+		v := event.UpdateDefaultCreatedAt()
+		euo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := euo.mutation.UpdatedAt(); !ok && !euo.mutation.UpdatedAtCleared() {
+		v := event.UpdateDefaultUpdatedAt()
+		euo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -457,10 +487,22 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 			Column: event.FieldCreatedAt,
 		})
 	}
+	if euo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: event.FieldCreatedAt,
+		})
+	}
 	if value, ok := euo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: event.FieldUpdatedAt,
+		})
+	}
+	if euo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: event.FieldUpdatedAt,
 		})
 	}

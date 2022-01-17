@@ -18,9 +18,9 @@ type Alert struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// Scenario holds the value of the "scenario" field.
 	Scenario string `json:"scenario,omitempty"`
 	// BucketId holds the value of the "bucketId" field.
@@ -165,13 +165,15 @@ func (a *Alert) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				a.CreatedAt = value.Time
+				a.CreatedAt = new(time.Time)
+				*a.CreatedAt = value.Time
 			}
 		case alert.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				a.UpdatedAt = value.Time
+				a.UpdatedAt = new(time.Time)
+				*a.UpdatedAt = value.Time
 			}
 		case alert.FieldScenario:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -348,10 +350,14 @@ func (a *Alert) String() string {
 	var builder strings.Builder
 	builder.WriteString("Alert(")
 	builder.WriteString(fmt.Sprintf("id=%v", a.ID))
-	builder.WriteString(", created_at=")
-	builder.WriteString(a.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", updated_at=")
-	builder.WriteString(a.UpdatedAt.Format(time.ANSIC))
+	if v := a.CreatedAt; v != nil {
+		builder.WriteString(", created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := a.UpdatedAt; v != nil {
+		builder.WriteString(", updated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", scenario=")
 	builder.WriteString(a.Scenario)
 	builder.WriteString(", bucketId=")

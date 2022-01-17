@@ -11,8 +11,8 @@ var (
 	// AlertsColumns holds the columns for the "alerts" table.
 	AlertsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "bucket_id", Type: field.TypeString, Nullable: true, Default: ""},
 		{Name: "message", Type: field.TypeString, Nullable: true, Default: ""},
@@ -59,8 +59,8 @@ var (
 	// BouncersColumns holds the columns for the "bouncers" table.
 	BouncersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "name", Type: field.TypeString, Unique: true},
 		{Name: "api_key", Type: field.TypeString},
 		{Name: "revoked", Type: field.TypeBool},
@@ -79,8 +79,8 @@ var (
 	// DecisionsColumns holds the columns for the "decisions" table.
 	DecisionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "until", Type: field.TypeTime},
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString},
@@ -112,8 +112,8 @@ var (
 	// EventsColumns holds the columns for the "events" table.
 	EventsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "time", Type: field.TypeTime},
 		{Name: "serialized", Type: field.TypeString, Size: 8191},
 		{Name: "alert_events", Type: field.TypeInt, Nullable: true},
@@ -135,8 +135,8 @@ var (
 	// MachinesColumns holds the columns for the "machines" table.
 	MachinesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_push", Type: field.TypeTime, Nullable: true},
 		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
@@ -155,8 +155,8 @@ var (
 	// MetaColumns holds the columns for the "meta" table.
 	MetaColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "key", Type: field.TypeString},
 		{Name: "value", Type: field.TypeString, Size: 4095},
 		{Name: "alert_metas", Type: field.TypeInt, Nullable: true},

@@ -16,9 +16,11 @@ type Event struct {
 func (Event) Fields() []ent.Field {
 	return []ent.Field{
 		field.Time("created_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("updated_at").
-			Default(types.UtcNow),
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.Time("time"),
 		field.String("serialized").MaxLen(8191),
 	}
