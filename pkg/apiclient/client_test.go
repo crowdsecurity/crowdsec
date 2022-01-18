@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -142,7 +143,11 @@ func TestNewClientRegisterKO(t *testing.T) {
 		URL:           apiURL,
 		VersionPrefix: "v1",
 	}, &http.Client{})
-	assert.Contains(t, fmt.Sprintf("%s", err), "dial tcp 127.0.0.1:4242: connect: connection refused")
+	if runtime.GOOS != "windows" {
+		assert.Contains(t, fmt.Sprintf("%s", err), "dial tcp 127.0.0.1:4242: connect: connection refused")
+	} else {
+		assert.Contains(t, fmt.Sprintf("%s", err), " No connection could be made because the target machine actively refused it.")
+	}
 }
 
 func TestNewClientRegisterOK(t *testing.T) {
