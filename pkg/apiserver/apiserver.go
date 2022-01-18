@@ -136,12 +136,37 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	/*Configure logs*/
 	if logFile != "" {
+		_maxsize := 500
+		if config.LogMaxSize != 0 {
+			_maxsize = config.LogMaxSize
+		}
+		_maxfiles := 3
+		if config.LogMaxFiles != 0 {
+			_maxfiles = config.LogMaxFiles
+		}
+		_maxage := 28
+		if config.LogMaxAge != 0 {
+			_maxage = config.LogMaxAge
+		}
+		_compress := true
+		if config.CompressLogs != nil {
+			_compress = *config.CompressLogs
+		}
+		/*cf. https://github.com/natefinch/lumberjack/issues/82
+		let's create the file beforehand w/ the right perms */
+		// check if file exists
+		_, err := os.Stat(logFile)
+		// create file if not exists, purposefully ignore errors
+		if os.IsNotExist(err) {
+			file, _ := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE, 0600)
+			file.Close()
+		}
 		LogOutput := &lumberjack.Logger{
 			Filename:   logFile,
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
+			MaxSize:    _maxsize, //megabytes
+			MaxBackups: _maxfiles,
+			MaxAge:     _maxage,   //days
+			Compress:   _compress, //disabled by default
 		}
 		clog.SetOutput(LogOutput)
 	}
