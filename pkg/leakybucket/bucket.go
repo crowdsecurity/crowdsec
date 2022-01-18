@@ -158,7 +158,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UTC().UnixNano()).Generate(),
+		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),

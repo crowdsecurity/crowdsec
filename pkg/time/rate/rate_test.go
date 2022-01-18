@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build go1.7
 // +build go1.7
 
 package rate
@@ -58,7 +59,7 @@ const (
 )
 
 var (
-	t0 = time.Now().UTC()
+	t0 = time.Now()
 	t1 = t0.Add(time.Duration(1) * d)
 	t2 = t0.Add(time.Duration(2) * d)
 	t3 = t0.Add(time.Duration(3) * d)
@@ -200,9 +201,9 @@ func TestLongRunningQPS(t *testing.T) {
 		wg.Done()
 	}
 
-	start := time.Now().UTC()
+	start := time.Now()
 	end := start.Add(5 * time.Second)
-	for time.Now().UTC().Before(end) {
+	for time.Now().Before(end) {
 		wg.Add(1)
 		go f()
 
@@ -398,7 +399,7 @@ type wait struct {
 }
 
 func runWait(t *testing.T, lim *Limiter, w wait) {
-	start := time.Now().UTC()
+	start := time.Now()
 	err := lim.WaitN(w.ctx, w.n)
 	delay := time.Since(start)
 	if (w.nilErr && err != nil) || (!w.nilErr && err == nil) || w.delay != dFromDuration(delay) {
@@ -456,7 +457,7 @@ func TestWaitInf(t *testing.T) {
 
 func BenchmarkAllowN(b *testing.B) {
 	lim := NewLimiter(Every(1*time.Second), 1)
-	now := time.Now().UTC()
+	now := time.Now()
 	b.ReportAllocs()
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {

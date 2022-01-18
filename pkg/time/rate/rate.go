@@ -124,9 +124,9 @@ func NewLimiter(r Limit, b int) *Limiter {
 	}
 }
 
-// Allow is shorthand for AllowN(time.Now().UTC(), 1).
+// Allow is shorthand for AllowN(time.Now(), 1).
 func (lim *Limiter) Allow() bool {
-	return lim.AllowN(time.Now().UTC(), 1)
+	return lim.AllowN(time.Now(), 1)
 }
 
 // AllowN reports whether n events may happen at time now.
@@ -154,9 +154,9 @@ func (r *Reservation) OK() bool {
 	return r.ok
 }
 
-// Delay is shorthand for DelayFrom(time.Now().UTC()).
+// Delay is shorthand for DelayFrom(time.Now()).
 func (r *Reservation) Delay() time.Duration {
-	return r.DelayFrom(time.Now().UTC())
+	return r.DelayFrom(time.Now())
 }
 
 // InfDuration is the duration returned by Delay when a Reservation is not OK.
@@ -177,9 +177,9 @@ func (r *Reservation) DelayFrom(now time.Time) time.Duration {
 	return delay
 }
 
-// Cancel is shorthand for CancelAt(time.Now().UTC()).
+// Cancel is shorthand for CancelAt(time.Now()).
 func (r *Reservation) Cancel() {
-	r.CancelAt(time.Now().UTC())
+	r.CancelAt(time.Now())
 	return
 }
 
@@ -225,16 +225,16 @@ func (r *Reservation) CancelAt(now time.Time) {
 	return
 }
 
-// Reserve is shorthand for ReserveN(time.Now().UTC(), 1).
+// Reserve is shorthand for ReserveN(time.Now(), 1).
 func (lim *Limiter) Reserve() *Reservation {
-	return lim.ReserveN(time.Now().UTC(), 1)
+	return lim.ReserveN(time.Now(), 1)
 }
 
 // ReserveN returns a Reservation that indicates how long the caller must wait before n events happen.
 // The Limiter takes this Reservation into account when allowing future events.
 // ReserveN returns false if n exceeds the Limiter's burst size.
 // Usage example:
-//   r := lim.ReserveN(time.Now().UTC(), 1)
+//   r := lim.ReserveN(time.Now(), 1)
 //   if !r.OK() {
 //     // Not allowed to act! Did you remember to set lim.burst to be > 0 ?
 //     return
@@ -274,7 +274,7 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	default:
 	}
 	// Determine wait limit
-	now := time.Now().UTC()
+	now := time.Now()
 	waitLimit := InfDuration
 	if deadline, ok := ctx.Deadline(); ok {
 		waitLimit = deadline.Sub(now)
@@ -303,9 +303,9 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	}
 }
 
-// SetLimit is shorthand for SetLimitAt(time.Now().UTC(), newLimit).
+// SetLimit is shorthand for SetLimitAt(time.Now(), newLimit).
 func (lim *Limiter) SetLimit(newLimit Limit) {
-	lim.SetLimitAt(time.Now().UTC(), newLimit)
+	lim.SetLimitAt(time.Now(), newLimit)
 }
 
 // SetLimitAt sets a new Limit for the limiter. The new Limit, and Burst, may be violated
@@ -322,9 +322,9 @@ func (lim *Limiter) SetLimitAt(now time.Time, newLimit Limit) {
 	lim.limit = newLimit
 }
 
-// SetBurst is shorthand for SetBurstAt(time.Now().UTC(), newBurst).
+// SetBurst is shorthand for SetBurstAt(time.Now(), newBurst).
 func (lim *Limiter) SetBurst(newBurst int) {
-	lim.SetBurstAt(time.Now().UTC(), newBurst)
+	lim.SetBurstAt(time.Now(), newBurst)
 }
 
 // SetBurstAt sets a new burst size for the limiter.
@@ -437,7 +437,7 @@ func (limit Limit) tokensFromDuration(d time.Duration) float64 {
 
 //return the number of token available in the bucket
 func (lim *Limiter) GetTokensCount() float64 {
-	_, _, tokens := lim.advance(time.Now().UTC())
+	_, _, tokens := lim.advance(time.Now())
 	return tokens
 }
 
