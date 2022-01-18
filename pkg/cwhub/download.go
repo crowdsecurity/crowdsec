@@ -255,7 +255,7 @@ func downloadData(dataFolder string, parentItemAuthor string, force bool, reader
 		for _, dataS := range data.Data {
 			download := false
 			dfPath := path.Join(dataFolder, dataS.DestPath)
-			dataFileName := fmt.Sprintf("%s/%s", parentItemAuthor, strings.Split(dataS.DestPath, ".")[0])
+			dataFileName := strings.Split(dataS.DestPath, ".")[0]
 			_, downloadFromHub := hubIdx[DATA_FILES][dataFileName]
 			if downloadFromHub {
 				dataS.SourceURL = fmt.Sprintf(RawFileURLTemplate, HubBranch, hubIdx[DATA_FILES][dataFileName].RemotePath)
