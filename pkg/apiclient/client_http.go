@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (c *ApiClient) NewRequest(method, url string, body interface{}) (*http.Request, error) {
@@ -60,6 +63,17 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	if resp != nil && resp.Body != nil {
 		defer resp.Body.Close()
 	}
+
+	for k, v := range resp.Header {
+		log.Debugf("[headers] %s : %s", k, v)
+	}
+
+	dump, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		log.Fatalf("dump response err: %s", err)
+	}
+	log.Debugf("Response: %s", string(dump))
+
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
