@@ -202,16 +202,18 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			p := rfc5424.NewParser()
 			m, err := p.Parse(syslogLine.Message)
 			if err != nil {
-				logger.Debugf("could not parse message as RFC5424, falling back to RFC3164 : %s", err)
+				logger.Debugf("could not parse as RFC5424 (%s)", err)
 				p = rfc3164.NewParser(rfc3164.WithYear(rfc3164.CurrentYear{}))
 				m, err = p.Parse(syslogLine.Message)
 				if err != nil {
 					logger.Errorf("could not parse message: %s", err)
+					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
 					continue
 				}
 				msg := m.(*rfc3164.SyslogMessage)
 				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
 				if err != nil {
+					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
 					logger.Error(err)
 					continue
 				}
@@ -221,6 +223,7 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 				msg := m.(*rfc5424.SyslogMessage)
 				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
 				if err != nil {
+					log.Debugf("could not parse message as RFC5424 (%s) : %s", err, syslogLine.Message)
 					logger.Error(err)
 					continue
 				}
