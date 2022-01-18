@@ -92,9 +92,6 @@ func WriteToStream(streamName string, count int, shards int, sub bool) {
 }
 
 func TestMain(m *testing.M) {
-	if runtime.GOOS == "windows" {
-		os.Exit(0)
-	}
 	os.Setenv("AWS_ACCESS_KEY_ID", "foobar")
 	os.Setenv("AWS_SECRET_ACCESS_KEY", "foobar")
 
@@ -106,6 +103,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestBadConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -152,6 +152,9 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int
@@ -195,6 +198,9 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int
@@ -240,6 +246,9 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int

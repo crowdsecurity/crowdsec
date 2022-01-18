@@ -38,9 +38,6 @@ func checkForLocalStackAvailability() error {
 }
 
 func TestMain(m *testing.M) {
-	if runtime.GOOS == "windows" {
-		os.Exit(0)
-	}
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
@@ -53,6 +50,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -525,6 +525,9 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -610,6 +613,9 @@ stream_name: test_stream`),
 }
 
 func TestConfigureByDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -663,6 +669,9 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
