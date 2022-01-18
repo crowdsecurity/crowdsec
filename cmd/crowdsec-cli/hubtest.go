@@ -38,10 +38,6 @@ func NewHubTestCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
-			err = setHubBranch()
-			if err != nil {
-				log.Fatalf("unable to set hubBranch: %+v", err)
-			}
 			HubTest, err = cstest.NewHubTest(hubPath, crowdsecPath, cscliPath)
 			if err != nil {
 				log.Fatalf("unable to load hubtest: %+v", err)
