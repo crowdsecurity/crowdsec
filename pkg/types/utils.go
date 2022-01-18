@@ -42,9 +42,19 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		if compress != nil {
 			_compress = *compress
 		}
+		/*cf. https://github.com/natefinch/lumberjack/issues/82
+		let's create the file beforehand w/ the right perms */
+		fname := cfgFolder + "/crowdsec.log"
+		// check if file exists
+		_, err := os.Stat(fname)
+		// create file if not exists, purposefully ignore errors
+		if os.IsNotExist(err) {
+			file, _ := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0600)
+			file.Close()
+		}
 
 		LogOutput = &lumberjack.Logger{
-			Filename:   cfgFolder + "/crowdsec.log",
+			Filename:   fname,
 			MaxSize:    _maxsize,
 			MaxBackups: _maxfiles,
 			MaxAge:     _maxage,

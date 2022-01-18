@@ -368,9 +368,9 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	_, err = ioutil.ReadFile(expectedFile)
-	if err == nil {
-		t.Fatalf("file should be empty")
+	x, err := ioutil.ReadFile(expectedFile)
+	if err == nil && len(x) > 0 {
+		t.Fatalf("file should be empty, got '%s'", x)
 	}
 
 	os.Remove("./crowdsec.log")
