@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -87,8 +88,8 @@ func Test_listFilesAtPath(t *testing.T) {
 				path: testPath,
 			},
 			want: []string{
-				path.Join(testPath, "notification-gitter"),
-				path.Join(testPath, "slack"),
+				filepath.Join(testPath, "notification-gitter"),
+				filepath.Join(testPath, "slack"),
 			},
 		},
 		{
@@ -119,14 +120,16 @@ func setUp() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = os.Create(path.Join(dir, "slack"))
+	f, err := os.Create(path.Join(dir, "slack"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = os.Create(path.Join(dir, "notification-gitter"))
+	f.Close()
+	f, err = os.Create(path.Join(dir, "notification-gitter"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	f.Close()
 	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
 	if err != nil {
 		log.Fatal(err)
