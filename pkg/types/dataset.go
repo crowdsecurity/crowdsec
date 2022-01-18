@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -40,6 +41,10 @@ func downloadFile(url string, destPath string) error {
 
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
+	}
+
+	if err := os.MkdirAll(filepath.Dir(destPath), 0666); err != nil {
+		return err
 	}
 
 	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
