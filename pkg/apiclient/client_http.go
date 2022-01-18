@@ -64,16 +64,6 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		defer resp.Body.Close()
 	}
 
-	for k, v := range resp.Header {
-		log.Debugf("[headers] %s : %s", k, v)
-	}
-
-	dump, err := httputil.DumpResponse(resp, true)
-	if err != nil {
-		log.Fatalf("dump response err: %s", err)
-	}
-	log.Debugf("Response: %s", string(dump))
-
 	if err != nil {
 		// If we got an error, and the context has been canceled,
 		// the context's error is probably more useful.
@@ -94,6 +84,16 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		}
 		return newResponse(resp), err
 	}
+
+	for k, v := range resp.Header {
+		log.Debugf("[headers] %s : %s", k, v)
+	}
+
+	dump, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		log.Fatalf("dump response err: %s", err)
+	}
+	log.Debugf("Response: %s", string(dump))
 
 	response := newResponse(resp)
 
