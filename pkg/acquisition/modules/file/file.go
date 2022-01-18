@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -307,9 +306,15 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
-				err = unix.Access(event.Name, unix.R_OK)
+				//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+				//do not rely on stat, reclose file immediately as it's opened by Tail
+				fd, err := os.Open(event.Name)
 				if err != nil {
-					logger.Errorf("unable to read %s : %s", event.Name, err)
+					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					continue
+				}
+				if err := fd.Close(); err != nil {
+					f.logger.Errorf("unable to close %s : %s", event.Name, err)
 					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
