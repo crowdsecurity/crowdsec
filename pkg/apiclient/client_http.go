@@ -90,10 +90,9 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 	}
 
 	dump, err := httputil.DumpResponse(resp, true)
-	if err != nil {
-		return nil, err
+	if err == nil {
+		log.Debugf("Response: %s", string(dump))
 	}
-	log.Debugf("Response: %s", string(dump))
 
 	response := newResponse(resp)
 
