@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build go1.7
 // +build go1.7
 
 package rate
@@ -180,6 +181,9 @@ func TestLongRunningQPS(t *testing.T) {
 	if runtime.GOOS == "openbsd" {
 		t.Skip("low resolution time.Sleep invalidates test (golang.org/issue/14183)")
 		return
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("test is unreliable on windows")
 	}
 
 	// The test runs for a few seconds executing many requests and then checks
