@@ -54,7 +54,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 		}
 
 		LogOutput = &lumberjack.Logger{
-			Filename:   cfgFolder + "/crowdsec.log",
+			Filename:   fname,
 			MaxSize:    _maxsize,
 			MaxBackups: _maxfiles,
 			MaxAge:     _maxage,
