@@ -38,6 +38,9 @@ func checkForLocalStackAvailability() error {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		os.Exit(0)
+	}
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
