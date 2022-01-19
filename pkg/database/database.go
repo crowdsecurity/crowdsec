@@ -77,7 +77,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			return &Client{}, fmt.Errorf("failed opening connection to postgres: %v", err)
 		}
 	case "pgx":
-		db, err := sql.Open("pgx", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s", config.User, config.Password, config.Host, config.Port, config.DbName))
+		db, err := sql.Open("pgx", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s", config.User, config.Password, config.Host, config.Port, config.DbName, config.Sslmode))
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to pgx: %v", err)
 		}
