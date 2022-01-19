@@ -15,6 +15,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldLastPush holds the string denoting the last_push field in the database.
+	FieldLastPush = "last_push"
 	// FieldMachineId holds the string denoting the machineid field in the database.
 	FieldMachineId = "machine_id"
 	// FieldPassword holds the string denoting the password field in the database.
@@ -47,6 +49,7 @@ var Columns = []string{
 	FieldID,
 	FieldCreatedAt,
 	FieldUpdatedAt,
+	FieldLastPush,
 	FieldMachineId,
 	FieldPassword,
 	FieldIpAddress,
@@ -71,6 +74,8 @@ var (
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
+	// DefaultLastPush holds the default value on creation for the "last_push" field.
+	DefaultLastPush func() time.Time
 	// ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
 	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the "isValidated" field.

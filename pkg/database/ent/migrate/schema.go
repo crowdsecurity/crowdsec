@@ -137,6 +137,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "last_push", Type: field.TypeTime, Nullable: true},
 		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},

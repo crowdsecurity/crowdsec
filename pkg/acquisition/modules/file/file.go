@@ -232,11 +232,18 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
-		err := checkAccess(file)
+		//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+		//do not rely on stat, reclose file immediately as it's opened by Tail
+		fd, err := os.Open(file)
 		if err != nil {
 			f.logger.Errorf("unable to read %s : %s", file, err)
 			continue
 		}
+		if err := fd.Close(); err != nil {
+			f.logger.Errorf("unable to close %s : %s", file, err)
+			continue
+		}
+
 		fi, err := os.Stat(file)
 		if err != nil {
 			return fmt.Errorf("could not stat file %s : %w", file, err)
@@ -302,9 +309,15 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
-				err = checkAccess(event.Name)
+				//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+				//do not rely on stat, reclose file immediately as it's opened by Tail
+				fd, err := os.Open(event.Name)
 				if err != nil {
-					logger.Errorf("unable to read %s : %s", event.Name, err)
+					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					continue
+				}
+				if err := fd.Close(); err != nil {
+					f.logger.Errorf("unable to close %s : %s", event.Name, err)
 					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file

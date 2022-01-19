@@ -15,7 +15,6 @@ import (
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 
-	//func BuildDecisionRequestWithFilter(query *ent.Query, filter map[string][]string) (*ent.DecisionQuery, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int

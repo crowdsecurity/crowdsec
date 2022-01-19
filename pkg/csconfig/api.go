@@ -85,9 +85,12 @@ type LocalApiServerCfg struct {
 	LogMedia               string              `yaml:"-"`
 	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath      string              `yaml:"console_path,omitempty"`
+	ConsoleConfig          *ConsoleConfig      `yaml:"-"`
 	Profiles               []*ProfileCfg       `yaml:"-"`
 	LogLevel               *log.Level          `yaml:"log_level"`
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies         *[]string           `yaml:"trusted_proxies,omitempty"`
 	CompressLogs           *bool               `yaml:"-"`
 	LogMaxSize             int                 `yaml:"-"`
 	LogMaxAge              int                 `yaml:"-"`
@@ -110,10 +113,22 @@ func (c *Config) LoadAPIServer() error {
 		c.API.Server.LogMaxSize = c.Common.LogMaxSize
 		c.API.Server.LogMaxAge = c.Common.LogMaxAge
 		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
-
+		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+		}
+		if c.API.Server.TrustedProxies != nil {
+			c.API.Server.UseForwardedForHeaders = true
+		}
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
+		if c.API.Server.ConsoleConfigPath == "" {
+			c.API.Server.ConsoleConfigPath = DefaultConsoleConfgFilePath
+		}
+		if err := c.API.Server.LoadConsoleConfig(); err != nil {
+			return errors.Wrap(err, "while loading console options")
+		}
+
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 			if err := c.API.Server.OnlineClient.Load(); err != nil {
 				return errors.Wrap(err, "loading online client credentials")

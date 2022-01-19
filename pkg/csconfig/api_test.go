@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v2"
 )
@@ -205,6 +206,12 @@ func TestLoadAPIServer(t *testing.T) {
 				DbConfig: &DatabaseCfg{
 					DbPath: "./tests/test.db",
 					Type:   "sqlite",
+				},
+				ConsoleConfigPath: "/etc/crowdsec/console_config.yaml",
+				ConsoleConfig: &ConsoleConfig{
+					ShareManualDecisions:  types.BoolPtr(false),
+					ShareTaintedScenarios: types.BoolPtr(true),
+					ShareCustomScenarios:  types.BoolPtr(true),
 				},
 				LogDir:   LogDirFullPath,
 				LogMedia: "stdout",

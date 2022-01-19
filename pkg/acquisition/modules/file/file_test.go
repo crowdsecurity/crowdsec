@@ -247,7 +247,7 @@ func TestLiveAcquisition(t *testing.T) {
 	var testPattern string
 	if runtime.GOOS != "windows" {
 		permDeniedFile = "/etc/shadow"
-		permDeniedError = "unable to read /etc/shadow : permission denied"
+		permDeniedError = "unable to read /etc/shadow : open /etc/shadow: permission denied"
 		testPattern = "test_files/*.log"
 	} else {
 		//Technically, this is not a permission denied error, but we just want to test what happens

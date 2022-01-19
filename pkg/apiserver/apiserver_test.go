@@ -51,6 +51,11 @@ func LoadTestConfig() csconfig.Config {
 		ListenURI:    "http://127.0.0.1:8080",
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
@@ -79,6 +84,12 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		DbConfig:               &dbconfig,
 		ProfilesPath:           "./tests/profiles.yaml",
 		UseForwardedForHeaders: true,
+		TrustedProxies:         &[]string{"0.0.0.0/0"},
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
@@ -349,8 +360,8 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	_, err = ioutil.ReadFile(expectedFile)
-	if err == nil {
-		t.Fatalf("file should be empty")
+	x, err := ioutil.ReadFile(expectedFile)
+	if err == nil && len(x) > 0 {
+		t.Fatalf("file should be empty, got '%s'", x)
 	}
 }
