@@ -11,7 +11,7 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	router, err := NewAPITest()
+	router, config, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -58,7 +58,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, "{\"code\":401,\"message\":\"input format error\"}", w.Body.String())
 
 	//Validate machine
-	err = ValidateMachine("test")
+	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}

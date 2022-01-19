@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -19,25 +20,25 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
-	router, err := NewAPITest()
+func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config, error) {
+	router, config, err := NewAPITest()
 	if err != nil {
-		return nil, models.WatcherAuthResponse{}, fmt.Errorf("unable to run local API: %s", err)
+		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 
-	loginResp, err := LoginToTestAPI(router)
+	loginResp, err := LoginToTestAPI(router, config)
 	if err != nil {
-		return nil, models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
+		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("%s", err.Error())
 	}
-	return router, loginResp, nil
+	return router, loginResp, config, nil
 }
 
-func LoginToTestAPI(router *gin.Engine) (models.WatcherAuthResponse, error) {
+func LoginToTestAPI(router *gin.Engine, config csconfig.Config) (models.WatcherAuthResponse, error) {
 	body, err := CreateTestMachine(router)
 	if err != nil {
 		return models.WatcherAuthResponse{}, fmt.Errorf("%s", err.Error())
 	}
-	err = ValidateMachine("test")
+	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -61,7 +62,7 @@ func AddAuthHeaders(request *http.Request, authResponse models.WatcherAuthRespon
 }
 
 func TestSimulatedAlert(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -96,7 +97,7 @@ func TestSimulatedAlert(t *testing.T) {
 }
 
 func TestCreateAlert(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -143,14 +144,14 @@ func TestCreateAlert(t *testing.T) {
 
 func TestCreateAlertChannels(t *testing.T) {
 
-	apiServer, err := NewAPIServer()
+	apiServer, config, err := NewAPIServer()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	apiServer.InitController()
 
-	loginResp, err := LoginToTestAPI(apiServer.router)
+	loginResp, err := LoginToTestAPI(apiServer.router, config)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -185,7 +186,7 @@ func TestCreateAlertChannels(t *testing.T) {
 }
 
 func TestAlertListFilters(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -431,7 +432,7 @@ func TestAlertListFilters(t *testing.T) {
 }
 
 func TestAlertBulkInsert(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -456,7 +457,7 @@ func TestAlertBulkInsert(t *testing.T) {
 }
 
 func TestListAlert(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -491,7 +492,7 @@ func TestListAlert(t *testing.T) {
 }
 
 func TestCreateAlertErrors(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -521,7 +522,7 @@ func TestCreateAlertErrors(t *testing.T) {
 }
 
 func TestDeleteAlert(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}

@@ -16,7 +16,7 @@ import (
 )
 
 func TestDeleteDecisionRange(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -72,7 +72,7 @@ func TestDeleteDecisionRange(t *testing.T) {
 }
 
 func TestDeleteDecisionFilter(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -128,7 +128,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 }
 
 func TestGetDecisionFilters(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, config, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -158,7 +158,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
-	APIKey, err := CreateTestBouncer()
+	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
@@ -215,7 +215,7 @@ func TestGetDecisionFilters(t *testing.T) {
 }
 
 func TestGetDecision(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, config, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -244,7 +244,7 @@ func TestGetDecision(t *testing.T) {
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
-	APIKey, err := CreateTestBouncer()
+	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
@@ -272,7 +272,7 @@ func TestGetDecision(t *testing.T) {
 }
 
 func TestDeleteDecisionByID(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -331,7 +331,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 }
 
 func TestDeleteDecision(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, _, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -382,7 +382,7 @@ func TestDeleteDecision(t *testing.T) {
 }
 
 func TestStreamDecision(t *testing.T) {
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, config, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
@@ -411,7 +411,7 @@ func TestStreamDecision(t *testing.T) {
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
 	router.ServeHTTP(w, req)
 
-	APIKey, err := CreateTestBouncer()
+	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}

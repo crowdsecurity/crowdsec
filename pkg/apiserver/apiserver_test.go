@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -40,9 +41,10 @@ func LoadTestConfig() csconfig.Config {
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: "./ent",
+		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
@@ -66,9 +68,10 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: "./ent",
+		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
@@ -87,58 +90,57 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 	return config
 }
 
-func NewAPIServer() (*APIServer, error) {
+func NewAPIServer() (*APIServer, csconfig.Config, error) {
 	config := LoadTestConfig()
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
-	return apiServer, nil
+	return apiServer, config, nil
 }
 
-func NewAPITest() (*gin.Engine, error) {
-	apiServer, err := NewAPIServer()
+func NewAPITest() (*gin.Engine, csconfig.Config, error) {
+	apiServer, config, err := NewAPIServer()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 	err = apiServer.InitController()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 	router, err := apiServer.Router()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
-	return router, nil
+	return router, config, nil
 }
 
-func NewAPITestForwardedFor() (*gin.Engine, error) {
+func NewAPITestForwardedFor() (*gin.Engine, csconfig.Config, error) {
 	config := LoadTestConfigForwardedFor()
 
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 	err = apiServer.InitController()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
 	router, err := apiServer.Router()
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, config, fmt.Errorf("unable to run local API: %s", err)
 	}
-	return router, nil
+	return router, config, nil
 }
 
-func ValidateMachine(machineID string) error {
-	config := LoadTestConfig()
-	dbClient, err := database.NewClient(config.API.Server.DbConfig)
+func ValidateMachine(machineID string, config *csconfig.DatabaseCfg) error {
+	dbClient, err := database.NewClient(config)
 	if err != nil {
 		return fmt.Errorf("unable to create new database client: %s", err)
 	}
@@ -148,9 +150,8 @@ func ValidateMachine(machineID string) error {
 	return nil
 }
 
-func GetMachineIP(machineID string) (string, error) {
-	config := LoadTestConfig()
-	dbClient, err := database.NewClient(config.API.Server.DbConfig)
+func GetMachineIP(machineID string, config *csconfig.DatabaseCfg) (string, error) {
+	dbClient, err := database.NewClient(config)
 	if err != nil {
 		return "", fmt.Errorf("unable to create new database client: %s", err)
 	}
@@ -180,10 +181,8 @@ func CreateTestMachine(router *gin.Engine) (string, error) {
 	return body, nil
 }
 
-func CreateTestBouncer() (string, error) {
-	config := LoadTestConfig()
-
-	dbClient, err := database.NewClient(config.API.Server.DbConfig)
+func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
+	dbClient, err := database.NewClient(config)
 	if err != nil {
 		log.Fatalf("unable to create new database client: %s", err)
 	}
@@ -219,7 +218,7 @@ func TestWithWrongFlushConfig(t *testing.T) {
 }
 
 func TestUnknownPath(t *testing.T) {
-	router, err := NewAPITest()
+	router, _, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -255,24 +254,22 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: "./ent",
+		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
 	}
 	cfg := csconfig.LocalApiServerCfg{
 		ListenURI: "127.0.0.1:8080",
 		LogMedia:  "file",
-		LogDir:    ".",
+		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
 	lvl := log.DebugLevel
-	expectedFile := "./crowdsec_api.log"
+	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
 	expectedLines := []string{"/test42"}
 	cfg.LogLevel = &lvl
-
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
 
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
@@ -306,9 +303,6 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 		}
 	}
 
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
-
 }
 
 func TestLoggingErrorToFileConfig(t *testing.T) {
@@ -318,23 +312,21 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	flushConfig := csconfig.FlushDBCfg{
 		MaxAge: &maxAge,
 	}
+	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
-		DbPath: "./ent",
+		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
 	}
 	cfg := csconfig.LocalApiServerCfg{
 		ListenURI: "127.0.0.1:8080",
 		LogMedia:  "file",
-		LogDir:    ".",
+		LogDir:    tempDir,
 		DbConfig:  &dbconfig,
 	}
 	lvl := log.ErrorLevel
-	expectedFile := "./crowdsec_api.log"
+	expectedFile := fmt.Sprintf("%s/crowdsec_api.log", tempDir)
 	cfg.LogLevel = &lvl
-
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
 
 	// Configure logging
 	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
@@ -361,8 +353,4 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	if err == nil {
 		t.Fatalf("file should be empty")
 	}
-
-	os.Remove("./crowdsec.log")
-	os.Remove(expectedFile)
-
 }
