@@ -83,7 +83,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		}
 		// Create an ent.Driver from `db`.
 		drv := entsql.OpenDB(dialect.Postgres, db)
-		client = ent.NewClient(ent.Driver(drv))
+		client = ent.NewClient(ent.Driver(drv), entOpt)
 	default:
 		return &Client{}, fmt.Errorf("unknown database type")
 	}
