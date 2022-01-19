@@ -13,6 +13,7 @@ import (
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
+	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -64,6 +65,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "kinesis",
 		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
+	},
+	{
+		name:  "wineventlog",
+		iface: func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	},
 }
 
