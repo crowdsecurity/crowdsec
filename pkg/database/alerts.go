@@ -753,17 +753,20 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			WithEvents().
 			WithMetas().
 			WithOwner()
-		if sort == "ASC" {
-			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
-		} else {
-			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
-		}
+
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
 				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
 			}
 		}
+
+		if sort == "ASC" {
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+		} else {
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+		}
+
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
 		if err != nil {
 			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
