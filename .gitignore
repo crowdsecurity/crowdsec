@@ -27,3 +27,4 @@ plugins/notifications/email/notification-email
 
 #release stuff
 crowdsec-v*
+pkg/cwhub/hubdir/.index.json
