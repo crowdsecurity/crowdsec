@@ -283,7 +283,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 							//we check if the stream has been written to recently enough to be monitored
 							if event.LastIngestionTime != nil {
 								//aws uses millisecond since the epoch
-								oldest := time.Now().UTC().UTC().Add(-*cw.Config.MaxStreamAge)
+								oldest := time.Now().UTC().Add(-*cw.Config.MaxStreamAge)
 								//TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
 								if LastIngestionTime.Before(oldest) {
@@ -549,9 +549,9 @@ func (cw *CloudwatchSource) ConfigureByDSN(dsn string, labels map[string]string,
 				return errors.Wrapf(err, "unable to parse '%s' as duration", v[0])
 			}
 			cw.logger.Debugf("parsed '%s' as '%s'", v[0], duration)
-			start := time.Now().UTC().UTC().Add(-duration)
+			start := time.Now().UTC().Add(-duration)
 			cw.Config.StartTime = &start
-			end := time.Now().UTC().UTC()
+			end := time.Now().UTC()
 			cw.Config.EndTime = &end
 		default:
 			return fmt.Errorf("unexpected argument %s", k)

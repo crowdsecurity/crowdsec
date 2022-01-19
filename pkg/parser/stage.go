@@ -26,7 +26,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UTC().UnixNano())
+var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 /*
  identify generic component to alter maps, smartfilters ? (static, conditional static etc.)
