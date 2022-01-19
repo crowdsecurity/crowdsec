@@ -287,7 +287,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								//TBD : verify that this is correct : Unix 2nd arg expects Nanoseconds, and have a code that is more explicit.
 								LastIngestionTime := time.Unix(0, *event.LastIngestionTime*int64(time.Millisecond))
 								if LastIngestionTime.Before(oldest) {
-									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().Add(-*cw.Config.MaxStreamAge))
+									cw.logger.Tracef("stop iteration, %s reached oldest age, stop (%s < %s)", *event.LogStreamName, LastIngestionTime, time.Now().UTC().Add(-*cw.Config.MaxStreamAge))
 									hasMoreStreams = false
 									return false
 								}
@@ -408,7 +408,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan types.Event) error {
 	var startFrom *string
-	var lastReadMessage time.Time = time.Now()
+	var lastReadMessage time.Time = time.Now().UTC()
 	ticker := time.NewTicker(cfg.PollStreamInterval)
 	//resume at existing index if we already had
 	streamIndexMutex.Lock()
@@ -450,7 +450,7 @@ func (cw *CloudwatchSource) TailLogStream(cfg *LogStreamTailConfig, outChan chan
 							hasMorePages = false
 						}
 						if len(page.Events) > 0 {
-							lastReadMessage = time.Now()
+							lastReadMessage = time.Now().UTC()
 						}
 						for _, event := range page.Events {
 							evt, err := cwLogToEvent(event, cfg)
@@ -669,7 +669,7 @@ func cwLogToEvent(log *cloudwatchlogs.OutputLogEvent, cfg *LogStreamTailConfig) 
 	}
 	l.Raw = msg
 	l.Labels = cfg.Labels
-	l.Time = time.Now()
+	l.Time = time.Now().UTC()
 	l.Src = fmt.Sprintf("%s/%s", cfg.GroupName, cfg.StreamName)
 	l.Process = true
 	l.Module = "cloudwatch"

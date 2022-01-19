@@ -32,8 +32,8 @@ func TestDeleteDecisionRange(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -88,8 +88,8 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -144,8 +144,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -231,8 +231,8 @@ func TestGetDecision(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -288,8 +288,8 @@ func TestDeleteDecisionByID(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -347,8 +347,8 @@ func TestDeleteDecision(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)
@@ -398,8 +398,8 @@ func TestStreamDecision(t *testing.T) {
 	}
 
 	for _, alert := range alerts {
-		*alert.StartAt = time.Now().Format(time.RFC3339)
-		*alert.StopAt = time.Now().Format(time.RFC3339)
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	alertContent, err := json.Marshal(alerts)

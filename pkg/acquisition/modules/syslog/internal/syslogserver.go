@@ -43,7 +43,7 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 	if err != nil {
 		return errors.Wrap(err, "could not set readbuffer on UDP socket")
 	}
-	err = s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 	if err != nil {
 		return errors.Wrap(err, "could not set read deadline on UDP socket")
 	}
@@ -77,7 +77,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 				if err == nil {
 					s.channel <- SyslogMessage{Message: b[:n], Client: strings.Split(addr.String(), ":")[0]}
 				}
-				err = s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 				if err != nil {
 					return err
 				}

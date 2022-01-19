@@ -34,11 +34,9 @@ func (mu *MachineUpdate) SetCreatedAt(t time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableCreatedAt(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (mu *MachineUpdate) ClearCreatedAt() *MachineUpdate {
+	mu.mutation.ClearCreatedAt()
 	return mu
 }
 
@@ -48,25 +46,15 @@ func (mu *MachineUpdate) SetUpdatedAt(t time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableUpdatedAt(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (mu *MachineUpdate) ClearUpdatedAt() *MachineUpdate {
+	mu.mutation.ClearUpdatedAt()
 	return mu
 }
 
 // SetLastPush sets the "last_push" field.
 func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
 	mu.mutation.SetLastPush(t)
-	return mu
-}
-
-// SetNillableLastPush sets the "last_push" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableLastPush(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetLastPush(*t)
-	}
 	return mu
 }
 
@@ -215,6 +203,7 @@ func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	mu.defaults()
 	if len(mu.hooks) == 0 {
 		if err = mu.check(); err != nil {
 			return 0, err
@@ -269,6 +258,22 @@ func (mu *MachineUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (mu *MachineUpdate) defaults() {
+	if _, ok := mu.mutation.CreatedAt(); !ok && !mu.mutation.CreatedAtCleared() {
+		v := machine.UpdateDefaultCreatedAt()
+		mu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := mu.mutation.UpdatedAt(); !ok && !mu.mutation.UpdatedAtCleared() {
+		v := machine.UpdateDefaultUpdatedAt()
+		mu.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := mu.mutation.LastPush(); !ok && !mu.mutation.LastPushCleared() {
+		v := machine.UpdateDefaultLastPush()
+		mu.mutation.SetLastPush(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (mu *MachineUpdate) check() error {
 	if v, ok := mu.mutation.Scenarios(); ok {
@@ -304,10 +309,22 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldCreatedAt,
 		})
 	}
+	if mu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldCreatedAt,
+		})
+	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if mu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: machine.FieldUpdatedAt,
 		})
 	}
@@ -470,11 +487,9 @@ func (muo *MachineUpdateOne) SetCreatedAt(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableCreatedAt(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (muo *MachineUpdateOne) ClearCreatedAt() *MachineUpdateOne {
+	muo.mutation.ClearCreatedAt()
 	return muo
 }
 
@@ -484,25 +499,15 @@ func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableUpdatedAt(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (muo *MachineUpdateOne) ClearUpdatedAt() *MachineUpdateOne {
+	muo.mutation.ClearUpdatedAt()
 	return muo
 }
 
 // SetLastPush sets the "last_push" field.
 func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
 	muo.mutation.SetLastPush(t)
-	return muo
-}
-
-// SetNillableLastPush sets the "last_push" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableLastPush(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetLastPush(*t)
-	}
 	return muo
 }
 
@@ -658,6 +663,7 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 		err  error
 		node *Machine
 	)
+	muo.defaults()
 	if len(muo.hooks) == 0 {
 		if err = muo.check(); err != nil {
 			return nil, err
@@ -709,6 +715,22 @@ func (muo *MachineUpdateOne) Exec(ctx context.Context) error {
 func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 	if err := muo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (muo *MachineUpdateOne) defaults() {
+	if _, ok := muo.mutation.CreatedAt(); !ok && !muo.mutation.CreatedAtCleared() {
+		v := machine.UpdateDefaultCreatedAt()
+		muo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := muo.mutation.UpdatedAt(); !ok && !muo.mutation.UpdatedAtCleared() {
+		v := machine.UpdateDefaultUpdatedAt()
+		muo.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := muo.mutation.LastPush(); !ok && !muo.mutation.LastPushCleared() {
+		v := machine.UpdateDefaultLastPush()
+		muo.mutation.SetLastPush(v)
 	}
 }
 
@@ -764,10 +786,22 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Column: machine.FieldCreatedAt,
 		})
 	}
+	if muo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldCreatedAt,
+		})
+	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if muo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: machine.FieldUpdatedAt,
 		})
 	}

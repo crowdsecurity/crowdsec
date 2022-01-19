@@ -72,10 +72,16 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
+	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultLastPush holds the default value on creation for the "last_push" field.
 	DefaultLastPush func() time.Time
+	// UpdateDefaultLastPush holds the default value on update for the "last_push" field.
+	UpdateDefaultLastPush func() time.Time
 	// ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
 	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the "isValidated" field.

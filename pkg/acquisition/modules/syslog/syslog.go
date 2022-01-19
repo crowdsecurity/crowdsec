@@ -143,7 +143,7 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
 		s.logger.Tracef("%s - missing TS", *msg)
-		ret += time.Now().Format("Jan 2 15:04:05")
+		ret += time.Now().UTC().Format("Jan 2 15:04:05")
 	}
 	if hostname != nil {
 		ret += " " + *hostname

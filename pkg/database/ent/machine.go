@@ -17,11 +17,11 @@ type Machine struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// LastPush holds the value of the "last_push" field.
-	LastPush time.Time `json:"last_push,omitempty"`
+	LastPush *time.Time `json:"last_push,omitempty"`
 	// MachineId holds the value of the "machineId" field.
 	MachineId string `json:"machineId,omitempty"`
 	// Password holds the value of the "password" field.
@@ -97,19 +97,22 @@ func (m *Machine) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = value.Time
+				m.CreatedAt = new(time.Time)
+				*m.CreatedAt = value.Time
 			}
 		case machine.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = value.Time
+				m.UpdatedAt = new(time.Time)
+				*m.UpdatedAt = value.Time
 			}
 		case machine.FieldLastPush:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_push", values[i])
 			} else if value.Valid {
-				m.LastPush = value.Time
+				m.LastPush = new(time.Time)
+				*m.LastPush = value.Time
 			}
 		case machine.FieldMachineId:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -186,12 +189,18 @@ func (m *Machine) String() string {
 	var builder strings.Builder
 	builder.WriteString("Machine(")
 	builder.WriteString(fmt.Sprintf("id=%v", m.ID))
-	builder.WriteString(", created_at=")
-	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", updated_at=")
-	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
-	builder.WriteString(", last_push=")
-	builder.WriteString(m.LastPush.Format(time.ANSIC))
+	if v := m.CreatedAt; v != nil {
+		builder.WriteString(", created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := m.UpdatedAt; v != nil {
+		builder.WriteString(", updated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := m.LastPush; v != nil {
+		builder.WriteString(", last_push=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", machineId=")
 	builder.WriteString(m.MachineId)
 	builder.WriteString(", password=<sensitive>")

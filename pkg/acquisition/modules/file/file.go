@@ -417,7 +417,7 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		logger.Debugf("line %s", scanner.Text())
 		l := types.Line{}
 		l.Raw = scanner.Text()
-		l.Time = time.Now()
+		l.Time = time.Now().UTC()
 		l.Src = filename
 		l.Labels = f.config.Labels
 		l.Process = true

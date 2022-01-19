@@ -239,7 +239,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 	event.Process = false
 	if event.Time.IsZero() {
-		event.Time = time.Now()
+		event.Time = time.Now().UTC()
 	}
 
 	if event.Parsed == nil {
