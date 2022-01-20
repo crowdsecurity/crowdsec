@@ -111,6 +111,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/config.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/console_config.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
