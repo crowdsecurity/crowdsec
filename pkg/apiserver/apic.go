@@ -510,12 +510,18 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	if err != nil {
 		return metric, err
 	}
+	var lastpush string
 	for _, machine := range machines {
+		if machine.LastPush == nil {
+			lastpush = time.Time{}.String()
+		} else {
+			lastpush = machine.LastPush.String()
+		}
 		m := &models.MetricsAgentInfo{
 			Version:    machine.Version,
 			Name:       machine.MachineId,
 			LastUpdate: machine.UpdatedAt.String(),
-			LastPush:   machine.LastPush.String(),
+			LastPush:   lastpush,
 		}
 		metric.Machines = append(metric.Machines, m)
 	}
