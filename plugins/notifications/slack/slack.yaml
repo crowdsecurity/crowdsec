@@ -16,7 +16,7 @@ format: |  # This template receives list of models.Alert objects
   {{end -}}
 
 
-webhook: "https://hooks.slack.com/services/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"
+webhook: <WEBHOOK_URL>
 
 # group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
 
