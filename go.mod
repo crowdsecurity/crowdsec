@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go v1.42.25
 	github.com/buger/jsonparser v1.1.1
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
-	github.com/crowdsecurity/grokky v0.0.0-20210908095311-0b3373925934
+	github.com/crowdsecurity/grokky v0.0.0-20220120093523-d5b3478363fa
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v1.0.1
 	github.com/dghubble/sling v1.3.0
@@ -53,7 +53,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce
 	golang.org/x/mod v0.4.2
-	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	google.golang.org/grpc v1.35.0
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
@@ -132,6 +131,7 @@ require (
 	go.mongodb.org/mongo-driver v1.4.4 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
+	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.6 // indirect
