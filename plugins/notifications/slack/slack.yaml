@@ -9,9 +9,9 @@ format: |  # This template receives list of models.Alert objects
   {{$alert := . -}}
   {{range .Decisions -}}
   {{if $alert.Source.Cn -}}
-  :flag-{{$alert.Source.Cn}}: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}. <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
+  :flag-{{$alert.Source.Cn}}: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for triggering {{.Scenario}} on machine '{{$alert.MachineID}}'. <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
   {{if not $alert.Source.Cn -}}
-  :pirate_flag: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for  triggering {{.Scenario}}.  <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
+  :pirate_flag: <https://www.whois.com/whois/{{.Value}}|{{.Value}}> will get {{.Type}} for next {{.Duration}} for triggering {{.Scenario}} on machine '{{$alert.MachineID}}'.  <https://www.shodan.io/host/{{.Value}}|Shodan>{{end}}
   {{end -}}
   {{end -}}
 
