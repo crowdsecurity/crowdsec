@@ -17,7 +17,7 @@ const (
 	SEND_MANUAL_SCENARIOS  = "manual"
 )
 
-var DefaultConsoleConfgFilePath = "/etc/crowdsec/console_config.yaml"
+var DefaultConsoleConfgFilePath = "/etc/crowdsec/console.yaml"
 
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS}
 
