@@ -19,6 +19,7 @@ BuildRequires:  jq
 BuildRequires:  systemd
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
+%{?fc35:BuildRequires: systemd-rpm-macros}
 
 %define debug_package %{nil}
 
