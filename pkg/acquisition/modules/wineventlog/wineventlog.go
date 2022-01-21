@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -36,6 +37,42 @@ type WinEventLogSource struct {
 	query     string
 }
 
+type WindowsEvent struct {
+	System struct {
+		Provider struct {
+			Name string `xml:"Name,attr"`
+			Guid string `xml:"GUID,attr"`
+		} `xml:"Provider"`
+		EventId     int    `xml:"EventID"`
+		Version     int    `xml:"Version"`
+		Level       int    `xml:"Level"`
+		Task        int    `xml:"Task"`
+		Opcode      int    `xml:"Opcode"`
+		Keywords    string `xml:"Keywords"`
+		TimeCreated struct {
+			SystemTime time.Time `xml:"SystemTime,attr"`
+		} `xml:"TimeCreated"`
+		EventRecordID int `xml:"EventRecordID"`
+		Correlation   struct {
+			ActivityID string `xml:"ActivityID,attr"`
+		} `xml:"Correlation"`
+		Execution struct {
+			ProcessID int `xml:"ProcessID,attr"`
+			ThreadID  int `xml:"ThreadID,attr"`
+		} `xml:"Execution"`
+		Channel  string `xml:"Channel"`
+		Computer string `xml:"Computer"`
+		Security struct {
+		} `xml:"Security"`
+	} `xml:"System"`
+	EventData struct {
+		Data []struct {
+			Name  string `xml:",attr"`
+			Value string `xml:",chardata"`
+		} `xml:"Data"`
+	} `xml:"EventData"`
+}
+
 type QueryList struct {
 	Select Select `xml:"Query>Select"`
 }
@@ -60,6 +97,46 @@ func logLevelToInt(logLevel string) ([]string, error) {
 	default:
 		return nil, errors.New("invalid log level")
 	}
+}
+
+//This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
+func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int, locale uint32) ([]string, error) {
+	var events = make([]windows.Handle, maxEvents)
+	var returned uint32
+
+	// Get handles to events from the result set.
+	err := wevtapi.EvtNext(
+		resultSet,           // Handle to query or subscription result set.
+		uint32(len(events)), // The number of events to attempt to retrieve.
+		&events[0],          // Pointer to the array of event handles.
+		2000,                // Timeout in milliseconds to wait.
+		0,                   // Reserved. Must be zero.
+		&returned)           // The number of handles in the array that are set by the API.
+	if err == windows.ERROR_NO_MORE_ITEMS {
+		return nil, err
+	} else if err != nil {
+		return nil, fmt.Errorf("wevtapi.EvtNext failed: %v", err)
+	}
+
+	// Event handles must be closed after they are returned by EvtNext whether or not we use them.
+	defer func() {
+		for _, event := range events[:returned] {
+			winlog.Close(event)
+		}
+	}()
+
+	// Render events.
+	var renderedEvents []string
+	for _, event := range events[:returned] {
+		// Render the basic XML representation of the event.
+		fragment, err := winlog.RenderFragment(event, wevtapi.EvtRenderEventXml)
+		if err != nil {
+			w.logger.Errorf("Failed to render event with RenderFragment, skipping: %v", err)
+			continue
+		}
+		renderedEvents = append(renderedEvents, fragment)
+	}
+	return renderedEvents, err
 }
 
 func (w *WinEventLogSource) buildXpathQuery() (string, error) {
@@ -125,21 +202,22 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 				fmt.Fprintf(os.Stderr, "windows.WaitForSingleObject failed: %v", err)
 				return err
 			}
-			// Get a block of events once signaled.
 			if status == syscall.WAIT_OBJECT_0 {
-				// Enumerate and render available events in blocks of up to 100.
-				renderedEvents, err := winlog.GetRenderedEvents(w.evtConfig, publisherCache, subscription, 100, 1033)
-				// If no more events are available reset the subscription signal.
-				if err == syscall.Errno(259) { // ERROR_NO_MORE_ITEMS
+				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 100, 1033)
+				if err == windows.ERROR_NO_MORE_ITEMS {
 					windows.ResetEvent(w.evtConfig.SignalEvent)
 				} else if err != nil {
-					fmt.Fprintf(os.Stderr, "winlog.GetRenderedEvents failed: %v", err)
-					return err
+					w.logger.Errorf("getXMLEvents failed: %v", err)
+					continue
 				}
-				// Print the events.
 				for _, event := range renderedEvents {
-					fmt.Println(event)
-					fmt.Printf("-----------------------\n")
+					a := WindowsEvent{}
+					err := xml.Unmarshal([]byte(event), &a)
+					if err != nil {
+						w.logger.Errorf("Unmarshal failed: %v", err)
+						continue
+					}
+					w.logger.Infof("marshaled XML: %+v", a)
 				}
 			}
 
