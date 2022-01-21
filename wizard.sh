@@ -31,7 +31,7 @@ CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
 
-CONSOLE_FILE="console_config.yaml"
+CONSOLE_FILE="console.yaml"
 
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
