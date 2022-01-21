@@ -1,10 +1,12 @@
 package wineventlogacquisition
 
 import (
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"syscall"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -21,7 +23,6 @@ import (
 type WinEventLogConfiguration struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	EventChannel                      string `yaml:"event_channel"`
-	EventSource                       string `yaml:"event_source"`
 	EventLevel                        string `yaml:"event_level"`
 	EventIDs                          []int  `yaml:"event_ids"`
 	XPathQuery                        string `yaml:"xpath_query"`
@@ -35,8 +36,70 @@ type WinEventLogSource struct {
 	query     string
 }
 
-func (w *WinEventLogSource) buildXpathQuery() string {
-	return ""
+type QueryList struct {
+	Select Select `xml:"Query>Select"`
+}
+
+type Select struct {
+	Path  string `xml:"Path,attr"`
+	Query string `xml:",chardata"`
+}
+
+func logLevelToInt(logLevel string) ([]string, error) {
+	switch strings.ToUpper(logLevel) {
+	case "CRITICAL":
+		return []string{"1"}, nil
+	case "ERROR":
+		return []string{"2"}, nil
+	case "WARNING":
+		return []string{"3"}, nil
+	case "INFORMATION":
+		return []string{"0", "4"}, nil
+	case "VERBOSE":
+		return []string{"5"}, nil
+	default:
+		return nil, errors.New("invalid log level")
+	}
+}
+
+func (w *WinEventLogSource) buildXpathQuery() (string, error) {
+	var query string
+	queryComponents := [][]string{}
+	if w.config.EventIDs != nil {
+		eventIds := []string{}
+		for _, id := range w.config.EventIDs {
+			eventIds = append(eventIds, fmt.Sprintf("EventID=%d", id))
+		}
+		queryComponents = append(queryComponents, eventIds)
+	}
+	if w.config.EventLevel != "" {
+		levels, err := logLevelToInt(w.config.EventLevel)
+		logLevels := []string{}
+		if err != nil {
+			return "", err
+		}
+		for _, level := range levels {
+			logLevels = append(logLevels, fmt.Sprintf("Level=%s", level))
+		}
+		queryComponents = append(queryComponents, logLevels)
+	}
+	if len(queryComponents) > 0 {
+		andList := []string{}
+		for _, component := range queryComponents {
+			andList = append(andList, fmt.Sprintf("(%s)", strings.Join(component, " or ")))
+		}
+		query = fmt.Sprintf("*[System[%s]]", strings.Join(andList, " and "))
+	} else {
+		query = "*"
+	}
+	queryList := QueryList{Select: Select{Path: w.config.EventChannel, Query: query}}
+	xpathQuery, err := xml.Marshal(queryList)
+	if err != nil {
+		w.logger.Errorf("Marshal failed: %v", err)
+		return "", err
+	}
+	w.logger.Debugf("xpathQuery: %s", xpathQuery)
+	return string(xpathQuery), nil
 }
 
 func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error {
@@ -51,14 +114,12 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 			winlog.Close(h)
 		}
 	}()
-	w.logger.Info("in getevents")
 	for {
 		select {
 		case <-t.Dying():
 			w.logger.Infof("wineventlog is dying")
 			return nil
 		default:
-			w.logger.Info("in getevents for loop")
 			status, err := windows.WaitForSingleObject(w.evtConfig.SignalEvent, 1000)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "windows.WaitForSingleObject failed: %v", err)
@@ -84,7 +145,6 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 
 		}
 	}
-	return nil
 }
 
 func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfig, error) {
@@ -101,12 +161,6 @@ func (w *WinEventLogSource) generateConfig(query string) (*winlog.SubscribeConfi
 		return &config, fmt.Errorf("windows.CreateEvent failed: %v", err)
 	}
 	config.Flags = wevtapi.EvtSubscribeToFutureEvents
-	/*xpaths := map[string]string{"Application": "*"}
-	xmlQuery, err := winlog.BuildStructuredXMLQuery(xpaths)
-	if err != nil {
-		return nil, fmt.Errorf("BuildStructuredXMLQuery failed: %v", err)
-	}*/
-
 	config.Query, err = syscall.UTF16PtrFromString(query)
 	if err != nil {
 		return &config, fmt.Errorf("syscall.UTF16PtrFromString failed: %v", err)
@@ -125,31 +179,30 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 		return fmt.Errorf("unable to parse configuration: %v", err)
 	}
 
-	if config.EventChannel != "" && config.EventSource != "" {
-		return fmt.Errorf("event_channel and event_source are mutually exclusive")
+	if config.EventChannel != "" && config.XPathQuery != "" {
+		return fmt.Errorf("event_channel and xpath_query are mutually exclusive")
 	}
 
-	if config.EventChannel == "" && config.EventSource == "" {
-		return fmt.Errorf("event_channel or event_source must be set")
+	if config.EventChannel == "" && config.XPathQuery == "" {
+		return fmt.Errorf("event_channel or xpath_query must be set")
 	}
+
+	config.Mode = configuration.TAIL_MODE
+	w.config = config
 
 	if config.XPathQuery != "" {
 		w.query = config.XPathQuery
 	} else {
-		w.query = w.buildXpathQuery()
+		w.query, err = w.buildXpathQuery()
+		if err != nil {
+			return fmt.Errorf("buildXpathQuery failed: %v", err)
+		}
 	}
-	config.Mode = configuration.TAIL_MODE
-	w.config = config
 
 	w.evtConfig, err = w.generateConfig(w.query)
 	if err != nil {
 		return err
 	}
-	/*err = winlog.GetBookmarkRegistry(config, registry.CURRENT_USER, `SOFTWARE\Logging`, "Bookmark")
-	if err != nil {
-		log.Fatalf("winlog.GetBookmarkRegistry failed: %v", err)
-	}
-	config.Flags = wevtapi.EvtSubscribeStartAfterBookmark*/
 
 	return nil
 }
