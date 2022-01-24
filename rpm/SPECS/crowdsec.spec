@@ -208,6 +208,10 @@ fi
 
 %systemd_postun_with_restart %{name}.service
 
+if [ $1 == 0 ]; then
+    rm -rf /etc/crowdsec/hub
+fi
+
 #systemctl stop crowdsec || echo "crowdsec was not started"
 
 %changelog
