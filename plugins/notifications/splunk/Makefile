@@ -11,7 +11,7 @@ build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) "$(BINARY_NAME)"
 
 static: clean
 	$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -v -a -tags netgo

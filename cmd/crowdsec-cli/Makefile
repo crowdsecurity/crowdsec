@@ -24,8 +24,8 @@ install-bin:
 	@install -v -m 755 -D "$(BINARY_NAME)" "$(BIN_PREFIX)/$(BINARY_NAME)" || exit
 
 uninstall:
-	@rm -rf $(CSCLI_CONFIG)
-	@rm -rf $(BIN_PREFIX)$(BINARY_NAME)
+	@$(RM) -r $(CSCLI_CONFIG)
+	@$(RM) -r $(BIN_PREFIX)$(BINARY_NAME)
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) $(BINARY_NAME)

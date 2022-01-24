@@ -7,7 +7,7 @@ GOGET=$(GOCMD) get
 BINARY_NAME=notification-http
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) "$(BINARY_NAME)"
 
 build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v

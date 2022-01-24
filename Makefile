@@ -91,13 +91,13 @@ goversion:
 clean:
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
-	@rm -f $(CROWDSEC_BIN)
-	@rm -f $(CSCLI_BIN)
-	@rm -f *.log
-	@rm -f crowdsec-release.tgz
-	@rm -f $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
-	@rm -f $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
-	@rm -f $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
+	@$(RM) $(CROWDSEC_BIN)
+	@$(RM) $(CSCLI_BIN)
+	@$(RM) *.log
+	@$(RM) crowdsec-release.tgz
+	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
+	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
+	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
 
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
