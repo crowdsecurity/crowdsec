@@ -1,4 +1,3 @@
-
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build

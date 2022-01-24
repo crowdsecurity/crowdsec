@@ -14,6 +14,7 @@ PID_DIR = $(PREFIX)"/var/run/"
 
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
+.PHONY: all
 all: clean test build
 
 build: clean
