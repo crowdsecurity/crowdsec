@@ -72,8 +72,6 @@ install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}
 install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
-
-
 %clean
 rm -rf %{buildroot}
 
@@ -175,7 +173,6 @@ if [ $1 == 1 ]; then
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
-    systemctl start crowdsec || echo "crowdsec is not started"
     
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
     cscli config restore /var/lib/crowdsec/backup
@@ -193,6 +190,13 @@ elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
 fi
 
 %systemd_post %{name}.service
+
+if [ $1 == 1 ]; then
+    %if 0%{?fc35}
+    systemctl enable crowdsec 
+    %endif
+    systemctl start crowdsec || echo "crowdsec is not started"
+fi
 
 %preun
 
