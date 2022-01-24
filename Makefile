@@ -7,12 +7,6 @@ else
 	include $(ROOT)/platform/linux.mk
 endif
 
-PREFIX?="/tmp/crowdsec/"
-CFG_PREFIX = $(PREFIX)"/etc/crowdsec/"
-BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
-DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
-
-PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
 
