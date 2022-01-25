@@ -38,21 +38,23 @@ func Lower(s string) string {
 
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":                Atof,
-		"JsonExtract":         JsonExtract,
-		"JsonExtractUnescape": JsonExtractUnescape,
-		"JsonExtractLib":      JsonExtractLib,
-		"File":                File,
-		"RegexpInFile":        RegexpInFile,
-		"Upper":               Upper,
-		"Lower":               Lower,
-		"IpInRange":           IpInRange,
-		"TimeNow":             TimeNow,
-		"ParseUri":            ParseUri,
-		"PathUnescape":        PathUnescape,
-		"QueryUnescape":       QueryUnescape,
-		"PathEscape":          PathEscape,
-		"QueryEscape":         QueryEscape,
+		"Atof":                 Atof,
+		"JsonExtract":          JsonExtract,
+		"JsonExtractUnescape":  JsonExtractUnescape,
+		"JsonExtractLib":       JsonExtractLib,
+		"File":                 File,
+		"RegexpInFile":         RegexpInFile,
+		"Upper":                Upper,
+		"Lower":                Lower,
+		"IpInRange":            IpInRange,
+		"TimeNow":              TimeNow,
+		"ParseUri":             ParseUri,
+		"PathUnescape":         PathUnescape,
+		"QueryUnescape":        QueryUnescape,
+		"PathEscape":           PathEscape,
+		"QueryEscape":          QueryEscape,
+		"XMLGetAttributeValue": XMLGetAttributeValue,
+		"XMLGetNodeValue":      XMLGetNodeValue,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
