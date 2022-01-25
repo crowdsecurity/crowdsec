@@ -37,6 +37,10 @@ type AddSignalsRequestItem struct {
 	// Required: true
 	ScenarioHash *string `json:"scenario_hash"`
 
+	// scenario trust
+	// Required: true
+	ScenarioTrust *string `json:"scenario_trust"`
+
 	// scenario version
 	// Required: true
 	ScenarioVersion *string `json:"scenario_version"`
@@ -67,6 +71,10 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateScenarioHash(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenarioTrust(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -113,6 +121,15 @@ func (m *AddSignalsRequestItem) validateScenario(formats strfmt.Registry) error 
 func (m *AddSignalsRequestItem) validateScenarioHash(formats strfmt.Registry) error {
 
 	if err := validate.Required("scenario_hash", "body", m.ScenarioHash); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *AddSignalsRequestItem) validateScenarioTrust(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario_trust", "body", m.ScenarioTrust); err != nil {
 		return err
 	}
 

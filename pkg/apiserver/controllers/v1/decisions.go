@@ -17,7 +17,7 @@ import (
 func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 	var results []*models.Decision
 	for _, dbDecision := range decisions {
-		duration := dbDecision.Until.Sub(time.Now()).String()
+		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
 			Duration: &duration,
@@ -164,7 +164,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				return
 			}
 
-			if err := c.DBClient.UpdateBouncerLastPull(time.Now(), bouncerInfo.ID); err != nil {
+			if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
 				log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
@@ -206,7 +206,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
-	if err := c.DBClient.UpdateBouncerLastPull(time.Now(), bouncerInfo.ID); err != nil {
+	if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
 		log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return

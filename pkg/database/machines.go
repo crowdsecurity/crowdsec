@@ -110,9 +110,17 @@ func (c *Client) DeleteWatcher(name string) error {
 	return nil
 }
 
+func (c *Client) UpdateMachineLastPush(machineID string) error {
+	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastPush(time.Now().UTC()).Save(c.CTX)
+	if err != nil {
+		return errors.Wrapf(UpdateFail, "updating machine last_push: %s", err)
+	}
+	return nil
+}
+
 func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
-		SetUpdatedAt(time.Now()).
+		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
 		Save(c.CTX)
 	if err != nil {

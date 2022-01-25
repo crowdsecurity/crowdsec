@@ -1,39 +1,31 @@
-# Crowdsec
+# Quick reference
+
+* Documentation and help: https://docs.crowdsec.net/
+* Crowdsec concepts: https://docs.crowdsec.net/docs/concepts
+* Where to file issues: https://github.com/crowdsecurity/crowdsec
+
+
+# What is Crowdsec
 
 Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database.
 
-## Getting Started
+# How to use this image
 
-Before starting using docker image, we suggest you to read our documentation to understand all [crowdsec concepts](https://docs.crowdsec.net/).
+## Required configuration
 
-#### Run
+### Logs ingestion and processing
+Collections are a good place to start: https://docs.crowdsec.net/docs/collections/intro
 
-The container is built with specific docker [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml) :
+Find collections|scenarios|parsers|postoverflows in the hub: https://hub.crowdsec.net
 
-You should apply following configuration before starting it :
 
 * Specify collections|scenarios|parsers/postoverflows to install via the environment variables (by default [`crowdsecurity/linux`](https://hub.crowdsec.net/author/crowdsecurity/collections/linux) is installed)
-* Mount volumes to specify your log files that should be ingested by crowdsec (set up in acquis.yaml)
-* If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
-* Mount other volumes : if you want to share the database for example
+* Mount volumes to specify your log files that should be ingested by crowdsec
+### Acquisition
 
-```shell
-docker run -d -v acquis.yaml:/etc/crowdsec/acquis.yaml \
-    -e COLLECTIONS="crowdsecurity/sshd"
-    -v /var/log/auth.log:/var/log/auth.log \
-    -v /path/mycustom.log:/var/log/mycustom.log \
-    --name crowdsec crowdsecurity/crowdsec
-```
+`/etc/crowdsec/acquis.yaml` maps logs to provided parsers. Find out more here: https://docs.crowdsec.net/docs/concepts/#acquisition
 
-#### Example
-
-I have my own configuration :
-```shell
-user@cs ~/crowdsec/config $ ls
-acquis.yaml  config.yaml
-```
-
-Here is my acquis.yaml file:
+acquis.yaml example:
 ```shell
 filenames:
  - /logs/auth.log
@@ -46,30 +38,72 @@ labels:
   type: apache2
 ```
 
-So, I want to run crowdsec with :
+`labels.type`: use `syslog` if logs origin is `syslog`, checkout collection's documentation for the relevant type otherwise.
 
-* My configuration files
-* Ingested my path logs specified in acquis.yaml
-* Share the crowdsec sqlite database with my host (You need to create empty file first, otherwise docker will create a directory instead of simple file)
-* Expose local API through host (listen by default on `8080`)
-* Expose prometheus handler through host (listen by default on `6060`)
+## Recommended configuration
+### Volumes
+
+We strongly suggest to mount **named volumes** for Crowdsec configuration and database to avoid credentials and decisions loss in case of container's destruction and recreation, version update, etc.
+* Credentials and configuration: `/etc/crowdsec`
+* Database when using default SQLite: `/var/lib/crowdsec/data`
+
+## Start a Crowdsec instance
 
 ```shell
-touch /path/myDatabase.db
-docker run -d -v config.yaml:/etc/crowdsec/config.yaml \
-    -v acquis.yaml:/etc/crowdsec/acquis.yaml \
-    -v /var/log/auth.log:/logs/auth.log \
-    -v /var/log/syslog.log:/logs/syslog.log \
-    -v /var/log/apache:/logs/apache \
-    -v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db \
+docker run -d \
+    -v local_path_to_crowdsec_config/acquis.yaml:/etc/crowdsec/acquis.yaml \
+    -v crowdsec_config:/etc/crowdsec \
+    -v crowdsec_data:/var/lib/crowdsec/data \
+    -v /var/log/auth.log:/logs/auth.log:ro \
+    -v /var/log/syslog.log:/logs/syslog.log:ro \
+    -v /var/log/apache:/logs/apache:ro \
     -e COLLECTIONS="crowdsecurity/apache2 crowdsecurity/sshd" \
     -p 8080:8080 -p 6060:6060 \
     --name crowdsec crowdsecurity/crowdsec
 ```
 
-If you want to be able to restart/stop your container and keep the same DB `-v /path/myDatabase.db:/var/lib/crowdsec/data/crowdsec.db` you need to add a volume on local_api_credentials.yaml `-v /path/local_api_credentials.yaml:/etc/crowdsec/local_api_credentials.yaml`.
+## ... or docker-compose
 
-### Environment Variables
+Check this full stack example using docker-compose: https://github.com/crowdsecurity/example-docker-compose
+# How to extend this image
+## Full configuration
+The container is built with specific docker [configuration](https://github.com/crowdsecurity/crowdsec/blob/master/docker/config.yaml). If you need to change it, bind `/etc/crowdsec/config.yaml` to your local configuration file
+## Notifications
+If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
+
+# Deployment use cases
+Crowdsec is composed of an `agent` that parse logs and creates `alerts` that `local API` or `LAPI` tranform into decisions. Both can run in the same process but also on separated containers as it makes sense in complex configurations to have agents on the same machines as the protected component and a LAPI that gather all signals from agents and communicate with the `central api`.
+
+## Register a new agent with LAPI
+```shell
+docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name --password agent_password
+```
+
+## Run an agent connected to LAPI
+Add following environment variables to your docker run command:
+* `DISABLE_LOCAL_API=true`
+* `AGENT_USERNAME="agent_user_name"` - agent_user_name previously registred with LAPI
+* `AGENT_PASSWORD="agent_password"` - agent_password previously registered with LAPI
+* `LOCAL_API_URL="http://LAPI_host:LAPI_port"`
+
+# Next steps
+## Bouncers
+Crowdsec being a detection component, remediation is implemented using `bouncers`. Each bouncer protect a specific component. Find out more:
+
+https://hub.crowdsec.net/browse/#bouncers
+
+https://docs.crowdsec.net/docs/user_guides/bouncers_configuration/
+
+## Console
+We provide a web based interface to get more from Crowdsec: https://docs.crowdsec.net/docs/console
+
+Subscribe here: https://app.crowdsec.net
+
+# Caveats
+Using binds rather than named volumes ([more explanation here](https://docs.docker.com/storage/volumes/)) results in more complexity as you'll have to bind relevant files one by one where with named volumes you can mount full configuration and data folders. On the other hand, named volumes are less straightforward to navigate.
+
+# Reference
+## Environment Variables
 
 * `COLLECTIONS`             - Collections to install from the [hub](https://hub.crowdsec.net/browse/#collections), separated by space : `-e COLLECTIONS="crowdsecurity/linux crowdsecurity/apache2"`
 * `SCENARIOS`               - Scenarios to install from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
@@ -90,26 +124,26 @@ If you want to be able to restart/stop your container and keep the same DB `-v /
 * `LEVEL_DEBUG`             - Debug-level on stdout (default: `false`) : `-e LEVEL_DEBUG="<true|false>"`
 * `LEVEL_INFO`              - Info-level on stdout (default: `false`) : `-e LEVEL_INFO="<true|false>"`
 
-### Volumes
+## Volumes
 
 * `/var/lib/crowdsec/data/` - Directory where all crowdsec data (Databases) is located
 
 * `/etc/crowdsec/` - Directory where all crowdsec configurations are located
 
-#### Useful File Locations
+## File Locations
 
 * `/usr/local/bin/crowdsec` - Crowdsec binary
   
 * `/usr/local/bin/cscli` - Crowdsec CLI binary to interact with crowdsec
 
-## Find Us
+# Find Us
 
 * [GitHub](https://github.com/crowdsecurity/crowdsec)
 
-## Contributing
+# Contributing
 
 Please read [contributing](https://docs.crowdsec.net/Crowdsec/v1/contributing/) for details on our code of conduct, and the process for submitting pull requests to us.
 
-## License
+# License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/crowdsecurity/crowdsec/blob/master/LICENSE) file for details.

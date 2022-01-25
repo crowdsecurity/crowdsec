@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http/httputil"
 	"net/url"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -155,17 +154,13 @@ func NewCapiCmd() *cobra.Command {
 			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Server.OnlineClient.CredentialsFilePath)
 			log.Infof("Trying to authenticate with username %s on %s", csConfig.API.Server.OnlineClient.Credentials.Login, apiurl)
-			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
+			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Central API (CAPI) : %s", err)
 			} else {
 				log.Infof("You can successfully interact with Central API (CAPI)")
 			}
-			for k, v := range resp.Response.Header {
-				log.Debugf("[headers] %s : %s", k, v)
-			}
-			dump, _ := httputil.DumpResponse(resp.Response, true)
-			log.Debugf("Response: %s", string(dump))
+
 		},
 	}
 	cmdCapi.AddCommand(cmdCapiStatus)

@@ -38,6 +38,7 @@ type APIServer struct {
 	httpServer     *http.Server
 	apic           *apic
 	httpServerTomb tomb.Tomb
+	consoleConfig  *csconfig.ConsoleConfig
 }
 
 // RecoveryWithWriter returns a middleware for a given writer that recovers from any panics and writes a 500 if there was one.
@@ -113,13 +114,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	}
 	log.Debugf("starting router, logging to %s", logFile)
 	router := gin.New()
-	/* See https://github.com/gin-gonic/gin/pull/2474:
-	Gin does not handle safely X-Forwarded-For or X-Real-IP.
-	We do not trust them by default, but the user can opt-in
-	if they host LAPI behind a trusted proxy which sanitize
-	X-Forwarded-For and X-Real-IP.
-	*/
-	router.ForwardedByClientIP = config.UseForwardedForHeaders
+
+	if config.TrustedProxies != nil && config.UseForwardedForHeaders {
+		if err := router.SetTrustedProxies(*config.TrustedProxies); err != nil {
+			return &APIServer{}, errors.Wrap(err, "while setting trusted_proxies")
+		}
+		router.ForwardedByClientIP = true
+	} else {
+		router.ForwardedByClientIP = false
+	}
 
 	/*The logger that will be used by handlers*/
 	clog := log.New()
@@ -133,12 +136,37 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	/*Configure logs*/
 	if logFile != "" {
+		_maxsize := 500
+		if config.LogMaxSize != 0 {
+			_maxsize = config.LogMaxSize
+		}
+		_maxfiles := 3
+		if config.LogMaxFiles != 0 {
+			_maxfiles = config.LogMaxFiles
+		}
+		_maxage := 28
+		if config.LogMaxAge != 0 {
+			_maxage = config.LogMaxAge
+		}
+		_compress := true
+		if config.CompressLogs != nil {
+			_compress = *config.CompressLogs
+		}
+		/*cf. https://github.com/natefinch/lumberjack/issues/82
+		let's create the file beforehand w/ the right perms */
+		// check if file exists
+		_, err := os.Stat(logFile)
+		// create file if not exists, purposefully ignore errors
+		if os.IsNotExist(err) {
+			file, _ := os.OpenFile(logFile, os.O_RDWR|os.O_CREATE, 0600)
+			file.Close()
+		}
 		LogOutput := &lumberjack.Logger{
 			Filename:   logFile,
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
+			MaxSize:    _maxsize, //megabytes
+			MaxBackups: _maxfiles,
+			MaxAge:     _maxage,   //days
+			Compress:   _compress, //disabled by default
 		}
 		clog.SetOutput(LogOutput)
 	}
@@ -165,19 +193,21 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		return
 	})
 	router.Use(CustomRecoveryWithWriter())
+
 	controller := &controllers.Controller{
-		DBClient: dbClient,
-		Ectx:     context.Background(),
-		Router:   router,
-		Profiles: config.Profiles,
-		Log:      clog,
+		DBClient:      dbClient,
+		Ectx:          context.Background(),
+		Router:        router,
+		Profiles:      config.Profiles,
+		Log:           clog,
+		ConsoleConfig: config.ConsoleConfig,
 	}
 
 	var apiClient *apic
 
 	if config.OnlineClient != nil && config.OnlineClient.Credentials != nil {
 		log.Printf("Loading CAPI pusher")
-		apiClient, err = NewAPIC(config.OnlineClient, dbClient)
+		apiClient, err = NewAPIC(config.OnlineClient, dbClient, config.ConsoleConfig)
 		if err != nil {
 			return &APIServer{}, err
 		}
@@ -197,6 +227,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		router:         router,
 		apic:           apiClient,
 		httpServerTomb: tomb.Tomb{},
+		consoleConfig:  config.ConsoleConfig,
 	}, nil
 
 }

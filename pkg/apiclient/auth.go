@@ -170,7 +170,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now()) {
+	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
 		if err := t.refreshJwtToken(); err != nil {
 			return nil, err
 		}

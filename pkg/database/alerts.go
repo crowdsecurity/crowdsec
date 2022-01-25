@@ -142,7 +142,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 	ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 	if err != nil {
 		c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
-		ts = time.Now()
+		ts = time.Now().UTC()
 	}
 
 	alertB := c.Ent.Alert.
@@ -409,7 +409,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
 			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
-			ts = time.Now()
+			ts = time.Now().UTC()
 		}
 
 		decisions = make([]*ent.Decision, 0)
@@ -594,7 +594,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if err != nil {
 				return nil, errors.Wrap(err, "while parsing duration")
 			}
-			since := time.Now().Add(-duration)
+			since := time.Now().UTC().Add(-duration)
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
@@ -604,7 +604,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if err != nil {
 				return nil, errors.Wrap(err, "while parsing duration")
 			}
-			since := time.Now().Add(-duration)
+			since := time.Now().UTC().Add(-duration)
 			if since.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", since.String())
 			}
@@ -614,7 +614,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 			if err != nil {
 				return nil, errors.Wrap(err, "while parsing duration")
 			}
-			until := time.Now().Add(-duration)
+			until := time.Now().UTC().Add(-duration)
 			if until.IsZero() {
 				return nil, fmt.Errorf("Empty time now() - %s", until.String())
 			}
@@ -634,7 +634,7 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 				return nil, errors.Wrapf(ParseType, "'%s' is not a boolean: %s", value[0], err)
 			}
 			if hasActiveDecision {
-				alerts = alerts.Where(alert.HasDecisionsWith(decision.UntilGTE(time.Now())))
+				alerts = alerts.Where(alert.HasDecisionsWith(decision.UntilGTE(time.Now().UTC())))
 			} else {
 				alerts = alerts.Where(alert.Not(alert.HasDecisions()))
 			}
@@ -753,17 +753,20 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 			WithEvents().
 			WithMetas().
 			WithOwner()
-		if sort == "ASC" {
-			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
-		} else {
-			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
-		}
+
 		if limit == 0 {
 			limit, err = alerts.Count(c.CTX)
 			if err != nil {
 				return []*ent.Alert{}, fmt.Errorf("unable to count nb alerts: %s", err)
 			}
 		}
+
+		if sort == "ASC" {
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+		} else {
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+		}
+
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
 		if err != nil {
 			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
@@ -871,7 +874,7 @@ func (c *Client) FlushOrphans() {
 	}
 
 	events_count, err = c.Ent.Decision.Delete().Where(
-		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now())).Exec(c.CTX)
+		decision.Not(decision.HasOwner())).Where(decision.UntilLTE(time.Now().UTC())).Exec(c.CTX)
 
 	if err != nil {
 		c.Log.Warningf("error while deleting orphan decisions : %s", err)

@@ -37,8 +37,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	var spamLimit map[string]bool = make(map[string]bool)
 	var skipped = 0
 
-	/*process in reverse order to keep the latest item only*/
-	for aIdx := len(*alerts) - 1; aIdx >= 0; aIdx-- {
+	for aIdx := 0; aIdx < len(*alerts); aIdx++ {
 		alertItem := (*alerts)[aIdx]
 		newDecisions := make([]*models.Decision, 0)
 		for _, decisionItem := range alertItem.Decisions {
@@ -303,7 +302,7 @@ cscli decisions add --scope username --value foobar
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-			var ip, ipRange string
+			var ipRange string
 			alerts := models.AddAlertsRequest{}
 			origin := "cscli"
 			capacity := int32(0)
@@ -311,9 +310,9 @@ cscli decisions add --scope username --value foobar
 			eventsCount := int32(1)
 			empty := ""
 			simulated := false
-			startAt := time.Now().Format(time.RFC3339)
-			stopAt := time.Now().Format(time.RFC3339)
-			createdAt := time.Now().Format(time.RFC3339)
+			startAt := time.Now().UTC().Format(time.RFC3339)
+			stopAt := time.Now().UTC().Format(time.RFC3339)
+			createdAt := time.Now().UTC().Format(time.RFC3339)
 
 			/*take care of shorthand options*/
 			if err := manageCliDecisionAlerts(&addIP, &addRange, &addScope, &addValue); err != nil {
@@ -358,7 +357,7 @@ cscli decisions add --scope username --value foobar
 					AsName:   empty,
 					AsNumber: empty,
 					Cn:       empty,
-					IP:       ip,
+					IP:       addValue,
 					Range:    ipRange,
 					Scope:    &addScope,
 					Value:    &addValue,
@@ -583,7 +582,7 @@ decisions.json :
 			}
 			alerts := models.AddAlertsRequest{}
 			importAlert := models.Alert{
-				CreatedAt: time.Now().Format(time.RFC3339),
+				CreatedAt: time.Now().UTC().Format(time.RFC3339),
 				Scenario:  types.StrPtr(fmt.Sprintf("add: %d IPs", len(decisionsList))),
 				Message:   types.StrPtr(""),
 				Events:    []*models.Event{},
@@ -591,8 +590,8 @@ decisions.json :
 					Scope: types.StrPtr("cscli/manual-import"),
 					Value: types.StrPtr(""),
 				},
-				StartAt:         types.StrPtr(time.Now().Format(time.RFC3339)),
-				StopAt:          types.StrPtr(time.Now().Format(time.RFC3339)),
+				StartAt:         types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
+				StopAt:          types.StrPtr(time.Now().UTC().Format(time.RFC3339)),
 				Capacity:        types.Int32Ptr(0),
 				Simulated:       types.BoolPtr(false),
 				EventsCount:     types.Int32Ptr(int32(len(decisionsList))),

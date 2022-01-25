@@ -238,7 +238,7 @@ func TestLiveAcquisition(t *testing.T) {
 mode: tail
 filename: /etc/shadow`,
 			expectedErr:    "",
-			expectedOutput: "unable to read /etc/shadow : permission denied",
+			expectedOutput: "unable to read /etc/shadow : open /etc/shadow: permission denied",
 			logLevel:       log.InfoLevel,
 			expectedLines:  0,
 		},

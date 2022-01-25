@@ -44,6 +44,7 @@ type apic struct {
 	startup         bool
 	credentials     *csconfig.ApiCredentialsCfg
 	scenarioList    []string
+	consoleConfig   *csconfig.ConsoleConfig
 }
 
 func IsInSlice(a string, b []string) bool {
@@ -75,7 +76,7 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	return scenarios, nil
 }
 
-func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
+func AlertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignalsRequestItem {
 	return &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
@@ -86,21 +87,23 @@ func AlertToSignal(alert *models.Alert) *models.AddSignalsRequestItem {
 		StopAt:          alert.StopAt,
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
+		ScenarioTrust:   &scenarioTrust,
 	}
 }
 
-func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client) (*apic, error) {
+func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		alertToPush:  make(chan []*models.Alert),
-		dbClient:     dbClient,
-		mu:           sync.Mutex{},
-		startup:      true,
-		credentials:  config.Credentials,
-		pullTomb:     tomb.Tomb{},
-		pushTomb:     tomb.Tomb{},
-		metricsTomb:  tomb.Tomb{},
-		scenarioList: make([]string, 0),
+		alertToPush:   make(chan []*models.Alert),
+		dbClient:      dbClient,
+		mu:            sync.Mutex{},
+		startup:       true,
+		credentials:   config.Credentials,
+		pullTomb:      tomb.Tomb{},
+		pushTomb:      tomb.Tomb{},
+		metricsTomb:   tomb.Tomb{},
+		scenarioList:  make([]string, 0),
+		consoleConfig: consoleConfig,
 	}
 
 	ret.pullInterval, err = time.ParseDuration(PullInterval)
@@ -167,20 +170,39 @@ func (a *apic) Push() error {
 		case alerts := <-a.alertToPush:
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
-				/*we're only interested into decisions coming from scenarios of the hub*/
-				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
-					continue
-				}
-				/*and we're not interested into tainted scenarios neither*/
-				if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
-					continue
-				}
-				/*we also ignore alerts in simulated mode*/
 				if *alert.Simulated {
 					log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
 					continue
 				}
-				signals = append(signals, AlertToSignal(alert))
+				scenarioTrust := "certified"
+				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
+					scenarioTrust = "custom"
+				} else if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
+					scenarioTrust = "tainted"
+				}
+				if len(alert.Decisions) > 0 {
+					if *alert.Decisions[0].Origin == "cscli" {
+						scenarioTrust = "manual"
+					}
+				}
+				switch scenarioTrust {
+				case "manual":
+					if !*a.consoleConfig.ShareManualDecisions {
+						log.Debugf("manual decision generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				case "tainted":
+					if !*a.consoleConfig.ShareTaintedScenarios {
+						log.Debugf("tainted scenario generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				case "custom":
+					if !*a.consoleConfig.ShareCustomScenarios {
+						log.Debugf("custom scenario generated an alert, doesn't send it to CAPI because options is disabled")
+						continue
+					}
+				}
+				signals = append(signals, AlertToSignal(alert, scenarioTrust))
 			}
 			a.mu.Lock()
 			cache = append(cache, signals...)
@@ -244,7 +266,7 @@ func (a *apic) PullTop() error {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
-	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
+	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
 	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
 		return errors.Wrap(err, "while looking for CAPI alert")
@@ -357,8 +379,8 @@ func (a *apic) PullTop() error {
 				log.Warningf("unknown origin %s", *decision.Origin)
 			}
 			newAlert.Source.Value = types.StrPtr("")
-			newAlert.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
-			newAlert.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+			newAlert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
 			newAlert.Capacity = types.Int32Ptr(0)
 			newAlert.Simulated = types.BoolPtr(false)
 			newAlert.EventsCount = types.Int32Ptr(int32(len(data.New)))
@@ -477,8 +499,8 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	version := cwversion.VersionStr()
 	metric := &models.Metrics{
 		ApilVersion: &version,
-		Machines:    make([]*models.MetricsSoftInfo, 0),
-		Bouncers:    make([]*models.MetricsSoftInfo, 0),
+		Machines:    make([]*models.MetricsAgentInfo, 0),
+		Bouncers:    make([]*models.MetricsBouncerInfo, 0),
 	}
 	machines, err := a.dbClient.ListMachines()
 	if err != nil {
@@ -488,18 +510,28 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	if err != nil {
 		return metric, err
 	}
+	var lastpush string
 	for _, machine := range machines {
-		m := &models.MetricsSoftInfo{
-			Version: machine.Version,
-			Name:    machine.MachineId,
+		if machine.LastPush == nil {
+			lastpush = time.Time{}.String()
+		} else {
+			lastpush = machine.LastPush.String()
+		}
+		m := &models.MetricsAgentInfo{
+			Version:    machine.Version,
+			Name:       machine.MachineId,
+			LastUpdate: machine.UpdatedAt.String(),
+			LastPush:   lastpush,
 		}
 		metric.Machines = append(metric.Machines, m)
 	}
 
 	for _, bouncer := range bouncers {
-		m := &models.MetricsSoftInfo{
-			Version: bouncer.Version,
-			Name:    bouncer.Type,
+		m := &models.MetricsBouncerInfo{
+			Version:    bouncer.Version,
+			CustomName: bouncer.Name,
+			Name:       bouncer.Type,
+			LastPull:   bouncer.LastPull.String(),
 		}
 		metric.Bouncers = append(metric.Bouncers, m)
 	}

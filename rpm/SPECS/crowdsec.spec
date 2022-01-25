@@ -19,6 +19,7 @@ BuildRequires:  jq
 BuildRequires:  systemd
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
+%{?fc35:BuildRequires: systemd-rpm-macros}
 
 %define debug_package %{nil}
 
@@ -60,6 +61,7 @@ install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patte
 install -m 644 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
@@ -69,8 +71,6 @@ install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_l
 install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
-
-
 
 %clean
 rm -rf %{buildroot}
@@ -110,6 +110,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/config.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/console.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
@@ -172,7 +173,6 @@ if [ $1 == 1 ]; then
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
-    systemctl start crowdsec || echo "crowdsec is not started"
     
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
     cscli config restore /var/lib/crowdsec/backup
@@ -191,6 +191,13 @@ fi
 
 %systemd_post %{name}.service
 
+if [ $1 == 1 ]; then
+    %if 0%{?fc35}
+    systemctl enable crowdsec 
+    %endif
+    systemctl start crowdsec || echo "crowdsec is not started"
+fi
+
 %preun
 
 #systemctl stop crowdsec || echo "crowdsec was not started"
@@ -200,6 +207,10 @@ fi
 %postun
 
 %systemd_postun_with_restart %{name}.service
+
+if [ $1 == 0 ]; then
+    rm -rf /etc/crowdsec/hub
+fi
 
 #systemctl stop crowdsec || echo "crowdsec was not started"
 

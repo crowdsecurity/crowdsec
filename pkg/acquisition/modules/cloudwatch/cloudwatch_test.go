@@ -718,7 +718,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -746,7 +746,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_3"),
-							Timestamp: aws.Int64(time.Now().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {

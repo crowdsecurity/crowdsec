@@ -19,7 +19,7 @@ import (
 // swagger:model Decision
 type Decision struct {
 
-	// duration
+	// the duration of the decisions
 	// Required: true
 	Duration *string `json:"duration"`
 
@@ -46,6 +46,9 @@ type Decision struct {
 	// the type of decision, might be 'ban', 'captcha' or something custom. Ignored when watcher (cscli/crowdsec) is pushing to APIL.
 	// Required: true
 	Type *string `json:"type"`
+
+	// the date until the decisions must be active
+	Until string `json:"until,omitempty"`
 
 	// the value of the decision scope : an IP, a range, a username, etc
 	// Required: true
