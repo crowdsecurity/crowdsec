@@ -4,13 +4,13 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
-	"os"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/google/winops/winlog"
 	"github.com/google/winops/winlog/wevtapi"
@@ -100,7 +100,7 @@ func logLevelToInt(logLevel string) ([]string, error) {
 }
 
 //This is lifted from winops/winlog, but we only want to render the basic XML string, we don't need the extra fluff
-func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int, locale uint32) ([]string, error) {
+func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publisherCache map[string]windows.Handle, resultSet windows.Handle, maxEvents int) ([]string, error) {
 	var events = make([]windows.Handle, maxEvents)
 	var returned uint32
 
@@ -134,6 +134,7 @@ func (w *WinEventLogSource) getXMLEvents(config *winlog.SubscribeConfig, publish
 			w.logger.Errorf("Failed to render event with RenderFragment, skipping: %v", err)
 			continue
 		}
+		w.logger.Tracef("Rendered event: %s", fragment)
 		renderedEvents = append(renderedEvents, fragment)
 	}
 	return renderedEvents, err
@@ -182,7 +183,8 @@ func (w *WinEventLogSource) buildXpathQuery() (string, error) {
 func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error {
 	subscription, err := winlog.Subscribe(w.evtConfig)
 	if err != nil {
-		log.Fatalf("winlog.Subscribe 1: %v", err)
+		w.logger.Errorf("Failed to subscribe to event log: %s", err)
+		return err
 	}
 	defer winlog.Close(subscription)
 	publisherCache := make(map[string]windows.Handle)
@@ -199,11 +201,11 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 		default:
 			status, err := windows.WaitForSingleObject(w.evtConfig.SignalEvent, 1000)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "windows.WaitForSingleObject failed: %v", err)
+				w.logger.Errorf("WaitForSingleObject failed: %s", err)
 				return err
 			}
 			if status == syscall.WAIT_OBJECT_0 {
-				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 100, 1033)
+				renderedEvents, err := w.getXMLEvents(w.evtConfig, publisherCache, subscription, 500)
 				if err == windows.ERROR_NO_MORE_ITEMS {
 					windows.ResetEvent(w.evtConfig.SignalEvent)
 				} else if err != nil {
@@ -211,13 +213,14 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					continue
 				}
 				for _, event := range renderedEvents {
-					a := WindowsEvent{}
-					err := xml.Unmarshal([]byte(event), &a)
-					if err != nil {
-						w.logger.Errorf("Unmarshal failed: %v", err)
-						continue
-					}
-					w.logger.Infof("marshaled XML: %+v", a)
+					l := types.Line{}
+					l.Raw = event
+					l.Module = w.GetName()
+					l.Labels = w.config.Labels
+					l.Time = time.Now()
+					l.Src = w.query //We probably want something a little bit more legible
+					l.Process = true
+					out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
 				}
 			}
 
@@ -281,7 +284,6 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
