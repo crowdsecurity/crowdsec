@@ -51,23 +51,21 @@ ${CSCLI} metrics || fail "failed to get metrics"
 
 ${SYSTEMCTL} stop crowdsec || fail "crowdsec should be down"
 
+sudo mkdir -p /etc/systemd/system/crowdsec.service.d/
+
 #######################
 ## TEST WITHOUT LAPI ##
 
 echo "CROWDSEC (AGENT)"
 
 # test with -no-api flag
-cp ${SYSTEMD_SERVICE_FILE} /tmp/crowdsec.service-orig
-sed '/^ExecStart/ s/$/ -no-api/' ${SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service 
-sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
+echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-api" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec
 sleep 1
 pidof crowdsec && fail "crowdsec shouldn't run without LAPI (in flag)"
 ${SYSTEMCTL} stop crowdsec
-
-sudo cp /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service
 
 ${SYSTEMCTL} daemon-reload
 
@@ -98,17 +96,14 @@ sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
 echo "CROWDSEC (LAPI+CAPI)"
 
 # test with -no-cs flag
-sed '/^ExecStart/ s/$/ -no-cs/' /etc/systemd/system/crowdsec.service > /tmp/crowdsec.service 
-sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service 
-
+echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-cs" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec 
 wait_for_service "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-sed '/^ExecStart/s/-no-cs//g' ${SYSTEMD_SERVICE_FILE} > /tmp/crowdsec.service
-sudo mv /tmp/crowdsec.service /etc/systemd/system/crowdsec.service
+echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 
@@ -152,8 +147,6 @@ sudo rm -rf ./test
 ${CSCLI} -c ./config/config_no_capi.yaml lapi status || fail "lapi status failed"
 ## metrics
 ${CSCLI_BIN} -c ./config/config_no_capi.yaml metrics || fail "failed to get metrics"
-
-sudo mv /tmp/crowdsec.service-orig /etc/systemd/system/crowdsec.service 
 
 sudo cp ./config.yaml.backup /etc/crowdsec/config.yaml 
 
