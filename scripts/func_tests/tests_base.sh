@@ -36,7 +36,7 @@ function wait_for_service {
         ((count ++))
         if [[ $count == 21 ]]; then
             systemctl status crowdsec
-            cat /var/log/crowdsec.log
+            sudo cat /var/log/crowdsec.log
             fail "$@"
         fi
     done
