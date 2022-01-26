@@ -126,7 +126,8 @@ ${CSCLI_BIN} -c ./config/config_no_agent.yaml metrics || fail "failed to get met
 
 ${SYSTEMCTL} stop crowdsec
 sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
-
+rm -f /etc/systemd/system/crowdsec.service.d/override.conf
+${SYSTEMCTL} daemon-reload
 
 #######################
 ## TEST WITHOUT CAPI ##
