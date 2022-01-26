@@ -35,6 +35,8 @@ function wait_for_service {
         sleep 0.5
         ((count ++))
         if [[ $count == 21 ]]; then
+            systemctl status crowdsec
+            cat /var/log/crowdsec.log
             fail "$@"
         fi
     done
