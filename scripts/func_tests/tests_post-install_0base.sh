@@ -99,7 +99,8 @@ echo "CROWDSEC (LAPI+CAPI)"
 echo -ne "[Service]\nExecStart=\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-cs" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
-${SYSTEMCTL} start crowdsec || systemctl status crowdsec && cat /var/log/crowdsec.log
+sudo rm -f /var/log/crowdsec.log
+${SYSTEMCTL} start crowdsec
 wait_for_service "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
