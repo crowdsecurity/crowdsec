@@ -59,7 +59,7 @@ sudo mkdir -p /etc/systemd/system/crowdsec.service.d/
 echo "CROWDSEC (AGENT)"
 
 # test with -no-api flag
-echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-api" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
+echo -ne "[Service]\nExecStart=\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-api\n" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec
@@ -96,14 +96,14 @@ sudo cp ./config/config.yaml /etc/crowdsec/config.yaml
 echo "CROWDSEC (LAPI+CAPI)"
 
 # test with -no-cs flag
-echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-cs" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
+echo -ne "[Service]\nExecStart=\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -no-cs" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 ${SYSTEMCTL} start crowdsec 
 wait_for_service "crowdsec LAPI should run without agent (in flag)"
 ${SYSTEMCTL} stop crowdsec
 
-echo -ne "[service]\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
+echo -ne "[service]\nExecStart=\nExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml" | sudo tee /etc/systemd/system/crowdsec.service.d/override.conf
 
 ${SYSTEMCTL} daemon-reload
 
