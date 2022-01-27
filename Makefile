@@ -219,3 +219,6 @@ release: check_release build package
 
 .PHONY:
 release_static: check_release static package_static
+
+windows_installer:
+	@.\make_installer.ps1

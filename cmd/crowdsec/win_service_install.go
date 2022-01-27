@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build windows
 // +build windows
 
 package main
@@ -11,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/sys/windows/svc/eventlog"
 	"golang.org/x/sys/windows/svc/mgr"
 )
 
@@ -64,11 +64,11 @@ func installService(name, desc string) error {
 		return err
 	}
 	defer s.Close()
-	err = eventlog.InstallAsEventCreate(name, eventlog.Error|eventlog.Warning|eventlog.Info)
+	/*err = eventlog.InstallAsEventCreate(name, eventlog.Error|eventlog.Warning|eventlog.Info)
 	if err != nil {
 		s.Delete()
 		return fmt.Errorf("SetupEventLogSource() failed: %s", err)
-	}
+	}*/
 	return nil
 }
 
@@ -87,9 +87,9 @@ func removeService(name string) error {
 	if err != nil {
 		return err
 	}
-	err = eventlog.Remove(name)
+	/*err = eventlog.Remove(name)
 	if err != nil {
 		return fmt.Errorf("RemoveEventLogSource() failed: %s", err)
-	}
+	}*/
 	return nil
 }

@@ -8,105 +8,79 @@
     <?error Unsupported value of sys.BUILDARCH=$(sys.BUILDARCH)?>
 <?endif?>
 
+<?define ProductName="CrowdSec"?>
+
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
 
-   <Product Id="*" UpgradeCode="{{.UpgradeCode}}"
-            Name="{{.Product}}"
-            Version="{{.VersionOk}}"
-            Manufacturer="{{.Company}}"
+   <Product Id="*" UpgradeCode="8eab6970-25e3-4b7d-882f-5b7efa311afc"
+            Name="$(var.ProductName)"
+            Version="1.2.3"
+            Manufacturer="CrowdSecurity"
             Language="1033">
 
-      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine"/>
+        <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine"/>
+        <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
+        <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
 
-      <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
-
-      <Upgrade Id="{{.UpgradeCode}}">
+      <!--<Upgrade Id="{{.UpgradeCode}}">
          <UpgradeVersion Minimum="{{.VersionOk}}" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
          <UpgradeVersion Minimum="0.0.0" Maximum="{{.VersionOk}}" IncludeMinimum="yes" IncludeMaximum="no"
                          Property="OLDERVERSIONBEINGUPGRADED"/>
       </Upgrade>
-      <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>
+      <Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>-->
 
       <Directory Id="TARGETDIR" Name="SourceDir">
-
          <Directory Id="$(var.Program_Files)">
-            <Directory Id="INSTALLDIR" Name="{{.Product}}">
-               {{if gt (.Files.Items | len) 0}}
-               <Component Id="ApplicationFiles" Guid="{{.Files.GUID}}">
-                  {{range $i, $e := .Files.Items}}
-                    <File Id="ApplicationFile{{$i}}" Source="{{$e}}"/>
-                  {{end}}
-               </Component>
-               {{end}}
-               {{if gt (.Directories | len) 0}}
-               {{range $i, $e := .Directories}}
-               <Directory Id="APPDIR{{$i}}" Name="{{$e}}" />
-               {{end}}
-               {{end}}
-               <Directory Id="DataCrowdsec" Name="data" >
-               <Component Id="CreateData" Guid="fd4c7248-0ba2-43b7-823a-df17109eae84">
-                <CreateFolder />
-               </Component>
-               </Directory>
+            <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
+                <Component Id="Crowdsec" Guid="200299fc-e728-4749-a283-cfbd20c02a59">
+                    <File Id="crowdsec.exe" Source="cmd\crowdsec\crowdsec.exe"/>
+                    <ServiceInstall Id="CrowdsecService" Name="Crowdsec" DisplayName="Crowdsec" Start="auto" Type="ownProcess" ErrorControl="normal" Account="LocalSystem"  Vital="yes" Interactive="no"/>
+                    <ServiceControl Id="CrowdsecService" Name="Crowdsec" Start="install" Stop="both" Remove="uninstall" Wait="yes"/>
+                </Component>
+                <Component Id="Cscli" Guid="b3da82cb-d111-4205-b0ee-5499b34dd57b">
+                    <File Id="cscli.exe" Source="cmd\crowdsec-cli\cscli.exe"/>
+                    <Environment Id="UpdatePath" Name="PATH" Value="[INSTALLDIR]" Part="last" Action="set" System="yes" />
+                </Component>
+                <Directory Id="ConfigDir" Name="config"/>
+            </Directory>
+         </Directory>
+         <Directory Id="CommonAppDataFolder">
+            <Directory Id="CrowdSecCommonDir" Name="CrowdSec">
                <Directory Id="logCrowdsec" Name="log" >
-                <Component Id="CreateLog" Guid="bfb37d14-10c4-40fb-bafa-2a29f95e4a53">
-                <CreateFolder />
-               </Component>
+                  <Component Id="CreateLog" Guid="bfb37d14-10c4-40fb-bafa-2a29f95e4a53">
+                     <CreateFolder />
+                  </Component>
                </Directory>
                <Directory Id="hubCrowdsec" Name="hub" >
-                <Component Id="CreateHub" Guid="ac528dd2-49f7-4448-a9e7-91c66061404b">
-                <CreateFolder />
-               </Component>
+                  <Component Id="CreateHub" Guid="ac528dd2-49f7-4448-a9e7-91c66061404b">
+                     <CreateFolder />
+                  </Component>
+               </Directory>
+               <Directory Id="CrowdsecDataDir" Name="data">
+                  <Component Id="CreateCrowdsecDataDir" Guid="de529565-a499-4327-948d-2a318f8e822a">
+                     <CreateFolder />
+                  </Component>
                </Directory>
             </Directory>
          </Directory>
-
-         {{if gt (.Env.Vars | len) 0}}
-         <Component Id="ENVS" Guid="{{.Env.GUID}}">
-          {{range $i, $e := .Env.Vars}}
-          <Environment Id="ENV{{$i}}"
-            Name="{{$e.Name}}"
-            Value="{{$e.Value}}"
-            Permanent="{{$e.Permanent}}"
-            Part="{{$e.Part}}"
-            Action="{{$e.Action}}"
-            System="{{$e.System}}" />
-          {{end}}
-        </Component>
-        {{end}}
-
-         {{if gt (.Shortcuts.Items | len) 0}}
-         <Directory Id="ProgramMenuFolder">
-            <Directory Id="ProgramMenuSubfolder" Name="{{.Product}}">
-               <Component Id="ApplicationShortcuts" Guid="{{.Shortcuts.GUID}}">
-               {{range $i, $e := .Shortcuts.Items}}
-                  <Shortcut Id="ApplicationShortcut{{$i}}"
-                        Name="{{$e.Name}}"
-                        Description="{{$e.Description}}"
-                        Target="{{$e.Target}}"
-                        WorkingDirectory="{{$e.WDir}}"
-                        {{if gt ($e.Arguments | len) 0}}
-                        Arguments="{{$e.Arguments}}"
-                        {{end}}
-                        >
-                        {{if gt ($e.Icon | len) 0}}
-                        <Icon Id="Icon{{$i}}" SourceFile="{{$e.Icon}}" />
-                        {{end}}
-                  </Shortcut>
-                  <RegistryValue Root="HKCU"
-                    Key="Software\{{$.Company}}\{{$.Product}}"
-                    Name="installed{{$i}}"
-                    Type="integer" Value="1" KeyPath="yes"/>
-                {{end}}
-                <RemoveFolder Id="ProgramMenuSubfolder" On="uninstall"/>
-               </Component>
-            </Directory>
-         </Directory>
-         {{end}}
-
       </Directory>
 
-      {{range $i, $e := .InstallHooks}}
+    
+
+    <!--<CustomAction Id="HubUpdate" Return="check" Impersonate="no" Directory="INSTALLDIR" Execute="commit" ExeCommand=".\cscli.exe hub update"/>-->
+    <SetProperty Id="HubUpdate" Value="&quot;[INSTALLDIR]\cscli.exe&quot; hub update" Sequence="execute" Before="HubUpdate"/>
+    <CustomAction Id="HubUpdate" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
+    <SetProperty Id="InstallWinCollection" Value="&quot;[INSTALLDIR]\cscli.exe&quot; collections install crowdsecurity/windows" Sequence="execute" Before="InstallWinCollection"/>
+    <CustomAction Id="InstallWinCollection" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
+    <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a" Sequence="execute" Before="RegisterMachine"/>
+    <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
+    <InstallExecuteSequence>
+        <WriteEnvironmentStrings/>
+        <Custom Action="HubUpdate" After="InstallFiles"/>
+        <Custom Action="InstallWinCollection" After="HubUpdate"/>
+        <Custom Action="RegisterMachine" After="InstallWinCollection"/>
+    </InstallExecuteSequence>
+      <!--{{range $i, $e := .InstallHooks}}
       <SetProperty Id="CustomInstallExec{{$i}}" Value="{{$e.CookedCommand}}" Before="CustomInstallExec{{$i}}" Sequence="execute"/>
       <CustomAction Id="CustomInstallExec{{$i}}" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
       {{end}}
@@ -115,39 +89,29 @@
       <CustomAction Id="CustomUninstallExec{{$i}}" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no"/>
       {{end}}
       <InstallExecuteSequence>
-         <RemoveExistingProducts After="InstallValidate"/>
          {{range $i, $e := .InstallHooks}}
          <Custom Action="CustomInstallExec{{$i}}" After="{{if eq $i 0}}InstallFiles{{else}}CustomInstallExec{{dec $i}}{{end}}">NOT Installed AND NOT REMOVE</Custom>
          {{end}}
          {{range $i, $e := .UninstallHooks}}
          <Custom Action="CustomUninstallExec{{$i}}" After="{{if eq $i 0}}InstallInitialize{{else}}CustomUninstallExec{{dec $i}}{{end}}">REMOVE ~= "ALL"</Custom>
          {{end}}
-      </InstallExecuteSequence>
+      </InstallExecuteSequence>-->
 
       <Feature Id="DefaultFeature" Level="1">
-         {{if gt (.Env.Vars | len) 0}}
-         <ComponentRef Id="ENVS"/>
-         {{end}}
-         {{if gt (.Files.Items | len) 0}}
-         <ComponentRef Id="ApplicationFiles"/>
-         {{end}}
-         {{if gt (.Shortcuts.Items | len) 0}}
-         <ComponentRef Id="ApplicationShortcuts"/>
-         {{end}}
-         {{range $i, $e := .Directories}}
-         <ComponentGroupRef Id="AppFiles{{$i}}" />
-         {{end}}
-         <ComponentRef Id="CreateData"/>
+         <ComponentRef Id="Crowdsec"/>
+         <ComponentRef Id="Cscli"/>
          <ComponentRef Id="CreateLog"/>
          <ComponentRef Id="CreateHub"/>
+         <ComponentRef Id="CreateCrowdsecDataDir"/>
+         <ComponentGroupRef Id="CrowdsecConfig"/>
       </Feature>
 
       <UI>
-         <!-- Define the installer UI -->
          <UIRef Id="WixUI_HK" />
       </UI>
 
       <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+      <Property Id="MsiLogging" Value="voicewarmupx!"/>
 
       <!-- this should help to propagate env var changes -->
       <CustomActionRef Id="WixBroadcastEnvironmentChange" />
