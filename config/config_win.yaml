@@ -1,25 +1,25 @@
 common:
   daemonize: true
-  pid_dir: /var/run/
   log_media: file
   log_level: info
-  log_dir:  C:\Program Files\Crowdsec\log\
+  log_dir:  C:\ProgramData\Crowdsec\log\
   working_dir: .
 config_paths:
   config_dir:  C:\Program Files\Crowdsec\config\
-  data_dir:  C:\Program Files\Crowdsec\data\
+  data_dir:  C:\ProgramData\Crowdsec\data\
   simulation_path:   C:\Program Files\Crowdsec\config\simulation.yaml
-  hub_dir:  C:\Program Files\Crowdsec\hub\
-  index_path:  C:\Program Files\Crowdsec\hub\.index.json
+  hub_dir:  C:\ProgramData\Crowdsec\hub\
+  index_path:  C:\ProgramData\Crowdsec\hub\.index.json
 crowdsec_service:
   acquisition_path:  C:\Program Files\Crowdsec\config\acquis.yaml
   parser_routines: 1
 cscli:
   output: human
+  hub_branch: windows
 db_config:
   log_level: info
   type: sqlite
-  db_path:  C:\Program Files\Crowdsec\data\crowdsec.db
+  db_path:  C:\ProgramData\Crowdsec\data\crowdsec.db
   #user: 
   #password:
   #db_name:
