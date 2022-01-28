@@ -10,6 +10,8 @@ config_paths:
   simulation_path:   C:\Program Files\Crowdsec\config\simulation.yaml
   hub_dir:  C:\ProgramData\Crowdsec\hub\
   index_path:  C:\ProgramData\Crowdsec\hub\.index.json
+  plugin_dir: C:\ProgramData\Crowdsec\plugins\
+  notification_dir:  C:\Program Files\Crowdsec\config\notifications\
 crowdsec_service:
   acquisition_path:  C:\Program Files\Crowdsec\config\acquis.yaml
   parser_routines: 1
