@@ -21,7 +21,7 @@ func StartRunSvc() {
 		log.Fatalf("failed to determine if we are running in windows service mode: %v", err)
 	}
 	if isRunninginService {
-		runService(svcName, false)
+		runService(svcName)
 		return
 	}
 

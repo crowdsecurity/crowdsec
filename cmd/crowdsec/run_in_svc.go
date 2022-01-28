@@ -1,3 +1,4 @@
+//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
 // +build linux freebsd netbsd openbsd solaris !windows
 
 package main

@@ -2,22 +2,23 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//go:build windows
 // +build windows
 
 package main
 
 import (
-	"fmt"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
-	"golang.org/x/sys/windows/svc/debug"
-	"golang.org/x/sys/windows/svc/eventlog"
 )
 
-var elog debug.Log
-
-type crowdsec_winservice struct{}
+type crowdsec_winservice struct {
+	config *csconfig.Config
+}
 
 func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
 	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
@@ -41,7 +42,11 @@ loop:
 				time.Sleep(100 * time.Millisecond)
 				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
-				shutdownCrowdsec()
+				err := shutdown(nil, m.config)
+				if err != nil {
+					log.Error("Error while shutting down: %s", err)
+					//don't return, we still want to notify windows that we are stopped ?
+				}
 				break loop
 			case svc.Pause:
 				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
@@ -50,7 +55,7 @@ loop:
 				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
 				tick = fasttick
 			default:
-				elog.Error(1, fmt.Sprintf("unexpected control request #%d", c))
+				log.Errorf("unexpected control request #%d", c)
 			}
 		}
 	}
@@ -58,27 +63,27 @@ loop:
 	return
 }
 
-func runService(name string, isDebug bool) {
-	var err error
-	if isDebug {
-		elog = debug.New(name)
-	} else {
-		elog, err = eventlog.Open(name)
-		if err != nil {
-			return
-		}
-	}
-	defer elog.Close()
-
-	elog.Info(1, fmt.Sprintf("starting %s service", name))
-	run := svc.Run
-	if isDebug {
-		run = debug.Run
-	}
-	err = run(name, &crowdsec_winservice{})
+func runService(name string) {
+	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		elog.Error(1, fmt.Sprintf("%s service failed: %v", name, err))
+		log.Fatalf(err.Error())
+	}
+	if err := LoadConfig(cConfig); err != nil {
+		log.Fatalf(err.Error())
+	}
+	// Configure logging
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
+		log.Fatal(err.Error())
+	}
+	log.Infof("starting %s service", name)
+
+	winsvc := crowdsec_winservice{config: cConfig}
+
+	err = svc.Run(name, &winsvc)
+	if err != nil {
+		log.Error("%s service failed: %s", name, err)
 		return
 	}
-	elog.Info(1, fmt.Sprintf("%s service stopped", name))
+	log.Infof("%s service stopped", name)
 }
