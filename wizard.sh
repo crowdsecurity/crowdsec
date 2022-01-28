@@ -219,7 +219,7 @@ in_array() {
     shift
     array=("$@")
     for element in "${array[@]}"; do
-        if [[ ${str} == *${element}* ]]; then
+        if [[ ${str} == crowdsecurity/${element} ]]; then
             return 0
         fi
     done
