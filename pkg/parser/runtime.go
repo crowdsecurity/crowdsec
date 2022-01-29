@@ -69,7 +69,6 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 				return false
 			}
 			iter = tmp
-			break
 		default:
 			log.Errorf("unexpected type %s in '%s'", iter.Kind(), target)
 			return false

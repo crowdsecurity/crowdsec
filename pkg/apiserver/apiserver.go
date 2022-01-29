@@ -190,7 +190,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
-		return
 	})
 	router.Use(CustomRecoveryWithWriter())
 

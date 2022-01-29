@@ -443,7 +443,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 			fmt.Printf("\t├ Scenarios\n")
 		}
 		bnames := make([]string, 0, len(state[tstamp]["buckets"]))
-		for k, _ := range state[tstamp]["buckets"] {
+		for k := range state[tstamp]["buckets"] {
 			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
 			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "OK" {
