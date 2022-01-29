@@ -157,10 +157,8 @@ func NewCapiCmd() *cobra.Command {
 			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Central API (CAPI) : %s", err)
-			} else {
-				log.Infof("You can successfully interact with Central API (CAPI)")
 			}
-
+			log.Infof("You can successfully interact with Central API (CAPI)")
 		},
 	}
 	cmdCapi.AddCommand(cmdCapiStatus)

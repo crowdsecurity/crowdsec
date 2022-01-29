@@ -154,12 +154,11 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 	tf := TestFile{}
 	err = dec.Decode(&tf)
 	if err != nil {
-		if err == io.EOF {
-			log.Warningf("end of test file")
-		} else {
+		if err != io.EOF {
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
+		log.Warningf("end of test file")
 	}
 	var latest_ts time.Time
 	for _, in := range tf.Lines {
@@ -232,19 +231,17 @@ POLL_AGAIN:
 				log.Infof("dumped bucket to %s", tmpFile)
 			}
 			return true
-		} else {
-			log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
-			if len(tf.Results) != len(results) {
-				if dump {
-					if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
-						t.Fatalf("Failed dumping bucket state : %s", err)
-					}
-					log.Infof("dumped bucket to %s", tmpFile)
-
+		}
+		log.Warningf("%d results to check against %d expected results", len(results), len(tf.Results))
+		if len(tf.Results) != len(results) {
+			if dump {
+				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
+					t.Fatalf("Failed dumping bucket state : %s", err)
 				}
-				log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
-				return false
+				log.Infof("dumped bucket to %s", tmpFile)
 			}
+			log.Errorf("results / expected count doesn't match results = %d / expected = %d", len(results), len(tf.Results))
+			return false
 		}
 	checkresultsloop:
 		for eidx, out := range results {
@@ -260,29 +257,27 @@ POLL_AGAIN:
 						log.Printf("Here ?")
 						continue
 					}
-					//Scenario
 
+					//Scenario
 					if *out.Overflow.Alert.Scenario != *expected.Overflow.Alert.Scenario {
 						log.Errorf("(scenario) %v != %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 						continue
-					} else {
-						log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
 					}
+					log.Infof("(scenario) %v == %v", *out.Overflow.Alert.Scenario, *expected.Overflow.Alert.Scenario)
+
 					//EventsCount
 					if *out.Overflow.Alert.EventsCount != *expected.Overflow.Alert.EventsCount {
 						log.Errorf("(EventsCount) %d != %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 						continue
-					} else {
-						log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
 					}
+					log.Infof("(EventsCount) %d == %d", *out.Overflow.Alert.EventsCount, *expected.Overflow.Alert.EventsCount)
+
 					//Sources
 					if !reflect.DeepEqual(out.Overflow.Sources, expected.Overflow.Sources) {
 						log.Errorf("(Sources %s != %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 						continue
-					} else {
-						log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 					}
-
+					log.Infof("(Sources: %s == %s)", spew.Sdump(out.Overflow.Sources), spew.Sdump(expected.Overflow.Sources))
 				}
 				//Events
 				// if !reflect.DeepEqual(out.Overflow.Alert.Events, expected.Overflow.Alert.Events) {
@@ -309,8 +304,7 @@ POLL_AGAIN:
 			log.Errorf("we got: %s", spew.Sdump(results))
 			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
 			return false
-		} else {
-			log.Warningf("entry valid at end of loop")
 		}
+		log.Warningf("entry valid at end of loop")
 	}
 }

@@ -193,27 +193,26 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if sha != val.Digest {
 				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
 				continue
-			} else {
-				/*we got an exact match, update struct*/
-				if !inhub {
-					log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
-					v.LocalPath = path
-					v.LocalVersion = version
-					v.Tainted = false
-					v.Downloaded = true
-					/*if we're walking the hub, present file doesn't means installed file*/
-					v.Installed = true
-					v.LocalHash = sha
-					x := strings.Split(path, "/")
-					target.FileName = x[len(x)-1]
-				}
-				if version == v.Version {
-					log.Tracef("%s is up-to-date", v.Name)
-					v.UpToDate = true
-				}
-				match = true
-				break
 			}
+			/*we got an exact match, update struct*/
+			if !inhub {
+				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
+				v.LocalPath = path
+				v.LocalVersion = version
+				v.Tainted = false
+				v.Downloaded = true
+				/*if we're walking the hub, present file doesn't means installed file*/
+				v.Installed = true
+				v.LocalHash = sha
+				x := strings.Split(path, "/")
+				target.FileName = x[len(x)-1]
+			}
+			if version == v.Version {
+				log.Tracef("%s is up-to-date", v.Name)
+				v.UpToDate = true
+			}
+			match = true
+			break
 		}
 		if !match {
 			log.Tracef("got tainted match for %s : %s", v.Name, path)
@@ -257,44 +256,46 @@ func CollecDepsCheck(v *Item) error {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					log.Tracef("check %s installed:%t", val.Name, val.Installed)
-					if !v.Installed {
-						continue
-					}
-					if val.Type == COLLECTIONS {
-						log.Tracef("collec, recurse.")
-						if err := CollecDepsCheck(&val); err != nil {
-							return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
-						}
-						hubIdx[ptrtype][p] = val
-					}
-
-					//propagate the state of sub-items to set
-					if val.Tainted {
-						v.Tainted = true
-						return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
-					} else if !val.Installed && v.Installed {
-						v.Tainted = true
-						return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
-					} else if !val.UpToDate {
-						v.UpToDate = false
-						return fmt.Errorf("outdated %s %s", ptrtype, p)
-					}
-					skip := false
-					for idx := range val.BelongsToCollections {
-						if val.BelongsToCollections[idx] == v.Name {
-							skip = true
-						}
-					}
-					if !skip {
-						val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
-					}
-					hubIdx[ptrtype][p] = val
-					log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
-				} else {
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
 					log.Fatalf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, v.Name)
 				}
+				log.Tracef("check %s installed:%t", val.Name, val.Installed)
+				if !v.Installed {
+					continue
+				}
+				if val.Type == COLLECTIONS {
+					log.Tracef("collec, recurse.")
+					if err := CollecDepsCheck(&val); err != nil {
+						return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
+					}
+					hubIdx[ptrtype][p] = val
+				}
+
+				//propagate the state of sub-items to set
+				if val.Tainted {
+					v.Tainted = true
+					return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
+				}
+				if !val.Installed && v.Installed {
+					v.Tainted = true
+					return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
+				}
+				if !val.UpToDate {
+					v.UpToDate = false
+					return fmt.Errorf("outdated %s %s", ptrtype, p)
+				}
+				skip := false
+				for idx := range val.BelongsToCollections {
+					if val.BelongsToCollections[idx] == v.Name {
+						skip = true
+					}
+				}
+				if !skip {
+					val.BelongsToCollections = append(val.BelongsToCollections, v.Name)
+				}
+				hubIdx[ptrtype][p] = val
+				log.Tracef("checking for %s - tainted:%t uptodate:%t", p, v.Tainted, v.UpToDate)
 			}
 		}
 	}
