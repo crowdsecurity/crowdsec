@@ -313,5 +313,4 @@ POLL_AGAIN:
 			log.Warningf("entry valid at end of loop")
 		}
 	}
-	return false
 }
