@@ -21,7 +21,7 @@ import (
 )
 
 /*the walk/parser_visit function can't receive extra args*/
-var hubdir, installdir, indexpath string
+var hubdir, installdir string
 
 func parser_visit(path string, f os.FileInfo, err error) error {
 
@@ -304,7 +304,6 @@ func CollecDepsCheck(v *Item) error {
 func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	hubdir = hub.HubDir
 	installdir = hub.ConfigDir
-	indexpath = hub.HubIndexFile
 	warnings := []string{}
 
 	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/

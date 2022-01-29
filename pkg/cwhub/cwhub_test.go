@@ -22,8 +22,6 @@ import (
   - Upgrade collection
 */
 
-var testDataFolder = "."
-
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
