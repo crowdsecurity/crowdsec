@@ -5,15 +5,15 @@ package csplugin
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"unsafe"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/windows"
 )
 
 func CheckOwner(details fs.FileInfo, path string) error {
@@ -21,26 +21,45 @@ func CheckOwner(details fs.FileInfo, path string) error {
 	return nil
 }
 
-func CheckCredential(uid string, gid string) *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-	}
-}
-
 func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
-	if !strings.Contains(username, "\\") {
-		hostname, err := os.Hostname()
-		if err != nil {
-			return nil, errors.Wrapf(err, "cannot get hostname to build full username")
-		}
-		username = fmt.Sprintf("%s\\%s", hostname, username)
+	var procToken, token windows.Token
+
+	proc := windows.CurrentProcess()
+	defer windows.CloseHandle(proc)
+
+	err := windows.OpenProcessToken(proc, windows.TOKEN_DUPLICATE|windows.TOKEN_ADJUST_DEFAULT|
+		windows.TOKEN_QUERY|windows.TOKEN_ASSIGN_PRIMARY, &procToken)
+	if err != nil {
+		return nil, err
 	}
-	u, err := user.Lookup(username)
+	defer procToken.Close()
+
+	err = windows.DuplicateTokenEx(procToken, 0, nil, windows.SecurityImpersonation,
+		windows.TokenPrimary, &token)
 	if err != nil {
 		return nil, err
 	}
 
-	return CheckCredential(u.Uid, u.Gid), nil
+	sid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinLowLabelSid))
+	if err != nil {
+		return nil, err
+	}
+
+	tml := &windows.Tokenmandatorylabel{}
+	tml.Label.Attributes = windows.SE_GROUP_INTEGRITY
+	tml.Label.Sid = sid
+
+	err = windows.SetTokenInformation(token, windows.TokenIntegrityLevel,
+		(*byte)(unsafe.Pointer(tml)), tml.Size())
+	if err != nil {
+		token.Close()
+		return nil, err
+	}
+
+	return &windows.SysProcAttr{
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		Token:         syscall.Token(token),
+	}, nil
 }
 
 func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
