@@ -6,6 +6,18 @@ if [ "$CONFIG_FILE" != "" ]; then
     CS_CONFIG_FILE="$CONFIG_FILE"
 fi
 
+#Check & prestage databases
+if [ ! -e "/var/lib/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/data/GeoLite2-City.mmdb" ]; then
+    mkdir -p /var/lib/crowdsec/data
+    cp /staging/var/lib/crowdsec/data/*.mmdb /var/lib/crowdsec/data/
+fi
+
+#Check & prestage /etc/crowdsec
+if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
+    mkdir -p /etc/crowdsec
+    cp -r /staging/etc/* /etc/
+fi
+
 # regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
