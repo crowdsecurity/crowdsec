@@ -431,11 +431,11 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 }
 
 func getUUID() (string, error) {
-	if d, err := os.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
+	d, err := os.ReadFile("/proc/sys/kernel/random/uuid")
+	if err != nil {
 		return "", err
-	} else {
-		return string(d), nil
 	}
+	return string(d), nil
 }
 
 func getHandshake() (plugin.HandshakeConfig, error) {
