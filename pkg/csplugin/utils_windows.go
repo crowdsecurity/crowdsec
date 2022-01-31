@@ -21,26 +21,36 @@ func CheckOwner(details fs.FileInfo, path string) error {
 	return nil
 }
 
-func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
+func getProcessAtr() (*syscall.SysProcAttr, error) {
 	var procToken, token windows.Token
 
 	proc := windows.CurrentProcess()
 	defer windows.CloseHandle(proc)
 
 	err := windows.OpenProcessToken(proc, windows.TOKEN_DUPLICATE|windows.TOKEN_ADJUST_DEFAULT|
-		windows.TOKEN_QUERY|windows.TOKEN_ASSIGN_PRIMARY, &procToken)
+		windows.TOKEN_QUERY|windows.TOKEN_ASSIGN_PRIMARY|windows.TOKEN_ADJUST_GROUPS|windows.TOKEN_ADJUST_PRIVILEGES, &procToken)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "while opening process token")
 	}
 	defer procToken.Close()
 
 	err = windows.DuplicateTokenEx(procToken, 0, nil, windows.SecurityImpersonation,
 		windows.TokenPrimary, &token)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "while duplicating token")
 	}
 
-	sid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinLowLabelSid))
+	//Remove all privileges from the token
+
+	err = windows.AdjustTokenPrivileges(token, true, nil, 0, nil, nil)
+
+	if err != nil {
+		return nil, errors.Wrapf(err, "while adjusting token privileges")
+	}
+
+	//Run the plugin as a medium integrity level process
+	//For some reasons, low level integrity don't work, the plugin and crowdsec cannot communicate over the TCP socket
+	sid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinMediumLabelSid))
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +63,7 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 		(*byte)(unsafe.Pointer(tml)), tml.Size())
 	if err != nil {
 		token.Close()
-		return nil, err
+		return nil, errors.Wrapf(err, "while setting token information")
 	}
 
 	return &windows.SysProcAttr{
@@ -65,7 +75,7 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
 	var err error
 	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr, err = getProcessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
+	cmd.SysProcAttr, err = getProcessAtr()
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting process attributes")
 	}
