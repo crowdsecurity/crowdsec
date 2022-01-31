@@ -61,6 +61,9 @@ LD_OPTS_VARS= \
 export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
 export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'"
 
+GOCMD=go
+GOTEST=$(GOCMD) test
+
 RELDIR = crowdsec-$(BUILD_VERSION)
 
 .PHONY: all
@@ -89,7 +92,7 @@ goversion:
     fi
 
 .PHONY: clean
-clean:
+clean: testclean
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
 	@$(RM) $(CROWDSEC_BIN)
@@ -100,6 +103,7 @@ clean:
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
 	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN)
+
 
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
@@ -137,8 +141,14 @@ splunk-plugin_static:goversion
 email-plugin_static:goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory
 
+.PHONY: testclean
+testclean:
+	@$(RM) pkg/apiserver/ent
+	@$(RM) -r pkg/cwhub/hubdir
+
+.PHONY: test
 test: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
+	$(GOTEST) $(LD_OPTS) ./...
 
 .PHONY: package
 package:
