@@ -14,3 +14,5 @@ BUILD_VERSION?="$(shell git describe --tags $$(git rev-list --tags --max-count=1
 BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP=$(shell date +%F"_"%T)
 BUILD_TAG?="$(shell git rev-parse HEAD)"
+DEFAULT_CONFIGDIR?=/etc/crowdsec
+DEFAULT_DATADIR?=/var/lib/crowdsec/data
