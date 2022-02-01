@@ -185,6 +185,9 @@ filename: test_files/test_delete.log`,
 		} else if err != nil && ts.expectedErr == "" {
 			t.Fatalf("Unexpected error : %s", err)
 		}
+		if err == nil && ts.expectedErr != "" {
+			t.Fatalf("Expected error '%s', got nil", ts.expectedErr)
+		}
 		if ts.afterConfigure != nil {
 			ts.afterConfigure()
 		}
