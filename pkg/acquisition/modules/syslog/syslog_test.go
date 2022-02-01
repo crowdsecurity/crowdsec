@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -54,12 +55,7 @@ listen_addr: 10.0.0`,
 	for _, test := range tests {
 		s := SyslogSource{}
 		err := s.Configure([]byte(test.config), subLogger)
-		if test.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("Expected error but got nothing : %+v", test)
-			}
-			assert.Contains(t, err.Error(), test.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -123,14 +119,8 @@ listen_addr: 127.0.0.1`,
 		tomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		err := s.StreamingAcquisition(out, &tomb)
-		if ts.expectedErr != "" && err == nil {
-			t.Fatalf("expected error but got nothing : %+v", ts)
-		} else if ts.expectedErr == "" && err != nil {
-			t.Fatalf("unexpected error : %s", err)
-		} else if ts.expectedErr != "" && err != nil {
-			assert.Contains(t, err.Error(), ts.expectedErr)
-			continue
-		}
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		actualLines := 0
 		go writeToSyslog(ts.logs)
 	READLOOP:
