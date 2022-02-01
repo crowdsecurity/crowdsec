@@ -51,7 +51,7 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
-		backupSimulation := fmt.Sprintf("%s/simulation.yaml", dirPath)
+		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
 		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
 		}
@@ -63,13 +63,13 @@ func backupConfigToDirectory(dirPath string) error {
 	   - backup the other files of acquisition directory
 	*/
 	if csConfig.Crowdsec != nil && csConfig.Crowdsec.AcquisitionFilePath != "" {
-		backupAcquisition := fmt.Sprintf("%s/acquis.yaml", dirPath)
+		backupAcquisition := filepath.Join(dirPath, "acquis.yaml")
 		if err = types.CopyFile(csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition); err != nil {
 			return fmt.Errorf("failed copy %s to %s : %s", csConfig.Crowdsec.AcquisitionFilePath, backupAcquisition, err)
 		}
 	}
 
-	acquisBackupDir := dirPath + "/acquis/"
+	acquisBackupDir := filepath.Join(dirPath, "acquis")
 	if err = os.Mkdir(acquisBackupDir, 0700); err != nil {
 		return fmt.Errorf("error while creating %s : %s", acquisBackupDir, err)
 	}
@@ -80,7 +80,7 @@ func backupConfigToDirectory(dirPath string) error {
 			if csConfig.Crowdsec.AcquisitionFilePath == acquisFile {
 				continue
 			}
-			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
@@ -233,7 +233,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 	}
 
 	//if there is files in the acquis backup dir, restore them
-	acquisBackupDir := dirPath + "/acquis/*.yaml"
+	acquisBackupDir := filepath.Join(dirPath, "acquis", "*.yaml")
 	if acquisFiles, err := filepath.Glob(acquisBackupDir); err == nil {
 		for _, acquisFile := range acquisFiles {
 			targetFname, err := filepath.Abs(csConfig.Crowdsec.AcquisitionDirPath + "/" + filepath.Base(acquisFile))
@@ -255,7 +255,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 				log.Infof("skip this one")
 				continue
 			}
-			targetFname, err := filepath.Abs(acquisBackupDir + filepath.Base(acquisFile))
+			targetFname, err := filepath.Abs(filepath.Join(acquisBackupDir, filepath.Base(acquisFile)))
 			if err != nil {
 				return errors.Wrapf(err, "while saving %s to %s", acquisFile, acquisBackupDir)
 			}
