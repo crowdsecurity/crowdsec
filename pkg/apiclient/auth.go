@@ -111,8 +111,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	/*
 		we don't use the main client, so let's build the body
 	*/
-	var buf io.ReadWriter
-	buf = &bytes.Buffer{}
+	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(auth)

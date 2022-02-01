@@ -38,17 +38,19 @@ func Addr2Ints(any string) (int, int64, int64, int64, int64, error) {
 			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing range %s", any)
 		}
 		return Range2Ints(*net)
-	} else {
-		ip := net.ParseIP(any)
-		if ip == nil {
-			return -1, 0, 0, 0, 0, fmt.Errorf("invalid address")
-		}
-		sz, start, end, err := IP2Ints(ip)
-		if err != nil {
-			return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", any)
-		}
-		return sz, start, end, start, end, nil
 	}
+
+	ip := net.ParseIP(any)
+	if ip == nil {
+		return -1, 0, 0, 0, 0, fmt.Errorf("invalid address")
+	}
+
+	sz, start, end, err := IP2Ints(ip)
+	if err != nil {
+		return -1, 0, 0, 0, 0, errors.Wrapf(err, "while parsing ip %s", any)
+	}
+
+	return sz, start, end, start, end, nil
 }
 
 /*size (16|4), nw_start, suffix_start, nw_end, suffix_end, error*/

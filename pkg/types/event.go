@@ -81,7 +81,7 @@ type RuntimeAlert struct {
 
 func (r RuntimeAlert) GetSources() []string {
 	ret := make([]string, 0)
-	for key, _ := range r.Sources {
+	for key := range r.Sources {
 		ret = append(ret, key)
 	}
 	return ret
