@@ -22,7 +22,11 @@ fi
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
     cscli -c "$CS_CONFIG_FILE" machines delete localhost
-    cscli -c "$CS_CONFIG_FILE" machines add localhost --auto
+    if [ "$LOCAL_API_URL" != "" ] ; then
+        cscli -c "$CS_CONFIG_FILE" machines add localhost --auto --url $LOCAL_API_URL
+    else
+        cscli -c "$CS_CONFIG_FILE" machines add localhost --auto
+    fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
         CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CS_CONFIG_FILE" )
