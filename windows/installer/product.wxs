@@ -29,7 +29,7 @@
                      <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
                      <File Id="profiles.yaml" Source="config\profiles.yaml" />
                      <File Id="simulation.yaml" Source="config\simulation.yaml" />
-                     <File Id="console.yaml" Source="config\console_config.yaml" />
+                     <File Id="console.yaml" Source="config\console.yaml" />
                   </Component>
                   <Directory Id="NotifConfigDir" Name="notifications">
                      <Component Id="NotifConfig" Guid="e857bca2-dc6a-4f6f-88b2-f5f4b6a2b9df">
