@@ -2,25 +2,25 @@ common:
   daemonize: true
   log_media: file
   log_level: info
-  log_dir:  C:\ProgramData\Crowdsec\log\
+  log_dir:  C:\ProgramData\CrowdSec\log\
   working_dir: .
 config_paths:
-  config_dir:  C:\Program Files\Crowdsec\config\
-  data_dir:  C:\ProgramData\Crowdsec\data\
-  simulation_path:   C:\Program Files\Crowdsec\config\simulation.yaml
-  hub_dir:  C:\ProgramData\Crowdsec\hub\
-  index_path:  C:\ProgramData\Crowdsec\hub\.index.json
-  plugin_dir: C:\ProgramData\Crowdsec\plugins\
-  notification_dir:  C:\Program Files\Crowdsec\config\notifications\
+  config_dir:  C:\Program Files\CrowdSec\config\
+  data_dir:  C:\ProgramData\CrowdSec\data\
+  simulation_path:   C:\Program Files\CrowdSec\config\simulation.yaml
+  hub_dir:  C:\ProgramData\CrowdSec\hub\
+  index_path:  C:\ProgramData\CrowdSec\hub\.index.json
+  plugin_dir: C:\ProgramData\CrowdSec\plugins\
+  notification_dir:  C:\Program Files\CrowdSec\config\notifications\
 crowdsec_service:
-  acquisition_path:  C:\Program Files\Crowdsec\config\acquis.yaml
+  acquisition_path:  C:\Program Files\CrowdSec\config\acquis.yaml
   parser_routines: 1
 cscli:
   output: human
 db_config:
   log_level: info
   type: sqlite
-  db_path:  C:\ProgramData\Crowdsec\data\crowdsec.db
+  db_path:  C:\ProgramData\CrowdSec\data\crowdsec.db
   #user: 
   #password:
   #db_name:
@@ -32,13 +32,13 @@ db_config:
 api:
   client:
     insecure_skip_verify: false
-    credentials_path:  C:\Program Files\Crowdsec\config\local_api_credentials.yaml
+    credentials_path:  C:\Program Files\CrowdSec\config\local_api_credentials.yaml
   server:
     log_level: info
     listen_uri: 127.0.0.1:8080
     profiles_path: C:\Program Files\Crowdsec\config\profiles.yaml
     online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
-      credentials_path:  C:\Program Files\Crowdsec\config\online_api_credentials.yaml
+      credentials_path:  C:\Program Files\CrowdSec\config\online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem
 #      key_file: /etc/crowdsec/ssl/key.pem
