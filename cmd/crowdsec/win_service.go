@@ -38,13 +38,11 @@ loop:
 			switch c.Cmd {
 			case svc.Interrogate:
 				changes <- c.CurrentStatus
-				// Testing deadlock from https://code.google.com/p/winsvc/issues/detail?id=4
-				time.Sleep(100 * time.Millisecond)
-				changes <- c.CurrentStatus
 			case svc.Stop, svc.Shutdown:
+				changes <- svc.Status{State: svc.StopPending}
 				err := shutdown(nil, m.config)
 				if err != nil {
-					log.Error("Error while shutting down: %s", err)
+					log.Errorf("Error while shutting down: %s", err)
 					//don't return, we still want to notify windows that we are stopped ?
 				}
 				break loop
@@ -59,7 +57,7 @@ loop:
 			}
 		}
 	}
-	changes <- svc.Status{State: svc.StopPending}
+	changes <- svc.Status{State: svc.Stopped}
 	return
 }
 
@@ -82,7 +80,7 @@ func runService(name string) {
 
 	err = svc.Run(name, &winsvc)
 	if err != nil {
-		log.Error("%s service failed: %s", name, err)
+		log.Errorf("%s service failed: %s", name, err)
 		return
 	}
 	log.Infof("%s service stopped", name)
