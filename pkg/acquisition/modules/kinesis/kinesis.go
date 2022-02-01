@@ -296,7 +296,12 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			} else {
 				l.Src = k.Config.StreamName
 			}
-			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
+			var evt types.Event
+			if !k.Config.UseTimeMachine {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.LIVE}
+			} else {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leakybucket.TIMEMACHINE}
+			}
 			out <- evt
 		}
 	}

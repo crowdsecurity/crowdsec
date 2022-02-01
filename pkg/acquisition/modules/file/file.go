@@ -385,7 +385,11 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			l.Module = f.GetName()
 			//we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			if !f.config.UseTimeMachine {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			} else {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+			}
 		}
 	}
 }

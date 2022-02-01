@@ -293,6 +293,12 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								}
 								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
 								//the stream has been update recently, check if we should monitor it
+								var expectMode int
+								if !cw.Config.UseTimeMachine {
+									expectMode = leaky.LIVE
+								} else {
+									expectMode = leaky.TIMEMACHINE
+								}
 								monitorStream := LogStreamTailConfig{
 									GroupName:                  cw.Config.GroupName,
 									StreamName:                 *event.LogStreamName,
@@ -300,7 +306,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 									PollStreamInterval:         *cw.Config.PollStreamInterval,
 									StreamReadTimeout:          *cw.Config.StreamReadTimeout,
 									PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
-									ExpectMode:                 leaky.LIVE,
+									ExpectMode:                 expectMode,
 									Labels:                     cw.Config.Labels,
 								}
 								out <- monitorStream

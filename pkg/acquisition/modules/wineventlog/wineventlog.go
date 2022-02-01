@@ -220,7 +220,11 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Time = time.Now()
 					l.Src = w.query //We probably want something a little bit more legible
 					l.Process = true
-					out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+					if !w.config.UseTimeMachine {
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+					} else {
+						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+					}
 				}
 			}
 
