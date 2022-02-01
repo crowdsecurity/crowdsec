@@ -15,6 +15,7 @@ BINARY_NAME=cscli$(EXT)
 PREFIX?="/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 
+.PHONY: all
 all: clean build
 
 build: clean
@@ -23,6 +24,7 @@ build: clean
 static: clean
 	@$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -v -a -tags netgo
 
+.PHONY: install
 install: install-conf install-bin
 
 install-conf:

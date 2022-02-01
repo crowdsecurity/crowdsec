@@ -34,11 +34,9 @@ func (du *DecisionUpdate) SetCreatedAt(t time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableCreatedAt(t *time.Time) *DecisionUpdate {
-	if t != nil {
-		du.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (du *DecisionUpdate) ClearCreatedAt() *DecisionUpdate {
+	du.mutation.ClearCreatedAt()
 	return du
 }
 
@@ -48,11 +46,9 @@ func (du *DecisionUpdate) SetUpdatedAt(t time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableUpdatedAt(t *time.Time) *DecisionUpdate {
-	if t != nil {
-		du.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (du *DecisionUpdate) ClearUpdatedAt() *DecisionUpdate {
+	du.mutation.ClearUpdatedAt()
 	return du
 }
 
@@ -277,6 +273,7 @@ func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	du.defaults()
 	if len(du.hooks) == 0 {
 		affected, err = du.sqlSave(ctx)
 	} else {
@@ -325,6 +322,18 @@ func (du *DecisionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (du *DecisionUpdate) defaults() {
+	if _, ok := du.mutation.CreatedAt(); !ok && !du.mutation.CreatedAtCleared() {
+		v := decision.UpdateDefaultCreatedAt()
+		du.mutation.SetCreatedAt(v)
+	}
+	if _, ok := du.mutation.UpdatedAt(); !ok && !du.mutation.UpdatedAtCleared() {
+		v := decision.UpdateDefaultUpdatedAt()
+		du.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -350,10 +359,22 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldCreatedAt,
 		})
 	}
+	if du.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: decision.FieldCreatedAt,
+		})
+	}
 	if value, ok := du.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: decision.FieldUpdatedAt,
+		})
+	}
+	if du.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: decision.FieldUpdatedAt,
 		})
 	}
@@ -566,11 +587,9 @@ func (duo *DecisionUpdateOne) SetCreatedAt(t time.Time) *DecisionUpdateOne {
 	return duo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableCreatedAt(t *time.Time) *DecisionUpdateOne {
-	if t != nil {
-		duo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (duo *DecisionUpdateOne) ClearCreatedAt() *DecisionUpdateOne {
+	duo.mutation.ClearCreatedAt()
 	return duo
 }
 
@@ -580,11 +599,9 @@ func (duo *DecisionUpdateOne) SetUpdatedAt(t time.Time) *DecisionUpdateOne {
 	return duo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableUpdatedAt(t *time.Time) *DecisionUpdateOne {
-	if t != nil {
-		duo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (duo *DecisionUpdateOne) ClearUpdatedAt() *DecisionUpdateOne {
+	duo.mutation.ClearUpdatedAt()
 	return duo
 }
 
@@ -816,6 +833,7 @@ func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 		err  error
 		node *Decision
 	)
+	duo.defaults()
 	if len(duo.hooks) == 0 {
 		node, err = duo.sqlSave(ctx)
 	} else {
@@ -864,6 +882,18 @@ func (duo *DecisionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (duo *DecisionUpdateOne) defaults() {
+	if _, ok := duo.mutation.CreatedAt(); !ok && !duo.mutation.CreatedAtCleared() {
+		v := decision.UpdateDefaultCreatedAt()
+		duo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := duo.mutation.UpdatedAt(); !ok && !duo.mutation.UpdatedAtCleared() {
+		v := decision.UpdateDefaultUpdatedAt()
+		duo.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -906,10 +936,22 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Column: decision.FieldCreatedAt,
 		})
 	}
+	if duo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: decision.FieldCreatedAt,
+		})
+	}
 	if value, ok := duo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: decision.FieldUpdatedAt,
+		})
+	}
+	if duo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: decision.FieldUpdatedAt,
 		})
 	}

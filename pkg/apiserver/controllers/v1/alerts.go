@@ -73,7 +73,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		})
 	}
 	for _, decisionItem := range alert.Edges.Decisions {
-		duration := decisionItem.Until.Sub(time.Now()).String()
+		duration := decisionItem.Until.Sub(time.Now().UTC()).String()
 		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,

@@ -63,8 +63,12 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
+	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultIPAddress holds the default value on creation for the "ip_address" field.
 	DefaultIPAddress string
 	// DefaultUntil holds the default value on creation for the "until" field.

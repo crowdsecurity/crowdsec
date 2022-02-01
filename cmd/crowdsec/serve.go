@@ -27,7 +27,7 @@ func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 		log.Warningf("Failed to shut down routines: %s", err)
 	}
 	//todo : properly stop acquis with the tail readers
-	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
+	if tmpFile, err = leaky.DumpBucketsStateAt(time.Now().UTC(), cConfig.Crowdsec.BucketStateDumpDir, buckets); err != nil {
 		log.Warningf("Failed dumping bucket state : %s", err)
 	}
 	if err := leaky.ShutdownAllBuckets(buckets); err != nil {

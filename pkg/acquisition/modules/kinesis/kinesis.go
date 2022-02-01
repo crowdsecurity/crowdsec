@@ -288,7 +288,7 @@ func (k *KinesisSource) ParseAndPushRecords(records []*kinesis.Record, out chan 
 			l := types.Line{}
 			l.Raw = event.Message
 			l.Labels = k.Config.Labels
-			l.Time = time.Now()
+			l.Time = time.Now().UTC()
 			l.Process = true
 			l.Module = k.GetName()
 			if k.Config.StreamARN != "" {

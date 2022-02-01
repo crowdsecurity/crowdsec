@@ -21,14 +21,6 @@ ifneq ($(OS),Windows_NT)
 	include $(ROOT)/platform/unix_common.mk
 endif
 
-
-
-PREFIX?="/tmp/crowdsec/"
-CFG_PREFIX = $(PREFIX)/etc/crowdsec/
-BIN_PREFIX = $(PREFIX)/usr/local/bin/
-DATA_PREFIX = $(PREFIX)/var/run/crowdsec/
-
-PID_DIR = $(PREFIX)/var/run/
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
@@ -63,23 +55,31 @@ export LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversio
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)"
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)"
 
 export LD_OPTS_STATIC=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR) \
 -extldflags '-static'"
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
+.PHONY: all
 all: clean test build
 
+.PHONY: build
 build: goversion crowdsec cscli plugins
 
+.PHONY: static
 static: crowdsec_static cscli_static plugins_static
 
+.PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin
 
 plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static
@@ -100,6 +100,7 @@ else
 	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) $(GO_MAJOR_VERSION) $(GO_MINOR_VERSION)
 endif
 
+.PHONY: clean
 clean:
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -111,6 +112,7 @@ clean:
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -151,6 +153,7 @@ email-plugin_static:goversion
 test: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
 
+.PHONY: package
 package:
 	@echo Building Release to dir $(RELDIR)
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
@@ -214,10 +217,10 @@ else
 	@if (Test-Path -Path $(RELDIR)) { echo "$(RELDIR) already exists, abort" ;  exit 1 ; }
 endif
 
-.PHONY:
+.PHONY: release
 release: check_release build package
 
-.PHONY:
+.PHONY: release_static
 release_static: check_release static package_static
 
 windows_installer: build

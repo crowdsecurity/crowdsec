@@ -8,7 +8,7 @@ format: |  # This template receives list of models.Alert objects
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
-      <a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a>  
+      <a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a>  
     {{end -}}
   {{end -}}
 

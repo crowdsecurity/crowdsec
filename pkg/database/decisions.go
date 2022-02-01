@@ -144,7 +144,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	var err error
 
 	decisions := c.Ent.Decision.Query().
-		Where(decision.UntilGTE(time.Now()))
+		Where(decision.UntilGTE(time.Now().UTC()))
 
 	decisions, err = BuildDecisionRequestWithFilter(decisions, filter)
 	if err != nil {
@@ -171,7 +171,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 }
 
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now()))
+	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -188,7 +188,7 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now()))
+	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC()))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -204,7 +204,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now())).Where(decision.UntilGT(since))
+	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC())).Where(decision.UntilGT(since))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -221,7 +221,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now()))
+	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now().UTC()))
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
@@ -359,7 +359,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	var contains bool = true
 	/*if contains is true, return bans that *contains* the given value (value is the inner)
 	  else, return bans that are *contained* by the given value (value is the outer)*/
-	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now()))
+	decisions := c.Ent.Decision.Update().Where(decision.UntilGT(time.Now().UTC()))
 	for param, value := range filter {
 		switch param {
 		case "contains":
@@ -453,7 +453,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 	} else if ip_sz != 0 {
 		return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
-	nbDeleted, err := decisions.SetUntil(time.Now()).Save(c.CTX)
+	nbDeleted, err := decisions.SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil {
 		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
 		return "0", errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
@@ -463,7 +463,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 
 //SoftDeleteDecisionByID set the expiration of a decision to now()
 func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
-	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now()).Save(c.CTX)
+	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)

@@ -381,7 +381,7 @@ func TestTimeNow(t *testing.T) {
 	}
 
 	if -1*time.Until(ti) > time.Second {
-		t.Fatalf("TimeNow func should return time.Now()")
+		t.Fatalf("TimeNow func should return time.Now().UTC()")
 	}
 	log.Printf("test 'TimeNow()' : OK")
 }

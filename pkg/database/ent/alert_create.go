@@ -495,12 +495,6 @@ func (ac *AlertCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (ac *AlertCreate) check() error {
-	if _, ok := ac.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "created_at"`)}
-	}
-	if _, ok := ac.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "updated_at"`)}
-	}
 	if _, ok := ac.mutation.Scenario(); !ok {
 		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "scenario"`)}
 	}
@@ -540,7 +534,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := ac.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -548,7 +542,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: alert.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
 	}
 	if value, ok := ac.mutation.Scenario(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

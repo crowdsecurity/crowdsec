@@ -266,7 +266,7 @@ func (a *apic) PullTop() error {
 	/*only pull community blocklist if it's older than 1h30 */
 	alerts := a.dbClient.Ent.Alert.Query()
 	alerts = alerts.Where(alert.HasDecisionsWith(decision.OriginEQ(database.CapiMachineID)))
-	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
+	alerts = alerts.Where(alert.CreatedAtGTE(time.Now().UTC().Add(-time.Duration(1*time.Hour + 30*time.Minute))))
 	count, err := alerts.Count(a.dbClient.CTX)
 	if err != nil {
 		return errors.Wrap(err, "while looking for CAPI alert")
@@ -379,8 +379,8 @@ func (a *apic) PullTop() error {
 				log.Warningf("unknown origin %s", *decision.Origin)
 			}
 			newAlert.Source.Value = types.StrPtr("")
-			newAlert.StartAt = types.StrPtr(time.Now().Format(time.RFC3339))
-			newAlert.StopAt = types.StrPtr(time.Now().Format(time.RFC3339))
+			newAlert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+			newAlert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
 			newAlert.Capacity = types.Int32Ptr(0)
 			newAlert.Simulated = types.BoolPtr(false)
 			newAlert.EventsCount = types.Int32Ptr(int32(len(data.New)))
@@ -510,12 +510,18 @@ func (a *apic) GetMetrics() (*models.Metrics, error) {
 	if err != nil {
 		return metric, err
 	}
+	var lastpush string
 	for _, machine := range machines {
+		if machine.LastPush == nil {
+			lastpush = time.Time{}.String()
+		} else {
+			lastpush = machine.LastPush.String()
+		}
 		m := &models.MetricsAgentInfo{
 			Version:    machine.Version,
 			Name:       machine.MachineId,
 			LastUpdate: machine.UpdatedAt.String(),
-			LastPush:   machine.LastPush.String(),
+			LastPush:   lastpush,
 		}
 		metric.Machines = append(metric.Machines, m)
 	}

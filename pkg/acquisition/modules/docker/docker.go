@@ -115,7 +115,7 @@ func (d *DockerSource) Configure(Config []byte, logger *log.Entry) error {
 	}
 
 	if d.Config.Since == "" {
-		d.Config.Since = time.Now().Format(time.RFC3339)
+		d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 	}
 
 	d.containerLogsOptions = &dockerTypes.ContainerLogsOptions{
@@ -295,7 +295,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 				l := types.Line{}
 				l.Raw = line
 				l.Labels = d.Config.Labels
-				l.Time = time.Now()
+				l.Time = time.Now().UTC()
 				l.Src = containerConfig.Name
 				l.Process = true
 				l.Module = d.GetName()
@@ -475,7 +475,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			l := types.Line{}
 			l.Raw = line
 			l.Labels = d.Config.Labels
-			l.Time = time.Now()
+			l.Time = time.Now().UTC()
 			l.Src = container.Name
 			l.Process = true
 			l.Module = d.GetName()

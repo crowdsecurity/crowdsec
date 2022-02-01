@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -166,17 +165,12 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 			log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
+			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
 			} else {
 				log.Infof("You can successfully interact with Local API (LAPI)")
 			}
-			for k, v := range resp.Response.Header {
-				log.Debugf("[headers] %s : %s", k, v)
-			}
-			dump, _ := httputil.DumpResponse(resp.Response, true)
-			log.Debugf("Response: %s", string(dump))
 		},
 	}
 	cmdLapi.AddCommand(cmdLapiStatus)
