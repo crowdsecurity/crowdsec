@@ -2,6 +2,8 @@
 
 package wineventlogacquisition
 
+type WinEventLogSource struct {}
+
 import (
 	"errors"
 
@@ -21,7 +23,7 @@ func (w *WinEventLogSource) ConfigureByDSN(dsn string, labels map[string]string,
 }
 
 func (w *WinEventLogSource) GetMode() string {
-	return nil
+	return ""
 }
 
 func (w *WinEventLogSource) SupportedModes() []string {
