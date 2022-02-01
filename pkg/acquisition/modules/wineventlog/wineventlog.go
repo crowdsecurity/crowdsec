@@ -2,8 +2,6 @@
 
 package wineventlogacquisition
 
-type WinEventLogSource struct {}
-
 import (
 	"errors"
 
@@ -13,6 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
+
+type WinEventLogSource struct{}
 
 func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) error {
 	return nil
