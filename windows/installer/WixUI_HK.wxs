@@ -46,6 +46,14 @@
          <Publish Dialog="MaintenanceTypeDlg" Control="RepairButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
          <Publish Dialog="MaintenanceTypeDlg" Control="RemoveButton" Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
          <Publish Dialog="MaintenanceTypeDlg" Control="Back" Event="NewDialog" Value="MaintenanceWelcomeDlg">1</Publish>
+
+         <ProgressText Action="HubUpdate">Updating Hub content</ProgressText>
+         <ProgressText Action="InstallWinCollection">Installing Windows collection</ProgressText>
+         <ProgressText Action="RegisterMachine">Registering agent to local API</ProgressText>
+         <ProgressText Action="RegisterCAPI">Registering to Crowdsec central API</ProgressText>
+
+
+
       </UI>
 
       <UIRef Id="WixUI_Common" />
