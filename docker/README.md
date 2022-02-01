@@ -123,6 +123,9 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `LEVEL_TRACE`             - Trace-level (VERY verbose) on stdout (default: `false`) : `-e LEVEL_TRACE="<true|false>"`
 * `LEVEL_DEBUG`             - Debug-level on stdout (default: `false`) : `-e LEVEL_DEBUG="<true|false>"`
 * `LEVEL_INFO`              - Info-level on stdout (default: `false`) : `-e LEVEL_INFO="<true|false>"`
+* `USE_TLS`                 - Enable TLS on the API Server (default: `false`) : `-e USE_TLS="<true|false>"`
+* `CERT_FILE`               - TLS Certificate file (default: `/etc/ssl/cert.pem`) : `-e CERT_FILE="<file_path>"`
+* `KEY_FILE`                - TLS Key file (default: `/etc/ssl/key.pem`) : `-e KEY_FILE="<file_path>"`
 
 ## Volumes
 
