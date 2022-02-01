@@ -17,7 +17,6 @@ crowdsec_service:
   parser_routines: 1
 cscli:
   output: human
-  hub_branch: windows
 db_config:
   log_level: info
   type: sqlite
