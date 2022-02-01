@@ -224,4 +224,4 @@ release: check_release build package
 release_static: check_release static package_static
 
 windows_installer: build
-	@.\make_installer.ps1
+	@.\make_installer.ps1 -version $(BUILD_VERSION)

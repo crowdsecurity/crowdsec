@@ -13,7 +13,7 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 #Current versioning information from env
 #BUILD_VERSION?=$(shell (Invoke-WebRequest -UseBasicParsing -Uri https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest).Content | jq -r '.tag_name')
 #hardcode it till i find a workaround
-BUILD_VERSION=v1.2.3
+BUILD_VERSION?=$(shell git describe --tags $$(git rev-list --tags --max-count=1))
 BUILD_GOVERSION?=$(shell (go env GOVERSION).replace("go",""))
 BUILD_CODENAME?=$(shell Get-Content RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP?=$(shell Get-Date -Format "yyyy-MM-dd_HH:mm:ss")

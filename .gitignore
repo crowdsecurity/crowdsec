@@ -29,4 +29,4 @@ plugins/notifications/email/notification-email
 crowdsec-v*
 pkg/cwhub/hubdir/.index.json
 msi
-crowdsec.msi
+*.msi
