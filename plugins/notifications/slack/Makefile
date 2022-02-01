@@ -1,4 +1,3 @@
-
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -11,7 +10,7 @@ build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 clean:
-	@rm -f $(BINARY_NAME)
+	@$(RM) "$(BINARY_NAME)"
 
 
 static: clean
