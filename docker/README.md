@@ -123,6 +123,7 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `LEVEL_TRACE`             - Trace-level (VERY verbose) on stdout (default: `false`) : `-e LEVEL_TRACE="<true|false>"`
 * `LEVEL_DEBUG`             - Debug-level on stdout (default: `false`) : `-e LEVEL_DEBUG="<true|false>"`
 * `LEVEL_INFO`              - Info-level on stdout (default: `false`) : `-e LEVEL_INFO="<true|false>"`
+* `CUSTOM_HOSTNAME`         - Custom hostname for local api (default: `localhost`) : `-e CUSTOM_HOSTNAME="<hostname>"`
 
 ## Volumes
 

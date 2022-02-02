@@ -21,11 +21,11 @@ fi
 # regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
-    cscli -c "$CS_CONFIG_FILE" machines delete localhost
+    cscli -c "$CS_CONFIG_FILE" machines delete ${CUSTOM_HOSTNAME:-localhost}
     if [ "$LOCAL_API_URL" != "" ] ; then
-        cscli -c "$CS_CONFIG_FILE" machines add localhost --auto --url $LOCAL_API_URL
+        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto --url $LOCAL_API_URL
     else
-        cscli -c "$CS_CONFIG_FILE" machines add localhost --auto
+        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto
     fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
