@@ -59,15 +59,15 @@ func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 			toflush = append(toflush, key)
 			val.tomb.Kill(nil)
 			return true
-		} else {
-			val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		}
+
+		val.logger.Tracef("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
 			return false
-		} else {
-			log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
 		}
+		log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
+
 		return true
 	})
 	log.Infof("Cleaned %d buckets", len(toflush))
@@ -118,15 +118,14 @@ func DumpBucketsStateAt(deadline time.Time, outputdir string, buckets *Buckets) 
 			val.logger.Debugf("UNDERFLOW : first_ts:%s tokens_at:%f capcity:%f", val.First_ts, tokat, tokcapa)
 			discard += 1
 			return true
-		} else {
-			val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
 		}
+		val.logger.Debugf("(%s) not dead, count:%f capacity:%f", val.First_ts, tokat, tokcapa)
+
 		if _, ok := serialized[key]; ok {
 			log.Errorf("entry %s already exists", key)
 			return false
-		} else {
-			log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
 		}
+		log.Debugf("serialize %s of %s : %s", val.Name, val.Uuid, val.Mapkey)
 		val.SerializedState = val.Limiter.Dump()
 		serialized[key] = *val
 		return true

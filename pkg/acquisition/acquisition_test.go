@@ -182,9 +182,8 @@ wowo: ajsajasjas
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
-			} else {
-				continue
 			}
+			continue
 		} else {
 			if err != nil {
 				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
@@ -289,9 +288,8 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
-			} else {
-				continue
 			}
+			continue
 		} else {
 			if err != nil {
 				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)

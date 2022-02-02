@@ -17,9 +17,9 @@ const (
 	SEND_MANUAL_SCENARIOS  = "manual"
 )
 
-var DefaultConsoleConfgFilePath = "/etc/crowdsec/console.yaml"
-
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS}
+
+var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
 type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
@@ -71,8 +71,9 @@ func (c *LocalApiServerCfg) DumpConsoleConfig() error {
 		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", c.ConsoleConfigPath)
 	}
 	if c.ConsoleConfigPath == "" {
-		log.Debugf("Empty console_path, defaulting to %s", DefaultConsoleConfgFilePath)
-		c.ConsoleConfigPath = DefaultConsoleConfgFilePath
+		c.ConsoleConfigPath = DefaultConsoleConfigFilePath
+		log.Debugf("Empty console_path, defaulting to %s", c.ConsoleConfigPath)
+
 	}
 
 	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {

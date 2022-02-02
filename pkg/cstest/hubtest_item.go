@@ -77,9 +77,9 @@ const (
 	ScenarioResultFileName = "bucket-dump.yaml"
 
 	BucketPourResultFileName = "bucketpour-dump.yaml"
-
-	crowdsecPatternsFolder = "/etc/crowdsec/patterns/"
 )
+
+var crowdsecPatternsFolder = csconfig.DefaultConfigPath("patterns")
 
 func NewTest(name string, hubTest *HubTest) (*HubTestItem, error) {
 	testPath := filepath.Join(hubTest.HubTestPath, name)

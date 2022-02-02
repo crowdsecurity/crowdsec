@@ -7,12 +7,6 @@ else
 	include $(ROOT)/platform/linux.mk
 endif
 
-PREFIX?="/tmp/crowdsec/"
-CFG_PREFIX = $(PREFIX)"/etc/crowdsec/"
-BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
-DATA_PREFIX = $(PREFIX)"/var/run/crowdsec/"
-
-PID_DIR = $(PREFIX)"/var/run/"
 CROWDSEC_FOLDER = "./cmd/crowdsec"
 CSCLI_FOLDER = "./cmd/crowdsec-cli/"
 
@@ -50,29 +44,39 @@ BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
 BUILD_CODENAME=$(shell cat RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP=$(shell date +%F"_"%T)
 BUILD_TAG?="$(shell git rev-parse HEAD)"
+DEFAULT_CONFIGDIR ?= "/etc/crowdsec"
+DEFAULT_DATADIR ?= "/var/lib/crowdsec/data"
 
 export LD_OPTS=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.System=$(SYSTEM) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION)"
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR)"
 
 export LD_OPTS_STATIC=-ldflags "-s -w -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR) \
+-X github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultDataDir=$(DEFAULT_DATADIR) \
 -extldflags '-static'"
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
+.PHONY: all
 all: clean test build
 
+.PHONY: build
 build: goversion crowdsec cscli plugins
 
+.PHONY: static
 static: crowdsec_static cscli_static plugins_static
 
+.PHONY: plugins
 plugins: http-plugin slack-plugin splunk-plugin email-plugin
 
 plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static
@@ -88,16 +92,18 @@ goversion:
         exit 1; \
     fi
 
+.PHONY: clean
 clean:
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
-	@rm -f $(CROWDSEC_BIN)
-	@rm -f $(CSCLI_BIN)
-	@rm -f *.log
-	@rm -f crowdsec-release.tgz
-	@rm -f $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
-	@rm -f $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
-	@rm -f $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
+	@$(RM) $(CROWDSEC_BIN)
+	@$(RM) $(CSCLI_BIN)
+	@$(RM) *.log
+	@$(RM) crowdsec-release.tgz
+	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
+	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
+	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
+	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN)
 
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
@@ -138,6 +144,7 @@ email-plugin_static:goversion
 test: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
 
+.PHONY: package
 package:
 	@echo Building Release to dir $(RELDIR)
 	@mkdir -p $(RELDIR)/cmd/crowdsec
@@ -196,8 +203,8 @@ package_static:
 check_release:
 	@if [ -d $(RELDIR) ]; then echo "$(RELDIR) already exists, abort" ;  exit 1 ; fi
 
-.PHONY:
+.PHONY: release
 release: check_release build package
 
-.PHONY:
+.PHONY: release_static
 release_static: check_release static package_static

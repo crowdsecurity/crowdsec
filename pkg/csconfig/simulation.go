@@ -42,10 +42,9 @@ func (c *Config) LoadSimulation() error {
 	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
 	if err != nil {
 		return errors.Wrapf(err, "while reading '%s'", c.ConfigPaths.SimulationFilePath)
-	} else {
-		if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
-			return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
-		}
+	}
+	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
+		return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)
 	}
 	if simCfg.Simulation == nil {
 		simCfg.Simulation = new(bool)

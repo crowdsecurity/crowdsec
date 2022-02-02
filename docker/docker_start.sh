@@ -6,11 +6,31 @@ if [ "$CONFIG_FILE" != "" ]; then
     CS_CONFIG_FILE="$CONFIG_FILE"
 fi
 
+# TLS defaults
+CERT_FILE="${CERT_FILE:-/etc/ssl/cert.pem}"
+KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
+
+#Check & prestage databases
+if [ ! -e "/var/lib/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/data/GeoLite2-City.mmdb" ]; then
+    mkdir -p /var/lib/crowdsec/data
+    cp /staging/var/lib/crowdsec/data/*.mmdb /var/lib/crowdsec/data/
+fi
+
+#Check & prestage /etc/crowdsec
+if [ ! -e "/etc/crowdsec/local_api_credentials.yaml" ] && [ ! -e "/etc/crowdsec/config.yaml" ]; then
+    mkdir -p /etc/crowdsec
+    cp -r /staging/etc/* /etc/
+fi
+
 # regenerate local agent credentials (ignore if agent is disabled)
 if [ "$DISABLE_AGENT" == "" ] ; then
     echo "Regenerate local agent credentials"
-    cscli -c "$CS_CONFIG_FILE" machines delete localhost
-    cscli -c "$CS_CONFIG_FILE" machines add localhost --auto
+    cscli -c "$CS_CONFIG_FILE" machines delete ${CUSTOM_HOSTNAME:-localhost}
+    if [ "$LOCAL_API_URL" != "" ] ; then
+        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto --url $LOCAL_API_URL
+    else
+        cscli -c "$CS_CONFIG_FILE" machines add ${CUSTOM_HOSTNAME:-localhost} --auto
+    fi
     if [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] && [ "$LOCAL_API_URL" != "" ] ; then
         echo "set up lapi credentials for agent"
         CONFIG_PATH=$(yq eval '.api.client.credentials_path' "$CS_CONFIG_FILE" )
@@ -46,6 +66,12 @@ if [ "$GID" != "" ]; then
         chown :$GID $DB_PATH
         echo "sqlite database permissions updated"
     fi
+fi
+
+if [ "$USE_TLS" != "" ]; then
+   yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
+   yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
+   yq -i eval '... comments=""' "$CS_CONFIG_FILE"
 fi
 
 ## Install collections, parsers & scenarios
