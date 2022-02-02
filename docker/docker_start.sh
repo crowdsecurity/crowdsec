@@ -6,6 +6,10 @@ if [ "$CONFIG_FILE" != "" ]; then
     CS_CONFIG_FILE="$CONFIG_FILE"
 fi
 
+# TLS defaults
+CERT_FILE="${CERT_FILE:-/etc/ssl/cert.pem}"
+KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
+
 #Check & prestage databases
 if [ ! -e "/var/lib/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/data/GeoLite2-City.mmdb" ]; then
     mkdir -p /var/lib/crowdsec/data
@@ -62,6 +66,12 @@ if [ "$GID" != "" ]; then
         chown :$GID $DB_PATH
         echo "sqlite database permissions updated"
     fi
+fi
+
+if [ "$USE_TLS" != "" ]; then
+   yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
+   yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
+   yq -i eval '... comments=""' "$CS_CONFIG_FILE"
 fi
 
 ## Install collections, parsers & scenarios
