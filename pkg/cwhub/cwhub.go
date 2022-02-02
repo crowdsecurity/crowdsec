@@ -173,13 +173,10 @@ func GetItemByPath(itemType string, itemPath string) (*Item, error) {
 	if m := GetItemMap(itemType); m != nil {
 		if v, ok := m[finalName]; ok {
 			return &v, nil
-		} else {
-			return nil, fmt.Errorf("%s not found in %s", finalName, itemType)
 		}
-	} else {
-		return nil, fmt.Errorf("item type %s doesn't exist", itemType)
+		return nil, fmt.Errorf("%s not found in %s", finalName, itemType)
 	}
-
+	return nil, fmt.Errorf("item type %s doesn't exist", itemType)
 }
 
 func GetItem(itemType string, itemName string) *Item {
@@ -213,25 +210,21 @@ func DisplaySummary() {
 
 //returns: human-text, Enabled, Warning, Unmanaged
 func ItemStatus(v Item) (string, bool, bool, bool) {
-	var Ok, Warning, Managed bool
-	var strret string
-
-	if !v.Installed {
-		strret = "disabled"
-		Ok = false
-	} else {
+	strret := "disabled"
+	Ok := false
+	if v.Installed {
 		Ok = true
 		strret = "enabled"
 	}
 
+	Managed := true
 	if v.Local {
 		Managed = false
 		strret += ",local"
-	} else {
-		Managed = true
 	}
 
 	//tainted or out of date
+	Warning := false
 	if v.Tainted {
 		Warning = true
 		strret += ",tainted"

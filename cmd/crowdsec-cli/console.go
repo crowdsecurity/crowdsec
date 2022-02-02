@@ -33,11 +33,11 @@ func NewConsoleCmd() *cobra.Command {
 				var fdErr *fs.PathError
 				if errors.As(err, &fdErr) {
 					log.Fatalf("Unable to load Local API : %s", fdErr)
-				} else if err != nil {
-					log.Fatalf("Unable to load required Local API Configuration : %s", err)
-				} else {
-					log.Fatal("Local API is disabled, please run this command on the local API machine")
 				}
+				if err != nil {
+					log.Fatalf("Unable to load required Local API Configuration : %s", err)
+				}
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")

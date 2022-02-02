@@ -126,6 +126,7 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `USE_TLS`                 - Enable TLS on the API Server (default: `false`) : `-e USE_TLS="<true|false>"`
 * `CERT_FILE`               - TLS Certificate file (default: `/etc/ssl/cert.pem`) : `-e CERT_FILE="<file_path>"`
 * `KEY_FILE`                - TLS Key file (default: `/etc/ssl/key.pem`) : `-e KEY_FILE="<file_path>"`
+* `CUSTOM_HOSTNAME`         - Custom hostname for local api (default: `localhost`) : `-e CUSTOM_HOSTNAME="<hostname>"`
 
 ## Volumes
 

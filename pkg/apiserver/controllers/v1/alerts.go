@@ -20,12 +20,11 @@ import (
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	var outputAlert models.Alert
-	var machineID string
 	startAt := alert.StartedAt.String()
 	StopAt := alert.StoppedAt.String()
-	if alert.Edges.Owner == nil {
-		machineID = "N/A"
-	} else {
+
+	machineID := "N/A"
+	if alert.Edges.Owner != nil {
 		machineID = alert.Edges.Owner.MachineId
 	}
 

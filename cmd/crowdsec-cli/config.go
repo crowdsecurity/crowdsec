@@ -410,7 +410,7 @@ func NewConfigCmd() *cobra.Command {
 			}
 		},
 	}
-	cmdConfigShow.Flags().StringVar(&key, "key", "", "Display only this value (config.API.Server.ListenURI")
+	cmdConfigShow.Flags().StringVar(&key, "key", "", "Display only this value (Config.API.Server.ListenURI)")
 	cmdConfig.AddCommand(cmdConfigShow)
 
 	var cmdConfigBackup = &cobra.Command{

@@ -24,7 +24,6 @@ var (
 	metabaseConfigPath   string
 	metabaseConfigFolder = "metabase/"
 	metabaseConfigFile   = "metabase.yaml"
-	metabaseImage        = "metabase/metabase"
 	/**/
 	metabaseListenAddress = "127.0.0.1"
 	metabaseListenPort    = "3000"
@@ -33,7 +32,6 @@ var (
 
 	forceYes bool
 
-	dockerGatewayIPAddr = "172.17.0.1"
 	/*informations needed to setup a random password on user's behalf*/
 )
 

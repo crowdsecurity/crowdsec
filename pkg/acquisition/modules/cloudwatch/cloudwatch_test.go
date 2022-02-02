@@ -492,9 +492,8 @@ stream_name: test_stream`),
 		if test.expectedResLen != -1 {
 			if test.expectedResLen != len(rcvd_evts) {
 				t.Fatalf("%s : expected %d results got %d -> %v", test.name, test.expectedResLen, len(rcvd_evts), rcvd_evts)
-			} else {
-				dbgLogger.Debugf("got %d expected messages", len(rcvd_evts))
 			}
+			dbgLogger.Debugf("got %d expected messages", len(rcvd_evts))
 		}
 		if len(test.expectedResMessages) != 0 {
 			res := test.expectedResMessages
@@ -504,9 +503,8 @@ stream_name: test_stream`),
 				}
 				if res[0] != v.Line.Raw {
 					t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvd_evts), res[0], v.Line.Raw, len(rcvd_evts), len(test.expectedResMessages))
-				} else {
-					dbgLogger.Debugf("got message '%s'", res[0])
 				}
+				dbgLogger.Debugf("got message '%s'", res[0])
 				res = res[1:]
 			}
 			if len(res) != 0 {
@@ -853,9 +851,8 @@ func TestOneShotAcquisition(t *testing.T) {
 				}
 				if res[0] != v.Line.Raw {
 					t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvd_evts), res[0], v.Line.Raw, len(rcvd_evts), len(test.expectedResMessages))
-				} else {
-					dbgLogger.Debugf("got message '%s'", res[0])
 				}
+				dbgLogger.Debugf("got message '%s'", res[0])
 				res = res[1:]
 			}
 			if len(res) != 0 {
