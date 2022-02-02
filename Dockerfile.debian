@@ -1,16 +1,17 @@
-FROM debian:bullseye-slim AS build
+ARG GOVERSION=1.17
 
-RUN apt-get update
-RUN apt-get install -y -q --install-recommends --no-install-suggests \
-        gettext \
-        wget \
-        bash
+FROM golang:${GOVERSION}-alpine AS build
 
-ADD https://github.com/crowdsecurity/crowdsec/releases/latest/download/crowdsec-release.tgz /crowdsec-release.tgz
-ADD https://github.com/mikefarah/yq/releases/download/v4.18.1/yq_linux_amd64 /usr/bin/yq
-RUN tar xzvf crowdsec-release.tgz
-RUN cd crowdsec-v* && ./wizard.sh --docker-mode
-RUN chmod +x /usr/bin/yq
+WORKDIR /go/src/crowdsec
+
+# wizard.sh requires GNU coreutils
+RUN apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold coreutils
+
+COPY . .
+
+RUN SYSTEM="docker" make release
+RUN cd crowdsec-v* && ./wizard.sh --docker-mode && cd -
+RUN cscli hub update && cscli collections install crowdsecurity/linux && cscli parsers install crowdsecurity/whitelists
 
 FROM debian:bullseye-slim
 RUN apt-get update
