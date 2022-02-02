@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Set the crowdsec config file
 CS_CONFIG_FILE="/etc/crowdsec/config.yaml"
@@ -64,6 +64,9 @@ if [ "$SCENARIOS" != "" ]; then
 fi
 if [ "$POSTOVERFLOWS" != "" ]; then
     cscli -c "$CS_CONFIG_FILE" postoverflows install $POSTOVERFLOWS
+fi
+if [ "$DISABLE_SCENARIOS" != "" ]; then
+    cscli -c "$CS_CONFIG_FILE" scenarios uninstall $DISABLE_SCENARIOS
 fi
 
 ARGS=""
