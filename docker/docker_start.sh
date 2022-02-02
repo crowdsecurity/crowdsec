@@ -43,7 +43,11 @@ fi
 # Check if lapi needs to automatically register an agent
 echo Check if lapi need to register automatically an agent
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
-    cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD
+    if [ "$LOCAL_API_URL" != "" ] ; then
+        cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD --url $LOCAL_API_URL
+    else
+        cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD
+    fi
     echo "Agent registered to lapi"
 fi
 
