@@ -2,15 +2,19 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"os"
 	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-co-op/gocron"
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	_ "github.com/lib/pq"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/pkg/errors"
@@ -72,6 +76,14 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		if err != nil {
 			return &Client{}, fmt.Errorf("failed opening connection to postgres: %v", err)
 		}
+	case "pgx":
+		db, err := sql.Open("pgx", fmt.Sprintf("postgresql://%s:%s@%s:%d/%s?sslmode=%s", config.User, config.Password, config.Host, config.Port, config.DbName, config.Sslmode))
+		if err != nil {
+			return &Client{}, fmt.Errorf("failed opening connection to pgx: %v", err)
+		}
+		// Create an ent.Driver from `db`.
+		drv := entsql.OpenDB(dialect.Postgres, db)
+		client = ent.NewClient(ent.Driver(drv), entOpt)
 	default:
 		return &Client{}, fmt.Errorf("unknown database type")
 	}

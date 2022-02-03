@@ -111,8 +111,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 	/*
 		we don't use the main client, so let's build the body
 	*/
-	var buf io.ReadWriter
-	buf = &bytes.Buffer{}
+	var buf io.ReadWriter = &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	err = enc.Encode(auth)
@@ -170,7 +169,7 @@ func (t *JWTTransport) refreshJwtToken() error {
 
 // RoundTrip implements the RoundTripper interface.
 func (t *JWTTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now()) {
+	if t.token == "" || t.Expiration.Add(-time.Minute).Before(time.Now().UTC()) {
 		if err := t.refreshJwtToken(); err != nil {
 			return nil, err
 		}

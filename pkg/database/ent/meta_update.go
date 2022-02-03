@@ -34,11 +34,9 @@ func (mu *MetaUpdate) SetCreatedAt(t time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableCreatedAt(t *time.Time) *MetaUpdate {
-	if t != nil {
-		mu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (mu *MetaUpdate) ClearCreatedAt() *MetaUpdate {
+	mu.mutation.ClearCreatedAt()
 	return mu
 }
 
@@ -48,11 +46,9 @@ func (mu *MetaUpdate) SetUpdatedAt(t time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableUpdatedAt(t *time.Time) *MetaUpdate {
-	if t != nil {
-		mu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (mu *MetaUpdate) ClearUpdatedAt() *MetaUpdate {
+	mu.mutation.ClearUpdatedAt()
 	return mu
 }
 
@@ -104,6 +100,7 @@ func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	mu.defaults()
 	if len(mu.hooks) == 0 {
 		if err = mu.check(); err != nil {
 			return 0, err
@@ -158,6 +155,18 @@ func (mu *MetaUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (mu *MetaUpdate) defaults() {
+	if _, ok := mu.mutation.CreatedAt(); !ok && !mu.mutation.CreatedAtCleared() {
+		v := meta.UpdateDefaultCreatedAt()
+		mu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := mu.mutation.UpdatedAt(); !ok && !mu.mutation.UpdatedAtCleared() {
+		v := meta.UpdateDefaultUpdatedAt()
+		mu.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (mu *MetaUpdate) check() error {
 	if v, ok := mu.mutation.Value(); ok {
@@ -193,10 +202,22 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: meta.FieldCreatedAt,
 		})
 	}
+	if mu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: meta.FieldCreatedAt,
+		})
+	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: meta.FieldUpdatedAt,
+		})
+	}
+	if mu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: meta.FieldUpdatedAt,
 		})
 	}
@@ -274,11 +295,9 @@ func (muo *MetaUpdateOne) SetCreatedAt(t time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableCreatedAt(t *time.Time) *MetaUpdateOne {
-	if t != nil {
-		muo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (muo *MetaUpdateOne) ClearCreatedAt() *MetaUpdateOne {
+	muo.mutation.ClearCreatedAt()
 	return muo
 }
 
@@ -288,11 +307,9 @@ func (muo *MetaUpdateOne) SetUpdatedAt(t time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableUpdatedAt(t *time.Time) *MetaUpdateOne {
-	if t != nil {
-		muo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (muo *MetaUpdateOne) ClearUpdatedAt() *MetaUpdateOne {
+	muo.mutation.ClearUpdatedAt()
 	return muo
 }
 
@@ -351,6 +368,7 @@ func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 		err  error
 		node *Meta
 	)
+	muo.defaults()
 	if len(muo.hooks) == 0 {
 		if err = muo.check(); err != nil {
 			return nil, err
@@ -402,6 +420,18 @@ func (muo *MetaUpdateOne) Exec(ctx context.Context) error {
 func (muo *MetaUpdateOne) ExecX(ctx context.Context) {
 	if err := muo.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (muo *MetaUpdateOne) defaults() {
+	if _, ok := muo.mutation.CreatedAt(); !ok && !muo.mutation.CreatedAtCleared() {
+		v := meta.UpdateDefaultCreatedAt()
+		muo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := muo.mutation.UpdatedAt(); !ok && !muo.mutation.UpdatedAtCleared() {
+		v := meta.UpdateDefaultUpdatedAt()
+		muo.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -457,10 +487,22 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 			Column: meta.FieldCreatedAt,
 		})
 	}
+	if muo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: meta.FieldCreatedAt,
+		})
+	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: meta.FieldUpdatedAt,
+		})
+	}
+	if muo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: meta.FieldUpdatedAt,
 		})
 	}

@@ -176,7 +176,7 @@ func IpInRange(ip string, ipRange string) bool {
 }
 
 func TimeNow() string {
-	return time.Now().Format(time.RFC3339)
+	return time.Now().UTC().Format(time.RFC3339)
 }
 
 func ParseUri(uri string) map[string][]string {

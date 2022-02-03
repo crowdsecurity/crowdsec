@@ -11,6 +11,7 @@ import (
 	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
+	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -59,6 +60,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "docker",
 		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
+	},
+	{
+		name:  "kinesis",
+		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
 	},
 }
 
@@ -213,11 +218,10 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 		}
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
-					//ignore the error
-				} else {
+				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
 					return errors.Wrapf(err, "could not register metrics for datasource %s", sources[i].GetName())
 				}
+				//ignore the error
 			}
 		}
 

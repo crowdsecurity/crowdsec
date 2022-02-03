@@ -66,16 +66,6 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-type parsers struct {
-	ctx             *parser.UnixParserCtx
-	povfwctx        *parser.UnixParserCtx
-	stageFiles      []parser.Stagefile
-	povfwStageFiles []parser.Stagefile
-	nodes           []parser.Node
-	povfwnodes      []parser.Node
-	enricherCtx     []parser.EnricherCtx
-}
-
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
 func newParsers() *parser.Parsers {
@@ -186,7 +176,7 @@ func (l labelsMap) Set(label string) error {
 
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")

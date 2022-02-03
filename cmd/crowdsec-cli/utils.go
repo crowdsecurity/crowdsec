@@ -68,7 +68,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Country
 	case "as":
 		*scope = types.AS
-
 	}
 	return nil
 }
@@ -202,7 +201,6 @@ func InstallItem(name string, obtype string, force bool) {
 	}
 	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
-	return
 }
 
 func RemoveMany(itemType string, name string) {
@@ -557,8 +555,7 @@ func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
 
 //it's a rip of the cli version, but in silent-mode
 func silenceInstallItem(name string, obtype string) (string, error) {
-	var item *cwhub.Item
-	item = cwhub.GetItem(obtype, name)
+	var item = cwhub.GetItem(obtype, name)
 	if item == nil {
 		return "", fmt.Errorf("error retrieving item")
 	}

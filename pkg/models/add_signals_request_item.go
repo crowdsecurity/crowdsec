@@ -6,6 +6,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -34,6 +36,10 @@ type AddSignalsRequestItem struct {
 	// scenario hash
 	// Required: true
 	ScenarioHash *string `json:"scenario_hash"`
+
+	// scenario trust
+	// Required: true
+	ScenarioTrust *string `json:"scenario_trust"`
 
 	// scenario version
 	// Required: true
@@ -65,6 +71,10 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateScenarioHash(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateScenarioTrust(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -117,6 +127,15 @@ func (m *AddSignalsRequestItem) validateScenarioHash(formats strfmt.Registry) er
 	return nil
 }
 
+func (m *AddSignalsRequestItem) validateScenarioTrust(formats strfmt.Registry) error {
+
+	if err := validate.Required("scenario_trust", "body", m.ScenarioTrust); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *AddSignalsRequestItem) validateScenarioVersion(formats strfmt.Registry) error {
 
 	if err := validate.Required("scenario_version", "body", m.ScenarioVersion); err != nil {
@@ -136,6 +155,8 @@ func (m *AddSignalsRequestItem) validateSource(formats strfmt.Registry) error {
 		if err := m.Source.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("source")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("source")
 			}
 			return err
 		}
@@ -157,6 +178,36 @@ func (m *AddSignalsRequestItem) validateStopAt(formats strfmt.Registry) error {
 
 	if err := validate.Required("stop_at", "body", m.StopAt); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this add signals request item based on the context it is used
+func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateSource(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, formats strfmt.Registry) error {
+
+	if m.Source != nil {
+		if err := m.Source.ContextValidate(ctx, formats); err != nil {
+			if ve, ok := err.(*errors.Validation); ok {
+				return ve.ValidateName("source")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("source")
+			}
+			return err
+		}
 	}
 
 	return nil

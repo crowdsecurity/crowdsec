@@ -79,7 +79,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		logger.Warn(fmt.Sprintf("HTTP server returned non 200 status code: %d", resp.StatusCode))
 		return &protobufs.Empty{}, nil
 	}

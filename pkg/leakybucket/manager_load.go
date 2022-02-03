@@ -156,13 +156,12 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			bucketFactory := BucketFactory{}
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
-				if err == io.EOF {
-					log.Tracef("End of yaml file")
-					break
-				} else {
+				if err != io.EOF {
 					log.Errorf("Bad yaml in %s : %v", f, err)
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
+				log.Tracef("End of yaml file")
+				break
 			}
 			bucketFactory.DataDir = cscfg.DataDir
 			//check empty

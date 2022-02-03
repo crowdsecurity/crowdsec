@@ -6,6 +6,8 @@ package models
 // Editing this file might prove futile when you re-run the swagger generate command
 
 import (
+	"context"
+
 	"github.com/go-openapi/errors"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/swag"
@@ -42,7 +44,6 @@ func (m *DecisionsStreamResponse) Validate(formats strfmt.Registry) error {
 }
 
 func (m *DecisionsStreamResponse) validateDeleted(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.Deleted) { // not required
 		return nil
 	}
@@ -50,6 +51,8 @@ func (m *DecisionsStreamResponse) validateDeleted(formats strfmt.Registry) error
 	if err := m.Deleted.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("deleted")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("deleted")
 		}
 		return err
 	}
@@ -58,7 +61,6 @@ func (m *DecisionsStreamResponse) validateDeleted(formats strfmt.Registry) error
 }
 
 func (m *DecisionsStreamResponse) validateNew(formats strfmt.Registry) error {
-
 	if swag.IsZero(m.New) { // not required
 		return nil
 	}
@@ -66,6 +68,54 @@ func (m *DecisionsStreamResponse) validateNew(formats strfmt.Registry) error {
 	if err := m.New.Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("new")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("new")
+		}
+		return err
+	}
+
+	return nil
+}
+
+// ContextValidate validate this decisions stream response based on the context it is used
+func (m *DecisionsStreamResponse) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateDeleted(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.contextValidateNew(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *DecisionsStreamResponse) contextValidateDeleted(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Deleted.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("deleted")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("deleted")
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (m *DecisionsStreamResponse) contextValidateNew(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.New.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("new")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("new")
 		}
 		return err
 	}

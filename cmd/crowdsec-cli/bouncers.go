@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var keyName string
 var keyIP string
 var keyLength int
 var key string

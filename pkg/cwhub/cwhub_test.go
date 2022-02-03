@@ -22,8 +22,6 @@ import (
   - Upgrade collection
 */
 
-var testDataFolder = "."
-
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
@@ -43,7 +41,7 @@ func TestItemStatus(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		item := GetItem(COLLECTIONS, k)
 		if item == nil {
 			t.Fatalf("expected item")

@@ -14,6 +14,7 @@ PID_DIR = $(PREFIX)"/var/run/"
 
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
+.PHONY: all
 all: clean test build
 
 build: clean
@@ -61,7 +62,7 @@ systemd: install
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(CFG_PREFIX)
-	rm -rf $(DATA_PREFIX)
-	rm -f "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
-	rm -f "$(SYSTEMD_PATH_FILE)"
+	$(RM) -r "$(CFG_PREFIX)"
+	$(RM) -r "$(DATA_PREFIX)"
+	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
+	$(RM) "$(SYSTEMD_PATH_FILE)"
