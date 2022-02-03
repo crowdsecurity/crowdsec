@@ -50,6 +50,7 @@ func Show() {
 	log.Printf("Codename: %s", Codename)
 	log.Printf("BuildDate: %s", BuildDate)
 	log.Printf("GoVersion: %s", GoVersion)
+	log.Printf("Platform: %s\n", System)
 	log.Printf("Constraint_parser: %s", Constraint_parser)
 	log.Printf("Constraint_scenario: %s", Constraint_scenario)
 	log.Printf("Constraint_api: %s", Constraint_api)
