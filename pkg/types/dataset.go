@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -42,6 +43,10 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
 	}
 
+	if err := os.MkdirAll(filepath.Dir(destPath), 0666); err != nil {
+		return err
+	}
+
 	file, err := os.OpenFile(destPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		return err
@@ -60,14 +65,12 @@ func downloadFile(url string, destPath string) error {
 	return nil
 }
 
-func GetData(data []*DataSource, dataDir string) error {
-	for _, dataS := range data {
-		destPath := path.Join(dataDir, dataS.DestPath)
-		log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
-		err := downloadFile(dataS.SourceURL, destPath)
-		if err != nil {
-			return err
-		}
+func GetData(dataS *DataSource, dataDir string) error {
+	destPath := path.Join(dataDir, dataS.DestPath)
+	log.Infof("downloading data '%s' in '%s'", dataS.SourceURL, destPath)
+	err := downloadFile(dataS.SourceURL, destPath)
+	if err != nil {
+		return err
 	}
 
 	return nil

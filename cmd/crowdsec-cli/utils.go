@@ -250,22 +250,21 @@ func UpgradeConfig(itemType string, name string, force bool) {
 			continue
 		}
 
+		found = true
+		if v.UpToDate || v.Tainted {
+			if v.UpToDate {
+				log.Infof("%s : up-to-date", v.Name)
+			}
+			if err = cwhub.DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
+				log.Fatalf("%s : download failed : %v", v.Name, err)
+			}
+		}
+
 		if !v.Downloaded {
 			log.Warningf("%s : not downloaded, please install.", v.Name)
 			continue
 		}
 
-		found = true
-		if v.UpToDate {
-			log.Infof("%s : up-to-date", v.Name)
-
-			if !force {
-				if err = cwhub.DownloadDataIfNeeded(csConfig.Hub, v, false); err != nil {
-					log.Fatalf("%s : download failed : %v", v.Name, err)
-				}
-				continue
-			}
-		}
 		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, true)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)

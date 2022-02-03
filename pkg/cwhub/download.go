@@ -3,15 +3,17 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"io"
 	"path"
 	"path/filepath"
+	"sort"
 
 	//"errors"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v2"
 
 	//"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -20,7 +22,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 )
 
 func UpdateHubIdx(hub *csconfig.Hub) error {
@@ -79,7 +80,6 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
-	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -143,10 +143,19 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 			return target, nil
 		}
 		if target.UpToDate {
-			log.Debugf("%s : up-to-date, not updated", target.Name)
 			//  We still have to check if data files are present
+			log.Debugf("%s : up-to-date, not updated", target.Name)
+			data, err := os.ReadFile(target.LocalPath)
+			if err != nil {
+				return target, err
+			}
+			if err := downloadData(dataFolder, target.Author, overwrite, bytes.NewReader(data)); err != nil {
+				return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+			}
+			return target, nil
 		}
 	}
+	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
@@ -214,7 +223,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.Tainted = false
 	target.UpToDate = true
 
-	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+	if err = downloadData(dataFolder, target.Author, overwrite, bytes.NewReader(body)); err != nil {
 		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
 	}
 
@@ -232,16 +241,15 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	if itemFile, err = os.Open(itemFilePath); err != nil {
 		return errors.Wrapf(err, "while opening %s", itemFilePath)
 	}
-	if err = downloadData(dataFolder, force, itemFile); err != nil {
+	if err = downloadData(dataFolder, target.Author, force, itemFile); err != nil {
 		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
 	}
 	return nil
 }
 
-func downloadData(dataFolder string, force bool, reader io.Reader) error {
+func downloadData(dataFolder string, parentItemAuthor string, force bool, reader io.Reader) error {
 	var err error
 	dec := yaml.NewDecoder(reader)
-
 	for {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
@@ -252,20 +260,59 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 			break
 		}
 
-		download := false
-		if !force {
-			for _, dataS := range data.Data {
-				if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
-					download = true
+		for _, dataS := range data.Data {
+			download := false
+			dfPath := path.Join(dataFolder, dataS.DestPath)
+			dataFileName := strings.Split(dataS.DestPath, ".")[0]
+			_, downloadFromHub := hubIdx[DATA_FILES][dataFileName]
+			if downloadFromHub {
+				dataS.SourceURL = fmt.Sprintf(RawFileURLTemplate, HubBranch, hubIdx[DATA_FILES][dataFileName].RemotePath)
+			}
+
+			if _, err := os.Stat(dfPath); os.IsNotExist(err) {
+				download = true
+			} else if downloadFromHub {
+				sha, err := getSHA256(dfPath)
+				if err != nil {
+					return err
+				}
+				download = dataFileHasUpdates(sha, dataFileName)
+			}
+
+			log.Infof("%v has updates=%v", dataFileName, download)
+
+			if download || force {
+				err = types.GetData(dataS, dataFolder)
+				if err != nil {
+					return errors.Wrap(err, "while getting data")
 				}
 			}
-		}
-		if download || force {
-			err = types.GetData(data.Data, dataFolder)
-			if err != nil {
-				return errors.Wrap(err, "while getting data")
-			}
+
 		}
 	}
+
 	return nil
+}
+
+// Checks if the provided data file is latest. Only files which  are available in hub should
+// be checked for.
+func dataFileHasUpdates(fileSha string, dataFileName string) bool {
+	dataItem := hubIdx[DATA_FILES][dataFileName]
+	versions := make([]string, 0, len(dataItem.Versions))
+	for k := range dataItem.Versions {
+		versions = append(versions, k)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+	for i, version := range versions {
+		if fileSha != dataItem.Versions[version].Digest {
+			continue
+		}
+		log.Debugf("data file %s matched sha with version %s", dataFileName, version)
+		if i != 0 {
+			log.Debugf("data file %s is outdated, updating to version %s", dataFileName, versions[0])
+			return true
+		}
+		break
+	}
+	return false
 }

@@ -21,10 +21,10 @@ import (
 )
 
 /*the walk/parser_visit function can't receive extra args*/
-var hubdir, installdir string
+var hubdir, installdir, datadir string
 
+// TODO: Break this function into smaller functions.
 func parser_visit(path string, f os.FileInfo, err error) error {
-
 	var target Item
 	var local bool
 	var hubpath string
@@ -42,16 +42,17 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	if f == nil || f.IsDir() {
 		return nil
 	}
-	//we only care about yaml files
-	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") {
+	// yamls -> collections, parsers, overflows etc. txt, mmdb -> data files
+	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") && !strings.HasSuffix(f.Name(), ".txt") && !strings.HasSuffix(f.Name(), ".mmdb") {
 		return nil
 	}
 
 	subs := strings.Split(path, "/")
 
-	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Tracef("path:%s, hubdir:%s, installdir:%s datadir%s", path, hubdir, installdir, datadir)
 	/*we're in hub (~/.hub/hub/)*/
-	if strings.HasPrefix(path, hubdir) {
+
+	hubDirSetter := func() {
 		log.Tracef("in hub dir")
 		inhub = true
 		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
@@ -64,7 +65,18 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fauthor = subs[len(subs)-2]
 		stage = subs[len(subs)-3]
 		ftype = subs[len(subs)-4]
-	} else if strings.HasPrefix(path, installdir) { /*we're in install /etc/crowdsec/<type>/... */
+	}
+
+	dataDirSetter := func() {
+		log.Tracef("in data dir")
+		fauthor = ""
+		fname = subs[len(subs)-1]
+		stage = ""
+		ftype = DATA_FILES
+		fauthor = ""
+	}
+
+	installDirSetter := func() {
 		log.Tracef("in install dir")
 		if len(subs) < 3 {
 			log.Fatalf("path is too short : %s (%d)", path, len(subs))
@@ -76,23 +88,42 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		fname = subs[len(subs)-1]
 		stage = subs[len(subs)-2]
 		ftype = subs[len(subs)-3]
-		fauthor = ""
-	} else {
-		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
+	setterByPath := map[string]func(){
+		installdir: installDirSetter,
+		hubdir:     hubDirSetter,
+		datadir:    dataDirSetter,
+	}
+
+	paths := []string{installdir, hubdir, datadir}
+	sort.Slice(paths, func(i, j int) bool {
+		return len(paths[i]) > len(paths[j])
+	})
+	foundMatch := false
+	for _, p := range paths {
+		if strings.HasPrefix(path, p) {
+			setterByPath[p]()
+			foundMatch = true
+			break
+		}
+	}
+	if !foundMatch {
+		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+	}
 	log.Tracef("stage:%s ftype:%s", stage, ftype)
 	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
+
+	// correct the stage and type for non-stage stuff.
 	if stage == SCENARIOS {
 		ftype = SCENARIOS
 		stage = ""
 	} else if stage == COLLECTIONS {
 		ftype = COLLECTIONS
 		stage = ""
-	} else if ftype != PARSERS && ftype != PARSERS_OVFLW /*its a PARSER / PARSER_OVFLW with a stage */ {
+	} else if ftype != PARSERS && ftype != PARSERS_OVFLW && ftype != DATA_FILES { /*its a PARSER / PARSER_OVFLW with a stage */
 		return fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
-
 	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
 	/*
@@ -100,7 +131,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
 		when the collection is installed, both files are created
 	*/
-	//non symlinks are local user files or hub files
+	//non symlinks are local user files or hub files or data files
 	if f.Mode()&os.ModeSymlink == 0 {
 		local = true
 		log.Tracef("%s isn't a symlink", path)
@@ -122,8 +153,8 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		log.Tracef("%s points to %s", path, hubpath)
 	}
 
-	//if it's not a symlink and not in hub, it's a local file, don't bother
-	if local && !inhub {
+	//if it's not a symlink and not in hub nor it is a data file. Don't bother checking this with index
+	if local && !inhub && ftype != DATA_FILES {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
@@ -144,7 +175,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	log.Tracef("check [%s] of %s", fname, ftype)
 
 	match := false
-	for k, v := range hubIdx[ftype] {
+	for k, v := range hubIdx[ftype] { // eg ftype = "collections", k = crowdsecurity/nginx, v is an Item struct
 		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
 		if fname != v.FileName {
 			log.Tracef("%s != %s (filename)", fname, v.FileName)
@@ -152,6 +183,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		}
 		//wrong stage
 		if v.Stage != stage {
+			log.Tracef("%s != %s (stage)", v.Stage, stage)
 			continue
 		}
 		/*if we are walking hub dir, just mark present files as downloaded*/
@@ -167,14 +199,6 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			if path == hubdir+"/"+v.RemotePath {
 				log.Tracef("marking %s as downloaded", v.Name)
 				v.Downloaded = true
-			}
-		} else {
-			//wrong file
-			//<type>/<stage>/<author>/<name>.yaml
-			if !strings.HasSuffix(hubpath, v.RemotePath) {
-				//log.Printf("wrong file %s %s", hubpath, spew.Sdump(v))
-
-				continue
 			}
 		}
 		sha, err := getSHA256(path)
@@ -305,11 +329,18 @@ func CollecDepsCheck(v *Item) error {
 func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	hubdir = hub.HubDir
 	installdir = hub.ConfigDir
+	datadir = hub.DataDir
 	warnings := []string{}
 
-	/*For each, scan PARSERS, PARSERS_OVFLW, SCENARIOS and COLLECTIONS last*/
+	/*For each, scan PARSERS, PARSERS_OVFLW, DATA_FILES, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
-		cpath, err := filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		var cpath string
+		var err error
+		if scan == DATA_FILES {
+			cpath, err = filepath.Abs(hub.DataDir)
+		} else {
+			cpath, err = filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
+		}
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
@@ -317,24 +348,24 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 		if err != nil {
 			return err, warnings
 		}
-
 	}
 
 	for k, v := range hubIdx[COLLECTIONS] {
-		if v.Installed {
-			versStat := GetVersionStatus(&v)
-			if versStat == 0 { //latest
-				if err := CollecDepsCheck(&v); err != nil {
-					warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
-					hubIdx[COLLECTIONS][k] = v
-				}
-			} else if versStat == 1 { //not up-to-date
-				warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			} else { //version is higher than the highest available from hub?
-				warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
-			}
-			log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
+		if !v.Installed {
+			continue
 		}
+		versStat := GetVersionStatus(&v)
+		if versStat == 0 { //latest
+			if err := CollecDepsCheck(&v); err != nil {
+				warnings = append(warnings, fmt.Sprintf("dependency of %s : %s", v.Name, err))
+				hubIdx[COLLECTIONS][k] = v
+			}
+		} else if versStat == 1 { //not up-to-date
+			warnings = append(warnings, fmt.Sprintf("update for collection %s available (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		} else { //version is higher than the highest available from hub?
+			warnings = append(warnings, fmt.Sprintf("collection %s is in the future (currently:%s, latest:%s)", v.Name, v.LocalVersion, v.Version))
+		}
+		log.Debugf("installed (%s) - status:%d | installed:%s | latest : %s | full : %+v", v.Name, semver.Compare("v"+v.Version, "v"+v.LocalVersion), v.LocalVersion, v.Version, v.Versions)
 	}
 	return nil, warnings
 }

@@ -22,11 +22,12 @@ var PARSERS = "parsers"
 var PARSERS_OVFLW = "postoverflows"
 var SCENARIOS = "scenarios"
 var COLLECTIONS = "collections"
-var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS}
+var DATA_FILES = "data_files"
+var ItemTypes = []string{PARSERS, PARSERS_OVFLW, SCENARIOS, COLLECTIONS, DATA_FILES}
 
 var hubIdx map[string]map[string]Item
 
-var RawFileURLTemplate = "https://hub-cdn.crowdsec.net/%s/%s"
+var RawFileURLTemplate = "https://raw.githubusercontent.com/sbs2001/hub/%s/%s"
 var HubBranch = "master"
 var HubIndexFile = ".index.json"
 
@@ -57,11 +58,10 @@ type Item struct {
 	BelongsToCollections []string `yaml:"belongs_to_collections,omitempty" json:"belongs_to_collections,omitempty"` /*if it's part of collections, track name here*/
 
 	/*remote (hub) infos*/
-	RemoteURL  string                 `yaml:"remoteURL,omitempty" json:"remoteURL,omitempty"` //the full remote uri of file in http
-	RemotePath string                 `json:"path,omitempty" yaml:"remote_path,omitempty"`    //the path relative to git ie. /parsers/stage/author/file.yaml
-	RemoteHash string                 `yaml:"hash,omitempty" json:"hash,omitempty"`           //the meow
-	Version    string                 `json:"version,omitempty"`                              //the last version
-	Versions   map[string]ItemVersion `json:"versions,omitempty" yaml:"-"`                    //the list of existing versions
+	RemotePath string                 `json:"path,omitempty" yaml:"remote_path,omitempty"` //the path relative to git ie. /parsers/stage/author/file.yaml
+	RemoteHash string                 `yaml:"hash,omitempty" json:"hash,omitempty"`        //the meow
+	Version    string                 `json:"version,omitempty"`                           //the last version
+	Versions   map[string]ItemVersion `json:"versions,omitempty" yaml:"-"`                 //the list of existing versions
 
 	/*local (deployed) infos*/
 	LocalPath string `yaml:"local_path,omitempty" json:"local_path,omitempty"` //the local path relative to ${CFG_DIR}
