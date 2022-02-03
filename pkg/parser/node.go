@@ -165,7 +165,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		for _, v := range n.Whitelist.B_Ips {
 			if v.Equal(src) {
-				clog.Debugf("Event from [%s] is whitelisted by Ips !", src)
+				clog.Debugf("Event from [%s] is whitelisted by IP (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
 			} else {
 				clog.Tracef("whitelist: %s is not eq [%s]", src, v)
@@ -174,7 +174,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		for _, v := range n.Whitelist.B_Cidrs {
 			if v.Contains(src) {
-				clog.Debugf("Event from [%s] is whitelisted by Cidrs !", src)
+				clog.Debugf("Event from [%s] is whitelisted by CIDR (%s), reason [%s]", src, v, n.Whitelist.Reason)
 				isWhitelisted = true
 			} else {
 				clog.Tracef("whitelist: %s not in [%s]", src, v)
@@ -200,7 +200,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
 			}
 			if out {
-				clog.Debugf("Event is whitelisted by Expr n#%d", eidx)
+				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
 				p.Whitelisted = true
 				isWhitelisted = true
 			}
