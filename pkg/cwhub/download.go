@@ -80,7 +80,6 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
-	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
@@ -143,10 +142,19 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 			return target, nil
 		}
 		if target.UpToDate {
-			log.Debugf("%s : up-to-date, not updated", target.Name)
 			//  We still have to check if data files are present
+			log.Debugf("%s : up-to-date, not updated", target.Name)
+			data, err := os.ReadFile(target.LocalPath)
+			if err != nil {
+				return target, err
+			}
+			if err := downloadData(dataFolder, target.Author, overwrite, bytes.NewReader(data)); err != nil {
+				return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+			}
+			return target, nil
 		}
 	}
+	log.Debugf("Downloading %s %s", target.Type, target.Name)
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
 	if err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", req.URL.String()))
