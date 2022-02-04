@@ -17,6 +17,7 @@ crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
 cscli:
+  hub_branch: datafiles_in_hub
   output: human
 db_config:
   log_level: info
