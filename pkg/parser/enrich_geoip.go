@@ -87,32 +87,54 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 	return ret, nil
 }
 
+/*deal with data versioning without breaking : support crowdsecurity/xxx or xxx*/
+
 func GeoIPCityInit(cfg map[string]string) (interface{}, error) {
 	dbCityReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
-	if err != nil {
-		log.Debugf("couldn't open geoip : %v", err)
-		return nil, err
+	if err == nil {
+		return dbCityReader, nil
 	}
+	dbCityReader, err = geoip2.Open(cfg["datadir"] + "/crowdsecurity/GeoLite2-City.mmdb")
+	if err == nil {
+		return dbCityReader, nil
 
-	return dbCityReader, nil
+	}
+	log.Debugf("couldn't open geoip (%s nor %s) : %v",
+		cfg["datadir"]+"/crowdsecurity/GeoLite2-City.mmdb",
+		cfg["datadir"]+"/GeoLite2-City.mmdb",
+		err)
+	return nil, err
 }
 
 func GeoIPASNInit(cfg map[string]string) (interface{}, error) {
 	dbASReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
-	if err != nil {
-		log.Debugf("couldn't open geoip : %v", err)
-		return nil, err
-	}
+	if err == nil {
+		return dbASReader, nil
 
-	return dbASReader, nil
+	}
+	dbASReader, err = geoip2.Open(cfg["datadir"] + "/crowdsecurity/GeoLite2-ASN.mmdb")
+	if err == nil {
+		return dbASReader, nil
+	}
+	log.Debugf("couldn't open geoip (%s nor %s) : %v",
+		cfg["datadir"]+"/crowdsecurity/GeoLite2-ASN.mmdb",
+		cfg["datadir"]+"/GeoLite2-ASN.mmdb",
+		err)
+	return nil, err
 }
 
 func IpToRangeInit(cfg map[string]string) (interface{}, error) {
 	ipToRangeReader, err := maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
-	if err != nil {
-		log.Debugf("couldn't open geoip : %v", err)
-		return nil, err
+	if err == nil {
+		return ipToRangeReader, nil
 	}
-
-	return ipToRangeReader, nil
+	ipToRangeReader, err = maxminddb.Open(cfg["datadir"] + "/crowdsecurity/GeoLite2-ASN.mmdb")
+	if err == nil {
+		return ipToRangeReader, nil
+	}
+	log.Debugf("couldn't open geoip (%s nor %s) : %v",
+		cfg["datadir"]+"/crowdsecurity/GeoLite2-ASN.mmdb",
+		cfg["datadir"]+"/GeoLite2-ASN.mmdb",
+		err)
+	return nil, err
 }
