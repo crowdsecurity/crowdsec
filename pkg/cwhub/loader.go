@@ -154,7 +154,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 	}
 
 	//if it's not a symlink and not in hub nor it is a data file. Don't bother checking this with index
-	if local && !inhub && ftype != DATA_FILES {
+	if local && !inhub { // && ftype != DATA_FILES {
 		log.Tracef("%s is a local file, skip", path)
 		skippedLocal++
 		//	log.Printf("local scenario, skip.")
