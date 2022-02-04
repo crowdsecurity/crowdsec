@@ -147,7 +147,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 			log.Debugf("%s : up-to-date, not updated", target.Name)
 			data, err := os.ReadFile(target.LocalPath)
 			if err != nil {
-				return target, err
+				return target, errors.Wrapf(err, "reading file '%s'", target.LocalPath)
 			}
 			if err := downloadData(dataFolder, target.Author, overwrite, bytes.NewReader(data)); err != nil {
 				return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
