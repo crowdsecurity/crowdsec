@@ -262,7 +262,11 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		}
 		return nil
 	}
-	log.Infof("Ignoring file %s of type %s", path, ftype)
+	if ftype != DATA_FILES {
+		log.Infof("Ignoring file %s of type %s", path, ftype)
+	} else {
+		log.Debugf("Ignoring file %s of type %s", path, ftype)
+	}
 	return nil
 }
 
