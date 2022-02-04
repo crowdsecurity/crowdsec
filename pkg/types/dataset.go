@@ -43,7 +43,7 @@ func downloadFile(url string, destPath string) error {
 		return fmt.Errorf("download response 'HTTP %d' : %s", resp.StatusCode, string(body))
 	}
 
-	if err := os.MkdirAll(filepath.Dir(destPath), 0666); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0744); err != nil {
 		return err
 	}
 
