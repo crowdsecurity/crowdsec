@@ -5,7 +5,6 @@ import (
 	//"errors"
 	"fmt"
 	"io/ioutil"
-	"sort"
 
 	"github.com/pkg/errors"
 	"golang.org/x/mod/semver"
@@ -23,250 +22,302 @@ import (
 /*the walk/parser_visit function can't receive extra args*/
 var hubdir, installdir, datadir string
 
-// TODO: Break this function into smaller functions.
-func parser_visit(path string, f os.FileInfo, err error) error {
-	var target Item
-	var local bool
-	var hubpath string
-	var inhub bool
-	var fname string
-	var ftype string
-	var fauthor string
-	var stage string
-
-	path, err = filepath.Abs(path)
+func visit_discard(path string, f os.FileInfo) (string, bool, error) {
+	//return path, false, nil
+	path, err := filepath.Abs(path)
 	if err != nil {
-		return err
+		return path, true, err
 	}
 	//we only care about files
 	if f == nil || f.IsDir() {
+		return path, true, nil
+	}
+	return path, false, nil
+}
+
+func hubdir_visit(path string, f os.FileInfo, err error) error {
+	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
+	/*only interested by yaml files */
+	path, discard, err := visit_discard(path, f)
+	if err != nil {
+		return err
+	}
+	if discard {
 		return nil
 	}
-	// yamls -> collections, parsers, overflows etc. txt, mmdb -> data files
-	if !strings.HasSuffix(f.Name(), ".yaml") && !strings.HasSuffix(f.Name(), ".yml") && !strings.HasSuffix(f.Name(), ".txt") && !strings.HasSuffix(f.Name(), ".mmdb") {
+	if !allowed_extensions[filepath.Ext(path)] {
+		log.Debugf("discarding %s : not a yaml file", path)
 		return nil
 	}
+	//extract components from path :
+	//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
+	//.../hub/scenarios/crowdsec/ssh_bf.yaml
+	//.../hub/profiles/crowdsec/linux.yaml
+	path_components := strings.Split(path, string(filepath.Separator))
 
-	subs := strings.Split(path, "/")
-
-	log.Tracef("path:%s, hubdir:%s, installdir:%s datadir%s", path, hubdir, installdir, datadir)
-	/*we're in hub (~/.hub/hub/)*/
-
-	hubDirSetter := func() {
-		log.Tracef("in hub dir")
-		inhub = true
-		//.../hub/parsers/s00-raw/crowdsec/skip-pretag.yaml
-		//.../hub/scenarios/crowdsec/ssh_bf.yaml
-		//.../hub/profiles/crowdsec/linux.yaml
-		if len(subs) < 4 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
-		}
-		fname = subs[len(subs)-1]
-		fauthor = subs[len(subs)-2]
-		stage = subs[len(subs)-3]
-		ftype = subs[len(subs)-4]
+	if len(path_components) < 4 {
+		log.Fatalf("path is too short : %s (%d)", path, len(path_components))
 	}
+	fname := path_components[len(path_components)-1]
+	fauthor := path_components[len(path_components)-2]
+	fstage := path_components[len(path_components)-3]
+	ftype := path_components[len(path_components)-4]
 
-	dataDirSetter := func() {
-		log.Tracef("in data dir")
-		fauthor = ""
-		fname = subs[len(subs)-1]
-		stage = ""
-		ftype = DATA_FILES
-		fauthor = ""
-	}
+	log.Tracef("%s : stage:%s ftype:%s", path, fstage, ftype)
 
-	installDirSetter := func() {
-		log.Tracef("in install dir")
-		if len(subs) < 3 {
-			log.Fatalf("path is too short : %s (%d)", path, len(subs))
-		}
-		///.../config/parser/stage/file.yaml
-		///.../config/postoverflow/stage/file.yaml
-		///.../config/scenarios/scenar.yaml
-		///.../config/collections/linux.yaml //file is empty
-		fname = subs[len(subs)-1]
-		stage = subs[len(subs)-2]
-		ftype = subs[len(subs)-3]
+	if ftype == DATA_FILES {
+		return fmt.Errorf("unexpected data file in hub : %s", path)
 	}
-
-	setterByPath := map[string]func(){
-		installdir: installDirSetter,
-		hubdir:     hubDirSetter,
-		datadir:    dataDirSetter,
-	}
-
-	paths := []string{installdir, hubdir, datadir}
-	sort.Slice(paths, func(i, j int) bool {
-		return len(paths[i]) > len(paths[j])
-	})
-	foundMatch := false
-	for _, p := range paths {
-		if strings.HasPrefix(path, p) {
-			setterByPath[p]()
-			foundMatch = true
-			break
-		}
-	}
-	if !foundMatch {
-		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
-	}
-	log.Tracef("stage:%s ftype:%s", stage, ftype)
-	//log.Printf("%s -> name:%s stage:%s", path, fname, stage)
 
 	// correct the stage and type for non-stage stuff.
-	if stage == SCENARIOS {
+	if fstage == SCENARIOS {
 		ftype = SCENARIOS
-		stage = ""
-	} else if stage == COLLECTIONS {
+		fstage = ""
+	} else if fstage == COLLECTIONS {
 		ftype = COLLECTIONS
-		stage = ""
-	} else if ftype != PARSERS && ftype != PARSERS_OVFLW && ftype != DATA_FILES { /*its a PARSER / PARSER_OVFLW with a stage */
+		fstage = ""
+	} else if ftype != PARSERS && ftype != PARSERS_OVFLW { /*its a PARSER / PARSER_OVFLW with a stage */
 		return fmt.Errorf("unknown configuration type for file '%s'", path)
 	}
-	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, stage, ftype)
 
-	/*
-		we can encounter 'collections' in the form of a symlink :
-		/etc/crowdsec/.../collections/linux.yaml -> ~/.hub/hub/collections/.../linux.yaml
-		when the collection is installed, both files are created
-	*/
+	log.Tracef("CORRECTED [%s] by [%s] in stage [%s] of type [%s]", fname, fauthor, fstage, ftype)
+
+	//in the hub, we don't expect symlinks
+	if f.Mode()&os.ModeSymlink != 0 {
+		log.Warningf("%s in the hub is a symlink, this isn't expected", path)
+	}
+	//try to find which configuration item it is
+	log.Tracef("check [%s] of %s", fname, ftype)
+
+	for itemName, item := range hubIdx[ftype] {
+		log.Tracef("check [%s] vs [%s] : %s/%s/%s", fname, item.RemotePath, ftype, fstage, fname)
+		if !item.compareFile(fname, fstage, fauthor, path) {
+			continue
+		}
+		//we're in the hub, mark the file as present and downloaded
+		if path == hubdir+"/"+item.RemotePath { //
+			log.Tracef("marking %s as downloaded", item.Name)
+			item.Downloaded = true
+		}
+
+		version, sha, uptodate, err := item.getVersion(path)
+		if err != nil {
+			return errors.Wrapf(err, "while getting version of %s", path)
+		}
+
+		if version == "" {
+			log.Debugf("got tainted match for %s : %s", item.Name, path)
+			skippedTainted += 1
+			item.UpToDate = uptodate
+			item.LocalVersion = "?"
+			item.Tainted = true
+			item.LocalHash = sha
+		} else {
+			item.UpToDate = uptodate
+		}
+		//if it was not present, update the index (it's the first time we're seeing this item. Might be downloaded and not installed)
+		if _, ok := hubIdx[ftype][itemName]; !ok {
+			hubIdx[ftype][itemName] = item
+		}
+		return nil
+	}
+	log.Infof("File %s found in hub directory wasn't found in the hub index, ignoring it", path)
+	return nil
+}
+
+func configdir_visit(path string, f os.FileInfo, err error) error {
+
+	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
+	/*only interested by yaml files */
+	path, discard, err := visit_discard(path, f)
+	if err != nil {
+		return err
+	}
+	if discard {
+		return nil
+	}
+	if !allowed_extensions[filepath.Ext(path)] {
+		log.Debugf("discarding %s : not a yaml file", path)
+		return nil
+	}
+	log.Debugf("configdir_visit for %s", path)
+	path_components := strings.Split(path, string(filepath.Separator))
+
+	if len(path_components) < 3 {
+		log.Fatalf("path is too short : %s (%d)", path, len(path_components))
+	}
+	///.../config/parser/stage/file.yaml
+	///.../config/postoverflow/stage/file.yaml
+	///.../config/scenarios/scenar.yaml
+	///.../config/collections/linux.yaml //file is empty
+	fname := path_components[len(path_components)-1]
+	fstage := path_components[len(path_components)-2]
+	ftype := path_components[len(path_components)-3]
+
+	if ftype == DATA_FILES {
+		return fmt.Errorf("unexpected data file in install directory : %s", path)
+	}
+
+	log.Tracef("stage:%s ftype:%s", fstage, ftype)
+
+	// correct the stage and type for non-stage stuff.
+	if fstage == SCENARIOS {
+		ftype = SCENARIOS
+		fstage = ""
+	} else if fstage == COLLECTIONS {
+		ftype = COLLECTIONS
+		fstage = ""
+	} else if ftype != PARSERS && ftype != PARSERS_OVFLW { /*its a PARSER / PARSER_OVFLW with a stage */
+		return fmt.Errorf("unknown configuration type for file '%s'", path)
+	}
+	log.Tracef("CORRECTED [%s] in stage [%s] of type [%s]", fname, fstage, ftype)
+
 	//non symlinks are local user files or hub files or data files
 	if f.Mode()&os.ModeSymlink == 0 {
-		local = true
 		log.Tracef("%s isn't a symlink", path)
-	} else {
-		hubpath, err = os.Readlink(path)
+		local_item := Item{}
+		log.Tracef("%s is a local file, skip", path)
+		skippedLocal++
+		local_item.Name = fname
+		local_item.Stage = fstage
+		local_item.Installed = true
+		local_item.Type = ftype
+		local_item.Local = true
+		local_item.LocalPath = path
+		local_item.UpToDate = true
+		x := strings.Split(path, string(filepath.Separator))
+		local_item.FileName = x[len(x)-1]
+		hubIdx[ftype][fname] = local_item
+		return nil
+
+	}
+	hubpath, err := os.Readlink(path)
+	if err != nil {
+		return fmt.Errorf("unable to read symlink of %s", path)
+	}
+	//the symlink target doesn't exist, user might have removed hub directory without deleting /etc/crowdsec/....yaml
+	_, err = os.Lstat(hubpath)
+	if os.IsNotExist(err) {
+		log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
+		//remove the symlink
+		if err = os.Remove(path); err != nil {
+			return fmt.Errorf("failed to unlink %s: %+v", path, err)
+		}
+		return nil
+	}
+
+	//try to get the matching item version
+	for itemName, item := range hubIdx[ftype] { // eg ftype = "collections", k = crowdsecurity/nginx, v is an Item struct
+		if !item.compareFile(fname, fstage, "", path) {
+			continue
+		}
+		log.Tracef("check [%s] vs [%s] : %s", fname, item.RemotePath, ftype+"/"+fstage+"/"+fname+".yaml")
+		version, sha, uptodate, err := item.getVersion(path)
+		if err != nil {
+			return errors.Wrapf(err, "while getting version of %s", path)
+		}
+		item.LocalPath = path
+		item.Installed = true
+		item.LocalHash = sha
+		log.Debugf("found exact match for %s : version is %s (up-to-date:%t)", path, version, uptodate)
+		/*we found the matching item, update it*/
+		if version != "" {
+			item.LocalVersion = version
+			item.Tainted = false
+			item.Downloaded = true
+			item.UpToDate = uptodate
+		} else {
+			skippedTainted += 1
+			//the file and the stage is right, but the hash is wrong, it has been tainted by user
+			item.UpToDate = false
+			item.LocalVersion = "?"
+			item.Tainted = true
+		}
+		hubIdx[ftype][itemName] = item
+		return nil
+	}
+	log.Warningf("File %s found in install directory wasn't accounted for : not a symlink to hub, not a local file", path)
+	return nil
+}
+
+func datadir_visit(path string, f os.FileInfo, err error) error {
+
+	if err != nil {
+		log.Errorf("got an error : %+v", err)
+	}
+	/*only interested by yaml files */
+	path, discard, err := visit_discard(path, f)
+	if err != nil {
+		return err
+	}
+	if discard {
+		return nil
+	}
+
+	log.Tracef("datadir_visit for %s", path)
+	path_components := strings.Split(path, string(filepath.Separator))
+
+	if len(path_components) < 2 {
+		log.Fatalf("path is too short : %s (%d)", path, len(path_components))
+	}
+	log.Tracef("in data dir")
+	fname := path_components[len(path_components)-1]
+	fauthor := path_components[len(path_components)-2]
+	ftype := DATA_FILES
+
+	log.Tracef("CORRECTED [%s] by [%s] of type [%s]", fname, fauthor, ftype)
+
+	//non symlinks are local user files or hub files or data files
+	if f.Mode()&os.ModeSymlink != 0 {
+		log.Warningf("%s is a symlink, that's unexpected (but can be ok)", path)
+		final_path, err := os.Readlink(path)
 		if err != nil {
 			return fmt.Errorf("unable to read symlink of %s", path)
 		}
 		//the symlink target doesn't exist, user might have removed ~/.hub/hub/...yaml without deleting /etc/crowdsec/....yaml
-		_, err := os.Lstat(hubpath)
+		_, err = os.Lstat(path)
 		if os.IsNotExist(err) {
-			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, hubpath)
-			//remove the symlink
+			log.Infof("%s is a symlink to %s that doesn't exist, deleting symlink", path, final_path)
 			if err = os.Remove(path); err != nil {
 				return fmt.Errorf("failed to unlink %s: %+v", path, err)
 			}
 			return nil
 		}
-		log.Tracef("%s points to %s", path, hubpath)
 	}
 
-	//if it's not a symlink and not in hub nor it is a data file. Don't bother checking this with index
-	if local && !inhub && ftype != DATA_FILES {
-		log.Tracef("%s is a local file, skip", path)
-		skippedLocal++
-		//	log.Printf("local scenario, skip.")
-		target.Name = fname
-		target.Stage = stage
-		target.Installed = true
-		target.Type = ftype
-		target.Local = true
-		target.LocalPath = path
-		target.UpToDate = true
-		x := strings.Split(path, "/")
-		target.FileName = x[len(x)-1]
-
-		hubIdx[ftype][fname] = target
-		return nil
-	}
 	//try to find which configuration item it is
 	log.Tracef("check [%s] of %s", fname, ftype)
 
-	match := false
-	for k, v := range hubIdx[ftype] { // eg ftype = "collections", k = crowdsecurity/nginx, v is an Item struct
-		log.Tracef("check [%s] vs [%s] : %s", fname, v.RemotePath, ftype+"/"+stage+"/"+fname+".yaml")
-		if fname != v.FileName {
-			log.Tracef("%s != %s (filename)", fname, v.FileName)
+	for itemName, item := range hubIdx[ftype] { // eg ftype = "collections", k = crowdsecurity/nginx, v is an Item struct
+		log.Tracef("check [%s] vs [%s]", fname, item.RemotePath)
+		if !item.compareFile(fname, "", fauthor, path) {
 			continue
 		}
-		//wrong stage
-		if v.Stage != stage {
-			log.Tracef("%s != %s (stage)", v.Stage, stage)
-			continue
-		}
-		/*if we are walking hub dir, just mark present files as downloaded*/
-		if inhub {
-			//wrong author
-			if fauthor != v.Author {
-				continue
-			}
-			//wrong file
-			if v.Name+".yaml" != fauthor+"/"+fname {
-				continue
-			}
-			if path == hubdir+"/"+v.RemotePath {
-				log.Tracef("marking %s as downloaded", v.Name)
-				v.Downloaded = true
-			}
-		}
-		sha, err := getSHA256(path)
+
+		version, sha, uptodate, err := item.getVersion(path)
 		if err != nil {
-			log.Fatalf("Failed to get sha of %s : %v", path, err)
+			return errors.Wrapf(err, "while getting version of %s", path)
 		}
-		//let's reverse sort the versions to deal with hash collisions (#154)
-		versions := make([]string, 0, len(v.Versions))
-		for k := range v.Versions {
-			versions = append(versions, k)
-		}
-		sort.Sort(sort.Reverse(sort.StringSlice(versions)))
-
-		for _, version := range versions {
-			val := v.Versions[version]
-			if sha != val.Digest {
-				//log.Printf("matching filenames, wrong hash %s != %s -- %s", sha, val.Digest, spew.Sdump(v))
-				continue
-			}
-			/*we got an exact match, update struct*/
-			if !inhub {
-				log.Tracef("found exact match for %s, version is %s, latest is %s", v.Name, version, v.Version)
-				v.LocalPath = path
-				v.LocalVersion = version
-				v.Tainted = false
-				v.Downloaded = true
-				/*if we're walking the hub, present file doesn't means installed file*/
-				v.Installed = true
-				v.LocalHash = sha
-				x := strings.Split(path, "/")
-				target.FileName = x[len(x)-1]
-			}
-			if version == v.Version {
-				log.Tracef("%s is up-to-date", v.Name)
-				v.UpToDate = true
-			}
-			match = true
-			break
-		}
-		if !match {
-			log.Tracef("got tainted match for %s : %s", v.Name, path)
+		item.LocalPath = path
+		item.Installed = true
+		item.LocalHash = sha
+		log.Debugf("DATA [%s] found exact match for %s : version is %s (up-to-date:%t)", itemName, path, version, uptodate)
+		if version == "" {
 			skippedTainted += 1
-			//the file and the stage is right, but the hash is wrong, it has been tainted by user
-			if !inhub {
-				v.LocalPath = path
-				v.Installed = true
-			}
-			v.UpToDate = false
-			v.LocalVersion = "?"
-			v.Tainted = true
-			v.LocalHash = sha
-			x := strings.Split(path, "/")
-			target.FileName = x[len(x)-1]
-
+			item.UpToDate = uptodate
+			item.LocalVersion = "?"
+			item.Tainted = true
+			item.LocalHash = sha
+		} else {
+			item.UpToDate = uptodate
+			item.LocalVersion = version
+			item.LocalHash = sha
 		}
-		//update the entry if appropriate
-		if _, ok := hubIdx[ftype][k]; !ok {
-			hubIdx[ftype][k] = v
-		} else if !inhub {
-			hubIdx[ftype][k] = v
-		}
+		hubIdx[ftype][itemName] = item
 		return nil
 	}
-	if ftype != DATA_FILES {
-		log.Infof("Ignoring file %s of type %s", path, ftype)
-	} else {
-		log.Debugf("Ignoring file %s of type %s", path, ftype)
-	}
+	log.Debugf("Ignoring file %s of type %s", path, ftype)
+
 	return nil
 }
 
@@ -295,7 +346,7 @@ func CollecDepsCheck(v *Item) error {
 				if val.Type == COLLECTIONS {
 					log.Tracef("collec, recurse.")
 					if err := CollecDepsCheck(&val); err != nil {
-						return fmt.Errorf("sub collection %s is broken : %s", val.Name, err)
+						return fmt.Errorf("sub collection %s warning : %s", val.Name, err)
 					}
 					hubIdx[ptrtype][p] = val
 				}
@@ -336,19 +387,36 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 	datadir = hub.DataDir
 	warnings := []string{}
 
+	//data_dir is quite simple : there is no collections and such
+	if dir == hub.DataDir {
+		var cpath string
+		var err error
+		cpath, err = filepath.Abs(hub.DataDir)
+		if err != nil {
+			log.Errorf("failed %s : %s", cpath, err)
+		}
+		err = filepath.Walk(cpath, datadir_visit)
+		return err, warnings
+	}
+
 	/*For each, scan PARSERS, PARSERS_OVFLW, DATA_FILES, SCENARIOS and COLLECTIONS last*/
 	for _, scan := range ItemTypes {
 		var cpath string
 		var err error
-		if scan == DATA_FILES {
-			cpath, err = filepath.Abs(hub.DataDir)
-		} else {
-			cpath, err = filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
-		}
+
+		cpath, err = filepath.Abs(fmt.Sprintf("%s/%s", dir, scan))
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
-		err = filepath.Walk(cpath, parser_visit)
+
+		switch dir {
+		case hub.HubDir:
+			err = filepath.Walk(cpath, hubdir_visit)
+		case hub.ConfigDir:
+			err = filepath.Walk(cpath, configdir_visit)
+		default:
+			log.Fatalf("unexpected dir %s", dir)
+		}
 		if err != nil {
 			return err, warnings
 		}
@@ -386,6 +454,10 @@ func LocalSync(hub *csconfig.Hub) (error, []string) {
 	err, _ = SyncDir(hub, hub.HubDir)
 	if err != nil {
 		return fmt.Errorf("failed to scan %s : %s", hub.HubDir, err), warnings
+	}
+	err, _ = SyncDir(hub, hub.DataDir)
+	if err != nil {
+		return fmt.Errorf("failed to scan %s : %s", hub.DataDir, err), warnings
 	}
 	return nil, warnings
 }

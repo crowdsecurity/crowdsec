@@ -3,6 +3,7 @@ package cwhub
 import (
 	"crypto/sha256"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	//"errors"
@@ -79,6 +80,55 @@ type Item struct {
 	PostOverflows []string `yaml:"postoverflows,omitempty" json:"postoverflows,omitempty"`
 	Scenarios     []string `yaml:"scenarios,omitempty" json:"scenarios,omitempty"`
 	Collections   []string `yaml:"collections,omitempty" json:"collections,omitempty"`
+}
+
+func (i *Item) compareFile(fname, fstage, fauthor, path string) bool {
+	//wrong filename
+	if fname != i.FileName {
+		log.Tracef("%s != %s (filename)", fname, i.FileName)
+		return false
+	}
+	//wrong stage
+	if fstage != "" && fstage != i.Stage {
+		log.Tracef("%s != %s (stage)", fstage, i.Stage)
+		return false
+	}
+	//wrong author
+	if fauthor != "" && fauthor != i.Author {
+		log.Tracef("%s != %s (author)", fauthor, i.Author)
+		return false
+	}
+	return true
+}
+
+func (i *Item) getVersion(path string) (string, string, bool, error) {
+	//returns version, hash, up-to-date flag, error
+	sha, err := getSHA256(path)
+	if err != nil {
+		return "", "", false, err
+	}
+
+	//let's reverse sort the versions to deal with hash collisions (#154)
+	versions := make([]string, 0, len(i.Versions))
+	for k := range i.Versions {
+		versions = append(versions, k)
+	}
+	sort.Sort(sort.Reverse(sort.StringSlice(versions)))
+
+	for _, version := range versions {
+		val := i.Versions[version]
+		if sha != val.Digest {
+			continue
+		}
+		//if the version is == item.version, it means it's the last available version
+		if version == i.Version {
+			return version, sha, true, nil
+		}
+		//otherwise, return the version nontheless
+		return version, sha, false, nil
+	}
+	//the version is unknown
+	return "", sha, false, nil
 }
 
 func (i *Item) toHubStatus() ItemHubStatus {
@@ -201,8 +251,8 @@ func AddItem(itemType string, item Item) error {
 }
 
 func DisplaySummary() {
-	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers", len(hubIdx[COLLECTIONS]),
-		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]))
+	log.Printf("Loaded %d collecs, %d parsers, %d scenarios, %d post-overflow parsers, %d data files", len(hubIdx[COLLECTIONS]),
+		len(hubIdx[PARSERS]), len(hubIdx[SCENARIOS]), len(hubIdx[PARSERS_OVFLW]), len(hubIdx[DATA_FILES]))
 	if skippedLocal > 0 || skippedTainted > 0 {
 		log.Printf("unmanaged items : %d local, %d tainted", skippedLocal, skippedTainted)
 	}
@@ -266,7 +316,6 @@ func GetUpstreamInstalledScenarios() ([]Item, error) {
 func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
 	if _, ok := hubIdx[itemType]; !ok {
 		log.Errorf("type %s doesn't exist", itemType)
-
 		return nil
 	}
 
