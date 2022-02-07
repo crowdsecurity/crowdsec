@@ -443,14 +443,6 @@ func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, er
 	}, nil
 }
 
-func getUUID() (string, error) {
-	if d, err := os.ReadFile("/proc/sys/kernel/random/uuid"); err != nil {
-		return "", err
-	} else {
-		return string(d), nil
-	}
-}
-
 func getHandshake() (plugin.HandshakeConfig, error) {
 	uuid, err := getUUID()
 	if err != nil {
