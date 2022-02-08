@@ -36,6 +36,10 @@ func visitDiscard(path string, f os.FileInfo) (string, bool, error) {
 }
 
 func hubdirVisit(path string, f os.FileInfo, err error) error {
+
+	if err != nil {
+		log.Warningf("error visiting %s", err)
+	}
 	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
 	/*only interested by yaml files */
 	path, discard, err := visitDiscard(path, f)
@@ -127,6 +131,9 @@ func hubdirVisit(path string, f os.FileInfo, err error) error {
 
 func configdirVisit(path string, f os.FileInfo, err error) error {
 
+	if err != nil {
+		log.Warningf("error visiting %s", err)
+	}
 	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
 	/*only interested by yaml files */
 	path, discard, err := visitDiscard(path, f)
@@ -242,8 +249,9 @@ func configdirVisit(path string, f os.FileInfo, err error) error {
 func datadirVisit(path string, f os.FileInfo, err error) error {
 
 	if err != nil {
-		log.Errorf("got an error : %+v", err)
+		log.Warningf("error visiting %s", err)
 	}
+
 	/*only interested by yaml files */
 	path, discard, err := visitDiscard(path, f)
 	if err != nil {
