@@ -19,10 +19,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-/*the walk/parser_visit function can't receive extra args*/
+/*the walk function can't receive extra args*/
 var hubdir, installdir, datadir string
 
-func visit_discard(path string, f os.FileInfo) (string, bool, error) {
+func visitDiscard(path string, f os.FileInfo) (string, bool, error) {
 	//return path, false, nil
 	path, err := filepath.Abs(path)
 	if err != nil {
@@ -35,10 +35,10 @@ func visit_discard(path string, f os.FileInfo) (string, bool, error) {
 	return path, false, nil
 }
 
-func hubdir_visit(path string, f os.FileInfo, err error) error {
+func hubdirVisit(path string, f os.FileInfo, err error) error {
 	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
 	/*only interested by yaml files */
-	path, discard, err := visit_discard(path, f)
+	path, discard, err := visitDiscard(path, f)
 	if err != nil {
 		return err
 	}
@@ -125,11 +125,11 @@ func hubdir_visit(path string, f os.FileInfo, err error) error {
 	return nil
 }
 
-func configdir_visit(path string, f os.FileInfo, err error) error {
+func configdirVisit(path string, f os.FileInfo, err error) error {
 
 	allowed_extensions := map[string]bool{".yaml": true, ".yml": true}
 	/*only interested by yaml files */
-	path, discard, err := visit_discard(path, f)
+	path, discard, err := visitDiscard(path, f)
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,6 @@ func configdir_visit(path string, f os.FileInfo, err error) error {
 		log.Debugf("discarding %s : not a yaml file", path)
 		return nil
 	}
-	log.Debugf("configdir_visit for %s", path)
 	path_components := strings.Split(path, string(filepath.Separator))
 
 	if len(path_components) < 3 {
@@ -240,13 +239,13 @@ func configdir_visit(path string, f os.FileInfo, err error) error {
 	return nil
 }
 
-func datadir_visit(path string, f os.FileInfo, err error) error {
+func datadirVisit(path string, f os.FileInfo, err error) error {
 
 	if err != nil {
 		log.Errorf("got an error : %+v", err)
 	}
 	/*only interested by yaml files */
-	path, discard, err := visit_discard(path, f)
+	path, discard, err := visitDiscard(path, f)
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,6 @@ func datadir_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 
-	log.Tracef("datadir_visit for %s", path)
 	path_components := strings.Split(path, string(filepath.Separator))
 
 	if len(path_components) < 2 {
@@ -395,7 +393,7 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 		if err != nil {
 			log.Errorf("failed %s : %s", cpath, err)
 		}
-		err = filepath.Walk(cpath, datadir_visit)
+		err = filepath.Walk(cpath, datadirVisit)
 		return err, warnings
 	}
 
@@ -411,9 +409,9 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 
 		switch dir {
 		case hub.HubDir:
-			err = filepath.Walk(cpath, hubdir_visit)
+			err = filepath.Walk(cpath, hubdirVisit)
 		case hub.ConfigDir:
-			err = filepath.Walk(cpath, configdir_visit)
+			err = filepath.Walk(cpath, configdirVisit)
 		default:
 			log.Fatalf("unexpected dir %s", dir)
 		}
