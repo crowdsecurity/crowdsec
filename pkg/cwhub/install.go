@@ -27,17 +27,26 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 		return target, fmt.Errorf("%s is tainted, use '--force' to overwrite", target.Name)
 	}
 
-	/*for a COLLECTIONS, disable sub-items*/
+	/*for a COLLECTIONS, disable sub-items, if they are used _only_ by this item :)*/
 	if target.Type == COLLECTIONS {
 		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+
+					if len(val.BelongsToCollections) > 1 {
+						log.Infof("%s belongs to more than one collection, won't disable (%v)", p, val.BelongsToCollections)
+						continue
 					}
+					if len(val.BelongsToCollections) == 1 && val.BelongsToCollections[0] == target.Name {
+						log.Infof("%s belongs exclusively to %s, disabling", p, target.Name)
+						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
+						if err != nil {
+							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+						}
+					}
+
 				} else {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
 				}
