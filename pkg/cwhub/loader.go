@@ -258,7 +258,6 @@ func datadirVisit(path string, f os.FileInfo, err error) error {
 	if len(path_components) < 2 {
 		log.Fatalf("path is too short : %s (%d)", path, len(path_components))
 	}
-	log.Tracef("in data dir")
 	fname := path_components[len(path_components)-1]
 	fauthor := path_components[len(path_components)-2]
 	ftype := DATA_FILES
