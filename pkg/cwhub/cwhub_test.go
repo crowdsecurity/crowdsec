@@ -214,6 +214,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if !hubIdx[item.Type][item.Name].Installed {
 		t.Fatalf("install: %s should be install", item.Name)
 	}
+
 }
 
 func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
@@ -332,6 +333,49 @@ func TestInstallParser(t *testing.T) {
 	}
 }
 
+func TestGetItemByPath(t *testing.T) {
+	cfg := test_prepenv()
+
+	if err := GetHubIdx(cfg.Hub); err != nil {
+		t.Fatalf("failed to load hub index")
+	}
+	for _, it := range hubIdx[PARSERS] {
+		//Install the parser
+		item, err := DownloadLatest(cfg.Hub, it, false, false)
+		if err != nil {
+			t.Fatalf("error while downloading %s : %v", item.Name, err)
+		}
+		//Enable the item
+		EnableItem(cfg.Hub, item)
+	}
+	//Sync
+	err, warns := LocalSync(cfg.Hub)
+	if err != nil || len(warns) > 0 {
+		t.Fatalf("unexpected err/warnings : %+v / %+v", err, warns)
+	}
+
+	for _, item := range hubIdx[PARSERS] {
+		//Check that we get the same thing if we get it by the path
+		itemcopy, err := GetItemByPath(item.Type, item.LocalPath)
+		if err != nil {
+			t.Fatalf("error while getting item by path : %v -> %s", err, item.LocalPath)
+		}
+		if itemcopy.Name != item.Name {
+			t.Fatalf("GetItemByPath: %s != %s", itemcopy.Name, item.Name)
+		}
+		if itemcopy.UpToDate != item.UpToDate {
+			t.Fatalf("GetItemByPath: %v != %v", itemcopy.UpToDate, item.UpToDate)
+		}
+		if itemcopy.Installed != item.Installed {
+			t.Fatalf("GetItemByPath: %v != %v", itemcopy.Installed, item.Installed)
+		}
+		if itemcopy.Tainted != item.Tainted {
+			t.Fatalf("GetItemByPath: %v != %v", itemcopy.Tainted, item.Tainted)
+		}
+	}
+
+}
+
 func TestInstallCollection(t *testing.T) {
 
 	/*
@@ -350,6 +394,7 @@ func TestInstallCollection(t *testing.T) {
 	}
 	//map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
+
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[COLLECTIONS][it.Name]
 		testTaintItem(cfg.Hub, t, it)
@@ -382,7 +427,6 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	response.Header.Set("Content-Type", "application/json")
 	responseBody := ""
 	log.Printf("---> %s", req.URL.Path)
-
 
 	/*FAKE PARSER*/
 	if strings.HasSuffix(req.URL.Path, "/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml") {
