@@ -84,13 +84,15 @@ func (c *ApiClient) Do(ctx context.Context, req *http.Request, v interface{}) (*
 		return newResponse(resp), err
 	}
 
-	for k, v := range resp.Header {
-		log.Debugf("[headers] %s : %s", k, v)
-	}
+	if log.GetLevel() >= log.DebugLevel {
+		for k, v := range resp.Header {
+			log.Debugf("[headers] %s : %s", k, v)
+		}
 
-	dump, err := httputil.DumpResponse(resp, true)
-	if err == nil {
-		log.Debugf("Response: %s", string(dump))
+		dump, err := httputil.DumpResponse(resp, true)
+		if err == nil {
+			log.Debugf("Response: %s", string(dump))
+		}
 	}
 
 	response := newResponse(resp)
