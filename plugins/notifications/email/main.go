@@ -96,9 +96,8 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	err = email.Send(smtpClient)
 	if err != nil {
 		return &protobufs.Empty{}, err
-	} else {
-		logger.Info(fmt.Sprintf("sent email to %v", cfg.ReceiverEmails))
 	}
+	logger.Info(fmt.Sprintf("sent email to %v", cfg.ReceiverEmails))
 	return &protobufs.Empty{}, nil
 }
 

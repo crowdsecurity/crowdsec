@@ -66,16 +66,6 @@ type Flags struct {
 
 type labelsMap map[string]string
 
-type parsers struct {
-	ctx             *parser.UnixParserCtx
-	povfwctx        *parser.UnixParserCtx
-	stageFiles      []parser.Stagefile
-	povfwStageFiles []parser.Stagefile
-	nodes           []parser.Node
-	povfwnodes      []parser.Node
-	enricherCtx     []parser.EnricherCtx
-}
-
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
 func newParsers() *parser.Parsers {

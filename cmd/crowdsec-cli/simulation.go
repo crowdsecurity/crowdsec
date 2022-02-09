@@ -143,10 +143,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var (
-						item *cwhub.Item
-					)
-					item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
+					var item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue
