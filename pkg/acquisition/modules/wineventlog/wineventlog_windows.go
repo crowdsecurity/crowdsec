@@ -28,6 +28,7 @@ type WinEventLogConfiguration struct {
 	EventIDs                          []int  `yaml:"event_ids"`
 	XPathQuery                        string `yaml:"xpath_query"`
 	EventFile                         string `yaml:"event_file"`
+	PrettyName                        string `yaml:"pretty_name"`
 }
 
 type WinEventLogSource struct {
@@ -35,6 +36,7 @@ type WinEventLogSource struct {
 	logger    *log.Entry
 	evtConfig *winlog.SubscribeConfig
 	query     string
+	name      string
 }
 
 type WindowsEvent struct {
@@ -218,7 +220,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					l.Module = w.GetName()
 					l.Labels = w.config.Labels
 					l.Time = time.Now()
-					l.Src = w.query //We probably want something a little bit more legible
+					l.Src = w.name
 					l.Process = true
 					if !w.config.UseTimeMachine {
 						out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
@@ -288,6 +290,13 @@ func (w *WinEventLogSource) Configure(yamlConfig []byte, logger *log.Entry) erro
 	if err != nil {
 		return err
 	}
+
+	if config.PrettyName != "" {
+		w.name = config.PrettyName
+	} else {
+		w.name = w.query
+	}
+
 	return nil
 }
 
