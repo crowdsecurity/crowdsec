@@ -15,9 +15,12 @@ func ReloadMessage() string {
 
 	var reloadCmd string
 
-	if runtime.GOOS == "freebsd" {
+	switch runtime.GOOS {
+	case "windows":
+		return "Please restart the crowdsec service for the new configuration to be effective."
+	case "freebsd":
 		reloadCmd = ReloadCmdFreebsd
-	} else {
+	default:
 		reloadCmd = ReloadCmdLinux
 	}
 
