@@ -54,6 +54,7 @@ func serveAPIServer(apiServer *apiserver.APIServer) {
 		}()
 
 		pluginTomb.Go(func() error {
+			defer types.CatchPanic("crowdsec/pluginBroker.Run")
 			pluginBroker.Run(&pluginTomb)
 			return nil
 		})
