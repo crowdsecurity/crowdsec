@@ -87,6 +87,13 @@ func (pb *PluginBroker) Init(pluginCfg *csconfig.PluginCfg, profileConfigs []*cs
 	if err := pb.loadPlugins(configPaths.PluginDir); err != nil {
 		return errors.Wrap(err, "while loading plugin")
 	}
+
+	for _, requestedPlugin := range pb.pluginConfigByName {
+		if _, ok := pb.notificationPluginByName[requestedPlugin.Type]; !ok {
+			log.Fatalf("plugin %s is required by notification profile %s but not available", requestedPlugin.Type, requestedPlugin.Name)
+
+		}
+	}
 	pb.watcher = PluginWatcher{}
 	pb.watcher.Init(pb.pluginConfigByName, pb.alertsByPluginName)
 	return nil
@@ -113,6 +120,7 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
 			go func() {
+				defer types.CatchPanic("crowdsec/pluginBroker.pushNotificationsToPlugin")
 				if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
 					log.WithField("plugin:", pluginName).Error(err)
 				}
@@ -194,6 +202,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 		return err
 	}
 	for _, binaryPath := range binaryPaths {
+		log.Printf("checking plugin %s", binaryPath)
 		if err := pluginIsValid(binaryPath); err != nil {
 			return err
 		}
