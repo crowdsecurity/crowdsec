@@ -1,7 +1,5 @@
 package cwhub
 
-const PathSeparator = "\\"
-
 func CheckSuffix(hubpath string, remotePath string) bool {
 	//if !strings.HasSuffix(hubpath, remotePath) {
 	//	return true

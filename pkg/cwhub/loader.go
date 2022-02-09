@@ -47,9 +47,10 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		return nil
 	}
 
-	subs := strings.Split(path, PathSeparator)
+	subs := strings.Split(path, string(os.PathSeparator))
 
 	log.Tracef("path:%s, hubdir:%s, installdir:%s", path, hubdir, installdir)
+	log.Tracef("subs:%v", subs)
 	/*we're in hub (~/.hub/hub/)*/
 	if strings.HasPrefix(path, hubdir) {
 		log.Tracef("in hub dir")
@@ -78,7 +79,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		ftype = subs[len(subs)-3]
 		fauthor = ""
 	} else {
-		return fmt.Errorf("File '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
+		return fmt.Errorf("file '%s' is not from hub '%s' nor from the configuration directory '%s'", path, hubdir, installdir)
 	}
 
 	log.Tracef("stage:%s ftype:%s", stage, ftype)
@@ -134,8 +135,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		target.Local = true
 		target.LocalPath = path
 		target.UpToDate = true
-		x := strings.Split(path, PathSeparator)
-		target.FileName = x[len(x)-1]
+		_, target.FileName = filepath.Split(path)
 
 		hubIdx[ftype][fname] = target
 		return nil
@@ -203,8 +203,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				/*if we're walking the hub, present file doesn't means installed file*/
 				v.Installed = true
 				v.LocalHash = sha
-				x := strings.Split(path, PathSeparator)
-				target.FileName = x[len(x)-1]
+				_, target.FileName = filepath.Split(path)
 			}
 			if version == v.Version {
 				log.Tracef("%s is up-to-date", v.Name)
@@ -225,8 +224,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			v.LocalVersion = "?"
 			v.Tainted = true
 			v.LocalHash = sha
-			x := strings.Split(path, PathSeparator)
-			target.FileName = x[len(x)-1]
+			_, target.FileName = filepath.Split(path)
 
 		}
 		//update the entry if appropriate
