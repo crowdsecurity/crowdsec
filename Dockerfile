@@ -29,4 +29,4 @@ COPY --from=build /go/src/crowdsec/plugins/notifications/slack/slack.yaml /stagi
 COPY --from=build /go/src/crowdsec/plugins/notifications/splunk/splunk.yaml /staging/etc/crowdsec/notifications/splunk.yaml
 COPY --from=build /usr/local/lib/crowdsec/plugins /usr/local/lib/crowdsec/plugins
 
-ENTRYPOINT /bin/sh docker_start.sh
+ENTRYPOINT /bin/bash docker_start.sh
