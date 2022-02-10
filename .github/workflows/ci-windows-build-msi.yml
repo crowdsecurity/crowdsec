@@ -21,6 +21,8 @@ jobs:
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
     - name: Build
       run: make windows_installer
     - name: Upload MSI
