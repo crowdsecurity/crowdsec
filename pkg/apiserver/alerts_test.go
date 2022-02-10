@@ -165,12 +165,6 @@ func TestCreateAlertChannels(t *testing.T) {
 	var pd csplugin.ProfileAlert
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		pd = <-apiServer.controller.PluginChannel
-		wg.Done()
-	}()
-
 	go func() {
 		for {
 			w := httptest.NewRecorder()
@@ -180,6 +174,13 @@ func TestCreateAlertChannels(t *testing.T) {
 			break
 		}
 	}()
+
+	wg.Add(1)
+	go func() {
+		pd = <-apiServer.controller.PluginChannel
+		wg.Done()
+	}()
+
 	wg.Wait()
 	assert.Equal(t, len(pd.Alert.Decisions), 1)
 	apiServer.Close()
