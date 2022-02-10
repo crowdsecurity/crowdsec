@@ -1,35 +1,38 @@
-# Don't change this
-type: email
+type: email           # Don't change
+name: email_default   # Must match the registered plugin in the profile
 
-name: email_default # this must match with the registered plugin in the profile
-log_level: info # Options include: trace, debug, info, warn, error, off
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
 
-format: |  # This template receives list of models.Alert objects
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+timeout: 20s          # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the email message body
+format: |
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
-      <a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a>  
+      <a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a>
     {{end -}}
   {{end -}}
 
-smtp_host: # eg value smtp.gmail.com
-smtp_username:  #Replace this with your actual username
-smtp_password:  #Replace this with your actual password
-smtp_port: # Common values are any of [25, 465, 587, 2525]
-auth_type: # Valid choices are either of "none", "crammd5", "login", "plain" 
-sender_email: # eg: foo@gmail.com
-email_subject: CrowdSec Notification
-receiver_emails: 
-  # - email1@gmail.com
-  # - email2@gmail.com
-encryption_type: ssltls # eg valid choices are either "ssltls" or "none"
+smtp_host:            # example: smtp.gmail.com
+smtp_username:        # Replace with your actual username
+smtp_password:        # Replace with your actual password
+smtp_port:            # Common values are any of [25, 465, 587, 2525]
+auth_type:            # Valid choices are "none", "crammd5", "login", "plain"
+sender_email:         # example: foo@gmail.com
+email_subject: "CrowdSec Notification"
+receiver_emails:
+# - email1@gmail.com
+# - email2@gmail.com
 
+# One of "ssltls", "none"
+encryption_type: ssltls
 
-
-# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
-
-# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
-
-# max_retry: # number of tries to attempt to send message to plugins in case of error.
-
-timeout: 20s # duration to wait for response from plugin before considering this attempt a failure. eg "10s"
