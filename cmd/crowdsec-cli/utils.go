@@ -262,7 +262,10 @@ func UpgradeConfig(itemType string, name string, force bool) {
 			if err = cwhub.DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
 				log.Fatalf("%s : download failed : %v", v.Name, err)
 			}
-			continue
+
+			if !force {
+				continue
+			}
 		}
 		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, true)
 		if err != nil {
