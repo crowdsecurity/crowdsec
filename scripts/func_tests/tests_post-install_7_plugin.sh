@@ -28,8 +28,6 @@ function modify_config() {
     cat ./config/profiles.yaml | sudo tee /etc/crowdsec/profiles.yaml > /dev/null
     
     ${SYSTEMCTL} restart crowdsec
-    ${SYSTEMCTL} status crowdsec
-    tail -n 50 /var/log/crowdsec.log
     sleep 5s
 }
 
