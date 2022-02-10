@@ -268,7 +268,8 @@ cscli machines add MyTestMachine --password MyPassword
 		},
 	}
 	cmdMachinesAdd.Flags().StringVarP(&machinePassword, "password", "p", "", "machine password to login to the API")
-	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination (defaults to /etc/crowdsec/local_api_credentials.yaml)")
+	cmdMachinesAdd.Flags().StringVarP(&outputFile, "file", "f", "",
+		"output file destination (defaults to "+csconfig.DefaultConfigPath("local_api_credentials.yaml"))
 	cmdMachinesAdd.Flags().StringVarP(&apiURL, "url", "u", "", "URL of the local API")
 	cmdMachinesAdd.Flags().BoolVarP(&interactive, "interactive", "i", false, "interfactive mode to enter the password")
 	cmdMachinesAdd.Flags().BoolVarP(&autoAdd, "auto", "a", false, "automatically generate password (and username if not provided)")

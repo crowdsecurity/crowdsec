@@ -207,7 +207,7 @@ func TestLoadAPIServer(t *testing.T) {
 					DbPath: "./tests/test.db",
 					Type:   "sqlite",
 				},
-				ConsoleConfigPath: "/etc/crowdsec/console.yaml",
+				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{
 					ShareManualDecisions:  types.BoolPtr(false),
 					ShareTaintedScenarios: types.BoolPtr(true),

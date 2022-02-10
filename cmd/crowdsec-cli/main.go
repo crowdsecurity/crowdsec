@@ -139,7 +139,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	}
 	rootCmd.AddCommand(cmdVersion)
 
-	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", "/etc/crowdsec/config.yaml", "path to crowdsec config file")
+	rootCmd.PersistentFlags().StringVarP(&ConfigFilePath, "config", "c", csconfig.DefaultConfigPath("config.yaml"), "path to crowdsec config file")
 	rootCmd.PersistentFlags().StringVarP(&OutputFormat, "output", "o", "", "Output format : human, json, raw.")
 	rootCmd.PersistentFlags().BoolVar(&dbg_lvl, "debug", false, "Set logging to debug.")
 	rootCmd.PersistentFlags().BoolVar(&nfo_lvl, "info", false, "Set logging to info.")

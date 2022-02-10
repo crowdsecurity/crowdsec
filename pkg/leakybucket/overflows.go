@@ -64,16 +64,14 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 	src := models.Source{}
 	switch leaky.scopeType.Scope {
 	case types.Range, types.Ip:
-		if v, ok := evt.Meta["source_ip"]; ok {
-			if net.ParseIP(v) == nil {
-				return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
-			} else {
-				src.IP = v
-			}
-		} else {
+		v, ok := evt.Meta["source_ip"]
+		if !ok {
 			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.scopeType.Scope)
 		}
-
+		if net.ParseIP(v) == nil {
+			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
+		}
+		src.IP = v
 		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
 			src.AsNumber = v
@@ -104,7 +102,8 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			_, ipNet, err := net.ParseCIDR(v)
 			if err != nil {
 				return srcs, fmt.Errorf("Declared range %s of %s can't be parsed", v, src.IP)
-			} else if ipNet != nil {
+			}
+			if ipNet != nil {
 				src.Range = ipNet.String()
 				leaky.logger.Tracef("Valid range from %s : %s", src.IP, src.Range)
 			}
@@ -116,23 +115,22 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 		}
 		srcs[*src.Value] = src
 	default:
-		if leaky.scopeType.RunTimeFilter != nil {
-			retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
-			if err != nil {
-				return srcs, errors.Wrapf(err, "while running scope filter")
-			}
-
-			value, ok := retValue.(string)
-			if !ok {
-				value = ""
-			}
-			src.Value = &value
-			src.Scope = new(string)
-			*src.Scope = leaky.scopeType.Scope
-			srcs[*src.Value] = src
-		} else {
+		if leaky.scopeType.RunTimeFilter == nil {
 			return srcs, fmt.Errorf("empty scope information")
 		}
+		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+		if err != nil {
+			return srcs, errors.Wrapf(err, "while running scope filter")
+		}
+
+		value, ok := retValue.(string)
+		if !ok {
+			value = ""
+		}
+		src.Value = &value
+		src.Scope = new(string)
+		*src.Scope = leaky.scopeType.Scope
+		srcs[*src.Value] = src
 	}
 	return srcs, nil
 }

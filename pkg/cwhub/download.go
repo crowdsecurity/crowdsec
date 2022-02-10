@@ -85,36 +85,37 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					if !val.Installed && updateOnly {
-						log.Debugf("skipping upgrade of %s : not installed", target.Name)
-						continue
-					}
-					log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
-					//recurse as it's a collection
-					if ptrtype == COLLECTIONS {
-						log.Tracef("collection, recurse")
-						hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
-						if err != nil {
-							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-						}
-					}
-					item, err := DownloadItem(hub, val, overwrite)
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
+					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+				}
+
+				if !val.Installed && updateOnly {
+					log.Debugf("skipping upgrade of %s : not installed", target.Name)
+					continue
+				}
+				log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
+				//recurse as it's a collection
+				if ptrtype == COLLECTIONS {
+					log.Tracef("collection, recurse")
+					hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
-
-					// We need to enable an item when it has been added to a collection since latest release of the collection.
-					// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-					if !item.Installed && !val.Downloaded {
-						if item, err = EnableItem(hub, item); err != nil {
-							return target, errors.Wrapf(err, "enabling '%s'", item.Name)
-						}
-					}
-					hubIdx[ptrtype][p] = item
-				} else {
-					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
+				item, err := DownloadItem(hub, val, overwrite)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+				}
+
+				// We need to enable an item when it has been added to a collection since latest release of the collection.
+				// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+				if !item.Installed && !val.Downloaded {
+					if item, err = EnableItem(hub, item); err != nil {
+						return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+					}
+				}
+				hubIdx[ptrtype][p] = item
 			}
 		}
 		target, err = DownloadItem(hub, target, overwrite)
@@ -245,11 +246,10 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
+			if err != io.EOF {
 				return errors.Wrap(err, "while reading file")
 			}
+			break
 		}
 
 		download := false
