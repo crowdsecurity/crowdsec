@@ -27,8 +27,7 @@ RUN apt-get install -y -q --install-recommends --no-install-suggests \
   mkdir -p /staging/etc/crowdsec && \
   mkdir -p /staging/var/lib/crowdsec
 
-COPY --from=build /usr/bin/yq /usr/bin/yq
-
+COPY --from=build /usr/local/bin/yq /usr/local/bin/yq
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
 COPY --from=build /var/lib/crowdsec /staging/var/lib/crowdsec
 COPY --from=build /usr/local/bin/crowdsec /usr/local/bin/crowdsec
