@@ -89,7 +89,8 @@ if [ "$1" = configure ]; then
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
-    if [ -z "$(ss -nlt 'sport = 8080' | grep -v ^State)" ] || [ "$LAPI" = false ]; then
+    PORT=$(cat /etc/crowdsec/config.yaml|grep listen_uri |cut -d ":" -f3)
+    if [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ] || [ "$LAPI" = false ]  ; then
         systemctl start crowdsec
     else
         echo "Not attempting to start crowdsec, port 8080 is already used or lapi was disabled"
