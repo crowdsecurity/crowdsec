@@ -128,6 +128,7 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `KEY_FILE`                - TLS Key file (default: `/etc/ssl/key.pem`) : `-e KEY_FILE="<file_path>"`
 * `CUSTOM_HOSTNAME`         - Custom hostname for local api (default: `localhost`) : `-e CUSTOM_HOSTNAME="<hostname>"`
 * `DISABLE_SCENARIOS`       - Scenarios to uninstall from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
+* `PLUGIN_DIR`              - Directory for plugins (default: `/usr/local/lib/crowdsec/plugins/`) : `-e PLUGIN_DIR="<path>"`
 
 ## Volumes
 
