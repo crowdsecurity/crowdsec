@@ -253,11 +253,9 @@ func downloadData(dataFolder string, force bool, reader io.Reader) error {
 		}
 
 		download := false
-		if !force {
-			for _, dataS := range data.Data {
-				if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
-					download = true
-				}
+		for _, dataS := range data.Data {
+			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+				download = true
 			}
 		}
 		if download || force {
