@@ -27,7 +27,7 @@ jobs:
         repository: crowdsecurity/crowdsec
         excludes: draft
     - id: set_release_in_env
-      run: echo ("BUILD_VERSION=" + ${{ steps.get_latest_release.outputs.release }}) >> $env:GITHUB_ENV
+      run: echo "BUILD_VERSION=${{ steps.get_latest_release.outputs.release }}" >> $env:GITHUB_ENV
     - name: Build
       run: make windows_installer
     - name: Upload MSI
