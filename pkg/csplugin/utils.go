@@ -42,14 +42,15 @@ func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
 	}
 }
 
-func (pb *PluginBroker) CreateCmd(binaryPath string) (cmdr *exec.Cmd, err error) {
+func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+	var err error
 	cmd := exec.Command(binaryPath)
 	cmd.SysProcAttr, err = getProcessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
 	if err != nil {
 		return nil, errors.Wrap(err, "while getting process attributes")
 	}
 	cmd.SysProcAttr.Credential.NoSetGroups = true
-	return cmdr, err
+	return cmd, err
 }
 
 func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
