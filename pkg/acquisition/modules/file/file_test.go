@@ -77,77 +77,85 @@ func TestConfigureDSN(t *testing.T) {
 
 func TestOneShot(t *testing.T) {
 	tests := []struct {
-		config         string
-		expectedErr    string
-		expectedOutput string
-		expectedLines  int
-		logLevel       log.Level
-		setup          func()
-		afterConfigure func()
-		teardown       func()
+		config            string
+		expectedConfigErr string
+		expectedErr       string
+		expectedOutput    string
+		expectedLines     int
+		logLevel          log.Level
+		setup             func()
+		afterConfigure    func()
+		teardown          func()
 	}{
 		{
 			config: `
 mode: cat
 filename: /etc/shadow`,
-			expectedErr:    "failed opening /etc/shadow: open /etc/shadow: permission denied",
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       "failed opening /etc/shadow: open /etc/shadow: permission denied",
+			expectedOutput:    "",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: /`,
-			expectedErr:    "",
-			expectedOutput: "/ is a directory, ignoring it",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "/ is a directory, ignoring it",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: "[*-.log"`,
-			expectedErr:    "Glob failure: syntax error in pattern",
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "Glob failure: syntax error in pattern",
+			expectedErr:       "",
+			expectedOutput:    "",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: /do/not/exist`,
-			expectedErr:    "",
-			expectedOutput: "No matching files for pattern /do/not/exist",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "No matching files for pattern /do/not/exist",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/test.log`,
-			expectedErr:    "",
-			expectedOutput: "",
-			expectedLines:  5,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "",
+			expectedLines:     5,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/test.log.gz`,
-			expectedErr:    "",
-			expectedOutput: "",
-			expectedLines:  5,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "",
+			expectedLines:     5,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/bad.gz`,
-			expectedErr:    "failed to read gz test_files/bad.gz: unexpected EOF",
-			expectedOutput: "",
-			expectedLines:  0,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "failed to read gz test_files/bad.gz: unexpected EOF",
+			expectedOutput:    "",
+			expectedLines:     0,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
@@ -176,7 +184,7 @@ filename: test_files/test_delete.log`,
 			ts.setup()
 		}
 		err := f.Configure([]byte(ts.config), subLogger)
-		cstest.AssertErrorContains(t, err, ts.expectedErr)
+		cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
 
 		if ts.afterConfigure != nil {
 			ts.afterConfigure()
