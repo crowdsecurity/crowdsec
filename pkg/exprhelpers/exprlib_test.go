@@ -342,6 +342,82 @@ func TestIpInRange(t *testing.T) {
 
 }
 
+func TestIpToRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "IpToRange() test: IPv4",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "16",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "192.168.0.0/16",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: IPv6",
+			env: map[string]interface{}{
+				"ip":        "2001:db8::1",
+				"netmask":   "/64",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "2001:db8::/64",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.0.1",
+				"netmask":   "test",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed IP",
+			env: map[string]interface{}{
+				"ip":        "a.b.c.d",
+				"netmask":   "24",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: too high netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "35",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+
+}
+
 func TestAtof(t *testing.T) {
 	testFloat := "1.5"
 	expectedFloat := 1.5

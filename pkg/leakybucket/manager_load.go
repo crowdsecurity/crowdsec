@@ -114,6 +114,14 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		bucketFactory.ScopeType.Scope = types.Ip
 	case types.Ip:
 	case types.Range:
+		var (
+			runTimeFilter *vm.Program
+			err           error
+		)
+		if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+			return fmt.Errorf("Error compiling the scope filter: %s", err)
+		}
+		bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 	default:
 		//Compile the scope filter
 		var (
