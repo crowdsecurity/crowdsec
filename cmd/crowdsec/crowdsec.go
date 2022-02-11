@@ -231,15 +231,16 @@ func waitOnTomb() {
 			log.Warningf("Acquisition is finished, shutting down")
 			/*
 				While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
-				we might have some pending buckets : buckets that overflowed, but which LeakRoutine are still alive because they
-				are waiting to be able to "commit" (push to api). This can happens specifically in a context where a lot of logs
+				we might have some pending buckets: buckets that overflowed, but whose LeakRoutine are still alive because they
+				are waiting to be able to "commit" (push to api). This can happen specifically in a context where a lot of logs
 				are going to trigger overflow (ie. trigger buckets with ~100% of the logs triggering an overflow).
 
 				To avoid this (which would mean that we would "lose" some overflows), let's monitor the number of live buckets.
-				However, because of the blackhole mechanism, you can't really wait for the number of LeakRoutine to go to zero (we might have to wait $blackhole_duration).
+				However, because of the blackhole mechanism, we can't really wait for the number of LeakRoutine to go to zero
+				(we might have to wait $blackhole_duration).
 
-				So : we are waiting for the number of buckets to stop decreasing before returning. "how long" we should wait is a bit of the trick question,
-				as some operations (ie. reverse dns or such in post-overflow) can take some time :)
+				So: we are waiting for the number of buckets to stop decreasing before returning. "how long" we should wait
+				is a bit of the trick question, as some operations (ie. reverse dns or such in post-overflow) can take some time :)
 			*/
 
 			return
