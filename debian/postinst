@@ -89,7 +89,7 @@ if [ "$1" = configure ]; then
 
     systemctl --quiet is-enabled crowdsec || systemctl unmask crowdsec && systemctl enable crowdsec
 
-    PORT=$(cat /etc/crowdsec/config.yaml|grep listen_uri |cut -d ":" -f3)
+    PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
     if [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ] || [ "$LAPI" = false ]  ; then
         systemctl start crowdsec
     else
