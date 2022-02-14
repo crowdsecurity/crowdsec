@@ -35,6 +35,7 @@ type AlertQuery struct {
 	withEvents    *EventQuery
 	withMetas     *MetaQuery
 	withFKs       bool
+	modifiers     []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -486,6 +487,9 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(aq.modifiers) > 0 {
+		_spec.Modifiers = aq.modifiers
+	}
 	if err := sqlgraph.QueryNodes(ctx, aq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -614,6 +618,13 @@ func (aq *AlertQuery) sqlAll(ctx context.Context) ([]*Alert, error) {
 
 func (aq *AlertQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := aq.querySpec()
+	if len(aq.modifiers) > 0 {
+		_spec.Modifiers = aq.modifiers
+	}
+	_spec.Node.Columns = aq.fields
+	if len(aq.fields) > 0 {
+		_spec.Unique = aq.unique != nil && *aq.unique
+	}
 	return sqlgraph.CountNodes(ctx, aq.driver, _spec)
 }
 
@@ -685,6 +696,12 @@ func (aq *AlertQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = aq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
+	if aq.unique != nil && *aq.unique {
+		selector.Distinct()
+	}
+	for _, m := range aq.modifiers {
+		m(selector)
+	}
 	for _, p := range aq.predicates {
 		p(selector)
 	}
@@ -700,6 +717,12 @@ func (aq *AlertQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (aq *AlertQuery) Modify(modifiers ...func(s *sql.Selector)) *AlertSelect {
+	aq.modifiers = append(aq.modifiers, modifiers...)
+	return aq.Select()
 }
 
 // AlertGroupBy is the group-by builder for Alert entities.
@@ -963,9 +986,7 @@ func (agb *AlertGroupBy) sqlQuery() *sql.Selector {
 		for _, f := range agb.fields {
 			columns = append(columns, selector.C(f))
 		}
-		for _, c := range aggregation {
-			columns = append(columns, c)
-		}
+		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
 	return selector.GroupBy(selector.Columns(agb.fields...)...)
@@ -1190,4 +1211,10 @@ func (as *AlertSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (as *AlertSelect) Modify(modifiers ...func(s *sql.Selector)) *AlertSelect {
+	as.modifiers = append(as.modifiers, modifiers...)
+	return as
 }

@@ -24,6 +24,7 @@ type BouncerQuery struct {
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Bouncer
+	modifiers  []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -325,6 +326,9 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context) ([]*Bouncer, error) {
 		node := nodes[len(nodes)-1]
 		return node.assignValues(columns, values)
 	}
+	if len(bq.modifiers) > 0 {
+		_spec.Modifiers = bq.modifiers
+	}
 	if err := sqlgraph.QueryNodes(ctx, bq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -336,6 +340,13 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context) ([]*Bouncer, error) {
 
 func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := bq.querySpec()
+	if len(bq.modifiers) > 0 {
+		_spec.Modifiers = bq.modifiers
+	}
+	_spec.Node.Columns = bq.fields
+	if len(bq.fields) > 0 {
+		_spec.Unique = bq.unique != nil && *bq.unique
+	}
 	return sqlgraph.CountNodes(ctx, bq.driver, _spec)
 }
 
@@ -407,6 +418,12 @@ func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = bq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
+	if bq.unique != nil && *bq.unique {
+		selector.Distinct()
+	}
+	for _, m := range bq.modifiers {
+		m(selector)
+	}
 	for _, p := range bq.predicates {
 		p(selector)
 	}
@@ -422,6 +439,12 @@ func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (bq *BouncerQuery) Modify(modifiers ...func(s *sql.Selector)) *BouncerSelect {
+	bq.modifiers = append(bq.modifiers, modifiers...)
+	return bq.Select()
 }
 
 // BouncerGroupBy is the group-by builder for Bouncer entities.
@@ -685,9 +708,7 @@ func (bgb *BouncerGroupBy) sqlQuery() *sql.Selector {
 		for _, f := range bgb.fields {
 			columns = append(columns, selector.C(f))
 		}
-		for _, c := range aggregation {
-			columns = append(columns, c)
-		}
+		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
 	return selector.GroupBy(selector.Columns(bgb.fields...)...)
@@ -912,4 +933,10 @@ func (bs *BouncerSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (bs *BouncerSelect) Modify(modifiers ...func(s *sql.Selector)) *BouncerSelect {
+	bs.modifiers = append(bs.modifiers, modifiers...)
+	return bs
 }

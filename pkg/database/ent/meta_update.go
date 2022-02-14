@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -171,7 +172,7 @@ func (mu *MetaUpdate) defaults() {
 func (mu *MetaUpdate) check() error {
 	if v, ok := mu.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
 		}
 	}
 	return nil
@@ -439,7 +440,7 @@ func (muo *MetaUpdateOne) defaults() {
 func (muo *MetaUpdateOne) check() error {
 	if v, ok := muo.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
 		}
 	}
 	return nil
@@ -458,7 +459,7 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 	}
 	id, ok := muo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Meta.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Meta.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
 	if fields := muo.fields; len(fields) > 0 {
