@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/c-robinson/iplib"
+
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
@@ -53,6 +55,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"QueryUnescape":       QueryUnescape,
 		"PathEscape":          PathEscape,
 		"QueryEscape":         QueryEscape,
+		"IpToRange":           IpToRange,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -173,6 +176,27 @@ func IpInRange(ip string, ipRange string) bool {
 		return true
 	}
 	return false
+}
+
+func IpToRange(ip string, cidr string) string {
+	cidr = strings.TrimPrefix(cidr, "/")
+	mask, err := strconv.Atoi(cidr)
+	if err != nil {
+		log.Errorf("bad cidr '%s': %s", cidr, err)
+		return ""
+	}
+
+	ipAddr := net.ParseIP(ip)
+	if ipAddr == nil {
+		log.Errorf("can't parse IP address '%s'", ip)
+		return ""
+	}
+	ipRange := iplib.NewNet(ipAddr, mask)
+	if ipRange.IP() == nil {
+		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
+		return ""
+	}
+	return ipRange.String()
 }
 
 func TimeNow() string {
