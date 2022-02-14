@@ -179,9 +179,7 @@ func IpInRange(ip string, ipRange string) bool {
 }
 
 func IpToRange(ip string, cidr string) string {
-	if strings.HasPrefix(cidr, "/") {
-		cidr = cidr[1:]
-	}
+	cidr = strings.TrimPrefix(cidr, "/")
 	mask, err := strconv.Atoi(cidr)
 	if err != nil {
 		log.Errorf("bad cidr '%s': %s", cidr, err)
