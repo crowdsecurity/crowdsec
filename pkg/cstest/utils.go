@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Copy(sourceFile string, destinationFile string) error {
@@ -78,4 +81,18 @@ func CopyDir(src string, dest string) error {
 	}
 
 	return nil
+}
+
+func AssertErrorContains(t *testing.T, err error, expectedErr string) {
+	if expectedErr == "" {
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		assert.Equal(t, err, nil)
+		return
+	}
+	if err == nil {
+		t.Fatalf("Expected '%s', got nil", expectedErr)
+	}
+	assert.Contains(t, err.Error(), expectedErr)
 }

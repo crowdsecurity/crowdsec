@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -70,11 +71,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		f := FileSource{}
 		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		} else {
-			assert.Equal(t, err, nil)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -187,15 +184,11 @@ filename: test_files/test_delete.log`,
 			ts.setup()
 		}
 		err := f.Configure([]byte(ts.config), subLogger)
-		if err != nil && ts.expectedConfigErr != "" {
-			assert.Contains(t, err.Error(), ts.expectedConfigErr)
+		cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
+		if err != nil {
 			continue
-		} else if err != nil && ts.expectedConfigErr == "" {
-			t.Fatalf("Unexpected error : %s", err)
 		}
-		if err == nil && ts.expectedConfigErr != "" {
-			t.Fatalf("Expected error '%s', got nil", ts.expectedConfigErr)
-		}
+
 		if ts.afterConfigure != nil {
 			ts.afterConfigure()
 		}
@@ -214,14 +207,10 @@ filename: test_files/test_delete.log`,
 			}()
 		}
 		err = f.OneShotAcquisition(out, &tomb)
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		if ts.expectedLines != 0 {
 			assert.Equal(t, actualLines, ts.expectedLines)
-		}
-		if ts.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("Expected error but got nothing ! %+v", ts)
-			}
-			assert.Contains(t, err.Error(), ts.expectedErr)
 		}
 		if ts.expectedOutput != "" {
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
@@ -370,13 +359,7 @@ force_inotify: true`,
 			}()
 		}
 		err = f.StreamingAcquisition(out, &tomb)
-
-		if ts.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("Expected error but got nothing ! %+v", ts)
-			}
-			assert.Contains(t, err.Error(), ts.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if ts.expectedLines != 0 {
 			fd, err := os.Create("test_files/stream.log")

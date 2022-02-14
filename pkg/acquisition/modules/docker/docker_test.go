@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	dockerTypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -53,12 +54,7 @@ container_name:
 	for _, test := range tests {
 		f := DockerSource{}
 		err := f.Configure([]byte(test.config), subLogger)
-		if test.expectedErr != "" && err == nil {
-			t.Fatalf("Expected err %s but got nil !", test.expectedErr)
-		}
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -102,11 +98,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		f := DockerSource{}
 		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		} else {
-			assert.Equal(t, err, nil)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -196,14 +188,8 @@ container_name_regexp:
 			}
 		})
 		time.Sleep(10 * time.Second)
-		if ts.expectedErr == "" && err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		} else if ts.expectedErr != "" && err != nil {
-			assert.Contains(t, err.Error(), ts.expectedErr)
-			continue
-		} else if ts.expectedErr != "" && err == nil {
-			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		if err := readerTomb.Wait(); err != nil {
 			t.Fatal(err)
 		}
@@ -311,15 +297,8 @@ func TestOneShot(t *testing.T) {
 		}
 		tomb := tomb.Tomb{}
 		err := dockerClient.OneShotAcquisition(out, &tomb)
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
-		if ts.expectedErr == "" && err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		} else if ts.expectedErr != "" && err != nil {
-			assert.Contains(t, err.Error(), ts.expectedErr)
-			continue
-		} else if ts.expectedErr != "" && err == nil {
-			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
-		}
 		// else we do the check before actualLines is incremented ...
 		time.Sleep(1 * time.Second)
 		if ts.expectedLines != 0 {
