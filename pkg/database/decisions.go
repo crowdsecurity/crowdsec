@@ -7,6 +7,7 @@ import (
 
 	"strconv"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -170,8 +171,36 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
+// Groups by (decision.scope, decision.type, decision.value)
+func decisionGroupBy(s *sql.Selector) {
+	//TBD: Do we want to group by origin too, sceanrio too ?
+	s.GroupBy(
+		decision.FieldScope,
+		decision.FieldType,
+		decision.FieldValue,
+	)
+}
+
+// Gets decisions where all  are unique. For each such tuple the
+// the decision with maximum duration would be included
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
+	decisionModifier := func(s *sql.Selector) {
+		decisionGroupBy(s)
+		s.Having(
+			sql.And(
+				sql.EQ(
+					decision.FieldUntil,
+					sql.Raw(sql.Max(decision.FieldUntil)),
+				),
+				sql.GT(
+					decision.FieldUntil,
+					time.Now().UTC(),
+				),
+			),
+		)
+	}
+	query := c.Ent.Decision.Query().Modify(decisionModifier).Where()
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -188,7 +217,24 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC()))
+
+	decisionModifier := func(s *sql.Selector) {
+		decisionGroupBy(s)
+		s.Having(
+			sql.And(
+				sql.EQ(
+					decision.FieldUntil,
+					sql.Raw(sql.Max(decision.FieldUntil)),
+				),
+				sql.LT(
+					decision.FieldUntil,
+					time.Now().UTC(),
+				),
+			),
+		)
+	}
+
+	query := c.Ent.Decision.Query().Modify(decisionModifier).Where()
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -204,7 +250,32 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC())).Where(decision.UntilGT(since))
+	decisionModifier := func(s *sql.Selector) {
+		decisionGroupBy(s)
+		s.Having(
+			sql.And(
+				sql.EQ(
+					decision.FieldUntil,
+					sql.Raw(sql.Max(decision.FieldUntil)), // It has max duration
+				),
+				sql.GT(
+					decision.FieldUntil, // It was active at t=since
+					since,
+				),
+				sql.LT(
+					decision.FieldUntil, // It is expired as of now
+					time.Now().UTC(),
+				),
+			),
+		)
+	}
+
+	// This query returns 1 decision for each (decision.scope, decision.type, decision.value)
+	// if all decisions for the tuple are dead. Else it gives 0 decisions.
+	query := c.Ent.Decision.Query().Modify(
+		decisionModifier,
+	).Where()
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -221,7 +292,26 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now().UTC()))
+	decisionModifier := func(s *sql.Selector) {
+		decisionGroupBy(s)
+		s.Having(
+			sql.And(
+				sql.EQ(
+					decision.FieldUntil,
+					sql.Raw(sql.Max(decision.FieldUntil)),
+				),
+				sql.GT(
+					decision.FieldCreatedAt,
+					since,
+				),
+				sql.GT(
+					decision.FieldUntil,
+					time.Now().UTC(),
+				),
+			),
+		)
+	}
+	query := c.Ent.Decision.Query().Modify(decisionModifier).Where()
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
