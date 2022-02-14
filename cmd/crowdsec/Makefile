@@ -27,7 +27,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	rm -f $(CROWDSEC_BIN)
+	@$(RM) $(CROWDSEC_BIN)
 
 .PHONY: install
 install: install-conf install-bin
