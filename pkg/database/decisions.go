@@ -173,7 +173,6 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 
 // Groups by (decision.scope, decision.type, decision.value)
 func decisionGroupBy(s *sql.Selector) {
-	//TBD: Do we want to group by origin too, sceanrio too ?
 	s.GroupBy(
 		decision.FieldScope,
 		decision.FieldType,
@@ -181,8 +180,8 @@ func decisionGroupBy(s *sql.Selector) {
 	)
 }
 
-// Gets decisions where all  are unique. For each such tuple the
-// the decision with maximum duration would be included
+// Gets decisions where all (decision.scope, decision.type, decision.value) tuples are unique. 
+// The decision with maximum duration would be included if it's not expired.
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	decisionModifier := func(s *sql.Selector) {
 		decisionGroupBy(s)
