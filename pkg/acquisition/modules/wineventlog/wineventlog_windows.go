@@ -84,6 +84,13 @@ type Select struct {
 	Query string `xml:",chardata"`
 }
 
+var linesRead = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "cs_winevtlogsource_hits_total",
+		Help: "Total event that were read.",
+	},
+	[]string{"source"})
+
 func logLevelToInt(logLevel string) ([]string, error) {
 	switch strings.ToUpper(logLevel) {
 	case "CRITICAL":
@@ -215,6 +222,7 @@ func (w *WinEventLogSource) getEvents(out chan types.Event, t *tomb.Tomb) error 
 					continue
 				}
 				for _, event := range renderedEvents {
+					linesRead.With(prometheus.Labels{"source": w.name}).Inc()
 					l := types.Line{}
 					l.Raw = event
 					l.Module = w.GetName()
@@ -317,11 +325,11 @@ func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tom
 }
 
 func (w *WinEventLogSource) GetMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (w *WinEventLogSource) GetAggregMetrics() []prometheus.Collector {
-	return nil
+	return []prometheus.Collector{linesRead}
 }
 
 func (w *WinEventLogSource) GetName() string {
