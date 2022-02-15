@@ -157,6 +157,12 @@ xpath_query: |
 		},
 		{
 			config: `source: wineventlog
+xpath_query: |
+ <sdf>asdfsdf`,
+			expectedLines: nil,
+		},
+		{
+			config: `source: wineventlog
 event_channel: Application
 event_level: Information
 event_ids:
