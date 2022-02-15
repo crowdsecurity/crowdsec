@@ -15,6 +15,14 @@ crowdsec will use Alpine as default container. A debian container is also availa
 
 ## Required configuration
 
+### Journalctl
+To use journalctl as log stream, eventually from the `DSN` environment variable, it's important that you mount the journal log from the host to the container it self.
+This can be done by adding the following volume mount to your docker command:
+
+```
+-v /var/log/journal:/run/log/journal
+```
+
 ### Logs ingestion and processing
 Collections are a good place to start: https://docs.crowdsec.net/docs/collections/intro
 
