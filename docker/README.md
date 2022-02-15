@@ -4,12 +4,14 @@
 * Crowdsec concepts: https://docs.crowdsec.net/docs/concepts
 * Where to file issues: https://github.com/crowdsecurity/crowdsec
 
-
 # What is Crowdsec
 
 Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database.
 
 # How to use this image
+
+## Docker images available
+crowdsec will use Alpine as default container. A debian container is also available with systemd for journalctl support. Simply add `-debian` to your tag to use this. Please be aware that debian containers are not available on all version, since the feature was implemented after the release of version 1.3.0
 
 ## Required configuration
 
