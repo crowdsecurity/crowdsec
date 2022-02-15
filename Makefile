@@ -48,7 +48,7 @@ GOARCH ?= $(shell go env GOARCH)
 
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
@@ -62,6 +62,9 @@ LD_OPTS_VARS= \
 
 export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
 export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'"
+
+GOCMD=go
+GOTEST=$(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
@@ -96,18 +99,18 @@ else
 endif
 
 .PHONY: clean
-clean:
+clean: testclean
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 	@$(RM) $(CROWDSEC_BIN) $(WIN_IGNORE_ERR)
-	@$(RM) $(CSCLI_BIN)  $(WIN_IGNORE_ERR)
+	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
-	@$(RM) crowdsec-release.zip $(WIN_IGNORE_ERR)
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+
 
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -145,8 +148,14 @@ splunk-plugin_static:goversion
 email-plugin_static:goversion
 	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
+.PHONY: testclean
+testclean:
+	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
+	@$(RM) -r pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
+
+.PHONY: test
 test: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
+	$(GOTEST) $(LD_OPTS) ./...
 
 .PHONY: package
 package:

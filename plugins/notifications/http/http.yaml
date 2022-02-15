@@ -1,25 +1,30 @@
-# Don't change this
-type: http
+type: http          # Don't change
+name: http_default  # Must match the registered plugin in the profile
 
-name: http_default # this must match with the registered plugin in the profile
-log_level: info # Options include: trace, debug, info, warn, error, off
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
 
-format: |  # This template receives list of models.Alert objects. The request body would contain this. 
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the http request body
+format: |
   {{.|toJson}}
 
-url: <HTTP_url> # plugin will make requests to this url. Eg value https://www.example.com/
+# The plugin will make requests to this url, eg:  https://www.example.com/
+url: <HTTP_url>
 
-method: POST # eg either of "POST", "GET", "PUT" and other http verbs is valid value. 
+# Any of the http verbs: "POST", "GET", "PUT"...
+method: POST
 
 # headers:
 #   Authorization: token 0x64312313
 
-# skip_tls_verification:  # either true or false. Default is false
+# skip_tls_verification:  # true or false. Default is false
 
-# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
-
-# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
-
-# max_retry: # number of tries to attempt to send message to plugins in case of error.
-
-# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"

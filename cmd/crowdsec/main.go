@@ -192,7 +192,7 @@ func (f *Flags) Parse() {
 	flag.Parse()
 }
 
-// LoadConfig return configuration parsed from configuration file
+// LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
 
 	if dumpFolder != "" {

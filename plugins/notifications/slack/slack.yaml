@@ -1,10 +1,20 @@
-# Don't change this
-type: slack
+type: slack           # Don't change
+name: slack_default   # Must match the registered plugin in the profile
 
-name: slack_default # this must match with the registered plugin in the profile
-log_level: info # Options include: trace, debug, info, warn, error, off
+# One of "trace", "debug", "info", "warn", "error", "off"
+log_level: info
 
-format: |  # This template receives list of models.Alert objects
+# group_wait:         # Time to wait collecting alerts before relaying a message to this plugin, eg "30s"
+# group_threshold:    # Amount of alerts that triggers a message before <group_wait> has expired, eg "10"
+# max_retry:          # Number of attempts to relay messages to plugins in case of error
+# timeout:            # Time to wait for response from the plugin before considering the attempt a failure, eg "10s"
+
+#-------------------------
+# plugin-specific options
+
+# The following template receives a list of models.Alert objects
+# The output goes in the slack message
+format: |
   {{range . -}}
   {{$alert := . -}}
   {{range .Decisions -}}
@@ -18,10 +28,3 @@ format: |  # This template receives list of models.Alert objects
 
 webhook: <WEBHOOK_URL>
 
-# group_wait: # duration to wait collecting alerts before sending to this plugin, eg "30s"
-
-# group_threshold: # if alerts exceed this, then the plugin will be sent the message. eg "10"
-
-# max_retry: # number of tries to attempt to send message to plugins in case of error.
-
-# timeout: # duration to wait for response from plugin before considering this attempt a failure. eg "10s"

@@ -172,6 +172,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 	return err
 }
 
+// checks whether every notification in profile has it's own config file
 func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
@@ -179,6 +180,18 @@ func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 				return fmt.Errorf("config file for plugin %s not found", pluginName)
 			}
 			pb.pluginsTypesToDispatch[pb.pluginConfigByName[pluginName].Type] = struct{}{}
+		}
+	}
+	return nil
+}
+
+// check whether each plugin in profile has it's own binary
+func (pb *PluginBroker) verifyPluginBinaryWithProfile() error {
+	for _, profileCfg := range pb.profileConfigs {
+		for _, pluginName := range profileCfg.Notifications {
+			if _, ok := pb.notificationPluginByName[pluginName]; !ok {
+				return fmt.Errorf("binary for plugin %s not found", pluginName)
+			}
 		}
 	}
 	return nil
@@ -227,7 +240,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			pb.notificationPluginByName[pc.Name] = pluginClient
 		}
 	}
-	return err
+	return pb.verifyPluginBinaryWithProfile()
 }
 
 func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {

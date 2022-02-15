@@ -1,0 +1,14 @@
+type: leaky
+debug: true
+name: test/leaky-scope-range-expression
+description: "Leaky with scope range-expression"
+filter: "evt.Line.Labels.type =='testlog'"
+leakspeed: "10s"
+capacity: 1
+groupby: evt.Meta.source_ip
+labels:
+ type: overflow_1
+scope:
+ type: Range
+ expression: IpToRange(evt.Meta.source_ip, "/16")
+

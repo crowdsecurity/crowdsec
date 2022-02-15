@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -142,12 +143,7 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 	for _, test := range tests {
 		f := KinesisSource{}
 		err := f.Configure([]byte(test.config), subLogger)
-		if test.expectedErr != "" && err == nil {
-			t.Fatalf("Expected err %s but got nil !", test.expectedErr)
-		}
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 

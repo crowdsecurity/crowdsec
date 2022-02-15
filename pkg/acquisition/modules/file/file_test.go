@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -77,11 +78,7 @@ func TestConfigureDSN(t *testing.T) {
 	for _, test := range tests {
 		f := FileSource{}
 		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		} else {
-			assert.Equal(t, err, nil)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -98,77 +95,85 @@ func TestOneShot(t *testing.T) {
 		permDeniedError = "failed opening C:\\Windows\\System32\\config\\SAM: open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process."
 	}
 	tests := []struct {
-		config         string
-		expectedErr    string
-		expectedOutput string
-		expectedLines  int
-		logLevel       log.Level
-		setup          func()
-		afterConfigure func()
-		teardown       func()
+		config            string
+		expectedConfigErr string
+		expectedErr       string
+		expectedOutput    string
+		expectedLines     int
+		logLevel          log.Level
+		setup             func()
+		afterConfigure    func()
+		teardown          func()
 	}{
 		{
 			config: fmt.Sprintf(`
 mode: cat
 filename: %s`, permDeniedFile),
-			expectedErr:    permDeniedError,
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       permDeniedError,
+			expectedOutput:    "",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: /`,
-			expectedErr:    "",
-			expectedOutput: "/ is a directory, ignoring it",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "/ is a directory, ignoring it",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: "[*-.log"`,
-			expectedErr:    "Glob failure: syntax error in pattern",
-			expectedOutput: "",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "Glob failure: syntax error in pattern",
+			expectedErr:       "",
+			expectedOutput:    "",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: /do/not/exist`,
-			expectedErr:    "",
-			expectedOutput: "No matching files for pattern /do/not/exist",
-			logLevel:       log.WarnLevel,
-			expectedLines:  0,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "No matching files for pattern /do/not/exist",
+			logLevel:          log.WarnLevel,
+			expectedLines:     0,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/test.log`,
-			expectedErr:    "",
-			expectedOutput: "",
-			expectedLines:  5,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "",
+			expectedLines:     5,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/test.log.gz`,
-			expectedErr:    "",
-			expectedOutput: "",
-			expectedLines:  5,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "",
+			expectedOutput:    "",
+			expectedLines:     5,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
 mode: cat
 filename: test_files/bad.gz`,
-			expectedErr:    "failed to read gz test_files/bad.gz: unexpected EOF",
-			expectedOutput: "",
-			expectedLines:  0,
-			logLevel:       log.WarnLevel,
+			expectedConfigErr: "",
+			expectedErr:       "failed to read gz test_files/bad.gz: unexpected EOF",
+			expectedOutput:    "",
+			expectedLines:     0,
+			logLevel:          log.WarnLevel,
 		},
 		{
 			config: `
@@ -198,12 +203,11 @@ filename: test_files/test_delete.log`,
 			ts.setup()
 		}
 		err := f.Configure([]byte(ts.config), subLogger)
-		if err != nil && ts.expectedErr != "" {
-			assert.Contains(t, err.Error(), ts.expectedErr)
+		cstest.AssertErrorContains(t, err, ts.expectedConfigErr)
+		if err != nil {
 			continue
-		} else if err != nil && ts.expectedErr == "" {
-			t.Fatalf("Unexpected error : %s", err)
 		}
+
 		if ts.afterConfigure != nil {
 			ts.afterConfigure()
 		}
@@ -222,14 +226,10 @@ filename: test_files/test_delete.log`,
 			}()
 		}
 		err = f.OneShotAcquisition(out, &tomb)
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+
 		if ts.expectedLines != 0 {
 			assert.Equal(t, actualLines, ts.expectedLines)
-		}
-		if ts.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("Expected error but got nothing ! %+v", ts)
-			}
-			assert.Contains(t, err.Error(), ts.expectedErr)
 		}
 		if ts.expectedOutput != "" {
 			assert.Contains(t, hook.LastEntry().Message, ts.expectedOutput)
@@ -404,13 +404,7 @@ force_inotify: true`, testPattern),
 			}()
 		}
 		err = f.StreamingAcquisition(out, &tomb)
-
-		if ts.expectedErr != "" {
-			if err == nil {
-				t.Fatalf("Expected error but got nothing ! %+v", ts)
-			}
-			assert.Contains(t, err.Error(), ts.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if ts.expectedLines != 0 {
 			fd, err := os.Create("test_files/stream.log")
