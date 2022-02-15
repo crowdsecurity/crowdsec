@@ -6,9 +6,14 @@ package wineventlogacquisition
 import (
 	"runtime"
 	"testing"
+	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/sys/windows/svc/eventlog"
+	"gopkg.in/tomb.v2"
 )
 
 func TestBadConfiguration(t *testing.T) {
@@ -129,5 +134,94 @@ event_level: bla`,
 func TestLiveAcquisition(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Skipping test on non-windows OS")
+	}
+
+	tests := []struct {
+		config        string
+		expectedLines []string
+	}{
+		{
+			config: `source: wineventlog
+xpath_query: |
+ <QueryList>
+   <Query Id="0" Path="Application">
+     <Select Path="Application">*[System[(Level=4 or Level=0) and (EventID=42)]]</Select>
+   </Query>
+ </QueryList>`,
+			expectedLines: []string{
+				"blabla",
+				"test",
+				"aaaa",
+				"bbbbb",
+			},
+		},
+		{
+			config: `source: wineventlog
+event_channel: Application
+event_level: Information
+event_ids:
+ - 42`,
+			expectedLines: []string{
+				"testmessage",
+			},
+		},
+		{
+			config: `source: wineventlog
+event_channel: Application
+event_level: Information
+event_ids:
+ - 43`,
+			expectedLines: nil,
+		},
+	}
+	subLogger := log.WithFields(log.Fields{
+		"type": "windowseventlog",
+	})
+
+	evthandler, err := eventlog.Open("Application")
+
+	if err != nil {
+		t.Fatalf("failed to open event log: %s", err)
+	}
+
+	for _, test := range tests {
+		to := &tomb.Tomb{}
+		c := make(chan types.Event)
+		f := WinEventLogSource{}
+		f.Configure([]byte(test.config), subLogger)
+		f.StreamingAcquisition(c, to)
+		time.Sleep(time.Second)
+		lines := test.expectedLines
+		go func() {
+			for _, line := range lines {
+				evthandler.Info(42, line)
+			}
+		}()
+		ticker := time.NewTicker(time.Second * 5)
+		linesRead := make([]string, 0)
+	READLOOP:
+		for {
+			select {
+			case <-ticker.C:
+				if test.expectedLines == nil {
+					break READLOOP
+				}
+				t.Fatalf("timeout")
+			case e := <-c:
+
+				linesRead = append(linesRead, exprhelpers.XMLGetNodeValue(e.Line.Raw, "/Event/EventData[1]/Data"))
+				if len(linesRead) == len(lines) {
+					break READLOOP
+				}
+			}
+		}
+		if test.expectedLines == nil {
+			assert.Equal(t, 0, len(linesRead))
+		} else {
+			assert.Equal(t, len(test.expectedLines), len(linesRead))
+			assert.Equal(t, test.expectedLines, linesRead)
+		}
+		to.Kill(nil)
+		to.Wait()
 	}
 }
