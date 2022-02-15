@@ -1,8 +1,10 @@
 #! /usr/bin/env bash
 # -*- coding: utf-8 -*-
 
+# sourced by other functional tests
 
-# sourced by other functionnal tests
+#shellcheck source=lib/wrap-init.sh
+. "$(dirname "$(readlink -f "$0")")/lib/wrap-init.sh"
 
 PACKAGE_PATH="${PACKAGE_PATH:-./crowdsec.deb}"
 
@@ -11,7 +13,6 @@ CSCLI="sudo ${CSCLI_BIN}"
 JQ="jq -e"
 
 LC_ALL=C
-SYSTEMCTL="sudo systemctl --no-pager"
 
 CROWDSEC="sudo crowdsec"
 CROWDSEC_PROCESS="crowdsec"
