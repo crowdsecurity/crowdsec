@@ -1,6 +1,6 @@
 name: Update Docker Hub README
 
-on: 
+on:
   push:
     branches:
       - master
@@ -11,7 +11,7 @@ jobs:
   update-docker-hub-readme:
     runs-on: ubuntu-latest
     steps:
-      - 
+      -
         name: Check out the repo
         uses: actions/checkout@v2
       -

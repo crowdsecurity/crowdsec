@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # Set the crowdsec config file
 CS_CONFIG_FILE="/etc/crowdsec/config.yaml"
@@ -9,6 +9,9 @@ fi
 # TLS defaults
 CERT_FILE="${CERT_FILE:-/etc/ssl/cert.pem}"
 KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
+
+# Plugins directory default
+PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
 
 #Check & prestage databases
 if [ ! -e "/var/lib/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/data/GeoLite2-City.mmdb" ]; then
@@ -41,7 +44,7 @@ if [ "$DISABLE_AGENT" == "" ] ; then
 fi
 
 # Check if lapi needs to automatically register an agent
-echo Check if lapi need to register automatically an agent
+echo "Check if lapi need to register automatically an agent"
 if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PASSWORD" != "" ] ; then
     if [ "$LOCAL_API_URL" != "" ] ; then
         cscli -c "$CS_CONFIG_FILE" machines add $AGENT_USERNAME --password $AGENT_PASSWORD --url $LOCAL_API_URL
@@ -78,7 +81,11 @@ if [ "$USE_TLS" != "" ]; then
    yq -i eval '... comments=""' "$CS_CONFIG_FILE"
 fi
 
-## Install collections, parsers & scenarios
+if [ "$PLUGIN_DIR" != "/usr/local/lib/crowdsec/plugins/" ]; then
+   yq -i eval ".config_paths.plugin_dir = \"$PLUGIN_DIR\"" "$CS_CONFIG_FILE"
+fi
+
+## Install collections, parsers, scenarios & postoverflows
 cscli -c "$CS_CONFIG_FILE" hub update
 cscli -c "$CS_CONFIG_FILE" collections upgrade crowdsecurity/linux || true
 cscli -c "$CS_CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
@@ -94,6 +101,20 @@ if [ "$SCENARIOS" != "" ]; then
 fi
 if [ "$POSTOVERFLOWS" != "" ]; then
     cscli -c "$CS_CONFIG_FILE" postoverflows install $POSTOVERFLOWS
+fi
+
+## Remove collections, parsers, scenarios & postoverflows
+if [ "$DISABLE_COLLECTIONS" != "" ]; then
+    cscli -c "$CS_CONFIG_FILE" collections remove $DISABLE_COLLECTIONS
+fi
+if [ "$DISABLE_PARSERS" != "" ]; then
+    cscli -c "$CS_CONFIG_FILE" parsers remove $DISABLE_PARSERS
+fi
+if [ "$DISABLE_SCENARIOS" != "" ]; then
+    cscli -c "$CS_CONFIG_FILE" scenarios remove $DISABLE_SCENARIOS
+fi
+if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
+    cscli -c "$CS_CONFIG_FILE" postoverflows remove $DISABLE_POSTOVERFLOWS
 fi
 
 ARGS=""
