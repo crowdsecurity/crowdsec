@@ -40,7 +40,7 @@ MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 # Current versioning information from env
-BUILD_VERSION ?= "$(shell git describe --tags `git rev-list --tags --max-count=1`)"
+BUILD_VERSION ?= "$(shell git describe --tags)"
 BUILD_GOVERSION = "$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
 BUILD_CODENAME = $(shell cat RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP = $(shell date +%F"_"%T)
