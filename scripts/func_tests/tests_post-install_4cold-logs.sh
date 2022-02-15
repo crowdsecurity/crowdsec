@@ -16,8 +16,9 @@ rm  -f ssh-bf.log
 
 sync
 
-for i in `seq 1 6` ; do 
-    echo `LC_ALL=C date '+%b %d %H:%M:%S '`'sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424' >> ssh-bf.log
+# shellcheck disable=SC2034
+for i in $(seq 1 6); do 
+    echo "$(LC_ALL=C date '+%b %d %H:%M:%S') sd-126005 sshd[12422]: Invalid user netflix from 1.1.1.172 port 35424" >> ssh-bf.log
 done;
 
 sync

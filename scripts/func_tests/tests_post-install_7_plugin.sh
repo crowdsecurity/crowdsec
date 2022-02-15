@@ -58,7 +58,7 @@ function cleanup_tests() {
 }
 
 function run_tests() {
-    log_line_count=$(cat mock_http_server_logs.log | wc -l)
+    log_line_count=$(wc -l <mock_http_server_logs.log)
 
     if [[ $log_line_count -ne "0" ]] ; then
         cleanup_tests
@@ -69,25 +69,25 @@ function run_tests() {
     ${CSCLI} decisions add --ip 1.2.3.5 --duration 30s
     sleep 5s
     cat mock_http_server_logs.log
-    log_line_count=$(cat mock_http_server_logs.log | wc -l)
+    log_line_count=$(wc -l <mock_http_server_logs.log)
     if [[ $log_line_count -ne "1" ]] ; then
         cleanup_tests
         fail "expected 1 log line from http server"
     fi
 
-    total_alerts=$(cat mock_http_server_logs.log   | jq  .request_body | jq length)
+    total_alerts=$(jq <mock_http_server_logs.log .request_body | jq length)
     if [[ $total_alerts -ne "2" ]] ; then
         cleanup_tests
         fail "expected to receive 2 alerts in the request body from plugin"
     fi
 
-    first_received_ip=$(cat mock_http_server_logs.log  | jq -r .request_body[0].decisions[0].value)
+    first_received_ip=$(jq <mock_http_server_logs.log -r .request_body[0].decisions[0].value)
     if [[ $first_received_ip != "1.2.3.4" ]] ; then
         cleanup_tests
         fail "expected to receive IP 1.2.3.4 as value of first decision"
     fi 
 
-    second_received_ip=$(cat mock_http_server_logs.log  | jq -r .request_body[1].decisions[0].value)
+    second_received_ip=$(jq <mock_http_server_logs.log -r .request_body[1].decisions[0].value)
     if [[ $second_received_ip != "1.2.3.5" ]] ; then
         cleanup_tests
         fail "expected to receive IP 1.2.3.5 as value of second decision"

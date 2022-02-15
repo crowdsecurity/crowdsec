@@ -3,7 +3,7 @@
 
 source tests_base.sh
 
-echo $PATH
+echo "$PATH"
 
 sudo cp /etc/crowdsec/config.yaml ./config.yaml.backup
 

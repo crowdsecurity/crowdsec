@@ -1,7 +1,9 @@
 #! /usr/bin/env bash
 # -*- coding: utf-8 -*-
 
-# sourced by other functional tests
+# this file is sourced by other functional tests,
+# ignore errors about unused variables
+#shellcheck disable=SC2034
 
 #shellcheck source=lib/wrap-init.sh
 . "$(dirname "$(readlink -f "$0")")/lib/wrap-init.sh"
@@ -19,7 +21,7 @@ CROWDSEC_PROCESS="crowdsec"
 
 # helpers
 function fail {
-    echo "ACTION FAILED, STOP : $@"
+    echo "ACTION FAILED, STOP : $*"
     caller
     exit 1
 }

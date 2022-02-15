@@ -14,10 +14,8 @@ FAIL_STR="${RED}FAIL${NC}"
 
 
 CROWDSEC_API_URL="http://localhost:8081"
-CROWDSEC_VERSION=""
 API_KEY=""
 
-RELEASE_FOLDER_FULL=""
 FAILED="false"
 MUST_FAIL="false"
 
@@ -115,51 +113,51 @@ function test_ipv4_range
     ${CSCLI} decisions list -o json | ${JQ} '.[0].decisions[0].value == "4.4.4.0/24", .[1].decisions[0].value == "1.2.3.4"'> /dev/null || fail
     cscli_echo "getting all decision"
     
-    docurl ${APIK} "/v1/decisions" | ${JQ} '.[0].value == "1.2.3.4", .[1].value == "4.4.4.0/24"'> /dev/null || fail
+    docurl "${APIK}" "/v1/decisions" | ${JQ} '.[0].value == "1.2.3.4", .[1].value == "4.4.4.0/24"'> /dev/null || fail
     bouncer_echo "getting all decision"
 
     #check ip within/outside of range
     ${CSCLI} decisions list -i 4.4.4.3 -o json | ${JQ} '.[].decisions[0].value == "4.4.4.0/24"' > /dev/null || fail
     cscli_echo "getting decisions for ip 4.4.4."
 
-    docurl ${APIK} "/v1/decisions?ip=4.4.4.3" | ${JQ} '.[0].value == "4.4.4.0/24"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=4.4.4.3" | ${JQ} '.[0].value == "4.4.4.0/24"' > /dev/null || fail
     bouncer_echo "getting decisions for ip 4.4.4."
 
     ${CSCLI} decisions list -i 4.4.4.4 -o json --contained | ${JQ} '. == null'> /dev/null || fail
     cscli_echo "getting decisions for ip contained in 4.4.4."
 
-    docurl ${APIK} "/v1/decisions?ip=4.4.4.4&contains=false" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=4.4.4.4&contains=false" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip contained in 4.4.4."
 
     ${CSCLI} decisions list -i 5.4.4.3 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip 5.4.4."
 
-    docurl ${APIK} "/v1/decisions?ip=5.4.4.3" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=5.4.4.3" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip 5.4.4."
 
     ${CSCLI} decisions list -r 4.4.0.0/16 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for range 4.4.0.0/1"
 
-    docurl ${APIK} "/v1/decisions?range=4.4.0.0/16" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=4.4.0.0/16" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range 4.4.0.0/1"
 
     ${CSCLI} decisions list -r 4.4.0.0/16 -o json --contained | ${JQ} '.[].decisions[0].value == "4.4.4.0/24"' > /dev/null || fail
     cscli_echo "getting decisions for ip/range in 4.4.0.0/1"
 
-    docurl ${APIK} "/v1/decisions?range=4.4.0.0/16&contains=false" | ${JQ} '.[0].value == "4.4.4.0/24"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=4.4.0.0/16&contains=false" | ${JQ} '.[0].value == "4.4.4.0/24"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in 4.4.0.0/1"
 
     #check subrange
     ${CSCLI} decisions list -r 4.4.4.2/28 -o json | ${JQ} '.[].decisions[0].value == "4.4.4.0/24"' > /dev/null || fail
     cscli_echo "getting decisions for range 4.4.4.2/2"
 
-    docurl ${APIK} "/v1/decisions?range=4.4.4.2/28" | ${JQ} '.[].value == "4.4.4.0/24"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=4.4.4.2/28" | ${JQ} '.[].value == "4.4.4.0/24"' > /dev/null || fail
     bouncer_echo "getting decisions for range 4.4.4.2/2"
 
     ${CSCLI} decisions list -r 4.4.3.2/28 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for range 4.4.3.2/2"
 
-    docurl ${APIK} "/v1/decisions?range=4.4.3.2/28" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=4.4.3.2/28" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range 4.4.3.2/2"
 
 }
@@ -179,49 +177,49 @@ function test_ipv6_ip
     ${CSCLI} decisions list -o json | ${JQ} '.[].decisions[0].value == "1111:2222:3333:4444:5555:6666:7777:8888"'  > /dev/null || fail
     cscli_echo "getting all decision"
 
-    docurl ${APIK} "/v1/decisions" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     bouncer_echo "getting all decision"
 
     ${CSCLI} decisions list -i 1111:2222:3333:4444:5555:6666:7777:8888 -o json | ${JQ} '.[].decisions[0].value == "1111:2222:3333:4444:5555:6666:7777:8888"'  > /dev/null || fail
     cscli_echo "getting decisions for ip 1111:2222:3333:4444:5555:6666:7777:8888"
     
-    docurl ${APIK} "/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     bouncer_echo "getting decisions for ip 1111:2222:3333:4444:5555:6666:7777:888"
 
     ${CSCLI} decisions list -i 1211:2222:3333:4444:5555:6666:7777:8888 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip 1211:2222:3333:4444:5555:6666:7777:8888"
 
-    docurl ${APIK} "/v1/decisions?ip=1211:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=1211:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip 1211:2222:3333:4444:5555:6666:7777:888"
 
     ${CSCLI} decisions list -i 1111:2222:3333:4444:5555:6666:7777:8887 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip 1111:2222:3333:4444:5555:6666:7777:8887"
 
-    docurl ${APIK} "/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8887" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=1111:2222:3333:4444:5555:6666:7777:8887" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip 1111:2222:3333:4444:5555:6666:7777:888"
 
     ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/48 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/48"
 
     ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/48 --contained -o json | ${JQ} '.[].decisions[0].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     cscli_echo "getting decisions for ip/range in range 1111:2222:3333:4444:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48&&contains=false" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/48&&contains=false" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/48"
 
     ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/64 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/64"
 
-    docurl ${APIK} "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range 1111:2222:3333:4444:5555:6666:7777:8888/64"
 
     ${CSCLI} decisions list -r 1111:2222:3333:4444:5555:6666:7777:8888/64 -o json --contained | ${JQ} '.[].decisions[0].value == "1111:2222:3333:4444:5555:6666:7777:8888"'  > /dev/null || fail
     cscli_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64"
 
-    docurl ${APIK} "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64&&contains=false" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=1111:2222:3333:4444:5555:6666:7777:8888/64&&contains=false" | ${JQ} '.[].value == "1111:2222:3333:4444:5555:6666:7777:8888"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in 1111:2222:3333:4444:5555:6666:7777:8888/64"
 
     cscli_echo "adding decision for ip 1111:2222:3333:4444:5555:6666:7777:8889"
@@ -254,64 +252,64 @@ function test_ipv6_range
     ${CSCLI} decisions list -o json | ${JQ} '.[0].decisions[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     cscli_echo "getting all decision"
 
-    docurl ${APIK} "/v1/decisions" | ${JQ} '.[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions" | ${JQ} '.[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting all decision"
 
     #check ip within/out of range
     ${CSCLI} decisions list -i aaaa:2222:3333:4444:5555:6666:7777:8888 -o json | ${JQ} '.[].decisions[0].value == "aaaa:2222:3333:4444::/64"'  > /dev/null || fail
     cscli_echo "getting decisions for ip aaaa:2222:3333:4444:5555:6666:7777:8888"
 
-    docurl ${APIK} "/v1/decisions?ip=aaaa:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=aaaa:2222:3333:4444:5555:6666:7777:8888" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting decisions for ip aaaa:2222:3333:4444:5555:6666:7777:8888"
 
     ${CSCLI} decisions list -i aaaa:2222:3333:4445:5555:6666:7777:8888 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888"
 
-    docurl ${APIK} "/v1/decisions?ip=aaaa:2222:3333:4445:5555:6666:7777:8888" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=aaaa:2222:3333:4445:5555:6666:7777:8888" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip aaaa:2222:3333:4445:5555:6666:7777:8888"
 
     ${CSCLI} decisions list -i aaa1:2222:3333:4444:5555:6666:7777:8887 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887"
 
-    docurl ${APIK} "/v1/decisions?ip=aaa1:2222:3333:4444:5555:6666:7777:8887" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=aaa1:2222:3333:4444:5555:6666:7777:8887" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip aaa1:2222:3333:4444:5555:6666:7777:8887"
 
     #check subrange within/out of range
     ${CSCLI} decisions list -r aaaa:2222:3333:4444:5555::/80 -o json | ${JQ} '.[].decisions[0].value == "aaaa:2222:3333:4444::/64"'  > /dev/null || fail
     cscli_echo "getting decisions for range aaaa:2222:3333:4444:5555::/80"
     
-    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4444:5555::/80" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaaa:2222:3333:4444:5555::/80" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting decisions for range aaaa:2222:3333:4444:5555::/80"
 
     ${CSCLI} decisions list -r aaaa:2222:3333:4441:5555::/80 -o json | ${JQ} '. == null'  > /dev/null || fail
     cscli_echo "getting decisions for range aaaa:2222:3333:4441:5555::/80"
     
-    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4441:5555::/80" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaaa:2222:3333:4441:5555::/80" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range aaaa:2222:3333:4441:5555::/80"
 
     ${CSCLI} decisions list -r aaa1:2222:3333:4444:5555::/80 -o json | ${JQ} '. == null'  > /dev/null || fail
     cscli_echo "getting decisions for range aaa1:2222:3333:4444:5555::/80"
 
-    docurl ${APIK} "/v1/decisions?range=aaa1:2222:3333:4444:5555::/80" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaa1:2222:3333:4444:5555::/80" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range aaa1:2222:3333:4444:5555::/80"
 
     #check outer range
     ${CSCLI} decisions list -r aaaa:2222:3333:4444:5555:6666:7777:8888/48 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for range aaaa:2222:3333:4444:5555:6666:7777:8888/48"
 
     ${CSCLI} decisions list -r aaaa:2222:3333:4444:5555:6666:7777:8888/48 -o json --contained | ${JQ} '.[].decisions[0].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     cscli_echo "getting decisions for ip/range in aaaa:2222:3333:4444:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48&contains=false" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaaa:2222:3333:4444:5555:6666:7777:8888/48&contains=false" | ${JQ} '.[].value == "aaaa:2222:3333:4444::/64"' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in aaaa:2222:3333:4444:5555:6666:7777:8888/48"
 
     ${CSCLI} decisions list -r aaaa:2222:3333:4445:5555:6666:7777:8888/48 -o json | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip/range aaaa:2222:3333:4445:5555:6666:7777:8888/48"
 
-    docurl ${APIK} "/v1/decisions?range=aaaa:2222:3333:4445:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?range=aaaa:2222:3333:4445:5555:6666:7777:8888/48" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip/range in aaaa:2222:3333:4445:5555:6666:7777:8888/48"
 
     #bbbb:db8:: -> bbbb:db8:0000:0000:0000:7fff:ffff:ffff
@@ -321,13 +319,13 @@ function test_ipv6_range
     ${CSCLI} decisions list -o json -i bbbb:db8:0000:0000:0000:6fff:ffff:ffff | ${JQ} '.[].decisions[0].value == "bbbb:db8::/81"'  > /dev/null || fail
     cscli_echo "getting decisions for ip bbbb:db8:0000:0000:0000:6fff:ffff:ffff"
     
-    docurl ${APIK} "/v1/decisions?ip=bbbb:db8:0000:0000:0000:6fff:ffff:ffff" | ${JQ} '.[].value == "bbbb:db8::/81"' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=bbbb:db8:0000:0000:0000:6fff:ffff:ffff" | ${JQ} '.[].value == "bbbb:db8::/81"' > /dev/null || fail
     bouncer_echo "getting decisions for ip in bbbb:db8:0000:0000:0000:6fff:ffff:ffff"
 
     ${CSCLI} decisions list -o json -i bbbb:db8:0000:0000:0000:8fff:ffff:ffff | ${JQ} '. == null' > /dev/null || fail
     cscli_echo "getting decisions for ip bbbb:db8:0000:0000:0000:8fff:ffff:ffff"
 
-    docurl ${APIK} "/v1/decisions?ip=bbbb:db8:0000:0000:0000:8fff:ffff:ffff" | ${JQ} '. == null' > /dev/null || fail
+    docurl "${APIK}" "/v1/decisions?ip=bbbb:db8:0000:0000:0000:8fff:ffff:ffff" | ${JQ} '. == null' > /dev/null || fail
     bouncer_echo "getting decisions for ip in bbbb:db8:0000:0000:0000:8fff:ffff:ffff"
 
     cscli_echo "deleting decision for range aaaa:2222:3333:4444:5555:6666:7777:8888/48"
