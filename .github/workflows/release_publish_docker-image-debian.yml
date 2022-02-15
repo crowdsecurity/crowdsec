@@ -4,6 +4,7 @@ on:
     types:
       - released
       - prereleased
+  workflow_dispatch:
 jobs:
   push_to_registry:
     name: Push Docker debian image to Docker Hub
