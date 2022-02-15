@@ -127,7 +127,11 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `CERT_FILE`               - TLS Certificate file (default: `/etc/ssl/cert.pem`) : `-e CERT_FILE="<file_path>"`
 * `KEY_FILE`                - TLS Key file (default: `/etc/ssl/key.pem`) : `-e KEY_FILE="<file_path>"`
 * `CUSTOM_HOSTNAME`         - Custom hostname for local api (default: `localhost`) : `-e CUSTOM_HOSTNAME="<hostname>"`
-* `DISABLE_SCENARIOS`       - Scenarios to uninstall from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
+* `DISABLE_COLLECTIONS`       - Collections to remove from the [hub](https://hub.crowdsec.net/browse/#collections), separated by space : `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"`
+* `DISABLE_PARSERS`         - Parsers to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_PARSERS="crowdsecurity/apache2-logs crowdsecurity/nginx-logs"`
+* `DISABLE_SCENARIOS`       - Scenarios to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
+* `DISABLE_POSTOVERFLOWS`   - Postoverflows to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_POSTOVERFLOWS="crowdsecurity/cdn-whitelist crowdsecurity/seo-bots-whitelist"`
+* `PLUGIN_DIR`              - Directory for plugins (default: `/usr/local/lib/crowdsec/plugins/`) : `-e PLUGIN_DIR="<path>"`
 
 ## Volumes
 
