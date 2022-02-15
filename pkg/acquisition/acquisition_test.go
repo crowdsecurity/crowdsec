@@ -8,6 +8,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -184,10 +185,9 @@ wowo: ajsajasjas
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
 			}
 			continue
-		} else {
-			if err != nil {
-				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-			}
+		}
+		if err != nil {
+			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
 		}
 
 		switch test.TestName {
@@ -290,10 +290,9 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
 			}
 			continue
-		} else {
-			if err != nil {
-				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-			}
+		}
+		if err != nil {
+			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
 		}
 		if len(dss) != test.ExpectedLen {
 			t.Fatalf("%s : expected %d datasources got %d", test.TestName, test.ExpectedLen, len(dss))
@@ -336,11 +335,13 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
 	return fmt.Errorf("can't run in tail")
 }
-func (f *MockCat) CanRun() error                                   { return nil }
-func (f *MockCat) GetMetrics() []prometheus.Collector              { return nil }
-func (f *MockCat) GetAggregMetrics() []prometheus.Collector        { return nil }
-func (f *MockCat) Dump() interface{}                               { return f }
-func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error { return fmt.Errorf("not supported") }
+func (f *MockCat) CanRun() error                            { return nil }
+func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
+func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
+func (f *MockCat) Dump() interface{}                        { return f }
+func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+	return fmt.Errorf("not supported")
+}
 
 //----
 
@@ -554,15 +555,8 @@ func TestConfigureByDSN(t *testing.T) {
 
 	for _, test := range tests {
 		srcs, err := LoadAcquisitionFromDSN(test.dsn, map[string]string{"type": "test_label"})
-		if err != nil && test.ExpectedError != "" {
-			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("expected '%s', got '%s'", test.ExpectedError, err.Error())
-			}
-		} else if err != nil && test.ExpectedError == "" {
-			t.Fatalf("got unexpected error '%s'", err.Error())
-		} else if err == nil && test.ExpectedError != "" {
-			t.Fatalf("expected error '%s' got none", test.ExpectedError)
-		}
+		cstest.AssertErrorContains(t, err, test.ExpectedError)
+
 		if len(srcs) != test.ExpectedResLen {
 			t.Fatalf("expected %d results, got %d", test.ExpectedResLen, len(srcs))
 		}
