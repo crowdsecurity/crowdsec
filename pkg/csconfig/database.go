@@ -6,17 +6,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var DEFAULT_MAX_OPEN_CONNS = 100
+
 type DatabaseCfg struct {
-	User     string      `yaml:"user"`
-	Password string      `yaml:"password"`
-	DbName   string      `yaml:"db_name"`
-	Sslmode  string      `yaml:"sslmode"`
-	Host     string      `yaml:"host"`
-	Port     int         `yaml:"port"`
-	DbPath   string      `yaml:"db_path"`
-	Type     string      `yaml:"type"`
-	Flush    *FlushDBCfg `yaml:"flush"`
-	LogLevel *log.Level  `yaml:"log_level"`
+	User         string      `yaml:"user"`
+	Password     string      `yaml:"password"`
+	DbName       string      `yaml:"db_name"`
+	Sslmode      string      `yaml:"sslmode"`
+	Host         string      `yaml:"host"`
+	Port         int         `yaml:"port"`
+	DbPath       string      `yaml:"db_path"`
+	Type         string      `yaml:"type"`
+	Flush        *FlushDBCfg `yaml:"flush"`
+	LogLevel     *log.Level  `yaml:"log_level"`
+	MaxOpenConns int         `yaml:"max_open_conns"`
 }
 
 type FlushDBCfg struct {
@@ -37,5 +40,8 @@ func (c *Config) LoadDBConfig() error {
 		c.API.Server.DbConfig = c.DbConfig
 	}
 
+	if c.DbConfig.MaxOpenConns == 0 {
+		c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
+	}
 	return nil
 }
