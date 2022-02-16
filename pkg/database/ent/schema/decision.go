@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 )
 
@@ -42,5 +43,11 @@ func (Decision) Edges() []ent.Edge {
 		edge.From("owner", Alert.Type).
 			Ref("decisions").
 			Unique(),
+	}
+}
+
+func (Decision) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("start_ip", "end_ip"),
 	}
 }
