@@ -34,8 +34,7 @@ func getEntDriver(dbtype string, dsn string, config *csconfig.DatabaseCfg) (*ent
 	}
 	if config.MaxOpenConns == nil {
 		log.Warningf("MaxOpenConns is 0, defaulting to %d", csconfig.DEFAULT_MAX_OPEN_CONNS)
-		config.MaxOpenConns = new(int)
-		*config.MaxOpenConns = csconfig.DEFAULT_MAX_OPEN_CONNS
+		config.MaxOpenConns = types.IntPtr(csconfig.DEFAULT_MAX_OPEN_CONNS)
 	}
 	db.SetMaxOpenConns(*config.MaxOpenConns)
 	drv := entsql.OpenDB(dbtype, db)

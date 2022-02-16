@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,8 +42,7 @@ func (c *Config) LoadDBConfig() error {
 	}
 
 	if c.DbConfig.MaxOpenConns == nil {
-		c.DbConfig.MaxOpenConns = new(int)
-		*c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
+		c.DbConfig.MaxOpenConns = types.IntPtr(DEFAULT_MAX_OPEN_CONNS)
 	}
 	return nil
 }

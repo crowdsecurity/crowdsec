@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,8 +20,9 @@ func TestLoadDBConfig(t *testing.T) {
 			name: "basic valid configuration",
 			Input: &Config{
 				DbConfig: &DatabaseCfg{
-					Type:   "sqlite",
-					DbPath: "./tests/test.db",
+					Type:         "sqlite",
+					DbPath:       "./tests/test.db",
+					MaxOpenConns: types.IntPtr(10),
 				},
 				Cscli: &CscliCfg{},
 				API: &APICfg{
@@ -28,8 +30,9 @@ func TestLoadDBConfig(t *testing.T) {
 				},
 			},
 			expectedResult: &DatabaseCfg{
-				Type:   "sqlite",
-				DbPath: "./tests/test.db",
+				Type:         "sqlite",
+				DbPath:       "./tests/test.db",
+				MaxOpenConns: types.IntPtr(10),
 			},
 		},
 		{

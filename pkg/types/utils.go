@@ -219,6 +219,10 @@ func StrPtr(s string) *string {
 	return &s
 }
 
+func IntPtr(i int) *int {
+	return &i
+}
+
 func Int32Ptr(i int32) *int32 {
 	return &i
 }
