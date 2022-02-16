@@ -11,7 +11,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -141,7 +140,6 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 }
 
 func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Decision, error) {
-	t1 := time.Now()
 	var data []*ent.Decision
 	var err error
 
@@ -153,11 +151,6 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		return []*ent.Decision{}, err
 	}
 
-	t2 := time.Now()
-
-	buildDur := t2.Sub(t1)
-
-	t3 := time.Now()
 	err = decisions.Select(
 		decision.FieldID,
 		decision.FieldUntil,
@@ -173,14 +166,6 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 		c.Log.Warningf("QueryDecisionWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "query decision failed")
 	}
-	t4 := time.Now()
-
-	selectDur := t4.Sub(t3)
-
-	t5 := time.Now()
-	totalDur := t5.Sub(t1)
-
-	log.Infof("Build: %+v | Select : %+v | Total: %+v", buildDur, selectDur, totalDur)
 
 	return data, nil
 }
