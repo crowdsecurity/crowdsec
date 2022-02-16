@@ -19,7 +19,7 @@ type DatabaseCfg struct {
 	Type         string      `yaml:"type"`
 	Flush        *FlushDBCfg `yaml:"flush"`
 	LogLevel     *log.Level  `yaml:"log_level"`
-	MaxOpenConns int         `yaml:"max_open_conns"`
+	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
 }
 
 type FlushDBCfg struct {
@@ -40,8 +40,9 @@ func (c *Config) LoadDBConfig() error {
 		c.API.Server.DbConfig = c.DbConfig
 	}
 
-	if c.DbConfig.MaxOpenConns == 0 {
-		c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
+	if c.DbConfig.MaxOpenConns == nil {
+		c.DbConfig.MaxOpenConns = new(int)
+		*c.DbConfig.MaxOpenConns = DEFAULT_MAX_OPEN_CONNS
 	}
 	return nil
 }
