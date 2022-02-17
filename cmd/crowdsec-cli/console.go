@@ -85,7 +85,7 @@ After running this command your will need to validate the enrollment in the weba
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
-			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}

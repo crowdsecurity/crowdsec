@@ -69,7 +69,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	var cache []types.RuntimeAlert
 	var cacheMutex sync.Mutex
 
-	scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+	scenarios, err := cwhub.GetInstalledScenariosAsString()
 	if err != nil {
 		return errors.Wrapf(err, "loading list of installed hub scenarios: %s", err)
 	}
@@ -88,7 +88,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
 		VersionPrefix:  "v1",
-		UpdateScenario: cwhub.GetUpstreamInstalledScenariosAsString,
+		UpdateScenario: cwhub.GetInstalledScenariosAsString,
 	})
 	if err != nil {
 		return errors.Wrapf(err, "new client api: %s", err)

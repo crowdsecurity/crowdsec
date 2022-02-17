@@ -146,7 +146,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("Failed to load hub index : %s", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
-			scenarios, err := cwhub.GetUpstreamInstalledScenariosAsString()
+			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
 				log.Fatalf("failed to get scenarios : %s", err.Error())
 			}
