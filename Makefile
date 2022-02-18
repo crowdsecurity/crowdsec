@@ -66,11 +66,11 @@ GOTEST=$(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
-.PHONY: all
-all: clean test build
-
 .PHONY: build
 build: goversion crowdsec cscli plugins
+
+.PHONY: all
+all: clean test build
 
 .PHONY: static
 static: crowdsec_static cscli_static plugins_static
