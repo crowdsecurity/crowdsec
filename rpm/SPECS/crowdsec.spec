@@ -39,7 +39,7 @@ BuildRequires:  systemd
 %patch2
 
 %build
-BUILD_VERSION=%{local_version} make
+BUILD_VERSION=%{local_version} make build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install
