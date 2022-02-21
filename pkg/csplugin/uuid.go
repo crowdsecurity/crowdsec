@@ -3,8 +3,6 @@
 package csplugin
 
 import (
-	"os"
-
 	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 )
@@ -14,5 +12,5 @@ func getUUID() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to generate UUID")
 	}
-	return u, nil
+	return u.String(), nil
 }
