@@ -193,7 +193,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusCreated, alerts)
-	return
 }
 
 // FindAlerts : return alerts from database based on the specified filter
@@ -211,7 +210,6 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // FindAlertByID return the alert assiocated to the ID
@@ -234,7 +232,6 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // DeleteAlerts : delete alerts from database based on the specified filter
@@ -254,5 +251,4 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 	gctx.JSON(http.StatusOK, deleteAlertsResp)
-	return
 }

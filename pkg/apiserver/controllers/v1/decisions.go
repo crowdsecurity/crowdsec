@@ -61,7 +61,6 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, results)
-	return
 }
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {

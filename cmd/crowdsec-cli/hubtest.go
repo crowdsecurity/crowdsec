@@ -70,7 +70,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 
 			if logType == "" {
-				log.Fatalf("please provid a type (--type) for the test")
+				log.Fatalf("please provide a type (--type) for the test")
 			}
 
 			if err := os.MkdirAll(testPath, os.ModePerm); err != nil {

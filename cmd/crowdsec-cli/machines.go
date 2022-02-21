@@ -131,9 +131,9 @@ Note: This command requires database direct access, so is intended to be run on 
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
-						validated = fmt.Sprintf("%s", emoji.CheckMark)
+						validated = emoji.CheckMark.String()
 					} else {
-						validated = fmt.Sprintf("%s", emoji.Prohibited)
+						validated = emoji.Prohibited.String()
 					}
 					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
 				}
