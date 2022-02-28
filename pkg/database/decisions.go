@@ -9,8 +9,10 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
@@ -39,29 +41,51 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scope":
-			for i, scope := range value {
+		case "scopes":
+			scopes := strings.Split(value[0], ",")
+			for i, scope := range scopes {
 				switch strings.ToLower(scope) {
 				case "ip":
-					value[i] = types.Ip
+					scopes[i] = types.Ip
 				case "range":
-					value[i] = types.Range
+					scopes[i] = types.Range
 				case "country":
-					value[i] = types.Country
+					scopes[i] = types.Country
 				case "as":
-					value[i] = types.AS
+					scopes[i] = types.AS
 				}
 			}
-			query = query.Where(decision.ScopeIn(value...))
+			query = query.Where(decision.ScopeIn(scopes...))
 		case "value":
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
 			query = query.Where(decision.TypeEQ(value[0]))
+		case "origin":
+			query = query.Where(decision.OriginEqualFold(value[0]))
+		case "scenarios_containing":
+			words := strings.Split(value[0], ",")
+			predicates := make([]predicate.Decision, len(words))
+			for i, word := range words {
+				predicates[i] = decision.ScenarioContainsFold(word)
+			}
+			query = query.Where(decision.Or(predicates...))
+		case "scenarios_not_containing":
+			words := strings.Split(value[0], ",")
+			predicates := make([]predicate.Decision, len(words))
+			for i, word := range strings.Split(value[0], ",") {
+				predicates[i] = decision.ScenarioContainsFold(word)
+			}
+			query = query.Where(decision.Not(
+				decision.Or(
+					predicates...,
+				),
+			))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
+		case "startup":
 		default:
 			return query, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
