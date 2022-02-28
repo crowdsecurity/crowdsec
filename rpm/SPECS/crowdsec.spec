@@ -67,10 +67,12 @@ install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 644 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 %clean
 rm -rf %{buildroot}
