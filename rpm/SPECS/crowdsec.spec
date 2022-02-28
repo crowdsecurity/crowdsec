@@ -85,6 +85,7 @@ rm -rf %{buildroot}
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
+%{_libdir}/%{name}/plugins/notification-email
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx
@@ -117,6 +118,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
 
 %{_unitdir}/%{name}.service
 
