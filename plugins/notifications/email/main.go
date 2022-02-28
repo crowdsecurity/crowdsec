@@ -40,6 +40,7 @@ type PluginConfig struct {
 	SMTPUsername   string   `yaml:"smtp_username"`
 	SMTPPassword   string   `yaml:"smtp_password"`
 	SenderEmail    string   `yaml:"sender_email"`
+	SenderName     string   `yaml:"sender_name"`
 	ReceiverEmails []string `yaml:"receiver_emails"`
 	EmailSubject   string   `yaml:"email_subject"`
 	EncryptionType string   `yaml:"encryption_type"`
@@ -88,7 +89,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	logger.Debug("smtp connection done")
 
 	email := mail.NewMSG()
-	email.SetFrom(fmt.Sprintf("From <%s>", cfg.SenderEmail)).
+	email.SetFrom(fmt.Sprintf("%s <%s>", cfg.SenderName, cfg.SenderEmail)).
 		AddTo(cfg.ReceiverEmails...).
 		SetSubject(cfg.EmailSubject)
 	email.SetBody(mail.TextHTML, notification.Text)

@@ -27,6 +27,7 @@ smtp_username:        # Replace with your actual username
 smtp_password:        # Replace with your actual password
 smtp_port:            # Common values are any of [25, 465, 587, 2525]
 auth_type:            # Valid choices are "none", "crammd5", "login", "plain"
+sender_name: "CrowdSec"
 sender_email:         # example: foo@gmail.com
 email_subject: "CrowdSec Notification"
 receiver_emails:
