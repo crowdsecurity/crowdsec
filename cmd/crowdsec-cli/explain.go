@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,7 +52,6 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				defer f.Close()
 
 				_, err = f.WriteString(logLine)
-
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -63,6 +63,10 @@ cscli explain --dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to get absolue path of '%s', exiting", logFile)
 				}
 				dsn = fmt.Sprintf("file://%s", absolutePath)
+				lineCount := getLineCountForFile(absolutePath)
+				if lineCount > 100 {
+					log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
+				}
 			}
 
 			if dsn == "" {
@@ -107,4 +111,17 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
 
 	return cmdExplain
+}
+
+func getLineCountForFile(filepath string) int {
+	f, err := os.Open(filepath)
+	if err != nil {
+		log.Fatalf("unable to open log file %s", filepath)
+	}
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc
 }
