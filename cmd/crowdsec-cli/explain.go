@@ -118,6 +118,7 @@ func getLineCountForFile(filepath string) int {
 	if err != nil {
 		log.Fatalf("unable to open log file %s", filepath)
 	}
+	defer f.Close()
 	lc := 0
 	fs := bufio.NewScanner(f)
 	for fs.Scan() {
