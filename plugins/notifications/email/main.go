@@ -52,10 +52,42 @@ type EmailPlugin struct {
 }
 
 func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
-	d := PluginConfig{}
+	d := PluginConfig{
+		SMTPPort:       587,
+		SenderName:     "Crowdsec",
+		EmailSubject:   "Crowdsec notification",
+		EncryptionType: "ssltls",
+		AuthType:       "login",
+	}
+
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
 		return nil, err
 	}
+
+	if d.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+
+	if d.SMTPHost == "" {
+		return nil, fmt.Errorf("SMTP host is not set")
+	}
+
+	if d.SMTPUsername == "" {
+		return nil, fmt.Errorf("SMTP username is not set")
+	}
+
+	if d.SMTPPassword == "" {
+		return nil, fmt.Errorf("SMTP password is not set")
+	}
+
+	if d.SenderEmail == "" {
+		return nil, fmt.Errorf("Sender email is not set")
+	}
+
+	if d.ReceiverEmails == nil || len(d.ReceiverEmails) == 0 {
+		return nil, fmt.Errorf("Receiver emails are not set")
+	}
+
 	n.ConfigByName[d.Name] = d
 	return &protobufs.Empty{}, nil
 }
