@@ -120,7 +120,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	// delete by scope/value
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?scope=Ip&value=91.121.79.178", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -185,7 +185,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : scope/value
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?scope=Ip&value=91.121.79.179", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)

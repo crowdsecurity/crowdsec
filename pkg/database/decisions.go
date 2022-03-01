@@ -390,7 +390,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			if err != nil {
 				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scope":
+		case "scopes":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
 		case "value":
 			decisions = decisions.Where(decision.ValueEQ(value[0]))
