@@ -3,7 +3,6 @@ package apiclient
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	qs "github.com/google/go-querystring/query"
@@ -18,8 +17,14 @@ type DecisionsListOpts struct {
 	IPEquals    *string `url:"ip,omitempty"`
 	RangeEquals *string `url:"range,omitempty"`
 	Contains    *bool   `url:"contains,omitempty"`
-
 	ListOpts
+}
+
+type DecisionsStreamOpts struct {
+	Startup                bool   `url:"startup,omitempty"`
+	Scopes                 string `url:"scopes,omitempty"`
+	ScenariosContaining    string `url:"scenarios_containing,omitempty"`
+	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
 }
 
 type DecisionsDeleteOpts struct {
@@ -53,12 +58,13 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 	return &decisions, resp, nil
 }
 
-func (s *DecisionsService) GetStream(ctx context.Context, startup bool, scopes []string) (*models.DecisionsStreamResponse, *Response, error) {
+func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-	u := fmt.Sprintf("%s/decisions/stream?startup=%t", s.client.URLPrefix, startup)
-	if len(scopes) > 0 {
-		u += "&scopes=" + strings.Join(scopes, ",")
+	params, err := qs.Values(opts)
+	if err != nil {
+		return nil, nil, err
 	}
+	u := fmt.Sprintf("%s/decisions/stream?%s", s.client.URLPrefix, params.Encode())
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
