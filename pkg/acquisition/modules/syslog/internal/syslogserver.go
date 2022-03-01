@@ -61,7 +61,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 		for {
 			select {
 			case <-t.Dying():
-				s.Logger.Info("syslog server tomb is dying")
+				s.Logger.Info("Syslog server tomb is dying")
 				err := s.KillServer()
 				return err
 			default:
@@ -92,5 +92,6 @@ func (s *SyslogServer) KillServer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not close UDP connection")
 	}
+	close(s.channel)
 	return nil
 }
