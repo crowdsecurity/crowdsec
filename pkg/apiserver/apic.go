@@ -275,7 +275,7 @@ func (a *apic) PullTop() error {
 		log.Printf("last CAPI pull is newer than 1h30, skip.")
 		return nil
 	}
-	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), a.startup, []string{})
+	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
 	if err != nil {
 		return errors.Wrap(err, "get stream")
 	}

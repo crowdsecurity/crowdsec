@@ -160,7 +160,7 @@ func TestDecisionsStream(t *testing.T) {
 		},
 	}
 
-	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), true, []string{})
+	decisions, resp, err := newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: true})
 	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
@@ -175,7 +175,7 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	//and second call, we get empty lists
-	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), false, []string{})
+	decisions, resp, err = newcli.Decisions.GetStream(context.Background(), DecisionsStreamOpts{Startup: false})
 	require.NoError(t, err)
 
 	if resp.Response.StatusCode != http.StatusOK {
