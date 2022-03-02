@@ -49,7 +49,7 @@ paths:
           in: query
           required: false
           type: string
-          description: 'If provided, then decisions with only this origin would be returned'
+          description: 'Comma separated name of origins. If provided, then only the decisions originating from provided origins would be returned.'
         - name: scenarios_containing
           in: query
           required: false

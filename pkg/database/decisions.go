@@ -59,21 +59,15 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
 			query = query.Where(decision.TypeEQ(value[0]))
-		case "origin":
-			query = query.Where(decision.OriginEqualFold(value[0]))
+		case "origins":
+			query = query.Where(
+				decision.OriginIn(strings.Split(value[0], ",")...),
+			)
 		case "scenarios_containing":
-			words := strings.Split(value[0], ",")
-			predicates := make([]predicate.Decision, len(words))
-			for i, word := range words {
-				predicates[i] = decision.ScenarioContainsFold(word)
-			}
+			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
 			query = query.Where(decision.Or(predicates...))
 		case "scenarios_not_containing":
-			words := strings.Split(value[0], ",")
-			predicates := make([]predicate.Decision, len(words))
-			for i, word := range strings.Split(value[0], ",") {
-				predicates[i] = decision.ScenarioContainsFold(word)
-			}
+			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
 			query = query.Where(decision.Not(
 				decision.Or(
 					predicates...,
@@ -84,9 +78,6 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
-		case "startup":
-		default:
-			return query, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
 
@@ -496,4 +487,13 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 		return ItemNotFound
 	}
 	return nil
+}
+
+func decisionPredicatesFromStr(s string, predicateFunc func(string) predicate.Decision) []predicate.Decision {
+	words := strings.Split(s, ",")
+	predicates := make([]predicate.Decision, len(words))
+	for i, word := range words {
+		predicates[i] = predicateFunc(word)
+	}
+	return predicates
 }
