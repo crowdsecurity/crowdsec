@@ -13,7 +13,7 @@ DAY2 \d{2}
 #NGINXERRTIME %{YEAR:year}/%{MONTHNUM2:month}/%{DAY2:day} %{HOUR:hour}:%{MINUTE:minute}:%{SECOND:second}
 NGINXERRTIME %{YEAR}/%{MONTHNUM2}/%{DAY2} %{HOUR}:%{MINUTE}:%{SECOND}
 
-NGINXACCESS %{IPORHOST:remote_addr} - %{NGUSER:remote_user} \[%{HTTPDATE:time_local}\] "%{WORD:method} %{URIPATHPARAM:request} HTTP/%{NUMBER:http_version}" %{NUMBER:status} %{NUMBER:body_bytes_sent} "%{NOTDQUOTE:http_referer}" "%{NOTDQUOTE:http_user_agent}"
+NGINXACCESS %{IPORHOST:remote_addr} - %{NGUSER:remote_user} \[%{HTTPDATE:time_local}\] "%{WORD:verb} %{DATA:request} HTTP/%{NUMBER:http_version}" %{NUMBER:status} %{NUMBER:body_bytes_sent} "%{NOTDQUOTE:http_referer}" "%{NOTDQUOTE:http_user_agent}"
 
 # YYYY/MM/DD HH:MM:SS [LEVEL] PID#TID: *CID MESSAGE
 NGINXERROR %{NGINXERRTIME:time} \[%{LOGLEVEL:loglevel}\] %{NONNEGINT:pid}#%{NONNEGINT:tid}: (\*%{NONNEGINT:cid} )?%{GREEDYDATA:message}
