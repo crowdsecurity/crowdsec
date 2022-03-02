@@ -249,19 +249,19 @@ func TestGetDecision(t *testing.T) {
 		log.Fatalf("%s", err.Error())
 	}
 
-	// Get Decision with invalid filter
+	// Get Decision
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?test=test", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, "{\"message\":\"'test' doesn't exist: invalid filter\"}", w.Body.String())
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
-	// Get Decision
+	// Get Decision with invalid filter. It should ignore this filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?test=test", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)

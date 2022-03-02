@@ -45,7 +45,7 @@ paths:
           required: false
           type: string
           description: 'Comma separated scopes of decisions to fetch'
-        - name: origin
+        - name: origins
           in: query
           required: false
           type: string
