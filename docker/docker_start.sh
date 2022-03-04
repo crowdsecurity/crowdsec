@@ -14,7 +14,7 @@ KEY_FILE="${KEY_FILE:-/etc/ssl/key.pem}"
 PLUGIN_DIR="${PLUGIN_DIR:-/usr/local/lib/crowdsec/plugins/}"
 
 #Check & prestage databases
-if [ ! -e "/var/lib/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/data/GeoLite2-City.mmdb" ]; then
+if [ ! -e "/var/lib/crowdsec/data/GeoLite2-ASN.mmdb" ] && [ ! -e "/var/lib/crowdsec/data/GeoLite2-City.mmdb" ]; then
     mkdir -p /var/lib/crowdsec/data
     cp /staging/var/lib/crowdsec/data/*.mmdb /var/lib/crowdsec/data/
 fi
