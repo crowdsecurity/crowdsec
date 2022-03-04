@@ -244,21 +244,21 @@ func (mc *MachineCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (mc *MachineCreate) check() error {
 	if _, ok := mc.mutation.MachineId(); !ok {
-		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "Machine.machineId"`)}
+		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "machineId"`)}
 	}
 	if _, ok := mc.mutation.Password(); !ok {
-		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "Machine.password"`)}
+		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "password"`)}
 	}
 	if _, ok := mc.mutation.IpAddress(); !ok {
-		return &ValidationError{Name: "ipAddress", err: errors.New(`ent: missing required field "Machine.ipAddress"`)}
+		return &ValidationError{Name: "ipAddress", err: errors.New(`ent: missing required field "ipAddress"`)}
 	}
 	if v, ok := mc.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "scenarios": %w`, err)}
 		}
 	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
-		return &ValidationError{Name: "isValidated", err: errors.New(`ent: missing required field "Machine.isValidated"`)}
+		return &ValidationError{Name: "isValidated", err: errors.New(`ent: missing required field "isValidated"`)}
 	}
 	return nil
 }

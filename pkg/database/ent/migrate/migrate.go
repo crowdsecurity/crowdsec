@@ -37,7 +37,8 @@ var (
 
 // Schema is the API for creating, migrating and dropping a schema.
 type Schema struct {
-	drv dialect.Driver
+	drv         dialect.Driver
+	universalID bool
 }
 
 // NewSchema creates a new schema client.
