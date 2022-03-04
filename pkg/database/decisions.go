@@ -171,6 +171,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
+// ent translation of https://stackoverflow.com/a/28090544
 func longestDecisionForScopeTypeValue(s *sql.Selector) {
 	t := sql.Table(decision.Table)
 	s.LeftJoin(t).OnP(sql.And(
