@@ -267,7 +267,7 @@ func TestGetDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
 }
 
@@ -377,7 +377,7 @@ func TestDeleteDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, "{\"nbDeleted\":\"3\"}", w.Body.String())
+	assert.Equal(t, "{\"nbDeleted\":\"1\"}", w.Body.String())
 
 }
 
@@ -431,56 +431,6 @@ func TestStreamDecision(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
-	// the decision with id=3 is only returned because it's the longest decision
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-	assert.NotContains(t, w.Body.String(), "\"id\":2")
-	assert.NotContains(t, w.Body.String(), "\"id\":1")
-	assert.Contains(t, w.Body.String(), "2h")
-
-	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions
-	// targetting same IP
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/3", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-	assert.Equal(t, 200, w.Code)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	// the decision with id=2 is only returned because it's the longest decision
-	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-	assert.NotContains(t, w.Body.String(), "\"id\":3")
-	assert.NotContains(t, w.Body.String(), "\"id\":1")
-	assert.Contains(t, w.Body.String(), "1h")
-	assert.Contains(t, w.Body.String(), "\"deleted\":null")
-
-	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/2", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, "{\"deleted\":null,\"new\":null}", w.Body.String())
-
-	// Now all decisions for this IP are deleted, we should receive it in stream
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/1", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.NotContains(t, "\"deleted\":null", w.Body.String())
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
 }

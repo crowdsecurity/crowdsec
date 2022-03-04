@@ -164,14 +164,14 @@ func (mc *MetaCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (mc *MetaCreate) check() error {
 	if _, ok := mc.mutation.Key(); !ok {
-		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "Meta.key"`)}
+		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "key"`)}
 	}
 	if _, ok := mc.mutation.Value(); !ok {
-		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Meta.value"`)}
+		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "value"`)}
 	}
 	if v, ok := mc.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "value": %w`, err)}
 		}
 	}
 	return nil

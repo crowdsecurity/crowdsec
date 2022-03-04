@@ -28,7 +28,6 @@ type MetaQuery struct {
 	// eager-loading edges.
 	withOwner *AlertQuery
 	withFKs   bool
-	modifiers []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -375,9 +374,6 @@ func (mq *MetaQuery) sqlAll(ctx context.Context) ([]*Meta, error) {
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
-	if len(mq.modifiers) > 0 {
-		_spec.Modifiers = mq.modifiers
-	}
 	if err := sqlgraph.QueryNodes(ctx, mq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -419,13 +415,6 @@ func (mq *MetaQuery) sqlAll(ctx context.Context) ([]*Meta, error) {
 
 func (mq *MetaQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
-	if len(mq.modifiers) > 0 {
-		_spec.Modifiers = mq.modifiers
-	}
-	_spec.Node.Columns = mq.fields
-	if len(mq.fields) > 0 {
-		_spec.Unique = mq.unique != nil && *mq.unique
-	}
 	return sqlgraph.CountNodes(ctx, mq.driver, _spec)
 }
 
@@ -497,12 +486,6 @@ func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector = mq.sql
 		selector.Select(selector.Columns(columns...)...)
 	}
-	if mq.unique != nil && *mq.unique {
-		selector.Distinct()
-	}
-	for _, m := range mq.modifiers {
-		m(selector)
-	}
 	for _, p := range mq.predicates {
 		p(selector)
 	}
@@ -518,12 +501,6 @@ func (mq *MetaQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
-}
-
-// Modify adds a query modifier for attaching custom logic to queries.
-func (mq *MetaQuery) Modify(modifiers ...func(s *sql.Selector)) *MetaSelect {
-	mq.modifiers = append(mq.modifiers, modifiers...)
-	return mq.Select()
 }
 
 // MetaGroupBy is the group-by builder for Meta entities.
@@ -787,7 +764,9 @@ func (mgb *MetaGroupBy) sqlQuery() *sql.Selector {
 		for _, f := range mgb.fields {
 			columns = append(columns, selector.C(f))
 		}
-		columns = append(columns, aggregation...)
+		for _, c := range aggregation {
+			columns = append(columns, c)
+		}
 		selector.Select(columns...)
 	}
 	return selector.GroupBy(selector.Columns(mgb.fields...)...)
@@ -1012,10 +991,4 @@ func (ms *MetaSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-// Modify adds a query modifier for attaching custom logic to queries.
-func (ms *MetaSelect) Modify(modifiers ...func(s *sql.Selector)) *MetaSelect {
-	ms.modifiers = append(ms.modifiers, modifiers...)
-	return ms
 }
