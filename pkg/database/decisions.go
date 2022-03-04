@@ -7,6 +7,7 @@ import (
 
 	"strconv"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -170,8 +171,38 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
+func longestDecisionForScopeTypeValue(s *sql.Selector) {
+	t := sql.Table(decision.Table)
+	s.LeftJoin(t).OnP(sql.And(
+		sql.ColumnsEQ(
+			t.C(decision.FieldValue),
+			s.C(decision.FieldValue),
+		),
+		sql.ColumnsEQ(
+			t.C(decision.FieldType),
+			s.C(decision.FieldType),
+		),
+		sql.ColumnsEQ(
+			t.C(decision.FieldScope),
+			s.C(decision.FieldScope),
+		),
+		sql.ColumnsGT(
+			t.C(decision.FieldUntil),
+			s.C(decision.FieldUntil),
+		),
+	))
+	s.Where(
+		sql.IsNull(
+			t.C(decision.FieldUntil),
+		),
+	)
+}
+
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -188,7 +219,10 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilLT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -204,7 +238,11 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC())).Where(decision.UntilGT(since))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilLT(time.Now().UTC()),
+		decision.UntilGT(since),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -221,7 +259,11 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.CreatedAtGT(since),
+		decision.UntilGT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
