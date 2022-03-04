@@ -13,6 +13,24 @@
                 "scope": "Ip",
                 "value": "127.0.0.1",
                 "type": "ban"
+            },
+            {
+                "id": 2,
+                "duration": "2h",
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.1",
+                "type": "ban"
+            },
+            {
+                "id": 3,
+                "duration": "3h",
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.1",
+                "type": "ban"
             }
         ],
         "Events": [
