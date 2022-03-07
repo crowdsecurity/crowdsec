@@ -108,6 +108,13 @@ var (
 				OnDelete:   schema.Cascade,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "decision_start_ip_end_ip",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[6], DecisionsColumns[7]},
+			},
+		},
 	}
 	// EventsColumns holds the columns for the "events" table.
 	EventsColumns = []*schema.Column{

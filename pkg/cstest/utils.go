@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Copy(sourceFile string, destinationFile string) error {
@@ -19,10 +23,36 @@ func Copy(sourceFile string, destinationFile string) error {
 	return nil
 }
 
-func CopyDir(src string, dest string) error {
+// checkPathNotContained returns an error if 'subpath' is inside 'path'
+func checkPathNotContained(path string, subpath string) error {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return err
+	}
 
-	if dest[:len(src)] == src {
-		return fmt.Errorf("Cannot copy a folder into the folder itself!")
+	absSubPath, err := filepath.Abs(subpath)
+	if err != nil {
+		return err
+	}
+
+	current := absSubPath
+	for {
+		if current == absPath {
+			return fmt.Errorf("cannot copy a folder onto itself")
+		}
+		up := filepath.Dir(current)
+		if current == up {
+			break
+		}
+		current = up
+	}
+	return nil
+}
+
+func CopyDir(src string, dest string) error {
+	err := checkPathNotContained(src, dest)
+	if err != nil {
+		return err
 	}
 
 	f, err := os.Open(src)
@@ -78,4 +108,18 @@ func CopyDir(src string, dest string) error {
 	}
 
 	return nil
+}
+
+func AssertErrorContains(t *testing.T, err error, expectedErr string) {
+	if expectedErr == "" {
+		if err != nil {
+			t.Fatalf("Unexpected error: %s", err)
+		}
+		assert.Equal(t, err, nil)
+		return
+	}
+	if err == nil {
+		t.Fatalf("Expected '%s', got nil", expectedErr)
+	}
+	assert.Contains(t, err.Error(), expectedErr)
 }

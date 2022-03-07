@@ -176,6 +176,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 	return err
 }
 
+// checks whether every notification in profile has it's own config file
 func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 	for _, profileCfg := range pb.profileConfigs {
 		for _, pluginName := range profileCfg.Notifications {
@@ -183,6 +184,18 @@ func (pb *PluginBroker) verifyPluginConfigsWithProfile() error {
 				return fmt.Errorf("config file for plugin %s not found", pluginName)
 			}
 			pb.pluginsTypesToDispatch[pb.pluginConfigByName[pluginName].Type] = struct{}{}
+		}
+	}
+	return nil
+}
+
+// check whether each plugin in profile has it's own binary
+func (pb *PluginBroker) verifyPluginBinaryWithProfile() error {
+	for _, profileCfg := range pb.profileConfigs {
+		for _, pluginName := range profileCfg.Notifications {
+			if _, ok := pb.notificationPluginByName[pluginName]; !ok {
+				return fmt.Errorf("binary for plugin %s not found", pluginName)
+			}
 		}
 	}
 	return nil
@@ -231,7 +244,7 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 			pb.notificationPluginByName[pc.Name] = pluginClient
 		}
 	}
-	return err
+	return pb.verifyPluginBinaryWithProfile()
 }
 
 func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
@@ -408,18 +421,18 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 	if err != nil {
 		return nil, err
 	}
-	uid, err := strconv.Atoi(u.Uid)
+	uid, err := strconv.ParseInt(u.Uid, 10, 32)
 	if err != nil {
 		return nil, err
 	}
-	if uid < 0 && uid > math.MaxInt32 {
+	if uid < 0 || uid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound uid")
 	}
-	gid, err := strconv.Atoi(g.Gid)
+	gid, err := strconv.ParseInt(g.Gid, 10, 32)
 	if err != nil {
 		return nil, err
 	}
-	if gid < 0 && gid > math.MaxInt32 {
+	if gid < 0 || gid > math.MaxInt32 {
 		return nil, fmt.Errorf("out of bound gid")
 	}
 	return &syscall.SysProcAttr{

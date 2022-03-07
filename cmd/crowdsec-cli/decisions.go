@@ -192,7 +192,7 @@ cscli decisions list -t ban
 			if NoSimu != nil && *NoSimu {
 				filter.IncludeSimulated = new(bool)
 			}
-			/*nulify the empty entries to avoid bad filter*/
+			/* nullify the empty entries to avoid bad filter */
 			if *filter.Until == "" {
 				filter.Until = nil
 			} else {

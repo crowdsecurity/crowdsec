@@ -4,14 +4,24 @@
 * Crowdsec concepts: https://docs.crowdsec.net/docs/concepts
 * Where to file issues: https://github.com/crowdsecurity/crowdsec
 
-
 # What is Crowdsec
 
 Crowdsec - An open-source, lightweight agent to detect and respond to bad behaviours. It also automatically benefits from our global community-wide IP reputation database.
 
 # How to use this image
 
+## Docker images available
+crowdsec will use Alpine as default container. A debian container is also available with systemd for journalctl support. Simply add `-debian` to your tag to use this. Please be aware that debian containers are not available on all version, since the feature was implemented after the release of version 1.3.0
+
 ## Required configuration
+
+### Journalctl (only for debian image)
+To use journalctl (only for debian image) as log stream, eventually from the `DSN` environment variable, it's important that you mount the journal log from the host to the container it self.
+This can be done by adding the following volume mount to your docker command:
+
+```
+-v /var/log/journal:/run/log/journal
+```
 
 ### Logs ingestion and processing
 Collections are a good place to start: https://docs.crowdsec.net/docs/collections/intro
@@ -127,6 +137,11 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `CERT_FILE`               - TLS Certificate file (default: `/etc/ssl/cert.pem`) : `-e CERT_FILE="<file_path>"`
 * `KEY_FILE`                - TLS Key file (default: `/etc/ssl/key.pem`) : `-e KEY_FILE="<file_path>"`
 * `CUSTOM_HOSTNAME`         - Custom hostname for local api (default: `localhost`) : `-e CUSTOM_HOSTNAME="<hostname>"`
+* `DISABLE_COLLECTIONS`       - Collections to remove from the [hub](https://hub.crowdsec.net/browse/#collections), separated by space : `-e DISABLE_COLLECTIONS="crowdsecurity/linux crowdsecurity/nginx"`
+* `DISABLE_PARSERS`         - Parsers to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_PARSERS="crowdsecurity/apache2-logs crowdsecurity/nginx-logs"`
+* `DISABLE_SCENARIOS`       - Scenarios to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
+* `DISABLE_POSTOVERFLOWS`   - Postoverflows to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_POSTOVERFLOWS="crowdsecurity/cdn-whitelist crowdsecurity/seo-bots-whitelist"`
+* `PLUGIN_DIR`              - Directory for plugins (default: `/usr/local/lib/crowdsec/plugins/`) : `-e PLUGIN_DIR="<path>"`
 
 ## Volumes
 
@@ -137,7 +152,7 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 ## File Locations
 
 * `/usr/local/bin/crowdsec` - Crowdsec binary
-  
+
 * `/usr/local/bin/cscli` - Crowdsec CLI binary to interact with crowdsec
 
 # Find Us

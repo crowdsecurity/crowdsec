@@ -1,12 +1,13 @@
-name: Publish Docker image
+name: Publish Docker Debian image
 on:
   release:
     types:
       - released
       - prereleased
+  workflow_dispatch:
 jobs:
   push_to_registry:
-    name: Push Docker image to Docker Hub
+    name: Push Docker debian image to Docker Hub
     runs-on: ubuntu-latest
     steps:
       -
@@ -17,7 +18,7 @@ jobs:
         id: prep
         run: |
           DOCKER_IMAGE=crowdsecurity/crowdsec
-          VERSION=edge
+          VERSION=bullseye
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
           elif [[ $GITHUB_REF == refs/heads/* ]]; then
@@ -25,9 +26,9 @@ jobs:
           elif [[ $GITHUB_REF == refs/pull/* ]]; then
             VERSION=pr-${{ github.event.number }}
           fi
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          TAGS="${DOCKER_IMAGE}:${VERSION}-debian"
           if [[ ${{ github.event.action }} == released ]]; then
-            TAGS=$TAGS,${DOCKER_IMAGE}:latest
+            TAGS=$TAGS,${DOCKER_IMAGE}:latest-debian
           fi
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
@@ -49,7 +50,7 @@ jobs:
         uses: docker/build-push-action@v2
         with:
           context: .
-          file: ./Dockerfile
+          file: ./Dockerfile.debian
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.prep.outputs.tags }}
           platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6,linux/386

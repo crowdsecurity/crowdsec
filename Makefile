@@ -37,10 +37,10 @@ GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -
 GO_MINOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
-GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
+GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 # Current versioning information from env
-BUILD_VERSION ?= "$(shell git describe --tags `git rev-list --tags --max-count=1`)"
+BUILD_VERSION ?= "$(shell git describe --tags)"
 BUILD_GOVERSION = "$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
 BUILD_CODENAME = $(shell cat RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP = $(shell date +%F"_"%T)
@@ -61,13 +61,16 @@ LD_OPTS_VARS= \
 export LD_OPTS=-ldflags "-s -w $(LD_OPTS_VARS)"
 export LD_OPTS_STATIC=-ldflags "-s -w $(LD_OPTS_VARS) -extldflags '-static'"
 
-RELDIR = crowdsec-$(BUILD_VERSION)
+GOCMD=go
+GOTEST=$(GOCMD) test
 
-.PHONY: all
-all: clean test build
+RELDIR = crowdsec-$(BUILD_VERSION)
 
 .PHONY: build
 build: goversion crowdsec cscli plugins
+
+.PHONY: all
+all: clean test build
 
 .PHONY: static
 static: crowdsec_static cscli_static plugins_static
@@ -89,7 +92,7 @@ goversion:
     fi
 
 .PHONY: clean
-clean:
+clean: testclean
 	@$(MAKE) -C $(CROWDSEC_FOLDER) clean --no-print-directory
 	@$(MAKE) -C $(CSCLI_FOLDER) clean --no-print-directory
 	@$(RM) $(CROWDSEC_BIN)
@@ -100,6 +103,7 @@ clean:
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
 	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN)
+
 
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
@@ -137,8 +141,14 @@ splunk-plugin_static:goversion
 email-plugin_static:goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory
 
+.PHONY: testclean
+testclean:
+	@$(RM) pkg/apiserver/ent
+	@$(RM) -r pkg/cwhub/hubdir
+
+.PHONY: test
 test: goversion
-	@$(MAKE) -C $(CROWDSEC_FOLDER) test --no-print-directory
+	$(GOTEST) $(LD_OPTS) ./...
 
 .PHONY: package
 package:
