@@ -1,0 +1,30 @@
+[run]
+  deadline = "10m"
+  tests = true
+
+[linters]
+  disable-all = true
+  enable = [
+    "deadcode",
+    "depguard",
+    "errcheck",
+    "goconst",
+    "gocyclo",
+    "gocritic",
+    "gofmt",
+    "golint",
+    "gosec",
+    "gosimple",
+    "ineffassign",
+    "maligned",
+    "misspell",
+    "nakedret",
+    "staticcheck",
+    "structcheck",
+    "typecheck",
+    "unconvert",
+    "unparam",
+    "varcheck",
+    "vet",
+    "vetshadow",
+  ]

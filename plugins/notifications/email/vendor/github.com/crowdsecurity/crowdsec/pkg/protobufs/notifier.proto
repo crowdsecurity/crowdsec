@@ -1,0 +1,19 @@
+syntax = "proto3" ; 
+package proto;
+option go_package = ".;protobufs";
+
+message Notification {
+    string text = 1 ; 
+    string name = 2 ; 
+}
+
+message Config {
+    bytes config = 2 ;
+}
+
+message Empty {}
+
+service Notifier {
+    rpc Notify(Notification) returns (Empty);
+    rpc Configure(Config)  returns (Empty);
+}
