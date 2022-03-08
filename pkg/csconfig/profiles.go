@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -71,6 +72,13 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 			}
 			c.Profiles[pIdx].DebugFilters[fIdx] = debugFilter
 		}
+
+		for _, decision := range profile.Decisions {
+			if _, err := time.ParseDuration(*decision.Duration); err != nil {
+				return errors.Wrapf(err, "Error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+			}
+		}
+
 	}
 	if len(c.Profiles) == 0 {
 		return fmt.Errorf("zero profiles loaded for LAPI")
