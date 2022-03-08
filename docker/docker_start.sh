@@ -87,8 +87,10 @@ fi
 
 ## Install collections, parsers, scenarios & postoverflows
 cscli -c "$CS_CONFIG_FILE" hub update
-cscli -c "$CS_CONFIG_FILE" collections upgrade crowdsecurity/linux || true
-cscli -c "$CS_CONFIG_FILE" parsers upgrade crowdsecurity/whitelists || true
+[ "${REMOVE_DEFAULT_LINUX_COLLECTION:-false}" == "true" ] && LINUX_COLLECTION_ACTION="remove"
+cscli -c "$CS_CONFIG_FILE" collections ${LINUX_COLLECTION_ACTION:-upgrade} crowdsecurity/linux || true
+[ "${REMOVE_DEFAULT_WHITELISTS_PARSER:-false}" == "true" ] && WHITELISTS_PARSER_ACTION="remove"
+cscli -c "$CS_CONFIG_FILE" parsers ${WHITELISTS_PARSER_ACTION:-upgrade} crowdsecurity/whitelists || true
 cscli -c "$CS_CONFIG_FILE" parsers install crowdsecurity/docker-logs || true
 if [ "$COLLECTIONS" != "" ]; then
     cscli -c "$CS_CONFIG_FILE" collections install $COLLECTIONS
