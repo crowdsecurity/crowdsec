@@ -50,16 +50,13 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
+		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
-			if err != nil {
-				return err
-			}
-		} else {
-			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
-			if err != nil {
-				return err
-			}
+			header = append(header, "machine")
+		}
+		err := csvwriter.Write(header)
+		if err != nil {
+			return err
 		}
 		for _, alertItem := range *alerts {
 			row := []string{
@@ -87,11 +84,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
+		header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
-		} else {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at"})
+			header = append(header, "machine")
 		}
+		table.SetHeader(header)
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active alerts")
@@ -103,28 +100,19 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			if *alertItem.Source.Value != "" {
 				displayVal += ":" + *alertItem.Source.Value
 			}
-			if printMachine {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID,
-				})
-			} else {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-				})
+			row := []string{
+				strconv.Itoa(int(alertItem.ID)),
+				displayVal,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			table.Append(row)
 		}
 		table.Render() // Send output
 	}
