@@ -1,0 +1,13 @@
+name: default_ip_remediation
+#debug: true
+filters:
+ - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+ - type: ban
+   duration: 4h
+# notifications:
+#   - slack_default  # Set the webhook in /etc/crowdsec/notifications/slack.yaml before enabling this.
+#   - splunk_default # Set the splunk url and token in /etc/crowdsec/notifications/splunk.yaml  before enabling this.
+#   - http_default # Set the required http parameters in  /etc/crowdsec/notifications/http.yaml before enabling this.
+#   - email_default # Set the required http parameters in  /etc/crowdsec/notifications/email.yaml before enabling this.
+on_success: break
