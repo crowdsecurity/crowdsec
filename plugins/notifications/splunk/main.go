@@ -19,7 +19,7 @@ import (
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "splunk-plugin",
-	Level:      hclog.LevelFromString("DEBUG"),
+	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
 	JSONFormat: true,
 })
@@ -45,11 +45,11 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return &protobufs.Empty{}, fmt.Errorf("splunk invalid config name %s", notification.Name)
 	}
 	cfg := s.PluginConfigByName[notification.Name]
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
-	} else {
-		logger.SetLevel(hclog.Info)
 	}
+
 	logger.Info(fmt.Sprintf("received notify signal for %s config", notification.Name))
 
 	p := Payload{Event: notification.Text}

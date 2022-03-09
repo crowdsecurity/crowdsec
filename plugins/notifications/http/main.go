@@ -30,7 +30,7 @@ type HTTPPlugin struct {
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "http-plugin",
-	Level:      hclog.LevelFromString("DEBUG"),
+	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
 	JSONFormat: true,
 })
@@ -40,10 +40,9 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
 	cfg := s.PluginConfigByName[notification.Name]
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
-	} else {
-		logger.SetLevel(hclog.Info)
 	}
 
 	logger.Info(fmt.Sprintf("received signal for %s config", notification.Name))
