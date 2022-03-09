@@ -122,8 +122,8 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY)
 do
     KEY=$(printf '%s' "${!BOUNCER}")
     NAME=$(printf '%s' "$BOUNCER" | awk -F "_" '{printf $3}')
-    if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
-        if [[ -n $KEY ]] && [[ -n $NAME ]]; then
+    if [[ -n $KEY ]] && [[ -n $NAME ]]; then
+        if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
             cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}"
         fi
     fi
@@ -135,8 +135,8 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)*
 do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | awk -F "_" '{printf $3}')
-    if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
-        if [[ -n $KEY ]] && [[ -n $NAME ]]; then
+    if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
+        if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
             cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}"
         fi
     fi
