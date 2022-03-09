@@ -1,0 +1,4 @@
+/local/
+/local-init/
+/.environment.sh
+/dyn-bats/*.bats

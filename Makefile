@@ -142,7 +142,7 @@ email-plugin_static:goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory
 
 .PHONY: testclean
-testclean:
+testclean: bats-clean
 	@$(RM) pkg/apiserver/ent
 	@$(RM) -r pkg/cwhub/hubdir
 
@@ -214,3 +214,6 @@ release: check_release build package
 
 .PHONY: release_static
 release_static: check_release static package_static
+
+include tests/bats.mk
+
