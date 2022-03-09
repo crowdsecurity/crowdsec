@@ -22,6 +22,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/protobufs"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/google/uuid"
 	plugin "github.com/hashicorp/go-plugin"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -469,6 +470,14 @@ func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, er
 			Gid: gid,
 		},
 	}, nil
+}
+
+func getUUID() (string, error) {
+	uuidv4, err := uuid.NewRandom()
+	if err != nil {
+		return "", err
+	}
+	return uuidv4.String(), nil
 }
 
 func getHandshake() (plugin.HandshakeConfig, error) {
