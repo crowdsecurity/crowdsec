@@ -139,6 +139,7 @@ fi
 
 %post -p /bin/bash
 
+#install
 if [ $1 == 1 ]; then
 
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
@@ -173,7 +174,7 @@ if [ $1 == 1 ]; then
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
-    
+#upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
     cscli config restore /var/lib/crowdsec/backup
     if [ $? == 0 ]; then
@@ -192,10 +193,21 @@ fi
 %systemd_post %{name}.service
 
 if [ $1 == 1 ]; then
-    %if 0%{?fc35}
-    systemctl enable crowdsec 
-    %endif
-    systemctl start crowdsec || echo "crowdsec is not started"
+    API=$(cscli config show --key "Config.API.Server")
+    if [ "$API" = "<nil>" ] ; then
+        LAPI=false
+    else
+        PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
+    fi
+    if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
+        %if 0%{?fc35}
+        systemctl enable crowdsec 
+        %endif
+        systemctl start crowdsec || echo "crowdsec is not started"
+    else
+        echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
+        echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
+    fi
 fi
 
 %preun
