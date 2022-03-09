@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+about() {
+    die "usage: $0 [make | load | clean]"
+}
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"
+#shellcheck disable=SC1090
+. ./.environment.sh
+
+# you have not removed set -u above, have you?
+
+[ -z "${TEST_DIR-}" ] && die "\$TEST_DIR must be defined."
+[ -z "${LOCAL_DIR-}" ] && die "\$LOCAL_DIR must be defined."
+[ -z "${BIN_DIR-}" ] && die "\$BIN_DIR must be defined."
+[ -z "${CONFIG_DIR-}" ] && die "\$CONFIG_DIR must be defined."
+[ -z "${DATA_DIR-}" ] && die "\$DATA_DIR must be defined."
+[ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
+[ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
+
+if [ ! -e "${BIN_DIR}/cscli" ]; then
+    die "${BIN_DIR}/cscli is missing. Please run 'make bats-build' to create it."
+fi
+
+# fails if config_dir or data_dir are not subpaths of local_dir
+REL_CONFIG_DIR=${CONFIG_DIR#$LOCAL_DIR}
+REL_CONFIG_DIR=${REL_CONFIG_DIR#/}
+REL_DATA_DIR=${DATA_DIR#$LOCAL_DIR}
+REL_DATA_DIR=${REL_DATA_DIR#/}
+
+remove_init_data() {
+    rm -rf -- "${CONFIG_DIR:?}"/* "${DATA_DIR:?}"/*
+}
+
+make_init_data() {
+    remove_init_data
+
+    mkdir -p "${CONFIG_DIR}/notifications"
+
+    envsubst < "./config-templates/acquis.yaml" > "${CONFIG_DIR}/acquis.yaml"
+    envsubst < "./config-templates/config.yaml" > "${CONFIG_DIR}/config.yaml"
+    envsubst < "./config-templates/simulation.yaml" > "${CONFIG_DIR}/simulation.yaml"
+    envsubst < "./config-templates/local_api_credentials.yaml" > "${CONFIG_DIR}/local_api_credentials.yaml"
+    envsubst < "./config-templates/online_api_credentials.yaml" > "${CONFIG_DIR}/online_api_credentials.yaml"
+    envsubst < "./config-templates/profiles.yaml" > "${CONFIG_DIR}/profiles.yaml"
+    envsubst < "./config-templates/notifications/http.yaml" > "${CONFIG_DIR}/notifications/http.yaml"
+    envsubst < "./config-templates/notifications/email.yaml" > "${CONFIG_DIR}/notifications/email.yaml"
+    envsubst < "./config-templates/notifications/slack.yaml" > "${CONFIG_DIR}/notifications/slack.yaml"
+    envsubst < "./config-templates/notifications/splunk.yaml" > "${CONFIG_DIR}/notifications/splunk.yaml"
+
+    mkdir -p "${CONFIG_DIR}/hub"
+    "${BIN_DIR}/cscli" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "${BIN_DIR}/cscli" capi register
+    "${BIN_DIR}/cscli" hub update
+    "${BIN_DIR}/cscli" collections install crowdsecurity/linux
+    mkdir -p "${CONFIG_DIR}/patterns"
+    cp -ax "../config/patterns" "${CONFIG_DIR}/"
+
+    "${TEST_DIR}/instance-crowdsec" start
+    "${BIN_DIR}/cscli" lapi status
+    "${TEST_DIR}/instance-crowdsec" stop
+
+    tar -C "${LOCAL_DIR}" --create --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
+
+    remove_init_data
+}
+
+load_init_data() {
+    if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
+        die "Initial data not found; did you run '$script_name make' ?"
+    fi
+
+    remove_init_data
+
+    tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+}
+
+
+# ---------------------------
+
+[ $# -lt 1 ] && about
+
+./assert-crowdsec-not-running
+
+case "$1" in
+    make)
+        make_init_data
+        ;;
+    load)
+        load_init_data
+        ;;
+    clean)
+        remove_init_data
+        ;;
+    *)
+        about
+        ;;
+esac;
+

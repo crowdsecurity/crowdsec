@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+pgrep crowdsec >/dev/null || exit 0
+
+# removing this second test causes CI to fail sometimes
+sleep 2
+pgrep crowdsec >/dev/null || exit 0
+
+msg="A CrowdSec process is already running. Please terminate it and run the tests again."
+
+# Are we inside a setup() or @test? Is file descriptor 3 open?
+if { true >&3; } 2>/dev/null; then
+    echo "$msg" >&3
+else
+    echo "$msg" >&2
+fi
+
+# cause the calling setup() or @test to fail
+exit 1

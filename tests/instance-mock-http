@@ -1,0 +1,82 @@
+#!/bin/sh
+
+set -eu
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+about() {
+    die "usage: $0 [ start <port> | stop ]"
+}
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+#shellcheck disable=SC1090
+. "${THIS_DIR}/.environment.sh"
+
+# you have not removed set -u above, have you?
+
+[ -z "${LOG_DIR-}" ] && die "\$LOG_DIR must be defined."
+[ -z "${PID_DIR-}" ] && die "\$PID_DIR must be defined."
+
+if ! command -v python3 >/dev/null 2>&2; then
+    die "The python3 executable is is missing. Please install it and try again."
+fi
+
+wait_for_port() {
+    for _ in $(seq 40); do
+        nc -z localhost "$1" && return
+        sleep .05
+    done
+
+    # send to &3 if open
+    if { true >&3; } 2>/dev/null; then
+        # cat "${LOG_DIR}/mock-http.out" >&3
+        echo "Can't connect to port $1" >&3
+    else
+        # cat "${LOG_DIR}/mock-http.out" >&2
+        echo "Can't connect to port $1" >&2
+    fi
+
+    return 1
+}
+
+DAEMON_PID=${PID_DIR}/mock-http.pid
+
+start_instance() {
+    [ $# -lt 1 ] && about
+    OUT_FILE="${LOG_DIR}/mock-http.out" \
+        DAEMON_PID="${DAEMON_PID}" \
+        "${TEST_DIR}/run-as-daemon" /usr/bin/env python3 -u "${THIS_DIR}/mock-http.py" "$1"
+    wait_for_port "$1"
+    echo "mock http started on port $1"
+}
+
+stop_instance() {
+    if [ -f "${DAEMON_PID}" ]; then
+        # terminate with extreme prejudice, all the application data will be thrown away anyway
+        kill -9 "$(cat "${DAEMON_PID}")" > /dev/null 2>&1
+        rm -f -- "${DAEMON_PID}"
+    fi
+}
+
+
+# ---------------------------
+
+[ $# -lt 1 ] && about
+
+case "$1" in
+    start)
+        shift
+        start_instance "$@"
+        ;;
+    stop)
+        stop_instance
+        ;;
+    *)
+        about
+        ;;
+esac;
+
