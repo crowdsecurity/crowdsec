@@ -82,7 +82,6 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
-
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"})
 

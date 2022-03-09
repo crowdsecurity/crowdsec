@@ -279,17 +279,16 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	}
 	runtimeAlert.Sources = sources
 	//Include source info in format string
-	sourceStr := ""
+	sourceStr := "UNKNOWN"
 	if len(sources) > 1 {
 		sourceStr = fmt.Sprintf("%d sources", len(sources))
 	} else if len(sources) == 1 {
-		for k, _ := range sources {
+		for k := range sources {
 			sourceStr = k
 			break
 		}
-	} else {
-		sourceStr = "UNKNOWN"
 	}
+
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
