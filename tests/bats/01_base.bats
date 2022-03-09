@@ -39,7 +39,7 @@ declare stderr
     assert_output --partial "Constraint_acquis:"
 }
 
-@test "$FILE cscli alerts list: at startup returns one entry: community pull" {
+@test "$FILE cscli alerts list: at startup returns at least one entry: community pull" {
     loop_max=15
     for ((i=0; i<=loop_max; i++)); do
         sleep 2
@@ -47,7 +47,7 @@ declare stderr
         [[ "$output" != "null" ]] && break
     done
     run -0 jq -r '. | length' <(output)
-    assert_output 1
+    refute_output 0
 }
 
 @test "$FILE cscli capi status" {
