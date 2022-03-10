@@ -200,7 +200,7 @@ cscli decisions list -t ban
 					realDuration := strings.TrimSuffix(*filter.Until, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 					}
 					*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
@@ -214,7 +214,7 @@ cscli decisions list -t ban
 					realDuration := strings.TrimSuffix(*filter.Since, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 					}
 					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
@@ -325,9 +325,8 @@ cscli decisions add --scope username --value foobar
 				addValue = addRange
 				addScope = types.Range
 			} else if addValue == "" {
-				cmd.Help()
-				log.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
-				return
+				printHelp(cmd)
+				log.Fatalf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {

@@ -20,9 +20,17 @@ import (
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v2"
 )
+
+func printHelp(cmd *cobra.Command) {
+	err := cmd.Help()
+	if err != nil {
+		log.Fatalf("uname to print help(): %s", err)
+	}
+}
 
 func inSlice(s string, slice []string) bool {
 	for _, str := range slice {
