@@ -30,7 +30,7 @@ teardown() {
 #----------
 
 @test "$FILE 1.1.1.172 has been banned" {
-    tmpfile=$(mktemp -p "${BATS_TEST_TMPDIR}")
+    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
     echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${CONFIG_DIR}/acquis.yaml"
 

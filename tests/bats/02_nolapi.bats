@@ -61,11 +61,11 @@ declare stderr
 
 @test "$FILE cscli config backup" {
     yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
-    tempdir=$(mktemp -u -p "${BATS_TEST_TMPDIR}")
-    run -0 cscli config backup "${tempdir}"
+    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${tempdir}"
-    rm -rf -- "${tempdir:?}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
+    rm -rf -- "${backupdir:?}"
 
     run -0 echo "$stderr"
     assert_output --partial "Failed to backup configurations"
