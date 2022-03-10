@@ -15,6 +15,10 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 
 check_requirements() {
+    if ! command -v python3 >/dev/null; then
+        die "missing required program 'python3'"
+    fi
+
     if ! command -v nc >/dev/null; then
         die "missing required program 'nc' (package 'netcat-openbsd')"
     fi
