@@ -127,3 +127,15 @@ declare stderr
     run -0 echo "$stderr"
     assert_output --partial "Local Api Metrics:"
 }
+
+@test "$FILE 'cscli completion' with or without configuration file" {
+    run -0 cscli completion bash
+    assert_output --partial "# bash completion for cscli"
+    run -0 cscli completion zsh
+    assert_output --partial "# zsh completion for cscli"
+    rm "${CONFIG_DIR}/config.yaml"
+    run -0 cscli completion bash
+    assert_output --partial "# bash completion for cscli"
+    run -0 cscli completion zsh
+    assert_output --partial "# zsh completion for cscli"
+}
