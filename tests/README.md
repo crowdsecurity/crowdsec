@@ -279,7 +279,12 @@ it with `run jq <(output)` you can only do it once, because the second time it
 will read the output of the `jq` command. But you can construct a list of all
 the values you want and check them all in a single step.
 
-See `lib/setup_file.sh` for other tricks we employ.
+Note that `<(output)` is substituted with the file name of a file descriptor,
+so `mycmd <(output)` can become `mycmd /dev/fd/23`, `mycmd /tmp//sh-np.hpc7Zs`
+or `mycmd /proc/self/fd/38` depending on the platform. To have it fed to
+standard input, use `< <(output)`.
+
+See the `lib/*.sh` and `bats/*.bats` files for other tricks we employ.
 
 ## file operations
 
