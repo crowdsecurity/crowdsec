@@ -15,14 +15,12 @@ timeout: 20s          # Time to wait for response from the plugin before conside
 # The following template receives a list of models.Alert objects
 # The output goes in the email message body
 format: |
-  
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
       <html><body><a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a></body></html>
     {{end -}}
   {{end -}}
-  
 
 smtp_host:            # example: smtp.gmail.com
 smtp_username:        # Replace with your actual username
