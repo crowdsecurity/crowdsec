@@ -20,7 +20,7 @@ check_requirements() {
     fi
 
     if ! command -v yq >/dev/null; then
-        die "missing required program 'yq'. You can install it with 'GO111MODULE=on go get github.com/mikefarah/yq/v4'"
+        die "missing required program 'yq'. You can install it with 'GO111MODULE=on go get github.com/mikefarah/yq/v4' and add ~/go/bin to $PATH"
     fi
 
     SYSTEM=$(uname -s)

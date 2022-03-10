@@ -28,7 +28,7 @@ fi
 
 wait_for_port() {
     for _ in $(seq 40); do
-        nc -z localhost "$1" && return
+        nc -z localhost "$1" >/dev/null 2>&1 && return
         sleep .05
     done
 
@@ -59,7 +59,8 @@ stop_instance() {
     if [ -f "${DAEMON_PID}" ]; then
        # terminate quickly with extreme prejudice, all the application data will be
        # thrown away anyway. also terminate the child processes (notification plugin).
-       PGID="$(ps --no-headers -p "$(cat "${DAEMON_PID}")" -o pgid | tr -d ' ')"
+       PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
+       # ps above should work on linux, freebsd, busybox..
        if [ -n "${PGID}" ]; then
            kill -- "-${PGID}"
        fi

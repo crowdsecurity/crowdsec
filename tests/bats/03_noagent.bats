@@ -66,15 +66,15 @@ config_disable_agent() {
 
 @test "$FILE no agent: cscli config backup" {
     config_disable_agent
-    tempdir=$(mktemp -u -p "${BATS_TEST_TMPDIR}")
-    run -0 cscli config backup "${tempdir}"
+    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${tempdir}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
 
     run -0 echo "$stderr"
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
-    rm -rf -- "${tempdir:?}"
+    rm -rf -- "${backupdir:?}"
 }
 
 @test "$FILE no agent: lapi status should be ok" {
