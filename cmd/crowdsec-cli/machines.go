@@ -194,10 +194,7 @@ cscli machines add MyTestMachine --password MyPassword
 			// create machineID if not specified by user
 			if len(args) == 0 {
 				if !autoAdd {
-					err = cmd.Help()
-					if err != nil {
-						log.Fatalf("unable to print help(): %s", err)
-					}
+					printHelp(cmd)
 					return
 				}
 				machineID, err = generateID()
@@ -218,10 +215,7 @@ cscli machines add MyTestMachine --password MyPassword
 			// create password if doesn't specified by user
 			if machinePassword == "" && !interactive {
 				if !autoAdd {
-					err = cmd.Help()
-					if err != nil {
-						log.Fatalf("unable to print help(): %s", err)
-					}
+					printHelp(cmd)
 					return
 				}
 				machinePassword = generatePassword(passwordLength)

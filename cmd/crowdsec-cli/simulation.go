@@ -180,7 +180,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Fatalf("unable to enable global simulation mode : %s", err.Error())
 				}
 			} else {
-				cmd.Help()
+				printHelp(cmd)
 			}
 		},
 	}
@@ -224,7 +224,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Fatalf("unable to disable global simulation mode : %s", err.Error())
 				}
 			} else {
-				cmd.Help()
+				printHelp(cmd)
 			}
 		},
 	}

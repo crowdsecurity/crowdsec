@@ -252,7 +252,7 @@ cscli alerts list --type ban`,
 
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
-				_ = cmd.Help()
+				printHelp(cmd)
 				log.Fatalf("%s", err)
 			}
 			if limit != nil {
@@ -267,7 +267,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 					}
 					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
@@ -281,7 +281,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 					}
 					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
@@ -368,7 +368,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if !AlertDeleteAll {
 				if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
 					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-					_ = cmd.Help()
+					printHelp(cmd)
 					log.Fatalf("%s", err)
 				}
 				if ActiveDecision != nil {
@@ -424,7 +424,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
-				_ = cmd.Help()
+				printHelp(cmd)
 				return
 			}
 			for _, alertID := range args {
