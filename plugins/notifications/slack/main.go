@@ -24,7 +24,7 @@ type Notify struct {
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "slack-plugin",
-	Level:      hclog.LevelFromString("DEBUG"),
+	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
 	JSONFormat: true,
 })
@@ -34,10 +34,9 @@ func (n *Notify) Notify(ctx context.Context, notification *protobufs.Notificatio
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
 	cfg := n.ConfigByName[notification.Name]
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
-	} else {
-		logger.SetLevel(hclog.Info)
 	}
 
 	logger.Info(fmt.Sprintf("found notify signal for %s config", notification.Name))

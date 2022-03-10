@@ -14,7 +14,7 @@ import (
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "email-plugin",
-	Level:      hclog.LevelFromString("DEBUG"),
+	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
 	JSONFormat: true,
 })
@@ -97,11 +97,11 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
 	cfg := n.ConfigByName[notification.Name]
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
-	} else {
-		logger.SetLevel(hclog.Info)
 	}
+
 	logger = logger.Named(cfg.Name)
 	logger.Debug("got notification")
 
