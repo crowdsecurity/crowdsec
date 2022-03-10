@@ -76,13 +76,13 @@ if [ "$GID" != "" ]; then
 fi
 
 if [ "$USE_TLS" != "" ]; then
-   yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
-   yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
-   yq -i eval '... comments=""' "$CS_CONFIG_FILE"
+    yq -i eval ".api.server.tls.cert_file = \"$CERT_FILE\"" "$CS_CONFIG_FILE"
+    yq -i eval ".api.server.tls.key_file = \"$KEY_FILE\"" "$CS_CONFIG_FILE"
+    yq -i eval '... comments=""' "$CS_CONFIG_FILE"
 fi
 
 if [ "$PLUGIN_DIR" != "/usr/local/lib/crowdsec/plugins/" ]; then
-   yq -i eval ".config_paths.plugin_dir = \"$PLUGIN_DIR\"" "$CS_CONFIG_FILE"
+    yq -i eval ".config_paths.plugin_dir = \"$PLUGIN_DIR\"" "$CS_CONFIG_FILE"
 fi
 
 ## Install collections, parsers, scenarios & postoverflows
@@ -118,8 +118,7 @@ if [ "$DISABLE_POSTOVERFLOWS" != "" ]; then
 fi
 
 ## Register bouncers via env
-for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY)
-do
+for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
     NAME=$(printf '%s' "$BOUNCER" | awk -F "_" '{printf $3}')
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
@@ -131,8 +130,7 @@ done
 
 ## Register bouncers via secrets
 shopt -s nullglob extglob
-for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)*
-do
+for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | awk -F "_" '{printf $3}')
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
