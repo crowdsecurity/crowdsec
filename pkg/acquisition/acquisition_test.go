@@ -395,7 +395,7 @@ func TestStartAcquisitionCat(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
-			t.Fatalf("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
@@ -423,7 +423,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
-			t.Fatalf("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
@@ -471,7 +471,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
-			t.Fatalf("expected error, got '%s'", err.Error())
+			t.Errorf("expected error, got '%s'", err.Error())
 		}
 	}()
 
