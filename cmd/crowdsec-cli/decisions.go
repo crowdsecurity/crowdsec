@@ -325,9 +325,8 @@ cscli decisions add --scope username --value foobar
 				addValue = addRange
 				addScope = types.Range
 			} else if addValue == "" {
-				printHelp()
-				log.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
-				return
+				printHelp(cmd)
+				log.Fatalf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {
