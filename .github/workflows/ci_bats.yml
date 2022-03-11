@@ -35,9 +35,6 @@ jobs:
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build
 
-    - name: "BATS: prepare fixture config+data"
-      run: make bats-instance-data
-
     - name: "BATS: run tests"
       run: make bats-test
 

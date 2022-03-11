@@ -21,18 +21,18 @@ export PID_DIR="$(PID_DIR)"
 export PLUGIN_DIR="$(PLUGIN_DIR)"
 endef
 
-bats-all: bats-clean bats-build bats-instance-data bats-test
+bats-all: bats-clean bats-build bats-test
 
 # Source this to run the scripts outside of the Makefile
 bats-environment:
 	$(file >$(TEST_DIR)/.environment.sh,$(ENV))
 
-# See if bats-core has been cloned from the repo
-check-bats-libs:
-	@$(TEST_DIR)/lib/bats-core/bin/bats --version >/dev/null 2>&1 || (echo "ERROR: bats-core submodule is required. Please run 'git submodule init; git submodule update' and retry."; exit 1)
+# Verify dependencies and submodules
+bats-check-requirements:
+	@$(TEST_DIR)/check-requirements
 
 # Builds and installs crowdsec in a local directory
-bats-build: bats-environment
+bats-build: bats-environment bats-check-requirements
 	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
 	@mkdir -p $(BIN_DIR) $(CONFIG_DIR) $(DATA_DIR) $(LOG_DIR) $(PID_DIR) $(LOCAL_INIT_DIR) $(PLUGIN_DIR)
 	@install -m 0755 cmd/crowdsec/crowdsec $(BIN_DIR)/
@@ -41,26 +41,22 @@ bats-build: bats-environment
 	@install -m 0755 plugins/notifications/http/notification-http $(PLUGIN_DIR)/
 	@install -m 0755 plugins/notifications/slack/notification-slack $(PLUGIN_DIR)/
 	@install -m 0755 plugins/notifications/splunk/notification-splunk $(PLUGIN_DIR)/
-
-# Create a reusable package with initial configuration + data
-bats-instance-data: bats-environment
-	$(TEST_DIR)/instance-data make
+	# Create a reusable package with initial configuration + data
+	@$(TEST_DIR)/instance-data make
+	# Generate dynamic tests
+	@$(TEST_DIR)/generate-hub-tests
 
 # Removes the local crowdsec installation and the fixture config + data
 bats-clean:
 	@$(RM) -r $(LOCAL_DIR) $(LOCAL_INIT_DIR) $(TEST_DIR)/dyn-bats/*.bats
 
-# Creates the hub tests
-bats-generate-hubtests: bats-environment check-bats-libs
-	${TEST_DIR}/generate-hub-tests
-
 # Run the test suite
-bats-test: bats-environment check-bats-libs bats-generate-hubtests
+bats-test: bats-environment bats-check-requirements
 	$(TEST_DIR)/run-tests
 
 # Static checks for the test scripts.
 # Not failproof but they can catch bugs and improve learning of sh/bash
 bats-lint:
 	@shellcheck --version >/dev/null 2>&1 || (echo "ERROR: shellcheck is required."; exit 1)
-	@shellcheck -x ${TEST_DIR}/bats/*.bats
+	@shellcheck -x $(TEST_DIR)/bats/*.bats
 
