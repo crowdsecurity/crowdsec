@@ -1,10 +1,9 @@
-ROOT= $(shell pwd)
 SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 
-ifneq ("$(wildcard $(ROOT)/platform/$(SYSTEM).mk)", "")
-	include $(ROOT)/platform/$(SYSTEM).mk
+ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
+	include $(CURDIR)/platform/$(SYSTEM).mk
 else
-	include $(ROOT)/platform/linux.mk
+	include $(CURDIR)/platform/linux.mk
 endif
 
 CROWDSEC_FOLDER = "./cmd/crowdsec"

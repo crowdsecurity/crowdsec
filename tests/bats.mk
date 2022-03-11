@@ -1,4 +1,4 @@
-TEST_DIR = $(ROOT)/tests
+TEST_DIR = $(CURDIR)/tests
 LOCAL_DIR = $(TEST_DIR)/local
 
 BIN_DIR = $(LOCAL_DIR)/bin
