@@ -123,7 +123,9 @@ for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     NAME=$(printf '%s' "$BOUNCER" | awk -F "_" '{printf $3}')
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
-            cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}"
+            if ! cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
+                echo "Failed to register bouncer for ${NAME}"
+            fi
         fi
     fi
 done
@@ -135,7 +137,9 @@ for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | awk -F "_" '{printf $3}')
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
         if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
-            cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}"
+            if ! cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
+                echo "Failed to register bouncer for ${NAME}"
+            fi
         fi
     fi
 done
