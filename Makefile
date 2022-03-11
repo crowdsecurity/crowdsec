@@ -96,6 +96,7 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN)
 	@$(RM) *.log
 	@$(RM) crowdsec-release.tgz
+	@$(RM) crowdsec-release-static.tgz
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
