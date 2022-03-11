@@ -120,7 +120,7 @@ fi
 ## Register bouncers via env
 for BOUNCER in $(compgen -A variable | grep -i BOUNCER_KEY); do
     KEY=$(printf '%s' "${!BOUNCER}")
-    NAME=$(printf '%s' "$BOUNCER" | awk -F "_" '{printf $3}')
+    NAME=$(printf '%s' "$BOUNCER" | cut -d_  -f2-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then
         if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
             if cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
@@ -136,7 +136,7 @@ done
 shopt -s nullglob extglob
 for BOUNCER in /run/secrets/@(bouncer_key|BOUNCER_KEY)* ; do
     KEY=$(cat "${BOUNCER}")
-    NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | awk -F "_" '{printf $3}')
+    NAME=$(echo "${BOUNCER}" | awk -F "/" '{printf $NF}' | cut -d_  -f2-)
     if [[ -n $KEY ]] && [[ -n $NAME ]]; then    
         if ! cscli -c "$CS_CONFIG_FILE" bouncers list -o json | jq -r .[].name | grep -q "${NAME}"; then
             if cscli -c "$CS_CONFIG_FILE" bouncers add "${NAME}" -k "${KEY}" > /dev/null; then
