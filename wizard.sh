@@ -46,7 +46,6 @@ ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
 ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
 
-PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
 PATTERNS_FOLDER="config/patterns"
@@ -410,10 +409,9 @@ install_crowdsec() {
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
 
-    mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
