@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 	"strings"
 
 	version "github.com/hashicorp/go-version"
@@ -23,12 +24,12 @@ Additional labels for pre-release and build metadata are available as extensions
 */
 
 var (
-	Version             string // = "v0.0.0"
-	Codename            string // = "SoumSoum"
-	BuildDate           string // = "I don't remember exactly"
-	Tag                 string // = "dev"
-	GoVersion           string // = "1.13"
-	System              string // = "linux"
+	Version             string                  // = "v0.0.0"
+	Codename            string                  // = "SoumSoum"
+	BuildDate           string                  // = "0000-00-00_00:00:00"
+	Tag                 string                  // = "dev"
+	GoVersion           = runtime.Version()[2:] // = "1.13"
+	System              = runtime.GOOS          // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
