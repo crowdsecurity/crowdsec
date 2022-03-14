@@ -248,7 +248,6 @@ func CollecDepsCheck(v *Item) error {
 		log.Debugf("%s dependencies not checked : not up-to-date", v.Name)
 		return nil
 	}
-
 	/*if it's a collection, ensure all the items are installed, or tag it as tainted*/
 	if v.Type == COLLECTIONS {
 		log.Tracef("checking submembers of %s installed:%t", v.Name, v.Installed)
@@ -277,11 +276,8 @@ func CollecDepsCheck(v *Item) error {
 					v.Tainted = true
 					return fmt.Errorf("tainted %s %s, tainted.", ptrtype, p)
 				}
-				if !val.Installed && v.Installed {
-					v.Tainted = true
-					return fmt.Errorf("missing %s %s, tainted.", ptrtype, p)
-				}
-				if !val.UpToDate {
+
+				if !val.UpToDate && val.Installed {
 					v.UpToDate = false
 					return fmt.Errorf("outdated %s %s", ptrtype, p)
 				}
