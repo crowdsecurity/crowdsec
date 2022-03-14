@@ -251,7 +251,7 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
 	}
 
-	if !flags.TestMode && cConfig.Common.PidDir != "" {
+	if cConfig.Common.PidDir != "" {
 		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
 	}
 
