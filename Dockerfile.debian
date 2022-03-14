@@ -23,6 +23,7 @@ RUN apt-get install -y -q --install-recommends --no-install-suggests \
     iproute2 \
     ca-certificates \
     bash \
+    jq \
     tzdata && \
     mkdir -p /staging/etc/crowdsec && \
     mkdir -p /staging/var/lib/crowdsec
