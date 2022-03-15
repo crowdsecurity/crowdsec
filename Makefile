@@ -1,10 +1,9 @@
-ROOT= $(shell pwd)
 SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 
-ifneq ("$(wildcard $(ROOT)/platform/$(SYSTEM).mk)", "")
-	include $(ROOT)/platform/$(SYSTEM).mk
+ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
+	include $(CURDIR)/platform/$(SYSTEM).mk
 else
-	include $(ROOT)/platform/linux.mk
+	include $(CURDIR)/platform/linux.mk
 endif
 
 CROWDSEC_FOLDER = "./cmd/crowdsec"
@@ -97,6 +96,7 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN)
 	@$(RM) *.log
 	@$(RM) crowdsec-release.tgz
+	@$(RM) crowdsec-release-static.tgz
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
@@ -148,8 +148,7 @@ testclean: bats-clean
 test: goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
-.PHONY: package
-package:
+package-common:
 	@echo Building Release to dir $(RELDIR)
 	@mkdir -p $(RELDIR)/cmd/crowdsec
 	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
@@ -174,33 +173,12 @@ package:
 	@cp -R ./config/ $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
+
+.PHONY: package
+package: package-common
 	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
-package_static:
-	@echo Building Release to dir $(RELDIR)
-	@mkdir -p $(RELDIR)/cmd/crowdsec
-	@mkdir -p $(RELDIR)/cmd/crowdsec-cli
-	@mkdir -p $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@mkdir -p $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@mkdir -p $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@mkdir -p $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@cp $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
-	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
-
-	@cp $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@cp $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@cp $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@cp $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@cp $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@cp $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@cp -R ./config/ $(RELDIR)
-	@cp wizard.sh $(RELDIR)
-	@cp scripts/test_env.sh $(RELDIR)
+package_static: package-common
 	@tar cvzf crowdsec-release-static.tgz $(RELDIR)
 
 .PHONY: check_release
