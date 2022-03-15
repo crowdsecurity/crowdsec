@@ -216,6 +216,11 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		apiClient = nil
 		controller.CAPIChan = nil
 	}
+	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
+		controller.TrustedIPs = trustedIPs
+	} else {
+		return &APIServer{}, err
+	}
 
 	return &APIServer{
 		URL:            config.ListenURI,
