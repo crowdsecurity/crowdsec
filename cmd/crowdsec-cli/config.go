@@ -366,6 +366,10 @@ func NewConfigCmd() *cobra.Command {
 								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
 							}
 						}
+						fmt.Printf("  - Trusted IPs: \n")
+						for _, ip := range csConfig.API.Server.TrustedIPs {
+							fmt.Printf("      - %s\n", ip)
+						}
 						if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
 							fmt.Printf("Central API:\n")
 							fmt.Printf("  - URL                     : %s\n", csConfig.API.Server.OnlineClient.Credentials.URL)
