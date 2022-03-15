@@ -41,6 +41,7 @@ bats-build: bats-environment bats-check-requirements
 	@install -m 0755 plugins/notifications/http/notification-http $(PLUGIN_DIR)/
 	@install -m 0755 plugins/notifications/slack/notification-slack $(PLUGIN_DIR)/
 	@install -m 0755 plugins/notifications/splunk/notification-splunk $(PLUGIN_DIR)/
+	@install -m 0755 plugins/notifications/dummy/notification-dummy $(PLUGIN_DIR)/
 	# Create a reusable package with initial configuration + data
 	@$(TEST_DIR)/instance-data make
 	# Generate dynamic tests

@@ -57,6 +57,7 @@ make_init_data() {
     envsubst < "./config-templates/notifications/email.yaml" > "${CONFIG_DIR}/notifications/email.yaml"
     envsubst < "./config-templates/notifications/slack.yaml" > "${CONFIG_DIR}/notifications/slack.yaml"
     envsubst < "./config-templates/notifications/splunk.yaml" > "${CONFIG_DIR}/notifications/splunk.yaml"
+    envsubst < "./config-templates/notifications/dummy.yaml" > "${CONFIG_DIR}/notifications/dummy.yaml"
 
     mkdir -p "${CONFIG_DIR}/hub"
     "${BIN_DIR}/cscli" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
