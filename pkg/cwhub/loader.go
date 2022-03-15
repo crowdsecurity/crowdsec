@@ -101,6 +101,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 		when the collection is installed, both files are created
 	*/
 	//non symlinks are local user files or hub files
+
 	if f.Mode()&os.ModeSymlink == 0 {
 		local = true
 		log.Tracef("%s isn't a symlink", path)
@@ -230,12 +231,22 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 			target.FileName = x[len(x)-1]
 
 		}
+
 		//update the entry if appropriate
-		if _, ok := hubIdx[ftype][k]; !ok {
+		item, ok := hubIdx[ftype][k]
+		if !ok {
 			hubIdx[ftype][k] = v
 		} else if !inhub {
 			hubIdx[ftype][k] = v
+		} else if inhub && !item.Installed {
+			item.Downloaded = v.Downloaded
+			item.UpToDate = v.UpToDate
+			item.Tainted = v.Tainted
+			item.LocalHash = v.LocalHash
+			item.LocalVersion = v.LocalVersion
+			hubIdx[ftype][k] = item
 		}
+
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)
@@ -339,7 +350,6 @@ func SyncDir(hub *csconfig.Hub, dir string) (error, []string) {
 func LocalSync(hub *csconfig.Hub) (error, []string) {
 	skippedLocal = 0
 	skippedTainted = 0
-
 	err, warnings := SyncDir(hub, hub.ConfigDir)
 	if err != nil {
 		return fmt.Errorf("failed to scan %s : %s", hub.ConfigDir, err), warnings

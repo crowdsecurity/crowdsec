@@ -217,6 +217,10 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 		strret = "enabled"
 	}
 
+	if v.Downloaded && !v.Installed {
+		strret += ",downloaded"
+	}
+
 	Managed := true
 	if v.Local {
 		Managed = false
@@ -278,7 +282,7 @@ func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubSt
 			continue
 		}
 		//Only enabled items ?
-		if !all && !item.Installed {
+		if !all && !item.Downloaded {
 			continue
 		}
 		//Check the item status
