@@ -63,10 +63,10 @@ api() {
 
 @test "$FILE stream restart" {
     run -0 api "/v1/decisions/stream?startup=true"
-    jq_out=$output
+    api_out=$output
     run -0 jq -r '.deleted' <(output)
     assert_output --partial '1.2.3.4'
-    output=$jq_out
+    output=$api_out
     run -0 jq -r '.new' <(output)
     assert_output --partial '1111:2222:3333:4444:5555:6666:7777:8888'
     assert_output --partial '1.2.3.5'

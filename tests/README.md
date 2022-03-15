@@ -59,7 +59,7 @@ repositories).
 
 
  - `git submodule init; git submodule update`
- - `daemonize` debian package
+ - `daemonize bash, python3, openbsd-netcat`
  - `yq` from https://github.com/mikefarah/yq
 
 ## Running all tests
