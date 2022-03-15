@@ -9,9 +9,13 @@ setup_file() {
 
     MOCK_OUT="${LOG_DIR}/mock-http.out"
     export MOCK_OUT
+    MOCK_PORT="9999"
+    MOCK_URL="http://localhost:${MOCK_PORT}"
+    export MOCK_URL
 
+    # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
     yq '
-        .url="http://localhost:9999" |
+        .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
     ' -i "${CONFIG_DIR}/notifications/http.yaml"
@@ -29,7 +33,7 @@ setup_file() {
     rm -f -- "${MOCK_OUT}"
 
     ./instance-crowdsec start
-    ./instance-mock-http start 9999
+    ./instance-mock-http start "${MOCK_PORT}"
 }
 
 teardown_file() {

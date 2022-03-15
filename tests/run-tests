@@ -12,41 +12,7 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=./.environment.sh
 . "${TEST_DIR}/.environment.sh"
 
-
-
-check_requirements() {
-    if ! command -v python3 >/dev/null; then
-        die "missing required program 'python3'"
-    fi
-
-    if ! command -v nc >/dev/null; then
-        die "missing required program 'nc' (package 'netcat-openbsd')"
-    fi
-
-    if ! command -v yq >/dev/null; then
-        die "missing required program 'yq'. You can install it with 'GO111MODULE=on go get github.com/mikefarah/yq/v4' and add ~/go/bin to $PATH"
-    fi
-
-    SYSTEM=$(uname -s)
-    case "${SYSTEM,,}" in
-        linux)
-            if ! command -v daemonize >/dev/null; then
-                die "missing required program 'daemonize' (package 'daemonize')"
-            fi
-            ;;
-        freebsd)
-            if ! command -v daemon >/dev/null; then
-                die "missing required program 'daemon'"
-            fi
-            ;;
-        *)
-            die "unsupported system: $SYSTEM"
-            ;;
-    esac
-}
-
-
-check_requirements
+"${TEST_DIR}/check-requirements"
 
 if [ $# -ge 1 ]; then
     "${TEST_DIR}/lib/bats-core/bin/bats" \
