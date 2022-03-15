@@ -49,13 +49,30 @@ repositories).
 | :----------------- | :--------------- | :----------- |
 | alerts GET/POST    | `9[78]_ipv[46]*` |              |
 | decisions GET/POST | `9[78]_ipv[46]*` |              |
+| stream mode        | `99_lapi-stream-mode |          |
+
 
 
 # How to use it
 
-Run `make clean bats-all` to perform a test build + run.
+## pre-requisites
 
+
+ - `git submodule init; git submodule update`
+ - `daemonize` debian package
+ - `yq` from https://github.com/mikefarah/yq
+
+## Running all tests
+
+Run `make clean bats-all` to perform a test build + run.
 To repeat test runs without rebuilding crowdsec, use `make bats-test`.
+
+
+## Troubleshooting tests
+
+See `./tests/run-tests` usage to run/debug single test.
+
+
 
 
 # How does it work?
