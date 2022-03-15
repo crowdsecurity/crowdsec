@@ -32,9 +32,15 @@ check_nc() {
 }
 
 check_yq() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with your favorite package manager (including snap) or with "GO111MODULE=on go get github.com/mikefarah/yq/v4" and add ~/go/bin to $PATH.'
     if ! command -v yq >/dev/null; then
-        die "missing required program 'yq'. You can install it with 'GO111MODULE=on go get github.com/mikefarah/yq/v4' and add ~/go/bin to $PATH"
+        die "Missing required program 'yq'. $howto_install"
     fi
+    if ! (yq --version | grep mikefarah >/dev/null); then
+        die "yq exists but it's not the one we need (mikefarah/yq). $howto_install"
+    fi
+
 }
 
 check_daemonizer() {
