@@ -56,7 +56,6 @@ func serveHealth() http.HandlerFunc {
 
 func (c *Controller) NewV1() error {
 
-	log.Warnf("%v", c.TrustedIPs)
 	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig, c.TrustedIPs)
 	if err != nil {
 		return err
