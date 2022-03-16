@@ -431,6 +431,60 @@ func TestStreamDecision(t *testing.T) {
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), `"id":3,"origin":"test","scenario":"crowdsecurity/test","scope":"Ip","type":"ban","value":"127.0.0.1"}]}`)
+}
+
+func TestStreamDecisionExpiration(t *testing.T) {
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Create Valid Alert
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
+	router.ServeHTTP(w, req)
+
+	APIKey, err := CreateTestBouncer()
+	if err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+
+	// Get Stream
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "{\"deleted\":null,\"new\":null}", w.Body.String())
+
+	// Get Stream just startup
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
 	// the decision with id=3 is only returned because it's the longest decision
 	assert.Equal(t, 200, w.Code)
 	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
