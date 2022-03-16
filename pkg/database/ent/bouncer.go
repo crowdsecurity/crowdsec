@@ -17,25 +17,25 @@ type Bouncer struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt *time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt *time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"api_key,omitempty"`
+	APIKey string `json:"api_key"`
 	// Revoked holds the value of the "revoked" field.
-	Revoked bool `json:"revoked,omitempty"`
+	Revoked bool `json:"revoked"`
 	// IPAddress holds the value of the "ip_address" field.
-	IPAddress string `json:"ip_address,omitempty"`
+	IPAddress string `json:"ip_address"`
 	// Type holds the value of the "type" field.
-	Type string `json:"type,omitempty"`
+	Type string `json:"type"`
 	// Version holds the value of the "version" field.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 	// Until holds the value of the "until" field.
-	Until time.Time `json:"until,omitempty"`
+	Until time.Time `json:"until"`
 	// LastPull holds the value of the "last_pull" field.
-	LastPull time.Time `json:"last_pull,omitempty"`
+	LastPull time.Time `json:"last_pull"`
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
