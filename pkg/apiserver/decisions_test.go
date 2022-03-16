@@ -120,7 +120,7 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	// delete by scope/value
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?scope=Ip&value=91.121.79.178", strings.NewReader(""))
+	req, _ = http.NewRequest("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -185,7 +185,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : scope/value
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?scope=Ip&value=91.121.79.179", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
@@ -249,19 +249,19 @@ func TestGetDecision(t *testing.T) {
 		log.Fatalf("%s", err.Error())
 	}
 
-	// Get Decision with invalid filter
+	// Get Decision
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions?test=test", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, 500, w.Code)
-	assert.Equal(t, "{\"message\":\"'test' doesn't exist: invalid filter\"}", w.Body.String())
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]")
 
-	// Get Decision
+	// Get Decision with invalid filter. It should ignore this filter
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest("GET", "/v1/decisions?test=test", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
@@ -388,7 +388,7 @@ func TestStreamDecision(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+	alertContentBytes, err := ioutil.ReadFile("./tests/alert_stream_fixture.json")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -432,5 +432,51 @@ func TestStreamDecision(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+
+	// test filter scenarios_not_containing
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=http", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.NotContains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+
+	// test  filter scenarios_containing
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.NotContains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.NotContains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+
+	// test filters both by scenarios_not_containing and scenarios_containing
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh&scenarios_containing=ddos", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.NotContains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.NotContains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+
+	// test filter by origin
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&origins=test1,test2", strings.NewReader(""))
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.NotContains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
 }

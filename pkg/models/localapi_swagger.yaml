@@ -45,6 +45,21 @@ paths:
           required: false
           type: string
           description: 'Comma separated scopes of decisions to fetch'
+        - name: origins
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated name of origins. If provided, then only the decisions originating from provided origins would be returned.'
+        - name: scenarios_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios containing any of the provided word would be returned.'
+        - name: scenarios_not_containing
+          in: query
+          required: false
+          type: string
+          description: 'Comma separated words. If provided, only the decisions created by scenarios, not containing any of the provided word would be returned.'
       responses:
         '200':
           description: successful operation
