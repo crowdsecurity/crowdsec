@@ -104,6 +104,16 @@ https://hub.crowdsec.net/browse/#bouncers
 
 https://docs.crowdsec.net/docs/user_guides/bouncers_configuration/
 
+### Automatic Bouncer Registration
+
+You can automatically register bouncers with the crowdsec container on startup using environment variables or Docker secrets. You cannot use this process to update an existing bouncer without first deleting it.
+
+To use environment variables, they should be in the format `BOUNCER_KEY_<name>=<key>`. e.g. `BOUNCER_KEY_nginx=mysecretkey12345`.
+
+To use Docker secrets, the secret should be named `bouncer_key_<name>` with a content of `<key>`. e.g. `bouncer_key_nginx` with a content of `mysecretkey12345`.
+
+A bouncer key can be any string but we recommend an alphanumeric value to keep consistent with crowdsec-generated keys and avoid problems with escaping special characters.
+
 ## Console
 We provide a web based interface to get more from Crowdsec: https://docs.crowdsec.net/docs/console
 
@@ -142,6 +152,7 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `DISABLE_SCENARIOS`       - Scenarios to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_SCENARIOS="crowdsecurity/http-bad-user-agent crowdsecurity/http-xss-probing"`
 * `DISABLE_POSTOVERFLOWS`   - Postoverflows to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_POSTOVERFLOWS="crowdsecurity/cdn-whitelist crowdsecurity/seo-bots-whitelist"`
 * `PLUGIN_DIR`              - Directory for plugins (default: `/usr/local/lib/crowdsec/plugins/`) : `-e PLUGIN_DIR="<path>"`
+* `BOUNCER_KEY_<name>`      - Register a bouncer with the name `<name>` and a key equal to the value of the environment variable.
 
 ## Volumes
 
