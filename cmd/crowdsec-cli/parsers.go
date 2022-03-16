@@ -48,6 +48,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		},
 	}
 
+	var ignoreError bool
 	var cmdParsersInstall = &cobra.Command{
 		Use:               "install [config]",
 		Short:             "Install given parser(s)",
@@ -57,12 +58,19 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS, forceAction)
+				if err := InstallItem(name, cwhub.PARSERS, forceAction); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdParsersInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdParsersInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsersInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple collections")
 	cmdParsers.AddCommand(cmdParsersInstall)
 
 	var cmdParsersRemove = &cobra.Command{

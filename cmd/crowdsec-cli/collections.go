@@ -45,6 +45,7 @@ func NewCollectionsCmd() *cobra.Command {
 		},
 	}
 
+	var ignoreError bool
 	var cmdCollectionsInstall = &cobra.Command{
 		Use:               "install collection",
 		Short:             "Install given collection(s)",
@@ -54,12 +55,19 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				InstallItem(name, cwhub.COLLECTIONS, forceAction)
+				if err := InstallItem(name, cwhub.COLLECTIONS, forceAction); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdCollectionsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdCollectionsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdCollectionsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple collections")
 	cmdCollections.AddCommand(cmdCollectionsInstall)
 
 	var cmdCollectionsRemove = &cobra.Command{

@@ -178,33 +178,35 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 	}
 }
 
-func InstallItem(name string, obtype string, force bool) {
+func InstallItem(name string, obtype string, force bool) error {
 	it := cwhub.GetItem(obtype, name)
 	if it == nil {
-		log.Fatalf("unable to retrieve item : %s", name)
+		return fmt.Errorf("unable to retrieve item : %s", name)
 	}
 	item := *it
 	if downloadOnly && item.Downloaded && item.UpToDate {
 		log.Warningf("%s is already downloaded and up-to-date", item.Name)
 		if !force {
-			return
+			return nil
 		}
 	}
 	item, err := cwhub.DownloadLatest(csConfig.Hub, item, force, false)
 	if err != nil {
-		log.Fatalf("error while downloading %s : %v", item.Name, err)
+		return fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
 	cwhub.AddItem(obtype, item)
 	if downloadOnly {
 		log.Infof("Downloaded %s to %s", item.Name, csConfig.Hub.HubDir+"/"+item.RemotePath)
-		return
+		return nil
 	}
 	item, err = cwhub.EnableItem(csConfig.Hub, item)
 	if err != nil {
-		log.Fatalf("error while enabling  %s : %v.", item.Name, err)
+		return fmt.Errorf("error while enabling  %s : %v.", item.Name, err)
 	}
 	cwhub.AddItem(obtype, item)
 	log.Infof("Enabled %s", item.Name)
+
+	return nil
 }
 
 func RemoveMany(itemType string, name string) {
