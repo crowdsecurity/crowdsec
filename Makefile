@@ -13,11 +13,13 @@ HTTP_PLUGIN_FOLDER = "./plugins/notifications/http"
 SLACK_PLUGIN_FOLDER = "./plugins/notifications/slack"
 SPLUNK_PLUGIN_FOLDER = "./plugins/notifications/splunk"
 EMAIL_PLUGIN_FOLDER = "./plugins/notifications/email"
+DUMMY_PLUGIN_FOLDER = "./plugins/notifications/dummy"
 
 HTTP_PLUGIN_BIN = "notification-http"
 SLACK_PLUGIN_BIN = "notification-slack"
 SPLUNK_PLUGIN_BIN = "notification-splunk"
 EMAIL_PLUGIN_BIN = "notification-email"
+DUMMY_PLUGIN_BIN= "notification-dummy"
 
 HTTP_PLUGIN_CONFIG = "http.yaml"
 SLACK_PLUGIN_CONFIG = "slack.yaml"
@@ -73,9 +75,9 @@ all: clean test build
 static: crowdsec_static cscli_static plugins_static
 
 .PHONY: plugins
-plugins: http-plugin slack-plugin splunk-plugin email-plugin
+plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
-plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static
+plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static dummy-plugin_static
 
 goversion:
 	@if [ $(GO_MAJOR_VERSION) -gt $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) ]; then \
@@ -101,6 +103,7 @@ clean: testclean
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN)
 	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN)
+	@$(RM) $(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN)
 
 
 cscli: goversion
@@ -121,6 +124,9 @@ splunk-plugin: goversion
 email-plugin: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory
 
+dummy-plugin: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory
+
 cscli_static: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory
 
@@ -138,6 +144,9 @@ splunk-plugin_static:goversion
 
 email-plugin_static:goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory
+
+dummy-plugin_static:goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) static --no-print-directory
 
 .PHONY: testclean
 testclean: bats-clean

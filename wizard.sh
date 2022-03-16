@@ -77,7 +77,7 @@ SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
 EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
 
 BACKUP_DIR=$(mktemp -d)
-rm -rf $BACKUP_DIR
+rm -rf -- "$BACKUP_DIR"
 
 log_info() {
     msg=$1
@@ -502,7 +502,7 @@ install_plugins(){
         cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
         cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
-        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications
+        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
     fi
 }
 
