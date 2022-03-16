@@ -53,3 +53,18 @@ teardown() {
     assert_output --partial "unable to disable crowdsecurity/mysql"
     assert_output --partial "doesn't exist"
 }
+
+@test "$FILE disable scenario wihtout tainting a collection" {
+    run -0 cscli scenarios remove crowdsecurity/ssh-slow-bf
+    run -0 cscli collections list -o json
+    run -0 jq '.collections[] | select(.name=="crowdsecurity/sshd") | .status=="enabled"' <(output)
+    assert_output 'true'
+}
+
+@test "$FILE disable parser wihtout tainting a collection" {
+    run -0 cscli collections install crowdsecurity/mysql
+    run -0 cscli parsers remove crowdsecurity/mysql-logs
+    run -0 cscli collections list -o json
+    run -0 jq '.collections[] | select(.name=="crowdsecurity/mysql") | .status=="enabled"' <(output)
+    assert_output 'true'
+}
