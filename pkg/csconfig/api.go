@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -76,6 +77,30 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
+func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+	trustedIPs := make([]net.IPNet, 0)
+	for _, ip := range lapiCfg.TrustedIPs {
+		cidr := toValidCIDR(ip)
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return nil, err
+		}
+		trustedIPs = append(trustedIPs, *ipNet)
+	}
+	return trustedIPs, nil
+}
+
+func toValidCIDR(ip string) string {
+	if strings.Contains(ip, "/") {
+		return ip
+	}
+
+	if strings.Contains(ip, ":") {
+		return ip + "/128"
+	}
+	return ip + "/32"
+}
+
 /*local api service configuration*/
 type LocalApiServerCfg struct {
 	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
@@ -95,6 +120,7 @@ type LocalApiServerCfg struct {
 	LogMaxSize             int                 `yaml:"-"`
 	LogMaxAge              int                 `yaml:"-"`
 	LogMaxFiles            int                 `yaml:"-"`
+	TrustedIPs             []string            `yaml:"trusted_ips,omitempty"`
 }
 
 type TLSCfg struct {
