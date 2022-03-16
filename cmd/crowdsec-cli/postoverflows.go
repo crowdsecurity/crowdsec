@@ -70,14 +70,18 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `remove given postoverflow(s)`,
 		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
-		Args:              cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.PARSERS_OVFLW, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.PARSERS_OVFLW, name)
-				}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one postoverflow to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				RemoveMany(cwhub.PARSERS_OVFLW, name)
 			}
 		},
 	}

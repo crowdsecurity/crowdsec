@@ -70,15 +70,19 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Short:             "Remove given parser(s)",
 		Long:              `Remove given parse(s) from hub`,
 		Example:           `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.PARSERS, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.PARSERS, name)
-				}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one parser to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				RemoveMany(cwhub.PARSERS, name)
 			}
 		},
 	}
