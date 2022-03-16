@@ -27,6 +27,14 @@ type DecisionsStreamOpts struct {
 	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
 }
 
+func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
+	params, err := qs.Values(o)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s?%s", url, params.Encode()), nil
+}
+
 type DecisionsDeleteOpts struct {
 	ScopeEquals *string `url:"scope,omitempty"`
 	ValueEquals *string `url:"value,omitempty"`
@@ -60,11 +68,10 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-	params, err := qs.Values(opts)
+	u, err := opts.addQueryParamsToURL(s.client.URLPrefix)
 	if err != nil {
 		return nil, nil, err
 	}
-	u := fmt.Sprintf("%s/decisions/stream?%s", s.client.URLPrefix, params.Encode())
 	req, err := s.client.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err

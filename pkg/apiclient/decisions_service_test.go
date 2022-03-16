@@ -234,6 +234,73 @@ func TestDeleteDecisions(t *testing.T) {
 	defer teardown()
 }
 
+func TestDecisionsStreamOpts_addQueryParamsToURL(t *testing.T) {
+	baseURLString := "http://localhost:8080/v1/decisions/stream"
+	type fields struct {
+		Startup                bool
+		Scopes                 string
+		ScenariosContaining    string
+		ScenariosNotContaining string
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "no filter",
+			want: baseURLString + "?",
+		},
+		{
+			name: "startup=true",
+			fields: fields{
+				Startup: true,
+			},
+			want: baseURLString + "?startup=true",
+		},
+		{
+			name: "set all params",
+			fields: fields{
+				Startup:                true,
+				Scopes:                 "ip,range",
+				ScenariosContaining:    "ssh",
+				ScenariosNotContaining: "bf",
+			},
+			want: baseURLString + "?scenarios_containing=ssh&scenarios_not_containing=bf&scopes=ip%2Crange&startup=true",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			o := &DecisionsStreamOpts{
+				Startup:                tt.fields.Startup,
+				Scopes:                 tt.fields.Scopes,
+				ScenariosContaining:    tt.fields.ScenariosContaining,
+				ScenariosNotContaining: tt.fields.ScenariosNotContaining,
+			}
+			got, err := o.addQueryParamsToURL(baseURLString)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			gotURL, err := url.Parse(got)
+			if err != nil {
+				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
+			}
+
+			expectedURL, err := url.Parse(tt.want)
+			if err != nil {
+				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() got error while parsing URL: %s", err)
+			}
+
+			if *gotURL != *expectedURL {
+				t.Errorf("DecisionsStreamOpts.addQueryParamsToURL() = %v, want %v", *gotURL, *expectedURL)
+			}
+		})
+	}
+}
+
 // func TestDeleteOneDecision(t *testing.T) {
 // 	mux, urlx, teardown := setup()
 // 	mux.HandleFunc("/watchers/login", func(w http.ResponseWriter, r *http.Request) {
