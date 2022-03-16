@@ -68,7 +68,7 @@ func (s *DecisionsService) List(ctx context.Context, opts DecisionsListOpts) (*m
 
 func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOpts) (*models.DecisionsStreamResponse, *Response, error) {
 	var decisions models.DecisionsStreamResponse
-	u, err := opts.addQueryParamsToURL(s.client.URLPrefix)
+	u, err := opts.addQueryParamsToURL(s.client.URLPrefix + "/decisions/stream")
 	if err != nil {
 		return nil, nil, err
 	}
