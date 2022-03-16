@@ -239,7 +239,7 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 	incomingIP := gctx.ClientIP()
 	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 	var err error
