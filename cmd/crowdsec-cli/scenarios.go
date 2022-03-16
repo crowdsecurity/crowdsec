@@ -70,15 +70,19 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Short:             "Remove given scenario(s)",
 		Long:              `remove given scenario(s)`,
 		Example:           `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.SCENARIOS, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.SCENARIOS, name)
-				}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one scenario to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				RemoveMany(cwhub.SCENARIOS, name)
 			}
 		},
 	}
