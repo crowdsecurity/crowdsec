@@ -69,7 +69,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 	}
 	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
-	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple collections")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple postoverflows")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
 
 	var cmdPostOverflowsRemove = &cobra.Command{
