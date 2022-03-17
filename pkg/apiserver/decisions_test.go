@@ -1,16 +1,11 @@
 package apiserver
 
 import (
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -22,33 +17,11 @@ func TestDeleteDecisionRange(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_minibulk.json", router, loginResp)
 
 	// delete by ip wrong
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?range=1.2.3.0/24", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/v1/decisions?range=1.2.3.0/24", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -78,33 +51,11 @@ func TestDeleteDecisionFilter(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_minibulk.json", router, loginResp)
 
 	// delete by ip wrong
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?ip=1.2.3.4", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/v1/decisions?ip=1.2.3.4", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -134,29 +85,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_minibulk.json", router, loginResp)
 
 	APIKey, err := CreateTestBouncer()
 	if err != nil {
@@ -164,8 +93,8 @@ func TestGetDecisionFilters(t *testing.T) {
 	}
 
 	// Get Decision
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
@@ -221,28 +150,7 @@ func TestGetDecision(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	APIKey, err := CreateTestBouncer()
 	if err != nil {
@@ -250,8 +158,8 @@ func TestGetDecision(t *testing.T) {
 	}
 
 	// Get Decision
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
@@ -278,32 +186,11 @@ func TestDeleteDecisionByID(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	// Delete alert with Invalid ID
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/test", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/v1/decisions/test", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
@@ -337,33 +224,11 @@ func TestDeleteDecision(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	// Delete alert with Invalid filter
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/decisions?test=test", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/v1/decisions?test=test", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
@@ -388,28 +253,7 @@ func TestStreamDecision(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	APIKey, err := CreateTestBouncer()
 	if err != nil {
@@ -417,8 +261,8 @@ func TestStreamDecision(t *testing.T) {
 	}
 
 	// Get Stream
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
@@ -484,39 +328,14 @@ func TestStreamDecisionFilters(t *testing.T) {
 	}
 
 	// Create Valid Alert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_stream_fixture.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-	w := httptest.NewRecorder()
-	req, err := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	if err != nil {
-		log.Fatalf("%s", err.Error())
-	}
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token))
-	router.ServeHTTP(w, req)
-
+	InsertAlertFromFile("./tests/alert_stream_fixture.json", router, loginResp)
 	APIKey, err := CreateTestBouncer()
 	if err != nil {
 		log.Fatalf("%s", err.Error())
 	}
 
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)
 
