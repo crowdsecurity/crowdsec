@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -201,6 +202,29 @@ func GetAlertReaderFromFile(path string) *strings.Reader {
 	return strings.NewReader(string(alertContent))
 
 }
+
+func RecordAgentResponse(verb string, url string, authHeader models.WatcherAuthResponse, router *gin.Engine) (*httptest.ResponseRecorder, error) {
+	w := httptest.NewRecorder()
+	req, err := http.NewRequest(verb, url, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	AddAuthHeaders(req, authHeader)
+	router.ServeHTTP(w, req)
+	return w, nil
+}
+
+func RecordBouncerResponse(verb string, url string, APIKey string, router *gin.Engine) (*httptest.ResponseRecorder, error) {
+	w := httptest.NewRecorder()
+	req, err := http.NewRequest(verb, url, strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("X-Api-Key", APIKey)
+	router.ServeHTTP(w, req)
+	return w, nil
+}
+
 func InsertAlertFromFile(path string, router *gin.Engine, loginResp models.WatcherAuthResponse) *httptest.ResponseRecorder {
 
 	alertReader := GetAlertReaderFromFile(path)
@@ -210,6 +234,18 @@ func InsertAlertFromFile(path string, router *gin.Engine, loginResp models.Watch
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	return w
+}
+
+func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
+	response := make(map[string][]*models.Decision, 0)
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
 }
 
 func CreateTestMachine(router *gin.Engine) (string, error) {

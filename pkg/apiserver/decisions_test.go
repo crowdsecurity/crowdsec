@@ -246,13 +246,14 @@ func TestDeleteDecision(t *testing.T) {
 
 }
 
-func TestStreamDecision(t *testing.T) {
+func TestStreamStartDecisionDedup(t *testing.T) {
+	//Ensure that at stream startup we only get the longest decision
 	router, loginResp, err := InitMachineTest()
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
-	// Create Valid Alert
+	// Create Valid Alert : 3 decisions for 127.0.0.1, longest has id=3
 	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	APIKey, err := CreateTestBouncer()
@@ -260,66 +261,129 @@ func TestStreamDecision(t *testing.T) {
 		log.Fatalf("%s", err.Error())
 	}
 
-	// Get Stream
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
+	// Get Stream, we only get one decision (the longest one)
+	w, err := RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	decisions, code, err := readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(3))
+	assert.Equal(t, *decisions["new"][0].Origin, "test")
+	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
-	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, "{\"deleted\":null,\"new\":null}", w.Body.String())
-
-	// Get Stream just startup
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	// the decision with id=3 is only returned because it's the longest decision
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-	assert.NotContains(t, w.Body.String(), "\"id\":2")
-	assert.NotContains(t, w.Body.String(), "\"id\":1")
-	assert.Contains(t, w.Body.String(), "2h")
-
-	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions
-	// targetting same IP
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/3", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions on the same ip
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/3", loginResp, router)
 	assert.Equal(t, 200, w.Code)
 
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	// the decision with id=2 is only returned because it's the longest decision
-	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test\",\"scenario\":\"crowdsecurity/test\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"}]}")
-	assert.NotContains(t, w.Body.String(), "\"id\":3")
-	assert.NotContains(t, w.Body.String(), "\"id\":1")
-	assert.Contains(t, w.Body.String(), "1h")
-	assert.Contains(t, w.Body.String(), "\"deleted\":null")
+	// Get Stream, we only get one decision (the longest one, id=2)
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(2))
+	assert.Equal(t, *decisions["new"][0].Origin, "test")
+	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/2", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/2", loginResp, router)
 	assert.Equal(t, 200, w.Code)
-	assert.Equal(t, "{\"deleted\":null,\"new\":null}", w.Body.String())
 
-	// Now all decisions for this IP are deleted, we should receive it in stream
-	req, _ = http.NewRequest("DELETE", "/v1/decisions/1", strings.NewReader(""))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	// And get the remaining decision (1)
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(1))
+	assert.Equal(t, *decisions["new"][0].Origin, "test")
+	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
+
+	// We delete the last decision, we receive the delete order
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/1", loginResp, router)
+	assert.Equal(t, 200, w.Code)
+
+	//and now we only get a deleted decision
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 1)
+	assert.Equal(t, decisions["deleted"][0].ID, int64(1))
+	assert.Equal(t, *decisions["deleted"][0].Origin, "test")
+	assert.Equal(t, *decisions["deleted"][0].Value, "127.0.0.1")
+	assert.Equal(t, len(decisions["new"]), 0)
 }
+
+func TestStreamDecisionDedup(t *testing.T) {
+	//Ensure that at stream startup we only get the longest decision
+	router, loginResp, err := InitMachineTest()
+	if err != nil {
+		log.Fatalln(err.Error())
+	}
+
+	// Create Valid Alert : 3 decisions for 127.0.0.1, longest has id=3
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
+
+	APIKey, err := CreateTestBouncer()
+	if err != nil {
+		log.Fatalf("%s", err.Error())
+	}
+
+	// Get Stream, we only get one decision (the longest one)
+	w, err := RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	assert.Equal(t, err, nil)
+	decisions, code, err := readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(3))
+	assert.Equal(t, *decisions["new"][0].Origin, "test")
+	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
+
+	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions on the same ip
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/3", loginResp, router)
+	assert.Equal(t, 200, w.Code)
+
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream", APIKey, router)
+	assert.Equal(t, err, nil)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 0)
+
+	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/2", loginResp, router)
+	assert.Equal(t, 200, w.Code)
+
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream", APIKey, router)
+	assert.Equal(t, err, nil)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 0)
+
+	// We delete the last decision, we receive the delete order
+	w, err = RecordAgentResponse("DELETE", "/v1/decisions/1", loginResp, router)
+	assert.Equal(t, 200, w.Code)
+
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, err, nil)
+	assert.Equal(t, code, 200)
+	assert.Equal(t, len(decisions["deleted"]), 1)
+	assert.Equal(t, decisions["deleted"][0].ID, int64(1))
+	assert.Equal(t, *decisions["deleted"][0].Origin, "test")
+	assert.Equal(t, *decisions["deleted"][0].Value, "127.0.0.1")
+	assert.Equal(t, len(decisions["new"]), 0)
+}
+
 func TestStreamDecisionFilters(t *testing.T) {
 
 	router, loginResp, err := InitMachineTest()
@@ -334,57 +398,56 @@ func TestStreamDecisionFilters(t *testing.T) {
 		log.Fatalf("%s", err.Error())
 	}
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/decisions/stream?startup=true", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
+	w, err := RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true", APIKey, router)
+	decisions, code, err := readDecisionsStreamResp(w)
 
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	assert.Equal(t, 200, code)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 3)
+	assert.Equal(t, decisions["new"][0].ID, int64(1))
+	assert.Equal(t, *decisions["new"][0].Origin, "test1")
+	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
+	assert.Equal(t, *decisions["new"][0].Scenario, "crowdsecurity/http_bf")
+	assert.Equal(t, decisions["new"][1].ID, int64(2))
+	assert.Equal(t, *decisions["new"][1].Origin, "test2")
+	assert.Equal(t, *decisions["new"][1].Value, "127.0.0.1")
+	assert.Equal(t, *decisions["new"][1].Scenario, "crowdsecurity/ssh_bf")
+	assert.Equal(t, decisions["new"][2].ID, int64(3))
+	assert.Equal(t, *decisions["new"][2].Origin, "test3")
+	assert.Equal(t, *decisions["new"][2].Value, "127.0.0.1")
+	assert.Equal(t, *decisions["new"][2].Scenario, "crowdsecurity/ddos")
 
 	// test filter scenarios_not_containing
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=http", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.NotContains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=http", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 2)
+	assert.Equal(t, decisions["new"][0].ID, int64(2))
+	assert.Equal(t, decisions["new"][1].ID, int64(3))
 
 	// test  filter scenarios_containing
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.NotContains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.NotContains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(1))
 
 	// test filters both by scenarios_not_containing and scenarios_containing
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh&scenarios_containing=ddos", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.NotContains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.NotContains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh&scenarios_containing=ddos", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 1)
+	assert.Equal(t, decisions["new"][0].ID, int64(3))
 
 	// test filter by origin
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions/stream?startup=true&origins=test1,test2", strings.NewReader(""))
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-
-	assert.Equal(t, 200, w.Code)
-	assert.Contains(t, w.Body.String(), "\"id\":1,\"origin\":\"test1\",\"scenario\":\"crowdsecurity/http_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.Contains(t, w.Body.String(), "\"id\":2,\"origin\":\"test2\",\"scenario\":\"crowdsecurity/ssh_bf\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
-	assert.NotContains(t, w.Body.String(), "\"id\":3,\"origin\":\"test3\",\"scenario\":\"crowdsecurity/ddos\",\"scope\":\"Ip\",\"type\":\"ban\",\"value\":\"127.0.0.1\"")
+	w, err = RecordBouncerResponse("GET", "/v1/decisions/stream?startup=true&origins=test1,test2", APIKey, router)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, len(decisions["deleted"]), 0)
+	assert.Equal(t, len(decisions["new"]), 2)
+	assert.Equal(t, decisions["new"][0].ID, int64(1))
+	assert.Equal(t, decisions["new"][1].ID, int64(2))
 }
