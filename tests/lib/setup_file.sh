@@ -13,10 +13,8 @@ FILE="$(basename "${BATS_TEST_FILENAME}" .bats):"
 export FILE
 
 # the variables exported here can be seen in other setup/teardown/test functions
-CROWDSEC="${BIN_DIR}/crowdsec"
-export CROWDSEC
-CSCLI="${BIN_DIR}/cscli"
-export CSCLI
+# MYVAR=something
+# export MYVAR
 
 # functions too
 cscli() {

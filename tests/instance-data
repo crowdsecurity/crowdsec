@@ -22,14 +22,14 @@ cd "${THIS_DIR}"
 
 [ -z "${TEST_DIR-}" ] && die "\$TEST_DIR must be defined."
 [ -z "${LOCAL_DIR-}" ] && die "\$LOCAL_DIR must be defined."
-[ -z "${BIN_DIR-}" ] && die "\$BIN_DIR must be defined."
+[ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
 [ -z "${CONFIG_DIR-}" ] && die "\$CONFIG_DIR must be defined."
 [ -z "${DATA_DIR-}" ] && die "\$DATA_DIR must be defined."
 [ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
 [ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
 
-if [ ! -e "${BIN_DIR}/cscli" ]; then
-    die "${BIN_DIR}/cscli is missing. Please run 'make bats-build' to create it."
+if [ ! -f "${CSCLI}" ]; then
+    die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
 fi
 
 # fails if config_dir or data_dir are not subpaths of local_dir
@@ -83,15 +83,15 @@ make_init_data() {
     config_generate
 
     mkdir -p "${CONFIG_DIR}/hub"
-    "${BIN_DIR}/cscli" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "${BIN_DIR}/cscli" capi register
-    "${BIN_DIR}/cscli" hub update
-    "${BIN_DIR}/cscli" collections install crowdsecurity/linux
+    "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
+    "${CSCLI}" capi register
+    "${CSCLI}" hub update
+    "${CSCLI}" collections install crowdsecurity/linux
     mkdir -p "${CONFIG_DIR}/patterns"
     cp -ax "../config/patterns" "${CONFIG_DIR}/"
 
     "${TEST_DIR}/instance-crowdsec" start
-    "${BIN_DIR}/cscli" lapi status
+    "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
 
     tar -C "${LOCAL_DIR}" --create --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"

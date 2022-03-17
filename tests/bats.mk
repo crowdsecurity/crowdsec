@@ -2,6 +2,7 @@ TEST_DIR = $(CURDIR)/tests
 LOCAL_DIR = $(TEST_DIR)/local
 
 BIN_DIR = $(LOCAL_DIR)/bin
+
 CONFIG_DIR = $(LOCAL_DIR)/etc/crowdsec
 DATA_DIR = $(LOCAL_DIR)/var/lib/crowdsec/data
 LOCAL_INIT_DIR = $(TEST_DIR)/local-init
@@ -12,7 +13,8 @@ PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
 export LOCAL_DIR="$(LOCAL_DIR)"
-export BIN_DIR="$(BIN_DIR)"
+export CROWDSEC="$(BIN_DIR)/crowdsec"
+export CSCLI="$(BIN_DIR)/cscli"
 export CONFIG_DIR="$(CONFIG_DIR)"
 export DATA_DIR="$(DATA_DIR)"
 export LOCAL_INIT_DIR="$(LOCAL_INIT_DIR)"
