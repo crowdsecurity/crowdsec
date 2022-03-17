@@ -32,6 +32,11 @@ teardown() {
     assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
     refute_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
 
+    run -0 cscli alerts list -m
+    assert_output --partial 'MACHINE'
+    assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
+    assert_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
+
     run -0 cscli alerts list --machine
     assert_output --partial 'MACHINE'
     assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
