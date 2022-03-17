@@ -132,7 +132,7 @@ func (mq *MachineQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single Machine entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one Machine entity is not found.
+// Returns a *NotSingularError when more than one Machine entity is found.
 // Returns a *NotFoundError when no Machine entities are found.
 func (mq *MachineQuery) Only(ctx context.Context) (*Machine, error) {
 	nodes, err := mq.Limit(2).All(ctx)
@@ -159,7 +159,7 @@ func (mq *MachineQuery) OnlyX(ctx context.Context) *Machine {
 }
 
 // OnlyID is like Only, but returns the only Machine ID in the query.
-// Returns a *NotSingularError when exactly one Machine ID is not found.
+// Returns a *NotSingularError when more than one Machine ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (mq *MachineQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -269,8 +269,9 @@ func (mq *MachineQuery) Clone() *MachineQuery {
 		predicates: append([]predicate.Machine{}, mq.predicates...),
 		withAlerts: mq.withAlerts.Clone(),
 		// clone intermediate query.
-		sql:  mq.sql.Clone(),
-		path: mq.path,
+		sql:    mq.sql.Clone(),
+		path:   mq.path,
+		unique: mq.unique,
 	}
 }
 
@@ -408,6 +409,10 @@ func (mq *MachineQuery) sqlAll(ctx context.Context) ([]*Machine, error) {
 
 func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
+	_spec.Node.Columns = mq.fields
+	if len(mq.fields) > 0 {
+		_spec.Unique = mq.unique != nil && *mq.unique
+	}
 	return sqlgraph.CountNodes(ctx, mq.driver, _spec)
 }
 
@@ -478,6 +483,9 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if mq.sql != nil {
 		selector = mq.sql
 		selector.Select(selector.Columns(columns...)...)
+	}
+	if mq.unique != nil && *mq.unique {
+		selector.Distinct()
 	}
 	for _, p := range mq.predicates {
 		p(selector)
@@ -757,9 +765,7 @@ func (mgb *MachineGroupBy) sqlQuery() *sql.Selector {
 		for _, f := range mgb.fields {
 			columns = append(columns, selector.C(f))
 		}
-		for _, c := range aggregation {
-			columns = append(columns, c)
-		}
+		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
 	return selector.GroupBy(selector.Columns(mgb.fields...)...)
