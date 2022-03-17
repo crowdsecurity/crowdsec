@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eu
+script_name=$0
 
 die() {
     echo >&2 "$@"
@@ -8,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $0 [ start | stop ]"
+    die "usage: $script_name [ start | stop ]"
 }
 
 #shellcheck disable=SC1007

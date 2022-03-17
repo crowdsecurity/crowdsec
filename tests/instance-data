@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $0 [make | load | clean]"
+    die "usage: $script_name [make | load | clean]"
 }
 
 #shellcheck disable=SC1007
@@ -94,7 +94,13 @@ make_init_data() {
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
 
-    tar -C "${LOCAL_DIR}" --create --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
+    # we deal with the database separately (might be mysql, postgres)
+
+    ./instance-db backup "${LOCAL_INIT_DIR}/database"
+
+    tar -C "${LOCAL_DIR}" --create \
+        --exclude "$REL_DATA_DIR"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
 
     remove_init_data
 }
@@ -107,6 +113,7 @@ load_init_data() {
     remove_init_data
 
     tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+    ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
 
