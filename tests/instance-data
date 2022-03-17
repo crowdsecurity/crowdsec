@@ -42,22 +42,45 @@ remove_init_data() {
     rm -rf -- "${CONFIG_DIR:?}"/* "${DATA_DIR:?}"/*
 }
 
+config_generate() {
+    cp ../config/acquis.yaml                    "${CONFIG_DIR}/"
+    cp ../config/profiles.yaml                  "${CONFIG_DIR}/"
+    cp ../config/simulation.yaml                "${CONFIG_DIR}/"
+    cp ../config/local_api_credentials.yaml     "${CONFIG_DIR}/"
+    cp ../config/online_api_credentials.yaml    "${CONFIG_DIR}/"
+
+    cp ../plugins/notifications/http/http.yaml      "${CONFIG_DIR}/notifications/"
+    cp ../plugins/notifications/email/email.yaml    "${CONFIG_DIR}/notifications/"
+    cp ../plugins/notifications/slack/slack.yaml    "${CONFIG_DIR}/notifications/"
+    cp ../plugins/notifications/splunk/splunk.yaml  "${CONFIG_DIR}/notifications/"
+    cp ../plugins/notifications/dummy/dummy.yaml    "${CONFIG_DIR}/notifications/"
+
+    yq '
+    .common.daemonize=false |
+    del(.common.pid_dir) |
+    .common.log_dir=strenv(LOG_DIR) |
+    .config_paths.config_dir=strenv(CONFIG_DIR) |
+    .config_paths.data_dir=strenv(DATA_DIR) |
+    .config_paths.simulation_path=strenv(CONFIG_DIR)+"/simulation.yaml" |
+    .config_paths.hub_dir=strenv(CONFIG_DIR)+"/hub/" |
+    .config_paths.index_path=strenv(CONFIG_DIR)+"/hub/.index.json" |
+    .config_paths.notification_dir=strenv(CONFIG_DIR)+"/notifications/" |
+    .config_paths.plugin_dir=strenv(PLUGIN_DIR) |
+    .crowdsec_service.acquisition_path=strenv(CONFIG_DIR)+"/acquis.yaml" |
+    .db_config.db_path=strenv(DATA_DIR)+"/crowdsec.db" |
+    .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
+    .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
+    .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
+    .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
+    ' <../config/config.yaml >"${CONFIG_DIR}/config.yaml"
+}
+
 make_init_data() {
     remove_init_data
 
     mkdir -p "${CONFIG_DIR}/notifications"
 
-    envsubst < "./config-templates/acquis.yaml" > "${CONFIG_DIR}/acquis.yaml"
-    envsubst < "./config-templates/config.yaml" > "${CONFIG_DIR}/config.yaml"
-    envsubst < "./config-templates/simulation.yaml" > "${CONFIG_DIR}/simulation.yaml"
-    envsubst < "./config-templates/local_api_credentials.yaml" > "${CONFIG_DIR}/local_api_credentials.yaml"
-    envsubst < "./config-templates/online_api_credentials.yaml" > "${CONFIG_DIR}/online_api_credentials.yaml"
-    envsubst < "./config-templates/profiles.yaml" > "${CONFIG_DIR}/profiles.yaml"
-    envsubst < "./config-templates/notifications/http.yaml" > "${CONFIG_DIR}/notifications/http.yaml"
-    envsubst < "./config-templates/notifications/email.yaml" > "${CONFIG_DIR}/notifications/email.yaml"
-    envsubst < "./config-templates/notifications/slack.yaml" > "${CONFIG_DIR}/notifications/slack.yaml"
-    envsubst < "./config-templates/notifications/splunk.yaml" > "${CONFIG_DIR}/notifications/splunk.yaml"
-    envsubst < "./config-templates/notifications/dummy.yaml" > "${CONFIG_DIR}/notifications/dummy.yaml"
+    config_generate
 
     mkdir -p "${CONFIG_DIR}/hub"
     "${BIN_DIR}/cscli" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
