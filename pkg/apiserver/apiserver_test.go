@@ -177,6 +177,41 @@ func GetMachineIP(machineID string) (string, error) {
 	return "", nil
 }
 
+func GetAlertReaderFromFile(path string) *strings.Reader {
+
+	alertContentBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.NewReader(string(alertContent))
+
+}
+func InsertAlertFromFile(path string, router *gin.Engine, loginResp models.WatcherAuthResponse) *httptest.ResponseRecorder {
+
+	alertReader := GetAlertReaderFromFile(path)
+	//create one alert
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("POST", "/v1/alerts", alertReader)
+	AddAuthHeaders(req, loginResp)
+	router.ServeHTTP(w, req)
+	return w
+}
+
 func CreateTestMachine(router *gin.Engine) (string, error) {
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
@@ -375,5 +410,4 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 
 	os.Remove("./crowdsec.log")
 	os.Remove(expectedFile)
-
 }

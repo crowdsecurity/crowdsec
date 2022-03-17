@@ -3,13 +3,11 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -66,20 +64,11 @@ func TestSimulatedAlert(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_minibulk+simul.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
+	InsertAlertFromFile("./tests/alert_minibulk+simul.json", router, loginResp)
+	alertContent := GetAlertReaderFromFile("./tests/alert_minibulk+simul.json")
 	//exclude decision in simulation mode
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=false", strings.NewReader(alertContent))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/alerts?simulated=false", alertContent)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -87,7 +76,7 @@ func TestSimulatedAlert(t *testing.T) {
 	assert.NotContains(t, w.Body.String(), `"message":"Ip 91.121.79.179 performed crowdsecurity/ssh-bf (6 events over `)
 	//include decision in simulation mode
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("GET", "/v1/alerts?simulated=true", alertContent)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -111,14 +100,10 @@ func TestCreateAlert(t *testing.T) {
 	assert.Equal(t, "{\"message\":\"invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
 
 	// Create Alert with invalid input
-	alertContentBytes, err := ioutil.ReadFile("./tests/invalidAlert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
+	alertContent := GetAlertReaderFromFile("./tests/invalidAlert_sample.json")
 
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("POST", "/v1/alerts", alertContent)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 
@@ -126,16 +111,7 @@ func TestCreateAlert(t *testing.T) {
 	assert.Equal(t, "{\"message\":\"validation failure list:\\n0.scenario in body is required\\n0.scenario_hash in body is required\\n0.scenario_version in body is required\\n0.simulated in body is required\\n0.source in body is required\"}", w.Body.String())
 
 	// Create Valid Alert
-	alertContentBytes, err = ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent = string(alertContentBytes)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	w = InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "[\"1\"]", w.Body.String())
@@ -155,12 +131,6 @@ func TestCreateAlertChannels(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_ssh-bf.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
-
 	var pd csplugin.ProfileAlert
 	var wg sync.WaitGroup
 
@@ -170,15 +140,7 @@ func TestCreateAlertChannels(t *testing.T) {
 		wg.Done()
 	}()
 
-	go func() {
-		for {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-			AddAuthHeaders(req, loginResp)
-			apiServer.controller.Router.ServeHTTP(w, req)
-			break
-		}
-	}()
+	go InsertAlertFromFile("./tests/alert_ssh-bf.json", apiServer.controller.Router, loginResp)
 	wg.Wait()
 	assert.Equal(t, len(pd.Alert.Decisions), 1)
 	apiServer.Close()
@@ -190,35 +152,12 @@ func TestAlertListFilters(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_ssh-bf.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	alerts := make([]*models.Alert, 0)
-	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
-		log.Fatal(err)
-	}
-
-	for _, alert := range alerts {
-		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
-		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
-	}
-
-	alertContent, err := json.Marshal(alerts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	//create one alert
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(string(alertContent)))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_ssh-bf.json", router, loginResp)
+	alertContent := GetAlertReaderFromFile("./tests/alert_ssh-bf.json")
 
 	//bad filter
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", strings.NewReader(string(alertContent)))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/alerts?test=test", alertContent)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
@@ -437,19 +376,11 @@ func TestAlertBulkInsert(t *testing.T) {
 	}
 
 	//insert a bulk of 20 alerts to trigger bulk insert
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_bulk.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
+	InsertAlertFromFile("./tests/alert_bulk.json", router, loginResp)
+	alertContent := GetAlertReaderFromFile("./tests/alert_bulk.json")
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("GET", "/v1/alerts", alertContent)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 200, w.Code)
@@ -461,20 +392,10 @@ func TestListAlert(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	// List Alert with invalid filter
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/alerts?test=test", nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/v1/alerts?test=test", nil)
 	AddAuthHeaders(req, loginResp)
 	router.ServeHTTP(w, req)
 	assert.Equal(t, 500, w.Code)
@@ -496,15 +417,11 @@ func TestCreateAlertErrors(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
+	alertContent := GetAlertReaderFromFile("./tests/alert_sample.json")
 
 	//test invalid bearer
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ := http.NewRequest("POST", "/v1/alerts", alertContent)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", "ratata"))
 	router.ServeHTTP(w, req)
@@ -512,7 +429,7 @@ func TestCreateAlertErrors(t *testing.T) {
 
 	//test invalid bearer
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+	req, _ = http.NewRequest("POST", "/v1/alerts", alertContent)
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", loginResp.Token+"s"))
 	router.ServeHTTP(w, req)
@@ -526,20 +443,11 @@ func TestDeleteAlert(t *testing.T) {
 		log.Fatalln(err.Error())
 	}
 
-	alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-	if err != nil {
-		log.Fatal(err)
-	}
-	alertContent := string(alertContentBytes)
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 
 	// Fail Delete Alert
-	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
 	AddAuthHeaders(req, loginResp)
 	req.RemoteAddr = "127.0.0.2:4242"
 	router.ServeHTTP(w, req)
@@ -580,18 +488,6 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 		log.Fatal(err.Error())
 	}
 
-	insertAlert := func() {
-		alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
-		if err != nil {
-			log.Fatal(err)
-		}
-		alertContent := string(alertContentBytes)
-		w := httptest.NewRecorder()
-		req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
-		AddAuthHeaders(req, loginResp)
-		router.ServeHTTP(w, req)
-	}
-
 	assertAlertDeleteFailedFromIP := func(ip string) {
 		w := httptest.NewRecorder()
 		req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
@@ -613,18 +509,18 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 		assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 	}
 
-	insertAlert()
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	assertAlertDeleteFailedFromIP("4.3.2.1")
 	assertAlertDeletedFromIP("1.2.3.4")
 
-	insertAlert()
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	assertAlertDeletedFromIP("1.2.4.0")
-	insertAlert()
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	assertAlertDeletedFromIP("1.2.4.1")
-	insertAlert()
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	assertAlertDeletedFromIP("1.2.4.255")
 
-	insertAlert()
+	InsertAlertFromFile("./tests/alert_sample.json", router, loginResp)
 	assertAlertDeletedFromIP("127.0.0.1")
 
 }
