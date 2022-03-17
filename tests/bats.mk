@@ -24,8 +24,10 @@ endef
 bats-all: bats-clean bats-build bats-test
 
 # Source this to run the scripts outside of the Makefile
-bats-environment:
+tests/.environment.sh:
 	$(file >$(TEST_DIR)/.environment.sh,$(ENV))
+
+bats-environment: tests/.environment.sh
 
 # Verify dependencies and submodules
 bats-check-requirements:
@@ -49,7 +51,7 @@ bats-build: bats-environment bats-check-requirements
 
 # Removes the local crowdsec installation and the fixture config + data
 bats-clean:
-	@$(RM) -r $(LOCAL_DIR) $(LOCAL_INIT_DIR) $(TEST_DIR)/dyn-bats/*.bats
+	@$(RM) -r $(LOCAL_DIR) $(LOCAL_INIT_DIR) $(TEST_DIR)/dyn-bats/*.bats tests/.environment.sh
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements
