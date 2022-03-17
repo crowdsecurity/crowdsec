@@ -276,25 +276,25 @@ func (dc *DecisionCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (dc *DecisionCreate) check() error {
 	if _, ok := dc.mutation.Until(); !ok {
-		return &ValidationError{Name: "until", err: errors.New(`ent: missing required field "until"`)}
+		return &ValidationError{Name: "until", err: errors.New(`ent: missing required field "Decision.until"`)}
 	}
 	if _, ok := dc.mutation.Scenario(); !ok {
-		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "scenario"`)}
+		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Decision.scenario"`)}
 	}
 	if _, ok := dc.mutation.GetType(); !ok {
-		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "type"`)}
+		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Decision.type"`)}
 	}
 	if _, ok := dc.mutation.Scope(); !ok {
-		return &ValidationError{Name: "scope", err: errors.New(`ent: missing required field "scope"`)}
+		return &ValidationError{Name: "scope", err: errors.New(`ent: missing required field "Decision.scope"`)}
 	}
 	if _, ok := dc.mutation.Value(); !ok {
-		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "value"`)}
+		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Decision.value"`)}
 	}
 	if _, ok := dc.mutation.Origin(); !ok {
-		return &ValidationError{Name: "origin", err: errors.New(`ent: missing required field "origin"`)}
+		return &ValidationError{Name: "origin", err: errors.New(`ent: missing required field "Decision.origin"`)}
 	}
 	if _, ok := dc.mutation.Simulated(); !ok {
-		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "simulated"`)}
+		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Decision.simulated"`)}
 	}
 	return nil
 }
