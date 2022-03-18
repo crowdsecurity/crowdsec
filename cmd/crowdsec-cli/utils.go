@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net"
 	"net/http"
 	"os"
@@ -122,7 +123,13 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 	}
 
 	if csConfig.Cscli.Output == "human" {
-		for itemType, statuses := range hubStatusByItemType {
+		for _, itemType := range itemTypes {
+			ok := true
+			statuses := make([]cwhub.ItemHubStatus, 0)
+			if statuses, ok = hubStatusByItemType[itemType]; !ok {
+				log.Errorf("unknown item type: %s", itemType)
+				continue
+			}
 			fmt.Println(strings.ToUpper(itemType))
 			table := tablewriter.NewWriter(os.Stdout)
 			table.SetCenterSeparator("")
@@ -154,7 +161,13 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 			}
 
 		}
-		for itemType, statuses := range hubStatusByItemType {
+		for _, itemType := range itemTypes {
+			ok := true
+			statuses := make([]cwhub.ItemHubStatus, 0)
+			if statuses, ok = hubStatusByItemType[itemType]; !ok {
+				log.Errorf("unknown item type: %s", itemType)
+				continue
+			}
 			for _, status := range statuses {
 				if status.LocalVersion == "" {
 					status.LocalVersion = "n/a"
@@ -744,4 +757,53 @@ func BackupHub(dirPath string) error {
 	}
 
 	return nil
+}
+
+type unit struct {
+	value  int
+	symbol string
+}
+
+var ranges = []unit{
+	{
+		value:  1e18,
+		symbol: "E",
+	},
+	{
+		value:  1e15,
+		symbol: "P",
+	},
+	{
+		value:  1e12,
+		symbol: "T",
+	},
+	{
+		value:  1e6,
+		symbol: "M",
+	},
+	{
+		value:  1e3,
+		symbol: "k",
+	},
+	{
+		value:  1,
+		symbol: "",
+	},
+}
+
+func formatNumber(num int) string {
+	goodUnit := unit{}
+	for _, u := range ranges {
+		if num >= u.value {
+			goodUnit = u
+			break
+		}
+	}
+
+	if goodUnit.value == 1 {
+		return fmt.Sprintf("%d%s", num, goodUnit.symbol)
+	}
+
+	res := math.Round(float64(num)/float64(goodUnit.value)*100) / 100
+	return fmt.Sprintf("%.2f%s", res, goodUnit.symbol)
 }

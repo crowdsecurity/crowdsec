@@ -3,6 +3,7 @@ package cwhub
 import (
 	"crypto/sha256"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	//"errors"
@@ -284,5 +285,6 @@ func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubSt
 		//Check the item status
 		ret = append(ret, item.toHubStatus())
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].Name < ret[j].Name })
 	return ret
 }

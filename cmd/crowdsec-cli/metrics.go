@@ -74,7 +74,7 @@ func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, k
 		row = append(row, alabel) //name
 		for _, sl := range keys {
 			if v, ok := astats[sl]; ok && v != 0 {
-				row = append(row, fmt.Sprintf("%d", v))
+				row = append(row, formatNumber(v))
 			} else {
 				row = append(row, "-")
 			}
@@ -327,31 +327,38 @@ func ShowPrometheus(url string) {
 
 		if bucketsTable.NumLines() > 0 {
 			log.Printf("Buckets Metrics:")
+			bucketsTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			bucketsTable.Render()
 		}
 		if acquisTable.NumLines() > 0 {
 			log.Printf("Acquisition Metrics:")
+			acquisTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			acquisTable.Render()
 		}
 		if parsersTable.NumLines() > 0 {
 			log.Printf("Parser Metrics:")
+			parsersTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			parsersTable.Render()
 		}
 		if lapiTable.NumLines() > 0 {
 			log.Printf("Local Api Metrics:")
+			lapiTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			lapiTable.Render()
 		}
 		if lapiMachinesTable.NumLines() > 0 {
 			log.Printf("Local Api Machines Metrics:")
+			lapiMachinesTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			lapiMachinesTable.Render()
 		}
 		if lapiBouncersTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Metrics:")
+			lapiBouncersTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			lapiBouncersTable.Render()
 		}
 
 		if lapiDecisionsTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Decisions:")
+			lapiDecisionsTable.SetAlignment(tablewriter.ALIGN_RIGHT)
 			lapiDecisionsTable.Render()
 		}
 
