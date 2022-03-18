@@ -17,7 +17,7 @@ jobs:
       mariadb:
         image: mysql:latest
         env:
-          MARIADB_ROOT_PASSWORD: mysql
+          MYSQL_ROOT_PASSWORD: mysql
         ports:
           - 3306:3306
     steps:
