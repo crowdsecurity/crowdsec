@@ -1,0 +1,54 @@
+name: BATS functional tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: "Build the application"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mariadb:
+        image: mariadb:latest
+        env:
+          MARIADB_ROOT_PASSWORD: mysql
+    steps:
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.17
+      id: go
+
+    - name: "Clone CrowdSec"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    - name: "Install bats dependencies"
+      run: |
+        sudo apt install daemonize netcat-openbsd
+        GO111MODULE=on go get github.com/mikefarah/yq/v4
+
+    - name: "BATS: build crowdsec"
+      run: make bats-clean bats-build
+      env:
+        DB_BACKEND: mysql
+        MYSQL_HOST: mariadb
+        MYSQL_PASSWORD: mysql
+        MYSQL_USER: root
+
+    - name: "BATS: run tests"
+      run: make bats-test
+      env:
+        DB_BACKEND: mysql
+        MYSQL_HOST: mariadb
+        MYSQL_PASSWORD: mysql
+        MYSQL_USER: root
