@@ -13,7 +13,7 @@ LOCAL_INIT_DIR = $(TEST_DIR)/local-init
 LOG_DIR = $(LOCAL_DIR)/var/log
 PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
-DB_BACKEND := $(or $(DB_BACKEND), "sqlite")
+DB_BACKEND ?= "sqlite"
 
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
@@ -28,13 +28,11 @@ export PLUGIN_DIR="$(PLUGIN_DIR)"
 export DB_BACKEND="$(DB_BACKEND)"
 endef
 
-bats-all: bats-clean bats-build bats-test
+bats-all: bats-clean bats-build bats-test bats-test-hub
 
 # Source this to run the scripts outside of the Makefile
-tests/.environment.sh:
+bats-environment:
 	$(file >$(TEST_DIR)/.environment.sh,$(ENV))
-
-bats-environment: tests/.environment.sh
 
 # Verify dependencies and submodules
 bats-check-requirements:
@@ -42,14 +40,12 @@ bats-check-requirements:
 
 # Build and installs crowdsec in a local directory
 # Create a reusable package with initial configuration + data
-# Generate dynamic tests
 bats-build: bats-environment bats-check-requirements
 	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
 	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
 	@$(TEST_DIR)/instance-data make
-	@$(TEST_DIR)/generate-hub-tests
 
 # Remove the local crowdsec installation and the fixture config + data
 bats-clean:
@@ -57,7 +53,12 @@ bats-clean:
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements
-	$(TEST_DIR)/run-tests
+	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
+
+# Generate dynamic tests
+bats-test-hub: bats-environment bats-check-requirements
+	@$(TEST_DIR)/generate-hub-tests
+	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
 
 # Static checks for the test scripts.
 # Not failproof but they can catch bugs and improve learning of sh/bash

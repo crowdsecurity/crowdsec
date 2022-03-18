@@ -41,8 +41,6 @@ export CONFIG_DIR
 
 remove_init_data() {
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
-
-    ./instance-db cleanup
 }
 
 config_generate() {
@@ -83,18 +81,17 @@ make_init_data() {
 
     mkdir -p "${DATA_DIR}"
     mkdir -p "${CONFIG_DIR}/notifications"
-
+    mkdir -p "${CONFIG_DIR}/hub"
+    mkdir -p "${CONFIG_DIR}/patterns"
+    cp -ax "../config/patterns" "${CONFIG_DIR}/"
     config_generate
-    ./instance-db configure
+    ./instance-db config-yaml
     ./instance-db setup
 
-    mkdir -p "${CONFIG_DIR}/hub"
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
     "${CSCLI}" capi register
     "${CSCLI}" hub update
     "${CSCLI}" collections install crowdsecurity/linux
-    mkdir -p "${CONFIG_DIR}/patterns"
-    cp -ax "../config/patterns" "${CONFIG_DIR}/"
 
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
@@ -104,7 +101,7 @@ make_init_data() {
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
-    ./instance-db backup "${LOCAL_INIT_DIR}/database"
+    ./instance-db dump "${LOCAL_INIT_DIR}/database"
 
     tar -C "${LOCAL_DIR}" --create \
         --exclude "$REL_DATA_DIR"/crowdsec.db \

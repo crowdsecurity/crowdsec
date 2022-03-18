@@ -9,13 +9,13 @@ die() {
 }
 
 about() {
-    die "usage: $script_name [backup | restore] <backup_file>"
+    die "usage: $script_name [ config-yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-cd "${THIS_DIR}"
-#shellcheck disable=SC1090
+cd "${THIS_DIR}"/../../
+#shellcheck disable=SC1091
 . ./.environment.sh
 
 # you have not removed set -u above, have you?
@@ -26,18 +26,15 @@ cd "${THIS_DIR}"
 
 [ $# -lt 1 ] && about
 
-./assert-crowdsec-not-running
-
+DATA_DIR=$(yq '.config_paths.data_dir' <"${CONFIG_YAML}")
 DB_FILE="${DATA_DIR}/crowdsec.db"
 
 case "$1" in
-    configure)
+    config-yaml)
         ;;
     setup)
         ;;
-    cleanup)
-        ;;
-    backup)
+    dump)
         [ $# -lt 2 ] && about
         backup_file="$2"
         # dirty fast cp. nothing should be accessing it right now, anyway.

@@ -1,4 +1,4 @@
-name: BATS functional tests with MySQL
+name: BATS functional tests with sqlite
 
 on:
   push:
@@ -13,13 +13,6 @@ jobs:
     name: "Build the application"
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      mariadb:
-        image: mysql:latest
-        env:
-          MYSQL_ROOT_PASSWORD: mysql
-        ports:
-          - 3306:3306
     steps:
 
     - name: "Set up Go 1.17"
@@ -41,18 +34,6 @@ jobs:
 
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build
-      env:
-        DB_BACKEND: mysql
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_PORT: 3306
-        MYSQL_PASSWORD: mysql
-        MYSQL_USER: root
 
     - name: "BATS: run tests"
       run: make bats-test
-      env:
-        DB_BACKEND: mysql
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_PORT: 3306
-        MYSQL_PASSWORD: mysql
-        MYSQL_USER: root

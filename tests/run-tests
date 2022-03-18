@@ -14,12 +14,17 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 "${TEST_DIR}/check-requirements"
 
+echo "Running tests..."
+echo "DB_BACKEND: $DB_BACKEND"
+
 if [ $# -ge 1 ]; then
+    echo "test files: $*"
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \
         -T "$@"
 else
+    echo "test files: ${TEST_DIR}/bats ${TEST_DIR}/dyn-bats"
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \

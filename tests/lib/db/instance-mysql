@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
+MYSQL_PORT=${MYSQL_PORT:-3306}
+MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+MYSQL_USER=${MYSQL_USER:-root}
+
+about() {
+    die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
+}
+
+check_mysql_client() {
+    if ! command -v mysql >/dev/null; then
+        die "missing required program 'mysql' as a mysql client (package mariadb-client-core-10.6 on debian like system)"
+    fi
+}
+
+send_mysql() {
+    cmd="${1?Missing required mysql command}"
+    mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" <<< "$cmd"
+}
+
+requirements() {
+    check_mysql_client
+}
+
+setup() {
+    send_mysql "DROP DATABASE IF EXISTS crowdsec_test;"
+    send_mysql "CREATE DATABASE crowdsec_test;"
+    send_mysql "DROP USER IF EXISTS crowdsec_test;"
+    send_mysql "CREATE USER 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
+}
+
+# cleanup is idempotent
+# XXX cleanup should not be used - the restore must drop the database, if it doesn't it must be fixed
+#cleanup() {
+#   send_mysql "DROP DATABASE IF EXISTS crowdsec_test;"
+#   send_mysql "DROP USER IF EXISTS crowdsec_test;"
+#}
+
+dump() {
+    backup_file="${1?Missing file to backup database to}"
+    mysqldump "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
+}
+
+restore() {
+    backup_file="${1?missing file to restore database from}"
+    [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
+    mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" < "$backup_file"
+    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
+}
+
+config_yaml() {
+    MYSQL_PORT=${MYSQL_PORT} MYSQL_HOST=${MYSQL_HOST} yq '
+        .db_config.type="mysql"|
+        .db_config.user="crowdsec_test" |
+        .db_config.password="crowdsec_test" |
+        .db_config.db_name="crowdsec_test"  |
+        .db_config.host=strenv(MYSQL_HOST) |
+        .db_config.port=env(MYSQL_PORT) |
+        del(.db_config.db_path) 
+    ' -i "${CONFIG_YAML}" 
+}
+
+[ $# -lt 1 ] && about
+
+case "$1" in
+    setup)
+        setup
+        ;;
+    config-yaml)
+        config_yaml
+        ;;
+    dump)
+        shift
+        dump "$@"
+        ;;
+    restore)
+        shift
+        restore "$@"
+        ;;
+    *)
+        about
+        ;;
+esac;

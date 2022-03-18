@@ -3,16 +3,16 @@
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "${THIS_DIR}"
+#shellcheck disable=SC1090
+. ./.environment.sh
 
-case "$DB_BACKEND" in
-    sqlite)
-        ./instance-sqlite "$@"
-        ;;
-    mysql)
-        ./instance-mysql "$@"
-        ;;
-    *)
-        echo >&2 "unknown $DB_BACKEND"
-        exit 1
-        ;;
-esac;
+./assert-crowdsec-not-running
+
+backend_script="./lib/db/instance-${DB_BACKEND}"
+
+if [ ! -x "$backend_script" ]; then
+    echo "unknown database '$DB_BACKEND'" >&2
+    exit 1
+fi
+
+exec "$backend_script" "$@"

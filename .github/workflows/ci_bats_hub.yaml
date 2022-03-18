@@ -1,4 +1,4 @@
-name: BATS functional tests
+name: Hub tests
 
 on:
   push:
@@ -35,8 +35,8 @@ jobs:
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build
 
-    - name: "BATS: run tests"
-      run: make bats-test
+    - name: "BATS: run hub tests"
+      run: make bats-test-hub
 
     - name: "BATS: collect hub coverage"
       run: ./tests/collect-hub-coverage >> $GITHUB_ENV
