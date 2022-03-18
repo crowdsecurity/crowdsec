@@ -64,7 +64,7 @@ jobs:
     - name: Build
       run: make build && go get -u github.com/jandelgado/gcov2lcov
     - name: All tests
-      run: go test -coverpkg ./... ./pkg/apiserver/...  -covermode=atomic -coverprofile=coverage.out ./... 
+      run: go test -coverpkg ./...,./pkg/apiserver/...  -covermode=atomic -coverprofile=coverage.out ./... 
     - name: gcov2lcov
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
