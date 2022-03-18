@@ -52,8 +52,6 @@ backup_database() {
         die "missing file to backup database to"
     fi
     mysqldump -h${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASSWORD} --databases crowdsec > $1
-    echo "USE mysql;">> $1
-    mysqldump -h${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASSWORD} mysql user global_priv tables_priv db columns_priv procs_priv proxies_priv >> $1
 }
 
 restore_database() {
@@ -66,7 +64,8 @@ restore_database() {
     else
         die "$2 doesn\'t exist"
     fi
-    send_mysql "FLUSH PRIVILEGES"
+    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec' IDENTIFIED BY 'crowdsec';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec';"
 }
 
 setup_configuration() {
