@@ -34,6 +34,7 @@ var MachineTest = models.WatcherAuthRequest{
 }
 
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
+var emptyBody = strings.NewReader("")
 
 func LoadTestConfig() csconfig.Config {
 	config := csconfig.Config{}
@@ -201,39 +202,6 @@ func GetAlertReaderFromFile(path string) *strings.Reader {
 	}
 	return strings.NewReader(string(alertContent))
 
-}
-
-func RecordAgentResponse(verb string, url string, authHeader models.WatcherAuthResponse, router *gin.Engine) (*httptest.ResponseRecorder, error) {
-	w := httptest.NewRecorder()
-	req, err := http.NewRequest(verb, url, strings.NewReader(""))
-	if err != nil {
-		return nil, err
-	}
-	AddAuthHeaders(req, authHeader)
-	router.ServeHTTP(w, req)
-	return w, nil
-}
-
-func RecordBouncerResponse(verb string, url string, APIKey string, router *gin.Engine) (*httptest.ResponseRecorder, error) {
-	w := httptest.NewRecorder()
-	req, err := http.NewRequest(verb, url, strings.NewReader(""))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("X-Api-Key", APIKey)
-	router.ServeHTTP(w, req)
-	return w, nil
-}
-
-func InsertAlertFromFile(path string, router *gin.Engine, loginResp models.WatcherAuthResponse) *httptest.ResponseRecorder {
-
-	alertReader := GetAlertReaderFromFile(path)
-	//create one alert
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", alertReader)
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-	return w
 }
 
 func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
