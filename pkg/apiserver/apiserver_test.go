@@ -225,17 +225,6 @@ func RecordBouncerResponse(verb string, url string, APIKey string, router *gin.E
 	return w, nil
 }
 
-func InsertAlertFromFile(path string, router *gin.Engine, loginResp models.WatcherAuthResponse) *httptest.ResponseRecorder {
-
-	alertReader := GetAlertReaderFromFile(path)
-	//create one alert
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("POST", "/v1/alerts", alertReader)
-	AddAuthHeaders(req, loginResp)
-	router.ServeHTTP(w, req)
-	return w
-}
-
 func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
 	response := make(map[string][]*models.Decision, 0)
 	if resp == nil {
