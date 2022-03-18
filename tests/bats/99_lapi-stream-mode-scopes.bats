@@ -49,14 +49,12 @@ api() {
     refute_output --partial 'toto'
 }
 
-
 @test "$FILE stream start (user scope)" {
     run -0 api "/v1/decisions/stream?startup=true&scopes=user"
     run -0 jq -r '.new' <(output)
     refute_output --partial '1.2.3.6'
     assert_output --partial 'toto'
 }
-
 
 @test "$FILE stream start (user+ip scope)" {
     run -0 api "/v1/decisions/stream?startup=true&scopes=user,ip"

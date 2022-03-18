@@ -42,4 +42,3 @@ teardown() {
     assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
     assert_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
 }
-

@@ -41,10 +41,10 @@ declare stderr
 
 @test "$FILE cscli alerts list: at startup returns at least one entry: community pull" {
     loop_max=15
-    for ((i=0; i<=loop_max; i++)); do
+    for ((i = 0; i <= loop_max; i++)); do
         sleep 2
         run -0 cscli alerts list -o json
-        [[ "$output" != "null" ]] && break
+        [ "$output" != "null" ] && break
     done
     run -0 jq -r '. | length' <(output)
     refute_output 0

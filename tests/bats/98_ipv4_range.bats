@@ -37,8 +37,6 @@ api() {
     run -0 cscli decisions list -o json
     run -0 jq -r '.[0].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
-#    run -0 jq -c '[ .[0].decisions[0].value, .[1].decisions[0].value ]' <(output)
-#    assert_output '["4.4.4.0/24","1.2.3.4"]'
 }
 
 @test "$FILE API - all decisions" {
