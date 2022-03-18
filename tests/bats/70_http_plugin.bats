@@ -4,7 +4,8 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
+    # eval "$(debug)"
     ./instance-data load
 
     MOCK_OUT="${LOG_DIR}/mock-http.out"
@@ -18,17 +19,17 @@ setup_file() {
         .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
-    ' -i "${CONFIG_DIR}/notifications/http.yaml"
+    ' -i "$(config_yq '.config_paths.notification_dir')/http.yaml"
 
     yq '
         .notifications=["http_default"] |
         .filters=["Alert.GetScope() == \"Ip\""]
-    ' -i "${CONFIG_DIR}/profiles.yaml"
+    ' -i "$(config_yq '.api.server.profiles_path')"
 
     yq '
         .plugin_config.user="" |
         .plugin_config.group=""
-    ' -i "${CONFIG_DIR}/config.yaml"
+    ' -i "${CONFIG_YAML}"
 
     rm -f -- "${MOCK_OUT}"
 
@@ -37,7 +38,7 @@ setup_file() {
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
     ./instance-mock-http stop
 }
 

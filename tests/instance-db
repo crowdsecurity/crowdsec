@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"
+
+./instance-sqlite "$@"

@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -133,7 +133,8 @@ declare stderr
     assert_output --partial "# bash completion for cscli"
     run -0 cscli completion zsh
     assert_output --partial "# zsh completion for cscli"
-    rm "${CONFIG_DIR}/config.yaml"
+
+    rm "${CONFIG_YAML}"
     run -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
     run -0 cscli completion zsh

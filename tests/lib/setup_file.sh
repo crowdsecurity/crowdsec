@@ -1,9 +1,20 @@
 
-# Allow tests to use relative paths for helper scripts.
-# Must redirect output to &3 otherwise errors in setup_file, teardown_file go unreported
+debug() {
+    echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
+}
+export -f debug
 
+# redirects stdout and stderr to &3 otherwise the errors in setup, teardown would
+# go unreported.
+# BUT - don't do this in test functions. Everything written to stdout and
+# stderr after this line will go to the terminal, but in the tests, these
+# are supposed to be collected and shown only in case of test failure
+# (see options --print-output-on-failure and --show-output-of-passing-tests)
+eval "$(debug)"
+
+# Allow tests to use relative paths for helper scripts.
 # shellcheck disable=SC2164
-cd "${TEST_DIR}" >&3 2>&1
+cd "${TEST_DIR}"
 
 # complain if there's a crowdsec running system-wide or leftover from a previous test
 ./assert-crowdsec-not-running
@@ -13,16 +24,19 @@ FILE="$(basename "${BATS_TEST_FILENAME}" .bats):"
 export FILE
 
 # the variables exported here can be seen in other setup/teardown/test functions
-CROWDSEC="${BIN_DIR}/crowdsec"
-export CROWDSEC
-CSCLI="${BIN_DIR}/cscli"
-export CSCLI
+# MYVAR=something
+# export MYVAR
 
 # functions too
 cscli() {
     "${CSCLI}" "$@"
 }
 export -f cscli
+
+config_yq() {
+    yq <"${CONFIG_YAML}" "$@"
+}
+export -f config_yq
 
 # We use these functions like this:
 #    somecommand <(stderr)
@@ -43,3 +57,4 @@ output() {
     printf '%s' "$output"
 }
 export -f output
+

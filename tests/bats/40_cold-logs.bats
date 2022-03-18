@@ -10,16 +10,16 @@ fake_log() {
 }
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
     ./instance-crowdsec start
-    fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
+    fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api 2>/dev/null
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {

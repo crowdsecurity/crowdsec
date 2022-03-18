@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -35,7 +35,7 @@ declare stderr
 }
 
 @test "$FILE crowdsec should not run without LAPI (no api.server in configuration file)" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr timeout 1s "${CROWDSEC}"
 
     run -0 echo "$stderr"
@@ -43,7 +43,7 @@ declare stderr
 }
 
 @test "$FILE capi status shouldn't be ok without api.server" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr cscli capi status
 
     run -0 echo "$stderr"
@@ -51,7 +51,7 @@ declare stderr
 }
 
 @test "$FILE cscli config show -o human" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     run -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "Crowdsec:"
@@ -60,7 +60,7 @@ declare stderr
 }
 
 @test "$FILE cscli config backup" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
     run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
@@ -73,7 +73,7 @@ declare stderr
 }
 
 @test "$FILE lapi status shouldn't be ok without api.server" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
     run -1 --separate-stderr cscli machines list
     run -0 echo "$stderr"
@@ -82,7 +82,7 @@ declare stderr
 
 @test "$FILE cscli metrics" {
     skip 'need to trigger metrics with a live parse'
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"

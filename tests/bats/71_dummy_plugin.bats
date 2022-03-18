@@ -4,33 +4,34 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
+    eval "$(debug)"
     ./instance-data load
 
     tempfile=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
     export tempfile
 
-    yq "
-        .group_wait=\"5s\" |
+    yq '
+        .group_wait="5s" |
         .group_threshold=2 |
-        .output_file=\"${tempfile}\"
-    " -i "${CONFIG_DIR}/notifications/dummy.yaml"
+        .output_file=strenv(tempfile)
+    ' -i "$(config_yq '.config_paths.notification_dir')/dummy.yaml"
 
     yq '
         .notifications=["dummy_default"] |
         .filters=["Alert.GetScope() == \"Ip\""]
-    ' -i "${CONFIG_DIR}/profiles.yaml"
+    ' -i "$(config_yq '.api.server.profiles_path')"
 
     yq '
         .plugin_config.user="" |
         .plugin_config.group=""
-    ' -i "${CONFIG_DIR}/config.yaml"
+    ' -i "${CONFIG_YAML}"
 
     ./instance-crowdsec start
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
