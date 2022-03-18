@@ -12,11 +12,9 @@ MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
 MYSQL_PORT=${MYSQL_PORT:-3306}
 MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
 MYSQL_USER=${MYSQL_USER:-root}
-CONFIG_DIR=${CONFIG_DIR:-"/etc/crowdsec/"} # this is scoped to this file
-CONFIG_FILE=${CONFIG_DIR:-"config.yaml"}
 
 about() {
-    die "usage: $0 [make | load | clean]"
+    die "usage: $0 [ setup | cleanup | configure | backup | restore]"
 }
 
 check_mysql_client() {
@@ -80,7 +78,7 @@ setup_configuration() {
         .db_config.host=strenv(MYSQL_HOST) |
         .db_config.port=env(MYSQL_PORT) |
         del(.db_config.db_path) 
-    ' -i "${CONFIG_DIR}/config.yaml" 
+    ' -i "${CONFIG_YAML}" 
 }
 
 

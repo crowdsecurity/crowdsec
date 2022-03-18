@@ -32,7 +32,6 @@ case "$1" in
          [ $# -lt 2 ] && about
          backup_file="$2"
          # dirty fast cp. nothing should be accessing it right now, anyway.
-         [ -f "${backup_file}" ] || die "missing file ${backup_file}"
          fixtures/mysql backup $backup_file
          ;;
      restore)
