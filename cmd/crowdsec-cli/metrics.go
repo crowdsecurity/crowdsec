@@ -74,7 +74,11 @@ func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, k
 		row = append(row, alabel) //name
 		for _, sl := range keys {
 			if v, ok := astats[sl]; ok && v != 0 {
-				row = append(row, formatNumber(v))
+				numberToShow := fmt.Sprintf("%d", v)
+				if !noUnit {
+					numberToShow = formatNumber(v)
+				}
+				row = append(row, numberToShow)
 			} else {
 				row = append(row, "-")
 			}
@@ -327,38 +331,38 @@ func ShowPrometheus(url string) {
 
 		if bucketsTable.NumLines() > 0 {
 			log.Printf("Buckets Metrics:")
-			bucketsTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			bucketsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			bucketsTable.Render()
 		}
 		if acquisTable.NumLines() > 0 {
 			log.Printf("Acquisition Metrics:")
-			acquisTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			acquisTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			acquisTable.Render()
 		}
 		if parsersTable.NumLines() > 0 {
 			log.Printf("Parser Metrics:")
-			parsersTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			parsersTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			parsersTable.Render()
 		}
 		if lapiTable.NumLines() > 0 {
 			log.Printf("Local Api Metrics:")
-			lapiTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			lapiTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiTable.Render()
 		}
 		if lapiMachinesTable.NumLines() > 0 {
 			log.Printf("Local Api Machines Metrics:")
-			lapiMachinesTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			lapiMachinesTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiMachinesTable.Render()
 		}
 		if lapiBouncersTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Metrics:")
-			lapiBouncersTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			lapiBouncersTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiBouncersTable.Render()
 		}
 
 		if lapiDecisionsTable.NumLines() > 0 {
 			log.Printf("Local Api Bouncers Decisions:")
-			lapiDecisionsTable.SetAlignment(tablewriter.ALIGN_RIGHT)
+			lapiDecisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiDecisionsTable.Render()
 		}
 
@@ -380,6 +384,8 @@ func ShowPrometheus(url string) {
 		}
 	}
 }
+
+var noUnit bool
 
 func NewMetricsCmd() *cobra.Command {
 	/* ---- UPDATE COMMAND */
@@ -411,6 +417,7 @@ func NewMetricsCmd() *cobra.Command {
 		},
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")
+	cmdMetrics.PersistentFlags().BoolVar(&noUnit, "no-unit", false, "Show the real number instead of formatted with units")
 
 	return cmdMetrics
 }
