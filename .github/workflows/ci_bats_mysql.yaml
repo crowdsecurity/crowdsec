@@ -18,6 +18,8 @@ jobs:
         image: mariadb:latest
         env:
           MARIADB_ROOT_PASSWORD: mysql
+        ports:
+          - 3306:3306
     steps:
 
     - name: "Set up Go 1.17"
@@ -49,6 +51,6 @@ jobs:
       run: make bats-test
       env:
         DB_BACKEND: mysql
-        MYSQL_HOST: mariadb
+        MYSQL_HOST: localhost
         MYSQL_PASSWORD: mysql
         MYSQL_USER: root
