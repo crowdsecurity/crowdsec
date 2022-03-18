@@ -213,6 +213,12 @@ Disable given information push to the central API.`,
 							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
+					case csconfig.SEND_LABEL:
+						activated := string(emoji.CrossMark)
+						if *csConfig.API.Server.ConsoleConfig.ShareLabel {
+							activated = string(emoji.CheckMarkButton)
+						}
+						table.Append([]string{option, activated, "Send label with alerts to the console"})
 					}
 				}
 				table.Render()
@@ -233,6 +239,7 @@ Disable given information push to the central API.`,
 					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
 					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
+					{"share_labels", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareLabel)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -246,6 +253,46 @@ Disable given information push to the central API.`,
 	}
 
 	cmdConsole.AddCommand(cmdConsoleStatus)
+
+	cmdLabel := &cobra.Command{
+		Use:               "label [feature-flag]",
+		Short:             "Manage label to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			printHelp(cmd)
+		},
+	}
+
+	var key string
+	var values []string
+	cmdLabelAdd := &cobra.Command{
+		Use:               "add",
+		Short:             "Add label to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if _, ok := csConfig.API.Server.ConsoleConfig.LabelsToSend[key]; !ok {
+				csConfig.API.Server.ConsoleConfig.LabelsToSend[key] = make([]string, 0)
+			}
+			data := csConfig.API.Server.ConsoleConfig.LabelsToSend[key]
+			for _, val := range values {
+				if !inSlice(val, data) {
+					data = append(data, val)
+				}
+				csConfig.API.Server.ConsoleConfig.LabelsToSend[key] = data
+			}
+			if err := csConfig.API.Server.DumpLabelConfigFile(); err != nil {
+				log.Fatalf(err.Error())
+			}
+		},
+	}
+	cmdLabelAdd.Flags().StringVarP(&key, "key", "k", "", "The key of the different values to send")
+	cmdLabelAdd.Flags().StringSliceVar(&values, "value", []string{}, "The expr fields to associate with the key")
+	cmdLabelAdd.MarkFlagRequired("key")
+	cmdLabelAdd.MarkFlagRequired("value")
+	cmdLabel.AddCommand(cmdLabelAdd)
+
+	cmdConsole.AddCommand(cmdLabel)
+
 	return cmdConsole
 }
 
@@ -290,6 +337,19 @@ func SetConsoleOpts(args []string, wanted bool) {
 			} else {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
+			}
+		case csconfig.SEND_LABEL:
+			/*for each flag check if it's already set before setting it*/
+			if csConfig.API.Server.ConsoleConfig.ShareLabel != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareLabel == wanted {
+					log.Infof("%s already set to %t", csconfig.SEND_LABEL, wanted)
+				} else {
+					log.Infof("%s set to %t", csconfig.SEND_LABEL, wanted)
+					*csConfig.API.Server.ConsoleConfig.ShareLabel = wanted
+				}
+			} else {
+				log.Infof("%s set to %t", csconfig.SEND_LABEL, wanted)
+				csConfig.API.Server.ConsoleConfig.ShareLabel = types.BoolPtr(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

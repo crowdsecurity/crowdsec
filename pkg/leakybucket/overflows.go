@@ -232,6 +232,10 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
+func EventToLabel(Queue) {
+
+}
+
 //NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	var runtimeAlert types.RuntimeAlert

@@ -24,6 +24,8 @@ CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 LAPI_LOG_FILE="/var/log/crowdsec_api.log"
 CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
+CROWDSEC_CONSOLE_DIR="${CROWDSEC_PATH}/console"
+
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
@@ -387,6 +389,8 @@ check_cs_version () {
 #install crowdsec and cscli
 install_crowdsec() {
     mkdir -p "${CROWDSEC_DATA_DIR}"
+    mkdir -p "${CROWDSEC_CONSOLE_DIR}"
+
     (cd config && find patterns -type f -exec install -Dm 644 "{}" "${CROWDSEC_CONFIG_PATH}/{}" \; && cd ../) || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/scenarios" || exit
     mkdir -p "${CROWDSEC_CONFIG_PATH}/postoverflows" || exit
@@ -408,6 +412,7 @@ install_crowdsec() {
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/labels.yaml "${CROWDSEC_CONSOLE_DIR}" 1> /dev/null || exit
 
     DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then

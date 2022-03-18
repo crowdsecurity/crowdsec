@@ -45,6 +45,7 @@ sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config
 %install
 rm -rf %{buildroot}
 mkdir -p %{buildroot}/etc/crowdsec/hub
+mkdir -p %{buildroot}/etc/crowdsec/console/
 mkdir -p %{buildroot}/etc/crowdsec/patterns
 mkdir -p %{buildroot}%{_sharedstatedir}/%{name}/data
 mkdir -p %{buildroot}%{_presetdir}
@@ -62,6 +63,7 @@ install -m 644 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec/console/
 install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
@@ -114,6 +116,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/simulation.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/profiles.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/console.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/console/labels.yaml
 %config(noreplace) %{_presetdir}/80-%{name}.preset
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
