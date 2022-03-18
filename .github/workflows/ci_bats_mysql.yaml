@@ -1,4 +1,4 @@
-name: BATS functional tests
+name: BATS functional tests with MYSQL
 
 on:
   push:
