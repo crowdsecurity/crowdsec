@@ -204,6 +204,42 @@ func GetAlertReaderFromFile(path string) *strings.Reader {
 
 }
 
+func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, int, error) {
+	var response []*models.Decision
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string, int, error) {
+	var response map[string]string
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int, error) {
+	var response models.DeleteDecisionResponse
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return &response, resp.Code, nil
+}
+
 func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
 	response := make(map[string][]*models.Decision, 0)
 	if resp == nil {
