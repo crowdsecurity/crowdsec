@@ -52,7 +52,6 @@ api() {
     assert_output --partial '1.2.3.5'
 }
 
-
 @test "$FILE stream cont (del)" {
     sleep 1
     run -0 cscli decisions delete -i '1.2.3.4'
