@@ -10,13 +10,13 @@ fake_log() {
 }
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
     ./instance-data load
     ./instance-crowdsec start
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {

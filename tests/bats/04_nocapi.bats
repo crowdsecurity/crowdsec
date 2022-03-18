@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -25,7 +25,7 @@ declare stderr
 #----------
 
 config_disable_capi() {
-    yq 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server.online_client)' -i "${CONFIG_YAML}"
 }
 
 @test "$FILE without capi: crowdsec LAPI should still work" {

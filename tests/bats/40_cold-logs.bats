@@ -10,7 +10,7 @@ fake_log() {
 }
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
@@ -19,7 +19,7 @@ setup_file() {
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {

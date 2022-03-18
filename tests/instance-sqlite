@@ -20,7 +20,7 @@ cd "${THIS_DIR}"
 
 # you have not removed set -u above, have you?
 
-[ -z "${DATA_DIR-}" ] && die "\$DATA_DIR must be defined."
+[ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
 
 # ---------------------------
 
@@ -28,6 +28,7 @@ cd "${THIS_DIR}"
 
 ./assert-crowdsec-not-running
 
+DATA_DIR=$(yq <"${CONFIG_YAML}" '.config_paths.data_dir')
 DB_FILE="${DATA_DIR}/crowdsec.db"
 
 case "$1" in
