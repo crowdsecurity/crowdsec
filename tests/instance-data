@@ -25,6 +25,7 @@ cd "${THIS_DIR}"
 [ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
 [ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
 [ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
+[ -z "${DB_BACKEND-}" ] && die "\$DB_BACKEND must be defined."
 
 if [ ! -f "${CSCLI}" ]; then
     die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
@@ -84,6 +85,8 @@ make_init_data() {
     mkdir -p "${CONFIG_DIR}/notifications"
 
     config_generate
+    ./instance-db configure
+    ./instance-db setup
 
     mkdir -p "${CONFIG_DIR}/hub"
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
@@ -101,8 +104,6 @@ make_init_data() {
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
-    ./instance-db configure
-    ./instance-db setup
     ./instance-db backup "${LOCAL_INIT_DIR}/database"
 
     tar -C "${LOCAL_DIR}" --create \

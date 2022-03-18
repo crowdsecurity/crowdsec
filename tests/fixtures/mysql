@@ -12,6 +12,8 @@ MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
 MYSQL_PORT=${MYSQL_PORT:-3306}
 MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
 MYSQL_USER=${MYSQL_USER:-root}
+CONFIG_DIR=${CONFIG_DIR:-"/etc/crowdsec/"} # this is scoped to this file
+CONFIG_FILE=${CONFIG_DIR:-"config.yaml"}
 
 about() {
     die "usage: $0 [make | load | clean]"
@@ -25,7 +27,7 @@ check_mysql_client() {
 
 send_mysql() {
     if [ "$#" -lt 1 ]; then
-        die "missing requriement argument to send the mysql database"
+        die "missing requirement argument to send the mysql database"
     fi
 
     /bin/echo "$1" | mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} --port=${MYSQL_PORT} -p${MYSQL_PASSWORD}
@@ -36,8 +38,8 @@ requirements() {
 }
 
 setup_database() {
-    send_mysql "CREATE DATABASE crowdsec;"
-    send_mysql "CREATE USER 'crowdsec' IDENTIFIED BY 'crowdsec';"
+    send_mysql "CREATE DATABASE IF NOT EXISTS crowdsec;"
+    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec' IDENTIFIED BY 'crowdsec';"
     send_mysql "GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec';"
 }
 
@@ -47,14 +49,38 @@ cleanup_database() {
     send_mysql "DROP USER IF EXISTS crowdsec;"
 }
 
+backup_database() {
+    if [ "$#" -lt 1 ]; then
+        die "missing file to backup database to"
+    fi
+    mysqldump -h${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASSWORD} --databases crowdsec > $1
+    echo "USE mysql;">> $1
+    mysqldump -h${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASSWORD} mysql user global_priv tables_priv db columns_priv procs_priv proxies_priv >> $1
+}
+
+restore_database() {
+    if [ "$#" -lt 1 ]; then
+        die "missing file to restore database to"
+    fi
+    
+    if [ -f $1 ]; then
+        mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} --port=${MYSQL_PORT} -p${MYSQL_PASSWORD} < $1
+    else
+        die "$2 doesn\'t exist"
+    fi
+    send_mysql "FLUSH PRIVILEGES"
+}
+
 setup_configuration() {
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.type mysql
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.user crowdsec
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.password crowdsec
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.db_name crowdsec  
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.host ${MYSQL_HOST}
-    yq w -i "${CONFIG_DIR}/config.yaml" db_config.port ${MYSQL_PORT}
-    yq 'del(.db_config.db_path)' -i "${CONFIG_DIR}/config.yaml" 
+    MYSQL_PORT=${MYSQL_PORT} MYSQL_HOST=${MYSQL_HOST} yq '
+        .db_config.type="mysql"|
+        .db_config.user="crowdsec" |
+        .db_config.password="crowdsec" |
+        .db_config.db_name="crowdsec"  |
+        .db_config.host=strenv(MYSQL_HOST) |
+        .db_config.port=env(MYSQL_PORT) |
+        del(.db_config.db_path) 
+    ' -i "${CONFIG_DIR}/config.yaml" 
 }
 
 
@@ -68,8 +94,19 @@ case "$1" in
     configure)
         setup_configuration
         ;;
+    backup)
+        if [ "$#" -lt 2 ]; then
+            die "missing file to restore backup to"
+        fi
+        backup_database $2
+        ;;
+    restore)
+        if [ "$#" -lt 2 ]; then
+            die "missing file to restore restore to"
+        fi
+        restore_database $2
+        ;;
     *)
         about
         ;;
 esac;
-

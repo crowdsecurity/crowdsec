@@ -13,7 +13,7 @@ LOCAL_INIT_DIR = $(TEST_DIR)/local-init
 LOG_DIR = $(LOCAL_DIR)/var/log
 PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
-DB_BACKEND := $(or $(DB_BACKEND, "sqlite"))
+DB_BACKEND := $(or $(DB_BACKEND), "sqlite")
 
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
