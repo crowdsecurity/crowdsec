@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
     services:
       mariadb:
-        image: mariadb:latest
+        image: mysql:latest
         env:
           MARIADB_ROOT_PASSWORD: mysql
         ports:
