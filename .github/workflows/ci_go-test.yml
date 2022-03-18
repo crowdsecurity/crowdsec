@@ -68,7 +68,7 @@ jobs:
     - name: Install go-acc
       run: go get github.com/ory/go-acc
     - name: All tests
-      run: go-acc ./... -o coverage.out
+      run: go-go run github.com/ory/go-acc ./... -o coverage.out
     - name: gcov2lcov
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
