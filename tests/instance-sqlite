@@ -32,6 +32,12 @@ DATA_DIR=$(yq <"${CONFIG_YAML}" '.config_paths.data_dir')
 DB_FILE="${DATA_DIR}/crowdsec.db"
 
 case "$1" in
+    configure)
+        ;;
+    setup)
+        ;;
+    cleanup)
+        ;;
     backup)
         [ $# -lt 2 ] && about
         backup_file="$2"

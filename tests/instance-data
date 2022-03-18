@@ -40,6 +40,8 @@ export CONFIG_DIR
 
 remove_init_data() {
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
+
+    ./instance-db cleanup
 }
 
 config_generate() {
@@ -99,6 +101,8 @@ make_init_data() {
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
+    ./instance-db configure
+    ./instance-db setup
     ./instance-db backup "${LOCAL_INIT_DIR}/database"
 
     tar -C "${LOCAL_DIR}" --create \

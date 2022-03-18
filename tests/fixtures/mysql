@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
+MYSQL_PORT=${MYSQL_PORT:-3306}
+MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+MYSQL_USER=${MYSQL_USER:-root}
+
+about() {
+    die "usage: $0 [make | load | clean]"
+}
+
+check_mysql_client() {
+    if ! command -v mysql >/dev/null; then
+        die "missing required program 'mysql' as a mysql client (package mariadb-client-core-10.6 on debian like system)"
+    fi
+}
+
+send_mysql() {
+    if [ "$#" -lt 1 ]; then
+        die "missing requriement argument to send the mysql database"
+    fi
+
+    /bin/echo "$1" | mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} --port=${MYSQL_PORT} -p${MYSQL_PASSWORD}
+}
+
+requirements() {
+    check_mysql_client
+}
+
+setup_database() {
+    send_mysql "CREATE DATABASE crowdsec;"
+    send_mysql "CREATE USER 'crowdsec' IDENTIFIED BY 'crowdsec';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec';"
+}
+
+# cleanup is idempotent
+cleanup_database() {
+    send_mysql "DROP DATABASE IF EXISTS crowdsec;"
+    send_mysql "DROP USER IF EXISTS crowdsec;"
+}
+
+setup_configuration() {
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.type mysql
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.user crowdsec
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.password crowdsec
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.db_name crowdsec  
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.host ${MYSQL_HOST}
+    yq w -i "${CONFIG_DIR}/config.yaml" db_config.port ${MYSQL_PORT}
+    yq 'del(.db_config.db_path)' -i "${CONFIG_DIR}/config.yaml" 
+}
+
+
+case "$1" in
+    setup)
+        setup_database
+        ;;
+    cleanup)
+        cleanup_database
+        ;;
+    configure)
+        setup_configuration
+        ;;
+    *)
+        about
+        ;;
+esac;
+
