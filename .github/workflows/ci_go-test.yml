@@ -65,8 +65,10 @@ jobs:
       run: make build && go get -u github.com/jandelgado/gcov2lcov
     - name: Build package
       run: make package
+    - name: Install go-acc
+      run: go get github.com/ory/go-acc
     - name: All tests
-      run: go test -coverprofile=coverage.out -covermode=atomic ./...
+      run: go-acc ./... -o coverage.out
     - name: gcov2lcov
       uses: jandelgado/gcov2lcov-action@v1.0.2
       with:
