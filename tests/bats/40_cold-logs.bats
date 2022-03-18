@@ -15,7 +15,7 @@ setup_file() {
     # we reset config and data, and only run the daemon once for all the tests in this file
     ./instance-data load
     ./instance-crowdsec start
-    fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
+    fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api 2>/dev/null
 }
 
 teardown_file() {
