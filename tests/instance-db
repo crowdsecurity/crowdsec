@@ -4,4 +4,15 @@
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "${THIS_DIR}"
 
-./instance-sqlite "$@"
+case "$DB_BACKEND" in
+    sqlite)
+        ./instance-sqlite "$@"
+        ;;
+    mysql)
+        ./instance-mysql "$@"
+        ;;
+    *)
+        echo >&2 "unknown $DB_BACKEND"
+        exit 1
+        ;;
+esac;

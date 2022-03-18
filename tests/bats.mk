@@ -13,6 +13,7 @@ LOCAL_INIT_DIR = $(TEST_DIR)/local-init
 LOG_DIR = $(LOCAL_DIR)/var/log
 PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
+DB_BACKEND := $(or $(DB_BACKEND), "sqlite")
 
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
@@ -24,6 +25,7 @@ export LOCAL_INIT_DIR="$(LOCAL_INIT_DIR)"
 export LOG_DIR="$(LOG_DIR)"
 export PID_DIR="$(PID_DIR)"
 export PLUGIN_DIR="$(PLUGIN_DIR)"
+export DB_BACKEND="$(DB_BACKEND)"
 endef
 
 bats-all: bats-clean bats-build bats-test

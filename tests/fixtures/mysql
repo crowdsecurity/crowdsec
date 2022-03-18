@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+MYSQL_HOST=${MYSQL_HOST:-127.0.0.1}
+MYSQL_PORT=${MYSQL_PORT:-3306}
+MYSQL_PASSWORD=${MYSQL_PASSWORD:-password}
+MYSQL_USER=${MYSQL_USER:-root}
+
+about() {
+    die "usage: $0 [ setup | cleanup | configure | backup | restore]"
+}
+
+check_mysql_client() {
+    if ! command -v mysql >/dev/null; then
+        die "missing required program 'mysql' as a mysql client (package mariadb-client-core-10.6 on debian like system)"
+    fi
+}
+
+send_mysql() {
+    if [ "$#" -lt 1 ]; then
+        die "missing requirement argument to send the mysql database"
+    fi
+
+    /bin/echo "$1" | mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} --port=${MYSQL_PORT} -p${MYSQL_PASSWORD}
+}
+
+requirements() {
+    check_mysql_client
+}
+
+setup_database() {
+    send_mysql "CREATE DATABASE IF NOT EXISTS crowdsec;"
+    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec' IDENTIFIED BY 'crowdsec';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec';"
+}
+
+# cleanup is idempotent
+cleanup_database() {
+    send_mysql "DROP DATABASE IF EXISTS crowdsec;"
+    send_mysql "DROP USER IF EXISTS crowdsec;"
+}
+
+backup_database() {
+    if [ "$#" -lt 1 ]; then
+        die "missing file to backup database to"
+    fi
+    mysqldump -h${MYSQL_HOST} -u${MYSQL_USER} -p${MYSQL_PASSWORD} --databases crowdsec > $1
+}
+
+restore_database() {
+    if [ "$#" -lt 1 ]; then
+        die "missing file to restore database to"
+    fi
+    
+    if [ -f $1 ]; then
+        mysql -h ${MYSQL_HOST} -u ${MYSQL_USER} --port=${MYSQL_PORT} -p${MYSQL_PASSWORD} < $1
+    else
+        die "$2 doesn\'t exist"
+    fi
+    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec' IDENTIFIED BY 'crowdsec';"
+    send_mysql "GRANT ALL PRIVILEGES ON crowdsec.* TO 'crowdsec';"
+}
+
+setup_configuration() {
+    MYSQL_PORT=${MYSQL_PORT} MYSQL_HOST=${MYSQL_HOST} yq '
+        .db_config.type="mysql"|
+        .db_config.user="crowdsec" |
+        .db_config.password="crowdsec" |
+        .db_config.db_name="crowdsec"  |
+        .db_config.host=strenv(MYSQL_HOST) |
+        .db_config.port=env(MYSQL_PORT) |
+        del(.db_config.db_path) 
+    ' -i "${CONFIG_YAML}" 
+}
+
+
+case "$1" in
+    setup)
+        setup_database
+        ;;
+    cleanup)
+        cleanup_database
+        ;;
+    configure)
+        setup_configuration
+        ;;
+    backup)
+        if [ "$#" -lt 2 ]; then
+            die "missing file to restore backup to"
+        fi
+        backup_database $2
+        ;;
+    restore)
+        if [ "$#" -lt 2 ]; then
+            die "missing file to restore restore to"
+        fi
+        restore_database $2
+        ;;
+    *)
+        about
+        ;;
+esac;
