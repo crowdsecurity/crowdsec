@@ -20,6 +20,17 @@ import (
 
 var testPath string
 
+func setPluginPermTo744() {
+	setPluginPermTo("744")
+}
+
+func setPluginPermTo722() {
+	setPluginPermTo("722")
+}
+
+func setPluginPermTo724() {
+	setPluginPermTo("724")
+}
 func Test_getPluginNameAndTypeFromPath(t *testing.T) {
 	setUp()
 	defer tearDown()
@@ -123,6 +134,7 @@ func Test_listFilesAtPath(t *testing.T) {
 }
 
 func TestBrokerInit(t *testing.T) {
+
 	tests := []struct {
 		name        string
 		action      func()
@@ -132,13 +144,20 @@ func TestBrokerInit(t *testing.T) {
 	}{
 		{
 			name:    "valid config",
-			action:  makePluginValid,
+			action:  setPluginPermTo744,
 			wantErr: false,
 		},
 		{
 			name:        "group writable binary",
 			wantErr:     true,
+			errContains: "notification-dummy is world writable",
+			action:      setPluginPermTo722,
+		},
+		{
+			name:        "group writable binary",
+			wantErr:     true,
 			errContains: "notification-dummy is group writable",
+			action:      setPluginPermTo724,
 		},
 		{
 			name:        "no plugin dir",
@@ -164,7 +183,7 @@ func TestBrokerInit(t *testing.T) {
 			procCfg: csconfig.PluginCfg{
 				User: "123445555551122toto",
 			},
-			action: makePluginValid,
+			action: setPluginPermTo744,
 		},
 		{
 			name:        "only specify group",
@@ -173,7 +192,7 @@ func TestBrokerInit(t *testing.T) {
 			procCfg: csconfig.PluginCfg{
 				Group: "123445555551122toto",
 			},
-			action: makePluginValid,
+			action: setPluginPermTo744,
 		},
 		{
 			name:        "Fails to run as root",
@@ -183,7 +202,7 @@ func TestBrokerInit(t *testing.T) {
 				User:  "root",
 				Group: "root",
 			},
-			action: makePluginValid,
+			action: setPluginPermTo744,
 		},
 		{
 			name:        "Invalid user and group",
@@ -193,7 +212,7 @@ func TestBrokerInit(t *testing.T) {
 				User:  "toto1234",
 				Group: "toto1234",
 			},
-			action: makePluginValid,
+			action: setPluginPermTo744,
 		},
 		{
 			name:        "Valid user and invalid group",
@@ -203,7 +222,7 @@ func TestBrokerInit(t *testing.T) {
 				User:  "nobody",
 				Group: "toto1234",
 			},
-			action: makePluginValid,
+			action: setPluginPermTo744,
 		},
 	}
 
@@ -236,7 +255,7 @@ func TestBrokerInit(t *testing.T) {
 
 func TestBrokerRun(t *testing.T) {
 	buildDummyPlugin()
-	makePluginValid()
+	setPluginPermTo744()
 	defer tearDown()
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -276,8 +295,8 @@ func buildDummyPlugin() {
 	testPath = dir
 }
 
-func makePluginValid() {
-	if err := exec.Command("chmod", "744", path.Join(testPath, "notification-dummy")).Run(); err != nil {
+func setPluginPermTo(perm string) {
+	if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
 		log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
 	}
 }
