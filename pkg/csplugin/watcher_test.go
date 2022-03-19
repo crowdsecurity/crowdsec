@@ -11,12 +11,10 @@ import (
 )
 
 var ctx = context.Background()
-var testTomb = tomb.Tomb{}
 
-func resetTestTomb() {
+func resetTestTomb(testTomb *tomb.Tomb) {
 	testTomb.Kill(nil)
 	testTomb.Wait()
-	testTomb = tomb.Tomb{}
 }
 
 func resetWatcherAlertCounter(pw *PluginWatcher) {
@@ -43,6 +41,7 @@ func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 func TestPluginWatcherInterval(t *testing.T) {
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
+	testTomb := tomb.Tomb{}
 	configs := map[string]PluginConfig{
 		"testPlugin": {
 			GroupWait: time.Millisecond,
@@ -55,13 +54,14 @@ func TestPluginWatcherInterval(t *testing.T) {
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
 
-	resetTestTomb()
+	resetTestTomb(&testTomb)
+	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
 
 	ct, _ = context.WithTimeout(ctx, time.Millisecond)
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
-	resetTestTomb()
+	resetTestTomb(&testTomb)
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
@@ -72,6 +72,7 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 			GroupThreshold: 5,
 		},
 	}
+	testTomb := tomb.Tomb{}
 	pw.Init(configs, alertsByPluginName)
 	pw.Start(&testTomb)
 
@@ -90,9 +91,8 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	// Channel will contain an event since threshold is crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 5, "testPlugin")
-	ct, _ = context.WithTimeout(ctx, time.Second)
+	ct, _ = context.WithTimeout(ctx, time.Millisecond*5)
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
-
-	resetTestTomb()
+	resetTestTomb(&testTomb)
 }

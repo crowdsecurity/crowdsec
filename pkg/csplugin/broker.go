@@ -254,6 +254,9 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	}
 	cmd := exec.Command(binaryPath)
 	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
+		if !(pb.pluginProcConfig.User != "" && pb.pluginProcConfig.Group != "") {
+			return nil, errors.New("while getting process attributes: both plugin user and group must be set")
+		}
 		cmd.SysProcAttr, err = getProcessAttr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
 		if err != nil {
 			return nil, errors.Wrap(err, "while getting process attributes")

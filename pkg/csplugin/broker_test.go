@@ -8,10 +8,14 @@ import (
 	"path"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/tomb.v2"
 )
 
 var testPath string
@@ -124,6 +128,7 @@ func TestBrokerInit(t *testing.T) {
 		action      func()
 		errContains string
 		wantErr     bool
+		procCfg     csconfig.PluginCfg
 	}{
 		{
 			name:    "valid config",
@@ -146,8 +151,59 @@ func TestBrokerInit(t *testing.T) {
 			wantErr:     true,
 			errContains: "binary for plugin dummy_default not found",
 			action: func() {
-				os.Remove(path.Join(testPath, "notification-dummy"))
+				err := os.Remove(path.Join(testPath, "notification-dummy"))
+				if err != nil {
+					t.Fatal(err)
+				}
 			},
+		},
+		{
+			name:        "only specify user",
+			wantErr:     true,
+			errContains: "both plugin user and group must be set",
+			procCfg: csconfig.PluginCfg{
+				User: "123445555551122toto",
+			},
+			action: makePluginValid,
+		},
+		{
+			name:        "only specify group",
+			wantErr:     true,
+			errContains: "both plugin user and group must be set",
+			procCfg: csconfig.PluginCfg{
+				Group: "123445555551122toto",
+			},
+			action: makePluginValid,
+		},
+		{
+			name:        "Fails to run as root",
+			wantErr:     true,
+			errContains: "operation not permitted",
+			procCfg: csconfig.PluginCfg{
+				User:  "root",
+				Group: "root",
+			},
+			action: makePluginValid,
+		},
+		{
+			name:        "Invalid user and group",
+			wantErr:     true,
+			errContains: "unknown user toto1234",
+			procCfg: csconfig.PluginCfg{
+				User:  "toto1234",
+				Group: "toto1234",
+			},
+			action: makePluginValid,
+		},
+		{
+			name:        "Valid user and invalid group",
+			wantErr:     true,
+			errContains: "unknown group toto1234",
+			procCfg: csconfig.PluginCfg{
+				User:  "nobody",
+				Group: "toto1234",
+			},
+			action: makePluginValid,
 		},
 	}
 
@@ -158,16 +214,16 @@ func TestBrokerInit(t *testing.T) {
 			if test.action != nil {
 				test.action()
 			}
-			procCfg := csconfig.PluginCfg{}
 			pb := PluginBroker{}
 			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 			profiles = append(profiles, &csconfig.ProfileCfg{
 				Notifications: []string{"dummy_default"},
 			})
-			err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+			err := pb.Init(&test.procCfg, profiles, &csconfig.ConfigurationPaths{
 				PluginDir:       testPath,
-				NotificationDir: path.Join(testPath, "notifications"),
+				NotificationDir: "./tests/notifications",
 			})
+			defer pb.Kill()
 			if test.wantErr {
 				assert.ErrorContains(t, err, test.errContains)
 			} else {
@@ -178,25 +234,35 @@ func TestBrokerInit(t *testing.T) {
 	}
 }
 
-// func TestBroker(t *testing.T) {
-// 	buildDummyPlugin()
-// 	makePluginValid()
-// 	defer tearDown()
-// 	procCfg := csconfig.PluginCfg{}
-// 	pb := PluginBroker{}
-// 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
-// 	profiles = append(profiles, &csconfig.ProfileCfg{
-// 		Notifications: []string{"dummy_default"},
-// 	})
-// 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
-// 		PluginDir:       testPath,
-// 		NotificationDir: "./tests",
-// 	})
-// 	assert.NoError(t, err)
-// 	// go pb.Run(&testTomb)
-// 	// defer resetTestTomb()
+func TestBrokerRun(t *testing.T) {
+	buildDummyPlugin()
+	makePluginValid()
+	defer tearDown()
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
 
-// }
+	assert.NoFileExists(t, "./out")
+	defer os.Remove("./out")
+
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(time.Second * 4)
+
+	assert.FileExists(t, "./out")
+	assert.Equal(t, types.GetLineCountForFile("./out"), 2)
+}
 
 func buildDummyPlugin() {
 	dir, err := ioutil.TempDir("./tests", "cs_plugin_test")
@@ -206,11 +272,6 @@ func buildDummyPlugin() {
 	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy"), "../../plugins/notifications/dummy/")
 	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
-	}
-	os.Mkdir(path.Join(dir, "notifications"), 0755)
-	cmd = exec.Command("cp", "../../plugins/notifications/dummy/dummy.yaml", path.Join(dir, "notifications/dummy.yaml"))
-	if err := cmd.Run(); err != nil {
-		log.Fatal(errors.Wrapf(err, "cp ../../plugins/notifications/dummy/dummy.yaml %s", path.Join(dir, "notifications/dummy.yaml")))
 	}
 	testPath = dir
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -242,4 +243,18 @@ func InSlice(str string, slice []string) bool {
 
 func UtcNow() time.Time {
 	return time.Now().UTC()
+}
+
+func GetLineCountForFile(filepath string) int {
+	f, err := os.Open(filepath)
+	if err != nil {
+		log.Fatalf("unable to open log file %s", filepath)
+	}
+	defer f.Close()
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc
 }
