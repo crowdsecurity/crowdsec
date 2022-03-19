@@ -4,9 +4,14 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/exec"
 	"path"
 	"reflect"
 	"testing"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 var testPath string
@@ -113,8 +118,110 @@ func Test_listFilesAtPath(t *testing.T) {
 	}
 }
 
+func TestBrokerInit(t *testing.T) {
+	tests := []struct {
+		name        string
+		action      func()
+		errContains string
+		wantErr     bool
+	}{
+		{
+			name:    "valid config",
+			action:  makePluginValid,
+			wantErr: false,
+		},
+		{
+			name:        "group writable binary",
+			wantErr:     true,
+			errContains: "notification-dummy is group writable",
+		},
+		{
+			name:        "no plugin dir",
+			wantErr:     true,
+			errContains: "no such file or directory",
+			action:      tearDown,
+		},
+		{
+			name:        "no plugin binary",
+			wantErr:     true,
+			errContains: "binary for plugin dummy_default not found",
+			action: func() {
+				os.Remove(path.Join(testPath, "notification-dummy"))
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			defer tearDown()
+			buildDummyPlugin()
+			if test.action != nil {
+				test.action()
+			}
+			procCfg := csconfig.PluginCfg{}
+			pb := PluginBroker{}
+			profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+			profiles = append(profiles, &csconfig.ProfileCfg{
+				Notifications: []string{"dummy_default"},
+			})
+			err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+				PluginDir:       testPath,
+				NotificationDir: path.Join(testPath, "notifications"),
+			})
+			if test.wantErr {
+				assert.ErrorContains(t, err, test.errContains)
+			} else {
+				assert.NoError(t, err)
+			}
+
+		})
+	}
+}
+
+// func TestBroker(t *testing.T) {
+// 	buildDummyPlugin()
+// 	makePluginValid()
+// 	defer tearDown()
+// 	procCfg := csconfig.PluginCfg{}
+// 	pb := PluginBroker{}
+// 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+// 	profiles = append(profiles, &csconfig.ProfileCfg{
+// 		Notifications: []string{"dummy_default"},
+// 	})
+// 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+// 		PluginDir:       testPath,
+// 		NotificationDir: "./tests",
+// 	})
+// 	assert.NoError(t, err)
+// 	// go pb.Run(&testTomb)
+// 	// defer resetTestTomb()
+
+// }
+
+func buildDummyPlugin() {
+	dir, err := ioutil.TempDir("./tests", "cs_plugin_test")
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd := exec.Command("go", "build", "-o", path.Join(dir, "notification-dummy"), "../../plugins/notifications/dummy/")
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	os.Mkdir(path.Join(dir, "notifications"), 0755)
+	cmd = exec.Command("cp", "../../plugins/notifications/dummy/dummy.yaml", path.Join(dir, "notifications/dummy.yaml"))
+	if err := cmd.Run(); err != nil {
+		log.Fatal(errors.Wrapf(err, "cp ../../plugins/notifications/dummy/dummy.yaml %s", path.Join(dir, "notifications/dummy.yaml")))
+	}
+	testPath = dir
+}
+
+func makePluginValid() {
+	if err := exec.Command("chmod", "744", path.Join(testPath, "notification-dummy")).Run(); err != nil {
+		log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
+	}
+}
+
 func setUp() {
-	testMode = true
 	dir, err := ioutil.TempDir("./", "cs_plugin_test")
 	if err != nil {
 		log.Fatal(err)

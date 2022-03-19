@@ -30,7 +30,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var testMode bool = false
 var pluginMutex sync.Mutex
 
 const (
@@ -360,9 +359,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 }
 
 func pluginIsValid(path string) error {
-	if testMode {
-		return nil
-	}
 	var details fs.FileInfo
 	var err error
 
@@ -387,7 +383,6 @@ func pluginIsValid(path string) error {
 
 	mode := details.Mode()
 	perm := uint32(mode)
-
 	if (perm & 00002) != 0 {
 		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
 	}
