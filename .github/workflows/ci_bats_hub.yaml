@@ -1,4 +1,4 @@
-name: Hub tests
+name: bats / hub tests
 
 on:
   push:

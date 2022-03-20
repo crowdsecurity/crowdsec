@@ -1,4 +1,4 @@
-name: BATS functional tests with sqlite
+name: bats / functional tests with sqlite
 
 on:
   push:

@@ -85,6 +85,7 @@ make_init_data() {
     mkdir -p "${CONFIG_DIR}/patterns"
     cp -ax "../config/patterns" "${CONFIG_DIR}/"
     config_generate
+    # XXX errors from instance-db should be reported...
     ./instance-db config-yaml
     ./instance-db setup
 

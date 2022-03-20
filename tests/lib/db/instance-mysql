@@ -23,8 +23,8 @@ check_mysql_client() {
     fi
 }
 
-send_mysql() {
-    cmd="${1?Missing required mysql command}"
+exec_sql() {
+    cmd="${1?Missing required sql command}"
     mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" <<< "$cmd"
 }
 
@@ -33,18 +33,18 @@ requirements() {
 }
 
 setup() {
-    send_mysql "DROP DATABASE IF EXISTS crowdsec_test;"
-    send_mysql "CREATE DATABASE crowdsec_test;"
-    send_mysql "DROP USER IF EXISTS crowdsec_test;"
-    send_mysql "CREATE USER 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
-    send_mysql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
+    exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
+    exec_sql "CREATE DATABASE crowdsec_test;"
+    exec_sql "DROP USER IF EXISTS crowdsec_test;"
+    exec_sql "CREATE USER 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
 
 # cleanup is idempotent
 # XXX cleanup should not be used - the restore must drop the database, if it doesn't it must be fixed
 #cleanup() {
-#   send_mysql "DROP DATABASE IF EXISTS crowdsec_test;"
-#   send_mysql "DROP USER IF EXISTS crowdsec_test;"
+#   exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
+#   exec_sql "DROP USER IF EXISTS crowdsec_test;"
 #}
 
 dump() {
@@ -56,8 +56,8 @@ restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
     mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" < "$backup_file"
-    send_mysql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
-    send_mysql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
+    exec_sql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
 
 config_yaml() {

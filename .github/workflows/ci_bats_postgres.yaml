@@ -1,4 +1,4 @@
-name: bats / functional tests with MySQL
+name: bats / functional tests with PostgreSQL
 
 on:
   push:
@@ -14,12 +14,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      mariadb:
-        image: mysql:latest
+      postgres:
+        image: postgres:latest
         env:
-          MYSQL_ROOT_PASSWORD: mysql
-        ports:
-          - 3306:3306
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
 
     - name: "Set up Go 1.17"
@@ -42,17 +45,17 @@ jobs:
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build
       env:
-        DB_BACKEND: mysql
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_PORT: 3306
-        MYSQL_PASSWORD: mysql
-        MYSQL_USER: root
+        DB_BACKEND: postgres
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
 
     - name: "BATS: run tests"
       run: make bats-test
       env:
-        DB_BACKEND: mysql
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_PORT: 3306
-        MYSQL_PASSWORD: mysql
-        MYSQL_USER: root
+        DB_BACKEND: postgres
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_USER: postgres
