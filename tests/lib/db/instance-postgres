@@ -59,6 +59,7 @@ config_yaml() {
         .db_config.db_name="crowdsec_test"  |
         .db_config.host=strenv(POSTGRES_HOST) |
         .db_config.port=env(POSTGRES_PORT) |
+        .db_config.sslmode="disable" |
         del(.db_config.db_path) 
     ' -i "${CONFIG_YAML}" 
 }
