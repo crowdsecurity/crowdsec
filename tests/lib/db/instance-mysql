@@ -40,13 +40,6 @@ setup() {
     exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
 
-# cleanup is idempotent
-# XXX cleanup should not be used - the restore must drop the database, if it doesn't it must be fixed
-#cleanup() {
-#   exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
-#   exec_sql "DROP USER IF EXISTS crowdsec_test;"
-#}
-
 dump() {
     backup_file="${1?Missing file to backup database to}"
     COLUMN_STATISTICS=
@@ -72,8 +65,8 @@ config_yaml() {
         .db_config.db_name="crowdsec_test"  |
         .db_config.host=strenv(MYSQL_HOST) |
         .db_config.port=env(MYSQL_PORT) |
-        del(.db_config.db_path) 
-    ' -i "${CONFIG_YAML}" 
+        del(.db_config.db_path)
+    ' -i "${CONFIG_YAML}"
 }
 
 [ $# -lt 1 ] && about

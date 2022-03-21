@@ -62,8 +62,8 @@ config_yaml() {
         .db_config.host=strenv(POSTGRES_HOST) |
         .db_config.port=env(POSTGRES_PORT) |
         .db_config.sslmode="disable" |
-        del(.db_config.db_path) 
-    ' -i "${CONFIG_YAML}" 
+        del(.db_config.db_path)
+    ' -i "${CONFIG_YAML}"
 }
 
 [ $# -lt 1 ] && about
