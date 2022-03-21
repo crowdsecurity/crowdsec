@@ -49,7 +49,7 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    mysqldump "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
+    mysqldump --column-statistics=0 "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
 }
 
 restore() {
