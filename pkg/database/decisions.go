@@ -408,7 +408,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	return strconv.Itoa(nbDeleted), nil
 }
 
-// SoftDeleteDecisionsWithFilter udpate the expiration time to now() for the decisions matching the filter
+// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter
 func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
@@ -426,6 +426,8 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			}
 		case "scopes":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
+		case "origin":
+			decisions = decisions.Where(decision.OriginEQ(value[0]))
 		case "value":
 			decisions = decisions.Where(decision.ValueEQ(value[0]))
 		case "type":
