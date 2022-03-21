@@ -49,6 +49,8 @@ restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
     PGPASSWORD="${POSTGRES_PASSWORD}" pg_restore --username "${POSTGRES_USER}" --host "${POSTGRES_HOST}" --port "${POSTGRES_PORT}" --dbname crowdsec_test --clean < "$backup_file"
+    # make sure data is ready when crowdsec needs it
+    sleep 0.3
 }
 
 config_yaml() {
