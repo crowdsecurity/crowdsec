@@ -49,7 +49,11 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    mysqldump --column-statistics=0 "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
+    COLUMN_STATISTICS=
+    if mysqldump --column-statistics 2>&1 | grep -v 'unknown option'; then
+        COLUMN_STATISTICS='--column-statistics=0'
+    fi
+    mysqldump $COLUMN_STATISTICS "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
 }
 
 restore() {
