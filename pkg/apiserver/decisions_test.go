@@ -238,6 +238,7 @@ func TestDeleteDecision(t *testing.T) {
 	w = lapi.RecordResponse("DELETE", "/v1/decisions", emptyBody)
 	assert.Equal(t, 200, w.Code)
 	resp, _, err := readDecisionsDeleteResp(w)
+	assert.NoError(t, err)
 	assert.Equal(t, resp.NbDeleted, "3")
 }
 

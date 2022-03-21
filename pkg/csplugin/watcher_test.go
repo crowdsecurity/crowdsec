@@ -2,6 +2,7 @@ package csplugin
 
 import (
 	"context"
+	"log"
 	"testing"
 	"time"
 
@@ -14,7 +15,9 @@ var ctx = context.Background()
 
 func resetTestTomb(testTomb *tomb.Tomb) {
 	testTomb.Kill(nil)
-	testTomb.Wait()
+	if err := testTomb.Wait(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func resetWatcherAlertCounter(pw *PluginWatcher) {
@@ -50,7 +53,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	pw.Init(configs, alertsByPluginName)
 	pw.Start(&testTomb)
 
-	ct, _ := context.WithTimeout(ctx, time.Microsecond)
+	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
 
@@ -58,10 +61,12 @@ func TestPluginWatcherInterval(t *testing.T) {
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
 
-	ct, _ = context.WithTimeout(ctx, time.Millisecond*5)
+	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
 	resetTestTomb(&testTomb)
+	// This is to avoid the int complaining
+	cancel()
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
