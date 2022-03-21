@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+POSTGRES_HOST=${POSTGRES_HOST:-127.0.0.1}
+POSTGRES_PORT=${POSTGRES_PORT:-5432}
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+POSTGRES_USER=${POSTGRES_USER:-postgres}
+
+about() {
+    die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
+}
+
+check_postgres_client() {
+    if ! command -v psql >/dev/null; then
+        die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
+    fi
+}
+
+exec_sql() {
+    cmd="${1?Missing required sql command}"
+    PGPASSWORD="${POSTGRES_PASSWORD}" psql -h "${POSTGRES_HOST}" --user "${POSTGRES_USER}" "--port=${POSTGRES_PORT}" <<< "$cmd"
+}
+
+requirements() {
+    check_mysql_client
+}
+
+setup() {
+    exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
+    exec_sql "CREATE DATABASE crowdsec_test;"
+    exec_sql "DROP USER IF EXISTS crowdsec_test;"
+    exec_sql "CREATE USER crowdsec_test WITH ENCRYPTED PASSWORD 'crowdsec_test';"
+    exec_sql "GRANT ALL PRIVILEGES ON DATABASE crowdsec_test TO crowdsec_test;"
+}
+
+dump() {
+    backup_file="${1?Missing file to backup database to}"
+    PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump -Ft --host "${POSTGRES_HOST}" --port "${POSTGRES_PORT}"  --username "${POSTGRES_USER}" --dbname crowdsec_test > "$backup_file"
+}
+
+restore() {
+    backup_file="${1?missing file to restore database from}"
+    [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
+    PGPASSWORD="${POSTGRES_PASSWORD}" pg_restore --username "${POSTGRES_USER}" --host "${POSTGRES_HOST}" --port "${POSTGRES_PORT}" --dbname crowdsec_test --clean < "$backup_file"
+    # make sure data is ready when crowdsec needs it
+    sleep 0.3
+}
+
+config_yaml() {
+    POSTGRES_PORT=${POSTGRES_PORT} POSTGRES_HOST=${POSTGRES_HOST} yq '
+        .db_config.type="postgres"|
+        .db_config.user="crowdsec_test" |
+        .db_config.password="crowdsec_test" |
+        .db_config.db_name="crowdsec_test"  |
+        .db_config.host=strenv(POSTGRES_HOST) |
+        .db_config.port=env(POSTGRES_PORT) |
+        .db_config.sslmode="disable" |
+        del(.db_config.db_path)
+    ' -i "${CONFIG_YAML}"
+}
+
+[ $# -lt 1 ] && about
+
+case "$1" in
+    setup)
+        setup
+        ;;
+    config-yaml)
+        config_yaml
+        ;;
+    dump)
+        shift
+        dump "$@"
+        ;;
+    restore)
+        shift
+        restore "$@"
+        ;;
+    *)
+        about
+        ;;
+esac;

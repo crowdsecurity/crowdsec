@@ -21,6 +21,11 @@ setup() {
     load "../lib/setup.sh"
 }
 
+teardown() {
+    # XXX myisam stopgap
+    sleep 0.3
+}
+
 #----------
 
 api() {

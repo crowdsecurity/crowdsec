@@ -41,8 +41,6 @@ export CONFIG_DIR
 
 remove_init_data() {
     rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
-
-    ./instance-db cleanup
 }
 
 config_generate() {
@@ -83,18 +81,18 @@ make_init_data() {
 
     mkdir -p "${DATA_DIR}"
     mkdir -p "${CONFIG_DIR}/notifications"
-
+    mkdir -p "${CONFIG_DIR}/hub"
+    mkdir -p "${CONFIG_DIR}/patterns"
+    cp -ax "../config/patterns" "${CONFIG_DIR}/"
     config_generate
-    ./instance-db configure
+    # XXX errors from instance-db should be reported...
+    ./instance-db config-yaml
     ./instance-db setup
 
-    mkdir -p "${CONFIG_DIR}/hub"
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
     "${CSCLI}" capi register
     "${CSCLI}" hub update
     "${CSCLI}" collections install crowdsecurity/linux
-    mkdir -p "${CONFIG_DIR}/patterns"
-    cp -ax "../config/patterns" "${CONFIG_DIR}/"
 
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
@@ -104,7 +102,8 @@ make_init_data() {
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
-    ./instance-db backup "${LOCAL_INIT_DIR}/database"
+    ./instance-db dump "${LOCAL_INIT_DIR}/database"
+    echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
 
     tar -C "${LOCAL_DIR}" --create \
         --exclude "$REL_DATA_DIR"/crowdsec.db \
@@ -116,6 +115,11 @@ make_init_data() {
 load_init_data() {
     if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
         die "Initial data not found; did you run '$script_name make' ?"
+    fi
+
+    dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
+    if [ "$DB_BACKEND" != "$dump_backend" ]; then
+        die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
     fi
 
     remove_init_data

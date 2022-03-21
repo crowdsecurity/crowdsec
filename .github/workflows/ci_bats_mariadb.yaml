@@ -1,4 +1,4 @@
-name: bats / functional tests with MySQL
+name: bats / functional tests with MariaDB
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
     services:
       mariadb:
-        image: mysql:latest
+        image: mariadb:latest
         env:
           MYSQL_ROOT_PASSWORD: mysql
         ports:

@@ -1,4 +1,4 @@
-name: tests
+name: Go tests
 
 #those env variables are for localstack, so we can emulate aws services
 env:
