@@ -17,6 +17,11 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 echo "Running tests..."
 echo "DB_BACKEND: $DB_BACKEND"
 
+dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
+if [ "$DB_BACKEND" != "$dump_backend" ]; then
+    die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+fi
+
 if [ $# -ge 1 ]; then
     echo "test files: $*"
     "${TEST_DIR}/lib/bats-core/bin/bats" \

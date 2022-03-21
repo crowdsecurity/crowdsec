@@ -103,6 +103,7 @@ make_init_data() {
     mkdir -p "${LOCAL_INIT_DIR}"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
+    echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
 
     tar -C "${LOCAL_DIR}" --create \
         --exclude "$REL_DATA_DIR"/crowdsec.db \
@@ -114,6 +115,11 @@ make_init_data() {
 load_init_data() {
     if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
         die "Initial data not found; did you run '$script_name make' ?"
+    fi
+
+    dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
+    if [ "$DB_BACKEND" != "$dump_backend" ]; then
+        die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
     fi
 
     remove_init_data
