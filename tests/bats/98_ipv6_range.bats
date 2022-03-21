@@ -23,7 +23,7 @@ setup() {
 
 teardown() {
     # XXX myisam stopgap?
-    sleep 0.6
+    sleep 0.3
 }
 
 #----------
