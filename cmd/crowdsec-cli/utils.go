@@ -162,8 +162,8 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 
 		}
 		for _, itemType := range itemTypes {
-			ok := true
-			statuses := make([]cwhub.ItemHubStatus, 0)
+			var statuses []cwhub.ItemHubStatus
+			var ok bool
 			if statuses, ok = hubStatusByItemType[itemType]; !ok {
 				log.Errorf("unknown item type: %s", itemType)
 				continue
