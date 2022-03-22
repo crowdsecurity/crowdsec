@@ -56,6 +56,7 @@ func TestPluginWatcherInterval(t *testing.T) {
 	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
+	cancel()
 
 	resetTestTomb(&testTomb)
 	testTomb = tomb.Tomb{}
@@ -82,21 +83,24 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	pw.Start(&testTomb)
 
 	// Channel won't contain any events since threshold is not crossed.
-	ct, _ := context.WithTimeout(ctx, time.Second)
+	ct, cancel := context.WithTimeout(ctx, time.Second)
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
+	cancel()
 
 	// Channel won't contain any events since threshold is not crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 4, "testPlugin")
-	ct, _ = context.WithTimeout(ctx, time.Second)
+	ct, cancel = context.WithTimeout(ctx, time.Second)
+	cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
 
 	// Channel will contain an event since threshold is crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 5, "testPlugin")
-	ct, _ = context.WithTimeout(ctx, time.Second)
+	ct, cancel = context.WithTimeout(ctx, time.Second)
+	cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
 	resetTestTomb(&testTomb)
