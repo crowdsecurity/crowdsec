@@ -27,6 +27,7 @@ func TestDownladFile(t *testing.T) {
 	assert.NoError(t, err)
 	content, err := ioutil.ReadFile("./example.txt")
 	assert.Equal(t, "example content oneoneone", string(content))
+	assert.NoError(t, err)
 	//bad uri
 	err = downloadFile("https://zz.com", "./example.txt")
 	assert.Error(t, err)

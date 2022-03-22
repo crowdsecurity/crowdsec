@@ -241,7 +241,7 @@ func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDec
 }
 
 func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
-	response := make(map[string][]*models.Decision, 0)
+	response := make(map[string][]*models.Decision)
 	if resp == nil {
 		return nil, 0, errors.New("response is nil")
 	}
