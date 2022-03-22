@@ -54,20 +54,20 @@ func TestPluginWatcherInterval(t *testing.T) {
 	pw.Start(&testTomb)
 
 	ct, cancel := context.WithTimeout(ctx, time.Microsecond)
+	defer cancel()
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
-	cancel()
 
 	resetTestTomb(&testTomb)
 	testTomb = tomb.Tomb{}
 	pw.Start(&testTomb)
 
 	ct, cancel = context.WithTimeout(ctx, time.Millisecond*5)
+	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
 	resetTestTomb(&testTomb)
 	// This is to avoid the int complaining
-	cancel()
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
@@ -84,15 +84,15 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 
 	// Channel won't contain any events since threshold is not crossed.
 	ct, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
 	err := listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
-	cancel()
 
 	// Channel won't contain any events since threshold is not crossed.
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 4, "testPlugin")
 	ct, cancel = context.WithTimeout(ctx, time.Second)
-	cancel()
+	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.ErrorContains(t, err, "context deadline exceeded")
 
@@ -100,7 +100,7 @@ func TestPluginAlertCountWatcher(t *testing.T) {
 	resetWatcherAlertCounter(&pw)
 	insertNAlertsToPlugin(&pw, 5, "testPlugin")
 	ct, cancel = context.WithTimeout(ctx, time.Second)
-	cancel()
+	defer cancel()
 	err = listenChannelWithTimeout(ct, pw.PluginEvents)
 	assert.NilError(t, err)
 	resetTestTomb(&testTomb)
