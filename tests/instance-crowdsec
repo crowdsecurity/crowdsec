@@ -50,6 +50,7 @@ wait_for_port() {
 DAEMON_PID=${PID_DIR}/crowdsec.pid
 
 start_instance() {
+    rm -f "${LOG_DIR}/crowdsec.log" "${LOG_DIR}/crowdsec_api.log"
     OUT_FILE="${LOG_DIR}/crowdsec.out" \
         DAEMON_PID="${DAEMON_PID}" \
         "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"

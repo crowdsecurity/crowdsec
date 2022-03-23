@@ -24,7 +24,11 @@ teardown() {
 #----------
 
 @test "$FILE cscli alerts list, with and without --machine" {
-    run -0 cscli decisions add -i 10.20.30.40 -t ban
+    run cscli decisions add -i 10.20.30.40 -t ban
+    if [ "$status" -ne 0 ]; then
+        cat "${LOG_DIR}/crowdsec.log"
+    fi
+    assert_success
 
     run -0 cscli alerts list
     refute_output --partial 'MACHINE'
