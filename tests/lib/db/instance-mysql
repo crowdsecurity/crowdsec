@@ -23,9 +23,20 @@ check_mysql_client() {
     fi
 }
 
+silence_password_warning() {
+    ( ( ( "$@" >&9 ) 2>&1 \
+        | fgrep -v "[Warning] Using a password on the command line interface can be insecure." ) >&2 ) 9>&1 || [[ $? == 1 ]]
+}
+
 exec_sql() {
     cmd="${1?Missing required sql command}"
-    mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" <<< "$cmd"
+
+    silence_password_warning \
+        mysql \
+        "--host=${MYSQL_HOST}" \
+        "--user=${MYSQL_USER}" \
+        "--port=${MYSQL_PORT}" \
+        "--password=${MYSQL_PASSWORD}" <<< "$cmd"
 }
 
 requirements() {
@@ -43,16 +54,30 @@ setup() {
 dump() {
     backup_file="${1?Missing file to backup database to}"
     COLUMN_STATISTICS=
-    if mysqldump --column-statistics 2>&1 | grep -v 'unknown option'; then
+    if mysqldump --column-statistics 2>&1 | grep -q -v 'unknown option'; then
         COLUMN_STATISTICS='--column-statistics=0'
     fi
-    mysqldump $COLUMN_STATISTICS "-h${MYSQL_HOST}" "-u${MYSQL_USER}" "-p${MYSQL_PASSWORD}" --databases crowdsec_test > "$backup_file"
+    silence_password_warning \
+        mysqldump \
+        $COLUMN_STATISTICS \
+        "--host=${MYSQL_HOST}" \
+        "--port=${MYSQL_PORT}" \
+        "--user=${MYSQL_USER}" \
+        "--password=${MYSQL_PASSWORD}" \
+        --databases crowdsec_test > "$backup_file"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-    mysql -h "${MYSQL_HOST}" -u "${MYSQL_USER}" "--port=${MYSQL_PORT}" "-p${MYSQL_PASSWORD}" < "$backup_file"
+
+    silence_password_warning \
+        mysql \
+        "--host=${MYSQL_HOST}" \
+        "--user=${MYSQL_USER}" \
+        "--port=${MYSQL_PORT}" \
+        "--password=${MYSQL_PASSWORD}" < "$backup_file"
+
     exec_sql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
