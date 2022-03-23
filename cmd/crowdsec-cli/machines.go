@@ -60,28 +60,36 @@ func generatePassword(length int) string {
 	return string(buf)
 }
 
-// Generate a unique identifier, composed by a unique string for each OS
-// installation where possible (prefix), and a random suffix. The prefix can be
-// random if it cannot be derived, and can also be a parameter to allow for test
-// environments.
+// Returns a unique identifier for each crowdsec installation, using an
+// identifier of the OS installation where available, otherwise a random
+// string.
+func generateIDPrefix() (string, error) {
+	prefix, err := machineid.ID()
+	if err == nil {
+		return prefix, nil
+	}
+	log.Debugf("failed to get machine-id with usual files: %s", err)
+
+	bID, err := ioutil.ReadFile(uuid)
+	if err == nil {
+		return string(bID), nil
+	}
+	return "", errors.Wrap(err, "generating machine id")
+}
+
+// Generate a unique identifier, composed by a prefix and a random suffix.
+// The prefix can be provided by a parameter to use in test environments.
 func generateID(prefix string) (string, error) {
 	var err error
 	if prefix == "" {
-		prefix, err = machineid.ID()
-		if err != nil {
-			log.Debugf("failed to get machine-id with usual files : %s", err)
-		}
-		if prefix == "" || err != nil {
-			bID, err := ioutil.ReadFile(uuid)
-			if err != nil {
-				return "", errors.Wrap(err, "generating machine id")
-			}
-			prefix = string(bID)
-		}
+		prefix, err = generateIDPrefix()
+	}
+	if err != nil {
+		return "", err
 	}
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
-	id := fmt.Sprintf("%s%s", prefix, generatePassword(16))
-	return id, nil
+	suffix := generatePassword(16)
+	return prefix + suffix, nil
 }
 
 func NewMachinesCmd() *cobra.Command {
