@@ -60,6 +60,7 @@ config_generate() {
     .common.daemonize=false |
     del(.common.pid_dir) |
     .common.log_dir=strenv(LOG_DIR) |
+    .common.log_level="debug" |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
     .config_paths.simulation_path=strenv(CONFIG_DIR)+"/simulation.yaml" |

@@ -51,7 +51,12 @@ declare stderr
 }
 
 @test "$FILE cscli capi status" {
-    run -0 cscli capi status
+    run cscli capi status
+    if [ "$status" -ne 0 ]; then
+        cat "${LOG_DIR}/crowdsec.log"
+    fi
+    assert_success
+
     assert_output --partial "Loaded credentials from"
     assert_output --partial "Trying to authenticate with username"
     assert_output --partial " on https://api.crowdsec.net/"
@@ -109,7 +114,11 @@ declare stderr
 }
 
 @test "$FILE cscli lapi status" {
-    run -0 --separate-stderr cscli lapi status
+    run --separate-stderr cscli lapi status
+    if [ "$status" -ne 0 ]; then
+        cat "${LOG_DIR}/crowdsec.log"
+    fi
+    assert_success
 
     run -0 echo "$stderr"
     assert_output --partial "Loaded credentials from"
