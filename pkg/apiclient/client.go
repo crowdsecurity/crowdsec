@@ -63,8 +63,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {
 	if client == nil {
 		client = &http.Client{}
+		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
+			ht.TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+			client.Transport = ht
+		}
+		// http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	c := &ApiClient{client: client, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)

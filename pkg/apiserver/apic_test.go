@@ -2,7 +2,9 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"reflect"
 	"sort"
@@ -10,12 +12,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/jarcoal/httpmock"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
 )
@@ -319,6 +324,18 @@ func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int
 	assert.Len(t, d, count)
 }
 
+func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now()),
+	).AllX(context.Background())
+	assert.Len(t, d, count)
+}
+
+func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Alert.Query().AllX(context.Background())
+	assert.Len(t, d, count)
+}
+
 func Test_createAlertsForDecision(t *testing.T) {
 
 	httpBfDecisionList := &models.Decision{
@@ -473,4 +490,109 @@ func Test_fillAlertsWithDecisions(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_apic_PullTop(t *testing.T) {
+	api := getAPIC(t)
+	api.dbClient.Ent.Decision.Create().
+		SetOrigin(SCOPE_LISTS).
+		SetType("ban").
+		SetValue("9.9.9.9").
+		SetScope("Ip").
+		SetScenario("crowdsecurity/ssh-bf").
+		SetUntil(time.Now().Add(time.Hour)).
+		ExecX(context.Background())
+	assertTotalDecisionCount(t, api.dbClient, 1)
+	assertTotalValidDecisionCount(t, api.dbClient, 1)
+	httpmock.Activate()
+	defer httpmock.DeactivateAndReset()
+	httpmock.RegisterResponder("GET", "http://api.crowdsec.net/api/decisions/stream", httpmock.NewBytesResponder(
+		200, jsonMarshalX(
+			models.DecisionsStreamResponse{
+				Deleted: models.GetDecisionsResponse{
+					&models.Decision{
+						Origin:   &SCOPE_LISTS,
+						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+						Value:    types.StrPtr("9.9.9.9"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					}, // Thie is already present in DB
+					&models.Decision{
+						Origin:   &SCOPE_LISTS,
+						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+						Value:    types.StrPtr("9.1.9.9"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					}, // This not present in DB.
+				},
+				New: models.GetDecisionsResponse{
+					&models.Decision{
+						Origin:   &SCOPE_CAPI,
+						Scenario: types.StrPtr("crowdsecurity/test1"),
+						Value:    types.StrPtr("1.2.3.4"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					},
+					&models.Decision{
+						Origin:   &SCOPE_CAPI,
+						Scenario: types.StrPtr("crowdsecurity/test2"),
+						Value:    types.StrPtr("1.2.3.5"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					}, // These two are from community list.
+					&models.Decision{
+						Origin:   &SCOPE_LISTS,
+						Scenario: types.StrPtr("crowdsecurity/http-bf"),
+						Value:    types.StrPtr("1.2.3.6"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					},
+					&models.Decision{
+						Origin:   &SCOPE_LISTS,
+						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+						Value:    types.StrPtr("1.2.3.7"),
+						Scope:    types.StrPtr("Ip"),
+						Duration: types.StrPtr("24h"),
+						Type:     types.StrPtr("ban"),
+					}, // These two are from list subscription.
+				},
+			},
+		),
+	))
+	url, err := url.ParseRequestURI("http://api.crowdsec.net/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	apic, err := apiclient.NewDefaultClient(
+		url,
+		"/api",
+		fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		nil,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	api.apiClient = apic
+	err = api.PullTop()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertTotalDecisionCount(t, api.dbClient, 5)
+	assertTotalValidDecisionCount(t, api.dbClient, 4)
+	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
+}
+
+func jsonMarshalX(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return data
 }

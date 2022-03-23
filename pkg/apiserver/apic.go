@@ -397,7 +397,7 @@ func (a *apic) PullTop() error {
 
 	if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
 		return err
-	} else if lastPullIsOld {
+	} else if !lastPullIsOld {
 		return nil
 	}
 
