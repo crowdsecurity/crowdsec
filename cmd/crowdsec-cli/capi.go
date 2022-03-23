@@ -101,7 +101,8 @@ func NewCapiCmd() *cobra.Command {
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
-	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "override-capi-user-prefix", "", "prepend text to the CAPI user to register (use for tests only)")
+	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
+	cmdCapiRegister.Flags().MarkHidden("schmilblick")
 	cmdCapi.AddCommand(cmdCapiRegister)
 
 	var cmdCapiStatus = &cobra.Command{
