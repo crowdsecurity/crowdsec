@@ -397,3 +397,80 @@ func Test_createAlertsForDecision(t *testing.T) {
 		})
 	}
 }
+
+func Test_fillAlertsWithDecisions(t *testing.T) {
+	httpBfDecisionCommunity := &models.Decision{
+		Origin:   &SCOPE_CAPI,
+		Scenario: types.StrPtr("crowdsecurity/http-bf"),
+		Scope:    types.StrPtr("ip"),
+	}
+
+	sshBfDecisionCommunity := &models.Decision{
+		Origin:   &SCOPE_CAPI,
+		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+		Scope:    types.StrPtr("ip"),
+	}
+
+	httpBfDecisionList := &models.Decision{
+		Origin:   &SCOPE_LISTS,
+		Scenario: types.StrPtr("crowdsecurity/http-bf"),
+		Scope:    types.StrPtr("ip"),
+	}
+
+	sshBfDecisionList := &models.Decision{
+		Origin:   &SCOPE_LISTS,
+		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+		Scope:    types.StrPtr("ip"),
+	}
+	type args struct {
+		alerts    []*models.Alert
+		decisions []*models.Decision
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*models.Alert
+	}{
+		{
+			name: "1 CAPI alert should pair up with n CAPI decisions",
+			args: args{
+				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionCommunity)},
+				decisions: []*models.Decision{httpBfDecisionCommunity, sshBfDecisionCommunity, sshBfDecisionCommunity, httpBfDecisionCommunity},
+			},
+			want: []*models.Alert{
+				func() *models.Alert {
+					a := createAlertForDecision(httpBfDecisionCommunity)
+					a.Decisions = []*models.Decision{httpBfDecisionCommunity, sshBfDecisionCommunity, sshBfDecisionCommunity, httpBfDecisionCommunity}
+					return a
+				}(),
+			},
+		},
+		{
+			name: "List alert should pair up only with decisions having same scenario",
+			args: args{
+				alerts:    []*models.Alert{createAlertForDecision(httpBfDecisionList), createAlertForDecision(sshBfDecisionList)},
+				decisions: []*models.Decision{httpBfDecisionList, httpBfDecisionList, sshBfDecisionList, sshBfDecisionList},
+			},
+			want: []*models.Alert{
+				func() *models.Alert {
+					a := createAlertForDecision(httpBfDecisionList)
+					a.Decisions = []*models.Decision{httpBfDecisionList, httpBfDecisionList}
+					return a
+				}(),
+				func() *models.Alert {
+					a := createAlertForDecision(sshBfDecisionList)
+					a.Decisions = []*models.Decision{sshBfDecisionList, sshBfDecisionList}
+					return a
+				}(),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			add_counters, _ := makeAddAndDeleteCounters()
+			if got := fillAlertsWithDecisions(tt.args.alerts, tt.args.decisions, add_counters); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("fillAlertsWithDecisions() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

@@ -350,6 +350,7 @@ func createAlertForDecision(decision *models.Decision) *models.Alert {
 	return newAlert
 }
 
+// This function takes in list of parent alerts and decisions and then pairs them up.
 func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decision, add_counters map[string]map[string]int) []*models.Alert {
 	for _, decision := range decisions {
 		//count and create separate alerts for each list
