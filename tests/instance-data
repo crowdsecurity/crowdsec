@@ -98,8 +98,6 @@ make_init_data() {
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
 
-    # we deal with the database separately (might be mysql, postgres)
-
     mkdir -p "${LOCAL_INIT_DIR}"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"

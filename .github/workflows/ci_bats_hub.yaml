@@ -34,7 +34,7 @@ jobs:
 
     - name: "Install bats dependencies"
       run: |
-        sudo apt install daemonize netcat-openbsd
+        sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
     - name: "BATS: build crowdsec"

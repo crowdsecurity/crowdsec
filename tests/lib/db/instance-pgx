@@ -53,7 +53,7 @@ restore() {
 
 config_yaml() {
     POSTGRES_PORT=${POSTGRES_PORT} POSTGRES_HOST=${POSTGRES_HOST} yq '
-        .db_config.type="postgres"|
+        .db_config.type="pgx"|
         .db_config.user="crowdsec_test" |
         .db_config.password="crowdsec_test" |
         .db_config.db_name="crowdsec_test"  |
