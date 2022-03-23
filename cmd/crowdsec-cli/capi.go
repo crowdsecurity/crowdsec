@@ -20,6 +20,7 @@ import (
 
 var CAPIURLPrefix string = "v2"
 var CAPIBaseURL string = "https://api.crowdsec.net/"
+var capiUserPrefix string
 
 func NewCapiCmd() *cobra.Command {
 	var cmdCapi = &cobra.Command{
@@ -46,8 +47,7 @@ func NewCapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
-
-			id, err := generateID()
+			capiUser, err := generateID(capiUserPrefix)
 			if err != nil {
 				log.Fatalf("unable to generate machine id: %s", err)
 			}
@@ -57,7 +57,7 @@ func NewCapiCmd() *cobra.Command {
 				log.Fatalf("unable to parse api url %s : %s", CAPIBaseURL, err)
 			}
 			_, err = apiclient.RegisterClient(&apiclient.Config{
-				MachineID:     id,
+				MachineID:     capiUser,
 				Password:      password,
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 				URL:           apiurl,
@@ -79,7 +79,7 @@ func NewCapiCmd() *cobra.Command {
 				dumpFile = ""
 			}
 			apiCfg := csconfig.ApiCredentialsCfg{
-				Login:    id,
+				Login:    capiUser,
 				Password: password.String(),
 				URL:      CAPIBaseURL,
 			}
@@ -101,6 +101,7 @@ func NewCapiCmd() *cobra.Command {
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
+	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "override-capi-user-prefix", "", "prepend text to the CAPI user to register (use for tests only)")
 	cmdCapi.AddCommand(cmdCapiRegister)
 
 	var cmdCapiStatus = &cobra.Command{

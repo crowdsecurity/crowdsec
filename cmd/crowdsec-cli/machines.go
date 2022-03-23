@@ -60,20 +60,27 @@ func generatePassword(length int) string {
 	return string(buf)
 }
 
-func generateID() (string, error) {
-	id, err := machineid.ID()
-	if err != nil {
-		log.Debugf("failed to get machine-id with usual files : %s", err)
-	}
-	if id == "" || err != nil {
-		bID, err := ioutil.ReadFile(uuid)
+// Generate a unique identifier, composed by a unique string for each OS
+// installation where possible (prefix), and a random suffix. The prefix can be
+// random if it cannot be derived, and can also be a parameter to allow for test
+// environments.
+func generateID(prefix string) (string, error) {
+	var err error
+	if prefix == "" {
+		prefix, err = machineid.ID()
 		if err != nil {
-			return "", errors.Wrap(err, "generating machine id")
+			log.Debugf("failed to get machine-id with usual files : %s", err)
 		}
-		id = string(bID)
+		if prefix == "" || err != nil {
+			bID, err := ioutil.ReadFile(uuid)
+			if err != nil {
+				return "", errors.Wrap(err, "generating machine id")
+			}
+			prefix = string(bID)
+		}
 	}
-	id = strings.ReplaceAll(id, "-", "")[:32]
-	id = fmt.Sprintf("%s%s", id, generatePassword(16))
+	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
+	id := fmt.Sprintf("%s%s", prefix, generatePassword(16))
 	return id, nil
 }
 
@@ -197,7 +204,7 @@ cscli machines add MyTestMachine --password MyPassword
 					printHelp(cmd)
 					return
 				}
-				machineID, err = generateID()
+				machineID, err = generateID("")
 				if err != nil {
 					log.Fatalf("unable to generate machine id : %s", err)
 				}
@@ -212,7 +219,7 @@ cscli machines add MyTestMachine --password MyPassword
 				dumpFile = csConfig.API.Client.CredentialsFilePath
 			}
 
-			// create password if doesn't specified by user
+			// create a password if it's not specified by user
 			if machinePassword == "" && !interactive {
 				if !autoAdd {
 					printHelp(cmd)
