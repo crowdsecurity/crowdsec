@@ -324,20 +324,19 @@ func createAlertsForDecisions(decisions []*models.Decision) []*models.Alert {
 }
 
 func createAlertForDecision(decision *models.Decision) *models.Alert {
-
 	newAlert := &models.Alert{}
-	newAlert.Source.Scope = types.StrPtr(*decision.Origin)
+	newAlert.Source = &models.Source{}
+	newAlert.Source.Scope = types.StrPtr("")
 	if *decision.Origin == SCOPE_CAPI { //to make things more user friendly, we replace CAPI with community-blocklist
 		newAlert.Scenario = types.StrPtr(SCOPE_CAPI)
+		newAlert.Source.Scope = types.StrPtr(SCOPE_CAPI)
 	} else if *decision.Origin == SCOPE_LISTS {
 		newAlert.Scenario = types.StrPtr(*decision.Scenario)
+		newAlert.Source.Scope = types.StrPtr(SCOPE_LISTS)
 	} else {
 		log.Warningf("unknown origin %s", *decision.Origin)
 	}
 	newAlert.Message = types.StrPtr("")
-	newAlert.Source = &models.Source{}
-	newAlert.Source.Scope = types.StrPtr("")
-	newAlert.Scenario = types.StrPtr("")
 	newAlert.Source.Value = types.StrPtr("")
 	newAlert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
 	newAlert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))

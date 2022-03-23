@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"sync"
 	"testing"
@@ -316,4 +317,83 @@ func TestAPICGetMetrics(t *testing.T) {
 func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
 	d := dbClient.Ent.Decision.Query().AllX(context.Background())
 	assert.Len(t, d, count)
+}
+
+func Test_createAlertsForDecision(t *testing.T) {
+
+	httpBfDecisionList := &models.Decision{
+		Origin:   &SCOPE_LISTS,
+		Scenario: types.StrPtr("crowdsecurity/http-bf"),
+	}
+
+	sshBfDecisionList := &models.Decision{
+		Origin:   &SCOPE_LISTS,
+		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+	}
+
+	httpBfDecisionCommunity := &models.Decision{
+		Origin:   &SCOPE_CAPI,
+		Scenario: types.StrPtr("crowdsecurity/http-bf"),
+	}
+
+	sshBfDecisionCommunity := &models.Decision{
+		Origin:   &SCOPE_CAPI,
+		Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
+	}
+	type args struct {
+		decisions []*models.Decision
+	}
+	tests := []struct {
+		name string
+		args args
+		want []*models.Alert
+	}{
+		{
+			name: "2 decisions CAPI List Decisions should create 2 alerts",
+			args: args{
+				decisions: []*models.Decision{
+					httpBfDecisionList,
+					sshBfDecisionList,
+				},
+			},
+			want: []*models.Alert{
+				createAlertForDecision(httpBfDecisionList),
+				createAlertForDecision(sshBfDecisionList),
+			},
+		},
+		{
+			name: "2 decisions CAPI List same scenario decisions should create 1 alert",
+			args: args{
+				decisions: []*models.Decision{
+					httpBfDecisionList,
+					httpBfDecisionList,
+				},
+			},
+			want: []*models.Alert{
+				createAlertForDecision(httpBfDecisionList),
+			},
+		},
+		{
+			name: "5 decisions from community list should create 1 alert",
+			args: args{
+				decisions: []*models.Decision{
+					httpBfDecisionCommunity,
+					httpBfDecisionCommunity,
+					sshBfDecisionCommunity,
+					sshBfDecisionCommunity,
+					sshBfDecisionCommunity,
+				},
+			},
+			want: []*models.Alert{
+				createAlertForDecision(sshBfDecisionCommunity),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := createAlertsForDecisions(tt.args.decisions); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("createAlertsForDecisions() = %v, want %v", got, tt.want)
+			}
+		})
+	}
 }
