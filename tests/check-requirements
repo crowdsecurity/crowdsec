@@ -47,7 +47,8 @@ check_daemonizer() {
     SYSTEM=$(uname -s)
     case "${SYSTEM,,}" in
         linux)
-            if ! command -v daemonize >/dev/null; then
+            
+            if "${INIT_BACKEND}" != "systemd" && ! command -v daemonize >/dev/null; then
                 die "missing required program 'daemonize' (package 'daemonize')"
             fi
             ;;
