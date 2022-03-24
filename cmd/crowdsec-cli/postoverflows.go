@@ -47,6 +47,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		},
 	}
 
+	var ignoreError bool
 	var cmdPostOverflowsInstall = &cobra.Command{
 		Use:               "install [config]",
 		Short:             "Install given postoverflow(s)",
@@ -56,12 +57,19 @@ func NewPostOverflowsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS_OVFLW, forceAction)
+				if err := InstallItem(name, cwhub.PARSERS_OVFLW, forceAction); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdPostOverflowsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdPostOverflowsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple postoverflows")
 	cmdPostOverflows.AddCommand(cmdPostOverflowsInstall)
 
 	var cmdPostOverflowsRemove = &cobra.Command{
@@ -70,14 +78,18 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `remove given postoverflow(s)`,
 		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
-		Args:              cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.PARSERS_OVFLW, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.PARSERS_OVFLW, name)
-				}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one postoverflow to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				RemoveMany(cwhub.PARSERS_OVFLW, name)
 			}
 		},
 	}

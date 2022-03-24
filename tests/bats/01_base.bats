@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -39,15 +39,15 @@ declare stderr
     assert_output --partial "Constraint_acquis:"
 }
 
-@test "$FILE cscli alerts list: at startup returns one entry: community pull" {
+@test "$FILE cscli alerts list: at startup returns at least one entry: community pull" {
     loop_max=15
-    for ((i=0; i<=loop_max; i++)); do
+    for ((i = 0; i <= loop_max; i++)); do
         sleep 2
         run -0 cscli alerts list -o json
-        [[ "$output" != "null" ]] && break
+        [ "$output" != "null" ] && break
     done
     run -0 jq -r '. | length' <(output)
-    assert_output 1
+    refute_output 0
 }
 
 @test "$FILE cscli capi status" {
@@ -97,15 +97,15 @@ declare stderr
 }
 
 @test "$FILE cscli config backup" {
-    tempdir=$(mktemp -u -p "${BATS_TEST_TMPDIR}")
-    run -0 cscli config backup "${tempdir}"
+    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${tempdir}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
 
     run -0 echo "$stderr"
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
-    rm -rf -- "${tempdir:?}"
+    rm -rf -- "${backupdir:?}"
 }
 
 @test "$FILE cscli lapi status" {
@@ -126,4 +126,17 @@ declare stderr
 
     run -0 echo "$stderr"
     assert_output --partial "Local Api Metrics:"
+}
+
+@test "$FILE 'cscli completion' with or without configuration file" {
+    run -0 cscli completion bash
+    assert_output --partial "# bash completion for cscli"
+    run -0 cscli completion zsh
+    assert_output --partial "# zsh completion for cscli"
+
+    rm "${CONFIG_YAML}"
+    run -0 cscli completion bash
+    assert_output --partial "# bash completion for cscli"
+    run -0 cscli completion zsh
+    assert_output --partial "# zsh completion for cscli"
 }

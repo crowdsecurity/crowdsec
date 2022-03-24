@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -25,7 +25,7 @@ declare stderr
 #----------
 
 config_disable_capi() {
-    yq 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server.online_client)' -i "${CONFIG_YAML}"
 }
 
 @test "$FILE without capi: crowdsec LAPI should still work" {
@@ -57,15 +57,15 @@ config_disable_capi() {
 
 @test "$FILE no agent: cscli config backup" {
     config_disable_capi
-    tempdir=$(mktemp -u -p "${BATS_TEST_TMPDIR}")
-    run -0 cscli config backup "${tempdir}"
+    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${tempdir}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
 
     run -0 echo "$stderr"
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
-    rm -rf -- "${tempdir:?}"
+    rm -rf -- "${backupdir:?}"
 }
 
 @test "$FILE without capi: cscli lapi status -> success" {

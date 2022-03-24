@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -278,7 +279,7 @@ func (mu *MachineUpdate) defaults() {
 func (mu *MachineUpdate) check() error {
 	if v, ok := mu.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
 	}
 	return nil
@@ -738,7 +739,7 @@ func (muo *MachineUpdateOne) defaults() {
 func (muo *MachineUpdateOne) check() error {
 	if v, ok := muo.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
 	}
 	return nil
@@ -757,7 +758,7 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	id, ok := muo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Machine.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Machine.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
 	if fields := muo.fields; len(fields) > 0 {

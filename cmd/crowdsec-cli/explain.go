@@ -36,7 +36,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 		Run: func(cmd *cobra.Command, args []string) {
 
 			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
-				cmd.Help()
+				printHelp(cmd)
 				fmt.Println()
 				fmt.Printf("Please provide --type flag\n")
 				os.Exit(1)

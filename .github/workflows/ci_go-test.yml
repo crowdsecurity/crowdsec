@@ -1,4 +1,4 @@
-name: tests
+name: Go tests
 
 #those env variables are for localstack, so we can emulate aws services
 env:
@@ -63,6 +63,8 @@ jobs:
       uses: actions/checkout@v2
     - name: Build
       run: make build && go get -u github.com/jandelgado/gcov2lcov
+    - name: Build package
+      run: make package
     - name: All tests
       run: go test -coverprofile=coverage.out -covermode=atomic ./...
     - name: gcov2lcov

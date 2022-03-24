@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"net"
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -19,9 +20,10 @@ type Controller struct {
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
+	TrustedIPs    []net.IPNet
 }
 
-func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig) (*Controller, error) {
+func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, trustedIPs []net.IPNet) (*Controller, error) {
 	var err error
 	v1 := &Controller{
 		Ectx:          ctx,
@@ -31,11 +33,11 @@ func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.Pr
 		CAPIChan:      capiChan,
 		PluginChannel: pluginChannel,
 		ConsoleConfig: consoleConfig,
+		TrustedIPs:    trustedIPs,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(dbClient)
 	if err != nil {
 		return v1, err
 	}
-
 	return v1, nil
 }

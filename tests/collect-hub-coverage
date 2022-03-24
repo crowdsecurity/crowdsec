@@ -15,7 +15,7 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 hubdir="${LOCAL_DIR}/hub-tests"
 
 coverage() {
-    "${BIN_DIR}/cscli" --crowdsec "${BIN_DIR}/crowdsec" --cscli "${BIN_DIR}/cscli" hubtest coverage --"$1" --percent
+    "${CSCLI}" --crowdsec "${CROWDSEC}" --cscli "${CSCLI}" hubtest coverage --"$1" --percent
 }
 
 cd "$hubdir" || die "Could not find hub test results"

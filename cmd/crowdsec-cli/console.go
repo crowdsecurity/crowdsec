@@ -134,7 +134,6 @@ Enable given information push to the central API. Allows to empower the console`
 			if enableAll {
 				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
 				log.Infof("All features have been enabled successfully")
-
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("You must specify at least one feature to enable")

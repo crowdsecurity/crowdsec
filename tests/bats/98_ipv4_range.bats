@@ -4,7 +4,7 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
     ./instance-data load
     ./instance-crowdsec start
     API_KEY=$(cscli bouncers add testbouncer -o raw)
@@ -14,7 +14,7 @@ setup_file() {
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -37,8 +37,6 @@ api() {
     run -0 cscli decisions list -o json
     run -0 jq -r '.[0].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
-#    run -0 jq -c '[ .[0].decisions[0].value, .[1].decisions[0].value ]' <(output)
-#    assert_output '["4.4.4.0/24","1.2.3.4"]'
 }
 
 @test "$FILE API - all decisions" {

@@ -232,16 +232,16 @@ func (bc *BouncerCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (bc *BouncerCreate) check() error {
 	if _, ok := bc.mutation.Name(); !ok {
-		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "name"`)}
+		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Bouncer.name"`)}
 	}
 	if _, ok := bc.mutation.APIKey(); !ok {
-		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required field "api_key"`)}
+		return &ValidationError{Name: "api_key", err: errors.New(`ent: missing required field "Bouncer.api_key"`)}
 	}
 	if _, ok := bc.mutation.Revoked(); !ok {
-		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "revoked"`)}
+		return &ValidationError{Name: "revoked", err: errors.New(`ent: missing required field "Bouncer.revoked"`)}
 	}
 	if _, ok := bc.mutation.LastPull(); !ok {
-		return &ValidationError{Name: "last_pull", err: errors.New(`ent: missing required field "last_pull"`)}
+		return &ValidationError{Name: "last_pull", err: errors.New(`ent: missing required field "Bouncer.last_pull"`)}
 	}
 	return nil
 }

@@ -155,7 +155,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 			srcs = append(srcs, net.ParseIP(p.Meta["source_ip"]))
 		}
 	} else if p.Type == types.OVFLW {
-		for k, _ := range p.Overflow.Sources {
+		for k := range p.Overflow.Sources {
 			srcs = append(srcs, net.ParseIP(k))
 		}
 	}

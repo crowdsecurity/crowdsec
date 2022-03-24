@@ -5,7 +5,6 @@ After=syslog.target network.target remote-fs.target nss-lookup.target
 [Service]
 Type=notify
 Environment=LC_ALL=C LANG=C
-PIDFile=/var/run/crowdsec.pid
 ExecStartPre=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml -t
 ExecStart=/usr/local/bin/crowdsec -c /etc/crowdsec/config.yaml
 #ExecStartPost=/bin/sleep 0.1

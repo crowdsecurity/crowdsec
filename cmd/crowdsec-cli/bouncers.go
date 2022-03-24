@@ -68,9 +68,9 @@ Note: This command requires database direct access, so is intended to be run on 
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
-						revoked = fmt.Sprintf("%s", emoji.CheckMark)
+						revoked = emoji.CheckMark.String()
 					} else {
-						revoked = fmt.Sprintf("%s", emoji.Prohibited)
+						revoked = emoji.Prohibited.String()
 					}
 					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
 				}

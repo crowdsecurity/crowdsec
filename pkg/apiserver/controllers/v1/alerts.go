@@ -3,6 +3,7 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -193,7 +194,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusCreated, alerts)
-	return
 }
 
 // FindAlerts : return alerts from database based on the specified filter
@@ -211,7 +211,6 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // FindAlertByID return the alert assiocated to the ID
@@ -234,14 +233,13 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-
-	if gctx.ClientIP() != "127.0.0.1" && gctx.ClientIP() != "::1" {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
+	incomingIP := gctx.ClientIP()
+	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 	var err error
@@ -254,5 +252,14 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 	gctx.JSON(http.StatusOK, deleteAlertsResp)
-	return
+}
+
+func networksContainIP(networks []net.IPNet, ip string) bool {
+	parsedIP := net.ParseIP(ip)
+	for _, network := range networks {
+		if network.Contains(parsedIP) {
+			return true
+		}
+	}
+	return false
 }

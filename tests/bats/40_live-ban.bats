@@ -10,13 +10,13 @@ fake_log() {
 }
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
     # we reset config and data, but run the daemon only in the tests that need it
     ./instance-data load
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -30,9 +30,10 @@ teardown() {
 #----------
 
 @test "$FILE 1.1.1.172 has been banned" {
-    tmpfile=$(mktemp -p "${BATS_TEST_TMPDIR}")
+    tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
-    echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${CONFIG_DIR}/acquis.yaml"
+    ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
+    echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
     sleep 2

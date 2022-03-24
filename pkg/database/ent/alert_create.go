@@ -496,10 +496,10 @@ func (ac *AlertCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (ac *AlertCreate) check() error {
 	if _, ok := ac.mutation.Scenario(); !ok {
-		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "scenario"`)}
+		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Alert.scenario"`)}
 	}
 	if _, ok := ac.mutation.Simulated(); !ok {
-		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "simulated"`)}
+		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Alert.simulated"`)}
 	}
 	return nil
 }

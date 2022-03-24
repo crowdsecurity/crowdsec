@@ -51,7 +51,7 @@ start_instance() {
         DAEMON_PID="${DAEMON_PID}" \
         "${TEST_DIR}/run-as-daemon" /usr/bin/env python3 -u "${THIS_DIR}/mock-http.py" "$1"
     wait_for_port "$1"
-    echo "mock http started on port $1"
+#    echo "mock http started on port $1"
 }
 
 stop_instance() {

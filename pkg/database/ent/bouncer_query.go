@@ -106,7 +106,7 @@ func (bq *BouncerQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single Bouncer entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one Bouncer entity is not found.
+// Returns a *NotSingularError when more than one Bouncer entity is found.
 // Returns a *NotFoundError when no Bouncer entities are found.
 func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
 	nodes, err := bq.Limit(2).All(ctx)
@@ -133,7 +133,7 @@ func (bq *BouncerQuery) OnlyX(ctx context.Context) *Bouncer {
 }
 
 // OnlyID is like Only, but returns the only Bouncer ID in the query.
-// Returns a *NotSingularError when exactly one Bouncer ID is not found.
+// Returns a *NotSingularError when more than one Bouncer ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (bq *BouncerQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -242,8 +242,9 @@ func (bq *BouncerQuery) Clone() *BouncerQuery {
 		order:      append([]OrderFunc{}, bq.order...),
 		predicates: append([]predicate.Bouncer{}, bq.predicates...),
 		// clone intermediate query.
-		sql:  bq.sql.Clone(),
-		path: bq.path,
+		sql:    bq.sql.Clone(),
+		path:   bq.path,
+		unique: bq.unique,
 	}
 }
 
@@ -253,7 +254,7 @@ func (bq *BouncerQuery) Clone() *BouncerQuery {
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		CreatedAt time.Time `json:"created_at"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -280,7 +281,7 @@ func (bq *BouncerQuery) GroupBy(field string, fields ...string) *BouncerGroupBy 
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		CreatedAt time.Time `json:"created_at"`
 //	}
 //
 //	client.Bouncer.Query().
@@ -336,6 +337,10 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context) ([]*Bouncer, error) {
 
 func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := bq.querySpec()
+	_spec.Node.Columns = bq.fields
+	if len(bq.fields) > 0 {
+		_spec.Unique = bq.unique != nil && *bq.unique
+	}
 	return sqlgraph.CountNodes(ctx, bq.driver, _spec)
 }
 
@@ -406,6 +411,9 @@ func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if bq.sql != nil {
 		selector = bq.sql
 		selector.Select(selector.Columns(columns...)...)
+	}
+	if bq.unique != nil && *bq.unique {
+		selector.Distinct()
 	}
 	for _, p := range bq.predicates {
 		p(selector)
@@ -685,9 +693,7 @@ func (bgb *BouncerGroupBy) sqlQuery() *sql.Selector {
 		for _, f := range bgb.fields {
 			columns = append(columns, selector.C(f))
 		}
-		for _, c := range aggregation {
-			columns = append(columns, c)
-		}
+		columns = append(columns, aggregation...)
 		selector.Select(columns...)
 	}
 	return selector.GroupBy(selector.Columns(bgb.fields...)...)

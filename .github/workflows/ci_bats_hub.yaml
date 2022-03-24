@@ -1,4 +1,4 @@
-name: BATS functional tests
+name: bats / hub tests
 
 on:
   push:
@@ -15,6 +15,11 @@ jobs:
     timeout-minutes: 20
     steps:
 
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
+
     - name: "Set up Go 1.17"
       uses: actions/setup-go@v1
       with:
@@ -29,17 +34,14 @@ jobs:
 
     - name: "Install bats dependencies"
       run: |
-        sudo apt install daemonize netcat-openbsd
+        sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build
 
-    - name: "BATS: prepare fixture config+data"
-      run: make bats-instance-data
-
-    - name: "BATS: run tests"
-      run: make bats-test
+    - name: "BATS: run hub tests"
+      run: make bats-test-hub
 
     - name: "BATS: collect hub coverage"
       run: ./tests/collect-hub-coverage >> $GITHUB_ENV

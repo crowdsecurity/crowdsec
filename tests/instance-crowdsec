@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eu
+script_name=$0
 
 die() {
     echo >&2 "$@"
@@ -8,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $0 [ start | stop ]"
+    die "usage: $script_name [ start | stop ]"
 }
 
 #shellcheck disable=SC1007
@@ -18,17 +19,17 @@ THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 # you have not removed set -u above, have you?
 
-[ -z "${BIN_DIR-}" ] && die "\$BIN_DIR must be defined."
+[ -z "${CROWDSEC-}" ] && die "\$CROWDSEC must be defined."
 [ -z "${LOG_DIR-}" ] && die "\$LOG_DIR must be defined."
 [ -z "${PID_DIR-}" ] && die "\$PID_DIR must be defined."
 
-if [ ! -e "${BIN_DIR}/crowdsec" ]; then
-    die "${BIN_DIR}/crowdsec is missing. Please run 'make bats-build' to create it."
+if [ ! -f "${CROWDSEC}" ]; then
+    die "${CROWDSEC} is missing. Please build (with 'make bats-build') or install it."
 fi
 
 wait_for_port() {
     for _ in $(seq 40); do
-        nc -z localhost "$1" && return
+        nc -z localhost "$1" >/dev/null 2>&1 && return
         sleep .05
     done
 
@@ -51,7 +52,7 @@ DAEMON_PID=${PID_DIR}/crowdsec.pid
 start_instance() {
     OUT_FILE="${LOG_DIR}/crowdsec.out" \
         DAEMON_PID="${DAEMON_PID}" \
-        "${TEST_DIR}/run-as-daemon" "${BIN_DIR}/crowdsec"
+        "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
     wait_for_port 6060
 }
 
@@ -59,7 +60,8 @@ stop_instance() {
     if [ -f "${DAEMON_PID}" ]; then
        # terminate quickly with extreme prejudice, all the application data will be
        # thrown away anyway. also terminate the child processes (notification plugin).
-       PGID="$(ps --no-headers -p "$(cat "${DAEMON_PID}")" -o pgid | tr -d ' ')"
+       PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
+       # ps above should work on linux, freebsd, busybox..
        if [ -n "${PGID}" ]; then
            kill -- "-${PGID}"
        fi

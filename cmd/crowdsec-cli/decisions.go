@@ -32,7 +32,7 @@ var (
 	defaultReason   = "manual"
 )
 
-func DecisionsToTable(alerts *models.GetAlertsResponse) error {
+func DecisionsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	/*here we cheat a bit : to make it more readable for the user, we dedup some entries*/
 	var spamLimit map[string]bool = make(map[string]bool)
 	var skipped = 0
@@ -53,13 +53,17 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 	}
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
-		err := csvwriter.Write([]string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"})
+		header := []string{"id", "source", "ip", "reason", "action", "country", "as", "events_count", "expiration", "simulated", "alert_id"}
+		if printMachine {
+			header = append(header, "machine")
+		}
+		err := csvwriter.Write(header)
 		if err != nil {
 			return err
 		}
 		for _, alertItem := range *alerts {
 			for _, decisionItem := range alertItem.Decisions {
-				err := csvwriter.Write([]string{
+				raw := []string{
 					fmt.Sprintf("%d", decisionItem.ID),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
@@ -71,7 +75,12 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					*decisionItem.Duration,
 					fmt.Sprintf("%t", *decisionItem.Simulated),
 					fmt.Sprintf("%d", alertItem.ID),
-				})
+				}
+				if printMachine {
+					raw = append(raw, alertItem.MachineID)
+				}
+
+				err := csvwriter.Write(raw)
 				if err != nil {
 					return err
 				}
@@ -82,9 +91,12 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
-
 		table := tablewriter.NewWriter(os.Stdout)
-		table.SetHeader([]string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"})
+		header := []string{"ID", "Source", "Scope:Value", "Reason", "Action", "Country", "AS", "Events", "expiration", "Alert ID"}
+		if printMachine {
+			header = append(header, "Machine")
+		}
+		table.SetHeader(header)
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active decisions")
@@ -96,7 +108,7 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 				if *alertItem.Simulated {
 					*decisionItem.Type = fmt.Sprintf("(simul)%s", *decisionItem.Type)
 				}
-				table.Append([]string{
+				raw := []string{
 					strconv.Itoa(int(decisionItem.ID)),
 					*decisionItem.Origin,
 					*decisionItem.Scope + ":" + *decisionItem.Value,
@@ -107,7 +119,13 @@ func DecisionsToTable(alerts *models.GetAlertsResponse) error {
 					strconv.Itoa(int(*alertItem.EventsCount)),
 					*decisionItem.Duration,
 					strconv.Itoa(int(alertItem.ID)),
-				})
+				}
+
+				if printMachine {
+					raw = append(raw, alertItem.MachineID)
+				}
+
+				table.Append(raw)
 			}
 		}
 		table.Render() // Send output
@@ -171,6 +189,7 @@ func NewDecisionsCmd() *cobra.Command {
 	}
 	NoSimu := new(bool)
 	contained := new(bool)
+	var printMachine bool
 	var cmdDecisionsList = &cobra.Command{
 		Use:   "list [options]",
 		Short: "List decisions from LAPI",
@@ -201,7 +220,7 @@ cscli decisions list -t ban
 					realDuration := strings.TrimSuffix(*filter.Until, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 					}
 					*filter.Until = fmt.Sprintf("%d%s", days*24, "h")
@@ -215,7 +234,7 @@ cscli decisions list -t ban
 					realDuration := strings.TrimSuffix(*filter.Since, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *filter.Until)
 					}
 					*filter.Since = fmt.Sprintf("%d%s", days*24, "h")
@@ -256,7 +275,7 @@ cscli decisions list -t ban
 				log.Fatalf("Unable to list decisions : %v", err.Error())
 			}
 
-			err = DecisionsToTable(alerts)
+			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
 				log.Fatalf("unable to list decisions : %v", err.Error())
 			}
@@ -275,6 +294,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVarP(filter.RangeEquals, "range", "r", "", "restrict to alerts from this source range (shorthand for --scope range --value <RANGE>)")
 	cmdDecisionsList.Flags().IntVarP(filter.Limit, "limit", "l", 100, "number of alerts to get (use 0 to remove the limit)")
 	cmdDecisionsList.Flags().BoolVar(NoSimu, "no-simu", false, "exclude decisions in simulation mode")
+	cmdDecisionsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that triggered decisions")
 	cmdDecisionsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
 
 	cmdDecisions.AddCommand(cmdDecisionsList)
@@ -326,9 +346,8 @@ cscli decisions add --scope username --value foobar
 				addValue = addRange
 				addScope = types.Range
 			} else if addValue == "" {
-				cmd.Help()
-				log.Errorf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
-				return
+				printHelp(cmd)
+				log.Fatalf("Missing arguments, a value is required (--ip, --range or --scope and --value)")
 			}
 
 			if addReason == "" {

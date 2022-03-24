@@ -556,3 +556,75 @@ func TestDeleteAlert(t *testing.T) {
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
+
+func TestDeleteAlertTrustedIPS(t *testing.T) {
+	cfg := LoadTestConfig()
+	// IPv6 mocking doesn't seem to work.
+	// cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24", "::"}
+	cfg.API.Server.TrustedIPs = []string{"1.2.3.4", "1.2.4.0/24"}
+	cfg.API.Server.ListenURI = "::8080"
+	server, err := NewServer(cfg.API.Server)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	err = server.InitController()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	router, err := server.Router()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	loginResp, err := LoginToTestAPI(router)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	insertAlert := func() {
+		alertContentBytes, err := ioutil.ReadFile("./tests/alert_sample.json")
+		if err != nil {
+			log.Fatal(err)
+		}
+		alertContent := string(alertContentBytes)
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("POST", "/v1/alerts", strings.NewReader(alertContent))
+		AddAuthHeaders(req, loginResp)
+		router.ServeHTTP(w, req)
+	}
+
+	assertAlertDeleteFailedFromIP := func(ip string) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+
+		AddAuthHeaders(req, loginResp)
+		req.RemoteAddr = ip + ":1234"
+		router.ServeHTTP(w, req)
+		assert.Equal(t, 403, w.Code)
+		assert.Contains(t, w.Body.String(), fmt.Sprintf(`{"message":"access forbidden from this IP (%s)"}`, ip))
+	}
+
+	assertAlertDeletedFromIP := func(ip string) {
+		w := httptest.NewRecorder()
+		req, _ := http.NewRequest("DELETE", "/v1/alerts", strings.NewReader(""))
+		AddAuthHeaders(req, loginResp)
+		req.RemoteAddr = ip + ":1234"
+		router.ServeHTTP(w, req)
+		assert.Equal(t, 200, w.Code)
+		assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
+	}
+
+	insertAlert()
+	assertAlertDeleteFailedFromIP("4.3.2.1")
+	assertAlertDeletedFromIP("1.2.3.4")
+
+	insertAlert()
+	assertAlertDeletedFromIP("1.2.4.0")
+	insertAlert()
+	assertAlertDeletedFromIP("1.2.4.1")
+	insertAlert()
+	assertAlertDeletedFromIP("1.2.4.255")
+
+	insertAlert()
+	assertAlertDeletedFromIP("127.0.0.1")
+
+}

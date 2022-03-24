@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -61,7 +60,6 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, results)
-	return
 }
 
 func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
@@ -128,10 +126,9 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
-	filters := make(map[string][]string)
-	filters["scope"] = []string{"ip", "range"}
-	if val, ok := gctx.Request.URL.Query()["scopes"]; ok {
-		filters["scope"] = strings.Split(val[0], ",")
+	filters := gctx.Request.URL.Query()
+	if _, ok := filters["scopes"]; !ok {
+		filters["scopes"] = []string{"ip,range"}
 	}
 
 	// if the blocker just start, return all decisions

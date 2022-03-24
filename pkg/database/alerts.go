@@ -849,6 +849,9 @@ func (c *Client) DeleteAlertWithFilter(filter map[string][]string) (int, error) 
 
 	// Get all the alerts that match the filter
 	alertsToDelete, err := c.QueryAlertWithFilter(filter)
+	if err != nil {
+		return 0, errors.Wrap(DeleteFail, "alert query failed")
+	}
 
 	for _, alertItem := range alertsToDelete {
 		err = c.DeleteAlertGraph(alertItem)

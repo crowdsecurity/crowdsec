@@ -7,12 +7,9 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # shellcheck source=./.environment.sh
 . "${TEST_DIR}/.environment.sh"
 
-CSCLI="${BIN_DIR}/cscli"
 cscli() {
-    "${BIN_DIR}/cscli" "$@"
+    "${CSCLI}" "$@"
 }
-
-CROWDSEC="${BIN_DIR}/crowdsec"
 
 "${TEST_DIR}/instance-data" load
 

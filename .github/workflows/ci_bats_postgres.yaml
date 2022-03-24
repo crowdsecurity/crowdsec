@@ -1,0 +1,86 @@
+name: bats / functional tests with PostgreSQL
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: "Build the application"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.17
+      id: go
+
+    - name: "Clone CrowdSec"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    - name: "Install bats dependencies"
+      run: |
+        sudo apt install -qq daemonize netcat-openbsd
+        GO111MODULE=on go get github.com/mikefarah/yq/v4
+
+    - name: "BATS: build crowdsec (DB_BACKEND: pgx)"
+      run: make clean bats-build
+      env:
+        DB_BACKEND: pgx
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        POSTGRES_USER: postgres
+
+    - name: "BATS: run tests (DB_BACKEND: pgx)"
+      run: make bats-test
+      env:
+        DB_BACKEND: pgx
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        POSTGRES_USER: postgres
+
+    - name: "BATS: build crowdsec (DB_BACKEND: postgres)"
+      run: make clean bats-build
+      env:
+        DB_BACKEND: postgres
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        POSTGRES_USER: postgres
+
+    - name: "BATS: run tests (DB_BACKEND: postgres)"
+      run: make bats-test
+      env:
+        DB_BACKEND: postgres
+        POSTGRES_HOST: 127.0.0.1
+        POSTGRES_PORT: 5432
+        POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        POSTGRES_USER: postgres

@@ -4,36 +4,41 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
+    # eval "$(debug)"
     ./instance-data load
 
     MOCK_OUT="${LOG_DIR}/mock-http.out"
     export MOCK_OUT
+    MOCK_PORT="9999"
+    MOCK_URL="http://localhost:${MOCK_PORT}"
+    export MOCK_URL
 
+    # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
     yq '
-        .url="http://localhost:9999" |
+        .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
-    ' -i "${CONFIG_DIR}/notifications/http.yaml"
+    ' -i "$(config_yq '.config_paths.notification_dir')/http.yaml"
 
     yq '
         .notifications=["http_default"] |
         .filters=["Alert.GetScope() == \"Ip\""]
-    ' -i "${CONFIG_DIR}/profiles.yaml"
+    ' -i "$(config_yq '.api.server.profiles_path')"
 
     yq '
         .plugin_config.user="" |
         .plugin_config.group=""
-    ' -i "${CONFIG_DIR}/config.yaml"
+    ' -i "${CONFIG_YAML}"
 
     rm -f -- "${MOCK_OUT}"
 
     ./instance-crowdsec start
-    ./instance-mock-http start 9999
+    ./instance-mock-http start "${MOCK_PORT}"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
     ./instance-mock-http stop
 }
 
@@ -54,6 +59,8 @@ setup() {
 
 @test "$FILE expected 1 log line from http server" {
     run -0 wc -l <"${MOCK_OUT}"
+    # wc can pad with spaces on some platforms
+    run -0 tr -d ' ' < <(output)
     assert_output 1
 }
 

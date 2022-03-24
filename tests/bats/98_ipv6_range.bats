@@ -4,7 +4,7 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
     ./instance-data load
     ./instance-crowdsec start
     API_KEY=$(cscli bouncers add testbouncer -o raw)
@@ -14,11 +14,16 @@ setup_file() {
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
     load "../lib/setup.sh"
+}
+
+teardown() {
+    # XXX myisam stopgap
+    sleep 0.3
 }
 
 #----------

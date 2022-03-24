@@ -93,7 +93,7 @@ func TestGetters(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
 		if empty != nil {
 			t.Fatalf("expected empty item")
@@ -198,7 +198,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("download: %s should be up-to-date", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("download: %s should not be install", item.Name)
+		t.Fatalf("download: %s should not be installed", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("download: %s should not be tainted", item.Name)
@@ -212,7 +212,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("install: %s should be install", item.Name)
+		t.Fatalf("install: %s should be installed", item.Name)
 	}
 }
 

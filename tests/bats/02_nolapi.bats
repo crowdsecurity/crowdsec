@@ -4,11 +4,11 @@
 set -u
 
 setup_file() {
-    load "../lib/setup_file.sh" >&3 2>&1
+    load "../lib/setup_file.sh"
 }
 
 teardown_file() {
-    load "../lib/teardown_file.sh" >&3 2>&1
+    load "../lib/teardown_file.sh"
 }
 
 setup() {
@@ -26,24 +26,24 @@ declare stderr
 #----------
 
 @test "$FILE test without -no-api flag" {
-    run -124 --separate-stderr timeout 1s "${CROWDSEC}"
+    run -124 --separate-stderr timeout 2s "${CROWDSEC}"
     # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
 }
 
 @test "$FILE crowdsec should not run without LAPI (-no-api flag)" {
-    run -1 --separate-stderr timeout 1s "${CROWDSEC}" -no-api
+    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
 }
 
 @test "$FILE crowdsec should not run without LAPI (no api.server in configuration file)" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
-    run -1 --separate-stderr timeout 1s "${CROWDSEC}"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
+    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
 
     run -0 echo "$stderr"
     assert_output --partial "crowdsec local API is disabled"
 }
 
 @test "$FILE capi status shouldn't be ok without api.server" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr cscli capi status
 
     run -0 echo "$stderr"
@@ -51,7 +51,7 @@ declare stderr
 }
 
 @test "$FILE cscli config show -o human" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     run -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "Crowdsec:"
@@ -60,12 +60,12 @@ declare stderr
 }
 
 @test "$FILE cscli config backup" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
-    tempdir=$(mktemp -u -p "${BATS_TEST_TMPDIR}")
-    run -0 cscli config backup "${tempdir}"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
+    backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+    run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${tempdir}"
-    rm -rf -- "${tempdir:?}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
+    rm -rf -- "${backupdir:?}"
 
     run -0 echo "$stderr"
     assert_output --partial "Failed to backup configurations"
@@ -73,7 +73,7 @@ declare stderr
 }
 
 @test "$FILE lapi status shouldn't be ok without api.server" {
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
     run -1 --separate-stderr cscli machines list
     run -0 echo "$stderr"
@@ -82,7 +82,7 @@ declare stderr
 
 @test "$FILE cscli metrics" {
     skip 'need to trigger metrics with a live parse'
-    yq 'del(.api.server)' -i "${CONFIG_DIR}/config.yaml"
+    yq 'del(.api.server)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"

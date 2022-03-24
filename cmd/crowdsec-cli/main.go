@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path"
 	"path/filepath"
 	"strings"
@@ -151,7 +152,11 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
 		log.Fatalf("failed to make branch hidden : %s", err)
 	}
-	cobra.OnInitialize(initConfig)
+
+	if os.Args[1] != "completion" {
+		cobra.OnInitialize(initConfig)
+	}
+
 	/*don't sort flags so we can enforce order*/
 	rootCmd.Flags().SortFlags = false
 	rootCmd.PersistentFlags().SortFlags = false
