@@ -27,40 +27,6 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
-func TestCAPIPullIsOld(t *testing.T) {
-	api := getAPIC(t)
-	isOld, err := api.CAPIPullIsOld()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.True(t, isOld)
-
-	decision := api.dbClient.Ent.Decision.Create().
-		SetUntil(time.Now().Add(time.Hour)).
-		SetScenario("crowdsec/test").
-		SetType("IP").
-		SetScope("Country").
-		SetValue("Blah").
-		SetOrigin(SCOPE_CAPI).
-		SaveX(context.Background())
-
-	api.dbClient.Ent.Alert.Create().
-		SetCreatedAt(time.Now()).
-		SetScenario("crowdsec/test").
-		AddDecisions(
-			decision,
-		).
-		SaveX(context.Background())
-
-	isOld, err = api.CAPIPullIsOld()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	assert.False(t, isOld)
-}
-
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
 	dbPath, err := os.CreateTemp("/tmp/", "*sqlite")
@@ -96,7 +62,72 @@ func getAPIC(t *testing.T) *apic {
 			ShareCustomScenarios:  types.BoolPtr(false),
 		},
 	}
+}
 
+func absDiff(a int, b int) (c int) {
+	if c = a - b; c < 0 {
+		return -1 * c
+	}
+	return c
+}
+
+func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Decision.Query().AllX(context.Background())
+	assert.Len(t, d, count)
+}
+
+func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now()),
+	).AllX(context.Background())
+	assert.Len(t, d, count)
+}
+
+func jsonMarshalX(v interface{}) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
+func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
+	d := dbClient.Ent.Alert.Query().AllX(context.Background())
+	assert.Len(t, d, count)
+}
+
+func TestCAPIPullIsOld(t *testing.T) {
+	api := getAPIC(t)
+	isOld, err := api.CAPIPullIsOld()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, isOld)
+
+	decision := api.dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetType("IP").
+		SetScope("Country").
+		SetValue("Blah").
+		SetOrigin(SCOPE_CAPI).
+		SaveX(context.Background())
+
+	api.dbClient.Ent.Alert.Create().
+		SetCreatedAt(time.Now()).
+		SetScenario("crowdsec/test").
+		AddDecisions(
+			decision,
+		).
+		SaveX(context.Background())
+
+	isOld, err = api.CAPIPullIsOld()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.False(t, isOld)
 }
 
 func Test_apic_FetchScenariosListFromDB(t *testing.T) {
@@ -324,23 +355,6 @@ func TestAPICGetMetrics(t *testing.T) {
 			}
 		})
 	}
-}
-
-func assertTotalDecisionCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Decision.Query().AllX(context.Background())
-	assert.Len(t, d, count)
-}
-
-func assertTotalValidDecisionCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now()),
-	).AllX(context.Background())
-	assert.Len(t, d, count)
-}
-
-func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
-	d := dbClient.Ent.Alert.Query().AllX(context.Background())
-	assert.Len(t, d, count)
 }
 
 func Test_createAlertsForDecision(t *testing.T) {
@@ -679,13 +693,6 @@ func Test_apic_Push(t *testing.T) {
 	}
 }
 
-func absDiff(a int, b int) (c int) {
-	if c = a - b; c < 0 {
-		return -1 * c
-	}
-	return c
-}
-
 func Test_apic_SendMetrics(t *testing.T) {
 	api := getAPIC(t)
 	testCases := []struct {
@@ -762,14 +769,6 @@ func Test_apic_SendMetrics(t *testing.T) {
 	}
 }
 
-func jsonMarshalX(v interface{}) []byte {
-	data, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
-	return data
-}
-
 func Test_apic_Pull(t *testing.T) {
 	api := getAPIC(t)
 	testCases := []struct {
@@ -843,8 +842,91 @@ func Test_apic_Pull(t *testing.T) {
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), testCase.logContains)
 			assertTotalDecisionCount(t, api.dbClient, testCase.expectedDecisionCount)
-
 		})
 	}
+}
 
+func Test_shouldShareAlert(t *testing.T) {
+
+	testCases := []struct {
+		name          string
+		consoleConfig *csconfig.ConsoleConfig
+		alert         *models.Alert
+		expectedRet   bool
+		expectedTrust string
+	}{
+		{
+			name: "custom alert should be shared if config enables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareCustomScenarios: types.BoolPtr(true),
+			},
+			alert:         &models.Alert{Simulated: types.BoolPtr(false)},
+			expectedRet:   true,
+			expectedTrust: "custom",
+		},
+		{
+			name: "custom alert should not be shared if config disables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareCustomScenarios: types.BoolPtr(false),
+			},
+			alert:         &models.Alert{Simulated: types.BoolPtr(false)},
+			expectedRet:   false,
+			expectedTrust: "custom",
+		},
+		{
+			name: "manual alert should be shared if config enables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareManualDecisions: types.BoolPtr(true),
+			},
+			alert: &models.Alert{
+				Simulated: types.BoolPtr(false),
+				Decisions: []*models.Decision{{Origin: types.StrPtr("cscli")}},
+			},
+			expectedRet:   true,
+			expectedTrust: "manual",
+		},
+		{
+			name: "manaul alert should not be shared if config disables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareManualDecisions: types.BoolPtr(false),
+			},
+			alert: &models.Alert{
+				Simulated: types.BoolPtr(false),
+				Decisions: []*models.Decision{{Origin: types.StrPtr("cscli")}},
+			},
+			expectedRet:   false,
+			expectedTrust: "manual",
+		},
+		{
+			name: "manual alert should be shared if config enables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareTaintedScenarios: types.BoolPtr(true),
+			},
+			alert: &models.Alert{
+				Simulated:    types.BoolPtr(false),
+				ScenarioHash: types.StrPtr("whateverHash"),
+			},
+			expectedRet:   true,
+			expectedTrust: "tainted",
+		},
+		{
+			name: "manaul alert should not be shared if config disables it",
+			consoleConfig: &csconfig.ConsoleConfig{
+				ShareTaintedScenarios: types.BoolPtr(false),
+			},
+			alert: &models.Alert{
+				Simulated:    types.BoolPtr(false),
+				ScenarioHash: types.StrPtr("whateverHash"),
+			},
+			expectedRet:   false,
+			expectedTrust: "tainted",
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			ret := shouldShareAlert(testCase.alert, testCase.consoleConfig)
+			assert.Equal(t, ret, testCase.expectedRet)
+		})
+	}
 }
