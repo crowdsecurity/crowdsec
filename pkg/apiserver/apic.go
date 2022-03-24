@@ -24,7 +24,7 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
-const (
+var (
 	PullInterval    = time.Hour * 2
 	PushInterval    = time.Second * 30
 	MetricsInterval = time.Minute * 30
@@ -125,6 +125,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	return ret, err
 }
 
+// keep track of all alerts in cache and push it to CAPI every PushInterval.
 func (a *apic) Push() error {
 	defer types.CatchPanic("lapi/pushToAPIC")
 
@@ -155,45 +156,55 @@ func (a *apic) Push() error {
 		case alerts := <-a.alertToPush:
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
-				if *alert.Simulated {
-					log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
-					continue
+				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
+					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert)))
 				}
-				scenarioTrust := "certified"
-				if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
-					scenarioTrust = "custom"
-				} else if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
-					scenarioTrust = "tainted"
-				}
-				if len(alert.Decisions) > 0 {
-					if *alert.Decisions[0].Origin == "cscli" {
-						scenarioTrust = "manual"
-					}
-				}
-				switch scenarioTrust {
-				case "manual":
-					if !*a.consoleConfig.ShareManualDecisions {
-						log.Debugf("manual decision generated an alert, doesn't send it to CAPI because options is disabled")
-						continue
-					}
-				case "tainted":
-					if !*a.consoleConfig.ShareTaintedScenarios {
-						log.Debugf("tainted scenario generated an alert, doesn't send it to CAPI because options is disabled")
-						continue
-					}
-				case "custom":
-					if !*a.consoleConfig.ShareCustomScenarios {
-						log.Debugf("custom scenario generated an alert, doesn't send it to CAPI because options is disabled")
-						continue
-					}
-				}
-				signals = append(signals, alertToSignal(alert, scenarioTrust))
 			}
 			a.mu.Lock()
 			cache = append(cache, signals...)
 			a.mu.Unlock()
 		}
 	}
+}
+
+func getScenarioTrustOfAlert(alert *models.Alert) string {
+	scenarioTrust := "certified"
+	if alert.ScenarioHash == nil || *alert.ScenarioHash == "" {
+		scenarioTrust = "custom"
+	} else if alert.ScenarioVersion == nil || *alert.ScenarioVersion == "" || *alert.ScenarioVersion == "?" {
+		scenarioTrust = "tainted"
+	}
+	if len(alert.Decisions) > 0 {
+		if *alert.Decisions[0].Origin == "cscli" {
+			scenarioTrust = "manual"
+		}
+	}
+	return scenarioTrust
+}
+
+func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig) bool {
+	if *alert.Simulated {
+		log.Debugf("simulation enabled for alert (id:%d), will not be sent to CAPI", alert.ID)
+		return false
+	}
+	switch scenarioTrust := getScenarioTrustOfAlert(alert); scenarioTrust {
+	case "manual":
+		if !*consoleConfig.ShareManualDecisions {
+			log.Debugf("manual decision generated an alert, doesn't send it to CAPI because options is disabled")
+			return false
+		}
+	case "tainted":
+		if !*consoleConfig.ShareTaintedScenarios {
+			log.Debugf("tainted scenario generated an alert, doesn't send it to CAPI because options is disabled")
+			return false
+		}
+	case "custom":
+		if !*consoleConfig.ShareCustomScenarios {
+			log.Debugf("custom scenario generated an alert, doesn't send it to CAPI because options is disabled")
+			return false
+		}
+	}
+	return true
 }
 
 func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
@@ -453,11 +464,13 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 func (a *apic) Pull() error {
 	defer types.CatchPanic("lapi/pullFromAPIC")
 	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
-	var err error
 
-	scenario := a.scenarioList
 	toldOnce := false
 	for {
+		scenario, err := a.FetchScenariosListFromDB()
+		if err != nil {
+			log.Errorf("unable to fetch scenarios from db: %s", err)
+		}
 		if len(scenario) > 0 {
 			break
 		}
@@ -466,10 +479,6 @@ func (a *apic) Pull() error {
 			toldOnce = true
 		}
 		time.Sleep(1 * time.Second)
-		scenario, err = a.FetchScenariosListFromDB()
-		if err != nil {
-			log.Errorf("unable to fetch scenarios from db: %s", err)
-		}
 	}
 	if err := a.PullTop(); err != nil {
 		log.Errorf("capi pull top: %s", err)
