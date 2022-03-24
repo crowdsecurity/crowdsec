@@ -60,21 +60,36 @@ func generatePassword(length int) string {
 	return string(buf)
 }
 
-func generateID() (string, error) {
-	id, err := machineid.ID()
+// Returns a unique identifier for each crowdsec installation, using an
+// identifier of the OS installation where available, otherwise a random
+// string.
+func generateIDPrefix() (string, error) {
+	prefix, err := machineid.ID()
+	if err == nil {
+		return prefix, nil
+	}
+	log.Debugf("failed to get machine-id with usual files: %s", err)
+
+	bID, err := ioutil.ReadFile(uuid)
+	if err == nil {
+		return string(bID), nil
+	}
+	return "", errors.Wrap(err, "generating machine id")
+}
+
+// Generate a unique identifier, composed by a prefix and a random suffix.
+// The prefix can be provided by a parameter to use in test environments.
+func generateID(prefix string) (string, error) {
+	var err error
+	if prefix == "" {
+		prefix, err = generateIDPrefix()
+	}
 	if err != nil {
-		log.Debugf("failed to get machine-id with usual files : %s", err)
+		return "", err
 	}
-	if id == "" || err != nil {
-		bID, err := ioutil.ReadFile(uuid)
-		if err != nil {
-			return "", errors.Wrap(err, "generating machine id")
-		}
-		id = string(bID)
-	}
-	id = strings.ReplaceAll(id, "-", "")[:32]
-	id = fmt.Sprintf("%s%s", id, generatePassword(16))
-	return id, nil
+	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
+	suffix := generatePassword(16)
+	return prefix + suffix, nil
 }
 
 func NewMachinesCmd() *cobra.Command {
@@ -197,7 +212,7 @@ cscli machines add MyTestMachine --password MyPassword
 					printHelp(cmd)
 					return
 				}
-				machineID, err = generateID()
+				machineID, err = generateID("")
 				if err != nil {
 					log.Fatalf("unable to generate machine id : %s", err)
 				}
@@ -212,7 +227,7 @@ cscli machines add MyTestMachine --password MyPassword
 				dumpFile = csConfig.API.Client.CredentialsFilePath
 			}
 
-			// create password if doesn't specified by user
+			// create a password if it's not specified by user
 			if machinePassword == "" && !interactive {
 				if !autoAdd {
 					printHelp(cmd)

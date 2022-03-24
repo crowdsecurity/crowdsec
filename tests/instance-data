@@ -90,7 +90,7 @@ make_init_data() {
     ./instance-db setup
 
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "${CSCLI}" capi register
+    "${CSCLI}" capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     "${CSCLI}" hub update
     "${CSCLI}" collections install crowdsecurity/linux
 

@@ -9,8 +9,8 @@ Index: crowdsec/wizard.sh
  ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 -TMP_ACQUIS_FILE="tmp-acquis.yaml"
  ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
- 
- PID_DIR="${CROWDSEC_RUN_DIR}"
+
+ SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 @@ -265,30 +264,30 @@
      shift
      local files=("${@}")
