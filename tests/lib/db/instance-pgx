@@ -18,7 +18,7 @@ about() {
 }
 
 check_postgres_client() {
-    if ! command -v psql >/dev/null; then
+    if ! command -v psql --version >/dev/null; then
         die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
     fi
 }
