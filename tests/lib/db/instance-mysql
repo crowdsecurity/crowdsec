@@ -78,7 +78,8 @@ restore() {
         "--port=${MYSQL_PORT}" \
         "--password=${MYSQL_PASSWORD}" < "$backup_file"
 
-    exec_sql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    exec_sql "DROP USER IF EXISTS 'crowdsec_test';"
+    exec_sql "CREATE USER 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
 
