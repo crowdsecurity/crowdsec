@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      mariadb:
+      mysql:
         image: mysql:latest
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
@@ -61,3 +61,8 @@ jobs:
         MYSQL_PORT: 3306
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
+
+    - name: "show mysql logs"
+      run: docker logs "${{ job.services.mysql.id }}"
+      if: ${{ always() }}
+

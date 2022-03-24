@@ -84,3 +84,8 @@ jobs:
         POSTGRES_PORT: 5432
         POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         POSTGRES_USER: postgres
+
+    - name: "show postgres logs"
+      run: docker logs "${{ job.services.postgres.id }}"
+      if: ${{ always() }}
+
