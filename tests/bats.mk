@@ -3,12 +3,17 @@
 TEST_DIR = $(CURDIR)/tests
 
 # contains a local instance of crowdsec, complete with configuration and data
+#for package testing
+ifndef PACKAGE_TESTING 
 LOCAL_DIR = $(TEST_DIR)/local
-
 BIN_DIR = $(LOCAL_DIR)/bin
+else
+LOCAL_DIR = /
+BIN_DIR = /usr/bin
+endif
+
 CONFIG_DIR = $(LOCAL_DIR)/etc/crowdsec
 DATA_DIR = $(LOCAL_DIR)/var/lib/crowdsec/data
-
 LOCAL_INIT_DIR = $(TEST_DIR)/local-init
 LOG_DIR = $(LOCAL_DIR)/var/log
 PID_DIR = $(LOCAL_DIR)/var/run
@@ -66,3 +71,7 @@ bats-lint:
 	@shellcheck --version >/dev/null 2>&1 || (echo "ERROR: shellcheck is required."; exit 1)
 	@shellcheck -x $(TEST_DIR)/bats/*.bats
 
+
+bats-test-package: bats-environment
+	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/instance-data make-package
+	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/run-tests $(TEST_DIR)/bats

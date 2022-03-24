@@ -112,6 +112,34 @@ make_init_data() {
     remove_init_data
 }
 
+#we need a separate function for initializing config when testing package
+#because we want to test the configuration as well
+make_init_data_package() {
+    
+    "${TEST_DIR}/instance-crowdsec" stop
+
+    ./instance-db config-yaml
+    ./instance-db setup
+    
+    "${TEST_DIR}/instance-crowdsec" start
+    "${CSCLI}" lapi status
+    "${TEST_DIR}/instance-crowdsec" stop
+
+    # we deal with the database separately (might be mysql, postgres)
+
+    mkdir -p "${LOCAL_INIT_DIR}"
+
+    ./instance-db dump "${LOCAL_INIT_DIR}/database"
+
+    echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
+    tar -C "${LOCAL_DIR}" --create \
+        --exclude "$REL_DATA_DIR"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
+
+    remove_init_data
+}
+
+
 load_init_data() {
     if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
         die "Initial data not found; did you run '$script_name make' ?"
@@ -133,16 +161,21 @@ load_init_data() {
 
 [ $# -lt 1 ] && about
 
-./assert-crowdsec-not-running
 
 case "$1" in
     make)
+        ./assert-crowdsec-not-running
         make_init_data
         ;;
+    make-package)
+        make_init_data_package
+        ;;
     load)
+        ./assert-crowdsec-not-running
         load_init_data
         ;;
     clean)
+        ./assert-crowdsec-not-running
         remove_init_data
         ;;
     *)

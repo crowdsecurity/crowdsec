@@ -50,14 +50,21 @@ wait_for_port() {
 DAEMON_PID=${PID_DIR}/crowdsec.pid
 
 start_instance() {
-    OUT_FILE="${LOG_DIR}/crowdsec.out" \
-        DAEMON_PID="${DAEMON_PID}" \
-        "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
+    if [ $INIT_BACKEND == "systemd" ] ; then
+        systemctl start crowdsec
+    else
+        OUT_FILE="${LOG_DIR}/crowdsec.out" \
+                DAEMON_PID="${DAEMON_PID}" \
+                "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
+    fi
     wait_for_port 6060
 }
 
 stop_instance() {
-    if [ -f "${DAEMON_PID}" ]; then
+    if [ "${INIT_BACKEND}" == "systemd" ] ; then
+        systemctl stop crowdsec # systemd doesn't throw error when stopping already stopped stuff
+        while pidof /usr/bin/crowdsec ; do sleep 0.1; done
+    elif [ -f "${DAEMON_PID}" ]; then
        # terminate quickly with extreme prejudice, all the application data will be
        # thrown away anyway. also terminate the child processes (notification plugin).
        PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
