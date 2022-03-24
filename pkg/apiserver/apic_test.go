@@ -608,6 +608,30 @@ func Test_apic_PullTop(t *testing.T) {
 	assertTotalDecisionCount(t, api.dbClient, 5)
 	assertTotalValidDecisionCount(t, api.dbClient, 4)
 	assertTotalAlertCount(t, api.dbClient, 3) // 2 for list sub , 1 for community list.
+	alerts := api.dbClient.Ent.Alert.Query().AllX(context.Background())
+	validDecisions := api.dbClient.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now())).
+		AllX(context.Background())
+
+	decisionScenarioFreq := make(map[string]int)
+	alertScenario := make(map[string]int)
+
+	for _, alert := range alerts {
+		alertScenario[alert.SourceScope]++
+	}
+	assert.Equal(t, len(alertScenario), 3)
+	assert.Equal(t, alertScenario[SCOPE_CAPI_ALIAS], 1)
+	assert.Equal(t, alertScenario["lists:crowdsecurity/ssh-bf"], 1)
+	assert.Equal(t, alertScenario["lists:crowdsecurity/http-bf"], 1)
+
+	for _, decisions := range validDecisions {
+		decisionScenarioFreq[decisions.Scenario]++
+	}
+
+	assert.Equal(t, decisionScenarioFreq["crowdsecurity/http-bf"], 1)
+	assert.Equal(t, decisionScenarioFreq["crowdsecurity/ssh-bf"], 1)
+	assert.Equal(t, decisionScenarioFreq["crowdsecurity/test1"], 1)
+	assert.Equal(t, decisionScenarioFreq["crowdsecurity/test2"], 1)
 }
 
 func Test_apic_Push(t *testing.T) {
