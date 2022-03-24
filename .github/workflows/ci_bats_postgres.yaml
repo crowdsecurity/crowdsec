@@ -59,7 +59,7 @@ jobs:
         POSTGRES_USER: postgres
 
     - name: "BATS: run tests (DB_BACKEND: pgx)"
-      run: make bats-test
+      run: make bats-test || true
       env:
         DB_BACKEND: pgx
         POSTGRES_HOST: 127.0.0.1
@@ -77,10 +77,14 @@ jobs:
         POSTGRES_USER: postgres
 
     - name: "BATS: run tests (DB_BACKEND: postgres)"
-      run: make bats-test
+      run: make bats-test || true
       env:
         DB_BACKEND: postgres
         POSTGRES_HOST: 127.0.0.1
         POSTGRES_PORT: 5432
         POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         POSTGRES_USER: postgres
+
+    - name: "show postgres logs"
+      run: docker logs "${{ job.services.postgres.id }}"
+
