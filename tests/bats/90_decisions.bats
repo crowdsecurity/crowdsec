@@ -38,11 +38,7 @@ declare stderr
 }
 
 @test "$FILE cscli decisions list, with and without --machine" {
-    run cscli decisions add -i 10.20.30.40 -t ban
-    if [ "$status" -ne 0 ]; then
-        cat "${LOG_DIR}/crowdsec.log"
-    fi
-    assert_success
+    run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli decisions list
     refute_output --partial 'MACHINE'

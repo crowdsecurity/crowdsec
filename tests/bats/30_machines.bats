@@ -60,12 +60,7 @@ teardown() {
 }
 
 @test "$FILE register, validate and then remove a machine" {
-    run cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
-    if [ "$status" -ne 0 ]; then
-        cat "${LOG_DIR}/crowdsec.log"
-    fi
-    assert_success
-
+    run -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_output --partial "Successfully registered to Local API (LAPI)"
     assert_output --partial "Local API credentials dumped to '/dev/null'"
 
