@@ -21,7 +21,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
+          --health-cmd pg_isready -u postgres
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -84,3 +84,8 @@ jobs:
         POSTGRES_PORT: 5432
         POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         POSTGRES_USER: postgres
+
+    - name: "show postgres logs"
+      run: docker logs "${{ job.services.postgres.id }}"
+      if: ${{ always() }}
+

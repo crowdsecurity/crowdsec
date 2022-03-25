@@ -61,3 +61,8 @@ jobs:
         MYSQL_PORT: 3306
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
+
+    - name: "show mariadb logs"
+      run: docker logs "${{ job.services.mariadb .id }}"
+      if: ${{ always() }}
+
