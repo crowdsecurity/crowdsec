@@ -7,6 +7,7 @@ TEST_DIR = $(CURDIR)/tests
 ifndef PACKAGE_TESTING 
 LOCAL_DIR = $(TEST_DIR)/local
 BIN_DIR = $(LOCAL_DIR)/bin
+PACKAGE_TESTING=""
 else
 LOCAL_DIR = /
 BIN_DIR = /usr/bin
@@ -31,6 +32,7 @@ export LOG_DIR="$(LOG_DIR)"
 export PID_DIR="$(PID_DIR)"
 export PLUGIN_DIR="$(PLUGIN_DIR)"
 export DB_BACKEND="$(DB_BACKEND)"
+export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 endef
 
 bats-all: bats-clean bats-build bats-test bats-test-hub
@@ -75,3 +77,4 @@ bats-lint:
 bats-test-package: bats-environment
 	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/instance-data make-package
 	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/run-tests $(TEST_DIR)/bats
+	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats

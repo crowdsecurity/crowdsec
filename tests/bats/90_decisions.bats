@@ -43,16 +43,16 @@ declare stderr
     run -0 cscli decisions list
     refute_output --partial 'MACHINE'
     # machine name appears quoted in the "REASON" column
-    assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
-    refute_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
+    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
+    refute_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
 
     run -0 cscli decisions list -m
     assert_output --partial 'MACHINE'
-    assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
-    assert_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
+    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
+    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
 
     run -0 cscli decisions list --machine
     assert_output --partial 'MACHINE'
-    assert_output --partial "| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX' |"
-    assert_output --partial "| githubciXXXXXXXXXXXXXXXXXXXXXXXX |"
+    assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
+    assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
 }
