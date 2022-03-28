@@ -1,7 +1,6 @@
 package csplugin
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -284,7 +283,7 @@ func TestBrokerRun(t *testing.T) {
 }
 
 func buildDummyPlugin() {
-	dir, err := ioutil.TempDir("./tests", "cs_plugin_test")
+	dir, err := os.MkdirTemp("./tests", "cs_plugin_test")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -302,7 +301,7 @@ func setPluginPermTo(perm string) {
 }
 
 func setUp() {
-	dir, err := ioutil.TempDir("./", "cs_plugin_test")
+	dir, err := os.MkdirTemp("./", "cs_plugin_test")
 	if err != nil {
 		log.Fatal(err)
 	}
