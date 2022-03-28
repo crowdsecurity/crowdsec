@@ -2,15 +2,20 @@
 # contains scripts, bats submodules, local instances and functional test suite
 TEST_DIR = $(CURDIR)/tests
 
-# contains a local instance of crowdsec, complete with configuration and data
-#for package testing
-ifndef PACKAGE_TESTING 
-LOCAL_DIR = $(TEST_DIR)/local
-BIN_DIR = $(LOCAL_DIR)/bin
-PACKAGE_TESTING=""
+ifdef PACKAGE_TESTING
+  # define PACKAGE_TESTING to test the executables already installed with
+  # *.deb, *.rpm...
+  LOCAL_DIR = /
+  BIN_DIR = /usr/bin
+  INIT_BACKEND = systemd
+  CONFIG_BACKEND = global
 else
-LOCAL_DIR = /
-BIN_DIR = /usr/bin
+  # LOCAL_DIR will contain contains a local instance of crowdsec, complete with
+  # configuration and data
+  LOCAL_DIR = $(TEST_DIR)/local
+  BIN_DIR = $(LOCAL_DIR)/bin
+  INIT_BACKEND = daemon
+  CONFIG_BACKEND = local
 endif
 
 CONFIG_DIR = $(LOCAL_DIR)/etc/crowdsec
@@ -19,7 +24,7 @@ LOCAL_INIT_DIR = $(TEST_DIR)/local-init
 LOG_DIR = $(LOCAL_DIR)/var/log
 PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
-DB_BACKEND ?= "sqlite"
+DB_BACKEND ?= sqlite
 
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
@@ -32,7 +37,8 @@ export LOG_DIR="$(LOG_DIR)"
 export PID_DIR="$(PID_DIR)"
 export PLUGIN_DIR="$(PLUGIN_DIR)"
 export DB_BACKEND="$(DB_BACKEND)"
-export PACKAGE_TESTING="$(PACKAGE_TESTING)"
+export INIT_BACKEND="$(INIT_BACKEND)"
+export CONFIG_BACKEND="$(CONFIG_BACKEND)"
 endef
 
 bats-all: bats-clean bats-build bats-test bats-test-hub
@@ -75,6 +81,6 @@ bats-lint:
 
 
 bats-test-package: bats-environment
-	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/instance-data make-package
-	LOCAL_DIR=/ INIT_BACKEND=systemd $(TEST_DIR)/run-tests $(TEST_DIR)/bats
+	$(TEST_DIR)/instance-data make
+	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
