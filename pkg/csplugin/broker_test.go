@@ -31,7 +31,7 @@ func setPluginPermTo722() {
 func setPluginPermTo724() {
 	setPluginPermTo("724")
 }
-func Test_getPluginNameAndTypeFromPath(t *testing.T) {
+func TestGetPluginNameAndTypeFromPath(t *testing.T) {
 	setUp()
 	defer tearDown()
 	type args struct {
@@ -89,7 +89,7 @@ func Test_getPluginNameAndTypeFromPath(t *testing.T) {
 	}
 }
 
-func Test_listFilesAtPath(t *testing.T) {
+func TestListFilesAtPath(t *testing.T) {
 	setUp()
 	defer tearDown()
 	type args struct {

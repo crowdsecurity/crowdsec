@@ -67,7 +67,6 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 			ht.TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 			client.Transport = ht
 		}
-		// http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
 	}
 	c := &ApiClient{client: client, BaseURL: URL, UserAgent: userAgent, URLPrefix: prefix}
 	c.common.client = c
