@@ -92,7 +92,7 @@ load_init_data() {
 
 case "$1" in
     make)
-        make_init_data_package
+        make_init_data
         ;;
     load)
         ./assert-crowdsec-not-running
