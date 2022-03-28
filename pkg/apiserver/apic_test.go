@@ -29,7 +29,7 @@ import (
 
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
-	dbPath, err := os.CreateTemp("/tmp/", "*sqlite")
+	dbPath, err := os.CreateTemp("", "*sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func assertTotalAlertCount(t *testing.T, dbClient *database.Client, count int) {
 	assert.Len(t, d, count)
 }
 
-func TestCAPIPullIsOld(t *testing.T) {
+func TestAPICCAPIPullIsOld(t *testing.T) {
 	api := getAPIC(t)
 	isOld, err := api.CAPIPullIsOld()
 	if err != nil {
@@ -130,7 +130,7 @@ func TestCAPIPullIsOld(t *testing.T) {
 	assert.False(t, isOld)
 }
 
-func Test_apic_FetchScenariosListFromDB(t *testing.T) {
+func TestAPICFetchScenariosListFromDB(t *testing.T) {
 	api := getAPIC(t)
 	testCases := []struct {
 		name                    string
@@ -235,7 +235,7 @@ func TestNewAPIC(t *testing.T) {
 	}
 }
 
-func Test_apic_HandleDeletedDecisions(t *testing.T) {
+func TestAPICHandleDeletedDecisions(t *testing.T) {
 	api := getAPIC(t)
 	_, deleteCounters := makeAddAndDeleteCounters()
 
@@ -357,7 +357,7 @@ func TestAPICGetMetrics(t *testing.T) {
 	}
 }
 
-func Test_createAlertsForDecision(t *testing.T) {
+func TestCreateAlertsForDecision(t *testing.T) {
 
 	httpBfDecisionList := &models.Decision{
 		Origin:   &SCOPE_LISTS,
@@ -436,7 +436,7 @@ func Test_createAlertsForDecision(t *testing.T) {
 	}
 }
 
-func Test_fillAlertsWithDecisions(t *testing.T) {
+func TestFillAlertsWithDecisions(t *testing.T) {
 	httpBfDecisionCommunity := &models.Decision{
 		Origin:   &SCOPE_CAPI,
 		Scenario: types.StrPtr("crowdsecurity/http-bf"),
@@ -513,7 +513,7 @@ func Test_fillAlertsWithDecisions(t *testing.T) {
 	}
 }
 
-func Test_apic_PullTop(t *testing.T) {
+func TestAPICPullTop(t *testing.T) {
 	api := getAPIC(t)
 	api.dbClient.Ent.Decision.Create().
 		SetOrigin(SCOPE_LISTS).
@@ -634,7 +634,7 @@ func Test_apic_PullTop(t *testing.T) {
 	assert.Equal(t, decisionScenarioFreq["crowdsecurity/test2"], 1)
 }
 
-func Test_apic_Push(t *testing.T) {
+func TestAPICPush(t *testing.T) {
 
 	testCases := []struct {
 		name          string
@@ -717,7 +717,7 @@ func Test_apic_Push(t *testing.T) {
 	}
 }
 
-func Test_apic_SendMetrics(t *testing.T) {
+func TestAPICSendMetrics(t *testing.T) {
 	api := getAPIC(t)
 	testCases := []struct {
 		name            string
@@ -793,7 +793,7 @@ func Test_apic_SendMetrics(t *testing.T) {
 	}
 }
 
-func Test_apic_Pull(t *testing.T) {
+func TestAPICPull(t *testing.T) {
 	api := getAPIC(t)
 	testCases := []struct {
 		name                  string
@@ -870,7 +870,7 @@ func Test_apic_Pull(t *testing.T) {
 	}
 }
 
-func Test_shouldShareAlert(t *testing.T) {
+func TestShouldShareAlert(t *testing.T) {
 
 	testCases := []struct {
 		name          string

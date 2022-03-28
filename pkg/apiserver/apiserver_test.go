@@ -3,7 +3,6 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -181,7 +180,7 @@ func GetMachineIP(machineID string) (string, error) {
 
 func GetAlertReaderFromFile(path string) *strings.Reader {
 
-	alertContentBytes, err := ioutil.ReadFile(path)
+	alertContentBytes, err := os.ReadFile(path)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -381,7 +380,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	data, err := ioutil.ReadFile(expectedFile)
+	data, err := os.ReadFile(expectedFile)
 	if err != nil {
 		t.Fatalf("failed to read file : %s", err)
 	}
@@ -443,7 +442,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	x, err := ioutil.ReadFile(expectedFile)
+	x, err := os.ReadFile(expectedFile)
 	if err == nil && len(x) > 0 {
 		t.Fatalf("file should be empty, got '%s'", x)
 	}
