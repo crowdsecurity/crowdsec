@@ -2,6 +2,8 @@
 
 set -eu
 script_name=$0
+DB_BACKEND=$(echo $script_name | cut -d- -f2)
+export DB_BACKEND
 
 die() {
     echo >&2 "$@"
@@ -78,13 +80,14 @@ restore() {
         "--port=${MYSQL_PORT}" \
         "--password=${MYSQL_PASSWORD}" < "$backup_file"
 
-    exec_sql "CREATE USER IF NOT EXISTS 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
+    exec_sql "DROP USER IF EXISTS 'crowdsec_test';"
+    exec_sql "CREATE USER 'crowdsec_test' IDENTIFIED BY 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON crowdsec_test.* TO 'crowdsec_test';"
 }
 
 config_yaml() {
     MYSQL_PORT=${MYSQL_PORT} MYSQL_HOST=${MYSQL_HOST} yq '
-        .db_config.type="mysql"|
+        .db_config.type="$DB_BACKEND"|
         .db_config.user="crowdsec_test" |
         .db_config.password="crowdsec_test" |
         .db_config.db_name="crowdsec_test"  |
