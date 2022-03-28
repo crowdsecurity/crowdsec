@@ -29,7 +29,7 @@ import (
 
 func getDBClient(t *testing.T) *database.Client {
 	t.Helper()
-	dbPath, err := os.CreateTemp("/tmp/", "*sqlite")
+	dbPath, err := os.CreateTemp("", "*sqlite")
 	if err != nil {
 		t.Fatal(err)
 	}
