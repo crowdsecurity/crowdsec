@@ -63,7 +63,7 @@ stop_instance() {
        PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
        # ps above should work on linux, freebsd, busybox..
        if [ -n "${PGID}" ]; then
-           kill -- "-${PGID}"
+           kill -SIGINT -- "-${PGID}"
        fi
        rm -f -- "${DAEMON_PID}"
     fi
