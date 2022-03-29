@@ -16,6 +16,7 @@ else
   BIN_DIR = $(LOCAL_DIR)/bin
   INIT_BACKEND = daemon
   CONFIG_BACKEND = local
+  PACKAGE_TESTING =
 endif
 
 CONFIG_DIR = $(LOCAL_DIR)/etc/crowdsec
@@ -39,6 +40,7 @@ export PLUGIN_DIR="$(PLUGIN_DIR)"
 export DB_BACKEND="$(DB_BACKEND)"
 export INIT_BACKEND="$(INIT_BACKEND)"
 export CONFIG_BACKEND="$(CONFIG_BACKEND)"
+export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 endef
 
 bats-all: bats-clean bats-build bats-test bats-test-hub
