@@ -30,7 +30,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var testMode bool = false
 var pluginMutex sync.Mutex
 
 const (
@@ -255,6 +254,9 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 	}
 	cmd := exec.Command(binaryPath)
 	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
+		if !(pb.pluginProcConfig.User != "" && pb.pluginProcConfig.Group != "") {
+			return nil, errors.New("while getting process attributes: both plugin user and group must be set")
+		}
 		cmd.SysProcAttr, err = getProcessAttr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
 		if err != nil {
 			return nil, errors.Wrap(err, "while getting process attributes")
@@ -360,9 +362,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 }
 
 func pluginIsValid(path string) error {
-	if testMode {
-		return nil
-	}
 	var details fs.FileInfo
 	var err error
 
@@ -387,7 +386,6 @@ func pluginIsValid(path string) error {
 
 	mode := details.Mode()
 	perm := uint32(mode)
-
 	if (perm & 00002) != 0 {
 		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
 	}

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +63,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to get absolue path of '%s', exiting", logFile)
 				}
 				dsn = fmt.Sprintf("file://%s", absolutePath)
-				lineCount := getLineCountForFile(absolutePath)
+				lineCount := types.GetLineCountForFile(absolutePath)
 				if lineCount > 100 {
 					log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
 				}
@@ -111,18 +111,4 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
 
 	return cmdExplain
-}
-
-func getLineCountForFile(filepath string) int {
-	f, err := os.Open(filepath)
-	if err != nil {
-		log.Fatalf("unable to open log file %s", filepath)
-	}
-	defer f.Close()
-	lc := 0
-	fs := bufio.NewScanner(f)
-	for fs.Scan() {
-		lc++
-	}
-	return lc
 }
