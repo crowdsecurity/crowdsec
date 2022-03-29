@@ -37,8 +37,8 @@ jobs:
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
-    - name: "BATS: build crowdsec"
-      run: make bats-clean bats-build
+    - name: "BATS: build crowdsec and fixture"
+      run: make bats-clean bats-build bats-fixture
 
     - name: "BATS: run tests"
       run: make bats-test

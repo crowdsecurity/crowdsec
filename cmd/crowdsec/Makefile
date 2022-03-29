@@ -20,6 +20,10 @@ all: clean test build
 build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
 
+build-for-bats: clean
+	go test . -tags testrunmain -coverpkg=all $(LD_OPTS) -c -o crowdsec.test
+
+
 static: clean
 	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
