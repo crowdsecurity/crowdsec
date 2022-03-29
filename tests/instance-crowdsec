@@ -1,88 +1,16 @@
 #!/usr/bin/env bash
 
-set -eu
-script_name=$0
-
-die() {
-    echo >&2 "$@"
-    exit 1
-}
-
-about() {
-    die "usage: $script_name [ start | stop ]"
-}
-
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"
 #shellcheck disable=SC1090
-. "${THIS_DIR}/.environment.sh"
+. ./.environment.sh
 
-# you have not removed set -u above, have you?
+backend_script="./lib/init/crowdsec-${INIT_BACKEND}"
 
-[ -z "${CROWDSEC-}" ] && die "\$CROWDSEC must be defined."
-[ -z "${LOG_DIR-}" ] && die "\$LOG_DIR must be defined."
-[ -z "${PID_DIR-}" ] && die "\$PID_DIR must be defined."
-
-if [ ! -f "${CROWDSEC}" ]; then
-    die "${CROWDSEC} is missing. Please build (with 'make bats-build') or install it."
+if [ ! -x "$backend_script" ]; then
+    echo "unknown init system '$INIT_BACKEND'" >&2
+    exit 1
 fi
 
-wait_for_port() {
-    for _ in $(seq 40); do
-        nc -z localhost "$1" >/dev/null 2>&1 && return
-        sleep .05
-    done
-
-    # send to &3 if open
-    if { true >&3; } 2>/dev/null; then
-        # cat "${LOG_DIR}/crowdsec.out" >&3
-        # cat "${LOG_DIR}/crowdsec.log" >&3
-        echo "Can't connect to port $1" >&3
-    else
-        # cat "${LOG_DIR}/crowdsec.out" >&2
-        # cat "${LOG_DIR}/crowdsec.log" >&2
-        echo "Can't connect to port $1" >&2
-    fi
-
-    return 1
-}
-
-DAEMON_PID=${PID_DIR}/crowdsec.pid
-
-start_instance() {
-    OUT_FILE="${LOG_DIR}/crowdsec.out" \
-        DAEMON_PID="${DAEMON_PID}" \
-        "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
-    wait_for_port 6060
-}
-
-stop_instance() {
-    if [ -f "${DAEMON_PID}" ]; then
-       # terminate quickly with extreme prejudice, all the application data will be
-       # thrown away anyway. also terminate the child processes (notification plugin).
-       PGID="$(ps -o pgid= -p "$(cat "${DAEMON_PID}")" | tr -d ' ')"
-       # ps above should work on linux, freebsd, busybox..
-       if [ -n "${PGID}" ]; then
-           kill -- "-${PGID}"
-       fi
-       rm -f -- "${DAEMON_PID}"
-    fi
-}
-
-
-# ---------------------------
-
-[ $# -lt 1 ] && about
-
-case "$1" in
-    start)
-        start_instance
-        ;;
-    stop)
-        stop_instance
-        ;;
-    *)
-        about
-        ;;
-esac;
-
+exec "$backend_script" "$@"

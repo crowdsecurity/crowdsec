@@ -29,7 +29,7 @@ teardown() {
 
 @test "$FILE we have exactly one machine, localhost" {
     run -0 cscli machines list -o json
-    run -0 jq -c '[. | length, .[0].machineId, .[0].isValidated, .[0].ipAddress]' <(output)
+    run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
     # the machine gets an IP address when it talks to the LAPI
     # XXX already done in instance-data make
