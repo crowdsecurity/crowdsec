@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+
+set -eu
+script_name=$0
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+about() {
+    die "usage: $script_name [make | load | clean]"
+}
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"/../../
+#shellcheck disable=SC1090
+. ./.environment.sh
+
+# you have not removed set -u above, have you?
+
+[ -z "${TEST_DIR-}" ] && die "\$TEST_DIR must be defined."
+[ -z "${LOCAL_DIR-}" ] && die "\$LOCAL_DIR must be defined."
+[ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
+[ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
+[ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
+[ -z "${DB_BACKEND-}" ] && die "\$DB_BACKEND must be defined."
+
+if [ ! -f "${CSCLI}" ]; then
+    die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
+fi
+
+REL_CONFIG_DIR="etc/crowdsec"
+REL_DATA_DIR="var/lib/crowdsec/data"
+
+DATA_DIR="${LOCAL_DIR}/${REL_DATA_DIR}"
+export DATA_DIR
+CONFIG_DIR="${LOCAL_DIR}/${REL_CONFIG_DIR}"
+export CONFIG_DIR
+
+remove_init_data() {
+    rm -rf -- "${LOCAL_DIR:?}/${REL_CONFIG_DIR}"/* "${LOCAL_DIR:?}/${REL_DATA_DIR:?}"/*
+}
+
+#we need a separate function for initializing config when testing package
+#because we want to test the configuration as well
+make_init_data() {
+    "${TEST_DIR}/instance-crowdsec" stop
+
+    ./instance-db config-yaml
+    ./instance-db setup
+
+    "${TEST_DIR}/instance-crowdsec" start
+    "${CSCLI}" lapi status
+    "${TEST_DIR}/instance-crowdsec" stop
+
+    mkdir -p "${LOCAL_INIT_DIR}"
+
+    ./instance-db dump "${LOCAL_INIT_DIR}/database"
+
+    echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
+    tar -C "${LOCAL_DIR}" --create \
+        --exclude "$REL_DATA_DIR"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
+
+    remove_init_data
+}
+
+
+load_init_data() {
+    if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
+        die "Initial data not found; did you run '$script_name make' ?"
+    fi
+
+    dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
+    if [ "$DB_BACKEND" != "$dump_backend" ]; then
+        die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+    fi
+
+    remove_init_data
+
+    tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+    ./instance-db restore "${LOCAL_INIT_DIR}/database"
+}
+
+
+# ---------------------------
+
+[ $# -lt 1 ] && about
+
+
+case "$1" in
+    make)
+        make_init_data
+        ;;
+    load)
+        ./assert-crowdsec-not-running
+        load_init_data
+        ;;
+    clean)
+        ./assert-crowdsec-not-running
+        remove_init_data
+        ;;
+    *)
+        about
+        ;;
+esac;
+
