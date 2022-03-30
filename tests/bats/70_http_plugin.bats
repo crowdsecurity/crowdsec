@@ -49,12 +49,13 @@ setup() {
 #----------
 
 @test "$FILE add two bans" {
+    sleep 3
     run -0 cscli decisions add --ip 1.2.3.4 --duration 30s
     assert_output --partial 'Decision successfully added'
 
     run -0 cscli decisions add --ip 1.2.3.5 --duration 30s
     assert_output --partial 'Decision successfully added'
-    sleep 2
+    sleep 3
 }
 
 @test "$FILE expected 1 log line from http server" {

@@ -38,7 +38,7 @@ jobs:
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
     - name: "BATS: build crowdsec and fixture"
-      run: make bats-clean bats-build bats-fixture
+      run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
 
     - name: "BATS: run tests (with coverage)"
       run: TEST_COVERAGE=true make bats-test

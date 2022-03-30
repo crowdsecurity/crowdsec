@@ -31,12 +31,12 @@ declare stderr
 }
 
 @test "$FILE crowdsec should not run without LAPI (-no-api flag)" {
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}" -no-api
 }
 
 @test "$FILE crowdsec should not run without LAPI (no api.server in configuration file)" {
     yq 'del(.api.server)' -i "${CONFIG_YAML}"
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}"
 
     run -0 echo "$stderr"
     assert_output --partial "crowdsec local API is disabled"
