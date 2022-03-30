@@ -1,0 +1,132 @@
+# .github/governance.yml
+
+version: v1
+
+issue:
+  labels:
+    - prefix: triage
+      list: [ "accepted" ]
+      multiple: false
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+      needs:
+        comment: |
+          @$AUTHOR: This issue is currently awaiting triage.
+
+          The triage/accepted label can be added by org members by writing /triage accepted in a comment.
+
+    - prefix: kind
+      list: [ "feature", "bug", "question" ]
+      multiple: false
+      needs:
+        comment: |
+          @$AUTHOR: There are no 'kind' label on this PR. You need a 'kind' label to generate the release note automatically.
+
+          * `/kind feature`
+          * `/kind bug`
+          * `/kind question`
+
+    - prefix: area
+      list: [ "ui-ux", "semantics", "translation", "security" ]
+      multiple: true
+      needs:
+        comment: |
+          @$AUTHOR: There are no area labels on this issue. Adding an appropriate label will greatly expedite the process for us. You can add as many area as you see fit. **If you are unsure what to do you can ignore this!**
+
+          * `/area ui-ux`
+          * `/area semantics`
+          * `/area translation`
+          * `/area security`
+
+    - prefix: os
+      list: [ "mac", "win", "linux" ]
+      multiple: true
+
+    - prefix: priority
+      multiple: false
+      list: [ "urgent-now", "important-soon" ]
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+
+  chat_ops:
+    - cmd: /close
+      type: close
+      author_association:
+        author: true
+        collaborator: true
+        member: true
+        owner: true
+
+    - cmd: /cc
+      type: none
+
+    - cmd: /assign
+      type: assign
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+
+    - cmd: /comment issue
+      type: comment
+      comment: |
+        @$ISSUE_AUTHOR: Hey this is comment issue example for issue/pr author.
+        @$AUTHOR: Hey this is comment issue example for sender author.
+
+pull_request:
+  labels:
+    - prefix: kind
+      multiple: false
+      list: [ "feature", "fix", "chore", "docs", "refactor", "dependencies" ]
+      needs:
+        comment: |
+          @$AUTHOR: There are no 'kind' label on this PR. You need a 'kind' label to generate the release automatically.
+
+          * `/kind feature`
+          * `/kind fix`
+          * `/kind chore`
+          * `/kind docs`
+          * `/kind refactor`
+          * `/kind dependencies`
+        status:
+          context: "Kind Label"
+          description:
+            success: Ready for review & merge.
+            failure: Missing kind label to generate release automatically.
+
+    - prefix: priority
+      multiple: false
+      list: [ "urgent-now", "important-soon" ]
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+
+  chat_ops:
+    - cmd: /close
+      type: close
+      author_association:
+        author: true
+        collaborator: true
+        member: true
+        owner: true
+
+    - cmd: /cc
+      type: none # does not trigger anything
+
+    - cmd: /request
+      type: review
+      author_association:
+        collaborator: true
+        member: true
+        owner: true
+
+    - cmd: /comment pr
+      type: comment
+      comment: |
+        @$AUTHOR: Hey this is comment pr example.
+        
