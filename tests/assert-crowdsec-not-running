@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 is_crowdsec_running() {
-    PIDS=$(pgrep -x 'crowdsec|crowdsec.test')
+    PIDS=$(pgrep -x 'crowdsec|crowdsec.test|crowdsec.bincover')
 }
 
 is_crowdsec_running || exit 0

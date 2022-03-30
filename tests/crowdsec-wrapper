@@ -2,22 +2,20 @@
 
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-#shellcheck disable=SC2164
-cd "${THIS_DIR}"
+# no need to change directory, and doing it here would break hub tests
 #shellcheck disable=SC1090
-. ./.environment.sh
+. "${THIS_DIR}/.environment.sh"
 
 if [ -n "${TEST_COVERAGE}" ]; then
     # Arguments to crowdsec are passed through a temporary, newline-delimited
     # file courtesy of github.com/confluentinc/bincover. Coverage data will be
     # merged at the end of the test run.
     # The '=' between flags and values is required.
-    exec "${BIN_DIR}/crowdsec.test" \
+    exec "${BIN_DIR}/crowdsec.bincover" \
         -test.run="^TestBincoverRunMain$" \
         -test.coverprofile="${THIS_DIR}/coverage/$$.out" \
         -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!
 else
-    exec "${BIN_DIR}/crowdsec.test" \
-        -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!
+    exec "${BIN_DIR}/crowdsec" "$@"
 fi
 

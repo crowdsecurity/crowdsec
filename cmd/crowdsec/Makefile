@@ -20,8 +20,8 @@ all: clean test build
 build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
 
-build-for-bats: clean
-	go test . -tags testrunmain -coverpkg=all $(LD_OPTS) -c -o crowdsec.test
+build-bincover: clean
+	$(GOTEST) . -tags testrunmain -coverpkg=all $(LD_OPTS) -c -o crowdsec.bincover
 
 
 static: clean

@@ -60,10 +60,12 @@ bats-check-requirements:
 
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment bats-check-requirements
-	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-for-bats cscli plugins
 	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
-	@install -m 0755 cmd/crowdsec/crowdsec.test cmd/crowdsec-cli/cscli $(BIN_DIR)/
+	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
+	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
+	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover
+	@install -m 0755 cmd/crowdsec/crowdsec.bincover $(BIN_DIR)/
 
 # Create a reusable package with initial configuration + data
 bats-fixture:
