@@ -51,6 +51,8 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
+    [ $DB_BACKEND != sqlite ] && ${CSCLI} machines add --auto
+    
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
