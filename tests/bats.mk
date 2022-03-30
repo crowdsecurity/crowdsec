@@ -9,7 +9,6 @@ ifdef PACKAGE_TESTING
   BIN_DIR = /usr/bin
   INIT_BACKEND = systemd
   CONFIG_BACKEND = global
-  TEST_COVERAGE =
 else
   # LOCAL_DIR will contain contains a local instance of crowdsec, complete with
   # configuration and data
@@ -18,7 +17,6 @@ else
   INIT_BACKEND = daemon
   CONFIG_BACKEND = local
   PACKAGE_TESTING =
-  TEST_COVERAGE = true
 endif
 
 CONFIG_DIR = $(LOCAL_DIR)/etc/crowdsec
@@ -35,6 +33,7 @@ DB_BACKEND ?= sqlite
 define ENV :=
 export TEST_DIR="$(TEST_DIR)"
 export LOCAL_DIR="$(LOCAL_DIR)"
+export BIN_DIR="$(BIN_DIR)"
 export CROWDSEC="$(TEST_DIR)/crowdsec-wrapper"
 export CSCLI="$(BIN_DIR)/cscli"
 export CONFIG_YAML="$(CONFIG_DIR)/config.yaml"

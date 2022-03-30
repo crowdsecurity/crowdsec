@@ -12,11 +12,12 @@ if [ -n "${TEST_COVERAGE}" ]; then
     # file courtesy of github.com/confluentinc/bincover. Coverage data will be
     # merged at the end of the test run.
     # The '=' between flags and values is required.
-    exec "${LOCAL_DIR}/bin/crowdsec.test" \
+    exec "${BIN_DIR}/crowdsec.test" \
         -test.run="^TestBincoverRunMain$" \
         -test.coverprofile="${THIS_DIR}/coverage/$$.out" \
         -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!
 else
-    exec "${LOCAL_DIR}/bin/crowdsec" "$@"
+    exec "${BIN_DIR}/crowdsec.test" \
+        -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!
 fi
 

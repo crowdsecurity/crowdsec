@@ -16,6 +16,12 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 echo "Running tests..."
 echo "DB_BACKEND: $DB_BACKEND"
+if [ -z "$TEST_COVERAGE" ]; then
+    echo "Coverage report: no"
+else
+    echo "Coverage report: yes"
+fi
+
 
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
 if [ "$DB_BACKEND" != "$dump_backend" ]; then
