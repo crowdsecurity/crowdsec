@@ -1,0 +1,57 @@
+name: Tests
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+
+jobs:
+
+  go-tests:
+    uses: ./.github/workflows/tests/go-tests.yml
+
+  bats-sqlite:
+    uses: ./.github/workflows/tests/bats-sqlite-coverage.yml
+
+  bats-mariadb:
+    uses: ./.github/workflows/tests/bats-mariadb.yml
+
+  bats--mysql:
+    uses: ./.github/workflows/tests/bats-mysql.yml
+
+  bats-postgres:
+    uses: ./.github/workflows/tests/bats-postgres.yml
+
+  bats-hub:
+    uses: ./.github/workflows/tests/bats-hub.yml
+
+  coverage:
+    needs: [go-tests, bats-sqlite]
+    steps:
+      - name: Download unit report
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage-unit.out
+
+      - name: gcov2lcov
+        uses: jandelgado/gcov2lcov-action@v1.0.2
+        with:
+          infile: coverage-unit.out
+          outfile: coverage.txt
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        continue-on-error: true
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.txt
+

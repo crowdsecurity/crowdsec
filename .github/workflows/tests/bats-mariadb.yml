@@ -1,12 +1,7 @@
-name: bats / functional tests with MariaDB
+name: Functional tests with MariaDB
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
 
 jobs:
   build:

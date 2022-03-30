@@ -1,4 +1,4 @@
-name: bats / functional tests with sqlite
+name: Functional tests with sqlite
 
 on:
   workflow_call:
