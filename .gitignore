@@ -7,8 +7,9 @@
 *~
 .pc
 
-# Test binary, built with `go test -c`
+# Test binaries, built with `go test -c`
 *.test
+*.bincover
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out

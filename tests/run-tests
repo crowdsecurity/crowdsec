@@ -41,3 +41,7 @@ else
         --print-output-on-failure \
         -T "${TEST_DIR}/bats" "${TEST_DIR}/dyn-bats"
 fi
+
+if [ -n "$TEST_COVERAGE" ]; then
+    gocovmerge "${TEST_DIR}/coverage" > "${TEST_DIR}/coverage.out"
+fi

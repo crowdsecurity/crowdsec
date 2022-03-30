@@ -36,6 +36,7 @@ jobs:
       run: |
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
+        go install github.com/wadey/gocovmerge@latest
 
     - name: "BATS: build crowdsec and fixture"
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
