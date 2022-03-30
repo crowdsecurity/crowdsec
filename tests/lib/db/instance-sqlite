@@ -31,7 +31,7 @@ DB_FILE="${DATA_DIR}/crowdsec.db"
 
 config_yaml() {
     yq '
-        .db_config.type="$DB_BACKEND" |
+        .db_config.type="strenv(DB_BACKEND)" |
         .db_config.db_path="${DB_FILE}"
     ' -i "${CONFIG_YAML}"
 }
