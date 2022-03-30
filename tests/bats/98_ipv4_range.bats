@@ -21,12 +21,12 @@ setup() {
     load "../lib/setup.sh"
 }
 
+#----------
+
 api() {
     URI="$1"
     curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
 }
-
-#----------
 
 @test "$FILE adding decision for range 4.4.4.0/24" {
     run -0 cscli decisions add -r '4.4.4.0/24'

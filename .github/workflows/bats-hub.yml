@@ -1,16 +1,16 @@
-name: bats / hub tests
+name: Hub tests
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    secrets:
+      GIST_BADGES_SECRET:
+        required: true
+      GIST_BADGES_ID:
+        required: true
 
 jobs:
   build:
-    name: "Build the application"
+    name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -37,13 +37,13 @@ jobs:
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
-    - name: "BATS: build crowdsec and fixture"
+    - name: "Build crowdsec and fixture"
       run: make bats-clean bats-build bats-fixture
 
-    - name: "BATS: run hub tests"
+    - name: "Run hub tests"
       run: make bats-test-hub
 
-    - name: "BATS: collect hub coverage"
+    - name: "Collect hub coverage"
       run: ./tests/collect-hub-coverage >> $GITHUB_ENV
 
     - name: "Create Parsers badge"

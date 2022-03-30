@@ -1,21 +1,23 @@
-name: bats / functional tests with MySQL
+name: Functional tests with MySQL
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
   build:
-    name: "Build the application"
+    name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      mysql:
-        image: mysql:latest
+      database:
+        image: ${{ inputs.database_image }}
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:
@@ -44,7 +46,7 @@ jobs:
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
-    - name: "BATS: build crowdsec and fixture"
+    - name: "Build crowdsec and fixture"
       run: make bats-clean bats-build bats-fixture
       env:
         DB_BACKEND: mysql
@@ -53,7 +55,7 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
-    - name: "BATS: run tests"
+    - name: "Run tests"
       run: make bats-test
       env:
         DB_BACKEND: mysql
@@ -62,7 +64,7 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
-    - name: "show mysql logs"
-      run: docker logs "${{ job.services.mysql.id }}"
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}
 

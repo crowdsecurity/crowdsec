@@ -1,20 +1,18 @@
-name: bats / functional tests with PostgreSQL
+name: Functional tests with PostgreSQL
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
   build:
-    name: "Build the application"
+    name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      postgres:
+      database:
         image: postgres:latest
         env:
           POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
@@ -49,8 +47,8 @@ jobs:
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
-    - name: "BATS: build crowdsec and fixture (DB_BACKEND: pgx)"
-      run: make clean bats-build bats-fixture || true
+    - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
+      run: make clean bats-build bats-fixture
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
@@ -58,8 +56,8 @@ jobs:
         PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         PGUSER: postgres
 
-    - name: "BATS: run tests (DB_BACKEND: pgx)"
-      run: make bats-test || true
+    - name: "Run tests (DB_BACKEND: pgx)"
+      run: make bats-test
       env:
         DB_BACKEND: pgx
         PGHOST: 127.0.0.1
@@ -67,8 +65,8 @@ jobs:
         PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         PGUSER: postgres
 
-    - name: "BATS: build crowdsec and fixture (DB_BACKEND: postgres)"
-      run: make clean bats-build bats-fixture || true
+    - name: "Build crowdsec and fixture (DB_BACKEND: postgres)"
+      run: make clean bats-build bats-fixture
       env:
         DB_BACKEND: postgres
         PGHOST: 127.0.0.1
@@ -76,8 +74,8 @@ jobs:
         PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         PGUSER: postgres
 
-    - name: "BATS: run tests (DB_BACKEND: postgres)"
-      run: make bats-test || true
+    - name: "Run tests (DB_BACKEND: postgres)"
+      run: make bats-test
       env:
         DB_BACKEND: postgres
         PGHOST: 127.0.0.1
@@ -85,7 +83,7 @@ jobs:
         PGPASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         PGUSER: postgres
 
-    - name: "show postgres logs"
-      run: docker logs "${{ job.services.postgres.id }}"
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}
 

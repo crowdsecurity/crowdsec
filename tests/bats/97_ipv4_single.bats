@@ -21,12 +21,13 @@ setup() {
     load "../lib/setup.sh"
 }
 
+#----------
+
 api() {
     URI="$1"
     curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
 }
 
-#----------
 
 @test "$FILE cli - first decisions list: must be empty" {
     run -0 cscli decisions list -o json

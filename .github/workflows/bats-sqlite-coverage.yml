@@ -1,16 +1,11 @@
-name: bats / functional tests with sqlite
+name: Functional tests with sqlite
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
 
 jobs:
   build:
-    name: "Build the application"
+    name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -38,8 +33,8 @@ jobs:
         GO111MODULE=on go get github.com/mikefarah/yq/v4
         go install github.com/wadey/gocovmerge@latest
 
-    - name: "BATS: build crowdsec and fixture"
+    - name: "Build crowdsec and fixture"
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
 
-    - name: "BATS: run tests (with coverage)"
+    - name: "Run tests (with coverage)"
       run: TEST_COVERAGE=true make bats-test
