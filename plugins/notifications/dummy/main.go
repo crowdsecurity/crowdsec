@@ -46,7 +46,7 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		if err != nil {
 			logger.Error(fmt.Sprintf("Cannot open notification file: %s", err))
 		}
-		if _, err := f.WriteString(notification.Text); err != nil {
+		if _, err := f.WriteString(notification.Text + "\n"); err != nil {
 			f.Close()
 			logger.Error(fmt.Sprintf("Cannot write notification to file: %s", err))
 		}
@@ -55,7 +55,7 @@ func (s *DummyPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 			logger.Error(fmt.Sprintf("Cannot close notification file: %s", err))
 		}
 	}
-	fmt.Print(notification.Text)
+	fmt.Println(notification.Text)
 
 	return &protobufs.Empty{}, nil
 }

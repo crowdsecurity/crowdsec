@@ -38,6 +38,7 @@ require (
 	github.com/hashicorp/go-version v1.2.1
 	github.com/influxdata/go-syslog/v3 v3.0.0
 	github.com/jackc/pgx/v4 v4.14.1
+	github.com/jarcoal/httpmock v1.1.0
 	github.com/jszwec/csvutil v1.5.1
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-sqlite3 v1.14.10
@@ -148,7 +149,7 @@ require (
 	go.mongodb.org/mongo-driver v1.4.4 // indirect
 	golang.org/x/net v0.0.0-20211209124913-491a49abca63 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220317022123-2c4bbad7e934 // indirect
+	golang.org/x/sys v0.0.0-20220318055525-2edf467146b5 // indirect
 	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
