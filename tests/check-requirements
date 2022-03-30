@@ -73,7 +73,7 @@ check_python3
 check_nc
 check_yq
 check_daemonizer
-if [ -n "${TEST_COVERAGE}" ]; then
-    check_gocovmerge
-fi
+#if [ -n "${TEST_COVERAGE}" ]; then
+#    check_gocovmerge
+#fi
 
