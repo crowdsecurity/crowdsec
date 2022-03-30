@@ -28,10 +28,14 @@ plugins/notifications/http/notification-http
 plugins/notifications/slack/notification-slack
 plugins/notifications/splunk/notification-splunk
 plugins/notifications/email/notification-email
+plugins/notifications/dummy/notification-dummy
+
+#test binaries
+pkg/csplugin/tests/cs_plugin_test*
 
 #release stuff
 crowdsec-v*
 pkg/cwhub/hubdir/.index.json
 msi
 *.msi
-plugins/notifications/dummy/notification-dummy
+*.tgz
