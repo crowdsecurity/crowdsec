@@ -1,0 +1,23 @@
+name: Go unit and functional tests with coverage
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - 'README.md'
+
+jobs:
+
+  unit-tests:
+    uses: ./.github/workflows/ci_go-test.yml
+  func-tests:
+    uses: ./.github/workflows/ci_bats_sqlite_coverage.yaml
+
