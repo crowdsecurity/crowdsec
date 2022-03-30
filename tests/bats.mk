@@ -27,6 +27,16 @@ PID_DIR = $(LOCAL_DIR)/var/run
 PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 DB_BACKEND ?= sqlite
 
+
+ifdef TEST_COVERAGE
+  CROWDSEC = "$(TEST_DIR)/crowdsec-wrapper"
+else
+  # the wrapper should work here too - it detects TEST_COVERAGE - but we allow
+  # overriding the path to crowdsec
+  CROWDSEC ?= "$(BIN_DIR)/crowdsec"
+endif
+
+
 # If you change the name of the crowdsec executable, make sure the pgrep
 # parameters are correct in $(TEST_DIR)/assert-crowdsec-not-running
 
@@ -34,7 +44,7 @@ define ENV :=
 export TEST_DIR="$(TEST_DIR)"
 export LOCAL_DIR="$(LOCAL_DIR)"
 export BIN_DIR="$(BIN_DIR)"
-export CROWDSEC="$(TEST_DIR)/crowdsec-wrapper"
+export CROWDSEC="$(CROWDSEC)"
 export CSCLI="$(BIN_DIR)/cscli"
 export CONFIG_YAML="$(CONFIG_DIR)/config.yaml"
 export LOCAL_INIT_DIR="$(LOCAL_INIT_DIR)"
