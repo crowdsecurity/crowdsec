@@ -18,7 +18,7 @@ format: |
   {{range . -}}
     {{$alert := . -}}
     {{range .Decisions -}}
-      <a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>. <a href=https://www.shodan.io/host/{{.Value}}>Shodan</a>
+      <html><body><p><a href=https://www.whois.com/whois/{{.Value}}>{{.Value}}</a> will get <b>{{.Type}}</b> for next <b>{{.Duration}}</b> for triggering <b>{{.Scenario}}</b> on machine <b>{{$alert.MachineID}}</b>.</p> <p><a href=https://www.shodan.io/host/{{.Value}}>Shodan</a></p></body></html>
     {{end -}}
   {{end -}}
 
@@ -27,6 +27,7 @@ smtp_username:        # Replace with your actual username
 smtp_password:        # Replace with your actual password
 smtp_port:            # Common values are any of [25, 465, 587, 2525]
 auth_type:            # Valid choices are "none", "crammd5", "login", "plain"
+sender_name: "CrowdSec"
 sender_email:         # example: foo@gmail.com
 email_subject: "CrowdSec Notification"
 receiver_emails:

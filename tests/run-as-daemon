@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+SYSTEM=$(uname -s)
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+# Simplified dudeist daemonizer. Don't care about lock files, separate
+# stdout/stderr and fancy stuff. #YOLO
+
+case "${SYSTEM,,}" in
+    linux)
+        daemonize -p "${DAEMON_PID}" -e "${OUT_FILE}" -o "${OUT_FILE}" "$@"
+        ;;
+    freebsd)
+        daemon -p "${DAEMON_PID}" -o "${OUT_FILE}" "$@"
+        ;;
+    *)
+        die "unsupported system: $SYSTEM"
+        ;;
+esac
+

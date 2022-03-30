@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"net"
 	"net/http"
 
 	"github.com/alexliesenfeld/health"
@@ -23,6 +24,7 @@ type Controller struct {
 	PluginChannel chan csplugin.ProfileAlert
 	Log           *log.Logger
 	ConsoleConfig *csconfig.ConsoleConfig
+	TrustedIPs    []net.IPNet
 }
 
 func (c *Controller) Init() error {
@@ -53,7 +55,8 @@ func serveHealth() http.HandlerFunc {
 }
 
 func (c *Controller) NewV1() error {
-	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig)
+
+	handlerV1, err := v1.New(c.DBClient, c.Ectx, c.Profiles, c.CAPIChan, c.PluginChannel, *c.ConsoleConfig, c.TrustedIPs)
 	if err != nil {
 		return err
 	}

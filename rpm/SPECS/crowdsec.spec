@@ -39,7 +39,7 @@ BuildRequires:  systemd
 %patch2
 
 %build
-BUILD_VERSION=%{local_version} make
+BUILD_VERSION=%{local_version} make build
 sed -i "s#/usr/local/lib/crowdsec/plugins/#%{_libdir}/%{name}/plugins/#g" config/config.yaml
 
 %install
@@ -67,10 +67,12 @@ install -m 644 -D %{SOURCE1} %{buildroot}%{_presetdir}
 install -m 551 plugins/notifications/slack/notification-slack %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/http/notification-http %{buildroot}%{_libdir}/%{name}/plugins/
 install -m 551 plugins/notifications/splunk/notification-splunk %{buildroot}%{_libdir}/%{name}/plugins/
+install -m 551 plugins/notifications/email/notification-email %{buildroot}%{_libdir}/%{name}/plugins/
 
 install -m 644 plugins/notifications/slack/slack.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/http/http.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 install -m 644 plugins/notifications/splunk/splunk.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
+install -m 644 plugins/notifications/email/email.yaml %{buildroot}%{_sysconfdir}/crowdsec/notifications/
 
 %clean
 rm -rf %{buildroot}
@@ -83,6 +85,7 @@ rm -rf %{buildroot}
 %{_libdir}/%{name}/plugins/notification-slack
 %{_libdir}/%{name}/plugins/notification-http
 %{_libdir}/%{name}/plugins/notification-splunk
+%{_libdir}/%{name}/plugins/notification-email
 %{_sysconfdir}/%{name}/patterns/linux-syslog
 %{_sysconfdir}/%{name}/patterns/ruby
 %{_sysconfdir}/%{name}/patterns/nginx
@@ -115,6 +118,7 @@ rm -rf %{buildroot}
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/http.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/slack.yaml
 %config(noreplace) %{_sysconfdir}/%{name}/notifications/splunk.yaml
+%config(noreplace) %{_sysconfdir}/%{name}/notifications/email.yaml
 
 %{_unitdir}/%{name}.service
 
@@ -139,6 +143,7 @@ fi
 
 %post -p /bin/bash
 
+#install
 if [ $1 == 1 ]; then
 
     if [ ! -f "/var/lib/crowdsec/data/crowdsec.db" ] ; then
@@ -173,7 +178,7 @@ if [ $1 == 1 ]; then
     cscli hub update
     CSCLI_BIN_INSTALLED="/usr/bin/cscli" SILENT=true install_collection
 
-    
+#upgrade
 elif [ $1 == 2 ] && [ -d /var/lib/crowdsec/backup ]; then
     cscli config restore /var/lib/crowdsec/backup
     if [ $? == 0 ]; then
@@ -192,10 +197,21 @@ fi
 %systemd_post %{name}.service
 
 if [ $1 == 1 ]; then
-    %if 0%{?fc35}
-    systemctl enable crowdsec 
-    %endif
-    systemctl start crowdsec || echo "crowdsec is not started"
+    API=$(cscli config show --key "Config.API.Server")
+    if [ "$API" = "<nil>" ] ; then
+        LAPI=false
+    else
+        PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
+    fi
+    if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
+        %if 0%{?fc35}
+        systemctl enable crowdsec 
+        %endif
+        systemctl start crowdsec || echo "crowdsec is not started"
+    else
+        echo "Not attempting to start crowdsec, port ${PORT} is already used or lapi was disabled"
+        echo "This port is configured through /etc/crowdsec/config.yaml and /etc/crowdsec/local_api_credentials.yaml"
+    fi
 fi
 
 %preun

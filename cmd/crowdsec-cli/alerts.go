@@ -50,16 +50,13 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(os.Stdout)
+		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
-			if err != nil {
-				return err
-			}
-		} else {
-			err := csvwriter.Write([]string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"})
-			if err != nil {
-				return err
-			}
+			header = append(header, "machine")
+		}
+		err := csvwriter.Write(header)
+		if err != nil {
+			return err
 		}
 		for _, alertItem := range *alerts {
 			row := []string{
@@ -87,11 +84,11 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
+		header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
-		} else {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at"})
+			header = append(header, "machine")
 		}
+		table.SetHeader(header)
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active alerts")
@@ -103,28 +100,19 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			if *alertItem.Source.Value != "" {
 				displayVal += ":" + *alertItem.Source.Value
 			}
-			if printMachine {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID,
-				})
-			} else {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-				})
+			row := []string{
+				strconv.Itoa(int(alertItem.ID)),
+				displayVal,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			table.Append(row)
 		}
 		table.Render() // Send output
 	}
@@ -264,7 +252,7 @@ cscli alerts list --type ban`,
 
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
-				_ = cmd.Help()
+				printHelp(cmd)
 				log.Fatalf("%s", err)
 			}
 			if limit != nil {
@@ -279,7 +267,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 					}
 					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
@@ -293,7 +281,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 					}
 					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
@@ -341,7 +329,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
-	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
+	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
@@ -380,7 +368,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if !AlertDeleteAll {
 				if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
 					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-					_ = cmd.Help()
+					printHelp(cmd)
 					log.Fatalf("%s", err)
 				}
 				if ActiveDecision != nil {
@@ -436,7 +424,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
-				_ = cmd.Help()
+				printHelp(cmd)
 				return
 			}
 			for _, alertID := range args {

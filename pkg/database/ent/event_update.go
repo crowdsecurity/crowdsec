@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -171,7 +172,7 @@ func (eu *EventUpdate) defaults() {
 func (eu *EventUpdate) check() error {
 	if v, ok := eu.mutation.Serialized(); ok {
 		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
+			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
 		}
 	}
 	return nil
@@ -439,7 +440,7 @@ func (euo *EventUpdateOne) defaults() {
 func (euo *EventUpdateOne) check() error {
 	if v, ok := euo.mutation.Serialized(); ok {
 		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
+			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
 		}
 	}
 	return nil
@@ -458,7 +459,7 @@ func (euo *EventUpdateOne) sqlSave(ctx context.Context) (_node *Event, err error
 	}
 	id, ok := euo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Event.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Event.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
 	if fields := euo.fields; len(fields) > 0 {

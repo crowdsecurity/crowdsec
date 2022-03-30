@@ -269,7 +269,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				StageParseCache[stage] = make(map[string][]ParserResult)
 			}
 		}
-		/* if the node is forward in stages, seek to its stage */
+		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
 		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
@@ -280,7 +280,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		/* if the stage is wrong, it means that the log didn't manage "pass" a stage with a onsuccess: next_stage tag */
 		if event.Stage != stage {
 			log.Debugf("Event not parsed, expected stage '%s' got '%s', abort", stage, event.Stage)
-			return types.Event{Process: false}, nil
+			event.Process = false
+			return event, nil
 		}
 
 		isStageOK := false

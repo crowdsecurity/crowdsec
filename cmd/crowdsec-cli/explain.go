@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 		Run: func(cmd *cobra.Command, args []string) {
 
 			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
-				cmd.Help()
+				printHelp(cmd)
 				fmt.Println()
 				fmt.Printf("Please provide --type flag\n")
 				os.Exit(1)
@@ -51,7 +52,6 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				defer f.Close()
 
 				_, err = f.WriteString(logLine)
-
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -63,6 +63,10 @@ cscli explain --dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to get absolue path of '%s', exiting", logFile)
 				}
 				dsn = fmt.Sprintf("file://%s", absolutePath)
+				lineCount := types.GetLineCountForFile(absolutePath)
+				if lineCount > 100 {
+					log.Warnf("log file contains %d lines. This may take lot of resources.", lineCount)
+				}
 			}
 
 			if dsn == "" {
@@ -101,7 +105,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	}
 	cmdExplain.PersistentFlags().StringVarP(&logFile, "file", "f", "", "Log file to test")
 	cmdExplain.PersistentFlags().StringVarP(&dsn, "dsn", "d", "", "DSN to test")
-	cmdExplain.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Lgg line to test")
+	cmdExplain.PersistentFlags().StringVarP(&logLine, "log", "l", "", "Log line to test")
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
 	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")

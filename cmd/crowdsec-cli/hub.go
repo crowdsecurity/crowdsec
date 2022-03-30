@@ -56,7 +56,7 @@ cscli hub update # Download list of available configurations from the hub
 				log.Info(v)
 			}
 			cwhub.DisplaySummary()
-			ListItems([]string{cwhub.PARSERS, cwhub.COLLECTIONS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW}, args, true, false)
+			ListItems([]string{cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW}, args, true, false)
 		},
 	}
 	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

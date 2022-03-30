@@ -180,15 +180,15 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 }
 
 func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
+	killed := false
 	for {
 		select {
 		case <-t.Dying():
-			s.logger.Info("Syslog datasource is dying")
-			s.serverTomb.Kill(nil)
-			return s.serverTomb.Wait()
-		case <-s.serverTomb.Dying():
-			s.logger.Info("Syslog server is dying, exiting")
-			return nil
+			if !killed {
+				s.logger.Info("Syslog datasource is dying")
+				s.serverTomb.Kill(nil)
+				killed = true
+			}
 		case <-s.serverTomb.Dead():
 			s.logger.Info("Syslog server has exited")
 			return nil

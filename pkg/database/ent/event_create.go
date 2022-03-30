@@ -164,14 +164,14 @@ func (ec *EventCreate) defaults() {
 // check runs all checks and user-defined validators on the builder.
 func (ec *EventCreate) check() error {
 	if _, ok := ec.mutation.Time(); !ok {
-		return &ValidationError{Name: "time", err: errors.New(`ent: missing required field "time"`)}
+		return &ValidationError{Name: "time", err: errors.New(`ent: missing required field "Event.time"`)}
 	}
 	if _, ok := ec.mutation.Serialized(); !ok {
-		return &ValidationError{Name: "serialized", err: errors.New(`ent: missing required field "serialized"`)}
+		return &ValidationError{Name: "serialized", err: errors.New(`ent: missing required field "Event.serialized"`)}
 	}
 	if v, ok := ec.mutation.Serialized(); ok {
 		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "serialized": %w`, err)}
+			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
 		}
 	}
 	return nil

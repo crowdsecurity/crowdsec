@@ -2,6 +2,4 @@
 #
 
 Make=gmake
-GOOS=freebsd
 
-$(warning Building for freebsd)

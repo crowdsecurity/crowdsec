@@ -340,6 +340,9 @@ func NewConfigCmd() *cobra.Command {
 					fmt.Printf("Crowdsec:\n")
 					fmt.Printf("  - Acquisition File        : %s\n", csConfig.Crowdsec.AcquisitionFilePath)
 					fmt.Printf("  - Parsers routines        : %d\n", csConfig.Crowdsec.ParserRoutinesCount)
+					if csConfig.Crowdsec.AcquisitionDirPath != "" {
+						fmt.Printf("  - Acquisition Folder      : %s\n", csConfig.Crowdsec.AcquisitionDirPath)
+					}
 				}
 				if csConfig.Cscli != nil {
 					fmt.Printf("cscli:\n")
@@ -365,6 +368,10 @@ func NewConfigCmd() *cobra.Command {
 							if csConfig.API.Server.TLS.KeyFilePath != "" {
 								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
 							}
+						}
+						fmt.Printf("  - Trusted IPs: \n")
+						for _, ip := range csConfig.API.Server.TrustedIPs {
+							fmt.Printf("      - %s\n", ip)
 						}
 						if csConfig.API.Server.OnlineClient != nil && csConfig.API.Server.OnlineClient.Credentials != nil {
 							fmt.Printf("Central API:\n")

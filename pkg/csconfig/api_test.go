@@ -204,8 +204,9 @@ func TestLoadAPIServer(t *testing.T) {
 				ListenURI: "http://crowdsec.api",
 				TLS:       nil,
 				DbConfig: &DatabaseCfg{
-					DbPath: "./tests/test.db",
-					Type:   "sqlite",
+					DbPath:       "./tests/test.db",
+					Type:         "sqlite",
+					MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
 				},
 				ConsoleConfigPath: DefaultConfigPath("console.yaml"),
 				ConsoleConfig: &ConsoleConfig{

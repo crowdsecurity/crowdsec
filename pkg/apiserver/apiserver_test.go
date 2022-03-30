@@ -3,7 +3,6 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -34,6 +34,7 @@ var MachineTest = models.WatcherAuthRequest{
 }
 
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
+var emptyBody = strings.NewReader("")
 
 func LoadTestConfig() csconfig.Config {
 	config := csconfig.Config{}
@@ -178,6 +179,79 @@ func GetMachineIP(machineID string, config *csconfig.DatabaseCfg) (string, error
 	return "", nil
 }
 
+func GetAlertReaderFromFile(path string) *strings.Reader {
+
+	alertContentBytes, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.NewReader(string(alertContent))
+
+}
+
+func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, int, error) {
+	var response []*models.Decision
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string, int, error) {
+	var response map[string]string
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int, error) {
+	var response models.DeleteDecisionResponse
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return &response, resp.Code, nil
+}
+
+func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
+	response := make(map[string][]*models.Decision)
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
 func CreateTestMachine(router *gin.Engine) (string, error) {
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
@@ -303,7 +377,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	data, err := ioutil.ReadFile(expectedFile)
+	data, err := os.ReadFile(expectedFile)
 	if err != nil {
 		t.Fatalf("failed to read file : %s", err)
 	}
@@ -360,8 +434,11 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	x, err := ioutil.ReadFile(expectedFile)
+	x, err := os.ReadFile(expectedFile)
 	if err == nil && len(x) > 0 {
 		t.Fatalf("file should be empty, got '%s'", x)
 	}
+
+	os.Remove("./crowdsec.log")
+	os.Remove(expectedFile)
 }

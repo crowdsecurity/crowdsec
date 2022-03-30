@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -107,8 +108,9 @@ func NewDefaultConfig() *Config {
 	}
 
 	dbConfig := DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: DefaultDataPath("crowdsec.db"),
+		Type:         "sqlite",
+		DbPath:       DefaultDataPath("crowdsec.db"),
+		MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
 	}
 
 	globalCfg := Config{

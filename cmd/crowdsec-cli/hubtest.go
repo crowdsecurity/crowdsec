@@ -70,7 +70,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 			}
 
 			if logType == "" {
-				log.Fatalf("please provid a type (--type) for the test")
+				log.Fatalf("please provide a type (--type) for the test")
 			}
 
 			if err := os.MkdirAll(testPath, os.ModePerm); err != nil {
@@ -165,7 +165,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if !runAll && len(args) == 0 {
-				cmd.Help()
+				printHelp(cmd)
 				fmt.Println("Please provide test to run or --all flag")
 				os.Exit(1)
 			}

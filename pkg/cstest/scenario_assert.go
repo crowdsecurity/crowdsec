@@ -210,7 +210,7 @@ func (s *ScenarioAssert) AutoGenScenarioAssert() string {
 			}
 		}
 		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetScenario() == "%s"`+"\n", eventIndex, *event.Overflow.Alert.Scenario)
-		ret += fmt.Sprintf(`results[%d].Overflow.Alert.Remediation == %t`+"\n", eventIndex, *&event.Overflow.Alert.Remediation)
+		ret += fmt.Sprintf(`results[%d].Overflow.Alert.Remediation == %t`+"\n", eventIndex, event.Overflow.Alert.Remediation)
 		ret += fmt.Sprintf(`results[%d].Overflow.Alert.GetEventsCount() == %d`+"\n", eventIndex, *event.Overflow.Alert.EventsCount)
 	}
 	return ret

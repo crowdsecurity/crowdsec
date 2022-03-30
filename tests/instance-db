@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"
+#shellcheck disable=SC1090
+. ./.environment.sh
+
+./assert-crowdsec-not-running
+
+backend_script="./lib/db/instance-${DB_BACKEND}"
+
+if [ ! -x "$backend_script" ]; then
+    echo "unknown database '$DB_BACKEND'" >&2
+    exit 1
+fi
+
+exec "$backend_script" "$@"

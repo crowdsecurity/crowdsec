@@ -7,8 +7,10 @@ import (
 
 	"strconv"
 
+	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 )
@@ -39,31 +41,44 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			if err != nil {
 				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scope":
-			for i, scope := range value {
+		case "scopes":
+			scopes := strings.Split(value[0], ",")
+			for i, scope := range scopes {
 				switch strings.ToLower(scope) {
 				case "ip":
-					value[i] = types.Ip
+					scopes[i] = types.Ip
 				case "range":
-					value[i] = types.Range
+					scopes[i] = types.Range
 				case "country":
-					value[i] = types.Country
+					scopes[i] = types.Country
 				case "as":
-					value[i] = types.AS
+					scopes[i] = types.AS
 				}
 			}
-			query = query.Where(decision.ScopeIn(value...))
+			query = query.Where(decision.ScopeIn(scopes...))
 		case "value":
 			query = query.Where(decision.ValueEQ(value[0]))
 		case "type":
 			query = query.Where(decision.TypeEQ(value[0]))
+		case "origins":
+			query = query.Where(
+				decision.OriginIn(strings.Split(value[0], ",")...),
+			)
+		case "scenarios_containing":
+			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
+			query = query.Where(decision.Or(predicates...))
+		case "scenarios_not_containing":
+			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
+			query = query.Where(decision.Not(
+				decision.Or(
+					predicates...,
+				),
+			))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
 				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
-		default:
-			return query, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
 
@@ -170,8 +185,39 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
+// ent translation of https://stackoverflow.com/a/28090544
+func longestDecisionForScopeTypeValue(s *sql.Selector) {
+	t := sql.Table(decision.Table)
+	s.LeftJoin(t).OnP(sql.And(
+		sql.ColumnsEQ(
+			t.C(decision.FieldValue),
+			s.C(decision.FieldValue),
+		),
+		sql.ColumnsEQ(
+			t.C(decision.FieldType),
+			s.C(decision.FieldType),
+		),
+		sql.ColumnsEQ(
+			t.C(decision.FieldScope),
+			s.C(decision.FieldScope),
+		),
+		sql.ColumnsGT(
+			t.C(decision.FieldUntil),
+			s.C(decision.FieldUntil),
+		),
+	))
+	s.Where(
+		sql.IsNull(
+			t.C(decision.FieldUntil),
+		),
+	)
+}
+
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilGT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -188,7 +234,10 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilLT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -204,7 +253,11 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.UntilLT(time.Now().UTC())).Where(decision.UntilGT(since))
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilLT(time.Now().UTC()),
+		decision.UntilGT(since),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -221,7 +274,11 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(decision.CreatedAtGT(since)).Where(decision.UntilGT(time.Now().UTC()))
+	query := c.Ent.Decision.Query().Where(
+		decision.CreatedAtGT(since),
+		decision.UntilGT(time.Now().UTC()),
+		longestDecisionForScopeTypeValue,
+	)
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
@@ -351,7 +408,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 	return strconv.Itoa(nbDeleted), nil
 }
 
-// SoftDeleteDecisionsWithFilter udpate the expiration time to now() for the decisions matching the filter
+// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter
 func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
@@ -367,8 +424,10 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			if err != nil {
 				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
-		case "scope":
+		case "scopes":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
+		case "origin":
+			decisions = decisions.Where(decision.OriginEQ(value[0]))
 		case "value":
 			decisions = decisions.Where(decision.ValueEQ(value[0]))
 		case "type":
@@ -473,4 +532,13 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 		return ItemNotFound
 	}
 	return nil
+}
+
+func decisionPredicatesFromStr(s string, predicateFunc func(string) predicate.Decision) []predicate.Decision {
+	words := strings.Split(s, ",")
+	predicates := make([]predicate.Decision, len(words))
+	for i, word := range words {
+		predicates[i] = predicateFunc(word)
+	}
+	return predicates
 }

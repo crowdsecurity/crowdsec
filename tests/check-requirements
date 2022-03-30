@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+set -eu
+
+die() {
+    echo >&2 "$@"
+    exit 1
+}
+
+# shellcheck disable=SC1007
+TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# shellcheck source=./.environment.sh
+. "${TEST_DIR}/.environment.sh"
+
+
+check_bats_core() {
+    if ! "${TEST_DIR}/lib/bats-core/bin/bats" --version >/dev/null 2>&1; then
+        die "ERROR: bats-core submodule is required. Please run 'git submodule init; git submodule update' and retry."
+    fi
+}
+
+check_python3() {
+    if ! command -v python3 >/dev/null; then
+        die "missing required program 'python3'"
+    fi
+}
+
+check_nc() {
+    if ! command -v nc >/dev/null; then
+        die "missing required program 'nc' (package 'netcat-openbsd')"
+    fi
+}
+
+check_yq() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with your favorite package manager (including snap) or with "GO111MODULE=on go get github.com/mikefarah/yq/v4" and add ~/go/bin to $PATH.'
+    if ! command -v yq >/dev/null; then
+        die "Missing required program 'yq'. $howto_install"
+    fi
+    if ! (yq --version | grep mikefarah >/dev/null); then
+        die "yq exists but it's not the one we need (mikefarah/yq). $howto_install"
+    fi
+
+}
+
+check_daemonizer() {
+    SYSTEM=$(uname -s)
+    case "${SYSTEM,,}" in
+        linux)
+            if ! command -v daemonize >/dev/null; then
+                die "missing required program 'daemonize' (package 'daemonize')"
+            fi
+            ;;
+        freebsd)
+            if ! command -v daemon >/dev/null; then
+                die "missing required program 'daemon'"
+            fi
+            ;;
+        *)
+            die "unsupported system: $SYSTEM"
+            ;;
+    esac
+}
+
+
+check_bats_core
+check_python3
+check_nc
+check_yq
+check_daemonizer
+

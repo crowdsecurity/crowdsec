@@ -129,22 +129,20 @@ After running this command your will need to validate the enrollment in the weba
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
-		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if enableAll {
 				SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
-			} else {
-				SetConsoleOpts(args, true)
-			}
-
-			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
-				log.Fatalf("failed writing console config : %s", err)
-			}
-			if enableAll {
 				log.Infof("All features have been enabled successfully")
 			} else {
+				if len(args) == 0 {
+					log.Fatalf("You must specify at least one feature to enable")
+				}
+				SetConsoleOpts(args, true)
 				log.Infof("%v have been enabled", args)
+			}
+			if err := csConfig.API.Server.DumpConsoleConfig(); err != nil {
+				log.Fatalf("failed writing console config : %s", err)
 			}
 			log.Infof(ReloadMessage())
 		},

@@ -25,7 +25,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var testMode bool = false
 var pluginMutex sync.Mutex
 
 const (
@@ -282,6 +281,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
+	log.WithField("plugin", pluginName).Debug("pushing alerts to plugin")
 	if len(alerts) == 0 {
 		return nil
 	}
@@ -350,9 +350,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 }
 
 func pluginIsValid(path string) error {
-	if testMode {
-		return nil
-	}
 	var details fs.FileInfo
 	var err error
 
@@ -367,8 +364,16 @@ func pluginIsValid(path string) error {
 		return err
 	}
 
-	if (int(details.Mode()) & 2) != 0 {
+	mode := details.Mode()
+	perm := uint32(mode)
+	if (perm & 00002) != 0 {
 		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
+	}
+	if (perm & 00020) != 0 {
+		return fmt.Errorf("plugin at %s is group writable, group writable plugins are invalid", path)
+	}
+	if (mode & os.ModeSetgid) != 0 {
+		return fmt.Errorf("plugin at %s has setgid permission, which is not allowed", path)
 	}
 	return nil
 }

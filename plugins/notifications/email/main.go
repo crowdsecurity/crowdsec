@@ -14,7 +14,7 @@ import (
 
 var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "email-plugin",
-	Level:      hclog.LevelFromString("DEBUG"),
+	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
 	JSONFormat: true,
 })
@@ -40,6 +40,7 @@ type PluginConfig struct {
 	SMTPUsername   string   `yaml:"smtp_username"`
 	SMTPPassword   string   `yaml:"smtp_password"`
 	SenderEmail    string   `yaml:"sender_email"`
+	SenderName     string   `yaml:"sender_name"`
 	ReceiverEmails []string `yaml:"receiver_emails"`
 	EmailSubject   string   `yaml:"email_subject"`
 	EncryptionType string   `yaml:"encryption_type"`
@@ -51,10 +52,42 @@ type EmailPlugin struct {
 }
 
 func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (*protobufs.Empty, error) {
-	d := PluginConfig{}
+	d := PluginConfig{
+		SMTPPort:       587,
+		SenderName:     "Crowdsec",
+		EmailSubject:   "Crowdsec notification",
+		EncryptionType: "ssltls",
+		AuthType:       "login",
+	}
+
 	if err := yaml.Unmarshal(config.Config, &d); err != nil {
 		return nil, err
 	}
+
+	if d.Name == "" {
+		return nil, fmt.Errorf("name is required")
+	}
+
+	if d.SMTPHost == "" {
+		return nil, fmt.Errorf("SMTP host is not set")
+	}
+
+	if d.SMTPUsername == "" {
+		return nil, fmt.Errorf("SMTP username is not set")
+	}
+
+	if d.SMTPPassword == "" {
+		return nil, fmt.Errorf("SMTP password is not set")
+	}
+
+	if d.SenderEmail == "" {
+		return nil, fmt.Errorf("Sender email is not set")
+	}
+
+	if d.ReceiverEmails == nil || len(d.ReceiverEmails) == 0 {
+		return nil, fmt.Errorf("Receiver emails are not set")
+	}
+
 	n.ConfigByName[d.Name] = d
 	return &protobufs.Empty{}, nil
 }
@@ -64,11 +97,11 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 		return nil, fmt.Errorf("invalid plugin config name %s", notification.Name)
 	}
 	cfg := n.ConfigByName[notification.Name]
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
-	} else {
-		logger.SetLevel(hclog.Info)
 	}
+
 	logger = logger.Named(cfg.Name)
 	logger.Debug("got notification")
 
@@ -88,7 +121,7 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	logger.Debug("smtp connection done")
 
 	email := mail.NewMSG()
-	email.SetFrom(fmt.Sprintf("From <%s>", cfg.SenderEmail)).
+	email.SetFrom(fmt.Sprintf("%s <%s>", cfg.SenderName, cfg.SenderEmail)).
 		AddTo(cfg.ReceiverEmails...).
 		SetSubject(cfg.EmailSubject)
 	email.SetBody(mail.TextHTML, notification.Text)

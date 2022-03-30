@@ -22,7 +22,7 @@ override_dh_auto_install:
 # echo $($GOCMD version)
 # cd cmd/crowdsec && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v && cd ..
 # cd cmd/crowdsec-cli  && GOROOT=/tmp/go GO111MODULE=on $(GOBUILD) $(LD_OPTS) -o cscli -v && cd ..
-	make
+	make build
 	mkdir -p debian/crowdsec/usr/bin
 	mkdir -p debian/crowdsec/etc/crowdsec
 	mkdir -p debian/crowdsec/usr/share/crowdsec

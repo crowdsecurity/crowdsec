@@ -2,4 +2,3 @@
 
 MAKE=make
 
-$(warning Building for linux)

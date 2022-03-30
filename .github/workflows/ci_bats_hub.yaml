@@ -1,0 +1,69 @@
+name: bats / hub tests
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: "Build the application"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.17
+      id: go
+
+    - name: "Clone CrowdSec"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    - name: "Install bats dependencies"
+      run: |
+        sudo apt install -qq daemonize netcat-openbsd
+        GO111MODULE=on go get github.com/mikefarah/yq/v4
+
+    - name: "BATS: build crowdsec"
+      run: make bats-clean bats-build
+
+    - name: "BATS: run hub tests"
+      run: make bats-test-hub
+
+    - name: "BATS: collect hub coverage"
+      run: ./tests/collect-hub-coverage >> $GITHUB_ENV
+
+    - name: "Create Parsers badge"
+      uses: schneegans/dynamic-badges-action@v1.1.0
+      if: ${{ github.ref == 'refs/heads/master' }}
+      with:
+        auth: ${{ secrets.GIST_BADGES_SECRET }}
+        gistID: ${{ secrets.GIST_BADGES_ID }}
+        filename: crowdsec_parsers_badge.json
+        label: Hub Parsers
+        message: ${{ env.PARSERS_COV }}
+        color: ${{ env.SCENARIO_BADGE_COLOR }}
+
+    - name: "Create Scenarios badge"
+      uses: schneegans/dynamic-badges-action@v1.1.0
+      if: ${{ github.ref == 'refs/heads/master' }}
+      with:
+        auth: ${{ secrets.GIST_BADGES_SECRET }}
+        gistID: ${{ secrets.GIST_BADGES_ID }}
+        filename: crowdsec_scenarios_badge.json
+        label: Hub Scenarios
+        message: ${{ env.SCENARIOS_COV }}
+        color: ${{ env.SCENARIO_BADGE_COLOR }}

@@ -11,10 +11,10 @@ endif
 
 
 
-ifneq ("$(wildcard $(ROOT)/platform/$(SYSTEM).mk)", "")
-	include $(ROOT)/platform/$(SYSTEM).mk
+ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
+	include $(CURDIR)/platform/$(SYSTEM).mk
 else
-	include $(ROOT)/platform/linux.mk
+	include $(CURDIR)/platform/linux.mk
 endif
 
 ifneq ($(OS),Windows_NT)
@@ -24,15 +24,17 @@ endif
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
-HTTP_PLUGIN_FOLDER = ./plugins/notifications/http
-SLACK_PLUGIN_FOLDER = ./plugins/notifications/slack
-SPLUNK_PLUGIN_FOLDER = ./plugins/notifications/splunk
-EMAIL_PLUGIN_FOLDER = ./plugins/notifications/email
+HTTP_PLUGIN_FOLDER = "./plugins/notifications/http"
+SLACK_PLUGIN_FOLDER = "./plugins/notifications/slack"
+SPLUNK_PLUGIN_FOLDER = "./plugins/notifications/splunk"
+EMAIL_PLUGIN_FOLDER = "./plugins/notifications/email"
+DUMMY_PLUGIN_FOLDER = "./plugins/notifications/dummy"
 
-HTTP_PLUGIN_BIN = notification-http$(EXT)
-SLACK_PLUGIN_BIN = notification-slack$(EXT)
-SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
-EMAIL_PLUGIN_BIN = notification-email$(EXT)
+HTTP_PLUGIN_BIN = "notification-http$(EXT)"
+SLACK_PLUGIN_BIN = "notification-slack$(EXT)"
+SPLUNK_PLUGIN_BIN = "notification-splunk$(EXT)"
+EMAIL_PLUGIN_BIN = "notification-email$(EXT)"
+DUMMY_PLUGIN_BIN= "notification-dummy$(EXT)"
 
 HTTP_PLUGIN_CONFIG = http.yaml
 SLACK_PLUGIN_CONFIG = slack.yaml
@@ -52,9 +54,8 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 
 LD_OPTS_VARS= \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.System=$(SYSTEM) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
--X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME)  \
+-X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Tag=$(BUILD_TAG) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.GoVersion=$(BUILD_GOVERSION) \
 -X 'github.com/crowdsecurity/crowdsec/pkg/csconfig.defaultConfigDir=$(DEFAULT_CONFIGDIR)' \
@@ -68,19 +69,19 @@ GOTEST=$(GOCMD) test
 
 RELDIR = crowdsec-$(BUILD_VERSION)
 
-.PHONY: all
-all: clean test build
-
 .PHONY: build
 build: goversion crowdsec cscli plugins
+
+.PHONY: all
+all: clean test build
 
 .PHONY: static
 static: crowdsec_static cscli_static plugins_static
 
 .PHONY: plugins
-plugins: http-plugin slack-plugin splunk-plugin email-plugin
+plugins: http-plugin slack-plugin splunk-plugin email-plugin dummy-plugin
 
-plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static
+plugins_static: http-plugin_static slack-plugin_static splunk-plugin_static email-plugin_static dummy-plugin_static
 
 goversion:
 ifneq ($(OS),Windows_NT)
@@ -106,10 +107,12 @@ clean: testclean
 	@$(RM) $(CSCLI_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) *.log $(WIN_IGNORE_ERR)
 	@$(RM) crowdsec-release.tgz $(WIN_IGNORE_ERR)
+	@$(RM) crowdsec-release-static.tgz $(WIN_IGNORE_ERR)
 	@$(RM) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 	@$(RM) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(WIN_IGNORE_ERR)
+	@$(RM) $(DUMMY_PLUGIN_FOLDER)/$(DUMMY_PLUGIN_BIN) $(WIN_IGNORE_ERR)
 
 
 cscli: goversion
@@ -130,6 +133,9 @@ splunk-plugin: goversion
 email-plugin: goversion
 	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
+dummy-plugin: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory
+
 cscli_static: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
@@ -148,8 +154,11 @@ splunk-plugin_static:goversion
 email-plugin_static:goversion
 	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
+dummy-plugin_static:goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) static --no-print-directory
+
 .PHONY: testclean
-testclean:
+testclean: bats-clean
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
 	@$(RM) -r pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
 
@@ -157,8 +166,7 @@ testclean:
 test: goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
-.PHONY: package
-package:
+package-common:
 	@echo Building Release to dir $(RELDIR)
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
@@ -180,37 +188,15 @@ package:
 	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
 	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
 
-	@$(CPR) ./config/ $(RELDIR)
+	@cp -R ./config/ $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
 	@$(CP) scripts/test_env.sh $(RELDIR)
-	@$(CP) scripts/test_env.ps1 $(RELDIR)
-#	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
-package_static:
-	@echo Building Release to dir $(RELDIR)
-	@$(MKDIR) $(RELDIR)/cmd/crowdsec
-	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(MKDIR) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
+.PHONY: package
+package: package-common
+	@tar cvzf crowdsec-release.tgz $(RELDIR)
 
-	@$(CP) $(CROWDSEC_FOLDER)/$(CROWDSEC_BIN) $(RELDIR)/cmd/crowdsec
-	@cp $(CSCLI_FOLDER)/$(CSCLI_BIN) $(RELDIR)/cmd/crowdsec-cli
-
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_BIN) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@$(CP) $(HTTP_PLUGIN_FOLDER)/$(HTTP_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
-	@$(CP) $(SLACK_PLUGIN_FOLDER)/$(SLACK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SLACK_PLUGIN_FOLDER))
-	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
-	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
-
-	@$(CPR) ./config/ $(RELDIR)
-	@$(CP) wizard.sh $(RELDIR)
-	@$(CP) scripts/test_env.sh $(RELDIR)
+package_static: package-common
 	@tar cvzf crowdsec-release-static.tgz $(RELDIR)
 
 .PHONY: check_release
@@ -229,3 +215,5 @@ release_static: check_release static package_static
 
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
+include tests/bats.mk
+

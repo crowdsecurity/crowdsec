@@ -10,11 +10,7 @@ import (
 )
 
 func TestLoadCommon(t *testing.T) {
-	PidDirFullPath, err := filepath.Abs("./tests/")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-
+	pidDirPath := "./tests"
 	LogDirFullPath, err := filepath.Abs("./tests/log/")
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -44,7 +40,7 @@ func TestLoadCommon(t *testing.T) {
 			},
 			expectedResult: &CommonCfg{
 				Daemonize:  true,
-				PidDir:     PidDirFullPath,
+				PidDir:     pidDirPath,
 				LogMedia:   "file",
 				LogDir:     LogDirFullPath,
 				WorkingDir: WorkingDirFullPath,
@@ -62,7 +58,7 @@ func TestLoadCommon(t *testing.T) {
 			},
 			expectedResult: &CommonCfg{
 				Daemonize: true,
-				PidDir:    PidDirFullPath,
+				PidDir:    pidDirPath,
 				LogMedia:  "file",
 				LogDir:    LogDirFullPath,
 			},
