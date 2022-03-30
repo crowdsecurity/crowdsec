@@ -33,7 +33,7 @@ install-bin:
 	@install -v -m 755 -D "$(BINARY_NAME)" "$(BIN_PREFIX)/$(BINARY_NAME)" || exit
 
 uninstall:
-	@$(RM) $(CSCLI_CONFIG)
+	@$(RM) $(CSCLI_CONFIG) $(WIN_IGNORE_ERR)
 	@$(RM) $(BIN_PREFIX)$(BINARY_NAME) $(WIN_IGNORE_ERR)
 
 clean:

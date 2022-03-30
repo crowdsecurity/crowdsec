@@ -160,7 +160,7 @@ dummy-plugin_static:goversion
 .PHONY: testclean
 testclean: bats-clean
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
-	@$(RM) -r pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
+	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
 
 .PHONY: test
 test: goversion
@@ -216,5 +216,5 @@ release_static: check_release static package_static
 
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
-include tests/bats.mk
 
+include tests/bats.mk

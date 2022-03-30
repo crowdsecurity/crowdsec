@@ -64,7 +64,10 @@ bats-build: bats-environment bats-check-requirements
 
 # Remove the local crowdsec installation and the fixture config + data
 bats-clean:
-	@$(RM) -r $(LOCAL_DIR) $(LOCAL_INIT_DIR) $(TEST_DIR)/dyn-bats/*.bats tests/.environment.sh
+	@$(RM) $(LOCAL_DIR) $(WIN_IGNORE_ERR)
+	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
+	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
+	@$(RM) tests/.environment.sh $(WIN_IGNORE_ERR)
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements

@@ -5,15 +5,15 @@ common:
   log_dir:  C:\ProgramData\CrowdSec\log\
   working_dir: .
 config_paths:
-  config_dir:  C:\Program Files\CrowdSec\config\
+  config_dir:  C:\ProgramData\CrowdSec\config\
   data_dir:  C:\ProgramData\CrowdSec\data\
-  simulation_path:   C:\Program Files\CrowdSec\config\simulation.yaml
+  simulation_path:   C:\ProgramData\CrowdSec\config\simulation.yaml
   hub_dir:  C:\ProgramData\CrowdSec\hub\
   index_path:  C:\ProgramData\CrowdSec\hub\.index.json
   plugin_dir: C:\ProgramData\CrowdSec\plugins\
-  notification_dir:  C:\Program Files\CrowdSec\config\notifications\
+  notification_dir:  C:\ProgramData\CrowdSec\config\notifications\
 crowdsec_service:
-  acquisition_path:  C:\Program Files\CrowdSec\config\acquis.yaml
+  acquisition_path:  C:\ProgramData\CrowdSec\config\acquis.yaml
   parser_routines: 1
 cscli:
   output: human
@@ -32,13 +32,13 @@ db_config:
 api:
   client:
     insecure_skip_verify: false
-    credentials_path:  C:\Program Files\CrowdSec\config\local_api_credentials.yaml
+    credentials_path:  C:\ProgramData\CrowdSec\config\local_api_credentials.yaml
   server:
     log_level: info
     listen_uri: 127.0.0.1:8080
-    profiles_path: C:\Program Files\Crowdsec\config\profiles.yaml
+    profiles_path: C:\ProgramData\Crowdsec\config\profiles.yaml
     online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
-      credentials_path:  C:\Program Files\CrowdSec\config\online_api_credentials.yaml
+      credentials_path:  C:\ProgramData\CrowdSec\config\online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem
 #      key_file: /etc/crowdsec/ssl/key.pem

@@ -18,7 +18,7 @@ BUILD_GOVERSION?=$(shell (go env GOVERSION).replace("go",""))
 BUILD_CODENAME?=$(shell Get-Content RELEASE.json | jq -r .CodeName)
 BUILD_TIMESTAMP?=$(shell Get-Date -Format "yyyy-MM-dd_HH:mm:ss")
 BUILD_TAG?=$(shell git rev-parse HEAD)
-DEFAULT_CONFIGDIR?=C:\\Program Files\\CrowdSec\\config
+DEFAULT_CONFIGDIR?=C:\\ProgramData\\CrowdSec\\config
 DEFAULT_DATADIR?=C:\\ProgramData\\CrowdSec\\data
 
 #please tell me there is a better way to completly ignore errors when trying to delete a file....

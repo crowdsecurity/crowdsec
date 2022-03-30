@@ -21,26 +21,6 @@
       <Directory Id="TARGETDIR" Name="SourceDir">
          <Directory Id="$(var.Program_Files)">
             <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
-               <Directory Id="ConfigDir" Name="config">
-                  <Component Id="AcquisConfig" Guid="7544f862-d7d3-435d-88cb-8961fe41e430">
-                     <File Id="acquis.yaml" Source="config\acquis_win.yaml" Name="acquis.yaml" />
-                     <File Id="config.yaml" Source="config\config_win.yaml" Name="config.yaml" />
-                     <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml" />
-                     <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
-                     <File Id="profiles.yaml" Source="config\profiles.yaml" />
-                     <File Id="simulation.yaml" Source="config\simulation.yaml" />
-                     <File Id="console.yaml" Source="config\console.yaml" />
-                  </Component>
-                  <Directory Id="NotifConfigDir" Name="notifications">
-                     <Component Id="NotifConfig" Guid="e857bca2-dc6a-4f6f-88b2-f5f4b6a2b9df">
-                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml" />
-                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml" />
-                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml" />
-                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml" />
-                     </Component>
-                  </Directory>
-                  <Directory Id="PatternsDir" Name="patterns" />
-               </Directory>
                <Component Id="Crowdsec" Guid="200299fc-e728-4749-a283-cfbd20c02a59">
                   <File Id="crowdsec.exe" Source="cmd\crowdsec\crowdsec.exe" />
                   <ServiceInstall Id="CrowdsecService" Name="Crowdsec" DisplayName="Crowdsec" Description="Crowdsec IPS/IDS" Start="auto" Type="ownProcess" ErrorControl="normal" Account="LocalSystem" Vital="yes" Interactive="no" />
@@ -54,6 +34,26 @@
          </Directory>
          <Directory Id="CommonAppDataFolder">
             <Directory Id="CrowdSecCommonDir" Name="CrowdSec">
+               <Directory Id="ConfigDir" Name="config">
+                  <Component Id="AcquisConfig" Guid="08bfc6fd-4811-48ed-b63e-035acb1f69d8">
+                     <File Id="acquis.yaml" Source="config\acquis_win.yaml" Name="acquis.yaml" />
+                     <File Id="config.yaml" Source="config\config_win.yaml" Name="config.yaml" />
+                     <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml" />
+                     <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
+                     <File Id="profiles.yaml" Source="config\profiles.yaml" />
+                     <File Id="simulation.yaml" Source="config\simulation.yaml" />
+                     <File Id="console.yaml" Source="config\console.yaml" />
+                  </Component>
+                  <Directory Id="NotifConfigDir" Name="notifications">
+                     <Component Id="NotifConfig" Guid="4d04a852-e876-408f-95a7-a7effa7762c4">
+                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml" />
+                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml" />
+                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml" />
+                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml" />
+                     </Component>
+                  </Directory>
+                  <Directory Id="PatternsDir" Name="patterns" />
+               </Directory>
                <Directory Id="logCrowdsec" Name="log">
                   <Component Id="CreateLog" Guid="bfb37d14-10c4-40fb-bafa-2a29f95e4a53">
                      <CreateFolder />

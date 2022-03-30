@@ -3,4 +3,4 @@
 
 package main
 
-const DefaultConfigFile = "C:\\Program Files\\CrowdSec\\config\\config.yaml"
+const DefaultConfigFile = "C:\\ProgramData\\CrowdSec\\config\\config.yaml"
