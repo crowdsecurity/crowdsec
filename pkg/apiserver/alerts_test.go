@@ -27,12 +27,12 @@ type LAPI struct {
 
 func SetupLAPITest(t *testing.T) LAPI {
 	t.Helper()
-	router, loginResp, err := InitMachineTest()
+	router, loginResp, config, err := InitMachineTest()
 	if err != nil {
 		t.Fatal(err.Error())
 	}
 
-	APIKey, err := CreateTestBouncer()
+	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
@@ -60,8 +60,8 @@ func (l *LAPI) RecordResponse(verb string, url string, body *strings.Reader) *ht
 	return w
 }
 
-func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, error) {
-	router, err := NewAPITest()
+func InitMachineTest() (*gin.Engine, models.WatcherAuthResponse, csconfig.Config, error) {
+	router, config, err := NewAPITest()
 	if err != nil {
 		return nil, models.WatcherAuthResponse{}, config, fmt.Errorf("unable to run local API: %s", err)
 	}
@@ -428,7 +428,7 @@ func TestDeleteAlertTrustedIPS(t *testing.T) {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	loginResp, err := LoginToTestAPI(router)
+	loginResp, err := LoginToTestAPI(router, cfg)
 	if err != nil {
 		log.Fatal(err.Error())
 	}

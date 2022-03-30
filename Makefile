@@ -24,17 +24,17 @@ endif
 CROWDSEC_FOLDER = ./cmd/crowdsec
 CSCLI_FOLDER = ./cmd/crowdsec-cli/
 
-HTTP_PLUGIN_FOLDER = "./plugins/notifications/http"
-SLACK_PLUGIN_FOLDER = "./plugins/notifications/slack"
-SPLUNK_PLUGIN_FOLDER = "./plugins/notifications/splunk"
-EMAIL_PLUGIN_FOLDER = "./plugins/notifications/email"
-DUMMY_PLUGIN_FOLDER = "./plugins/notifications/dummy"
+HTTP_PLUGIN_FOLDER = ./plugins/notifications/http
+SLACK_PLUGIN_FOLDER = ./plugins/notifications/slack
+SPLUNK_PLUGIN_FOLDER = ./plugins/notifications/splunk
+EMAIL_PLUGIN_FOLDER = ./plugins/notifications/email
+DUMMY_PLUGIN_FOLDER = ./plugins/notifications/dummy
 
-HTTP_PLUGIN_BIN = "notification-http$(EXT)"
-SLACK_PLUGIN_BIN = "notification-slack$(EXT)"
-SPLUNK_PLUGIN_BIN = "notification-splunk$(EXT)"
-EMAIL_PLUGIN_BIN = "notification-email$(EXT)"
-DUMMY_PLUGIN_BIN= "notification-dummy$(EXT)"
+HTTP_PLUGIN_BIN = notification-http$(EXT)
+SLACK_PLUGIN_BIN = notification-slack$(EXT)
+SPLUNK_PLUGIN_BIN = notification-splunk$(EXT)
+EMAIL_PLUGIN_BIN = notification-email$(EXT)
+DUMMY_PLUGIN_BIN= notification-dummy$(EXT)
 
 HTTP_PLUGIN_CONFIG = http.yaml
 SLACK_PLUGIN_CONFIG = slack.yaml
@@ -134,7 +134,7 @@ email-plugin: goversion
 	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 dummy-plugin: goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory
+	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 cscli_static: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
@@ -155,7 +155,7 @@ email-plugin_static:goversion
 	@$(MAKE) -C $(EMAIL_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 dummy-plugin_static:goversion
-	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(DUMMY_PLUGIN_FOLDER) static --no-print-directory
+	$(MAKE) -C $(DUMMY_PLUGIN_FOLDER) static --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
 .PHONY: testclean
 testclean: bats-clean
@@ -167,7 +167,7 @@ test: goversion
 	$(GOTEST) $(LD_OPTS) ./...
 
 package-common:
-	@echo Building Release to dir $(RELDIR)
+	@echo "Building Release to dir $(RELDIR)"
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec
 	@$(MKDIR) $(RELDIR)/cmd/crowdsec-cli
 	@$(MKDIR) $(RELDIR)/$(subst ./,,$(HTTP_PLUGIN_FOLDER))
@@ -191,6 +191,7 @@ package-common:
 	@cp -R ./config/ $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
 	@$(CP) scripts/test_env.sh $(RELDIR)
+	@$(CP) scripts/test_env.ps1 $(RELDIR)
 
 .PHONY: package
 package: package-common

@@ -44,7 +44,7 @@ function copy_file() {
 
 function setup() {
 	& $base\cscli.exe -c "$config_file" hub update
-	& $base\cscli.exe -c "$config_file" collections install crowdsecurity/linux
+	& $base\cscli.exe -c "$config_file" collections install crowdsecurity/linux crowdsecurity/windows
 }
 
 function setup_api() {
