@@ -3,6 +3,7 @@ package leakybucket
 import (
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -19,7 +20,6 @@ import (
 //SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
-
 	/*if it's already an overflow, we have properly formatted sources.
 	we can just twitch them to reflect the requested scope*/
 	if evt.Type == types.OVFLW {
@@ -36,18 +36,32 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			if leaky.scopeType.Scope == types.Range {
 				/*the original bucket was target IPs, check that we do have range*/
 				if *v.Scope == types.Ip {
+					src := models.Source{}
+					src.AsName = v.AsName
+					src.AsNumber = v.AsNumber
+					src.Cn = v.Cn
+					src.Latitude = v.Latitude
+					src.Longitude = v.Longitude
+					src.Range = v.Range
+					src.Value = new(string)
+					src.Scope = new(string)
+					*src.Scope = leaky.scopeType.Scope
+					*src.Value = ""
 					if v.Range != "" {
-						src := models.Source{}
-						src.AsName = v.AsName
-						src.AsNumber = v.AsNumber
-						src.Cn = v.Cn
-						src.Latitude = v.Latitude
-						src.Longitude = v.Longitude
-						src.Range = v.Range
-						src.Value = new(string)
-						src.Scope = new(string)
 						*src.Value = v.Range
-						*src.Scope = leaky.scopeType.Scope
+					}
+					if leaky.scopeType.RunTimeFilter != nil {
+						retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+						if err != nil {
+							return srcs, errors.Wrapf(err, "while running scope filter")
+						}
+						value, ok := retValue.(string)
+						if !ok {
+							value = ""
+						}
+						src.Value = &value
+					}
+					if *src.Value != "" {
 						srcs[*src.Value] = src
 					} else {
 						log.Warningf("bucket %s requires scope Range, but none was provided. It seems that the %s wasn't enriched to include its range.", leaky.Name, *v.Value)
@@ -63,18 +77,18 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 	src := models.Source{}
 	switch leaky.scopeType.Scope {
 	case types.Range, types.Ip:
-		if v, ok := evt.Meta["source_ip"]; ok {
-			if net.ParseIP(v) == nil {
-				return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
-			} else {
-				src.IP = v
-			}
-		} else {
+		v, ok := evt.Meta["source_ip"]
+		if !ok {
 			return srcs, fmt.Errorf("scope is %s but Meta[source_ip] doesn't exist", leaky.scopeType.Scope)
 		}
-
+		if net.ParseIP(v) == nil {
+			return srcs, fmt.Errorf("scope is %s but '%s' isn't a valid ip", leaky.scopeType.Scope, v)
+		}
+		src.IP = v
 		src.Scope = &leaky.scopeType.Scope
 		if v, ok := evt.Enriched["ASNumber"]; ok {
+			src.AsNumber = v
+		} else if v, ok := evt.Enriched["ASNNumber"]; ok {
 			src.AsNumber = v
 		}
 		if v, ok := evt.Enriched["IsoCode"]; ok {
@@ -101,7 +115,8 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			_, ipNet, err := net.ParseCIDR(v)
 			if err != nil {
 				return srcs, fmt.Errorf("Declared range %s of %s can't be parsed", v, src.IP)
-			} else if ipNet != nil {
+			}
+			if ipNet != nil {
 				src.Range = ipNet.String()
 				leaky.logger.Tracef("Valid range from %s : %s", src.IP, src.Range)
 			}
@@ -110,26 +125,37 @@ func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, e
 			src.Value = &src.IP
 		} else if leaky.scopeType.Scope == types.Range {
 			src.Value = &src.Range
+			if leaky.scopeType.RunTimeFilter != nil {
+				retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+				if err != nil {
+					return srcs, errors.Wrapf(err, "while running scope filter")
+				}
+
+				value, ok := retValue.(string)
+				if !ok {
+					value = ""
+				}
+				src.Value = &value
+			}
 		}
 		srcs[*src.Value] = src
 	default:
-		if leaky.scopeType.RunTimeFilter != nil {
-			retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
-			if err != nil {
-				return srcs, errors.Wrapf(err, "while running scope filter")
-			}
-
-			value, ok := retValue.(string)
-			if !ok {
-				value = ""
-			}
-			src.Value = &value
-			src.Scope = new(string)
-			*src.Scope = leaky.scopeType.Scope
-			srcs[*src.Value] = src
-		} else {
+		if leaky.scopeType.RunTimeFilter == nil {
 			return srcs, fmt.Errorf("empty scope information")
 		}
+		retValue, err := expr.Run(leaky.scopeType.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &evt}))
+		if err != nil {
+			return srcs, errors.Wrapf(err, "while running scope filter")
+		}
+
+		value, ok := retValue.(string)
+		if !ok {
+			value = ""
+		}
+		src.Value = &value
+		src.Scope = new(string)
+		*src.Scope = leaky.scopeType.Scope
+		srcs[*src.Value] = src
 	}
 	return srcs, nil
 }
@@ -144,7 +170,14 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 			continue
 		}
 		meta := models.Meta{}
-		for k, v := range evt.Meta {
+		//we want consistence
+		skeys := make([]string, 0, len(evt.Meta))
+		for k := range evt.Meta {
+			skeys = append(skeys, k)
+		}
+		sort.Strings(skeys)
+		for _, k := range skeys {
+			v := evt.Meta[k]
 			subMeta := models.MetaItems0{Key: k, Value: v}
 			meta = append(meta, &subMeta)
 		}
@@ -156,7 +189,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 		//either MarshaledTime is present and is extracted from log
 		if evt.MarshaledTime != "" {
 			ovflwEvent.Timestamp = &evt.MarshaledTime
-		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now()
+		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 			raw, err := evt.Time.MarshalText()
 			if err != nil {
@@ -201,7 +234,6 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 
 //NewAlert will generate a RuntimeAlert and its APIAlert(s) from a bucket that overflowed
 func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
-
 	var runtimeAlert types.RuntimeAlert
 
 	leaky.logger.Tracef("Overflow (start: %s, end: %s)", leaky.First_ts, leaky.Ovflw_ts)
@@ -247,17 +279,16 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	}
 	runtimeAlert.Sources = sources
 	//Include source info in format string
-	sourceStr := ""
+	sourceStr := "UNKNOWN"
 	if len(sources) > 1 {
 		sourceStr = fmt.Sprintf("%d sources", len(sources))
 	} else if len(sources) == 1 {
-		for k, _ := range sources {
+		for k := range sources {
 			sourceStr = k
 			break
 		}
-	} else {
-		sourceStr = "UNKNOWN"
 	}
+
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)

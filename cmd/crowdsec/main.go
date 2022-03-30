@@ -4,22 +4,25 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 
 	_ "net/http/pprof"
 	"time"
 
-	"sort"
-
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -32,6 +35,7 @@ var (
 	outputsTomb  tomb.Tomb
 	apiTomb      tomb.Tomb
 	crowdsecTomb tomb.Tomb
+	pluginTomb   tomb.Tomb
 
 	flags *Flags
 
@@ -43,6 +47,7 @@ var (
 	outputEventChan chan types.Event //the buckets init returns its own chan that is used for multiplexing
 	/*settings*/
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
+	pluginBroker      csplugin.PluginBroker
 )
 
 type Flags struct {
@@ -52,21 +57,14 @@ type Flags struct {
 	InfoLevel      bool
 	PrintVersion   bool
 	SingleFileType string
+	Labels         map[string]string
 	OneShotDSN     string
 	TestMode       bool
 	DisableAgent   bool
 	DisableAPI     bool
 }
 
-type parsers struct {
-	ctx             *parser.UnixParserCtx
-	povfwctx        *parser.UnixParserCtx
-	stageFiles      []parser.Stagefile
-	povfwStageFiles []parser.Stagefile
-	nodes           []parser.Node
-	povfwnodes      []parser.Node
-	enricherCtx     []parser.EnricherCtx
-}
+type labelsMap map[string]string
 
 // Return new parsers
 // nodes and povfwnodes are already initialized in parser.LoadStages
@@ -142,8 +140,10 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		if flags.OneShotDSN == "" || flags.SingleFileType == "" {
 			return fmt.Errorf("-type requires a -dsn argument")
 		}
+		flags.Labels = labels
+		flags.Labels["type"] = flags.SingleFileType
 
-		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.SingleFileType)
+		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
 		if err != nil {
 			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
 		}
@@ -157,24 +157,50 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 	return nil
 }
 
+var dumpFolder string
+var dumpStates bool
+var labels = make(labelsMap)
+
+func (l *labelsMap) String() string {
+	return "labels"
+}
+
+func (l labelsMap) Set(label string) error {
+	split := strings.Split(label, ":")
+	if len(split) != 2 {
+		return errors.Wrapf(errors.New("Bad Format"), "for Label '%s'", label)
+	}
+	l[split[0]] = split[1]
+	return nil
+}
+
 func (f *Flags) Parse() {
 
-	flag.StringVar(&f.ConfigFile, "c", "/etc/crowdsec/config.yaml", "configuration file")
+	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
+	flag.Var(&labels, "label", "Additional Labels for file in time-machine")
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 
 	flag.Parse()
 }
 
-// LoadConfig return configuration parsed from configuration file
+// LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
+
+	if dumpFolder != "" {
+		parser.ParseDump = true
+		parser.DumpFolder = dumpFolder
+		leakybucket.BucketPourTrack = true
+		dumpStates = true
+	}
 
 	if !flags.DisableAgent {
 		if err := cConfig.LoadCrowdsec(); err != nil {
@@ -214,13 +240,19 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if flags.SingleFileType != "" && flags.OneShotDSN != "" {
-		cConfig.API.Server.OnlineClient = nil
+		if cConfig.API != nil && cConfig.API.Server != nil {
+			cConfig.API.Server.OnlineClient = nil
+		}
 		/*if the api is disabled as well, just read file and exit, don't daemonize*/
 		if flags.DisableAPI {
 			cConfig.Common.Daemonize = false
 		}
 		cConfig.Common.LogMedia = "stdout"
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
+	}
+
+	if cConfig.Common.PidDir != "" {
+		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
 	}
 
 	return nil
@@ -241,6 +273,13 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
+	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
+		Writer: os.Stderr,
+		LogLevels: []log.Level{
+			log.PanicLevel,
+			log.FatalLevel,
+		},
+	})
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
@@ -250,7 +289,8 @@ func main() {
 		log.Fatalf(err.Error())
 	}
 	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel); err != nil {
+	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
 		log.Fatal(err.Error())
 	}
 

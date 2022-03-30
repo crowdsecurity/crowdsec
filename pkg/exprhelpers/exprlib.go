@@ -4,12 +4,15 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/c-robinson/iplib"
 
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -31,16 +34,28 @@ func Upper(s string) string {
 	return strings.ToUpper(s)
 }
 
+func Lower(s string) string {
+	return strings.ToLower(s)
+}
+
 func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	var ExprLib = map[string]interface{}{
-		"Atof":           Atof,
-		"JsonExtract":    JsonExtract,
-		"JsonExtractLib": JsonExtractLib,
-		"File":           File,
-		"RegexpInFile":   RegexpInFile,
-		"Upper":          Upper,
-		"IpInRange":      IpInRange,
-		"TimeNow":        TimeNow,
+		"Atof":                Atof,
+		"JsonExtract":         JsonExtract,
+		"JsonExtractUnescape": JsonExtractUnescape,
+		"JsonExtractLib":      JsonExtractLib,
+		"File":                File,
+		"RegexpInFile":        RegexpInFile,
+		"Upper":               Upper,
+		"Lower":               Lower,
+		"IpInRange":           IpInRange,
+		"TimeNow":             TimeNow,
+		"ParseUri":            ParseUri,
+		"PathUnescape":        PathUnescape,
+		"QueryUnescape":       QueryUnescape,
+		"PathEscape":          PathEscape,
+		"QueryEscape":         QueryEscape,
+		"IpToRange":           IpToRange,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -94,6 +109,32 @@ func FileInit(fileFolder string, filename string, fileType string) error {
 	return nil
 }
 
+func QueryEscape(s string) string {
+	return url.QueryEscape(s)
+}
+
+func PathEscape(s string) string {
+	return url.PathEscape(s)
+}
+
+func PathUnescape(s string) string {
+	ret, err := url.PathUnescape(s)
+	if err != nil {
+		log.Errorf("unable to PathUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
+func QueryUnescape(s string) string {
+	ret, err := url.QueryUnescape(s)
+	if err != nil {
+		log.Errorf("unable to QueryUnescape '%s': %+v", s, err)
+		return s
+	}
+	return ret
+}
+
 func File(filename string) []string {
 	if _, ok := dataFile[filename]; ok {
 		return dataFile[filename]
@@ -137,6 +178,50 @@ func IpInRange(ip string, ipRange string) bool {
 	return false
 }
 
+func IpToRange(ip string, cidr string) string {
+	cidr = strings.TrimPrefix(cidr, "/")
+	mask, err := strconv.Atoi(cidr)
+	if err != nil {
+		log.Errorf("bad cidr '%s': %s", cidr, err)
+		return ""
+	}
+
+	ipAddr := net.ParseIP(ip)
+	if ipAddr == nil {
+		log.Errorf("can't parse IP address '%s'", ip)
+		return ""
+	}
+	ipRange := iplib.NewNet(ipAddr, mask)
+	if ipRange.IP() == nil {
+		log.Errorf("can't get cidr '%s' of '%s'", cidr, ip)
+		return ""
+	}
+	return ipRange.String()
+}
+
 func TimeNow() string {
-	return time.Now().Format(time.RFC3339)
+	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func ParseUri(uri string) map[string][]string {
+	ret := make(map[string][]string)
+	u, err := url.Parse(uri)
+	if err != nil {
+		log.Errorf("Could not parse URI: %s", err)
+		return ret
+	}
+	parsed, err := url.ParseQuery(u.RawQuery)
+	if err != nil {
+		log.Errorf("Could not parse query uri : %s", err)
+		return ret
+	}
+	for k, v := range parsed {
+		ret[k] = v
+	}
+	return ret
+}
+
+func KeyExists(key string, dict map[string]interface{}) bool {
+	_, ok := dict[key]
+	return ok
 }

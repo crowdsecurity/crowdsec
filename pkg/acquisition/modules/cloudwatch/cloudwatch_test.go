@@ -67,6 +67,7 @@ func TestWatchLogGroupForStreams(t *testing.T) {
 			name: "group_does_not_exists",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: b
@@ -92,6 +93,7 @@ stream_name: test_stream`),
 			name: "group_exists_bad_stream_name",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group1
@@ -136,6 +138,7 @@ stream_name: test_stream_bad`),
 			name: "group_exists_bad_stream_regexp",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group1
@@ -182,6 +185,7 @@ stream_regexp: test_bad[0-9]+`),
 			name: "group_exists_stream_exists_has_events",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -253,14 +257,15 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen:      2,
-			expectedResMessages: []string{"test_message_4", "test_message_5"},
+			expectedResLen:      3,
+			expectedResMessages: []string{"test_message_1", "test_message_4", "test_message_5"},
 		},
 		//have a stream generate events, reach time-out and gets polled again
 		{
 			name: "group_exists_stream_exists_has_events+timeout",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -345,14 +350,15 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen:      2,
-			expectedResMessages: []string{"test_message_41", "test_message_51"},
+			expectedResLen:      3,
+			expectedResMessages: []string{"test_message_1", "test_message_41", "test_message_51"},
 		},
 		//have a stream generate events, reach time-out and dead body collection
 		{
 			name: "group_exists_stream_exists_has_events+timeout+GC",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_log_group1
@@ -406,7 +412,7 @@ stream_name: test_stream`),
 
 				}
 			},
-			expectedResLen: 0,
+			expectedResLen: 1,
 		},
 	}
 
@@ -486,9 +492,8 @@ stream_name: test_stream`),
 		if test.expectedResLen != -1 {
 			if test.expectedResLen != len(rcvd_evts) {
 				t.Fatalf("%s : expected %d results got %d -> %v", test.name, test.expectedResLen, len(rcvd_evts), rcvd_evts)
-			} else {
-				dbgLogger.Debugf("got %d expected messages", len(rcvd_evts))
 			}
+			dbgLogger.Debugf("got %d expected messages", len(rcvd_evts))
 		}
 		if len(test.expectedResMessages) != 0 {
 			res := test.expectedResMessages
@@ -498,9 +503,8 @@ stream_name: test_stream`),
 				}
 				if res[0] != v.Line.Raw {
 					t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvd_evts), res[0], v.Line.Raw, len(rcvd_evts), len(test.expectedResMessages))
-				} else {
-					dbgLogger.Debugf("got message '%s'", res[0])
 				}
+				dbgLogger.Debugf("got message '%s'", res[0])
 				res = res[1:]
 			}
 			if len(res) != 0 {
@@ -527,6 +531,7 @@ func TestConfiguration(t *testing.T) {
 			name: "group_does_not_exists",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 group_name: test_group
@@ -546,6 +551,7 @@ stream_name: test_stream`),
 			name: "missing_group_name",
 			config: []byte(`
 source: cloudwatch
+aws_region: us-east-1
 labels:
   type: test_source
 stream_name: test_stream`),
@@ -601,7 +607,8 @@ func TestConfigureByDSN(t *testing.T) {
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
-		dsn, logtype   string
+		dsn            string
+		labels         map[string]string
 		expectedCfgErr string
 		name           string
 	}{
@@ -632,7 +639,7 @@ func TestConfigureByDSN(t *testing.T) {
 		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		log.Printf("%d/%d", idx, len(tests))
 		cw := CloudwatchSource{}
-		err = cw.ConfigureByDSN(test.dsn, test.logtype, dbgLogger)
+		err = cw.ConfigureByDSN(test.dsn, test.labels, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
 				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
@@ -709,7 +716,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_1"),
-							Timestamp: aws.Int64(time.Now().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(2 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -737,7 +744,7 @@ func TestOneShotAcquisition(t *testing.T) {
 					LogEvents: []*cloudwatchlogs.InputLogEvent{
 						&cloudwatchlogs.InputLogEvent{
 							Message:   aws.String("test_message_3"),
-							Timestamp: aws.Int64(time.Now().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
+							Timestamp: aws.Int64(time.Now().UTC().Add(-(3 * time.Hour)).UTC().Unix() * 1000),
 						},
 					},
 				}); err != nil {
@@ -761,7 +768,7 @@ func TestOneShotAcquisition(t *testing.T) {
 		dbgLogger.Logger.SetLevel(log.DebugLevel)
 		dbgLogger.Infof("starting test")
 		cw := CloudwatchSource{}
-		err = cw.ConfigureByDSN(test.dsn, "test", dbgLogger)
+		err = cw.ConfigureByDSN(test.dsn, map[string]string{"type": "test"}, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
 				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
@@ -844,9 +851,8 @@ func TestOneShotAcquisition(t *testing.T) {
 				}
 				if res[0] != v.Line.Raw {
 					t.Fatalf("result %d/%d : expected '%s', received '%s' (recvd:%d, expected:%d)", idx, len(rcvd_evts), res[0], v.Line.Raw, len(rcvd_evts), len(test.expectedResMessages))
-				} else {
-					dbgLogger.Debugf("got message '%s'", res[0])
 				}
+				dbgLogger.Debugf("got message '%s'", res[0])
 				res = res[1:]
 			}
 			if len(res) != 0 {

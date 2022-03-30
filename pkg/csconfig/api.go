@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
@@ -76,6 +77,30 @@ func (l *LocalApiClientCfg) Load() error {
 	return nil
 }
 
+func (lapiCfg *LocalApiServerCfg) GetTrustedIPs() ([]net.IPNet, error) {
+	trustedIPs := make([]net.IPNet, 0)
+	for _, ip := range lapiCfg.TrustedIPs {
+		cidr := toValidCIDR(ip)
+		_, ipNet, err := net.ParseCIDR(cidr)
+		if err != nil {
+			return nil, err
+		}
+		trustedIPs = append(trustedIPs, *ipNet)
+	}
+	return trustedIPs, nil
+}
+
+func toValidCIDR(ip string) string {
+	if strings.Contains(ip, "/") {
+		return ip
+	}
+
+	if strings.Contains(ip, ":") {
+		return ip + "/128"
+	}
+	return ip + "/32"
+}
+
 /*local api service configuration*/
 type LocalApiServerCfg struct {
 	ListenURI              string              `yaml:"listen_uri,omitempty"` //127.0.0.1:8080
@@ -85,9 +110,17 @@ type LocalApiServerCfg struct {
 	LogMedia               string              `yaml:"-"`
 	OnlineClient           *OnlineApiClientCfg `yaml:"online_client"`
 	ProfilesPath           string              `yaml:"profiles_path,omitempty"`
+	ConsoleConfigPath      string              `yaml:"console_path,omitempty"`
+	ConsoleConfig          *ConsoleConfig      `yaml:"-"`
 	Profiles               []*ProfileCfg       `yaml:"-"`
 	LogLevel               *log.Level          `yaml:"log_level"`
 	UseForwardedForHeaders bool                `yaml:"use_forwarded_for_headers,omitempty"`
+	TrustedProxies         *[]string           `yaml:"trusted_proxies,omitempty"`
+	CompressLogs           *bool               `yaml:"-"`
+	LogMaxSize             int                 `yaml:"-"`
+	LogMaxAge              int                 `yaml:"-"`
+	LogMaxFiles            int                 `yaml:"-"`
+	TrustedIPs             []string            `yaml:"trusted_ips,omitempty"`
 }
 
 type TLSCfg struct {
@@ -102,16 +135,33 @@ func (c *Config) LoadAPIServer() error {
 		}
 		c.API.Server.LogDir = c.Common.LogDir
 		c.API.Server.LogMedia = c.Common.LogMedia
+		c.API.Server.CompressLogs = c.Common.CompressLogs
+		c.API.Server.LogMaxSize = c.Common.LogMaxSize
+		c.API.Server.LogMaxAge = c.Common.LogMaxAge
+		c.API.Server.LogMaxFiles = c.Common.LogMaxFiles
+		if c.API.Server.UseForwardedForHeaders && c.API.Server.TrustedProxies == nil {
+			c.API.Server.TrustedProxies = &[]string{"0.0.0.0/0"}
+		}
+		if c.API.Server.TrustedProxies != nil {
+			c.API.Server.UseForwardedForHeaders = true
+		}
 		if err := c.API.Server.LoadProfiles(); err != nil {
 			return errors.Wrap(err, "while loading profiles for LAPI")
 		}
+		if c.API.Server.ConsoleConfigPath == "" {
+			c.API.Server.ConsoleConfigPath = DefaultConsoleConfigFilePath
+		}
+		if err := c.API.Server.LoadConsoleConfig(); err != nil {
+			return errors.Wrap(err, "while loading console options")
+		}
+
 		if c.API.Server.OnlineClient != nil && c.API.Server.OnlineClient.CredentialsFilePath != "" {
 			if err := c.API.Server.OnlineClient.Load(); err != nil {
 				return errors.Wrap(err, "loading online client credentials")
 			}
 		}
 		if c.API.Server.OnlineClient == nil || c.API.Server.OnlineClient.Credentials == nil {
-			log.Printf("push and pull to crowdsec API disabled")
+			log.Printf("push and pull to Central API disabled")
 		}
 		if err := c.LoadDBConfig(); err != nil {
 			return err

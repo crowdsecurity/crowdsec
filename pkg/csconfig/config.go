@@ -4,13 +4,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
-/*top-level config : defaults,overriden by cfg file,overriden by cli*/
+// defaultConfigDir is the base path to all configuration files, to be overridden in the Makefile */
+var defaultConfigDir = "/etc/crowdsec"
+
+// defaultDataDir is the base path to all data files, to be overridden in the Makefile */
+var defaultDataDir = "/var/lib/crowdsec/data/"
+
+// Config contains top-level defaults -> overridden by configuration file -> overridden by CLI flags
 type Config struct {
 	//just a path to ourself :p
 	FilePath     *string             `yaml:"-"`
@@ -22,6 +30,7 @@ type Config struct {
 	DbConfig     *DatabaseCfg        `yaml:"db_config,omitempty"`
 	API          *APICfg             `yaml:"api,omitempty"`
 	ConfigPaths  *ConfigurationPaths `yaml:"config_paths,omitempty"`
+	PluginConfig *PluginCfg          `yaml:"plugin_config,omitempty"`
 	DisableAPI   bool                `yaml:"-"`
 	DisableAgent bool                `yaml:"-"`
 	Hub          *Hub                `yaml:"-"`
@@ -70,14 +79,14 @@ func NewDefaultConfig() *Config {
 		Level:   "full",
 	}
 	configPaths := ConfigurationPaths{
-		ConfigDir:          "/etc/crowdsec/",
-		DataDir:            "/var/lib/crowdsec/data/",
-		SimulationFilePath: "/etc/crowdsec/config/simulation.yaml",
-		HubDir:             "/etc/crowdsec/hub",
-		HubIndexFile:       "/etc/crowdsec/hub/.index.json",
+		ConfigDir:          DefaultConfigPath("."),
+		DataDir:            DefaultDataPath("."),
+		SimulationFilePath: DefaultConfigPath("simulation.yaml"),
+		HubDir:             DefaultConfigPath("hub"),
+		HubIndexFile:       DefaultConfigPath("hub", ".index.json"),
 	}
 	crowdsecCfg := CrowdsecServiceCfg{
-		AcquisitionFilePath: "/etc/crowdsec/config/acquis.yaml",
+		AcquisitionFilePath: DefaultConfigPath("acquis.yaml"),
 		ParserRoutinesCount: 1,
 	}
 
@@ -87,20 +96,21 @@ func NewDefaultConfig() *Config {
 
 	apiCfg := APICfg{
 		Client: &LocalApiClientCfg{
-			CredentialsFilePath: "/etc/crowdsec/config/lapi-secrets.yaml",
+			CredentialsFilePath: DefaultConfigPath("lapi-secrets.yaml"),
 		},
 		Server: &LocalApiServerCfg{
 			ListenURI:              "127.0.0.1:8080",
 			UseForwardedForHeaders: false,
 			OnlineClient: &OnlineApiClientCfg{
-				CredentialsFilePath: "/etc/crowdsec/config/online-api-secrets.yaml",
+				CredentialsFilePath: DefaultConfigPath("config", "online-api-secrets.yaml"),
 			},
 		},
 	}
 
 	dbConfig := DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: "/var/lib/crowdsec/data/crowdsec.db",
+		Type:         "sqlite",
+		DbPath:       DefaultDataPath("crowdsec.db"),
+		MaxOpenConns: types.IntPtr(DEFAULT_MAX_OPEN_CONNS),
 	}
 
 	globalCfg := Config{
@@ -114,4 +124,18 @@ func NewDefaultConfig() *Config {
 	}
 
 	return &globalCfg
+}
+
+// DefaultConfigPath returns the default path for a configuration resource
+// "elem" parameters are path components relative to the default cfg directory.
+func DefaultConfigPath(elem ...string) string {
+	elem = append([]string{defaultConfigDir}, elem...)
+	return filepath.Join(elem...)
+}
+
+// DefaultDataPath returns the the default path for a data resource.
+// "elem" parameters are path components relative to the default data directory.
+func DefaultDataPath(elem ...string) string {
+	elem = append([]string{defaultDataDir}, elem...)
+	return filepath.Join(elem...)
 }

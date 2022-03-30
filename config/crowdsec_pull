@@ -1,6 +1,0 @@
-# /etc/cron.d/crowdsec_pull: crontab to pull crowdsec API 
-# bad IP in ban DB.
-
-# Run everyday at 08:00 A.M
-
-0 8 * * * root /usr/local/bin/cscli api pull >> /var/log/cscli.log 2>&1

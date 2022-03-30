@@ -73,7 +73,7 @@ func (s *SyslogSource) GetAggregMetrics() []prometheus.Collector {
 	return []prometheus.Collector{linesReceived, linesParsed}
 }
 
-func (s *SyslogSource) ConfigureByDSN(dsn string, labelType string, logger *log.Entry) error {
+func (s *SyslogSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	return fmt.Errorf("syslog datasource does not support one shot acquisition")
 }
 
@@ -136,14 +136,19 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	appname *string, pid *string, msg *string) (string, error) {
 	ret := ""
+	if msg == nil {
+		return "", errors.Errorf("missing message field in syslog message")
+	}
 	if ts != nil {
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
-		ret += time.Now().Format("Jan 2 15:04:05")
+		s.logger.Tracef("%s - missing TS", *msg)
+		ret += time.Now().UTC().Format("Jan 2 15:04:05")
 	}
 	if hostname != nil {
 		ret += " " + *hostname
 	} else {
+		s.logger.Tracef("%s - missing host", *msg)
 		ret += " unknownhost"
 	}
 	if appname != nil {
@@ -169,23 +174,21 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	}
 	if msg != nil {
 		ret += *msg
-	} else {
-		return "", errors.Errorf("missing message field in syslog message")
 	}
 	return ret, nil
 
 }
 
 func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c chan syslogserver.SyslogMessage) error {
+	killed := false
 	for {
 		select {
 		case <-t.Dying():
-			s.logger.Info("Syslog datasource is dying")
-			s.serverTomb.Kill(nil)
-			return s.serverTomb.Wait()
-		case <-s.serverTomb.Dying():
-			s.logger.Info("Syslog server is dying, exiting")
-			return nil
+			if !killed {
+				s.logger.Info("Syslog datasource is dying")
+				s.serverTomb.Kill(nil)
+				killed = true
+			}
 		case <-s.serverTomb.Dead():
 			s.logger.Info("Syslog server has exited")
 			return nil
@@ -194,20 +197,23 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			var ts time.Time
 
 			logger := s.logger.WithField("client", syslogLine.Client)
+			logger.Tracef("raw: %s", syslogLine)
 			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
 			p := rfc5424.NewParser()
 			m, err := p.Parse(syslogLine.Message)
 			if err != nil {
-				logger.Debugf("could not parse message as RFC5424, falling back to RFC3164 : %s", err)
+				logger.Debugf("could not parse as RFC5424 (%s)", err)
 				p = rfc3164.NewParser(rfc3164.WithYear(rfc3164.CurrentYear{}))
 				m, err = p.Parse(syslogLine.Message)
 				if err != nil {
 					logger.Errorf("could not parse message: %s", err)
+					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
 					continue
 				}
 				msg := m.(*rfc3164.SyslogMessage)
 				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
 				if err != nil {
+					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
 					logger.Error(err)
 					continue
 				}
@@ -217,6 +223,7 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 				msg := m.(*rfc5424.SyslogMessage)
 				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
 				if err != nil {
+					log.Debugf("could not parse message as RFC5424 (%s) : %s", err, syslogLine.Message)
 					logger.Error(err)
 					continue
 				}

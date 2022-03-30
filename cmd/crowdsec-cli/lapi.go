@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 
@@ -24,9 +23,10 @@ var lapiUser string
 
 func NewLapiCmd() *cobra.Command {
 	var cmdLapi = &cobra.Command{
-		Use:   "lapi [action]",
-		Short: "Manage interaction with Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "lapi [action]",
+		Short:             "Manage interaction with Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
 				return fmt.Errorf("loading api client: %s", err.Error())
@@ -35,7 +35,7 @@ func NewLapiCmd() *cobra.Command {
 				log.Fatalln("There is no API->client configuration")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for crowdsec API in '%s'", *csConfig.FilePath)
+				log.Fatalf("no configuration for Local API (LAPI) in '%s'", *csConfig.FilePath)
 			}
 			return nil
 		},
@@ -46,11 +46,12 @@ func NewLapiCmd() *cobra.Command {
 		Short: "Register a machine to Local API (LAPI)",
 		Long: `Register you machine to the Local API (LAPI).
 Keep in mind the machine needs to be validated by an administrator on LAPI side to be effective.`,
-		Args: cobra.MinimumNArgs(0),
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if lapiUser == "" {
-				lapiUser, err = generateID()
+				lapiUser, err = generateID("")
 				if err != nil {
 					log.Fatalf("unable to generate machine id: %s", err)
 				}
@@ -124,9 +125,10 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 	cmdLapi.AddCommand(cmdLapiRegister)
 
 	var cmdLapiStatus = &cobra.Command{
-		Use:   "status",
-		Short: "Check authentication to Local API (LAPI)",
-		Args:  cobra.MinimumNArgs(0),
+		Use:               "status",
+		Short:             "Check authentication to Local API (LAPI)",
+		Args:              cobra.MinimumNArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
@@ -163,17 +165,12 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			}
 			log.Infof("Loaded credentials from %s", csConfig.API.Client.CredentialsFilePath)
 			log.Infof("Trying to authenticate with username %s on %s", login, apiurl)
-			resp, err := Client.Auth.AuthenticateWatcher(context.Background(), t)
+			_, err = Client.Auth.AuthenticateWatcher(context.Background(), t)
 			if err != nil {
 				log.Fatalf("Failed to authenticate to Local API (LAPI) : %s", err)
 			} else {
 				log.Infof("You can successfully interact with Local API (LAPI)")
 			}
-			for k, v := range resp.Response.Header {
-				log.Debugf("[headers] %s : %s", k, v)
-			}
-			dump, _ := httputil.DumpResponse(resp.Response, true)
-			log.Debugf("Response: %s", string(dump))
 		},
 	}
 	cmdLapi.AddCommand(cmdLapiStatus)

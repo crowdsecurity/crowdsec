@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime"
 	"strings"
 
 	version "github.com/hashicorp/go-version"
@@ -23,12 +24,12 @@ Additional labels for pre-release and build metadata are available as extensions
 */
 
 var (
-	Version             string // = "v0.0.0"
-	Codename            string // = "SoumSoum"
-	BuildDate           string // = "I don't remember exactly"
-	Tag                 string // = "dev"
-	GoVersion           string // = "1.13"
-	System              string // = "linux"
+	Version             string                  // = "v0.0.0"
+	Codename            string                  // = "SoumSoum"
+	BuildDate           string                  // = "0000-00-00_00:00:00"
+	Tag                 string                  // = "dev"
+	GoVersion           = runtime.Version()[2:] // = "1.13"
+	System              = runtime.GOOS          // = "linux"
 	Constraint_parser   = ">= 1.0, <= 2.0"
 	Constraint_scenario = ">= 1.0, < 3.0"
 	Constraint_api      = "v1"
@@ -50,6 +51,7 @@ func Show() {
 	log.Printf("Codename: %s", Codename)
 	log.Printf("BuildDate: %s", BuildDate)
 	log.Printf("GoVersion: %s", GoVersion)
+	log.Printf("Platform: %s\n", System)
 	log.Printf("Constraint_parser: %s", Constraint_parser)
 	log.Printf("Constraint_scenario: %s", Constraint_scenario)
 	log.Printf("Constraint_api: %s", Constraint_api)
@@ -84,7 +86,7 @@ func Statisfies(strvers string, constraint string) (bool, error) {
 func Latest() (string, error) {
 	latest := make(map[string]interface{})
 
-	resp, err := http.Get("https://api.github.com/repos/crowdsecurity/crowdsec/releases/latest")
+	resp, err := http.Get("https://version.crowdsec.net/latest")
 	if err != nil {
 		return "", err
 	}

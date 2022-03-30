@@ -10,12 +10,16 @@ import (
 
 /*daemonization/service related stuff*/
 type CommonCfg struct {
-	Daemonize  bool
-	PidDir     string     `yaml:"pid_dir"`
-	LogMedia   string     `yaml:"log_media"`
-	LogDir     string     `yaml:"log_dir,omitempty"` //if LogMedia = file
-	LogLevel   *log.Level `yaml:"log_level"`
-	WorkingDir string     `yaml:"working_dir,omitempty"` ///var/run
+	Daemonize    bool
+	PidDir       string     `yaml:"pid_dir,omitempty"` // TODO: This is just for backward compat. Remove this later
+	LogMedia     string     `yaml:"log_media"`
+	LogDir       string     `yaml:"log_dir,omitempty"` //if LogMedia = file
+	LogLevel     *log.Level `yaml:"log_level"`
+	WorkingDir   string     `yaml:"working_dir,omitempty"` ///var/run
+	CompressLogs *bool      `yaml:"compress_logs,omitempty"`
+	LogMaxSize   int        `yaml:"log_max_size,omitempty"`
+	LogMaxAge    int        `yaml:"log_max_age,omitempty"`
+	LogMaxFiles  int        `yaml:"log_max_files,omitempty"`
 }
 
 func (c *Config) LoadCommon() error {
@@ -25,7 +29,6 @@ func (c *Config) LoadCommon() error {
 	}
 
 	var CommonCleanup = []*string{
-		&c.Common.PidDir,
 		&c.Common.LogDir,
 		&c.Common.WorkingDir,
 	}

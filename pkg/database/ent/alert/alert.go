@@ -65,28 +65,28 @@ const (
 	EdgeMetas = "metas"
 	// Table holds the table name of the alert in the database.
 	Table = "alerts"
-	// OwnerTable is the table the holds the owner relation/edge.
+	// OwnerTable is the table that holds the owner relation/edge.
 	OwnerTable = "alerts"
 	// OwnerInverseTable is the table name for the Machine entity.
 	// It exists in this package in order to avoid circular dependency with the "machine" package.
 	OwnerInverseTable = "machines"
 	// OwnerColumn is the table column denoting the owner relation/edge.
 	OwnerColumn = "machine_alerts"
-	// DecisionsTable is the table the holds the decisions relation/edge.
+	// DecisionsTable is the table that holds the decisions relation/edge.
 	DecisionsTable = "decisions"
 	// DecisionsInverseTable is the table name for the Decision entity.
 	// It exists in this package in order to avoid circular dependency with the "decision" package.
 	DecisionsInverseTable = "decisions"
 	// DecisionsColumn is the table column denoting the decisions relation/edge.
 	DecisionsColumn = "alert_decisions"
-	// EventsTable is the table the holds the events relation/edge.
+	// EventsTable is the table that holds the events relation/edge.
 	EventsTable = "events"
 	// EventsInverseTable is the table name for the Event entity.
 	// It exists in this package in order to avoid circular dependency with the "event" package.
 	EventsInverseTable = "events"
 	// EventsColumn is the table column denoting the events relation/edge.
 	EventsColumn = "alert_events"
-	// MetasTable is the table the holds the metas relation/edge.
+	// MetasTable is the table that holds the metas relation/edge.
 	MetasTable = "meta"
 	// MetasInverseTable is the table name for the Meta entity.
 	// It exists in this package in order to avoid circular dependency with the "meta" package.
@@ -146,8 +146,12 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
+	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// DefaultBucketId holds the default value on creation for the "bucketId" field.
 	DefaultBucketId string
 	// DefaultMessage holds the default value on creation for the "message" field.

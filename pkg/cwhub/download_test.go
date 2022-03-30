@@ -22,7 +22,7 @@ func TestDownloadHubIdx(t *testing.T) {
 
 	//bad domain
 	fmt.Println("Test 'bad domain'")
-	RawFileURLTemplate = "https://baddomain/crowdsecurity/hub/%s/%s"
+	RawFileURLTemplate = "https://baddomain/%s/%s"
 	ret, err = DownloadHubIdx(&csconfig.Hub{})
 	if err == nil || !strings.HasPrefix(fmt.Sprintf("%s", err), "failed http request for hub index: Get") {
 		log.Errorf("unexpected error %s", err)

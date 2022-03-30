@@ -37,12 +37,13 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 	if err != nil {
 		return errors.Wrapf(err, "could not listen on port %d", s.port)
 	}
+	s.Logger.Debugf("listening on %s:%d", s.listenAddr, s.port)
 	s.udpConn = udpConn
 	err = s.udpConn.SetReadBuffer(s.MaxMessageLen) // FIXME probably
 	if err != nil {
 		return errors.Wrap(err, "could not set readbuffer on UDP socket")
 	}
-	err = s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 	if err != nil {
 		return errors.Wrap(err, "could not set read deadline on UDP socket")
 	}
@@ -60,7 +61,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 		for {
 			select {
 			case <-t.Dying():
-				s.Logger.Info("syslog server tomb is dying")
+				s.Logger.Info("Syslog server tomb is dying")
 				err := s.KillServer()
 				return err
 			default:
@@ -76,7 +77,7 @@ func (s *SyslogServer) StartServer() *tomb.Tomb {
 				if err == nil {
 					s.channel <- SyslogMessage{Message: b[:n], Client: strings.Split(addr.String(), ":")[0]}
 				}
-				err = s.udpConn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+				err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 				if err != nil {
 					return err
 				}
@@ -91,5 +92,6 @@ func (s *SyslogServer) KillServer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not close UDP connection")
 	}
+	close(s.channel)
 	return nil
 }

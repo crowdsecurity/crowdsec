@@ -1,0 +1,87 @@
+crowdsec (1.0.13-3) UNRELEASED; urgency=medium
+
+  * Fix small stuff
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 26 Apr 2021 09:30:14 +0100
+
+crowdsec (1.0.13-2) UNRELEASED; urgency=medium
+
+  * Fix version advertisement
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 26 Apr 2021 09:30:14 +0100
+
+crowdsec (1.0.13-1) UNRELEASED; urgency=medium
+
+  * Bump to 1.0.13
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 26 Apr 2021 09:30:14 +0100
+
+crowdsec (1.0.12-1) UNRELEASED; urgency=medium
+
+  * Bump to 1.0.12
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 07 Apr 2021 15:10:11 +0100
+
+crowdsec (1.0.9-5) UNRELEASED; urgency=medium
+
+  * Fix cleanup on remove --purge
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 23 Mar 2021 15:17:09 +0100
+
+crowdsec (1.0.9-4) UNRELEASED; urgency=medium
+
+  * Fix a bunch a bugs in package management
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 23 Mar 2021 15:17:09 +0100
+
+crowdsec (1.0.9-3) UNRELEASED; urgency=medium
+
+  * truly fix error generating acquis.yaml
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.9-2) UNRELEASED; urgency=medium
+
+  * fix error generating acquis.yaml
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.9-1) UNRELEASED; urgency=medium
+
+  * bump to 1.0.9
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.7-4) UNRELEASED; urgency=medium
+
+  * fix crowdsec -version output
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.7-3) UNRELEASED; urgency=medium
+
+  * fix error when docker metabase doesn't exist
+  * fix crowdsec not stopped when uninstalling
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.7-2) UNRELEASED; urgency=medium
+
+  * remove stop metabase docker container
+  * purge removes the metabase container once and for all
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.7-1) UNRELEASED; urgency=medium
+
+  * debian package
+  * bump to 1.0.7
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Wed, 10 Feb 2021 10:41:06 +0100
+
+crowdsec (1.0.4-1) UNRELEASED; urgency=medium
+
+  * debian package
+  * bump to 1.0.4
+
+ -- Manuel Sabban <manuel@crowdsec.net>  Mon, 08 Feb 2021 09:38:06 +0100

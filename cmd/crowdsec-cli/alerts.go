@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -47,47 +49,46 @@ func DecisionsFromAlert(alert *models.Alert) string {
 func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 
 	if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(os.Stdout)
+		header := []string{"id", "scope", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at,machine\n")
-		} else {
-			fmt.Printf("id,scope,value,reason,country,as,decisions,created_at\n")
+			header = append(header, "machine")
+		}
+		err := csvwriter.Write(header)
+		if err != nil {
+			return err
 		}
 		for _, alertItem := range *alerts {
-			if printMachine {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v,%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID)
-			} else {
-				fmt.Printf("%v,%v,%v,%v,%v,%v,%v,%v\n",
-					alertItem.ID,
-					*alertItem.Source.Scope,
-					*alertItem.Source.Value,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber+" "+alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt)
+			row := []string{
+				fmt.Sprintf("%d", alertItem.ID),
+				*alertItem.Source.Scope,
+				*alertItem.Source.Value,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
-
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			err := csvwriter.Write(row)
+			if err != nil {
+				return err
+			}
 		}
+		csvwriter.Flush()
 	} else if csConfig.Cscli.Output == "json" {
 		x, _ := json.MarshalIndent(alerts, "", " ")
 		fmt.Printf("%s", string(x))
 	} else if csConfig.Cscli.Output == "human" {
 
 		table := tablewriter.NewWriter(os.Stdout)
+		header := []string{"ID", "value", "reason", "country", "as", "decisions", "created_at"}
 		if printMachine {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at", "machine"})
-		} else {
-			table.SetHeader([]string{"ID", "value", "reason", "country", "as", "decisions", "created_at"})
+			header = append(header, "machine")
 		}
+		table.SetHeader(header)
 
 		if len(*alerts) == 0 {
 			fmt.Println("No active alerts")
@@ -99,28 +100,19 @@ func AlertsToTable(alerts *models.GetAlertsResponse, printMachine bool) error {
 			if *alertItem.Source.Value != "" {
 				displayVal += ":" + *alertItem.Source.Value
 			}
-			if printMachine {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-					alertItem.MachineID,
-				})
-			} else {
-				table.Append([]string{
-					strconv.Itoa(int(alertItem.ID)),
-					displayVal,
-					*alertItem.Scenario,
-					alertItem.Source.Cn,
-					alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
-					DecisionsFromAlert(alertItem),
-					*alertItem.StartAt,
-				})
+			row := []string{
+				strconv.Itoa(int(alertItem.ID)),
+				displayVal,
+				*alertItem.Scenario,
+				alertItem.Source.Cn,
+				alertItem.Source.AsNumber + " " + alertItem.Source.AsName,
+				DecisionsFromAlert(alertItem),
+				*alertItem.StartAt,
 			}
+			if printMachine {
+				row = append(row, alertItem.MachineID)
+			}
+			table.Append(row)
 		}
 		table.Render() // Send output
 	}
@@ -142,7 +134,9 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
 		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
 		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS         : %s\n\n", alert.Source.AsName)
+		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
+		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
+		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
 		foundActive := false
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
@@ -151,8 +145,8 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 			if err != nil {
 				log.Errorf(err.Error())
 			}
-			expire := time.Now().Add(parsedDuration)
-			if time.Now().After(expire) {
+			expire := time.Now().UTC().Add(parsedDuration)
+			if time.Now().UTC().After(expire) {
 				continue
 			}
 			foundActive = true
@@ -199,9 +193,10 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 func NewAlertsCmd() *cobra.Command {
 	/* ---- ALERTS COMMAND */
 	var cmdAlerts = &cobra.Command{
-		Use:   "alerts [action]",
-		Short: "Manage alerts",
-		Args:  cobra.MinimumNArgs(1),
+		Use:               "alerts [action]",
+		Short:             "Manage alerts",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
@@ -251,12 +246,13 @@ cscli alerts list --ip 1.2.3.4
 cscli alerts list --range 1.2.3.0/24
 cscli alerts list -s crowdsecurity/ssh-bf
 cscli alerts list --type ban`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 
 			if err := manageCliDecisionAlerts(alertListFilter.IPEquals, alertListFilter.RangeEquals,
 				alertListFilter.ScopeEquals, alertListFilter.ValueEquals); err != nil {
-				_ = cmd.Help()
+				printHelp(cmd)
 				log.Fatalf("%s", err)
 			}
 			if limit != nil {
@@ -271,7 +267,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Until, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Until)
 					}
 					*alertListFilter.Until = fmt.Sprintf("%d%s", days*24, "h")
@@ -285,7 +281,7 @@ cscli alerts list --type ban`,
 					realDuration := strings.TrimSuffix(*alertListFilter.Since, "d")
 					days, err := strconv.Atoi(realDuration)
 					if err != nil {
-						cmd.Help()
+						printHelp(cmd)
 						log.Fatalf("Can't parse duration %s, valid durations format: 1d, 4h, 4h15m", *alertListFilter.Since)
 					}
 					*alertListFilter.Since = fmt.Sprintf("%d%s", days*24, "h")
@@ -333,7 +329,7 @@ cscli alerts list --type ban`,
 	cmdAlertsList.Flags().StringVar(alertListFilter.ScopeEquals, "scope", "", "restrict to alerts of this scope (ie. ip,range)")
 	cmdAlertsList.Flags().StringVarP(alertListFilter.ValueEquals, "value", "v", "", "the value to match for in the specified scope")
 	cmdAlertsList.Flags().BoolVar(contained, "contained", false, "query decisions contained by range")
-	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sended alerts")
+	cmdAlertsList.Flags().BoolVarP(&printMachine, "machine", "m", false, "print machines that sent alerts")
 	cmdAlertsList.Flags().IntVarP(limit, "limit", "l", 50, "limit size of alerts list table (0 to view all alerts)")
 	cmdAlerts.AddCommand(cmdAlertsList)
 
@@ -353,7 +349,8 @@ cscli alerts list --type ban`,
 		Example: `cscli alerts delete --ip 1.2.3.4
 cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
-		Args: cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		Args:              cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {
 				return
@@ -371,7 +368,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			if !AlertDeleteAll {
 				if err := manageCliDecisionAlerts(alertDeleteFilter.IPEquals, alertDeleteFilter.RangeEquals,
 					alertDeleteFilter.ScopeEquals, alertDeleteFilter.ValueEquals); err != nil {
-					_ = cmd.Help()
+					printHelp(cmd)
 					log.Fatalf("%s", err)
 				}
 				if ActiveDecision != nil {
@@ -421,12 +418,13 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 
 	var details bool
 	var cmdAlertsInspect = &cobra.Command{
-		Use:     "inspect <alert_id>",
-		Short:   `Show info about an alert`,
-		Example: `cscli alerts inspect 123`,
+		Use:               `inspect "alert_id"`,
+		Short:             `Show info about an alert`,
+		Example:           `cscli alerts inspect 123`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) == 0 {
-				_ = cmd.Help()
+				printHelp(cmd)
 				return
 			}
 			for _, alertID := range args {
@@ -464,6 +462,41 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 	cmdAlertsInspect.Flags().BoolVarP(&details, "details", "d", false, "show alerts with events")
 
 	cmdAlerts.AddCommand(cmdAlertsInspect)
+
+	var maxItems int
+	var maxAge string
+	var cmdAlertsFlush = &cobra.Command{
+		Use: `flush`,
+		Short: `Flush alerts
+/!\ This command can be used only on the same machine than the local API`,
+		Example:           `cscli alerts flush --max-items 1000 --max-age 7d`,
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			var err error
+			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
+				log.Fatal("Local API is disabled, please run this command on the local API machine")
+			}
+			if err := csConfig.LoadDBConfig(); err != nil {
+				log.Fatalf(err.Error())
+			}
+			dbClient, err = database.NewClient(csConfig.DbConfig)
+			if err != nil {
+				log.Fatalf("unable to create new database client: %s", err)
+			}
+			log.Info("Flushing alerts. !! This may take a long time !!")
+			err = dbClient.FlushAlerts(maxAge, maxItems)
+			if err != nil {
+				log.Fatalf("unable to flush alerts: %s", err)
+			}
+			log.Info("Alerts flushed")
+		},
+	}
+
+	cmdAlertsFlush.Flags().SortFlags = false
+	cmdAlertsFlush.Flags().IntVar(&maxItems, "max-items", 5000, "Maximum number of alert items to keep in the database")
+	cmdAlertsFlush.Flags().StringVar(&maxAge, "max-age", "7d", "Maximum age of alert items to keep in the database")
+
+	cmdAlerts.AddCommand(cmdAlertsFlush)
 
 	return cmdAlerts
 }

@@ -107,11 +107,17 @@ func (mc *MetaCreate) Save(ctx context.Context) (*Meta, error) {
 				return nil, err
 			}
 			mc.mutation = mutation
-			node, err = mc.sqlSave(ctx)
+			if node, err = mc.sqlSave(ctx); err != nil {
+				return nil, err
+			}
+			mutation.id = &node.ID
 			mutation.done = true
 			return node, err
 		})
 		for i := len(mc.hooks) - 1; i >= 0; i-- {
+			if mc.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mc.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mc.mutation); err != nil {
@@ -130,6 +136,19 @@ func (mc *MetaCreate) SaveX(ctx context.Context) *Meta {
 	return v
 }
 
+// Exec executes the query.
+func (mc *MetaCreate) Exec(ctx context.Context) error {
+	_, err := mc.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (mc *MetaCreate) ExecX(ctx context.Context) {
+	if err := mc.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
 // defaults sets the default values of the builder before save.
 func (mc *MetaCreate) defaults() {
 	if _, ok := mc.mutation.CreatedAt(); !ok {
@@ -144,21 +163,15 @@ func (mc *MetaCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MetaCreate) check() error {
-	if _, ok := mc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := mc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
-	}
 	if _, ok := mc.mutation.Key(); !ok {
-		return &ValidationError{Name: "key", err: errors.New("ent: missing required field \"key\"")}
+		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "Meta.key"`)}
 	}
 	if _, ok := mc.mutation.Value(); !ok {
-		return &ValidationError{Name: "value", err: errors.New("ent: missing required field \"value\"")}
+		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Meta.value"`)}
 	}
 	if v, ok := mc.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
 		}
 	}
 	return nil
@@ -167,8 +180,8 @@ func (mc *MetaCreate) check() error {
 func (mc *MetaCreate) sqlSave(ctx context.Context) (*Meta, error) {
 	_node, _spec := mc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
-		if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}
@@ -194,7 +207,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -202,7 +215,7 @@ func (mc *MetaCreate) createSpec() (*Meta, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: meta.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
 	}
 	if value, ok := mc.mutation.Key(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -272,19 +285,23 @@ func (mcb *MetaCreateBulk) Save(ctx context.Context) ([]*Meta, error) {
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
+					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, mcb.driver, &sqlgraph.BatchCreateSpec{Nodes: specs}); err != nil {
-						if cerr, ok := isSQLConstraintError(err); ok {
-							err = cerr
+					if err = sqlgraph.BatchCreate(ctx, mcb.driver, spec); err != nil {
+						if sqlgraph.IsConstraintError(err) {
+							err = &ConstraintError{err.Error(), err}
 						}
 					}
 				}
-				mutation.done = true
 				if err != nil {
 					return nil, err
 				}
-				id := specs[i].ID.Value.(int64)
-				nodes[i].ID = int(id)
+				mutation.id = &nodes[i].ID
+				mutation.done = true
+				if specs[i].ID.Value != nil {
+					id := specs[i].ID.Value.(int64)
+					nodes[i].ID = int(id)
+				}
 				return nodes[i], nil
 			})
 			for i := len(builder.hooks) - 1; i >= 0; i-- {
@@ -308,4 +325,17 @@ func (mcb *MetaCreateBulk) SaveX(ctx context.Context) []*Meta {
 		panic(err)
 	}
 	return v
+}
+
+// Exec executes the query.
+func (mcb *MetaCreateBulk) Exec(ctx context.Context) error {
+	_, err := mcb.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (mcb *MetaCreateBulk) ExecX(ctx context.Context) {
+	if err := mcb.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

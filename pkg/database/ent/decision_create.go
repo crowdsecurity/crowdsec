@@ -215,11 +215,17 @@ func (dc *DecisionCreate) Save(ctx context.Context) (*Decision, error) {
 				return nil, err
 			}
 			dc.mutation = mutation
-			node, err = dc.sqlSave(ctx)
+			if node, err = dc.sqlSave(ctx); err != nil {
+				return nil, err
+			}
+			mutation.id = &node.ID
 			mutation.done = true
 			return node, err
 		})
 		for i := len(dc.hooks) - 1; i >= 0; i-- {
+			if dc.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = dc.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, dc.mutation); err != nil {
@@ -236,6 +242,19 @@ func (dc *DecisionCreate) SaveX(ctx context.Context) *Decision {
 		panic(err)
 	}
 	return v
+}
+
+// Exec executes the query.
+func (dc *DecisionCreate) Exec(ctx context.Context) error {
+	_, err := dc.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (dc *DecisionCreate) ExecX(ctx context.Context) {
+	if err := dc.Exec(ctx); err != nil {
+		panic(err)
+	}
 }
 
 // defaults sets the default values of the builder before save.
@@ -256,32 +275,26 @@ func (dc *DecisionCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (dc *DecisionCreate) check() error {
-	if _, ok := dc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := dc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
-	}
 	if _, ok := dc.mutation.Until(); !ok {
-		return &ValidationError{Name: "until", err: errors.New("ent: missing required field \"until\"")}
+		return &ValidationError{Name: "until", err: errors.New(`ent: missing required field "Decision.until"`)}
 	}
 	if _, ok := dc.mutation.Scenario(); !ok {
-		return &ValidationError{Name: "scenario", err: errors.New("ent: missing required field \"scenario\"")}
+		return &ValidationError{Name: "scenario", err: errors.New(`ent: missing required field "Decision.scenario"`)}
 	}
 	if _, ok := dc.mutation.GetType(); !ok {
-		return &ValidationError{Name: "type", err: errors.New("ent: missing required field \"type\"")}
+		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Decision.type"`)}
 	}
 	if _, ok := dc.mutation.Scope(); !ok {
-		return &ValidationError{Name: "scope", err: errors.New("ent: missing required field \"scope\"")}
+		return &ValidationError{Name: "scope", err: errors.New(`ent: missing required field "Decision.scope"`)}
 	}
 	if _, ok := dc.mutation.Value(); !ok {
-		return &ValidationError{Name: "value", err: errors.New("ent: missing required field \"value\"")}
+		return &ValidationError{Name: "value", err: errors.New(`ent: missing required field "Decision.value"`)}
 	}
 	if _, ok := dc.mutation.Origin(); !ok {
-		return &ValidationError{Name: "origin", err: errors.New("ent: missing required field \"origin\"")}
+		return &ValidationError{Name: "origin", err: errors.New(`ent: missing required field "Decision.origin"`)}
 	}
 	if _, ok := dc.mutation.Simulated(); !ok {
-		return &ValidationError{Name: "simulated", err: errors.New("ent: missing required field \"simulated\"")}
+		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Decision.simulated"`)}
 	}
 	return nil
 }
@@ -289,8 +302,8 @@ func (dc *DecisionCreate) check() error {
 func (dc *DecisionCreate) sqlSave(ctx context.Context) (*Decision, error) {
 	_node, _spec := dc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, dc.driver, _spec); err != nil {
-		if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}
@@ -316,7 +329,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := dc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -324,7 +337,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: decision.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
 	}
 	if value, ok := dc.mutation.Until(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -474,19 +487,23 @@ func (dcb *DecisionCreateBulk) Save(ctx context.Context) ([]*Decision, error) {
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, dcb.builders[i+1].mutation)
 				} else {
+					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, dcb.driver, &sqlgraph.BatchCreateSpec{Nodes: specs}); err != nil {
-						if cerr, ok := isSQLConstraintError(err); ok {
-							err = cerr
+					if err = sqlgraph.BatchCreate(ctx, dcb.driver, spec); err != nil {
+						if sqlgraph.IsConstraintError(err) {
+							err = &ConstraintError{err.Error(), err}
 						}
 					}
 				}
-				mutation.done = true
 				if err != nil {
 					return nil, err
 				}
-				id := specs[i].ID.Value.(int64)
-				nodes[i].ID = int(id)
+				mutation.id = &nodes[i].ID
+				mutation.done = true
+				if specs[i].ID.Value != nil {
+					id := specs[i].ID.Value.(int64)
+					nodes[i].ID = int(id)
+				}
 				return nodes[i], nil
 			})
 			for i := len(builder.hooks) - 1; i >= 0; i-- {
@@ -510,4 +527,17 @@ func (dcb *DecisionCreateBulk) SaveX(ctx context.Context) []*Decision {
 		panic(err)
 	}
 	return v
+}
+
+// Exec executes the query.
+func (dcb *DecisionCreateBulk) Exec(ctx context.Context) error {
+	_, err := dcb.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (dcb *DecisionCreateBulk) ExecX(ctx context.Context) {
+	if err := dcb.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/gob"
 	"fmt"
@@ -22,16 +23,43 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool) error {
 
 	/*Configure logs*/
 	if cfgMode == "file" {
+		_maxsize := 500
+		if maxSize != 0 {
+			_maxsize = maxSize
+		}
+		_maxfiles := 3
+		if maxFiles != 0 {
+			_maxfiles = maxFiles
+		}
+		_maxage := 28
+		if maxAge != 0 {
+			_maxage = maxAge
+		}
+		_compress := true
+		if compress != nil {
+			_compress = *compress
+		}
+		/*cf. https://github.com/natefinch/lumberjack/issues/82
+		let's create the file beforehand w/ the right perms */
+		fname := cfgFolder + "/crowdsec.log"
+		// check if file exists
+		_, err := os.Stat(fname)
+		// create file if not exists, purposefully ignore errors
+		if os.IsNotExist(err) {
+			file, _ := os.OpenFile(fname, os.O_RDWR|os.O_CREATE, 0600)
+			file.Close()
+		}
+
 		LogOutput = &lumberjack.Logger{
-			Filename:   cfgFolder + "/crowdsec.log",
-			MaxSize:    500, //megabytes
-			MaxBackups: 3,
-			MaxAge:     28,   //days
-			Compress:   true, //disabled by default
+			Filename:   fname,
+			MaxSize:    _maxsize,
+			MaxBackups: _maxfiles,
+			MaxAge:     _maxage,
+			Compress:   _compress,
 		}
 		log.SetOutput(LogOutput)
 	} else if cfgMode != "stdout" {
@@ -41,7 +69,6 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	log.SetLevel(logLevel)
 	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
-
 	return nil
 }
 
@@ -187,4 +214,47 @@ func CopyFile(sourceSymLink, destinationFile string) (err error) {
 	}
 	err = copyFileContents(sourceFile, destinationFile)
 	return
+}
+
+func StrPtr(s string) *string {
+	return &s
+}
+
+func IntPtr(i int) *int {
+	return &i
+}
+
+func Int32Ptr(i int32) *int32 {
+	return &i
+}
+
+func BoolPtr(b bool) *bool {
+	return &b
+}
+
+func InSlice(str string, slice []string) bool {
+	for _, item := range slice {
+		if str == item {
+			return true
+		}
+	}
+	return false
+}
+
+func UtcNow() time.Time {
+	return time.Now().UTC()
+}
+
+func GetLineCountForFile(filepath string) int {
+	f, err := os.Open(filepath)
+	if err != nil {
+		log.Fatalf("unable to open log file %s", filepath)
+	}
+	defer f.Close()
+	lc := 0
+	fs := bufio.NewScanner(f)
+	for fs.Scan() {
+		lc++
+	}
+	return lc
 }

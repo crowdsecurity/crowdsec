@@ -20,7 +20,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 	"gopkg.in/tomb.v2"
 	"gopkg.in/yaml.v2"
 )
@@ -117,7 +116,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	return nil
 }
 
-func (f *FileSource) ConfigureByDSN(dsn string, labelType string, logger *log.Entry) error {
+func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	if !strings.HasPrefix(dsn, "file://") {
 		return fmt.Errorf("invalid DSN %s for file source, must start with file://", dsn)
 	}
@@ -153,7 +152,7 @@ func (f *FileSource) ConfigureByDSN(dsn string, labelType string, logger *log.En
 	}
 
 	f.config = FileConfiguration{}
-	f.config.Labels = map[string]string{"type": labelType}
+	f.config.Labels = labels
 	f.config.Mode = configuration.CAT_MODE
 
 	f.logger.Debugf("Will try pattern %s", args[0])
@@ -230,11 +229,18 @@ func (f *FileSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		return f.monitorNewFiles(out, t)
 	})
 	for _, file := range f.files {
-		err := unix.Access(file, unix.R_OK)
+		//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+		//do not rely on stat, reclose file immediately as it's opened by Tail
+		fd, err := os.Open(file)
 		if err != nil {
 			f.logger.Errorf("unable to read %s : %s", file, err)
 			continue
 		}
+		if err := fd.Close(); err != nil {
+			f.logger.Errorf("unable to close %s : %s", file, err)
+			continue
+		}
+
 		fi, err := os.Stat(file)
 		if err != nil {
 			return fmt.Errorf("could not stat file %s : %w", file, err)
@@ -300,9 +306,15 @@ func (f *FileSource) monitorNewFiles(out chan types.Event, t *tomb.Tomb) error {
 					logger.Debugf("Already tailing file %s, not creating a new tail", event.Name)
 					break
 				}
-				err = unix.Access(event.Name, unix.R_OK)
+				//cf. https://github.com/crowdsecurity/crowdsec/issues/1168
+				//do not rely on stat, reclose file immediately as it's opened by Tail
+				fd, err := os.Open(event.Name)
 				if err != nil {
-					logger.Errorf("unable to read %s : %s", event.Name, err)
+					f.logger.Errorf("unable to read %s : %s", event.Name, err)
+					continue
+				}
+				if err := fd.Close(); err != nil {
+					f.logger.Errorf("unable to close %s : %s", event.Name, err)
 					continue
 				}
 				//Slightly different parameters for Location, as we want to read the first lines of the newly created file
@@ -399,10 +411,13 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 	}
 	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
+		if scanner.Text() == "" {
+			continue
+		}
 		logger.Debugf("line %s", scanner.Text())
 		l := types.Line{}
 		l.Raw = scanner.Text()
-		l.Time = time.Now()
+		l.Time = time.Now().UTC()
 		l.Src = filename
 		l.Labels = f.config.Labels
 		l.Process = true

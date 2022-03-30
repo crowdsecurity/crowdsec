@@ -10,10 +10,10 @@ jobs:
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Go 1.13
+    - name: Set up Go 1.17
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13
+        go-version: 1.17
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
@@ -29,10 +29,10 @@ jobs:
     name: Build and upload binary package
     runs-on: ubuntu-latest
     steps:
-    - name: Set up Go 1.13
+    - name: Set up Go 1.17
       uses: actions/setup-go@v1
       with:
-        go-version: 1.13
+        go-version: 1.17
       id: go
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2

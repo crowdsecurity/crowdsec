@@ -60,9 +60,15 @@ func (c *Config) LoadCrowdsec() error {
 			return errors.Wrap(err, "while globing acquis_dir")
 		}
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
+
+		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yml")
+		if err != nil {
+			return errors.Wrap(err, "while globing acquis_dir")
+		}
+		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 	}
 	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
-		return fmt.Errorf("no acquisition_path nor acquisition_dir")
+		log.Warningf("no acquisition_path nor acquisition_dir")
 	}
 	if err := c.LoadSimulation(); err != nil {
 		return errors.Wrap(err, "load error (simulation)")

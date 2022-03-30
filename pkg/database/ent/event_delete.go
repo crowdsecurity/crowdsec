@@ -20,9 +20,9 @@ type EventDelete struct {
 	mutation *EventMutation
 }
 
-// Where adds a new predicate to the EventDelete builder.
+// Where appends a list predicates to the EventDelete builder.
 func (ed *EventDelete) Where(ps ...predicate.Event) *EventDelete {
-	ed.mutation.predicates = append(ed.mutation.predicates, ps...)
+	ed.mutation.Where(ps...)
 	return ed
 }
 
@@ -46,6 +46,9 @@ func (ed *EventDelete) Exec(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(ed.hooks) - 1; i >= 0; i-- {
+			if ed.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = ed.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, ed.mutation); err != nil {

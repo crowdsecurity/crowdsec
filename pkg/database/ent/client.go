@@ -113,6 +113,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
+		ctx:      ctx,
 		config:   cfg,
 		Alert:    NewAlertClient(cfg),
 		Bouncer:  NewBouncerClient(cfg),
@@ -223,7 +224,9 @@ func (c *AlertClient) DeleteOneID(id int) *AlertDeleteOne {
 
 // Query returns a query builder for Alert.
 func (c *AlertClient) Query() *AlertQuery {
-	return &AlertQuery{config: c.config}
+	return &AlertQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Alert entity by its id.
@@ -375,7 +378,9 @@ func (c *BouncerClient) DeleteOneID(id int) *BouncerDeleteOne {
 
 // Query returns a query builder for Bouncer.
 func (c *BouncerClient) Query() *BouncerQuery {
-	return &BouncerQuery{config: c.config}
+	return &BouncerQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Bouncer entity by its id.
@@ -463,7 +468,9 @@ func (c *DecisionClient) DeleteOneID(id int) *DecisionDeleteOne {
 
 // Query returns a query builder for Decision.
 func (c *DecisionClient) Query() *DecisionQuery {
-	return &DecisionQuery{config: c.config}
+	return &DecisionQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Decision entity by its id.
@@ -567,7 +574,9 @@ func (c *EventClient) DeleteOneID(id int) *EventDeleteOne {
 
 // Query returns a query builder for Event.
 func (c *EventClient) Query() *EventQuery {
-	return &EventQuery{config: c.config}
+	return &EventQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Event entity by its id.
@@ -671,7 +680,9 @@ func (c *MachineClient) DeleteOneID(id int) *MachineDeleteOne {
 
 // Query returns a query builder for Machine.
 func (c *MachineClient) Query() *MachineQuery {
-	return &MachineQuery{config: c.config}
+	return &MachineQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Machine entity by its id.
@@ -775,7 +786,9 @@ func (c *MetaClient) DeleteOneID(id int) *MetaDeleteOne {
 
 // Query returns a query builder for Meta.
 func (c *MetaClient) Query() *MetaQuery {
-	return &MetaQuery{config: c.config}
+	return &MetaQuery{
+		config: c.config,
+	}
 }
 
 // Get returns a Meta entity by its id.

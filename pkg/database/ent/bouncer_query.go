@@ -20,6 +20,7 @@ type BouncerQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Bouncer
@@ -43,6 +44,13 @@ func (bq *BouncerQuery) Limit(limit int) *BouncerQuery {
 // Offset adds an offset step to the query.
 func (bq *BouncerQuery) Offset(offset int) *BouncerQuery {
 	bq.offset = &offset
+	return bq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (bq *BouncerQuery) Unique(unique bool) *BouncerQuery {
+	bq.unique = &unique
 	return bq
 }
 
@@ -98,7 +106,7 @@ func (bq *BouncerQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single Bouncer entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one Bouncer entity is not found.
+// Returns a *NotSingularError when more than one Bouncer entity is found.
 // Returns a *NotFoundError when no Bouncer entities are found.
 func (bq *BouncerQuery) Only(ctx context.Context) (*Bouncer, error) {
 	nodes, err := bq.Limit(2).All(ctx)
@@ -125,7 +133,7 @@ func (bq *BouncerQuery) OnlyX(ctx context.Context) *Bouncer {
 }
 
 // OnlyID is like Only, but returns the only Bouncer ID in the query.
-// Returns a *NotSingularError when exactly one Bouncer ID is not found.
+// Returns a *NotSingularError when more than one Bouncer ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (bq *BouncerQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -234,8 +242,9 @@ func (bq *BouncerQuery) Clone() *BouncerQuery {
 		order:      append([]OrderFunc{}, bq.order...),
 		predicates: append([]predicate.Bouncer{}, bq.predicates...),
 		// clone intermediate query.
-		sql:  bq.sql.Clone(),
-		path: bq.path,
+		sql:    bq.sql.Clone(),
+		path:   bq.path,
+		unique: bq.unique,
 	}
 }
 
@@ -245,7 +254,7 @@ func (bq *BouncerQuery) Clone() *BouncerQuery {
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		CreatedAt time.Time `json:"created_at"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
@@ -272,15 +281,15 @@ func (bq *BouncerQuery) GroupBy(field string, fields ...string) *BouncerGroupBy 
 // Example:
 //
 //	var v []struct {
-//		CreatedAt time.Time `json:"created_at,omitempty"`
+//		CreatedAt time.Time `json:"created_at"`
 //	}
 //
 //	client.Bouncer.Query().
 //		Select(bouncer.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (bq *BouncerQuery) Select(field string, fields ...string) *BouncerSelect {
-	bq.fields = append([]string{field}, fields...)
+func (bq *BouncerQuery) Select(fields ...string) *BouncerSelect {
+	bq.fields = append(bq.fields, fields...)
 	return &BouncerSelect{BouncerQuery: bq}
 }
 
@@ -328,6 +337,10 @@ func (bq *BouncerQuery) sqlAll(ctx context.Context) ([]*Bouncer, error) {
 
 func (bq *BouncerQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := bq.querySpec()
+	_spec.Node.Columns = bq.fields
+	if len(bq.fields) > 0 {
+		_spec.Unique = bq.unique != nil && *bq.unique
+	}
 	return sqlgraph.CountNodes(ctx, bq.driver, _spec)
 }
 
@@ -351,6 +364,9 @@ func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 		},
 		From:   bq.sql,
 		Unique: true,
+	}
+	if unique := bq.unique; unique != nil {
+		_spec.Unique = *unique
 	}
 	if fields := bq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
@@ -377,7 +393,7 @@ func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := bq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, bouncer.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -387,16 +403,23 @@ func (bq *BouncerQuery) querySpec() *sqlgraph.QuerySpec {
 func (bq *BouncerQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(bq.driver.Dialect())
 	t1 := builder.Table(bouncer.Table)
-	selector := builder.Select(t1.Columns(bouncer.Columns...)...).From(t1)
+	columns := bq.fields
+	if len(columns) == 0 {
+		columns = bouncer.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if bq.sql != nil {
 		selector = bq.sql
-		selector.Select(selector.Columns(bouncer.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
+	}
+	if bq.unique != nil && *bq.unique {
+		selector.Distinct()
 	}
 	for _, p := range bq.predicates {
 		p(selector)
 	}
 	for _, p := range bq.order {
-		p(selector, bouncer.ValidColumn)
+		p(selector)
 	}
 	if offset := bq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -658,13 +681,22 @@ func (bgb *BouncerGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (bgb *BouncerGroupBy) sqlQuery() *sql.Selector {
-	selector := bgb.sql
-	columns := make([]string, 0, len(bgb.fields)+len(bgb.fns))
-	columns = append(columns, bgb.fields...)
+	selector := bgb.sql.Select()
+	aggregation := make([]string, 0, len(bgb.fns))
 	for _, fn := range bgb.fns {
-		columns = append(columns, fn(selector, bouncer.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(bgb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(bgb.fields)+len(bgb.fns))
+		for _, f := range bgb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(bgb.fields...)...)
 }
 
 // BouncerSelect is the builder for selecting fields of Bouncer entities.
@@ -880,16 +912,10 @@ func (bs *BouncerSelect) BoolX(ctx context.Context) bool {
 
 func (bs *BouncerSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := bs.sqlQuery().Query()
+	query, args := bs.sql.Query()
 	if err := bs.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (bs *BouncerSelect) sqlQuery() sql.Querier {
-	selector := bs.sql
-	selector.Select(selector.Columns(bs.fields...)...)
-	return selector
 }

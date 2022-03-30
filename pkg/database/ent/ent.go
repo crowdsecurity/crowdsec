@@ -7,9 +7,13 @@ import (
 	"fmt"
 
 	"entgo.io/ent"
-	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
-	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -25,36 +29,60 @@ type (
 )
 
 // OrderFunc applies an ordering on the sql selector.
-type OrderFunc func(*sql.Selector, func(string) bool)
+type OrderFunc func(*sql.Selector)
+
+// columnChecker returns a function indicates if the column exists in the given column.
+func columnChecker(table string) func(string) error {
+	checks := map[string]func(string) bool{
+		alert.Table:    alert.ValidColumn,
+		bouncer.Table:  bouncer.ValidColumn,
+		decision.Table: decision.ValidColumn,
+		event.Table:    event.ValidColumn,
+		machine.Table:  machine.ValidColumn,
+		meta.Table:     meta.ValidColumn,
+	}
+	check, ok := checks[table]
+	if !ok {
+		return func(string) error {
+			return fmt.Errorf("unknown table %q", table)
+		}
+	}
+	return func(column string) error {
+		if !check(column) {
+			return fmt.Errorf("unknown column %q for table %q", column, table)
+		}
+		return nil
+	}
+}
 
 // Asc applies the given fields in ASC order.
 func Asc(fields ...string) OrderFunc {
-	return func(s *sql.Selector, check func(string) bool) {
+	return func(s *sql.Selector) {
+		check := columnChecker(s.TableName())
 		for _, f := range fields {
-			if check(f) {
-				s.OrderBy(sql.Asc(f))
-			} else {
-				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("invalid field %q for ordering", f)})
+			if err := check(f); err != nil {
+				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("ent: %w", err)})
 			}
+			s.OrderBy(sql.Asc(s.C(f)))
 		}
 	}
 }
 
 // Desc applies the given fields in DESC order.
 func Desc(fields ...string) OrderFunc {
-	return func(s *sql.Selector, check func(string) bool) {
+	return func(s *sql.Selector) {
+		check := columnChecker(s.TableName())
 		for _, f := range fields {
-			if check(f) {
-				s.OrderBy(sql.Desc(f))
-			} else {
-				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("invalid field %q for ordering", f)})
+			if err := check(f); err != nil {
+				s.AddError(&ValidationError{Name: f, err: fmt.Errorf("ent: %w", err)})
 			}
+			s.OrderBy(sql.Desc(s.C(f)))
 		}
 	}
 }
 
 // AggregateFunc applies an aggregation step on the group-by traversal/selector.
-type AggregateFunc func(*sql.Selector, func(string) bool) string
+type AggregateFunc func(*sql.Selector) string
 
 // As is a pseudo aggregation function for renaming another other functions with custom names. For example:
 //
@@ -63,23 +91,24 @@ type AggregateFunc func(*sql.Selector, func(string) bool) string
 //	Scan(ctx, &v)
 //
 func As(fn AggregateFunc, end string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		return sql.As(fn(s, check), end)
+	return func(s *sql.Selector) string {
+		return sql.As(fn(s), end)
 	}
 }
 
 // Count applies the "count" aggregation function on each group.
 func Count() AggregateFunc {
-	return func(s *sql.Selector, _ func(string) bool) string {
+	return func(s *sql.Selector) string {
 		return sql.Count("*")
 	}
 }
 
 // Max applies the "max" aggregation function on the given field of each group.
 func Max(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
+	return func(s *sql.Selector) string {
+		check := columnChecker(s.TableName())
+		if err := check(field); err != nil {
+			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("ent: %w", err)})
 			return ""
 		}
 		return sql.Max(s.C(field))
@@ -88,9 +117,10 @@ func Max(field string) AggregateFunc {
 
 // Mean applies the "mean" aggregation function on the given field of each group.
 func Mean(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
+	return func(s *sql.Selector) string {
+		check := columnChecker(s.TableName())
+		if err := check(field); err != nil {
+			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("ent: %w", err)})
 			return ""
 		}
 		return sql.Avg(s.C(field))
@@ -99,9 +129,10 @@ func Mean(field string) AggregateFunc {
 
 // Min applies the "min" aggregation function on the given field of each group.
 func Min(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
+	return func(s *sql.Selector) string {
+		check := columnChecker(s.TableName())
+		if err := check(field); err != nil {
+			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("ent: %w", err)})
 			return ""
 		}
 		return sql.Min(s.C(field))
@@ -110,16 +141,17 @@ func Min(field string) AggregateFunc {
 
 // Sum applies the "sum" aggregation function on the given field of each group.
 func Sum(field string) AggregateFunc {
-	return func(s *sql.Selector, check func(string) bool) string {
-		if !check(field) {
-			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("invalid field %q for grouping", field)})
+	return func(s *sql.Selector) string {
+		check := columnChecker(s.TableName())
+		if err := check(field); err != nil {
+			s.AddError(&ValidationError{Name: field, err: fmt.Errorf("ent: %w", err)})
 			return ""
 		}
 		return sql.Sum(s.C(field))
 	}
 }
 
-// ValidationError returns when validating a field fails.
+// ValidationError returns when validating a field or edge fails.
 type ValidationError struct {
 	Name string // Field or edge name.
 	err  error
@@ -135,7 +167,7 @@ func (e *ValidationError) Unwrap() error {
 	return e.err
 }
 
-// IsValidationError returns a boolean indicating whether the error is a validaton error.
+// IsValidationError returns a boolean indicating whether the error is a validation error.
 func IsValidationError(err error) bool {
 	if err == nil {
 		return false
@@ -234,22 +266,4 @@ func IsConstraintError(err error) bool {
 	}
 	var e *ConstraintError
 	return errors.As(err, &e)
-}
-
-func isSQLConstraintError(err error) (*ConstraintError, bool) {
-	if sqlgraph.IsConstraintError(err) {
-		return &ConstraintError{err.Error(), err}, true
-	}
-	return nil, false
-}
-
-// rollback calls tx.Rollback and wraps the given error with the rollback error if present.
-func rollback(tx dialect.Tx, err error) error {
-	if rerr := tx.Rollback(); rerr != nil {
-		err = fmt.Errorf("%w: %v", err, rerr)
-	}
-	if err, ok := isSQLConstraintError(err); ok {
-		return err
-	}
-	return err
 }

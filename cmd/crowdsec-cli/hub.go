@@ -24,7 +24,8 @@ Hub is manage by cscli, to get latest hub files from [Crowdsec Hub](https://hub.
 cscli hub list   # List all installed configurations
 cscli hub update # Download list of available configurations from the hub
 		`,
-		Args: cobra.ExactArgs(0),
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -36,9 +37,10 @@ cscli hub update # Download list of available configurations from the hub
 	cmdHub.PersistentFlags().StringVarP(&cwhub.HubBranch, "branch", "b", "", "Use given branch from hub")
 
 	var cmdHubList = &cobra.Command{
-		Use:   "list [-a]",
-		Short: "List installed configs",
-		Args:  cobra.ExactArgs(0),
+		Use:               "list [-a]",
+		Short:             "List installed configs",
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 
 			if err := csConfig.LoadHub(); err != nil {
@@ -54,17 +56,10 @@ cscli hub update # Download list of available configurations from the hub
 				log.Info(v)
 			}
 			cwhub.DisplaySummary()
-			log.Printf("PARSERS:")
-			ListItem(cwhub.PARSERS, args)
-			log.Printf("SCENARIOS:")
-			ListItem(cwhub.SCENARIOS, args)
-			log.Printf("COLLECTIONS:")
-			ListItem(cwhub.COLLECTIONS, args)
-			log.Printf("POSTOVERFLOWS:")
-			ListItem(cwhub.PARSERS_OVFLW, args)
+			ListItems([]string{cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW}, args, true, false)
 		},
 	}
-	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdHub.AddCommand(cmdHubList)
 
 	var cmdHubUpdate = &cobra.Command{
@@ -73,7 +68,8 @@ cscli hub update # Download list of available configurations from the hub
 		Long: `
 Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.index.json) file from hub, containing the list of available configs.
 `,
-		Args: cobra.ExactArgs(0),
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -106,7 +102,8 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 		Long: `
 Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if you want the latest versions available.
 `,
-		Args: cobra.ExactArgs(0),
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if csConfig.Cscli == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")

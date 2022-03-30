@@ -17,25 +17,25 @@ type Bouncer struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at"`
 	// Name holds the value of the "name" field.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name"`
 	// APIKey holds the value of the "api_key" field.
-	APIKey string `json:"api_key,omitempty"`
+	APIKey string `json:"api_key"`
 	// Revoked holds the value of the "revoked" field.
-	Revoked bool `json:"revoked,omitempty"`
+	Revoked bool `json:"revoked"`
 	// IPAddress holds the value of the "ip_address" field.
-	IPAddress string `json:"ip_address,omitempty"`
+	IPAddress string `json:"ip_address"`
 	// Type holds the value of the "type" field.
-	Type string `json:"type,omitempty"`
+	Type string `json:"type"`
 	// Version holds the value of the "version" field.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version"`
 	// Until holds the value of the "until" field.
-	Until time.Time `json:"until,omitempty"`
+	Until time.Time `json:"until"`
 	// LastPull holds the value of the "last_pull" field.
-	LastPull time.Time `json:"last_pull,omitempty"`
+	LastPull time.Time `json:"last_pull"`
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -44,13 +44,13 @@ func (*Bouncer) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case bouncer.FieldRevoked:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Bouncer", columns[i])
 		}
@@ -76,13 +76,15 @@ func (b *Bouncer) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				b.CreatedAt = value.Time
+				b.CreatedAt = new(time.Time)
+				*b.CreatedAt = value.Time
 			}
 		case bouncer.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				b.UpdatedAt = value.Time
+				b.UpdatedAt = new(time.Time)
+				*b.UpdatedAt = value.Time
 			}
 		case bouncer.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -160,10 +162,14 @@ func (b *Bouncer) String() string {
 	var builder strings.Builder
 	builder.WriteString("Bouncer(")
 	builder.WriteString(fmt.Sprintf("id=%v", b.ID))
-	builder.WriteString(", created_at=")
-	builder.WriteString(b.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", updated_at=")
-	builder.WriteString(b.UpdatedAt.Format(time.ANSIC))
+	if v := b.CreatedAt; v != nil {
+		builder.WriteString(", created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := b.UpdatedAt; v != nil {
+		builder.WriteString(", updated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", name=")
 	builder.WriteString(b.Name)
 	builder.WriteString(", api_key=")

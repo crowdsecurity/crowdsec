@@ -1,0 +1,16 @@
+[Unit]
+Description=Crowdsec agent
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=notify
+Environment=LC_ALL=C LANG=C
+ExecStartPre=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml -t
+ExecStart=/usr/bin/crowdsec -c /etc/crowdsec/config.yaml
+#ExecStartPost=/bin/sleep 0.1
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target

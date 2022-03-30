@@ -14,7 +14,7 @@ func NewCompletionCmd() *cobra.Command {
 		Long: `To load completions:
 
 ### Bash:
-
+` + "```shell" + `
   $ source <(cscli completion bash)
 
   # To load completions for each session, execute once:
@@ -35,9 +35,10 @@ func NewCompletionCmd() *cobra.Command {
   * Install bash-completion package
   $ source /etc/profile
   $ source <(cscli completion bash)
+` + "```" + `
 
-### Zsh:
-
+### Zsh:
+` + "```shell" + `
   # If shell completion is not already enabled in your environment,
   # you will need to enable it.  You can execute the following once:
 
@@ -48,8 +49,9 @@ func NewCompletionCmd() *cobra.Command {
   $ cscli completion zsh > "${fpath[1]}/_cscli"
 
   # You will need to start a new shell for this setup to take effect.
-`,
+` + "```",
 		DisableFlagsInUseLine: true,
+		DisableAutoGenTag:     true,
 		ValidArgs:             []string{"bash", "zsh"},
 		Args:                  cobra.ExactValidArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {

@@ -21,6 +21,7 @@ type EventQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Event
@@ -47,6 +48,13 @@ func (eq *EventQuery) Limit(limit int) *EventQuery {
 // Offset adds an offset step to the query.
 func (eq *EventQuery) Offset(offset int) *EventQuery {
 	eq.offset = &offset
+	return eq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (eq *EventQuery) Unique(unique bool) *EventQuery {
+	eq.unique = &unique
 	return eq
 }
 
@@ -124,7 +132,7 @@ func (eq *EventQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single Event entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one Event entity is not found.
+// Returns a *NotSingularError when more than one Event entity is found.
 // Returns a *NotFoundError when no Event entities are found.
 func (eq *EventQuery) Only(ctx context.Context) (*Event, error) {
 	nodes, err := eq.Limit(2).All(ctx)
@@ -151,7 +159,7 @@ func (eq *EventQuery) OnlyX(ctx context.Context) *Event {
 }
 
 // OnlyID is like Only, but returns the only Event ID in the query.
-// Returns a *NotSingularError when exactly one Event ID is not found.
+// Returns a *NotSingularError when more than one Event ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (eq *EventQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -261,8 +269,9 @@ func (eq *EventQuery) Clone() *EventQuery {
 		predicates: append([]predicate.Event{}, eq.predicates...),
 		withOwner:  eq.withOwner.Clone(),
 		// clone intermediate query.
-		sql:  eq.sql.Clone(),
-		path: eq.path,
+		sql:    eq.sql.Clone(),
+		path:   eq.path,
+		unique: eq.unique,
 	}
 }
 
@@ -317,8 +326,8 @@ func (eq *EventQuery) GroupBy(field string, fields ...string) *EventGroupBy {
 //		Select(event.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (eq *EventQuery) Select(field string, fields ...string) *EventSelect {
-	eq.fields = append([]string{field}, fields...)
+func (eq *EventQuery) Select(fields ...string) *EventSelect {
+	eq.fields = append(eq.fields, fields...)
 	return &EventSelect{EventQuery: eq}
 }
 
@@ -377,11 +386,14 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 		ids := make([]int, 0, len(nodes))
 		nodeids := make(map[int][]*Event)
 		for i := range nodes {
-			fk := nodes[i].alert_events
-			if fk != nil {
-				ids = append(ids, *fk)
-				nodeids[*fk] = append(nodeids[*fk], nodes[i])
+			if nodes[i].alert_events == nil {
+				continue
 			}
+			fk := *nodes[i].alert_events
+			if _, ok := nodeids[fk]; !ok {
+				ids = append(ids, fk)
+			}
+			nodeids[fk] = append(nodeids[fk], nodes[i])
 		}
 		query.Where(alert.IDIn(ids...))
 		neighbors, err := query.All(ctx)
@@ -404,6 +416,10 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 
 func (eq *EventQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := eq.querySpec()
+	_spec.Node.Columns = eq.fields
+	if len(eq.fields) > 0 {
+		_spec.Unique = eq.unique != nil && *eq.unique
+	}
 	return sqlgraph.CountNodes(ctx, eq.driver, _spec)
 }
 
@@ -427,6 +443,9 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 		},
 		From:   eq.sql,
 		Unique: true,
+	}
+	if unique := eq.unique; unique != nil {
+		_spec.Unique = *unique
 	}
 	if fields := eq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
@@ -453,7 +472,7 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := eq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, event.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -463,16 +482,23 @@ func (eq *EventQuery) querySpec() *sqlgraph.QuerySpec {
 func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(eq.driver.Dialect())
 	t1 := builder.Table(event.Table)
-	selector := builder.Select(t1.Columns(event.Columns...)...).From(t1)
+	columns := eq.fields
+	if len(columns) == 0 {
+		columns = event.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if eq.sql != nil {
 		selector = eq.sql
-		selector.Select(selector.Columns(event.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
+	}
+	if eq.unique != nil && *eq.unique {
+		selector.Distinct()
 	}
 	for _, p := range eq.predicates {
 		p(selector)
 	}
 	for _, p := range eq.order {
-		p(selector, event.ValidColumn)
+		p(selector)
 	}
 	if offset := eq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -734,13 +760,22 @@ func (egb *EventGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (egb *EventGroupBy) sqlQuery() *sql.Selector {
-	selector := egb.sql
-	columns := make([]string, 0, len(egb.fields)+len(egb.fns))
-	columns = append(columns, egb.fields...)
+	selector := egb.sql.Select()
+	aggregation := make([]string, 0, len(egb.fns))
 	for _, fn := range egb.fns {
-		columns = append(columns, fn(selector, event.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(egb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(egb.fields)+len(egb.fns))
+		for _, f := range egb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(egb.fields...)...)
 }
 
 // EventSelect is the builder for selecting fields of Event entities.
@@ -956,16 +991,10 @@ func (es *EventSelect) BoolX(ctx context.Context) bool {
 
 func (es *EventSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := es.sqlQuery().Query()
+	query, args := es.sql.Query()
 	if err := es.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (es *EventSelect) sqlQuery() sql.Querier {
-	selector := es.sql
-	selector.Select(selector.Columns(es.fields...)...)
-	return selector
 }

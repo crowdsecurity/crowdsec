@@ -342,6 +342,82 @@ func TestIpInRange(t *testing.T) {
 
 }
 
+func TestIpToRange(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "IpToRange() test: IPv4",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "16",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "192.168.0.0/16",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: IPv6",
+			env: map[string]interface{}{
+				"ip":        "2001:db8::1",
+				"netmask":   "/64",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "2001:db8::/64",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.0.1",
+				"netmask":   "test",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: malformed IP",
+			env: map[string]interface{}{
+				"ip":        "a.b.c.d",
+				"netmask":   "24",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+		{
+			name: "IpToRange() test: too high netmask",
+			env: map[string]interface{}{
+				"ip":        "192.168.1.1",
+				"netmask":   "35",
+				"IpToRange": IpToRange,
+			},
+			code:   "IpToRange(ip, netmask)",
+			result: "",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+
+}
+
 func TestAtof(t *testing.T) {
 	testFloat := "1.5"
 	expectedFloat := 1.5
@@ -381,7 +457,277 @@ func TestTimeNow(t *testing.T) {
 	}
 
 	if -1*time.Until(ti) > time.Second {
-		t.Fatalf("TimeNow func should return time.Now()")
+		t.Fatalf("TimeNow func should return time.Now().UTC()")
 	}
 	log.Printf("test 'TimeNow()' : OK")
+}
+
+func TestParseUri(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result map[string][]string
+		err    string
+	}{
+		{
+			name: "ParseUri() test: basic test",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: no param",
+			env: map[string]interface{}{
+				"uri":      "/foo",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: extra question mark",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=1&b=2?",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"a": []string{"1"}, "b": []string{"2?"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: weird params",
+			env: map[string]interface{}{
+				"uri":      "/foo?&?&&&&?=123",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{"?": []string{"", "123"}},
+			err:    "",
+		},
+		{
+			name: "ParseUri() test: bad encoding",
+			env: map[string]interface{}{
+				"uri":      "/foo?a=%%F",
+				"ParseUri": ParseUri,
+			},
+			code:   "ParseUri(uri)",
+			result: map[string][]string{},
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestQueryEscape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "QueryEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":         "/foo?a=1&b=2",
+				"QueryEscape": QueryEscape,
+			},
+			code:   "QueryEscape(uri)",
+			result: "%2Ffoo%3Fa%3D1%26b%3D2",
+			err:    "",
+		},
+		{
+			name: "QueryEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":         "/foo?a=1&&b=<>'\"",
+				"QueryEscape": QueryEscape,
+			},
+			code:   "QueryEscape(uri)",
+			result: "%2Ffoo%3Fa%3D1%26%26b%3D%3C%3E%27%22",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestPathEscape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "PathEscape() test: basic test",
+			env: map[string]interface{}{
+				"uri":        "/foo?a=1&b=2",
+				"PathEscape": PathEscape,
+			},
+			code:   "PathEscape(uri)",
+			result: "%2Ffoo%3Fa=1&b=2",
+			err:    "",
+		},
+		{
+			name: "PathEscape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":        "/foo?a=1&&b=<>'\"",
+				"PathEscape": PathEscape,
+			},
+			code:   "PathEscape(uri)",
+			result: "%2Ffoo%3Fa=1&&b=%3C%3E%27%22",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestPathUnescape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "PathUnescape() test: basic test",
+			env: map[string]interface{}{
+				"uri":          "%2Ffoo%3Fa=1&b=%3C%3E%27%22",
+				"PathUnescape": PathUnescape,
+			},
+			code:   "PathUnescape(uri)",
+			result: "/foo?a=1&b=<>'\"",
+			err:    "",
+		},
+		{
+			name: "PathUnescape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":          "/$%7Bjndi",
+				"PathUnescape": PathUnescape,
+			},
+			code:   "PathUnescape(uri)",
+			result: "/${jndi",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestQueryUnescape(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "QueryUnescape() test: basic test",
+			env: map[string]interface{}{
+				"uri":           "%2Ffoo%3Fa=1&b=%3C%3E%27%22",
+				"QueryUnescape": QueryUnescape,
+			},
+			code:   "QueryUnescape(uri)",
+			result: "/foo?a=1&b=<>'\"",
+			err:    "",
+		},
+		{
+			name: "QueryUnescape() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"uri":           "/$%7Bjndi",
+				"QueryUnescape": QueryUnescape,
+			},
+			code:   "QueryUnescape(uri)",
+			result: "/${jndi",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestLower(t *testing.T) {
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "Lower() test: basic test",
+			env: map[string]interface{}{
+				"name":  "ABCDEFG",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg",
+			err:    "",
+		},
+		{
+			name: "Lower() test: basic test with more special chars",
+			env: map[string]interface{}{
+				"name":  "AbcDefG!#",
+				"Lower": Lower,
+			},
+			code:   "Lower(name)",
+			result: "abcdefg!#",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(test.env))
+		require.NoError(t, err)
+		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
 }

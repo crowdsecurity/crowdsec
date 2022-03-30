@@ -20,7 +20,7 @@ type Event struct {
 	Type            int    `yaml:"Type,omitempty" json:"Type,omitempty"`             //Can be types.LOG (0) or types.OVFLOW (1)
 	ExpectMode      int    `yaml:"ExpectMode,omitempty" json:"ExpectMode,omitempty"` //how to buckets should handle event : leaky.TIMEMACHINE or leaky.LIVE
 	Whitelisted     bool   `yaml:"Whitelisted,omitempty" json:"Whitelisted,omitempty"`
-	WhiteListReason string `yaml:"whitelist_reason,omitempty" json:"whitelist_reason,omitempty"`
+	WhitelistReason string `yaml:"WhitelistReason,omitempty" json:"whitelist_reason,omitempty"`
 	//should add whitelist reason ?
 	/* the current stage of the line being parsed */
 	Stage string `yaml:"Stage,omitempty" json:"Stage,omitempty"`
@@ -31,7 +31,7 @@ type Event struct {
 	/* output of enrichment */
 	Enriched map[string]string `yaml:"Enriched,omitempty" json:"Enriched,omitempty"`
 	/* Overflow */
-	Overflow      RuntimeAlert `yaml:"Alert,omitempty" json:"Alert,omitempty"`
+	Overflow      RuntimeAlert `yaml:"Overflow,omitempty" json:"Alert,omitempty"`
 	Time          time.Time    `yaml:"Time,omitempty" json:"Time,omitempty"` //parsed time `json:"-"` ``
 	StrTime       string       `yaml:"StrTime,omitempty" json:"StrTime,omitempty"`
 	MarshaledTime string       `yaml:"MarshaledTime,omitempty" json:"MarshaledTime,omitempty"`
@@ -77,4 +77,12 @@ type RuntimeAlert struct {
 	Alert       *models.Alert            `yaml:"Alert,omitempty" json:"Alert,omitempty"` //this one is a pointer to APIAlerts[0] for convenience.
 	//APIAlerts will be populated at the end when there is more than one source
 	APIAlerts []models.Alert `yaml:"APIAlerts,omitempty" json:"APIAlerts,omitempty"`
+}
+
+func (r RuntimeAlert) GetSources() []string {
+	ret := make([]string, 0)
+	for key := range r.Sources {
+		ret = append(ret, key)
+	}
+	return ret
 }

@@ -3,12 +3,14 @@ package v1
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -19,12 +21,11 @@ import (
 
 func FormatOneAlert(alert *ent.Alert) *models.Alert {
 	var outputAlert models.Alert
-	var machineID string
 	startAt := alert.StartedAt.String()
 	StopAt := alert.StoppedAt.String()
-	if alert.Edges.Owner == nil {
-		machineID = "N/A"
-	} else {
+
+	machineID := "N/A"
+	if alert.Edges.Owner != nil {
 		machineID = alert.Edges.Owner.MachineId
 	}
 
@@ -72,7 +73,7 @@ func FormatOneAlert(alert *ent.Alert) *models.Alert {
 		})
 	}
 	for _, decisionItem := range alert.Edges.Decisions {
-		duration := decisionItem.Until.Sub(time.Now()).String()
+		duration := decisionItem.Until.Sub(time.Now().UTC()).String()
 		outputAlert.Decisions = append(outputAlert.Decisions, &models.Decision{
 			Duration:  &duration, // transform into time.Time ?
 			Scenario:  &decisionItem.Scenario,
@@ -96,6 +97,17 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 	return data
 }
 
+func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
+	if c.PluginChannel != nil {
+		select {
+		case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
+			log.Debugf("alert sent to Plugin channel")
+		default:
+			log.Warningf("Cannot send alert to Plugin channel")
+		}
+	}
+}
+
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
 
@@ -113,35 +125,75 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-
+	stopFlush := false
 	for _, alert := range input {
-		if len(alert.Decisions) == 0 {
-			decisions, err := csprofiles.EvaluateProfiles(c.Profiles, alert)
+		alert.MachineID = machineID
+		if len(alert.Decisions) != 0 {
+			for pIdx, profile := range c.Profiles {
+				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
+				if err != nil {
+					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+					return
+				}
+				if !matched {
+					continue
+				}
+				c.sendAlertToPluginChannel(alert, uint(pIdx))
+				if profile.OnSuccess == "break" {
+					break
+				}
+			}
+			decision := alert.Decisions[0]
+			if decision.Origin != nil && *decision.Origin == "cscli-import" {
+				stopFlush = true
+			}
+			continue
+		}
+
+		for pIdx, profile := range c.Profiles {
+			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			alert.Decisions = decisions
+
+			if !matched {
+				continue
+			}
+
+			if len(alert.Decisions) == 0 { // non manual decision
+				alert.Decisions = append(alert.Decisions, profileDecisions...)
+			}
+			profileAlert := *alert
+			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
+			if profile.OnSuccess == "break" {
+				break
+			}
 		}
 	}
 
+	if stopFlush {
+		c.DBClient.CanFlush = false
+	}
+
 	alerts, err := c.DBClient.CreateAlert(machineID, input)
+	c.DBClient.CanFlush = true
+
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
-	for _, alert := range input {
-		alert.MachineID = machineID
-	}
-	select {
-	case c.CAPIChan <- input:
-		log.Debugf("alert send to CAPI channel")
-	default:
-		log.Warningf("Cannot send alert to Central API channel")
+
+	if c.CAPIChan != nil {
+		select {
+		case c.CAPIChan <- input:
+			log.Debug("alert sent to CAPI channel")
+		default:
+			log.Warning("Cannot send alert to Central API channel")
+		}
 	}
 
 	gctx.JSON(http.StatusCreated, alerts)
-	return
 }
 
 // FindAlerts : return alerts from database based on the specified filter
@@ -159,7 +211,6 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // FindAlertByID return the alert assiocated to the ID
@@ -182,14 +233,13 @@ func (c *Controller) FindAlertByID(gctx *gin.Context) {
 		return
 	}
 	gctx.JSON(http.StatusOK, data)
-	return
 }
 
 // DeleteAlerts : delete alerts from database based on the specified filter
 func (c *Controller) DeleteAlerts(gctx *gin.Context) {
-
-	if gctx.ClientIP() != "127.0.0.1" && gctx.ClientIP() != "::1" {
-		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", gctx.ClientIP())})
+	incomingIP := gctx.ClientIP()
+	if incomingIP != "127.0.0.1" && incomingIP != "::1" && !networksContainIP(c.TrustedIPs, incomingIP) {
+		gctx.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("access forbidden from this IP (%s)", incomingIP)})
 		return
 	}
 	var err error
@@ -202,5 +252,14 @@ func (c *Controller) DeleteAlerts(gctx *gin.Context) {
 		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 	gctx.JSON(http.StatusOK, deleteAlertsResp)
-	return
+}
+
+func networksContainIP(networks []net.IPNet, ip string) bool {
+	parsedIP := net.ParseIP(ip)
+	for _, network := range networks {
+		if network.Contains(parsedIP) {
+			return true
+		}
+	}
+	return false
 }

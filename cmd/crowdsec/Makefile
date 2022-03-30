@@ -14,6 +14,7 @@ PID_DIR = $(PREFIX)"/var/run/"
 
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
+.PHONY: all
 all: clean test build
 
 build: clean
@@ -23,10 +24,10 @@ static: clean
 	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
 test:
-	$(GOTEST) -v ./...
+	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	rm -f $(CROWDSEC_BIN)
+	@$(RM) $(CROWDSEC_BIN)
 
 .PHONY: install
 install: install-conf install-bin
@@ -61,7 +62,7 @@ systemd: install
 
 .PHONY: uninstall
 uninstall:
-	rm -rf $(CFG_PREFIX)
-	rm -rf $(DATA_PREFIX)
-	rm -f "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
-	rm -f "$(SYSTEMD_PATH_FILE)"
+	$(RM) -r "$(CFG_PREFIX)"
+	$(RM) -r "$(DATA_PREFIX)"
+	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
+	$(RM) "$(SYSTEMD_PATH_FILE)"

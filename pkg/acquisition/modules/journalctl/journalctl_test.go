@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"github.com/sirupsen/logrus/hooks/test"
@@ -44,12 +45,7 @@ journalctl_filter:
 	for _, test := range tests {
 		f := JournalCtlSource{}
 		err := f.Configure([]byte(test.config), subLogger)
-		if test.expectedErr != "" && err == nil {
-			t.Fatalf("Expected err %s but got nil !", test.expectedErr)
-		}
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		}
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -82,18 +78,18 @@ func TestConfigureDSN(t *testing.T) {
 			dsn:         "journalctl://filters=_UID=1000&log_level=foobar",
 			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
+		{
+			dsn:         "journalctl://filters=_UID=1000&log_level=warn&since=yesterday",
+			expectedErr: "",
+		},
 	}
 	subLogger := log.WithFields(log.Fields{
 		"type": "journalctl",
 	})
 	for _, test := range tests {
 		f := JournalCtlSource{}
-		err := f.ConfigureByDSN(test.dsn, "testtype", subLogger)
-		if test.expectedErr != "" {
-			assert.Contains(t, err.Error(), test.expectedErr)
-		} else {
-			assert.Equal(t, err, nil)
-		}
+		err := f.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
@@ -166,14 +162,11 @@ journalctl_filter:
 		}
 
 		err = j.OneShotAcquisition(out, &tomb)
-		if ts.expectedErr == "" && err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		} else if ts.expectedErr != "" && err != nil {
-			assert.Contains(t, err.Error(), ts.expectedErr)
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+		if err != nil {
 			continue
-		} else if ts.expectedErr != "" && err == nil {
-			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
 		}
+
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
@@ -246,13 +239,9 @@ journalctl_filter:
 		}
 
 		err = j.StreamingAcquisition(out, &tomb)
-		if ts.expectedErr == "" && err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		} else if ts.expectedErr != "" && err != nil {
-			assert.Contains(t, err.Error(), ts.expectedErr)
+		cstest.AssertErrorContains(t, err, ts.expectedErr)
+		if err != nil {
 			continue
-		} else if ts.expectedErr != "" && err == nil {
-			t.Fatalf("Expected error %s, but got nothing !", ts.expectedErr)
 		}
 
 		if ts.expectedLines != 0 {

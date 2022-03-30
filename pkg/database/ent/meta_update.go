@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,9 +23,9 @@ type MetaUpdate struct {
 	mutation *MetaMutation
 }
 
-// Where adds a new predicate for the MetaUpdate builder.
+// Where appends a list predicates to the MetaUpdate builder.
 func (mu *MetaUpdate) Where(ps ...predicate.Meta) *MetaUpdate {
-	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
+	mu.mutation.Where(ps...)
 	return mu
 }
 
@@ -34,11 +35,9 @@ func (mu *MetaUpdate) SetCreatedAt(t time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableCreatedAt(t *time.Time) *MetaUpdate {
-	if t != nil {
-		mu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (mu *MetaUpdate) ClearCreatedAt() *MetaUpdate {
+	mu.mutation.ClearCreatedAt()
 	return mu
 }
 
@@ -48,11 +47,9 @@ func (mu *MetaUpdate) SetUpdatedAt(t time.Time) *MetaUpdate {
 	return mu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (mu *MetaUpdate) SetNillableUpdatedAt(t *time.Time) *MetaUpdate {
-	if t != nil {
-		mu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (mu *MetaUpdate) ClearUpdatedAt() *MetaUpdate {
+	mu.mutation.ClearUpdatedAt()
 	return mu
 }
 
@@ -104,6 +101,7 @@ func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	mu.defaults()
 	if len(mu.hooks) == 0 {
 		if err = mu.check(); err != nil {
 			return 0, err
@@ -124,6 +122,9 @@ func (mu *MetaUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(mu.hooks) - 1; i >= 0; i-- {
+			if mu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mu.mutation); err != nil {
@@ -155,11 +156,23 @@ func (mu *MetaUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (mu *MetaUpdate) defaults() {
+	if _, ok := mu.mutation.CreatedAt(); !ok && !mu.mutation.CreatedAtCleared() {
+		v := meta.UpdateDefaultCreatedAt()
+		mu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := mu.mutation.UpdatedAt(); !ok && !mu.mutation.UpdatedAtCleared() {
+		v := meta.UpdateDefaultUpdatedAt()
+		mu.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (mu *MetaUpdate) check() error {
 	if v, ok := mu.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
 		}
 	}
 	return nil
@@ -190,10 +203,22 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: meta.FieldCreatedAt,
 		})
 	}
+	if mu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: meta.FieldCreatedAt,
+		})
+	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: meta.FieldUpdatedAt,
+		})
+	}
+	if mu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: meta.FieldUpdatedAt,
 		})
 	}
@@ -249,8 +274,8 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -260,6 +285,7 @@ func (mu *MetaUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // MetaUpdateOne is the builder for updating a single Meta entity.
 type MetaUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *MetaMutation
 }
@@ -270,11 +296,9 @@ func (muo *MetaUpdateOne) SetCreatedAt(t time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableCreatedAt(t *time.Time) *MetaUpdateOne {
-	if t != nil {
-		muo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (muo *MetaUpdateOne) ClearCreatedAt() *MetaUpdateOne {
+	muo.mutation.ClearCreatedAt()
 	return muo
 }
 
@@ -284,11 +308,9 @@ func (muo *MetaUpdateOne) SetUpdatedAt(t time.Time) *MetaUpdateOne {
 	return muo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (muo *MetaUpdateOne) SetNillableUpdatedAt(t *time.Time) *MetaUpdateOne {
-	if t != nil {
-		muo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (muo *MetaUpdateOne) ClearUpdatedAt() *MetaUpdateOne {
+	muo.mutation.ClearUpdatedAt()
 	return muo
 }
 
@@ -334,12 +356,20 @@ func (muo *MetaUpdateOne) ClearOwner() *MetaUpdateOne {
 	return muo
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (muo *MetaUpdateOne) Select(field string, fields ...string) *MetaUpdateOne {
+	muo.fields = append([]string{field}, fields...)
+	return muo
+}
+
 // Save executes the query and returns the updated Meta entity.
 func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 	var (
 		err  error
 		node *Meta
 	)
+	muo.defaults()
 	if len(muo.hooks) == 0 {
 		if err = muo.check(); err != nil {
 			return nil, err
@@ -360,6 +390,9 @@ func (muo *MetaUpdateOne) Save(ctx context.Context) (*Meta, error) {
 			return node, err
 		})
 		for i := len(muo.hooks) - 1; i >= 0; i-- {
+			if muo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = muo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, muo.mutation); err != nil {
@@ -391,11 +424,23 @@ func (muo *MetaUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (muo *MetaUpdateOne) defaults() {
+	if _, ok := muo.mutation.CreatedAt(); !ok && !muo.mutation.CreatedAtCleared() {
+		v := meta.UpdateDefaultCreatedAt()
+		muo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := muo.mutation.UpdatedAt(); !ok && !muo.mutation.UpdatedAtCleared() {
+		v := meta.UpdateDefaultUpdatedAt()
+		muo.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (muo *MetaUpdateOne) check() error {
 	if v, ok := muo.mutation.Value(); ok {
 		if err := meta.ValueValidator(v); err != nil {
-			return &ValidationError{Name: "value", err: fmt.Errorf("ent: validator failed for field \"value\": %w", err)}
+			return &ValidationError{Name: "value", err: fmt.Errorf(`ent: validator failed for field "Meta.value": %w`, err)}
 		}
 	}
 	return nil
@@ -414,9 +459,21 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 	}
 	id, ok := muo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Meta.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Meta.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
+	if fields := muo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, meta.FieldID)
+		for _, f := range fields {
+			if !meta.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != meta.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := muo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -431,10 +488,22 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 			Column: meta.FieldCreatedAt,
 		})
 	}
+	if muo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: meta.FieldCreatedAt,
+		})
+	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: meta.FieldUpdatedAt,
+		})
+	}
+	if muo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: meta.FieldUpdatedAt,
 		})
 	}
@@ -493,8 +562,8 @@ func (muo *MetaUpdateOne) sqlSave(ctx context.Context) (_node *Meta, err error) 
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{meta.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

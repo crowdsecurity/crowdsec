@@ -57,7 +57,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
-
+	router.TrustedPlatform = "X-Real-IP"
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
@@ -68,7 +68,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/v1/watchers", strings.NewReader(body))
 	req.Header.Add("User-Agent", UserAgent)
-	req.Header.Add("X-Real-IP", "1.1.1.1")
+	req.Header.Add("X-Real-Ip", "1.1.1.1")
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 201, w.Code)

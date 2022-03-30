@@ -1,0 +1,23 @@
+Template: crowdsec/lapi
+Type: boolean
+Default: true
+Description: Do you want to run the local API server ?
+ A local API is required to run crowdsec, but another installation can be used. 
+ .
+ If you don't know what to do, consider answer yes.
+
+Template: crowdsec/lapi_host
+Type: string
+Default: 127.0.0.1:8080
+Description: Address of the local API server
+ A local API is required to run crowdsec, but another installation can be used. 
+ .
+ Please add the address of the local API server
+
+Template: crowdsec/capi
+Type: boolean
+Default: true
+Description: Do you want to the centralized remote API server ?
+ To share information with other crowdsec you can register to the centralized remote API server.
+ .
+ If you don't know what to do, consider answer yes. 

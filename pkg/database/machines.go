@@ -12,6 +12,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const CapiMachineID = "CAPI"
+
 func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
@@ -75,9 +77,12 @@ func (c *Client) ListMachines() ([]*ent.Machine, error) {
 }
 
 func (c *Client) ValidateMachine(machineID string) error {
-	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
+	rets, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetIsValidated(true).Save(c.CTX)
 	if err != nil {
 		return errors.Wrapf(UpdateFail, "validating machine: %s", err)
+	}
+	if rets == 0 {
+		return fmt.Errorf("machine not found")
 	}
 	return nil
 }
@@ -105,9 +110,17 @@ func (c *Client) DeleteWatcher(name string) error {
 	return nil
 }
 
+func (c *Client) UpdateMachineLastPush(machineID string) error {
+	_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(machineID)).SetLastPush(time.Now().UTC()).Save(c.CTX)
+	if err != nil {
+		return errors.Wrapf(UpdateFail, "updating machine last_push: %s", err)
+	}
+	return nil
+}
+
 func (c *Client) UpdateMachineScenarios(scenarios string, ID int) error {
 	_, err := c.Ent.Machine.UpdateOneID(ID).
-		SetUpdatedAt(time.Now()).
+		SetUpdatedAt(time.Now().UTC()).
 		SetScenarios(scenarios).
 		Save(c.CTX)
 	if err != nil {

@@ -25,3 +25,7 @@ func reverse_dns(field string, p *types.Event, ctx interface{}) (map[string]stri
 	ret["reverse_dns"] = rets[0]
 	return ret, nil
 }
+
+func reverseDNSInit(cfg map[string]string) (interface{}, error) {
+	return nil, nil
+}

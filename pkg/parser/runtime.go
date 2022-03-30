@@ -143,29 +143,26 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 		if static.Method != "" {
 			processed := false
 			/*still way too hackish, but : inject all the results in enriched, and */
-			for _, x := range n.EnrichFunctions {
-				if fptr, ok := x.Funcs[static.Method]; ok && x.initiated {
-					clog.Tracef("Found method '%s'", static.Method)
-					ret, err := fptr(value, event, x.RuntimeCtx)
-					if err != nil {
-						clog.Fatalf("plugin function error : %v", err)
-					}
-					processed = true
-					clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
-					if len(ret) == 0 {
-						clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
-					}
-					for k, v := range ret {
-						clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
-						event.Enriched[k] = v
-					}
-					break
-				} else {
-					clog.Warningf("method '%s' doesn't exist or plugin not initialized", static.Method)
+			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
+				clog.Tracef("Found method '%s'", static.Method)
+				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx)
+				if err != nil {
+					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}
+				processed = true
+				clog.Debugf("+ Method %s('%s') returned %d entries to merge in .Enriched\n", static.Method, value, len(ret))
+				if len(ret) == 0 {
+					clog.Debugf("+ Method '%s' empty response on '%s'", static.Method, value)
+				}
+				for k, v := range ret {
+					clog.Debugf("\t.Enriched[%s] = '%s'\n", k, v)
+					event.Enriched[k] = v
+				}
+			} else {
+				clog.Debugf("method '%s' doesn't exist or plugin not initialized", static.Method)
 			}
 			if !processed {
-				clog.Warningf("method '%s' doesn't exist", static.Method)
+				clog.Debugf("method '%s' doesn't exist", static.Method)
 			}
 		} else if static.Parsed != "" {
 			clog.Debugf(".Parsed[%s] = '%s'", static.Parsed, value)
@@ -201,7 +198,7 @@ var NodesHits = prometheus.NewCounterVec(
 var NodesHitsOk = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ok_total",
-		Help: "Total events successfuly exited node.",
+		Help: "Total events successfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
@@ -209,7 +206,7 @@ var NodesHitsOk = prometheus.NewCounterVec(
 var NodesHitsKo = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "cs_node_hits_ko_total",
-		Help: "Total events unsuccessfuly exited node.",
+		Help: "Total events unsuccessfully exited node.",
 	},
 	[]string{"source", "type", "name"},
 )
@@ -223,8 +220,14 @@ func stageidx(stage string, stages []string) int {
 	return -1
 }
 
+type ParserResult struct {
+	Evt     types.Event
+	Success bool
+}
+
 var ParseDump bool
-var StageParseCache map[string]map[string]types.Event
+var DumpFolder string
+var StageParseCache map[string]map[string][]ParserResult
 
 func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error) {
 	var event types.Event = xp
@@ -236,7 +239,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 	event.Process = false
 	if event.Time.IsZero() {
-		event.Time = time.Now()
+		event.Time = time.Now().UTC()
 	}
 
 	if event.Parsed == nil {
@@ -253,14 +256,20 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 	}
 
 	if ParseDump {
-		StageParseCache = make(map[string]map[string]types.Event)
+		if StageParseCache == nil {
+			StageParseCache = make(map[string]map[string][]ParserResult)
+			StageParseCache["success"] = make(map[string][]ParserResult)
+			StageParseCache["success"][""] = make([]ParserResult, 0)
+		}
 	}
 
 	for _, stage := range ctx.Stages {
 		if ParseDump {
-			StageParseCache[stage] = make(map[string]types.Event)
+			if _, ok := StageParseCache[stage]; !ok {
+				StageParseCache[stage] = make(map[string][]ParserResult)
+			}
 		}
-		/* if the node is forward in stages, seek to its stage */
+		/* if the node is forward in stages, seek to this stage */
 		/* this is for example used by testing system to inject logs in post-syslog-parsing phase*/
 		if stageidx(event.Stage, ctx.Stages) > stageidx(stage, ctx.Stages) {
 			log.Tracef("skipping stage, we are already at [%s] expecting [%s]", event.Stage, stage)
@@ -271,7 +280,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		/* if the stage is wrong, it means that the log didn't manage "pass" a stage with a onsuccess: next_stage tag */
 		if event.Stage != stage {
 			log.Debugf("Event not parsed, expected stage '%s' got '%s', abort", stage, event.Stage)
-			return types.Event{Process: false}, nil
+			event.Process = false
+			return event, nil
 		}
 
 		isStageOK := false
@@ -293,12 +303,16 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 				clog.Fatalf("Error while processing node : %v", err)
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
+			if ParseDump {
+				if len(StageParseCache[stage][node.Name]) == 0 {
+					StageParseCache[stage][node.Name] = make([]ParserResult, 0)
+				}
+				evtcopy := deepcopy.Copy(event)
+				parserInfo := ParserResult{Evt: evtcopy.(types.Event), Success: ret}
+				StageParseCache[stage][node.Name] = append(StageParseCache[stage][node.Name], parserInfo)
+			}
 			if ret {
 				isStageOK = true
-				if ParseDump {
-					evtcopy := deepcopy.Copy(event)
-					StageParseCache[stage][node.Name] = evtcopy.(types.Event)
-				}
 			}
 			if ret && node.OnSuccess == "next_stage" {
 				clog.Debugf("node successful, stop end stage %s", stage)

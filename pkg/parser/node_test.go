@@ -49,7 +49,7 @@ func TestParserConfigs(t *testing.T) {
 		}, Grok: types.GrokPattern{RegexpValue: "^x%{MYGROKBIS:extr}$", TargetField: "t"}}, false, true},
 	}
 	for idx := range CfgTests {
-		err := CfgTests[idx].NodeCfg.compile(pctx, []EnricherCtx{})
+		err := CfgTests[idx].NodeCfg.compile(pctx, EnricherCtx{})
 		if CfgTests[idx].Compiles == true && err != nil {
 			t.Fatalf("Compile: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}
@@ -57,7 +57,7 @@ func TestParserConfigs(t *testing.T) {
 			t.Fatalf("Compile: (%d/%d) expected errror", idx+1, len(CfgTests))
 		}
 
-		err = CfgTests[idx].NodeCfg.validate(pctx, []EnricherCtx{})
+		err = CfgTests[idx].NodeCfg.validate(pctx, EnricherCtx{})
 		if CfgTests[idx].Valid == true && err != nil {
 			t.Fatalf("Valid: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}

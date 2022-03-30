@@ -18,9 +18,9 @@ type Alert struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// Scenario holds the value of the "scenario" field.
 	Scenario string `json:"scenario,omitempty"`
 	// BucketId holds the value of the "bucketId" field.
@@ -129,17 +129,17 @@ func (*Alert) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case alert.FieldSimulated:
-			values[i] = &sql.NullBool{}
+			values[i] = new(sql.NullBool)
 		case alert.FieldSourceLatitude, alert.FieldSourceLongitude:
-			values[i] = &sql.NullFloat64{}
+			values[i] = new(sql.NullFloat64)
 		case alert.FieldID, alert.FieldEventsCount, alert.FieldCapacity:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case alert.FieldScenario, alert.FieldBucketId, alert.FieldMessage, alert.FieldSourceIp, alert.FieldSourceRange, alert.FieldSourceAsNumber, alert.FieldSourceAsName, alert.FieldSourceCountry, alert.FieldSourceScope, alert.FieldSourceValue, alert.FieldLeakSpeed, alert.FieldScenarioVersion, alert.FieldScenarioHash:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case alert.ForeignKeys[0]: // machine_alerts
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Alert", columns[i])
 		}
@@ -165,13 +165,15 @@ func (a *Alert) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				a.CreatedAt = value.Time
+				a.CreatedAt = new(time.Time)
+				*a.CreatedAt = value.Time
 			}
 		case alert.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				a.UpdatedAt = value.Time
+				a.UpdatedAt = new(time.Time)
+				*a.UpdatedAt = value.Time
 			}
 		case alert.FieldScenario:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -348,10 +350,14 @@ func (a *Alert) String() string {
 	var builder strings.Builder
 	builder.WriteString("Alert(")
 	builder.WriteString(fmt.Sprintf("id=%v", a.ID))
-	builder.WriteString(", created_at=")
-	builder.WriteString(a.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", updated_at=")
-	builder.WriteString(a.UpdatedAt.Format(time.ANSIC))
+	if v := a.CreatedAt; v != nil {
+		builder.WriteString(", created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := a.UpdatedAt; v != nil {
+		builder.WriteString(", updated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", scenario=")
 	builder.WriteString(a.Scenario)
 	builder.WriteString(", bucketId=")

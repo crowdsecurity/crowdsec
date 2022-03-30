@@ -10,17 +10,7 @@ import (
 
 	"github.com/oschwald/geoip2-golang"
 	"github.com/oschwald/maxminddb-golang"
-	//"github.com/crowdsecurity/crowdsec/pkg/parser"
 )
-
-type GeoIpEnricherCtx struct {
-	dbc   *geoip2.Reader
-	dba   *geoip2.Reader
-	dbraw *maxminddb.Reader
-}
-
-/* All plugins must export a list of function pointers for exported symbols */
-var ExportedFuncs = []string{"GeoIpASN", "GeoIpCity"}
 
 func IpToRange(field string, p *types.Event, ctx interface{}) (map[string]string, error) {
 	var dummy interface{}
@@ -34,7 +24,7 @@ func IpToRange(field string, p *types.Event, ctx interface{}) (map[string]string
 		log.Infof("Can't parse ip %s, no range enrich", field)
 		return nil, nil
 	}
-	net, ok, err := ctx.(GeoIpEnricherCtx).dbraw.LookupNetwork(ip, &dummy)
+	net, ok, err := ctx.(*maxminddb.Reader).LookupNetwork(ip, &dummy)
 	if err != nil {
 		log.Errorf("Failed to fetch network for %s : %v", ip.String(), err)
 		return nil, nil
@@ -58,14 +48,17 @@ func GeoIpASN(field string, p *types.Event, ctx interface{}) (map[string]string,
 		log.Infof("Can't parse ip %s, no ASN enrich", ip)
 		return nil, nil
 	}
-	record, err := ctx.(GeoIpEnricherCtx).dba.ASN(ip)
+	record, err := ctx.(*geoip2.Reader).ASN(ip)
 	if err != nil {
 		log.Errorf("Unable to enrich ip '%s'", field)
 		return nil, nil
 	}
 	ret["ASNNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
+	ret["ASNumber"] = fmt.Sprintf("%d", record.AutonomousSystemNumber)
 	ret["ASNOrg"] = record.AutonomousSystemOrganization
+
 	log.Tracef("geoip ASN %s -> %s, %s", field, ret["ASNNumber"], ret["ASNOrg"])
+
 	return ret, nil
 }
 
@@ -79,7 +72,7 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 		log.Infof("Can't parse ip %s, no City enrich", ip)
 		return nil, nil
 	}
-	record, err := ctx.(GeoIpEnricherCtx).dbc.City(ip)
+	record, err := ctx.(*geoip2.Reader).City(ip)
 	if err != nil {
 		log.Debugf("Unable to enrich ip '%s'", ip)
 		return nil, nil
@@ -94,26 +87,32 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 	return ret, nil
 }
 
-/* All plugins must export an Init function */
-func GeoIpInit(cfg map[string]string) (interface{}, error) {
-	var ctx GeoIpEnricherCtx
-	var err error
-	ctx.dbc, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
-	if err != nil {
-		log.Debugf("couldn't open geoip : %v", err)
-		return nil, err
-	}
-	ctx.dba, err = geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
+func GeoIPCityInit(cfg map[string]string) (interface{}, error) {
+	dbCityReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-City.mmdb")
 	if err != nil {
 		log.Debugf("couldn't open geoip : %v", err)
 		return nil, err
 	}
 
-	ctx.dbraw, err = maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
+	return dbCityReader, nil
+}
+
+func GeoIPASNInit(cfg map[string]string) (interface{}, error) {
+	dbASReader, err := geoip2.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
 	if err != nil {
 		log.Debugf("couldn't open geoip : %v", err)
 		return nil, err
 	}
 
-	return ctx, nil
+	return dbASReader, nil
+}
+
+func IpToRangeInit(cfg map[string]string) (interface{}, error) {
+	ipToRangeReader, err := maxminddb.Open(cfg["datadir"] + "/GeoLite2-ASN.mmdb")
+	if err != nil {
+		log.Debugf("couldn't open geoip : %v", err)
+		return nil, err
+	}
+
+	return ipToRangeReader, nil
 }

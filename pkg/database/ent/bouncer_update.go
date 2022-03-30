@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,9 +22,9 @@ type BouncerUpdate struct {
 	mutation *BouncerMutation
 }
 
-// Where adds a new predicate for the BouncerUpdate builder.
+// Where appends a list predicates to the BouncerUpdate builder.
 func (bu *BouncerUpdate) Where(ps ...predicate.Bouncer) *BouncerUpdate {
-	bu.mutation.predicates = append(bu.mutation.predicates, ps...)
+	bu.mutation.Where(ps...)
 	return bu
 }
 
@@ -33,11 +34,9 @@ func (bu *BouncerUpdate) SetCreatedAt(t time.Time) *BouncerUpdate {
 	return bu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableCreatedAt(t *time.Time) *BouncerUpdate {
-	if t != nil {
-		bu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (bu *BouncerUpdate) ClearCreatedAt() *BouncerUpdate {
+	bu.mutation.ClearCreatedAt()
 	return bu
 }
 
@@ -47,11 +46,9 @@ func (bu *BouncerUpdate) SetUpdatedAt(t time.Time) *BouncerUpdate {
 	return bu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (bu *BouncerUpdate) SetNillableUpdatedAt(t *time.Time) *BouncerUpdate {
-	if t != nil {
-		bu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (bu *BouncerUpdate) ClearUpdatedAt() *BouncerUpdate {
+	bu.mutation.ClearUpdatedAt()
 	return bu
 }
 
@@ -178,6 +175,7 @@ func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	bu.defaults()
 	if len(bu.hooks) == 0 {
 		affected, err = bu.sqlSave(ctx)
 	} else {
@@ -192,6 +190,9 @@ func (bu *BouncerUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(bu.hooks) - 1; i >= 0; i-- {
+			if bu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = bu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, bu.mutation); err != nil {
@@ -223,6 +224,18 @@ func (bu *BouncerUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (bu *BouncerUpdate) defaults() {
+	if _, ok := bu.mutation.CreatedAt(); !ok && !bu.mutation.CreatedAtCleared() {
+		v := bouncer.UpdateDefaultCreatedAt()
+		bu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := bu.mutation.UpdatedAt(); !ok && !bu.mutation.UpdatedAtCleared() {
+		v := bouncer.UpdateDefaultUpdatedAt()
+		bu.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -248,10 +261,22 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: bouncer.FieldCreatedAt,
 		})
 	}
+	if bu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: bouncer.FieldCreatedAt,
+		})
+	}
 	if value, ok := bu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: bouncer.FieldUpdatedAt,
+		})
+	}
+	if bu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: bouncer.FieldUpdatedAt,
 		})
 	}
@@ -338,8 +363,8 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -349,6 +374,7 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // BouncerUpdateOne is the builder for updating a single Bouncer entity.
 type BouncerUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *BouncerMutation
 }
@@ -359,11 +385,9 @@ func (buo *BouncerUpdateOne) SetCreatedAt(t time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableCreatedAt(t *time.Time) *BouncerUpdateOne {
-	if t != nil {
-		buo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (buo *BouncerUpdateOne) ClearCreatedAt() *BouncerUpdateOne {
+	buo.mutation.ClearCreatedAt()
 	return buo
 }
 
@@ -373,11 +397,9 @@ func (buo *BouncerUpdateOne) SetUpdatedAt(t time.Time) *BouncerUpdateOne {
 	return buo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (buo *BouncerUpdateOne) SetNillableUpdatedAt(t *time.Time) *BouncerUpdateOne {
-	if t != nil {
-		buo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (buo *BouncerUpdateOne) ClearUpdatedAt() *BouncerUpdateOne {
+	buo.mutation.ClearUpdatedAt()
 	return buo
 }
 
@@ -498,12 +520,20 @@ func (buo *BouncerUpdateOne) Mutation() *BouncerMutation {
 	return buo.mutation
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (buo *BouncerUpdateOne) Select(field string, fields ...string) *BouncerUpdateOne {
+	buo.fields = append([]string{field}, fields...)
+	return buo
+}
+
 // Save executes the query and returns the updated Bouncer entity.
 func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 	var (
 		err  error
 		node *Bouncer
 	)
+	buo.defaults()
 	if len(buo.hooks) == 0 {
 		node, err = buo.sqlSave(ctx)
 	} else {
@@ -518,6 +548,9 @@ func (buo *BouncerUpdateOne) Save(ctx context.Context) (*Bouncer, error) {
 			return node, err
 		})
 		for i := len(buo.hooks) - 1; i >= 0; i-- {
+			if buo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = buo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, buo.mutation); err != nil {
@@ -549,6 +582,18 @@ func (buo *BouncerUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (buo *BouncerUpdateOne) defaults() {
+	if _, ok := buo.mutation.CreatedAt(); !ok && !buo.mutation.CreatedAtCleared() {
+		v := bouncer.UpdateDefaultCreatedAt()
+		buo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := buo.mutation.UpdatedAt(); !ok && !buo.mutation.UpdatedAtCleared() {
+		v := bouncer.UpdateDefaultUpdatedAt()
+		buo.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -562,9 +607,21 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	}
 	id, ok := buo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Bouncer.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Bouncer.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
+	if fields := buo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, bouncer.FieldID)
+		for _, f := range fields {
+			if !bouncer.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != bouncer.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := buo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -579,10 +636,22 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 			Column: bouncer.FieldCreatedAt,
 		})
 	}
+	if buo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: bouncer.FieldCreatedAt,
+		})
+	}
 	if value, ok := buo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: bouncer.FieldUpdatedAt,
+		})
+	}
+	if buo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: bouncer.FieldUpdatedAt,
 		})
 	}
@@ -672,8 +741,8 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 	if err = sqlgraph.UpdateNode(ctx, buo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

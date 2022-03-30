@@ -89,7 +89,7 @@ func BenchmarkParser(t *testing.B) {
 	}
 }
 
-func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testing.B) error {
+func testOneParser(pctx *UnixParserCtx, ectx EnricherCtx, dir string, b *testing.B) error {
 
 	var (
 		err    error
@@ -139,11 +139,11 @@ func testOneParser(pctx *UnixParserCtx, ectx []EnricherCtx, dir string, b *testi
 }
 
 //prepTests is going to do the initialisation of parser : it's going to load enrichment plugins and load the patterns. This is done here so that we don't redo it for each test
-func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
+func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 	var (
 		err  error
 		pctx *UnixParserCtx
-		ectx []EnricherCtx
+		ectx EnricherCtx
 	)
 
 	err = exprhelpers.Init()
@@ -166,7 +166,7 @@ func prepTests() (*UnixParserCtx, []EnricherCtx, error) {
 	// Init the parser
 	pctx, err = Init(map[string]interface{}{"patterns": cfgdir + string("/patterns/"), "data": "./tests/"})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to initialize parser : %v", err)
+		return nil, ectx, fmt.Errorf("failed to initialize parser : %v", err)
 	}
 	return pctx, ectx, nil
 }

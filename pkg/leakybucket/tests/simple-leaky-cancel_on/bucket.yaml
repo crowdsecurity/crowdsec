@@ -1,0 +1,13 @@
+type: leaky
+debug: true
+name: test/simple-leaky-cancel
+description: "Simple leaky"
+filter: "evt.Line.Labels.type =='testlog'"
+cancel_on: evt.Parsed.random_value == '42'
+leakspeed: "10s"
+blackhole: 1m
+capacity: 1
+groupby: evt.Meta.source_ip
+labels:
+ type: overflow_1
+

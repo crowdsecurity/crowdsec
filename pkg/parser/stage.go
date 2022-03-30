@@ -37,7 +37,7 @@ type Stagefile struct {
 	Stage    string `yaml:"stage"`
 }
 
-func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx []EnricherCtx) ([]Node, error) {
+func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) ([]Node, error) {
 	var nodes []Node
 	tmpstages := make(map[string]bool)
 	pctx.Stages = []string{}

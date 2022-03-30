@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
@@ -19,11 +20,12 @@ type ProfileCfg struct {
 	Name           string                      `yaml:"name,omitempty"`
 	Debug          *bool                       `yaml:"debug,omitempty"`
 	Filters        []string                    `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
-	RuntimeFilters []*vm.Program               `json:"-"`
-	DebugFilters   []*exprhelpers.ExprDebugger `json:"-"`
+	RuntimeFilters []*vm.Program               `json:"-" yaml:"-"`
+	DebugFilters   []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
 	Decisions      []models.Decision           `yaml:"decisions,omitempty"`
 	OnSuccess      string                      `yaml:"on_success,omitempty"` //continue or break
 	OnFailure      string                      `yaml:"on_failure,omitempty"` //continue or break
+	Notifications  []string                    `yaml:"notifications,omitempty"`
 }
 
 func (c *LocalApiServerCfg) LoadProfiles() error {
@@ -70,6 +72,13 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 			}
 			c.Profiles[pIdx].DebugFilters[fIdx] = debugFilter
 		}
+
+		for _, decision := range profile.Decisions {
+			if _, err := time.ParseDuration(*decision.Duration); err != nil {
+				return errors.Wrapf(err, "Error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+			}
+		}
+
 	}
 	if len(c.Profiles) == 0 {
 		return fmt.Errorf("zero profiles loaded for LAPI")

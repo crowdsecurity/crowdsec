@@ -22,8 +22,6 @@ import (
   - Upgrade collection
 */
 
-var testDataFolder = "."
-
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
 
@@ -43,7 +41,7 @@ func TestItemStatus(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		item := GetItem(COLLECTIONS, k)
 		if item == nil {
 			t.Fatalf("expected item")
@@ -95,7 +93,7 @@ func TestGetters(t *testing.T) {
 	}
 
 	//Get item : good and bad
-	for k, _ := range x {
+	for k := range x {
 		empty := GetItem(COLLECTIONS, k+"nope")
 		if empty != nil {
 			t.Fatalf("expected empty item")
@@ -189,7 +187,7 @@ func test_prepenv() *csconfig.Config {
 func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	//Install the parser
-	item, err := DownloadLatest(cfg, item, false)
+	item, err := DownloadLatest(cfg, item, false, false)
 	if err != nil {
 		t.Fatalf("error while downloading %s : %v", item.Name, err)
 	}
@@ -200,7 +198,7 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("download: %s should be up-to-date", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("download: %s should not be install", item.Name)
+		t.Fatalf("download: %s should not be installed", item.Name)
 	}
 	if hubIdx[item.Type][item.Name].Tainted {
 		t.Fatalf("download: %s should not be tainted", item.Name)
@@ -208,13 +206,13 @@ func testInstallItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 
 	item, err = EnableItem(cfg, item)
 	if err != nil {
-		t.Fatalf("error while enabled %s : %v.", item.Name, err)
+		t.Fatalf("error while enabling %s : %v.", item.Name, err)
 	}
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
 	}
 	if !hubIdx[item.Type][item.Name].Installed {
-		t.Fatalf("install: %s should be install", item.Name)
+		t.Fatalf("install: %s should be installed", item.Name)
 	}
 }
 
@@ -246,7 +244,7 @@ func testUpdateItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 		t.Fatalf("update: %s should NOT be up-to-date", item.Name)
 	}
 	//Update it + check status
-	item, err := DownloadLatest(cfg, item, true)
+	item, err := DownloadLatest(cfg, item, true, true)
 	if err != nil {
 		t.Fatalf("failed to update %s : %s", item.Name, err)
 	}
@@ -321,10 +319,10 @@ func TestInstallParser(t *testing.T) {
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testTaintItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
-		_ = HubStatus(PARSERS, it.Name, false)
+		_ = GetHubStatusForItemType(PARSERS, it.Name, false)
 		testUpdateItem(cfg.Hub, t, it)
 		it = hubIdx[PARSERS][it.Name]
 		testDisableItem(cfg.Hub, t, it)
@@ -361,7 +359,7 @@ func TestInstallCollection(t *testing.T) {
 		testDisableItem(cfg.Hub, t, it)
 
 		it = hubIdx[COLLECTIONS][it.Name]
-		x := HubStatus(COLLECTIONS, it.Name, false)
+		x := GetHubStatusForItemType(COLLECTIONS, it.Name, false)
 		log.Printf("%+v", x)
 		break
 	}
@@ -386,7 +384,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Printf("---> %s", req.URL.Path)
 
 	/*FAKE PARSER*/
-	if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
+	if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
 		responseBody = `onsuccess: next_stage
 filter: evt.Parsed.program == 'foobar_parser'
 name: crowdsecurity/foobar_parser
@@ -397,7 +395,7 @@ grok:
   apply_on: message
 `
 
-	} else if req.URL.Path == "/crowdsecurity/hub/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
+	} else if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
 		responseBody = `onsuccess: next_stage
 filter: evt.Parsed.program == 'foobar_parser'
 name: crowdsecurity/foobar_parser
@@ -409,19 +407,19 @@ grok:
 `
 		/*FAKE SCENARIO*/
 
-	} else if req.URL.Path == "/crowdsecurity/hub/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
+	} else if req.URL.Path == "/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
 		responseBody = `filter: true
 name: crowdsecurity/foobar_scenario`
 		/*FAKE COLLECTIONS*/
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar.yaml" {
+	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar.yaml" {
 		responseBody = `
 blah: blalala
 qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/collections/crowdsecurity/foobar_subcollection.yaml" {
+	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar_subcollection.yaml" {
 		responseBody = `
 blah: blalala
 qwe: jejwejejw`
-	} else if req.URL.Path == "/crowdsecurity/hub/master/.index.json" {
+	} else if req.URL.Path == "/master/.index.json" {
 		responseBody =
 			`{
 				"collections": {

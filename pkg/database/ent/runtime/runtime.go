@@ -5,6 +5,6 @@ package runtime
 // The schema-stitching logic is generated in github.com/crowdsecurity/crowdsec/pkg/database/ent/runtime.go
 
 const (
-	Version = "v0.7.0"                                          // Version of ent codegen.
-	Sum     = "h1:E3EjO0cUL61DvUg5ZEZdxa4yTL+4SuZv0LqBExo8CQA=" // Sum of ent codegen.
+	Version = "v0.10.1"                                         // Version of ent codegen.
+	Sum     = "h1:dM5h4Zk6yHGIgw4dCqVzGw3nWgpGYJiV4/kyHEF6PFo=" // Sum of ent codegen.
 )

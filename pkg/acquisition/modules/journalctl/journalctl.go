@@ -126,7 +126,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Raw = stdoutLine
 			logger.Debugf("getting one line : %s", l.Raw)
 			l.Labels = j.config.Labels
-			l.Time = time.Now()
+			l.Time = time.Now().UTC()
 			l.Src = j.src
 			l.Process = true
 			l.Module = j.GetName()
@@ -182,11 +182,11 @@ func (j *JournalCtlSource) Configure(yamlConfig []byte, logger *log.Entry) error
 	return nil
 }
 
-func (j *JournalCtlSource) ConfigureByDSN(dsn string, labelType string, logger *log.Entry) error {
+func (j *JournalCtlSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	j.logger = logger
 	j.config = JournalCtlConfiguration{}
 	j.config.Mode = configuration.CAT_MODE
-	j.config.Labels = map[string]string{"type": labelType}
+	j.config.Labels = labels
 
 	//format for the DSN is : journalctl://filters=FILTER1&filters=FILTER2
 	if !strings.HasPrefix(dsn, "journalctl://") {
@@ -215,6 +215,8 @@ func (j *JournalCtlSource) ConfigureByDSN(dsn string, labelType string, logger *
 				return errors.Wrapf(err, "unknown level %s", value[0])
 			}
 			j.logger.Logger.SetLevel(lvl)
+		case "since":
+			j.args = append(j.args, "--since", value[0])
 		default:
 			return fmt.Errorf("unsupported key %s in journalctl DSN", key)
 		}

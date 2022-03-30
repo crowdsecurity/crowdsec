@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,9 +23,9 @@ type MachineUpdate struct {
 	mutation *MachineMutation
 }
 
-// Where adds a new predicate for the MachineUpdate builder.
+// Where appends a list predicates to the MachineUpdate builder.
 func (mu *MachineUpdate) Where(ps ...predicate.Machine) *MachineUpdate {
-	mu.mutation.predicates = append(mu.mutation.predicates, ps...)
+	mu.mutation.Where(ps...)
 	return mu
 }
 
@@ -34,11 +35,9 @@ func (mu *MachineUpdate) SetCreatedAt(t time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableCreatedAt(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (mu *MachineUpdate) ClearCreatedAt() *MachineUpdate {
+	mu.mutation.ClearCreatedAt()
 	return mu
 }
 
@@ -48,11 +47,21 @@ func (mu *MachineUpdate) SetUpdatedAt(t time.Time) *MachineUpdate {
 	return mu
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (mu *MachineUpdate) SetNillableUpdatedAt(t *time.Time) *MachineUpdate {
-	if t != nil {
-		mu.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (mu *MachineUpdate) ClearUpdatedAt() *MachineUpdate {
+	mu.mutation.ClearUpdatedAt()
+	return mu
+}
+
+// SetLastPush sets the "last_push" field.
+func (mu *MachineUpdate) SetLastPush(t time.Time) *MachineUpdate {
+	mu.mutation.SetLastPush(t)
+	return mu
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
+	mu.mutation.ClearLastPush()
 	return mu
 }
 
@@ -195,6 +204,7 @@ func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	mu.defaults()
 	if len(mu.hooks) == 0 {
 		if err = mu.check(); err != nil {
 			return 0, err
@@ -215,6 +225,9 @@ func (mu *MachineUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(mu.hooks) - 1; i >= 0; i-- {
+			if mu.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mu.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mu.mutation); err != nil {
@@ -246,11 +259,27 @@ func (mu *MachineUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (mu *MachineUpdate) defaults() {
+	if _, ok := mu.mutation.CreatedAt(); !ok && !mu.mutation.CreatedAtCleared() {
+		v := machine.UpdateDefaultCreatedAt()
+		mu.mutation.SetCreatedAt(v)
+	}
+	if _, ok := mu.mutation.UpdatedAt(); !ok && !mu.mutation.UpdatedAtCleared() {
+		v := machine.UpdateDefaultUpdatedAt()
+		mu.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := mu.mutation.LastPush(); !ok && !mu.mutation.LastPushCleared() {
+		v := machine.UpdateDefaultLastPush()
+		mu.mutation.SetLastPush(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (mu *MachineUpdate) check() error {
 	if v, ok := mu.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
 	}
 	return nil
@@ -281,11 +310,36 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldCreatedAt,
 		})
 	}
+	if mu.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldCreatedAt,
+		})
+	}
 	if value, ok := mu.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
 			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if mu.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if value, ok := mu.mutation.LastPush(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+	}
+	if mu.mutation.LastPushCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldLastPush,
 		})
 	}
 	if value, ok := mu.mutation.MachineId(); ok {
@@ -412,8 +466,8 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, mu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -423,6 +477,7 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // MachineUpdateOne is the builder for updating a single Machine entity.
 type MachineUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *MachineMutation
 }
@@ -433,11 +488,9 @@ func (muo *MachineUpdateOne) SetCreatedAt(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableCreatedAt(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (muo *MachineUpdateOne) ClearCreatedAt() *MachineUpdateOne {
+	muo.mutation.ClearCreatedAt()
 	return muo
 }
 
@@ -447,11 +500,21 @@ func (muo *MachineUpdateOne) SetUpdatedAt(t time.Time) *MachineUpdateOne {
 	return muo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (muo *MachineUpdateOne) SetNillableUpdatedAt(t *time.Time) *MachineUpdateOne {
-	if t != nil {
-		muo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (muo *MachineUpdateOne) ClearUpdatedAt() *MachineUpdateOne {
+	muo.mutation.ClearUpdatedAt()
+	return muo
+}
+
+// SetLastPush sets the "last_push" field.
+func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
+	muo.mutation.SetLastPush(t)
+	return muo
+}
+
+// ClearLastPush clears the value of the "last_push" field.
+func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
+	muo.mutation.ClearLastPush()
 	return muo
 }
 
@@ -588,12 +651,20 @@ func (muo *MachineUpdateOne) RemoveAlerts(a ...*Alert) *MachineUpdateOne {
 	return muo.RemoveAlertIDs(ids...)
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (muo *MachineUpdateOne) Select(field string, fields ...string) *MachineUpdateOne {
+	muo.fields = append([]string{field}, fields...)
+	return muo
+}
+
 // Save executes the query and returns the updated Machine entity.
 func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 	var (
 		err  error
 		node *Machine
 	)
+	muo.defaults()
 	if len(muo.hooks) == 0 {
 		if err = muo.check(); err != nil {
 			return nil, err
@@ -614,6 +685,9 @@ func (muo *MachineUpdateOne) Save(ctx context.Context) (*Machine, error) {
 			return node, err
 		})
 		for i := len(muo.hooks) - 1; i >= 0; i-- {
+			if muo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = muo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, muo.mutation); err != nil {
@@ -645,11 +719,27 @@ func (muo *MachineUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (muo *MachineUpdateOne) defaults() {
+	if _, ok := muo.mutation.CreatedAt(); !ok && !muo.mutation.CreatedAtCleared() {
+		v := machine.UpdateDefaultCreatedAt()
+		muo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := muo.mutation.UpdatedAt(); !ok && !muo.mutation.UpdatedAtCleared() {
+		v := machine.UpdateDefaultUpdatedAt()
+		muo.mutation.SetUpdatedAt(v)
+	}
+	if _, ok := muo.mutation.LastPush(); !ok && !muo.mutation.LastPushCleared() {
+		v := machine.UpdateDefaultLastPush()
+		muo.mutation.SetLastPush(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (muo *MachineUpdateOne) check() error {
 	if v, ok := muo.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
 	}
 	return nil
@@ -668,9 +758,21 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	}
 	id, ok := muo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Machine.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Machine.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
+	if fields := muo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, machine.FieldID)
+		for _, f := range fields {
+			if !machine.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != machine.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := muo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -685,11 +787,36 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 			Column: machine.FieldCreatedAt,
 		})
 	}
+	if muo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldCreatedAt,
+		})
+	}
 	if value, ok := muo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
 			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if muo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldUpdatedAt,
+		})
+	}
+	if value, ok := muo.mutation.LastPush(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+	}
+	if muo.mutation.LastPushCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldLastPush,
 		})
 	}
 	if value, ok := muo.mutation.MachineId(); ok {
@@ -819,8 +946,8 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 	if err = sqlgraph.UpdateNode(ctx, muo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{machine.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

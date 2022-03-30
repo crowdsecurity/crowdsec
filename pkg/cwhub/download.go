@@ -3,6 +3,7 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
+	"path"
 	"path/filepath"
 
 	//"errors"
@@ -75,7 +76,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 }
 
 //DownloadLatest will download the latest version of Item to the tdir directory
-func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
+func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly bool) (Item, error) {
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
@@ -84,32 +85,37 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					log.Debugf("Download %s sub-item : %s %s", target.Name, ptrtype, p)
-					//recurse as it's a collection
-					if ptrtype == COLLECTIONS {
-						log.Tracef("collection, recurse")
-						hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite)
-						if err != nil {
-							return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-						}
-					}
-					item, err := DownloadItem(hub, val, overwrite)
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
+					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+				}
+
+				if !val.Installed && updateOnly {
+					log.Debugf("skipping upgrade of %s : not installed", target.Name)
+					continue
+				}
+				log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
+				//recurse as it's a collection
+				if ptrtype == COLLECTIONS {
+					log.Tracef("collection, recurse")
+					hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
 					if err != nil {
 						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
 					}
-
-					// We need to enable an item when it has been added to a collection since latest release of the collection.
-					// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-					if !item.Installed && !val.Downloaded {
-						if item, err = EnableItem(hub, item); err != nil {
-							return target, errors.Wrapf(err, "enabling '%s'", item.Name)
-						}
-					}
-					hubIdx[ptrtype][p] = item
-				} else {
-					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
+				item, err := DownloadItem(hub, val, overwrite)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+				}
+
+				// We need to enable an item when it has been added to a collection since latest release of the collection.
+				// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+				if !item.Installed && !val.Downloaded {
+					if item, err = EnableItem(hub, item); err != nil {
+						return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+					}
+				}
+				hubIdx[ptrtype][p] = item
 			}
 		}
 		target, err = DownloadItem(hub, target, overwrite)
@@ -117,6 +123,10 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool) (Item, error
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
+		if !target.Installed && updateOnly {
+			log.Debugf("skipping upgrade of %s : not installed", target.Name)
+			return target, nil
+		}
 		return DownloadItem(hub, target, overwrite)
 	}
 	return target, nil
@@ -134,7 +144,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		}
 		if target.UpToDate {
 			log.Debugf("%s : up-to-date, not updated", target.Name)
-			return target, nil
+			//  We still have to check if data files are present
 		}
 	}
 	req, err := http.NewRequest("GET", fmt.Sprintf(RawFileURLTemplate, HubBranch, target.RemotePath), nil)
@@ -204,22 +214,56 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	target.Tainted = false
 	target.UpToDate = true
 
-	dec := yaml.NewDecoder(bytes.NewReader(body))
+	if err = downloadData(dataFolder, overwrite, bytes.NewReader(body)); err != nil {
+		return target, errors.Wrapf(err, "while downloading data for %s", target.FileName)
+	}
+
+	hubIdx[target.Type][target.Name] = target
+	return target, nil
+}
+
+func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
+	var (
+		dataFolder = hub.DataDir
+		itemFile   *os.File
+		err        error
+	)
+	itemFilePath := fmt.Sprintf("%s/%s/%s/%s", hub.ConfigDir, target.Type, target.Stage, target.FileName)
+	if itemFile, err = os.Open(itemFilePath); err != nil {
+		return errors.Wrapf(err, "while opening %s", itemFilePath)
+	}
+	if err = downloadData(dataFolder, force, itemFile); err != nil {
+		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
+	}
+	return nil
+}
+
+func downloadData(dataFolder string, force bool, reader io.Reader) error {
+	var err error
+	dec := yaml.NewDecoder(reader)
+
 	for {
 		data := &types.DataSet{}
 		err = dec.Decode(data)
 		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return target, errors.Wrap(err, "while reading file")
+			if err != io.EOF {
+				return errors.Wrap(err, "while reading file")
+			}
+			break
+		}
+
+		download := false
+		for _, dataS := range data.Data {
+			if _, err := os.Stat(path.Join(dataFolder, dataS.DestPath)); os.IsNotExist(err) {
+				download = true
 			}
 		}
-		err = types.GetData(data.Data, dataFolder)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting data")
+		if download || force {
+			err = types.GetData(data.Data, dataFolder)
+			if err != nil {
+				return errors.Wrap(err, "while getting data")
+			}
 		}
 	}
-	hubIdx[target.Type][target.Name] = target
-	return target, nil
+	return nil
 }

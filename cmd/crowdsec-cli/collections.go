@@ -16,7 +16,8 @@ func NewCollectionsCmd() *cobra.Command {
 		Short: "Manage collections from hub",
 		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
 		/*TBD fix help*/
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
 				log.Fatalf(err.Error())
@@ -44,43 +45,60 @@ func NewCollectionsCmd() *cobra.Command {
 		},
 	}
 
+	var ignoreError bool
 	var cmdCollectionsInstall = &cobra.Command{
-		Use:     "install collection",
-		Short:   "Install given collection(s)",
-		Long:    `Fetch and install given collection(s) from hub`,
-		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "install collection",
+		Short:             "Install given collection(s)",
+		Long:              `Fetch and install given collection(s) from hub`,
+		Example:           `cscli collections install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				InstallItem(name, cwhub.COLLECTIONS, forceAction)
+				if err := InstallItem(name, cwhub.COLLECTIONS, forceAction); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdCollectionsInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdCollectionsInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdCollectionsInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple collections")
 	cmdCollections.AddCommand(cmdCollectionsInstall)
 
 	var cmdCollectionsRemove = &cobra.Command{
-		Use:     "remove collection",
-		Short:   "Remove given collection(s)",
-		Long:    `Remove given collection(s) from hub`,
-		Example: `cscli collections remove crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "remove collection",
+		Short:             "Remove given collection(s)",
+		Long:              `Remove given collection(s) from hub`,
+		Example:           `cscli collections remove crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.COLLECTIONS, "")
-			} else {
-				for _, name := range args {
-					if !forceAction {
-						item := cwhub.GetItem(cwhub.COLLECTIONS, name)
-						if len(item.BelongsToCollections) > 0 {
-							log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
-							log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
-							continue
-						}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one collection to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				if !forceAction {
+					item := cwhub.GetItem(cwhub.COLLECTIONS, name)
+					if item == nil {
+						log.Fatalf("unable to retrieve: %s\n", name)
 					}
-					RemoveMany(cwhub.COLLECTIONS, name)
+					if len(item.BelongsToCollections) > 0 {
+						log.Warningf("%s belongs to other collections :\n%s\n", name, item.BelongsToCollections)
+						log.Printf("Run 'sudo cscli collections remove %s --force' if you want to force remove this sub collection\n", name)
+						continue
+					}
 				}
+				RemoveMany(cwhub.COLLECTIONS, name)
 			}
 		},
 	}
@@ -90,10 +108,11 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsRemove)
 
 	var cmdCollectionsUpgrade = &cobra.Command{
-		Use:     "upgrade collection",
-		Short:   "Upgrade given collection(s)",
-		Long:    `Fetch and upgrade given collection(s) from hub`,
-		Example: `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:               "upgrade collection",
+		Short:             "Upgrade given collection(s)",
+		Long:              `Fetch and upgrade given collection(s) from hub`,
+		Example:           `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
@@ -112,11 +131,12 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsUpgrade)
 
 	var cmdCollectionsInspect = &cobra.Command{
-		Use:     "inspect collection",
-		Short:   "Inspect given collection",
-		Long:    `Inspect given collection`,
-		Example: `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "inspect collection",
+		Short:             "Inspect given collection",
+		Long:              `Inspect given collection`,
+		Example:           `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				InspectItem(name, cwhub.COLLECTIONS)
@@ -127,16 +147,17 @@ func NewCollectionsCmd() *cobra.Command {
 	cmdCollections.AddCommand(cmdCollectionsInspect)
 
 	var cmdCollectionsList = &cobra.Command{
-		Use:     "list collection [-a]",
-		Short:   "List all collections or given one",
-		Long:    `List all collections or given one`,
-		Example: `cscli collections list`,
-		Args:    cobra.ExactArgs(0),
+		Use:               "list collection [-a]",
+		Short:             "List all collections",
+		Long:              `List all collections`,
+		Example:           `cscli collections list`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.COLLECTIONS, args)
+			ListItems([]string{cwhub.COLLECTIONS}, args, false, true)
 		},
 	}
-	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdCollections.AddCommand(cmdCollectionsList)
 
 	return cmdCollections

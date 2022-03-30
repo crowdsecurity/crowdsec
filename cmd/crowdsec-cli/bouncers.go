@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,9 +15,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var keyName string
 var keyIP string
 var keyLength int
+var key string
 
 func NewBouncersCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
@@ -26,7 +27,8 @@ func NewBouncersCmd() *cobra.Command {
 		Long: `To list/add/delete bouncers.
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
@@ -43,11 +45,12 @@ Note: This command requires database direct access, so is intended to be run on 
 	}
 
 	var cmdBouncersList = &cobra.Command{
-		Use:     "list",
-		Short:   "List bouncers",
-		Long:    `List bouncers`,
-		Example: `cscli bouncers list`,
-		Args:    cobra.ExactArgs(0),
+		Use:               "list",
+		Short:             "List bouncers",
+		Long:              `List bouncers`,
+		Example:           `cscli bouncers list`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
 			blockers, err := dbClient.ListBouncers()
 			if err != nil {
@@ -65,9 +68,9 @@ Note: This command requires database direct access, so is intended to be run on 
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
-						revoked = fmt.Sprintf("%s", emoji.CheckMark)
+						revoked = emoji.CheckMark.String()
 					} else {
-						revoked = fmt.Sprintf("%s", emoji.Prohibited)
+						revoked = emoji.Prohibited.String()
 					}
 					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
 				}
@@ -79,6 +82,11 @@ Note: This command requires database direct access, so is intended to be run on 
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
+				csvwriter := csv.NewWriter(os.Stdout)
+				err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version"})
+				if err != nil {
+					log.Fatalf("failed to write raw header: %s", err)
+				}
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
@@ -86,8 +94,12 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						revoked = "pending"
 					}
-					fmt.Printf("%s,%s,%s,%s,%s\n", b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Version)
+					err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
+					if err != nil {
+						log.Fatalf("failed to write raw: %s", err)
+					}
 				}
+				csvwriter.Flush()
 			}
 		},
 	}
@@ -97,24 +109,28 @@ Note: This command requires database direct access, so is intended to be run on 
 		Use:   "add MyBouncerName [--length 16]",
 		Short: "add bouncer",
 		Long:  `add bouncer`,
-		Example: `cscli bouncers add MyBouncerName
-cscli bouncers add MyBouncerName -l 24`,
-		Args: cobra.ExactArgs(1),
+		Example: fmt.Sprintf(`cscli bouncers add MyBouncerName
+cscli bouncers add MyBouncerName -l 24
+cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
+		Args:              cobra.ExactArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, arg []string) {
 			keyName := arg[0]
+			var apiKey string
+			var err error
 			if keyName == "" {
-				log.Errorf("Please provide a name for the api key")
-				return
+				log.Fatalf("Please provide a name for the api key")
 			}
-			apiKey, err := middlewares.GenerateAPIKey(keyLength)
+			apiKey = key
+			if key == "" {
+				apiKey, err = middlewares.GenerateAPIKey(keyLength)
+			}
 			if err != nil {
-				log.Errorf("unable to generate api key: %s", err)
-				return
+				log.Fatalf("unable to generate api key: %s", err)
 			}
 			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
 			if err != nil {
-				log.Errorf("unable to create bouncer: %s", err)
-				return
+				log.Fatalf("unable to create bouncer: %s", err)
 			}
 
 			if csConfig.Cscli.Output == "human" {
@@ -133,22 +149,21 @@ cscli bouncers add MyBouncerName -l 24`,
 		},
 	}
 	cmdBouncersAdd.Flags().IntVarP(&keyLength, "length", "l", 16, "length of the api key")
+	cmdBouncersAdd.Flags().StringVarP(&key, "key", "k", "", "api key for the bouncer")
 	cmdBouncers.AddCommand(cmdBouncersAdd)
 
 	var cmdBouncersDelete = &cobra.Command{
-		Use:   "delete MyBouncerName",
-		Short: "delete bouncer",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, arg []string) {
-			keyName := arg[0]
-			if keyName == "" {
-				log.Errorf("Please provide a bouncer name")
-				return
-			}
-			err := dbClient.DeleteBouncer(keyName)
-			if err != nil {
-				log.Errorf("unable to delete bouncer: %s", err)
-				return
+		Use:               "delete MyBouncerName",
+		Short:             "delete bouncer",
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			for _, bouncerID := range args {
+				err := dbClient.DeleteBouncer(bouncerID)
+				if err != nil {
+					log.Fatalf("unable to delete bouncer: %s", err)
+				}
+				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}
 		},
 	}

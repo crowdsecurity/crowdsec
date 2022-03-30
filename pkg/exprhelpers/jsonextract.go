@@ -30,6 +30,25 @@ func JsonExtractLib(jsblob string, target ...string) string {
 	return strvalue
 }
 
+func JsonExtractUnescape(jsblob string, target ...string) string {
+	value, err := jsonparser.GetString(
+		jsonparser.StringToBytes(jsblob),
+		target...,
+	)
+
+	if err != nil {
+		if err == jsonparser.KeyPathNotFoundError {
+			log.Debugf("%+v doesn't exist", target)
+			return ""
+		}
+		log.Errorf("JsonExtractUnescape : %+v : %s", target, err)
+		return ""
+	}
+	log.Tracef("extract path %+v", target)
+	strvalue := string(value)
+	return strvalue
+}
+
 func JsonExtract(jsblob string, target string) string {
 	if !strings.HasPrefix(target, "[") {
 		target = strings.Replace(target, "[", ".[", -1)

@@ -20,7 +20,8 @@ cscli parsers upgrade crowdsecurity/sshd-logs
 cscli parsers list
 cscli parsers remove crowdsecurity/sshd-logs
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
 				log.Fatalf(err.Error())
@@ -47,35 +48,49 @@ cscli parsers remove crowdsecurity/sshd-logs
 		},
 	}
 
+	var ignoreError bool
 	var cmdParsersInstall = &cobra.Command{
-		Use:     "install [config]",
-		Short:   "Install given parser(s)",
-		Long:    `Fetch and install given parser(s) from hub`,
-		Example: `cscli parsers install crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "install [config]",
+		Short:             "Install given parser(s)",
+		Long:              `Fetch and install given parser(s) from hub`,
+		Example:           `cscli parsers install crowdsec/xxx crowdsec/xyz`,
+		Args:              cobra.MinimumNArgs(1),
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				InstallItem(name, cwhub.PARSERS, forceAction)
+				if err := InstallItem(name, cwhub.PARSERS, forceAction); err != nil {
+					if ignoreError {
+						log.Errorf("Error while installing '%s': %s", name, err)
+					} else {
+						log.Fatalf("Error while installing '%s': %s", name, err)
+					}
+				}
 			}
 		},
 	}
 	cmdParsersInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdParsersInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
+	cmdParsersInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple parsers")
 	cmdParsers.AddCommand(cmdParsersInstall)
 
 	var cmdParsersRemove = &cobra.Command{
-		Use:     "remove [config]",
-		Short:   "Remove given parser(s)",
-		Long:    `Remove given parse(s) from hub`,
-		Example: `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "remove [config]",
+		Short:             "Remove given parser(s)",
+		Long:              `Remove given parse(s) from hub`,
+		Example:           `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				RemoveMany(cwhub.PARSERS, "")
-			} else {
-				for _, name := range args {
-					RemoveMany(cwhub.PARSERS, name)
-				}
+				return
+			}
+
+			if len(args) == 0 {
+				log.Fatalf("Specify at least one parser to remove or '--all' flag.")
+			}
+
+			for _, name := range args {
+				RemoveMany(cwhub.PARSERS, name)
 			}
 		},
 	}
@@ -85,10 +100,11 @@ cscli parsers remove crowdsecurity/sshd-logs
 	cmdParsers.AddCommand(cmdParsersRemove)
 
 	var cmdParsersUpgrade = &cobra.Command{
-		Use:     "upgrade [config]",
-		Short:   "Upgrade given parser(s)",
-		Long:    `Fetch and upgrade given parser(s) from hub`,
-		Example: `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:               "upgrade [config]",
+		Short:             "Upgrade given parser(s)",
+		Long:              `Fetch and upgrade given parser(s) from hub`,
+		Example:           `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				UpgradeConfig(cwhub.PARSERS, "", forceAction)
@@ -107,11 +123,12 @@ cscli parsers remove crowdsecurity/sshd-logs
 	cmdParsers.AddCommand(cmdParsersUpgrade)
 
 	var cmdParsersInspect = &cobra.Command{
-		Use:     "inspect [name]",
-		Short:   "Inspect given parser",
-		Long:    `Inspect given parser`,
-		Example: `cscli parsers inspect crowdsec/xxx`,
-		Args:    cobra.MinimumNArgs(1),
+		Use:               "inspect [name]",
+		Short:             "Inspect given parser",
+		Long:              `Inspect given parser`,
+		Example:           `cscli parsers inspect crowdsec/xxx`,
+		DisableAutoGenTag: true,
+		Args:              cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.PARSERS)
 		},
@@ -125,11 +142,12 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Long:  `List all parsers or given one`,
 		Example: `cscli parsers list
 cscli parser list crowdsecurity/xxx`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItem(cwhub.PARSERS, args)
+			ListItems([]string{cwhub.PARSERS}, args, false, true)
 		},
 	}
-	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List as well disabled items")
+	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
 	cmdParsers.AddCommand(cmdParsersList)
 
 	return cmdParsers

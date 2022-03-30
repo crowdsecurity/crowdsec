@@ -107,11 +107,17 @@ func (ec *EventCreate) Save(ctx context.Context) (*Event, error) {
 				return nil, err
 			}
 			ec.mutation = mutation
-			node, err = ec.sqlSave(ctx)
+			if node, err = ec.sqlSave(ctx); err != nil {
+				return nil, err
+			}
+			mutation.id = &node.ID
 			mutation.done = true
 			return node, err
 		})
 		for i := len(ec.hooks) - 1; i >= 0; i-- {
+			if ec.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = ec.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, ec.mutation); err != nil {
@@ -130,6 +136,19 @@ func (ec *EventCreate) SaveX(ctx context.Context) *Event {
 	return v
 }
 
+// Exec executes the query.
+func (ec *EventCreate) Exec(ctx context.Context) error {
+	_, err := ec.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (ec *EventCreate) ExecX(ctx context.Context) {
+	if err := ec.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
 // defaults sets the default values of the builder before save.
 func (ec *EventCreate) defaults() {
 	if _, ok := ec.mutation.CreatedAt(); !ok {
@@ -144,21 +163,15 @@ func (ec *EventCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (ec *EventCreate) check() error {
-	if _, ok := ec.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := ec.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
-	}
 	if _, ok := ec.mutation.Time(); !ok {
-		return &ValidationError{Name: "time", err: errors.New("ent: missing required field \"time\"")}
+		return &ValidationError{Name: "time", err: errors.New(`ent: missing required field "Event.time"`)}
 	}
 	if _, ok := ec.mutation.Serialized(); !ok {
-		return &ValidationError{Name: "serialized", err: errors.New("ent: missing required field \"serialized\"")}
+		return &ValidationError{Name: "serialized", err: errors.New(`ent: missing required field "Event.serialized"`)}
 	}
 	if v, ok := ec.mutation.Serialized(); ok {
 		if err := event.SerializedValidator(v); err != nil {
-			return &ValidationError{Name: "serialized", err: fmt.Errorf("ent: validator failed for field \"serialized\": %w", err)}
+			return &ValidationError{Name: "serialized", err: fmt.Errorf(`ent: validator failed for field "Event.serialized": %w`, err)}
 		}
 	}
 	return nil
@@ -167,8 +180,8 @@ func (ec *EventCreate) check() error {
 func (ec *EventCreate) sqlSave(ctx context.Context) (*Event, error) {
 	_node, _spec := ec.createSpec()
 	if err := sqlgraph.CreateNode(ctx, ec.driver, _spec); err != nil {
-		if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}
@@ -194,7 +207,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := ec.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -202,7 +215,7 @@ func (ec *EventCreate) createSpec() (*Event, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: event.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
 	}
 	if value, ok := ec.mutation.Time(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -272,19 +285,23 @@ func (ecb *EventCreateBulk) Save(ctx context.Context) ([]*Event, error) {
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, ecb.builders[i+1].mutation)
 				} else {
+					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, ecb.driver, &sqlgraph.BatchCreateSpec{Nodes: specs}); err != nil {
-						if cerr, ok := isSQLConstraintError(err); ok {
-							err = cerr
+					if err = sqlgraph.BatchCreate(ctx, ecb.driver, spec); err != nil {
+						if sqlgraph.IsConstraintError(err) {
+							err = &ConstraintError{err.Error(), err}
 						}
 					}
 				}
-				mutation.done = true
 				if err != nil {
 					return nil, err
 				}
-				id := specs[i].ID.Value.(int64)
-				nodes[i].ID = int(id)
+				mutation.id = &nodes[i].ID
+				mutation.done = true
+				if specs[i].ID.Value != nil {
+					id := specs[i].ID.Value.(int64)
+					nodes[i].ID = int(id)
+				}
 				return nodes[i], nil
 			})
 			for i := len(builder.hooks) - 1; i >= 0; i-- {
@@ -308,4 +325,17 @@ func (ecb *EventCreateBulk) SaveX(ctx context.Context) []*Event {
 		panic(err)
 	}
 	return v
+}
+
+// Exec executes the query.
+func (ecb *EventCreateBulk) Exec(ctx context.Context) error {
+	_, err := ecb.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (ecb *EventCreateBulk) ExecX(ctx context.Context) {
+	if err := ecb.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

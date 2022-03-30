@@ -3,7 +3,8 @@ package apiclient
 import (
 	"context"
 	"fmt"
-	"log"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/pkg/errors"
@@ -24,6 +25,10 @@ func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsReque
 	if err != nil {
 		return nil, resp, errors.Wrap(err, "while performing request")
 	}
-	log.Printf("Signal push response : http %s", resp.Response.Status)
+	if resp.Response.StatusCode != 200 {
+		log.Warnf("Signal push response : http %s", resp.Response.Status)
+	} else {
+		log.Debugf("Signal push response : http %s", resp.Response.Status)
+	}
 	return &response, resp, nil
 }

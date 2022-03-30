@@ -18,9 +18,9 @@ type Meta struct {
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt time.Time `json:"created_at,omitempty"`
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// Key holds the value of the "key" field.
 	Key string `json:"key,omitempty"`
 	// Value holds the value of the "value" field.
@@ -60,13 +60,13 @@ func (*Meta) scanValues(columns []string) ([]interface{}, error) {
 	for i := range columns {
 		switch columns[i] {
 		case meta.FieldID:
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		case meta.FieldKey, meta.FieldValue:
-			values[i] = &sql.NullString{}
+			values[i] = new(sql.NullString)
 		case meta.FieldCreatedAt, meta.FieldUpdatedAt:
-			values[i] = &sql.NullTime{}
+			values[i] = new(sql.NullTime)
 		case meta.ForeignKeys[0]: // alert_metas
-			values[i] = &sql.NullInt64{}
+			values[i] = new(sql.NullInt64)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Meta", columns[i])
 		}
@@ -92,13 +92,15 @@ func (m *Meta) assignValues(columns []string, values []interface{}) error {
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				m.CreatedAt = value.Time
+				m.CreatedAt = new(time.Time)
+				*m.CreatedAt = value.Time
 			}
 		case meta.FieldUpdatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
 			} else if value.Valid {
-				m.UpdatedAt = value.Time
+				m.UpdatedAt = new(time.Time)
+				*m.UpdatedAt = value.Time
 			}
 		case meta.FieldKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -152,10 +154,14 @@ func (m *Meta) String() string {
 	var builder strings.Builder
 	builder.WriteString("Meta(")
 	builder.WriteString(fmt.Sprintf("id=%v", m.ID))
-	builder.WriteString(", created_at=")
-	builder.WriteString(m.CreatedAt.Format(time.ANSIC))
-	builder.WriteString(", updated_at=")
-	builder.WriteString(m.UpdatedAt.Format(time.ANSIC))
+	if v := m.CreatedAt; v != nil {
+		builder.WriteString(", created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := m.UpdatedAt; v != nil {
+		builder.WriteString(", updated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", key=")
 	builder.WriteString(m.Key)
 	builder.WriteString(", value=")

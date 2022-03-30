@@ -23,13 +23,15 @@ CROWDSEC_PATH="/etc/crowdsec"
 CROWDSEC_CONFIG_PATH="${CROWDSEC_PATH}"
 CROWDSEC_LOG_FILE="/var/log/crowdsec.log"
 LAPI_LOG_FILE="/var/log/crowdsec_api.log"
-
+CROWDSEC_PLUGIN_DIR="${CROWDSEC_USR_DIR}/plugins"
 
 CROWDSEC_BIN="./cmd/crowdsec/crowdsec"
 CSCLI_BIN="./cmd/crowdsec-cli/cscli"
 
 CLIENT_SECRETS="local_api_credentials.yaml"
 LAPI_SECRETS="online_api_credentials.yaml"
+
+CONSOLE_FILE="console.yaml"
 
 BIN_INSTALL_PATH="/usr/local/bin"
 CROWDSEC_BIN_INSTALLED="${BIN_INSTALL_PATH}/crowdsec"
@@ -44,7 +46,6 @@ ACQUIS_PATH="${CROWDSEC_CONFIG_PATH}"
 TMP_ACQUIS_FILE="tmp-acquis.yaml"
 ACQUIS_TARGET="${ACQUIS_PATH}/acquis.yaml"
 
-PID_DIR="${CROWDSEC_RUN_DIR}"
 SYSTEMD_PATH_FILE="/etc/systemd/system/crowdsec.service"
 
 PATTERNS_FOLDER="config/patterns"
@@ -64,8 +65,19 @@ telnet
 smb
 '
 
+
+HTTP_PLUGIN_BINARY="./plugins/notifications/http/notification-http"
+SLACK_PLUGIN_BINARY="./plugins/notifications/slack/notification-slack"
+SPLUNK_PLUGIN_BINARY="./plugins/notifications/splunk/notification-splunk"
+EMAIL_PLUGIN_BINARY="./plugins/notifications/email/notification-email"
+
+HTTP_PLUGIN_CONFIG="./plugins/notifications/http/http.yaml"
+SLACK_PLUGIN_CONFIG="./plugins/notifications/slack/slack.yaml"
+SPLUNK_PLUGIN_CONFIG="./plugins/notifications/splunk/splunk.yaml"
+EMAIL_PLUGIN_CONFIG="./plugins/notifications/email/email.yaml"
+
 BACKUP_DIR=$(mktemp -d)
-rm -rf $BACKUP_DIR
+rm -rf -- "$BACKUP_DIR"
 
 log_info() {
     msg=$1
@@ -123,7 +135,7 @@ detect_services () {
             fi;
         done;
     done;
-    if [[ ${OSTYPE} == "linux-gnu" ]]; then
+    if [[ ${OSTYPE} == "linux-gnu" ]] || [[ ${OSTYPE} == "linux-gnueabihf" ]]; then
         DETECTED_SERVICES+=("linux")
         HMENU+=("linux" "on")
     else 
@@ -155,7 +167,7 @@ log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
 log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
-log_locations[nginx]='/var/log/nginx/*.log'
+log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
 log_locations[telnet]='/var/log/telnetd*.log'
@@ -206,7 +218,7 @@ in_array() {
     shift
     array=("$@")
     for element in "${array[@]}"; do
-        if [[ ${str} == *${element}* ]]; then
+        if [[ ${str} == crowdsecurity/${element} ]]; then
             return 0
         fi
     done
@@ -217,9 +229,9 @@ install_collection() {
     HMENU=()
     readarray -t AVAILABLE_COLLECTION < <(${CSCLI_BIN_INSTALLED} collections list -o raw -a)
     COLLECTION_TO_INSTALL=()
-    for collect_info in "${AVAILABLE_COLLECTION[@]}"; do
-        collection="$(echo ${collect_info} | cut -d " " -f1)"
-        description="$(echo ${collect_info} | cut -d " " -f2-)"
+    for collect_info in "${AVAILABLE_COLLECTION[@]:1}"; do
+        collection="$(echo ${collect_info} | cut -d "," -f1)"
+        description="$(echo ${collect_info} | cut -d "," -f4)"
         in_array $collection "${DETECTED_SERVICES[@]}"
         if [[ $? == 0 ]]; then
             HMENU+=("${collection}" "${description}" "ON")
@@ -331,9 +343,8 @@ check_cs_version () {
 
     if [[ $NEW_MAJOR_VERSION -gt $CURRENT_MAJOR_VERSION ]]; then
         if [[ ${FORCE_MODE} == "false" ]]; then
-            log_warn "new version ($NEW_CS_VERSION) is a major, you need to follow documentation to upgrade !"
+            log_warn "new version ($NEW_CS_VERSION) is a major, you should follow documentation to upgrade !"
             echo ""
-            echo "Please follow : https://docs.crowdsec.net/Crowdsec/v1/migration/"
             exit 1
         fi
     elif [[ $NEW_MINOR_VERSION -gt $CURRENT_MINOR_VERSION ]] ; then
@@ -396,11 +407,11 @@ install_crowdsec() {
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
 
-    mkdir -p ${PID_DIR} || exit
-    PID=${PID_DIR} DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $PID $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
+    DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
-        CFG=${CROWDSEC_CONFIG_PATH} PID=${PID_DIR} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $PID $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
+        CFG=${CROWDSEC_CONFIG_PATH} BIN=${CROWDSEC_BIN_INSTALLED} envsubst '$CFG $BIN' < ./config/crowdsec.service > "${SYSTEMD_PATH_FILE}" || log_fatal "unable to crowdsec systemd file"
     fi
     install_bins
 
@@ -451,6 +462,11 @@ install_bins() {
     log_dbg "Installing crowdsec binaries"
     install -v -m 755 -D "${CROWDSEC_BIN}" "${CROWDSEC_BIN_INSTALLED}" 1> /dev/null || exit
     install -v -m 755 -D "${CSCLI_BIN}" "${CSCLI_BIN_INSTALLED}" 1> /dev/null || exit
+    which systemctl && systemctl is-active --quiet crowdsec
+    if [ $? -eq 0 ]; then
+        systemctl stop crowdsec 
+    fi
+    install_plugins
     symlink_bins
 }
 
@@ -467,6 +483,27 @@ delete_bins() {
     log_info "Removing crowdsec binaries"
     rm -f ${CROWDSEC_BIN_INSTALLED}
     rm -f ${CSCLI_BIN_INSTALLED}   
+}
+
+delete_plugins() {
+    rm -rf ${CROWDSEC_PLUGIN_DIR}
+}
+
+install_plugins(){
+    mkdir -p ${CROWDSEC_PLUGIN_DIR}
+    mkdir -p /etc/crowdsec/notifications
+
+    cp ${SLACK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${SPLUNK_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${HTTP_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+    cp ${EMAIL_PLUGIN_BINARY} ${CROWDSEC_PLUGIN_DIR}
+
+    if [[ ${DOCKER_MODE} == "false" ]]; then
+        cp -n ${SLACK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${SPLUNK_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${HTTP_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+        cp -n ${EMAIL_PLUGIN_CONFIG} /etc/crowdsec/notifications/
+    fi
 }
 
 check_running_bouncers() {
@@ -509,16 +546,17 @@ function show_link {
     echo ""
     echo "Useful links to start with Crowdsec:"
     echo ""
-    echo "  - Documentation : https://docs.crowdsec.net/Crowdsec/v1/getting_started/crowdsec-tour/"
+    echo "  - Documentation : https://doc.crowdsec.net/docs/getting_started/crowdsec_tour"
     echo "  - Crowdsec Hub  : https://hub.crowdsec.net/ "
     echo "  - Open issues   : https://github.com/crowdsecurity/crowdsec/issues"
     echo ""
     echo "Useful commands to start with Crowdsec:"
     echo ""
-    echo "  - sudo cscli metrics             : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_metrics/"
-    echo "  - sudo cscli decisions list      : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_decisions_list/"
-    echo "  - sudo cscli alerts list         : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_alerts_list/"
-    echo "  - sudo cscli hub list            : https://docs.crowdsec.net/Crowdsec/v1/cscli/cscli_hub_list/"
+    echo "  - sudo cscli metrics             : https://doc.crowdsec.net/docs/observability/cscli"
+    echo "  - sudo cscli decisions list      : https://doc.crowdsec.net/docs/user_guides/decisions_mgmt"
+    echo "  - sudo cscli hub list            : https://doc.crowdsec.net/docs/user_guides/hub_mgmt"
+    echo ""
+    echo "Next step:  visualize all your alerts and explore our community CTI : https://app.crowdsec.net"
     echo ""
 }
 

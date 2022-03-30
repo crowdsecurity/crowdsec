@@ -8,10 +8,11 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	cloudwatchacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/cloudwatch"
+	dockeracquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/docker"
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
+	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
-
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
@@ -24,15 +25,15 @@ import (
 
 // The interface each datasource must implement
 type DataSource interface {
-	GetMetrics() []prometheus.Collector                      // Returns pointers to metrics that are managed by the module
-	GetAggregMetrics() []prometheus.Collector                // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
-	Configure([]byte, *log.Entry) error                      // Configure the datasource
-	ConfigureByDSN(string, string, *log.Entry) error         // Configure the datasource
-	GetMode() string                                         // Get the mode (TAIL, CAT or SERVER)
-	GetName() string                                         // Get the name of the module
-	OneShotAcquisition(chan types.Event, *tomb.Tomb) error   // Start one shot acquisition(eg, cat a file)
-	StreamingAcquisition(chan types.Event, *tomb.Tomb) error // Start live acquisition (eg, tail a file)
-	CanRun() error                                           // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
+	GetMetrics() []prometheus.Collector                         // Returns pointers to metrics that are managed by the module
+	GetAggregMetrics() []prometheus.Collector                   // Returns pointers to metrics that are managed by the module (aggregated mode, limits cardinality)
+	Configure([]byte, *log.Entry) error                         // Configure the datasource
+	ConfigureByDSN(string, map[string]string, *log.Entry) error // Configure the datasource
+	GetMode() string                                            // Get the mode (TAIL, CAT or SERVER)
+	GetName() string                                            // Get the name of the module
+	OneShotAcquisition(chan types.Event, *tomb.Tomb) error      // Start one shot acquisition(eg, cat a file)
+	StreamingAcquisition(chan types.Event, *tomb.Tomb) error    // Start live acquisition (eg, tail a file)
+	CanRun() error                                              // Whether the datasource can run or not (eg, journalctl on BSD is a non-sense)
 	Dump() interface{}
 }
 
@@ -55,6 +56,14 @@ var AcquisitionSources = []struct {
 	{
 		name:  "syslog",
 		iface: func() DataSource { return &syslogacquisition.SyslogSource{} },
+	},
+	{
+		name:  "docker",
+		iface: func() DataSource { return &dockeracquisition.DockerSource{} },
+	},
+	{
+		name:  "kinesis",
+		iface: func() DataSource { return &kinesisacquisition.KinesisSource{} },
 	},
 }
 
@@ -120,7 +129,7 @@ func detectBackwardCompatAcquis(sub configuration.DataSourceCommonCfg) string {
 	return ""
 }
 
-func LoadAcquisitionFromDSN(dsn string, label string) ([]DataSource, error) {
+func LoadAcquisitionFromDSN(dsn string, labels map[string]string) ([]DataSource, error) {
 	var sources []DataSource
 
 	frags := strings.Split(dsn, ":")
@@ -139,7 +148,7 @@ func LoadAcquisitionFromDSN(dsn string, label string) ([]DataSource, error) {
 	subLogger := clog.WithFields(log.Fields{
 		"type": dsn,
 	})
-	err := dataSrc.ConfigureByDSN(dsn, label, subLogger)
+	err := dataSrc.ConfigureByDSN(dsn, labels, subLogger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "while configuration datasource for %s", dsn)
 	}
@@ -209,11 +218,10 @@ func GetMetrics(sources []DataSource, aggregated bool) error {
 		}
 		for _, metric := range metrics {
 			if err := prometheus.Register(metric); err != nil {
-				if _, ok := err.(prometheus.AlreadyRegisteredError); ok {
-					//ignore the error
-				} else {
+				if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
 					return errors.Wrapf(err, "could not register metrics for datasource %s", sources[i].GetName())
 				}
+				//ignore the error
 			}
 		}
 
@@ -241,7 +249,11 @@ func StartAcquisition(sources []DataSource, output chan types.Event, AcquisTomb 
 			return nil
 		})
 	}
-	/*return only when acquisition is over (cat) or never (tail)*/
-	err := AcquisTomb.Wait()
-	return err
+	// Don't wait if we have no sources, as it will hang forever
+	if len(sources) > 0 {
+		/*return only when acquisition is over (cat) or never (tail)*/
+		err := AcquisTomb.Wait()
+		return err
+	}
+	return nil
 }

@@ -96,7 +96,7 @@ grok:
 ```
 
 `name` is the name of a pattern loaded from `patterns/`. 
-Base patterns can be seen on the repo : https://github.com/logrusorgru/grokky/blob/master/base.go
+Base patterns can be seen on the repo : https://github.com/crowdsecurity/grokky/blob/master/base.go
 
 
 ---

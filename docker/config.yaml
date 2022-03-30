@@ -11,12 +11,16 @@ config_paths:
   simulation_path: /etc/crowdsec/simulation.yaml
   hub_dir: /etc/crowdsec/hub/
   index_path: /etc/crowdsec/hub/.index.json
+  notification_dir: /etc/crowdsec/notifications/
+  plugin_dir: /usr/local/lib/crowdsec/plugins/
 crowdsec_service:
   acquisition_path: /etc/crowdsec/acquis.yaml
   parser_routines: 1
+plugin_config:
+ user: nobody
+ group: nobody
 cscli:
   output: human
-  hub_branch: master
 db_config:
   log_level: info
   type: sqlite
@@ -37,7 +41,10 @@ api:
     log_level: info
     listen_uri: 0.0.0.0:8080
     profiles_path: /etc/crowdsec/profiles.yaml
-    online_client: # Crowdsec API credentials (to push signals and receive bad IPs)
+    trusted_ips: # IP ranges, or IPs which can have admin API access
+      - 127.0.0.1
+      - ::1
+    online_client: # Central API credentials (to push signals and receive bad IPs)
       #credentials_path: /etc/crowdsec/online_api_credentials.yaml
 #    tls:
 #      cert_file: /etc/crowdsec/ssl/cert.pem

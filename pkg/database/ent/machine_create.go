@@ -49,6 +49,20 @@ func (mc *MachineCreate) SetNillableUpdatedAt(t *time.Time) *MachineCreate {
 	return mc
 }
 
+// SetLastPush sets the "last_push" field.
+func (mc *MachineCreate) SetLastPush(t time.Time) *MachineCreate {
+	mc.mutation.SetLastPush(t)
+	return mc
+}
+
+// SetNillableLastPush sets the "last_push" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableLastPush(t *time.Time) *MachineCreate {
+	if t != nil {
+		mc.SetLastPush(*t)
+	}
+	return mc
+}
+
 // SetMachineId sets the "machineId" field.
 func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
 	mc.mutation.SetMachineId(s)
@@ -165,11 +179,17 @@ func (mc *MachineCreate) Save(ctx context.Context) (*Machine, error) {
 				return nil, err
 			}
 			mc.mutation = mutation
-			node, err = mc.sqlSave(ctx)
+			if node, err = mc.sqlSave(ctx); err != nil {
+				return nil, err
+			}
+			mutation.id = &node.ID
 			mutation.done = true
 			return node, err
 		})
 		for i := len(mc.hooks) - 1; i >= 0; i-- {
+			if mc.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = mc.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, mc.mutation); err != nil {
@@ -188,6 +208,19 @@ func (mc *MachineCreate) SaveX(ctx context.Context) *Machine {
 	return v
 }
 
+// Exec executes the query.
+func (mc *MachineCreate) Exec(ctx context.Context) error {
+	_, err := mc.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (mc *MachineCreate) ExecX(ctx context.Context) {
+	if err := mc.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
 // defaults sets the default values of the builder before save.
 func (mc *MachineCreate) defaults() {
 	if _, ok := mc.mutation.CreatedAt(); !ok {
@@ -198,6 +231,10 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultUpdatedAt()
 		mc.mutation.SetUpdatedAt(v)
 	}
+	if _, ok := mc.mutation.LastPush(); !ok {
+		v := machine.DefaultLastPush()
+		mc.mutation.SetLastPush(v)
+	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
@@ -206,28 +243,22 @@ func (mc *MachineCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (mc *MachineCreate) check() error {
-	if _, ok := mc.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New("ent: missing required field \"created_at\"")}
-	}
-	if _, ok := mc.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New("ent: missing required field \"updated_at\"")}
-	}
 	if _, ok := mc.mutation.MachineId(); !ok {
-		return &ValidationError{Name: "machineId", err: errors.New("ent: missing required field \"machineId\"")}
+		return &ValidationError{Name: "machineId", err: errors.New(`ent: missing required field "Machine.machineId"`)}
 	}
 	if _, ok := mc.mutation.Password(); !ok {
-		return &ValidationError{Name: "password", err: errors.New("ent: missing required field \"password\"")}
+		return &ValidationError{Name: "password", err: errors.New(`ent: missing required field "Machine.password"`)}
 	}
 	if _, ok := mc.mutation.IpAddress(); !ok {
-		return &ValidationError{Name: "ipAddress", err: errors.New("ent: missing required field \"ipAddress\"")}
+		return &ValidationError{Name: "ipAddress", err: errors.New(`ent: missing required field "Machine.ipAddress"`)}
 	}
 	if v, ok := mc.mutation.Scenarios(); ok {
 		if err := machine.ScenariosValidator(v); err != nil {
-			return &ValidationError{Name: "scenarios", err: fmt.Errorf("ent: validator failed for field \"scenarios\": %w", err)}
+			return &ValidationError{Name: "scenarios", err: fmt.Errorf(`ent: validator failed for field "Machine.scenarios": %w`, err)}
 		}
 	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
-		return &ValidationError{Name: "isValidated", err: errors.New("ent: missing required field \"isValidated\"")}
+		return &ValidationError{Name: "isValidated", err: errors.New(`ent: missing required field "Machine.isValidated"`)}
 	}
 	return nil
 }
@@ -235,8 +266,8 @@ func (mc *MachineCreate) check() error {
 func (mc *MachineCreate) sqlSave(ctx context.Context) (*Machine, error) {
 	_node, _spec := mc.createSpec()
 	if err := sqlgraph.CreateNode(ctx, mc.driver, _spec); err != nil {
-		if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}
@@ -262,7 +293,7 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: machine.FieldCreatedAt,
 		})
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := mc.mutation.UpdatedAt(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -270,7 +301,15 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Value:  value,
 			Column: machine.FieldUpdatedAt,
 		})
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
+	}
+	if value, ok := mc.mutation.LastPush(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastPush,
+		})
+		_node.LastPush = &value
 	}
 	if value, ok := mc.mutation.MachineId(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -379,19 +418,23 @@ func (mcb *MachineCreateBulk) Save(ctx context.Context) ([]*Machine, error) {
 				if i < len(mutators)-1 {
 					_, err = mutators[i+1].Mutate(root, mcb.builders[i+1].mutation)
 				} else {
+					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
 					// Invoke the actual operation on the latest mutation in the chain.
-					if err = sqlgraph.BatchCreate(ctx, mcb.driver, &sqlgraph.BatchCreateSpec{Nodes: specs}); err != nil {
-						if cerr, ok := isSQLConstraintError(err); ok {
-							err = cerr
+					if err = sqlgraph.BatchCreate(ctx, mcb.driver, spec); err != nil {
+						if sqlgraph.IsConstraintError(err) {
+							err = &ConstraintError{err.Error(), err}
 						}
 					}
 				}
-				mutation.done = true
 				if err != nil {
 					return nil, err
 				}
-				id := specs[i].ID.Value.(int64)
-				nodes[i].ID = int(id)
+				mutation.id = &nodes[i].ID
+				mutation.done = true
+				if specs[i].ID.Value != nil {
+					id := specs[i].ID.Value.(int64)
+					nodes[i].ID = int(id)
+				}
 				return nodes[i], nil
 			})
 			for i := len(builder.hooks) - 1; i >= 0; i-- {
@@ -415,4 +458,17 @@ func (mcb *MachineCreateBulk) SaveX(ctx context.Context) []*Machine {
 		panic(err)
 	}
 	return v
+}
+
+// Exec executes the query.
+func (mcb *MachineCreateBulk) Exec(ctx context.Context) error {
+	_, err := mcb.Save(ctx)
+	return err
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (mcb *MachineCreateBulk) ExecX(ctx context.Context) {
+	if err := mcb.Exec(ctx); err != nil {
+		panic(err)
+	}
 }

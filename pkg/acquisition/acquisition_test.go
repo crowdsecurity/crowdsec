@@ -8,6 +8,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -47,7 +48,7 @@ func (f *MockSource) GetMetrics() []prometheus.Collector                      { 
 func (f *MockSource) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSource) Dump() interface{}                                       { return f }
 func (f *MockSource) GetName() string                                         { return "mock" }
-func (f *MockSource) ConfigureByDSN(string, string, *log.Entry) error {
+func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
@@ -182,13 +183,11 @@ wowo: ajsajasjas
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
-			} else {
-				continue
 			}
-		} else {
-			if err != nil {
-				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
 		}
 
 		switch test.TestName {
@@ -289,13 +288,11 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
 				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
-			} else {
-				continue
 			}
-		} else {
-			if err != nil {
-				t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
-			}
+			continue
+		}
+		if err != nil {
+			t.Fatalf("%s : unexpected error '%s'", test.TestName, err)
 		}
 		if len(dss) != test.ExpectedLen {
 			t.Fatalf("%s : expected %d datasources got %d", test.TestName, test.ExpectedLen, len(dss))
@@ -338,11 +335,13 @@ func (f *MockCat) OneShotAcquisition(out chan types.Event, tomb *tomb.Tomb) erro
 func (f *MockCat) StreamingAcquisition(chan types.Event, *tomb.Tomb) error {
 	return fmt.Errorf("can't run in tail")
 }
-func (f *MockCat) CanRun() error                                   { return nil }
-func (f *MockCat) GetMetrics() []prometheus.Collector              { return nil }
-func (f *MockCat) GetAggregMetrics() []prometheus.Collector        { return nil }
-func (f *MockCat) Dump() interface{}                               { return f }
-func (f *MockCat) ConfigureByDSN(string, string, *log.Entry) error { return fmt.Errorf("not supported") }
+func (f *MockCat) CanRun() error                            { return nil }
+func (f *MockCat) GetMetrics() []prometheus.Collector       { return nil }
+func (f *MockCat) GetAggregMetrics() []prometheus.Collector { return nil }
+func (f *MockCat) Dump() interface{}                        { return f }
+func (f *MockCat) ConfigureByDSN(string, map[string]string, *log.Entry) error {
+	return fmt.Errorf("not supported")
+}
 
 //----
 
@@ -381,7 +380,7 @@ func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
 func (f *MockTail) GetAggregMetrics() []prometheus.Collector { return nil }
 func (f *MockTail) Dump() interface{}                        { return f }
-func (f *MockTail) ConfigureByDSN(string, string, *log.Entry) error {
+func (f *MockTail) ConfigureByDSN(string, map[string]string, *log.Entry) error {
 	return fmt.Errorf("not supported")
 }
 
@@ -396,7 +395,7 @@ func TestStartAcquisitionCat(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
-			t.Fatalf("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
@@ -424,7 +423,7 @@ func TestStartAcquisitionTail(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil {
-			t.Fatalf("unexpected error")
+			t.Errorf("unexpected error")
 		}
 	}()
 
@@ -472,7 +471,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
-			t.Fatalf("expected error, got '%s'", err.Error())
+			t.Errorf("expected error, got '%s'", err.Error())
 		}
 	}()
 
@@ -511,7 +510,7 @@ func (f *MockSourceByDSN) GetMetrics() []prometheus.Collector                   
 func (f *MockSourceByDSN) GetAggregMetrics() []prometheus.Collector                { return nil }
 func (f *MockSourceByDSN) Dump() interface{}                                       { return f }
 func (f *MockSourceByDSN) GetName() string                                         { return "mockdsn" }
-func (f *MockSourceByDSN) ConfigureByDSN(dsn string, logType string, logger *log.Entry) error {
+func (f *MockSourceByDSN) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	dsn = strings.TrimPrefix(dsn, "mockdsn://")
 	if dsn != "test_expect" {
 		return fmt.Errorf("unexpected value")
@@ -555,16 +554,9 @@ func TestConfigureByDSN(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		srcs, err := LoadAcquisitionFromDSN(test.dsn, "test_label")
-		if err != nil && test.ExpectedError != "" {
-			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("expected '%s', got '%s'", test.ExpectedError, err.Error())
-			}
-		} else if err != nil && test.ExpectedError == "" {
-			t.Fatalf("got unexpected error '%s'", err.Error())
-		} else if err == nil && test.ExpectedError != "" {
-			t.Fatalf("expected error '%s' got none", test.ExpectedError)
-		}
+		srcs, err := LoadAcquisitionFromDSN(test.dsn, map[string]string{"type": "test_label"})
+		cstest.AssertErrorContains(t, err, test.ExpectedError)
+
 		if len(srcs) != test.ExpectedResLen {
 			t.Fatalf("expected %d results, got %d", test.ExpectedResLen, len(srcs))
 		}

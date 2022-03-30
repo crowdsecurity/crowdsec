@@ -60,6 +60,7 @@ type BucketFactory struct {
 	RunTimeGroupBy  *vm.Program               `json:"-"`
 	Data            []*types.DataSource       `yaml:"data,omitempty"`
 	DataDir         string                    `yaml:"-"`
+	CancelOnFilter  string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
 	leakspeed       time.Duration             //internal representation of `Leakspeed`
 	duration        time.Duration             //internal representation of `Duration`
 	ret             chan types.Event          //the bucket-specific output chan for overflows
@@ -113,16 +114,29 @@ func ValidateFactory(bucketFactory *BucketFactory) error {
 		bucketFactory.ScopeType.Scope = types.Ip
 	case types.Ip:
 	case types.Range:
+		var (
+			runTimeFilter *vm.Program
+			err           error
+		)
+		if bucketFactory.ScopeType.Filter != "" {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+				return fmt.Errorf("Error compiling the scope filter: %s", err)
+			}
+			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
+		}
+
 	default:
 		//Compile the scope filter
 		var (
 			runTimeFilter *vm.Program
 			err           error
 		)
-		if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
-			return fmt.Errorf("Error compiling the scope filter: %s", err)
+		if bucketFactory.ScopeType.Filter != "" {
+			if runTimeFilter, err = expr.Compile(bucketFactory.ScopeType.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}}))); err != nil {
+				return fmt.Errorf("Error compiling the scope filter: %s", err)
+			}
+			bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 		}
-		bucketFactory.ScopeType.RunTimeFilter = runTimeFilter
 	}
 	return nil
 }
@@ -155,13 +169,12 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 			bucketFactory := BucketFactory{}
 			err = dec.Decode(&bucketFactory)
 			if err != nil {
-				if err == io.EOF {
-					log.Tracef("End of yaml file")
-					break
-				} else {
+				if err != io.EOF {
 					log.Errorf("Bad yaml in %s : %v", f, err)
 					return nil, nil, fmt.Errorf("bad yaml in %s : %v", f, err)
 				}
+				log.Tracef("End of yaml file")
+				break
 			}
 			bucketFactory.DataDir = cscfg.DataDir
 			//check empty
@@ -290,6 +303,11 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	if bucketFactory.Distinct != "" {
 		bucketFactory.logger.Tracef("Adding a non duplicate filter on %s.", bucketFactory.Name)
 		bucketFactory.processors = append(bucketFactory.processors, &Uniq{})
+	}
+
+	if bucketFactory.CancelOnFilter != "" {
+		bucketFactory.logger.Tracef("Adding a cancel_on filter on %s.", bucketFactory.Name)
+		bucketFactory.processors = append(bucketFactory.processors, &CancelOnFilter{})
 	}
 
 	if bucketFactory.OverflowFilter != "" {

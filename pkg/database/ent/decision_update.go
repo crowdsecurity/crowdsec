@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,9 +23,9 @@ type DecisionUpdate struct {
 	mutation *DecisionMutation
 }
 
-// Where adds a new predicate for the DecisionUpdate builder.
+// Where appends a list predicates to the DecisionUpdate builder.
 func (du *DecisionUpdate) Where(ps ...predicate.Decision) *DecisionUpdate {
-	du.mutation.predicates = append(du.mutation.predicates, ps...)
+	du.mutation.Where(ps...)
 	return du
 }
 
@@ -34,11 +35,9 @@ func (du *DecisionUpdate) SetCreatedAt(t time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableCreatedAt(t *time.Time) *DecisionUpdate {
-	if t != nil {
-		du.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (du *DecisionUpdate) ClearCreatedAt() *DecisionUpdate {
+	du.mutation.ClearCreatedAt()
 	return du
 }
 
@@ -48,11 +47,9 @@ func (du *DecisionUpdate) SetUpdatedAt(t time.Time) *DecisionUpdate {
 	return du
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (du *DecisionUpdate) SetNillableUpdatedAt(t *time.Time) *DecisionUpdate {
-	if t != nil {
-		du.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (du *DecisionUpdate) ClearUpdatedAt() *DecisionUpdate {
+	du.mutation.ClearUpdatedAt()
 	return du
 }
 
@@ -277,6 +274,7 @@ func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
 		err      error
 		affected int
 	)
+	du.defaults()
 	if len(du.hooks) == 0 {
 		affected, err = du.sqlSave(ctx)
 	} else {
@@ -291,6 +289,9 @@ func (du *DecisionUpdate) Save(ctx context.Context) (int, error) {
 			return affected, err
 		})
 		for i := len(du.hooks) - 1; i >= 0; i-- {
+			if du.hooks[i] == nil {
+				return 0, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = du.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, du.mutation); err != nil {
@@ -322,6 +323,18 @@ func (du *DecisionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (du *DecisionUpdate) defaults() {
+	if _, ok := du.mutation.CreatedAt(); !ok && !du.mutation.CreatedAtCleared() {
+		v := decision.UpdateDefaultCreatedAt()
+		du.mutation.SetCreatedAt(v)
+	}
+	if _, ok := du.mutation.UpdatedAt(); !ok && !du.mutation.UpdatedAtCleared() {
+		v := decision.UpdateDefaultUpdatedAt()
+		du.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -347,10 +360,22 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldCreatedAt,
 		})
 	}
+	if du.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: decision.FieldCreatedAt,
+		})
+	}
 	if value, ok := du.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: decision.FieldUpdatedAt,
+		})
+	}
+	if du.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: decision.FieldUpdatedAt,
 		})
 	}
@@ -541,8 +566,8 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if n, err = sqlgraph.UpdateNodes(ctx, du.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return 0, err
 	}
@@ -552,6 +577,7 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // DecisionUpdateOne is the builder for updating a single Decision entity.
 type DecisionUpdateOne struct {
 	config
+	fields   []string
 	hooks    []Hook
 	mutation *DecisionMutation
 }
@@ -562,11 +588,9 @@ func (duo *DecisionUpdateOne) SetCreatedAt(t time.Time) *DecisionUpdateOne {
 	return duo
 }
 
-// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableCreatedAt(t *time.Time) *DecisionUpdateOne {
-	if t != nil {
-		duo.SetCreatedAt(*t)
-	}
+// ClearCreatedAt clears the value of the "created_at" field.
+func (duo *DecisionUpdateOne) ClearCreatedAt() *DecisionUpdateOne {
+	duo.mutation.ClearCreatedAt()
 	return duo
 }
 
@@ -576,11 +600,9 @@ func (duo *DecisionUpdateOne) SetUpdatedAt(t time.Time) *DecisionUpdateOne {
 	return duo
 }
 
-// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
-func (duo *DecisionUpdateOne) SetNillableUpdatedAt(t *time.Time) *DecisionUpdateOne {
-	if t != nil {
-		duo.SetUpdatedAt(*t)
-	}
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (duo *DecisionUpdateOne) ClearUpdatedAt() *DecisionUpdateOne {
+	duo.mutation.ClearUpdatedAt()
 	return duo
 }
 
@@ -799,12 +821,20 @@ func (duo *DecisionUpdateOne) ClearOwner() *DecisionUpdateOne {
 	return duo
 }
 
+// Select allows selecting one or more fields (columns) of the returned entity.
+// The default is selecting all fields defined in the entity schema.
+func (duo *DecisionUpdateOne) Select(field string, fields ...string) *DecisionUpdateOne {
+	duo.fields = append([]string{field}, fields...)
+	return duo
+}
+
 // Save executes the query and returns the updated Decision entity.
 func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 	var (
 		err  error
 		node *Decision
 	)
+	duo.defaults()
 	if len(duo.hooks) == 0 {
 		node, err = duo.sqlSave(ctx)
 	} else {
@@ -819,6 +849,9 @@ func (duo *DecisionUpdateOne) Save(ctx context.Context) (*Decision, error) {
 			return node, err
 		})
 		for i := len(duo.hooks) - 1; i >= 0; i-- {
+			if duo.hooks[i] == nil {
+				return nil, fmt.Errorf("ent: uninitialized hook (forgotten import ent/runtime?)")
+			}
 			mut = duo.hooks[i](mut)
 		}
 		if _, err := mut.Mutate(ctx, duo.mutation); err != nil {
@@ -850,6 +883,18 @@ func (duo *DecisionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (duo *DecisionUpdateOne) defaults() {
+	if _, ok := duo.mutation.CreatedAt(); !ok && !duo.mutation.CreatedAtCleared() {
+		v := decision.UpdateDefaultCreatedAt()
+		duo.mutation.SetCreatedAt(v)
+	}
+	if _, ok := duo.mutation.UpdatedAt(); !ok && !duo.mutation.UpdatedAtCleared() {
+		v := decision.UpdateDefaultUpdatedAt()
+		duo.mutation.SetUpdatedAt(v)
+	}
+}
+
 func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err error) {
 	_spec := &sqlgraph.UpdateSpec{
 		Node: &sqlgraph.NodeSpec{
@@ -863,9 +908,21 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	}
 	id, ok := duo.mutation.ID()
 	if !ok {
-		return nil, &ValidationError{Name: "ID", err: fmt.Errorf("missing Decision.ID for update")}
+		return nil, &ValidationError{Name: "id", err: errors.New(`ent: missing "Decision.id" for update`)}
 	}
 	_spec.Node.ID.Value = id
+	if fields := duo.fields; len(fields) > 0 {
+		_spec.Node.Columns = make([]string, 0, len(fields))
+		_spec.Node.Columns = append(_spec.Node.Columns, decision.FieldID)
+		for _, f := range fields {
+			if !decision.ValidColumn(f) {
+				return nil, &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
+			}
+			if f != decision.FieldID {
+				_spec.Node.Columns = append(_spec.Node.Columns, f)
+			}
+		}
+	}
 	if ps := duo.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
 			for i := range ps {
@@ -880,10 +937,22 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Column: decision.FieldCreatedAt,
 		})
 	}
+	if duo.mutation.CreatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: decision.FieldCreatedAt,
+		})
+	}
 	if value, ok := duo.mutation.UpdatedAt(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: decision.FieldUpdatedAt,
+		})
+	}
+	if duo.mutation.UpdatedAtCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: decision.FieldUpdatedAt,
 		})
 	}
@@ -1077,8 +1146,8 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 	if err = sqlgraph.UpdateNode(ctx, duo.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{decision.Label}
-		} else if cerr, ok := isSQLConstraintError(err); ok {
-			err = cerr
+		} else if sqlgraph.IsConstraintError(err) {
+			err = &ConstraintError{err.Error(), err}
 		}
 		return nil, err
 	}

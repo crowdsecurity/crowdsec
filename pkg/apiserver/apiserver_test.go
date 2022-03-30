@@ -3,7 +3,6 @@ package apiserver
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -16,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -33,6 +33,7 @@ var MachineTest = models.WatcherAuthRequest{
 }
 
 var UserAgent = fmt.Sprintf("crowdsec-test/%s", cwversion.Version)
+var emptyBody = strings.NewReader("")
 
 func LoadTestConfig() csconfig.Config {
 	config := csconfig.Config{}
@@ -49,6 +50,11 @@ func LoadTestConfig() csconfig.Config {
 		ListenURI:    "http://127.0.0.1:8080",
 		DbConfig:     &dbconfig,
 		ProfilesPath: "./tests/profiles.yaml",
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
@@ -76,6 +82,12 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 		DbConfig:               &dbconfig,
 		ProfilesPath:           "./tests/profiles.yaml",
 		UseForwardedForHeaders: true,
+		TrustedProxies:         &[]string{"0.0.0.0/0"},
+		ConsoleConfig: &csconfig.ConsoleConfig{
+			ShareManualDecisions:  new(bool),
+			ShareTaintedScenarios: new(bool),
+			ShareCustomScenarios:  new(bool),
+		},
 	}
 	apiConfig := csconfig.APICfg{
 		Server: &apiServerConfig,
@@ -87,9 +99,8 @@ func LoadTestConfigForwardedFor() csconfig.Config {
 	return config
 }
 
-func NewAPITest() (*gin.Engine, error) {
+func NewAPIServer() (*APIServer, error) {
 	config := LoadTestConfig()
-
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
 	if err != nil {
@@ -97,6 +108,18 @@ func NewAPITest() (*gin.Engine, error) {
 	}
 	log.Printf("Creating new API server")
 	gin.SetMode(gin.TestMode)
+	return apiServer, nil
+}
+
+func NewAPITest() (*gin.Engine, error) {
+	apiServer, err := NewAPIServer()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
+	err = apiServer.InitController()
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
 	router, err := apiServer.Router()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
@@ -109,6 +132,10 @@ func NewAPITestForwardedFor() (*gin.Engine, error) {
 
 	os.Remove("./ent")
 	apiServer, err := NewServer(config.API.Server)
+	if err != nil {
+		return nil, fmt.Errorf("unable to run local API: %s", err)
+	}
+	err = apiServer.InitController()
 	if err != nil {
 		return nil, fmt.Errorf("unable to run local API: %s", err)
 	}
@@ -149,6 +176,79 @@ func GetMachineIP(machineID string) (string, error) {
 		}
 	}
 	return "", nil
+}
+
+func GetAlertReaderFromFile(path string) *strings.Reader {
+
+	alertContentBytes, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	alerts := make([]*models.Alert, 0)
+	if err := json.Unmarshal(alertContentBytes, &alerts); err != nil {
+		log.Fatal(err)
+	}
+
+	for _, alert := range alerts {
+		*alert.StartAt = time.Now().UTC().Format(time.RFC3339)
+		*alert.StopAt = time.Now().UTC().Format(time.RFC3339)
+	}
+
+	alertContent, err := json.Marshal(alerts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return strings.NewReader(string(alertContent))
+
+}
+
+func readDecisionsGetResp(resp *httptest.ResponseRecorder) ([]*models.Decision, int, error) {
+	var response []*models.Decision
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsErrorResp(resp *httptest.ResponseRecorder) (map[string]string, int, error) {
+	var response map[string]string
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
+}
+
+func readDecisionsDeleteResp(resp *httptest.ResponseRecorder) (*models.DeleteDecisionResponse, int, error) {
+	var response models.DeleteDecisionResponse
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return &response, resp.Code, nil
+}
+
+func readDecisionsStreamResp(resp *httptest.ResponseRecorder) (map[string][]*models.Decision, int, error) {
+	response := make(map[string][]*models.Decision)
+	if resp == nil {
+		return nil, 0, errors.New("response is nil")
+	}
+	err := json.Unmarshal(resp.Body.Bytes(), &response)
+	if err != nil {
+		return nil, resp.Code, err
+	}
+	return response, resp.Code, nil
 }
 
 func CreateTestMachine(router *gin.Engine) (string, error) {
@@ -260,7 +360,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	os.Remove(expectedFile)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -280,7 +380,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	data, err := ioutil.ReadFile(expectedFile)
+	data, err := os.ReadFile(expectedFile)
 	if err != nil {
 		t.Fatalf("failed to read file : %s", err)
 	}
@@ -322,7 +422,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	os.Remove(expectedFile)
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -342,12 +442,11 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	time.Sleep(500 * time.Millisecond)
 
 	//check file content
-	_, err = ioutil.ReadFile(expectedFile)
-	if err == nil {
-		t.Fatalf("file should be empty")
+	x, err := os.ReadFile(expectedFile)
+	if err == nil && len(x) > 0 {
+		t.Fatalf("file should be empty, got '%s'", x)
 	}
 
 	os.Remove("./crowdsec.log")
 	os.Remove(expectedFile)
-
 }

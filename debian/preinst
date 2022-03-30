@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -e
+
+# Source debconf library.
+. /usr/share/debconf/confmodule
+
+
+OLD_MAJOR_VERSION=$(echo $2 | cut -d'.' -f1)
+OLD_MINOR_VERSION=$(echo $2 | cut -d'.' -f2)
+OLD_PATCH_VERSION=$(echo $2 | cut -d'.' -f3|cut -d'-' -f1)
+
+NEW_MAJOR_VERSION=$(echo $3 | cut -d'.' -f1)
+NEW_MINOR_VERSION=$(echo $3 | cut -d'.' -f2)
+NEW_PATCH_VERSION=$(echo $3 | cut -d'.' -f3|cut -d'-' -f1)
+
+
+
+if [ "$1" = upgrade ]; then
+
+    OLD_MAJOR_VERSION=$(echo $2 | cut -d'.' -f1)
+    OLD_MINOR_VERSION=$(echo $2 | cut -d'.' -f2)
+    OLD_PATCH_VERSION=$(echo $2 | cut -d'.' -f3|cut -d'-' -f1)
+
+    NEW_MAJOR_VERSION=$(echo $3 | cut -d'.' -f1)
+    NEW_MINOR_VERSION=$(echo $3 | cut -d'.' -f2)
+    NEW_PATCH_VERSION=$(echo $3 | cut -d'.' -f3|cut -d'-' -f1)
+
+    
+   if [[ $OLD_MAJOR_VERSION -eq "1" ]] && [[ $OLD_MINOR_VERSION -eq "0" ]] && [[ $OLD_PATCH_VERSION -lt "9" ]]; then
+       if [[ -f /var/lib/crowdsec/data/crowdsec.db ]]; then
+          cp /var/lib/crowdsec/data/crowdsec.db  /var/lib/crowdsec/data/crowdsec.db.backup
+       fi
+   fi
+
+   if [[ $NEW_MAJOR_VERSION -gt  $OLD_MAJOR_VERSION ]]; then
+      echo "Stopping crowdsec"
+      systemctl stop crowdsec || true
+      cscli config backup /var/lib/crowdsec/backup
+   fi   
+fi
+
+echo "You can always run the configuration again interactively by using '/usr/share/crowdsec/wizard.sh -c"

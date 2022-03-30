@@ -22,6 +22,7 @@ type MachineQuery struct {
 	config
 	limit      *int
 	offset     *int
+	unique     *bool
 	order      []OrderFunc
 	fields     []string
 	predicates []predicate.Machine
@@ -47,6 +48,13 @@ func (mq *MachineQuery) Limit(limit int) *MachineQuery {
 // Offset adds an offset step to the query.
 func (mq *MachineQuery) Offset(offset int) *MachineQuery {
 	mq.offset = &offset
+	return mq
+}
+
+// Unique configures the query builder to filter duplicate records on query.
+// By default, unique is set to true, and can be disabled using this method.
+func (mq *MachineQuery) Unique(unique bool) *MachineQuery {
+	mq.unique = &unique
 	return mq
 }
 
@@ -124,7 +132,7 @@ func (mq *MachineQuery) FirstIDX(ctx context.Context) int {
 }
 
 // Only returns a single Machine entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when exactly one Machine entity is not found.
+// Returns a *NotSingularError when more than one Machine entity is found.
 // Returns a *NotFoundError when no Machine entities are found.
 func (mq *MachineQuery) Only(ctx context.Context) (*Machine, error) {
 	nodes, err := mq.Limit(2).All(ctx)
@@ -151,7 +159,7 @@ func (mq *MachineQuery) OnlyX(ctx context.Context) *Machine {
 }
 
 // OnlyID is like Only, but returns the only Machine ID in the query.
-// Returns a *NotSingularError when exactly one Machine ID is not found.
+// Returns a *NotSingularError when more than one Machine ID is found.
 // Returns a *NotFoundError when no entities are found.
 func (mq *MachineQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
@@ -261,8 +269,9 @@ func (mq *MachineQuery) Clone() *MachineQuery {
 		predicates: append([]predicate.Machine{}, mq.predicates...),
 		withAlerts: mq.withAlerts.Clone(),
 		// clone intermediate query.
-		sql:  mq.sql.Clone(),
-		path: mq.path,
+		sql:    mq.sql.Clone(),
+		path:   mq.path,
+		unique: mq.unique,
 	}
 }
 
@@ -317,8 +326,8 @@ func (mq *MachineQuery) GroupBy(field string, fields ...string) *MachineGroupBy 
 //		Select(machine.FieldCreatedAt).
 //		Scan(ctx, &v)
 //
-func (mq *MachineQuery) Select(field string, fields ...string) *MachineSelect {
-	mq.fields = append([]string{field}, fields...)
+func (mq *MachineQuery) Select(fields ...string) *MachineSelect {
+	mq.fields = append(mq.fields, fields...)
 	return &MachineSelect{MachineQuery: mq}
 }
 
@@ -400,6 +409,10 @@ func (mq *MachineQuery) sqlAll(ctx context.Context) ([]*Machine, error) {
 
 func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
+	_spec.Node.Columns = mq.fields
+	if len(mq.fields) > 0 {
+		_spec.Unique = mq.unique != nil && *mq.unique
+	}
 	return sqlgraph.CountNodes(ctx, mq.driver, _spec)
 }
 
@@ -423,6 +436,9 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 		},
 		From:   mq.sql,
 		Unique: true,
+	}
+	if unique := mq.unique; unique != nil {
+		_spec.Unique = *unique
 	}
 	if fields := mq.fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
@@ -449,7 +465,7 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 	if ps := mq.order; len(ps) > 0 {
 		_spec.Order = func(selector *sql.Selector) {
 			for i := range ps {
-				ps[i](selector, machine.ValidColumn)
+				ps[i](selector)
 			}
 		}
 	}
@@ -459,16 +475,23 @@ func (mq *MachineQuery) querySpec() *sqlgraph.QuerySpec {
 func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(mq.driver.Dialect())
 	t1 := builder.Table(machine.Table)
-	selector := builder.Select(t1.Columns(machine.Columns...)...).From(t1)
+	columns := mq.fields
+	if len(columns) == 0 {
+		columns = machine.Columns
+	}
+	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if mq.sql != nil {
 		selector = mq.sql
-		selector.Select(selector.Columns(machine.Columns...)...)
+		selector.Select(selector.Columns(columns...)...)
+	}
+	if mq.unique != nil && *mq.unique {
+		selector.Distinct()
 	}
 	for _, p := range mq.predicates {
 		p(selector)
 	}
 	for _, p := range mq.order {
-		p(selector, machine.ValidColumn)
+		p(selector)
 	}
 	if offset := mq.offset; offset != nil {
 		// limit is mandatory for offset clause. We start
@@ -730,13 +753,22 @@ func (mgb *MachineGroupBy) sqlScan(ctx context.Context, v interface{}) error {
 }
 
 func (mgb *MachineGroupBy) sqlQuery() *sql.Selector {
-	selector := mgb.sql
-	columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
-	columns = append(columns, mgb.fields...)
+	selector := mgb.sql.Select()
+	aggregation := make([]string, 0, len(mgb.fns))
 	for _, fn := range mgb.fns {
-		columns = append(columns, fn(selector, machine.ValidColumn))
+		aggregation = append(aggregation, fn(selector))
 	}
-	return selector.Select(columns...).GroupBy(mgb.fields...)
+	// If no columns were selected in a custom aggregation function, the default
+	// selection is the fields used for "group-by", and the aggregation functions.
+	if len(selector.SelectedColumns()) == 0 {
+		columns := make([]string, 0, len(mgb.fields)+len(mgb.fns))
+		for _, f := range mgb.fields {
+			columns = append(columns, selector.C(f))
+		}
+		columns = append(columns, aggregation...)
+		selector.Select(columns...)
+	}
+	return selector.GroupBy(selector.Columns(mgb.fields...)...)
 }
 
 // MachineSelect is the builder for selecting fields of Machine entities.
@@ -952,16 +984,10 @@ func (ms *MachineSelect) BoolX(ctx context.Context) bool {
 
 func (ms *MachineSelect) sqlScan(ctx context.Context, v interface{}) error {
 	rows := &sql.Rows{}
-	query, args := ms.sqlQuery().Query()
+	query, args := ms.sql.Query()
 	if err := ms.driver.Query(ctx, query, args, rows); err != nil {
 		return err
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
-}
-
-func (ms *MachineSelect) sqlQuery() sql.Querier {
-	selector := ms.sql
-	selector.Select(selector.Columns(ms.fields...)...)
-	return selector
 }

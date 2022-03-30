@@ -104,6 +104,7 @@ func NewSimulationCmds() *cobra.Command {
 		Example: `cscli simulation status
 cscli simulation enable crowdsecurity/ssh-bf
 cscli simulation disable crowdsecurity/ssh-bf`,
+		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadSimulation(); err != nil {
 				log.Fatalf(err.Error())
@@ -127,9 +128,10 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 
 	var forceGlobalSimulation bool
 	var cmdSimulationEnable = &cobra.Command{
-		Use:     "enable [scenario] [-global]",
-		Short:   "Enable the simulation, globally or on specified scenarios",
-		Example: `cscli simulation enable`,
+		Use:               "enable [scenario] [-global]",
+		Short:             "Enable the simulation, globally or on specified scenarios",
+		Example:           `cscli simulation enable`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadHub(); err != nil {
 				log.Fatalf(err.Error())
@@ -141,10 +143,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 
 			if len(args) > 0 {
 				for _, scenario := range args {
-					var (
-						item *cwhub.Item
-					)
-					item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
+					var item = cwhub.GetItem(cwhub.SCENARIOS, scenario)
 					if item == nil {
 						log.Errorf("'%s' doesn't exist or is not a scenario", scenario)
 						continue
@@ -181,7 +180,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Fatalf("unable to enable global simulation mode : %s", err.Error())
 				}
 			} else {
-				cmd.Help()
+				printHelp(cmd)
 			}
 		},
 	}
@@ -189,9 +188,10 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 	cmdSimulation.AddCommand(cmdSimulationEnable)
 
 	var cmdSimulationDisable = &cobra.Command{
-		Use:     "disable [scenario]",
-		Short:   "Disable the simulation mode. Disable only specified scenarios",
-		Example: `cscli simulation disable`,
+		Use:               "disable [scenario]",
+		Short:             "Disable the simulation mode. Disable only specified scenarios",
+		Example:           `cscli simulation disable`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(args) > 0 {
 				for _, scenario := range args {
@@ -224,7 +224,7 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Fatalf("unable to disable global simulation mode : %s", err.Error())
 				}
 			} else {
-				cmd.Help()
+				printHelp(cmd)
 			}
 		},
 	}
@@ -232,9 +232,10 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 	cmdSimulation.AddCommand(cmdSimulationDisable)
 
 	var cmdSimulationStatus = &cobra.Command{
-		Use:     "status",
-		Short:   "Show simulation mode status",
-		Example: `cscli simulation status`,
+		Use:               "status",
+		Short:             "Show simulation mode status",
+		Example:           `cscli simulation status`,
+		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := simulationStatus(); err != nil {
 				log.Fatalf(err.Error())

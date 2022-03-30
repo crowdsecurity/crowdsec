@@ -88,7 +88,7 @@ func TestWatcherAuth(t *testing.T) {
 		MachineID: &mycfg.MachineID,
 		Password:  &mycfg.Password,
 	})
-	assert.Contains(t, err.Error(), "403 Forbidden")
+	assert.Contains(t, err.Error(), "API error: access forbidden")
 
 }
 
@@ -192,7 +192,7 @@ func TestWatcherEnroll(t *testing.T) {
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		log.Debugf("body -> %s", newStr)
-		if newStr == `{"attachment_key":"goodkey"}
+		if newStr == `{"attachment_key":"goodkey","name":"","tags":[]}
 ` {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
@@ -228,11 +228,11 @@ func TestWatcherEnroll(t *testing.T) {
 		log.Fatalf("new api client: %s", err.Error())
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey")
+	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{})
 	if err != nil {
-		t.Fatalf("unexpect auth err: %s", err)
+		t.Fatalf("unexpect enroll err: %s", err)
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey")
+	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{})
 	assert.Contains(t, err.Error(), "the attachment key provided is not valid")
 }

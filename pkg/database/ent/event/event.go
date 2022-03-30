@@ -23,7 +23,7 @@ const (
 	EdgeOwner = "owner"
 	// Table holds the table name of the event in the database.
 	Table = "events"
-	// OwnerTable is the table the holds the owner relation/edge.
+	// OwnerTable is the table that holds the owner relation/edge.
 	OwnerTable = "events"
 	// OwnerInverseTable is the table name for the Alert entity.
 	// It exists in this package in order to avoid circular dependency with the "alert" package.
@@ -65,8 +65,12 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
+	// UpdateDefaultCreatedAt holds the default value on update for the "created_at" field.
+	UpdateDefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
 	DefaultUpdatedAt func() time.Time
+	// UpdateDefaultUpdatedAt holds the default value on update for the "updated_at" field.
+	UpdateDefaultUpdatedAt func() time.Time
 	// SerializedValidator is a validator for the "serialized" field. It is called by the builders before save.
 	SerializedValidator func(string) error
 )
