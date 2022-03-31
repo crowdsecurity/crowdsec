@@ -92,3 +92,32 @@ func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, err
 		},
 	}, nil
 }
+
+func pluginIsValid(path string) error {
+	var details fs.FileInfo
+	var err error
+
+	// check if it exists
+	if details, err = os.Stat(path); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
+	}
+
+	// check if it is owned by root
+	err = CheckOwner(details, path)
+	if err != nil {
+		return err
+	}
+
+	mode := details.Mode()
+	perm := uint32(mode)
+	if (perm & 00002) != 0 {
+		return fmt.Errorf("plugin at %s is world writable, world writable plugins are invalid", path)
+	}
+	if (perm & 00020) != 0 {
+		return fmt.Errorf("plugin at %s is group writable, group writable plugins are invalid", path)
+	}
+	if (mode & os.ModeSetgid) != 0 {
+		return fmt.Errorf("plugin at %s has setgid permission, which is not allowed", path)
+	}
+	return nil
+}

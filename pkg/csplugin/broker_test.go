@@ -7,6 +7,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -134,6 +135,9 @@ func TestListFilesAtPath(t *testing.T) {
 }
 
 func TestBrokerInit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	tests := []struct {
 		name        string
@@ -296,8 +300,10 @@ func buildDummyPlugin() {
 }
 
 func setPluginPermTo(perm string) {
-	if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
-		log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
+	if runtime.GOOS != "windows" {
+		if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
+			log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
+		}
 	}
 }
 
