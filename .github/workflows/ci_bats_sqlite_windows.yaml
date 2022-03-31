@@ -1,0 +1,44 @@
+name: bats / functional tests with sqlite on windows
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: "Build the application"
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+
+    - name: "Force machineid"
+      shell: powershell
+      run: |
+          Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\Cryptography' -Name 'MachineGuid' -Value 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.17
+      id: go
+
+    - name: "Clone CrowdSec"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    #- name: "Install bats dependencies"
+    #  run: |
+    #    sudo apt install -qq daemonize netcat-openbsd
+    #    GO111MODULE=on go get github.com/mikefarah/yq/v4
+
+    - name: "BATS: build crowdsec"
+      run: make bats-clean bats-build
+
+    - name: "BATS: run tests"
+      run: make bats-test
