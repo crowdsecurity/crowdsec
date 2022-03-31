@@ -44,6 +44,7 @@ func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
 }
 
 func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
+	var err error
 	cmd := exec.Command(binaryPath)
 	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
 		if !(pb.pluginProcConfig.User != "" && pb.pluginProcConfig.Group != "") {
@@ -97,7 +98,7 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 	return strings.Join(parts[:len(parts)-1], "-"), parts[len(parts)-1], nil
 }
 
-func getProcessAtr(username string, groupname string) (*syscall.SysProcAttr, error) {
+func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, error) {
 	u, err := user.Lookup(username)
 	if err != nil {
 		return nil, err
