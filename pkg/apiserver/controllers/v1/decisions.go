@@ -66,6 +66,10 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	} else {
 		PrometheusBouncersHasEmptyDecision(gctx)
 	}
+	if gctx.Request.Method == "HEAD" {
+		gctx.String(http.StatusOK, "")
+		return
+	}
 	go func() {
 		bouncerKey := gctx.Request.Header.Get(c.APIKeyHeader)
 		if bouncerInfo, err := APIKeyToBouncer(bouncerKey, c.DBClient); err == nil {
@@ -76,10 +80,6 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 			log.Errorf("unable to fetch bouncer info %v", err)
 		}
 	}()
-	if gctx.Request.Method == "HEAD" {
-		gctx.String(http.StatusOK, "")
-		return
-	}
 	gctx.JSON(http.StatusOK, results)
 }
 
