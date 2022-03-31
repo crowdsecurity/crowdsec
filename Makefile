@@ -214,7 +214,12 @@ release: check_release build package
 .PHONY: release_static
 release_static: check_release static package_static
 
+.PHONY: windows_installer
 windows_installer: build
 	@.\make_installer.ps1 -version $(BUILD_VERSION)
+
+.PHONY: chocolatey
+chocolatey: windows_installer
+	@.\make_chocolatey.ps1 -version $(BUILD_VERSION)
 
 include tests/bats.mk
