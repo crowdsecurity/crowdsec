@@ -862,7 +862,8 @@ func TestAPICPull(t *testing.T) {
 					panic(err)
 				}
 			}()
-			time.Sleep(time.Millisecond * 10)
+			//Slightly long because the CI runner for windows are slow, and this can lead to random failure
+			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), testCase.logContains)
 			assertTotalDecisionCount(t, api.dbClient, testCase.expectedDecisionCount)
