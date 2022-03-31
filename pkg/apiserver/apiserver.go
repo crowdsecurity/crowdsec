@@ -328,5 +328,11 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 
 func (s *APIServer) InitController() error {
 	err := s.controller.Init()
+	s.httpServerTomb.Go(
+		func() error {
+			s.controller.BouncerPullUpdator.RunDBUpdator(s.dbClient, &s.httpServerTomb)
+			return nil
+		},
+	)
 	return err
 }

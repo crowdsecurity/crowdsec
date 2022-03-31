@@ -7,11 +7,23 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
+
+func APIKeyToBouncer(apiKey string, dbClient *database.Client) (*ent.Bouncer, error) {
+	hashedKey := sha512.New()
+	hashedKey.Write([]byte(apiKey))
+	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+	bouncerInfo, err := dbClient.SelectBouncer(hashStr)
+	if err != nil {
+		return nil, err
+	}
+	return bouncerInfo, err
+}
 
 func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
 	var results []*models.Decision
@@ -54,7 +66,16 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	} else {
 		PrometheusBouncersHasEmptyDecision(gctx)
 	}
-
+	go func() {
+		bouncerKey := gctx.Request.Header.Get(c.APIKeyHeader)
+		if bouncerInfo, err := APIKeyToBouncer(bouncerKey, c.DBClient); err == nil {
+			c.BouncerPullUpdator.UpdateBouncerPullEntry(database.BouncerKey{
+				ID: bouncerInfo.ID, Name: bouncerInfo.Name,
+			})
+		} else {
+			log.Errorf("unable to fetch bouncer for key %s: %v", bouncerKey, err)
+		}
+	}()
 	if gctx.Request.Method == "HEAD" {
 		gctx.String(http.StatusOK, "")
 		return
@@ -107,11 +128,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
 
-	val := gctx.Request.Header.Get(c.APIKeyHeader)
-	hashedKey := sha512.New()
-	hashedKey.Write([]byte(val))
-	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
-	bouncerInfo, err := c.DBClient.SelectBouncer(hashStr)
+	bouncerInfo, err := APIKeyToBouncer(gctx.Request.Header.Get(c.APIKeyHeader), c.DBClient)
 	if err != nil {
 		if _, ok := err.(*ent.NotFoundError); ok {
 			gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})

@@ -12,28 +12,30 @@ import (
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	APIKeyHeader  string
-	Middlewares   *middlewares.Middlewares
-	Profiles      []*csconfig.ProfileCfg
-	CAPIChan      chan []*models.Alert
-	PluginChannel chan csplugin.ProfileAlert
-	ConsoleConfig csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	Ectx               context.Context
+	DBClient           *database.Client
+	APIKeyHeader       string
+	Middlewares        *middlewares.Middlewares
+	Profiles           []*csconfig.ProfileCfg
+	CAPIChan           chan []*models.Alert
+	PluginChannel      chan csplugin.ProfileAlert
+	ConsoleConfig      csconfig.ConsoleConfig
+	TrustedIPs         []net.IPNet
+	BouncerPullUpdator *database.BouncerPullUpdator
 }
 
 func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, trustedIPs []net.IPNet) (*Controller, error) {
 	var err error
 	v1 := &Controller{
-		Ectx:          ctx,
-		DBClient:      dbClient,
-		APIKeyHeader:  middlewares.APIKeyHeader,
-		Profiles:      profiles,
-		CAPIChan:      capiChan,
-		PluginChannel: pluginChannel,
-		ConsoleConfig: consoleConfig,
-		TrustedIPs:    trustedIPs,
+		Ectx:               ctx,
+		DBClient:           dbClient,
+		APIKeyHeader:       middlewares.APIKeyHeader,
+		Profiles:           profiles,
+		CAPIChan:           capiChan,
+		PluginChannel:      pluginChannel,
+		ConsoleConfig:      consoleConfig,
+		TrustedIPs:         trustedIPs,
+		BouncerPullUpdator: database.NewBouncerPullUpdator(),
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(dbClient)
 	if err != nil {

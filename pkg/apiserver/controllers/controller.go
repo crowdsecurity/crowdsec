@@ -16,15 +16,16 @@ import (
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	Router        *gin.Engine
-	Profiles      []*csconfig.ProfileCfg
-	CAPIChan      chan []*models.Alert
-	PluginChannel chan csplugin.ProfileAlert
-	Log           *log.Logger
-	ConsoleConfig *csconfig.ConsoleConfig
-	TrustedIPs    []net.IPNet
+	Ectx               context.Context
+	DBClient           *database.Client
+	Router             *gin.Engine
+	Profiles           []*csconfig.ProfileCfg
+	CAPIChan           chan []*models.Alert
+	PluginChannel      chan csplugin.ProfileAlert
+	Log                *log.Logger
+	ConsoleConfig      *csconfig.ConsoleConfig
+	TrustedIPs         []net.IPNet
+	BouncerPullUpdator *database.BouncerPullUpdator
 }
 
 func (c *Controller) Init() error {
@@ -60,7 +61,7 @@ func (c *Controller) NewV1() error {
 	if err != nil {
 		return err
 	}
-
+	c.BouncerPullUpdator = handlerV1.BouncerPullUpdator
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true
