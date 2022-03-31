@@ -73,7 +73,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 				ID: bouncerInfo.ID, Name: bouncerInfo.Name,
 			})
 		} else {
-			log.Errorf("unable to fetch bouncer for key %s: %v", bouncerKey, err)
+			log.Errorf("unable to fetch bouncer info %v", err)
 		}
 	}()
 	if gctx.Request.Method == "HEAD" {
