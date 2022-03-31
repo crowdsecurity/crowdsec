@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -50,6 +51,24 @@ const ACCESS_DENIED_ACE_TYPE = 1
 
 func CheckPerms(path string) error {
 	log.Debugf("checking permissions of %s\n", path)
+
+	systemSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid))
+	if err != nil {
+		return errors.Wrap(err, "while creating SYSTEM well known sid")
+	}
+
+	adminSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinBuiltinAdministratorsSid))
+	if err != nil {
+		return errors.Wrap(err, "while creating built-in Administrators well known sid")
+	}
+
+	currentUser, err := user.Current()
+	if err != nil {
+		return errors.Wrap(err, "while getting current user")
+	}
+
+	currentUserSid, _, _, err := windows.LookupSID("", currentUser.Username)
+
 	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.OWNER_SECURITY_INFORMATION|windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
 		return errors.Wrap(err, "while getting owner security info")
@@ -65,8 +84,8 @@ func CheckPerms(path string) error {
 		return errors.New("owner is invalid")
 	}
 
-	if !owner.IsWellKnown(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid)) {
-		return fmt.Errorf("plugin at %s is not owned by SYSTEM, but by %s", path, owner.String())
+	if !owner.IsWellKnown(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid)) && !owner.Equals(currentUserSid) {
+		return fmt.Errorf("plugin at %s is not owned by SYSTEM or by current user, but by %s", path, owner.String())
 	}
 
 	dacl, _, err := sd.DACL()
@@ -78,16 +97,8 @@ func CheckPerms(path string) error {
 		return fmt.Errorf("no DACL found on plugin, meaning fully permissive access on plugin %s", path)
 	}
 
-	systemSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid))
-
 	if err != nil {
-		return errors.Wrap(err, "while creating SYSTEM well known sid")
-	}
-
-	adminSid, err := windows.CreateWellKnownSid(windows.WELL_KNOWN_SID_TYPE(windows.WinBuiltinAdministratorsSid))
-
-	if err != nil {
-		return errors.Wrap(err, "while creating built-in Administrators well known sid")
+		return errors.Wrap(err, "while looking up current user sid")
 	}
 
 	rs := reflect.ValueOf(dacl).Elem()
@@ -122,10 +133,16 @@ func CheckPerms(path string) error {
 			log.Debugf("Not checking permission for well-known SID %s", aceSid.String())
 			continue
 		}
+
+		if aceSid.Equals(currentUserSid) {
+			log.Debugf("Not checking permission for current user %s", currentUser.Username)
+			continue
+		}
+
 		log.Debugf("Checking permission for SID %s", aceSid.String())
 		denyMask := ^(windows.FILE_GENERIC_READ | windows.FILE_GENERIC_EXECUTE)
 		if ace.AccessMask&uint32(denyMask) != 0 {
-			return fmt.Errorf("only SYSTEM and Administrators can have more than read/execute on plugin %s", path)
+			return fmt.Errorf("only SYSTEM, Administrators or the user currently running crowdsec can have more than read/execute on plugin %s", path)
 		}
 	}
 
