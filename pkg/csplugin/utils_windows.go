@@ -88,8 +88,8 @@ func CheckPerms(path string) error {
 		return errors.New("owner is invalid")
 	}
 
-	if !owner.IsWellKnown(windows.WELL_KNOWN_SID_TYPE(windows.WinLocalSystemSid)) && !owner.Equals(currentUserSid) {
-		return fmt.Errorf("plugin at %s is not owned by SYSTEM or by current user, but by %s", path, owner.String())
+	if !owner.Equals(systemSid) && !owner.Equals(currentUserSid) && !owner.Equals(adminSid) {
+		return fmt.Errorf("plugin at %s is not owned by SYSTEM, Administrators or by current user, but by %s", path, owner.String())
 	}
 
 	dacl, _, err := sd.DACL()
