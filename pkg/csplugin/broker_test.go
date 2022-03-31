@@ -1,3 +1,5 @@
+//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
+
 package csplugin
 
 import (

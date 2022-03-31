@@ -44,14 +44,48 @@ func CheckCredential(uid int, gid int) *syscall.SysProcAttr {
 }
 
 func (pb *PluginBroker) CreateCmd(binaryPath string) (*exec.Cmd, error) {
-	var err error
 	cmd := exec.Command(binaryPath)
-	cmd.SysProcAttr, err = getProcessAtr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
-	if err != nil {
-		return nil, errors.Wrap(err, "while getting process attributes")
+	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
+		if !(pb.pluginProcConfig.User != "" && pb.pluginProcConfig.Group != "") {
+			return nil, errors.New("while getting process attributes: both plugin user and group must be set")
+		}
+		cmd.SysProcAttr, err = getProcessAttr(pb.pluginProcConfig.User, pb.pluginProcConfig.Group)
+		if err != nil {
+			return nil, errors.Wrap(err, "while getting process attributes")
+		}
+		cmd.SysProcAttr.Credential.NoSetGroups = true
 	}
-	cmd.SysProcAttr.Credential.NoSetGroups = true
 	return cmd, err
+}
+
+func getUID(username string) (uint32, error) {
+	u, err := user.Lookup(username)
+	if err != nil {
+		return 0, err
+	}
+	uid, err := strconv.ParseInt(u.Uid, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	if uid < 0 || uid > math.MaxInt32 {
+		return 0, fmt.Errorf("out of bound uid")
+	}
+	return uint32(uid), nil
+}
+
+func getGID(groupname string) (uint32, error) {
+	g, err := user.LookupGroup(groupname)
+	if err != nil {
+		return 0, err
+	}
+	gid, err := strconv.ParseInt(g.Gid, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	if gid < 0 || gid > math.MaxInt32 {
+		return 0, fmt.Errorf("out of bound gid")
+	}
+	return uint32(gid), nil
 }
 
 func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
@@ -103,10 +137,18 @@ func pluginIsValid(path string) error {
 		return errors.Wrap(err, fmt.Sprintf("plugin at %s does not exist", path))
 	}
 
-	// check if it is owned by root
-	err = CheckOwner(details, path)
+	// check if it is owned by current user
+	currentUser, err := user.Current()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "while getting current user")
+	}
+	currentUID, err := getUID(currentUser.Username)
+	if err != nil {
+		return errors.Wrap(err, "while looking up the current uid")
+	}
+	stat := details.Sys().(*syscall.Stat_t)
+	if stat.Uid != currentUID {
+		return fmt.Errorf("plugin at %s is not owned by user '%s'", path, currentUser.Username)
 	}
 
 	mode := details.Mode()
