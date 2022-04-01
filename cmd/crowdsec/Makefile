@@ -6,6 +6,8 @@ GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
 CROWDSEC_BIN=crowdsec
+# names longer than 15 chars break 'pgrep'
+CROWDSEC_BIN_COVER=$(CROWDSEC_BIN).cover
 PREFIX?="/"
 CFG_PREFIX = $(PREFIX)"/etc/crowdsec/config/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
@@ -20,6 +22,9 @@ all: clean test build
 build: clean
 	$(GOBUILD) $(LD_OPTS) -o $(CROWDSEC_BIN) -v
 
+build-bincover: clean
+	$(GOTEST) . -tags testrunmain -coverpkg=all -covermode=atomic $(LD_OPTS) -c -o $(CROWDSEC_BIN_COVER)
+
 static: clean
 	$(GOBUILD) $(LD_OPTS_STATIC) -o $(CROWDSEC_BIN) -v -a -tags netgo
 
@@ -27,7 +32,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN)
+	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER)
 
 .PHONY: install
 install: install-conf install-bin
