@@ -1,4 +1,4 @@
-name: bats / functional tests with MariaDB
+name: Functional tests with MariaDB
 
 on:
   push:
@@ -10,11 +10,11 @@ on:
 
 jobs:
   build:
-    name: "Build the application"
+    name: "Build + tests"
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
-      mariadb:
+      database:
         image: mariadb:latest
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
@@ -41,11 +41,11 @@ jobs:
 
     - name: "Install bats dependencies"
       run: |
-        sudo apt install -qq daemonize netcat-openbsd
+        sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
 
-    - name: "BATS: build crowdsec"
-      run: make bats-clean bats-build
+    - name: "Build crowdsec and fixture"
+      run: make bats-clean bats-build bats-fixture
       env:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
@@ -53,7 +53,7 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
-    - name: "BATS: run tests"
+    - name: "Run tests"
       run: make bats-test
       env:
         DB_BACKEND: mysql
@@ -62,7 +62,7 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
-    - name: "show mariadb logs"
-      run: docker logs "${{ job.services.mariadb .id }}"
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}
 
