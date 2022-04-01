@@ -66,8 +66,8 @@ make_init_data() {
         --exclude "$REL_DATA_DIR"/crowdsec.db \
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
 
-    remove_init_data
     ./instance-db setup
+    remove_init_data
 }
 
 
