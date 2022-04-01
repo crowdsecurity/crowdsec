@@ -116,6 +116,7 @@ declare stderr
 }
 
 @test "$FILE cscli lapi status" {
+    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && sleep 4
     run -0 --separate-stderr cscli lapi status
 
     run -0 echo "$stderr"
