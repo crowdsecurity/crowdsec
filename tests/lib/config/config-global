@@ -52,7 +52,7 @@ make_init_data() {
     ./instance-db setup
 
     [ $DB_BACKEND != sqlite ] && ${CSCLI} machines add --auto
-    
+
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
@@ -67,6 +67,7 @@ make_init_data() {
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
 
     remove_init_data
+    ./instance-db setup
 }
 
 
@@ -83,6 +84,8 @@ load_init_data() {
     remove_init_data
 
     tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+
+    ./instance-db setup
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
