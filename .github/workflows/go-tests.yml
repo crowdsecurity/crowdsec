@@ -13,18 +13,7 @@ env:
   KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
 
 on:
-  push:
-    branches: [ master ]
-    paths-ignore:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'README.md'
-  pull_request:
-    branches: [ master ]
-    paths-ignore:
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'README.md'
+  workflow_call:
 
 jobs:
 
@@ -65,14 +54,10 @@ jobs:
       run: make build && go get -u github.com/jandelgado/gcov2lcov && go get -u github.com/ory/go-acc
     - name: All tests
       run: go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
-    - name: gcov2lcov
-      uses: jandelgado/gcov2lcov-action@v1.0.2
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v2
       with:
-        infile: coverage.out
-        outfile: coverage.txt
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
-      continue-on-error: true
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        path-to-lcov: coverage.txt
+        name: coverage.out
+        path: ./coverage.out
+

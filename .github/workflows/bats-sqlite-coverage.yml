@@ -1,0 +1,47 @@
+name: Functional tests with sqlite
+
+on:
+  workflow_call:
+
+jobs:
+  build:
+    name: "Build + tests"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+
+    - name: "Force machineid"
+      run: |
+          sudo chmod +w /etc/machine-id
+          echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v1
+      with:
+        go-version: 1.17
+      id: go
+
+    - name: "Clone CrowdSec"
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        submodules: true
+
+    - name: "Install bats dependencies"
+      run: |
+        sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
+        GO111MODULE=on go get github.com/mikefarah/yq/v4
+        go install github.com/wadey/gocovmerge@latest
+        sudo cp -u ~/go/bin/yq ~/go/bin/gocovmerge /usr/local/bin/
+
+    - name: "Build crowdsec and fixture"
+      run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
+
+    - name: "Run tests (with coverage)"
+      run: TEST_COVERAGE=true make bats-test
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v2
+      with:
+        name: coverage-bats.out
+        path: ./tests/local/var/lib/coverage/coverage-bats.out

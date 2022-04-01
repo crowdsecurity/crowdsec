@@ -1,12 +1,14 @@
 name: Functional tests with MySQL
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
   build:
@@ -15,7 +17,7 @@ jobs:
     timeout-minutes: 20
     services:
       database:
-        image: mysql:latest
+        image: ${{ inputs.database_image }}
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:

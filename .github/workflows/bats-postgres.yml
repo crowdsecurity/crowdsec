@@ -1,12 +1,10 @@
 name: Functional tests with PostgreSQL
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
   build:
