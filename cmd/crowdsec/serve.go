@@ -177,10 +177,11 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	return nil
 }
 
-func HandleSignals(cConfig *csconfig.Config) {
+func HandleSignals(cConfig *csconfig.Config) int {
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
+		syscall.SIGINT,
 		syscall.SIGTERM)
 
 	exitChan := make(chan int)
@@ -198,8 +199,8 @@ func HandleSignals(cConfig *csconfig.Config) {
 				if err := reloadHandler(s, cConfig); err != nil {
 					log.Fatalf("Reload handler failure : %s", err)
 				}
-			// kill -SIGTERM XXXX
-			case syscall.SIGTERM:
+			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
+			case syscall.SIGINT, syscall.SIGTERM:
 				log.Warningf("SIGTERM received, shutting down")
 				if err := shutdown(s, cConfig); err != nil {
 					log.Fatalf("failed shutdown : %s", err)
@@ -211,10 +212,10 @@ func HandleSignals(cConfig *csconfig.Config) {
 
 	code := <-exitChan
 	log.Warningf("Crowdsec service shutting down")
-	os.Exit(code)
+	return code
 }
 
-func Serve(cConfig *csconfig.Config) error {
+func Serve(cConfig *csconfig.Config) (int, error) {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -225,7 +226,7 @@ func Serve(cConfig *csconfig.Config) error {
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return errors.Wrap(err, "api server init")
+			return 1, errors.Wrap(err, "api server init")
 		}
 		if !flags.TestMode {
 			serveAPIServer(apiServer)
@@ -235,7 +236,7 @@ func Serve(cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return errors.Wrap(err, "crowdsec init")
+			return 1, errors.Wrap(err, "crowdsec init")
 		}
 		/* if it's just linting, we're done */
 		if !flags.TestMode {
@@ -254,18 +255,17 @@ func Serve(cConfig *csconfig.Config) error {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
 		/*wait for signals*/
-		HandleSignals(cConfig)
-	} else {
-		for {
-			select {
-			case <-apiTomb.Dead():
-				log.Infof("api shutdown")
-				os.Exit(0)
-			case <-crowdsecTomb.Dead():
-				log.Infof("crowdsec shutdown")
-				os.Exit(0)
-			}
+		return HandleSignals(cConfig), nil
+	}
+
+	for {
+		select {
+		case <-apiTomb.Dead():
+			log.Infof("api shutdown")
+			os.Exit(0)
+		case <-crowdsecTomb.Dead():
+			log.Infof("crowdsec shutdown")
+			os.Exit(0)
 		}
 	}
-	return nil
 }

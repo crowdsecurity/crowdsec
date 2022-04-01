@@ -109,8 +109,14 @@ clean: testclean
 cscli: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory
 
+cscli-bincover: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build-bincover --no-print-directory
+
 crowdsec: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory
+
+crowdsec-bincover: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build-bincover --no-print-directory
 
 http-plugin: goversion
 	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory

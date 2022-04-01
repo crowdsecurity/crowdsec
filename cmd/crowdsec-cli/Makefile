@@ -4,7 +4,10 @@ GOBUILD=$(GOCMD) build
 GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
+
 BINARY_NAME=cscli
+# names longer than 15 chars break 'pgrep'
+BINARY_NAME_COVER=$(BINARY_NAME).cover
 PREFIX?="/"
 BIN_PREFIX = $(PREFIX)"/usr/local/bin/"
 
@@ -13,6 +16,9 @@ all: clean build
 
 build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
+
+build-bincover: clean
+	$(GOTEST) . -tags testrunmain -coverpkg=all -covermode=atomic $(LD_OPTS) -c -o $(BINARY_NAME_COVER)
 
 static: clean
 	@$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -v -a -tags netgo
@@ -30,4 +36,4 @@ uninstall:
 	@$(RM) -r $(BIN_PREFIX)$(BINARY_NAME)
 
 clean:
-	@$(RM) $(BINARY_NAME)
+	@$(RM) $(BINARY_NAME) $(BINARY_NAME_COVER)
