@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -eu
+
+#
+# Delegate operations to an instrumented binary and collects coverage data.
+#
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# no need to change directory, and doing it here would break hub tests
+#shellcheck disable=SC1090
+. "${THIS_DIR}/.environment.sh"
+
+# Arguments to crowdsec are passed through a temporary, newline-delimited
+# file courtesy of github.com/confluentinc/bincover. Coverage data will be
+# merged at the end of the test run.
+# The '=' between flags and values is required.
+exec "${BIN_DIR}/crowdsec.cover" \
+    -test.run="^TestBincoverRunMain$" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/$(date +'%s')-$$.out" \
+    -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!

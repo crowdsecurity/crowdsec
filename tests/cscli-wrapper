@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -eu
+
+#
+# Delegate operations to an instrumented binary and collects coverage data.
+#
+
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# no need to change directory, and doing it here would break hub tests
+#shellcheck disable=SC1090
+. "${THIS_DIR}/.environment.sh"
+
+set -o pipefail  # don't let sed hide the statuscode
+mkdir -p "${LOCAL_DIR}/var/lib/coverage"
+
+# we collect rc and output by hand, because setting -o pipefail would trigger a
+# SIGPIPE.
+set +e
+
+# Arguments to cscli are passed through a temporary, newline-delimited
+# file courtesy of github.com/confluentinc/bincover. Coverage data will be
+# merged at the end of the test run.
+# The '=' between flags and values is required.
+output=$("${BIN_DIR}/cscli.cover" \
+    -test.run="^TestBincoverRunMain$" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/$(date +'%s')-$$.out" \
+    -args-file=<(for i; do echo "$i"; done))
+rc=$?
+
+# We also cut the metadata stuff that we don't need.
+echo -n "$output" | tr '\n' '\f' | sed 's/START_BINCOVER_METADATA.*//' | tr '\f' '\n'
+
+# this does not work because cscli output does not always end with \n
+# echo -n "$output" | sed -n '/START_BINCOVER_METADATA/q;p'
+
+exit $rc
