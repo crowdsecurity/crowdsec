@@ -62,10 +62,18 @@ check_daemonizer() {
     esac
 }
 
+check_gocovmerge() {
+    if ! command -v gocovmerge >/dev/null; then
+        die "missing required program 'gocovmerge'. You can install it with \"go install github.com/wadey/gocovmerge@latest\""
+    fi
+}
 
 check_bats_core
 check_python3
 check_nc
 check_yq
 check_daemonizer
+if [ -n "${TEST_COVERAGE}" ]; then
+    check_gocovmerge
+fi
 
