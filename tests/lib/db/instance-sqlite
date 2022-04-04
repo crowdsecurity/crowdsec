@@ -25,9 +25,11 @@ cd "${THIS_DIR}"/../../
 [ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
 
 # ---------------------------
-
-DATA_DIR=$(yq '.config_paths.data_dir' <"${CONFIG_YAML}")
-DB_FILE="${DATA_DIR}/crowdsec.db"
+# In most cases this called with setup argument, and it shouldn't fail for missinf config file.
+if [ -f "${CONFIG_YAML}" ] ; then
+    DATA_DIR=$(yq '.config_paths.data_dir' <"${CONFIG_YAML}")
+    DB_FILE="${DATA_DIR}/crowdsec.db"
+fi
 
 config_yaml() {
     yq '
