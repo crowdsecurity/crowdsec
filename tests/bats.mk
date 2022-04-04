@@ -43,7 +43,7 @@ export CONFIG_BACKEND="$(CONFIG_BACKEND)"
 export PACKAGE_TESTING="$(PACKAGE_TESTING)"
 endef
 
-bats-all: bats-clean bats-build bats-test bats-test-hub
+bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
 
 # Source this to run the scripts outside of the Makefile
 bats-environment:
@@ -53,13 +53,17 @@ bats-environment:
 bats-check-requirements:
 	@$(TEST_DIR)/check-requirements
 
-# Build and installs crowdsec in a local directory
-# Create a reusable package with initial configuration + data
+# Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment bats-check-requirements
-	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) build
 	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
+	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
+	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover cscli-bincover
+	@install -m 0755 cmd/crowdsec/crowdsec.cover cmd/crowdsec-cli/cscli.cover $(BIN_DIR)/
+
+# Create a reusable package with initial configuration + data
+bats-fixture:
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data
