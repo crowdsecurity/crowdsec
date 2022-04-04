@@ -20,6 +20,11 @@ cd "${THIS_DIR}"/../../
 #shellcheck disable=SC1091
 . ./.environment.sh
 
+exec_sql() {
+    cmd="${1?Missing required sql command}"
+    sqlite3 "${DB_FILE}" "$@"
+}
+
 # you have not removed set -u above, have you?
 
 [ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
@@ -55,6 +60,10 @@ case "$1" in
         backup_file="$2"
         [ -f "$backup_file" ] || die "missing file $backup_file"
         cp "$backup_file" "${DB_FILE}"
+        ;;
+    exec_sql)
+        shift
+        exec_sql "$@"
         ;;
     *)
         about

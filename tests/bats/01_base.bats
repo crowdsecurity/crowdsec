@@ -44,6 +44,22 @@ declare stderr
     assert_output --partial "Constraint_scenario:"
     assert_output --partial "Constraint_api:"
     assert_output --partial "Constraint_acquis:"
+
+    # should work without configuration file
+    rm "${CONFIG_YAML}"
+    run -0 cscli version
+    assert_output --partial "version:"
+}
+
+@test "$FILE cscli help" {
+    run -0 cscli help
+    assert_line "Available Commands:"
+    assert_line --regexp ".* help .* Help about any command"
+
+    # should work without configuration file
+    rm "${CONFIG_YAML}"
+    run -0 cscli help
+    assert_line "Available Commands:"
 }
 
 @test "$FILE cscli alerts list: at startup returns at least one entry: community pull" {
@@ -154,4 +170,30 @@ declare stderr
     assert_output --partial "# bash completion for cscli"
     run -0 cscli completion zsh
     assert_output --partial "# zsh completion for cscli"
+}
+
+@test "$FILE cscli hub list" {
+    run -0 cscli hub list -o human
+    assert_line --regexp '^ crowdsecurity/linux'
+    assert_line --regexp '^ crowdsecurity/sshd'
+    assert_line --regexp '^ crowdsecurity/dateparse-enrich'
+    assert_line --regexp '^ crowdsecurity/geoip-enrich'
+    assert_line --regexp '^ crowdsecurity/sshd-logs'
+    assert_line --regexp '^ crowdsecurity/syslog-logs'
+    assert_line --regexp '^ crowdsecurity/ssh-bf'
+    assert_line --regexp '^ crowdsecurity/ssh-slow-bf'
+
+    run -0 cscli hub list -o raw
+    assert_line --regexp '^crowdsecurity/linux,enabled,[0-9]+\.[0-9]+,core linux support : syslog\+geoip\+ssh,collections$'
+    assert_line --regexp '^crowdsecurity/sshd,enabled,[0-9]+\.[0-9]+,sshd support : parser and brute-force detection,collections$'
+    assert_line --regexp '^crowdsecurity/dateparse-enrich,enabled,[0-9]+\.[0-9]+,,parsers$'
+    assert_line --regexp '^crowdsecurity/geoip-enrich,enabled,[0-9]+\.[0-9]+,"Populate event with geoloc info : as, country, coords, source range.",parsers$'
+    assert_line --regexp '^crowdsecurity/sshd-logs,enabled,[0-9]+\.[0-9]+,Parse openSSH logs,parsers$'
+    assert_line --regexp '^crowdsecurity/syslog-logs,enabled,[0-9]+\.[0-9]+,,parsers$'
+    assert_line --regexp '^crowdsecurity/ssh-bf,enabled,[0-9]+\.[0-9]+,Detect ssh bruteforce,scenarios$'
+    assert_line --regexp '^crowdsecurity/ssh-slow-bf,enabled,[0-9]+\.[0-9]+,Detect slow ssh bruteforce,scenarios$'
+
+    run -0 cscli hub list -o json
+    run jq -c '[[.collections[].name], [.parsers[].name], [.scenarios[].name]]' <(output)
+    assert_output '[["crowdsecurity/linux","crowdsecurity/sshd"],["crowdsecurity/dateparse-enrich","crowdsecurity/geoip-enrich","crowdsecurity/sshd-logs","crowdsecurity/syslog-logs"],["crowdsecurity/ssh-bf","crowdsecurity/ssh-slow-bf"]]'
 }
