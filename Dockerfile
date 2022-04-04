@@ -13,7 +13,7 @@ RUN SYSTEM="docker" make release
 RUN cd crowdsec-v* && ./wizard.sh --docker-mode && cd -
 RUN cscli hub update && cscli collections install crowdsecurity/linux && cscli parsers install crowdsecurity/whitelists
 FROM alpine:latest
-RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq bash && \
+RUN apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community tzdata yq jq bash && \
   mkdir -p /staging/etc/crowdsec && \
   mkdir -p /staging/var/lib/crowdsec
 COPY --from=build /etc/crowdsec /staging/etc/crowdsec
