@@ -47,7 +47,7 @@ func (lpt *BouncerPullUpdator) RunDBUpdator(dbClient *Client, t *tomb.Tomb) {
 				if err := dbClient.UpdateBouncerLastPull(pullTime.UTC(), bouncer.ID); err != nil {
 					log.Errorf("unable to update bouncer '%s' pull: %v", bouncer.Name, err)
 				} else {
-					log.Debugf("Updated pull for %s bouncer", bouncer.ID)
+					log.Debugf("Updated pull for %d bouncer", bouncer.ID)
 				}
 			}
 			lpt.Unlock()

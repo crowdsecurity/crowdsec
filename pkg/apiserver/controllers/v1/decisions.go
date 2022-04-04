@@ -16,7 +16,9 @@ import (
 
 func APIKeyToBouncer(apiKey string, dbClient *database.Client) (*ent.Bouncer, error) {
 	hashedKey := sha512.New()
-	hashedKey.Write([]byte(apiKey))
+	if _, err := hashedKey.Write([]byte(apiKey)); err != nil {
+		return nil, err
+	}
 	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
 	bouncerInfo, err := dbClient.SelectBouncer(hashStr)
 	if err != nil {
