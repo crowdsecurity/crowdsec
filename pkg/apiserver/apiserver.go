@@ -2,8 +2,11 @@ package apiserver
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -241,12 +244,44 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
+func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
+	var caCert []byte
+	var err error
+	var caCertPool *x509.CertPool
+	var clientAuthType = tls.VerifyClientCertIfGiven //tls.ClientAuthType(s.TLS.ClientVerification)
+
+	if clientAuthType > tls.RequestClientCert {
+		caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
+		if err != nil {
+			return nil, errors.Wrap(err, "Error opening cert file")
+		}
+		caCertPool = x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+	}
+
+	return &tls.Config{
+		ServerName: s.TLS.ServerName,
+		// ClientAuth: tls.NoClientCert,				// Client certificate will not be requested and it is not required
+		// ClientAuth: tls.RequestClientCert,			// Client certificate will be requested, but it is not required
+		// ClientAuth: tls.RequireAnyClientCert,		// Client certificate is required, but any client certificate is acceptable
+		// ClientAuth: tls.VerifyClientCertIfGiven,		// Client certificate will be requested and if present must be in the server's Certificate Pool
+		// ClientAuth: tls.RequireAndVerifyClientCert,	// Client certificate will be required and must be present in the server's Certificate Pool
+		ClientAuth: clientAuthType, //tls.ClientAuthType() tls.VerifyClientCertIfGiven,
+		ClientCAs:  caCertPool,
+		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
+	}, nil
+}
+
 func (s *APIServer) Run() error {
 	defer types.CatchPanic("lapi/runServer")
-
+	tlsCfg, err := s.GetTLSConfig()
+	if err != nil {
+		return errors.Wrap(err, "while creating TLS config")
+	}
 	s.httpServer = &http.Server{
-		Addr:    s.URL,
-		Handler: s.router,
+		Addr:      s.URL,
+		Handler:   s.router,
+		TLSConfig: tlsCfg,
 	}
 
 	if s.apic != nil {
