@@ -16,7 +16,7 @@ func (t *TLSAuth) ValidateCert(c *gin.Context) (bool, string) {
 		if len(c.Request.TLS.VerifiedChains) > 0 {
 			validOU := false
 			clientCert := c.Request.TLS.VerifiedChains[0][0]
-			for _, ou := range clientCert.Subject.Organization {
+			for _, ou := range clientCert.Subject.OrganizationalUnit {
 				if t.AllowedOU == ou {
 					validOU = true
 				}
