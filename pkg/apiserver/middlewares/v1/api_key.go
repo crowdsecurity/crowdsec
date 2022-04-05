@@ -63,10 +63,12 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
 			if err != nil {
-				log.Errorf("auth api key error: %s", err)
-				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-				c.Abort()
-				return
+				if !strings.Contains(err.Error(), "bouncer not found") {
+					log.Errorf("auth api key error: %s", err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
 			}
 
 			if bouncer == nil {
