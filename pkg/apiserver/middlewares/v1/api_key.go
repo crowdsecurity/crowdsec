@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -35,7 +36,7 @@ func NewAPIKey(dbClient *database.Client) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		TLSAuth:    &TLSAuth{},
+		TLSAuth:    &TLSAuth{AllowedOU: "bouncer"},
 	}
 }
 
@@ -50,16 +51,48 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var hashStr string
+		var bouncer *ent.Bouncer
+		var err error
 
 		if c.Request.TLS != nil {
-			if !a.TLSAuth.ValidateCert(c, "bouncer-") {
+			validCert, bouncerName := a.TLSAuth.ValidateCert(c)
+			if !validCert {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
-			} else {
-				log.Infof("APIKey: client certificate is from a bouncer")
-				c.Next()
 				return
+			}
+			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
+			if err != nil {
+				log.Errorf("auth api key error: %s", err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
+
+			if bouncer == nil {
+				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
+				//Set a random API key, but it will never be used
+				apiKey, err := GenerateAPIKey(64)
+				if err != nil {
+					log.Errorf("auth api key error: %s", err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
+				err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey))
+				if err != nil {
+					log.Errorf("auth api key error: %s", err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
+				bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
+				if err != nil {
+					log.Errorf("auth api key error: %s", err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
 			}
 		} else {
 			val, ok := c.Request.Header[APIKeyHeader]
@@ -68,15 +101,14 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
-			hashStr = HashSHA512(val[0])
-		}
-
-		bouncer, err := a.DbClient.SelectBouncer(hashStr)
-		if err != nil {
-			log.Errorf("auth api key error: %s", err)
-			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-			c.Abort()
-			return
+			hashStr := HashSHA512(val[0])
+			bouncer, err = a.DbClient.SelectBouncer(hashStr)
+			if err != nil {
+				log.Errorf("auth api key error: %s", err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
 		}
 
 		if bouncer == nil {

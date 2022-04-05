@@ -1,29 +1,35 @@
 package v1
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
 
 type TLSAuth struct {
+	AllowedOU string
 }
 
-func (t *TLSAuth) ValidateCert(c *gin.Context, prefix string) bool {
+func (t *TLSAuth) ValidateCert(c *gin.Context) (bool, string) {
 	if c.Request.TLS != nil {
 		if len(c.Request.TLS.VerifiedChains) > 0 {
+			validOU := false
 			clientCert := c.Request.TLS.VerifiedChains[0][0]
-			if !strings.HasPrefix(clientCert.Subject.CommonName, prefix) {
-				log.Errorf("APIKey: client certificate is not from a bouncer : %s", clientCert.Subject.CommonName)
-				return false
-			} else {
-				return true
+			for _, ou := range clientCert.Subject.Organization {
+				if t.AllowedOU == ou {
+					validOU = true
+				}
 			}
+			if !validOU {
+				log.Errorf("APIKey: client certificate is not from a bouncer")
+				return false, ""
+			}
+			return true, fmt.Sprintf("%s-%s", clientCert.Subject.CommonName, c.ClientIP())
 		} else {
 			log.Error("Found no verified certs in request")
-			return false
+			return false, ""
 		}
 	}
-	return false
+	return false, ""
 }
