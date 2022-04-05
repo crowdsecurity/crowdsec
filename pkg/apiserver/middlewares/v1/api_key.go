@@ -54,7 +54,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		var bouncer *ent.Bouncer
 		var err error
 
-		if c.Request.TLS != nil {
+		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 			validCert, bouncerName := a.TLSAuth.ValidateCert(c)
 			if !validCert {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
