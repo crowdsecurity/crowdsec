@@ -71,6 +71,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					return
 				}
 			}
+			log.Infof("Bouncer debug: %+v", bouncer)
 
 			if bouncer == nil {
 				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
