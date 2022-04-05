@@ -20,6 +20,7 @@ var (
 type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
+	TLSAuth    *TLSAuth
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -34,6 +35,7 @@ func NewAPIKey(dbClient *database.Client) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
+		TLSAuth:    &TLSAuth{},
 	}
 }
 
@@ -48,14 +50,27 @@ func HashSHA512(str string) string {
 
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		val, ok := c.Request.Header[APIKeyHeader]
-		if !ok {
-			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-			c.Abort()
-			return
+		var hashStr string
+
+		if c.Request.TLS != nil {
+			if !a.TLSAuth.ValidateCert(c, "bouncer-") {
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+			} else {
+				log.Infof("APIKey: client certificate is from a bouncer")
+				c.Next()
+				return
+			}
+		} else {
+			val, ok := c.Request.Header[APIKeyHeader]
+			if !ok {
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
+			hashStr = HashSHA512(val[0])
 		}
 
-		hashStr := HashSHA512(val[0])
 		bouncer, err := a.DbClient.SelectBouncer(hashStr)
 		if err != nil {
 			log.Errorf("auth api key error: %s", err)
@@ -108,7 +123,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				return
 			}
 		}
-
 		c.Next()
 	}
 }
