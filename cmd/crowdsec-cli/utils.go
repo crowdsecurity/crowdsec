@@ -760,7 +760,7 @@ func BackupHub(dirPath string) error {
 }
 
 type unit struct {
-	value  int
+	value  int64
 	symbol string
 }
 
@@ -794,7 +794,7 @@ var ranges = []unit{
 func formatNumber(num int) string {
 	goodUnit := unit{}
 	for _, u := range ranges {
-		if num >= u.value {
+		if int64(num) >= u.value {
 			goodUnit = u
 			break
 		}
