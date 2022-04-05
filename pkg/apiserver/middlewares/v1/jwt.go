@@ -3,14 +3,16 @@ package v1
 import (
 	"crypto/rand"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
-	"errors"
+	"github.com/pkg/errors"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -43,39 +45,105 @@ func IdentityHandler(c *gin.Context) interface{} {
 	}
 }
 
+var AllowedOU = "bouncer"
+
+func (just *JWT) ValidateCert(c *gin.Context) (bool, string) {
+	if c.Request.TLS != nil {
+		if len(c.Request.TLS.VerifiedChains) > 0 {
+			validOU := false
+			clientCert := c.Request.TLS.VerifiedChains[0][0]
+			for _, ou := range clientCert.Subject.OrganizationalUnit {
+				if AllowedOU == ou {
+					validOU = true
+				}
+			}
+			if !validOU {
+				log.Errorf("APIKey: client certificate is not from an agent")
+				return false, ""
+			}
+			return true, fmt.Sprintf("%s-%s", clientCert.Subject.CommonName, c.ClientIP())
+		} else {
+			log.Error("Found no verified certs in request")
+			return false, ""
+		}
+	}
+	return false, ""
+}
+
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var loginInput models.WatcherAuthRequest
 	var scenarios string
 	var err error
-	if err := c.ShouldBindJSON(&loginInput); err != nil {
-		return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
-	}
-	if err := loginInput.Validate(strfmt.Default); err != nil {
-		return "", errors.New("input format error")
-	}
-	machineID := *loginInput.MachineID
-	password := *loginInput.Password
-	scenariosInput := loginInput.Scenarios
+	var scenariosInput []string
+	var clientMachine *ent.Machine
+	var machineID string
 
-	machine, err := j.DbClient.Ent.Machine.Query().
-		Where(machine.MachineId(machineID)).
-		First(j.DbClient.CTX)
-	if err != nil {
-		log.Printf("Error machine login for %s : %+v ", machineID, err)
-		return nil, err
-	}
+	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
+		validCert, machineID := j.ValidateCert(c)
+		if !validCert {
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			c.Abort()
+			return nil, fmt.Errorf("failed cert authentication")
+		}
+		log.Printf("certificate auth ok for agent %s", machineID)
 
-	if machine == nil {
-		log.Errorf("Nothing for '%s'", machineID)
-		return nil, jwt.ErrFailedAuthentication
-	}
+		clientMachine, err = j.DbClient.Ent.Machine.Query().
+			Where(machine.MachineId(machineID)).
+			First(j.DbClient.CTX)
+		if ent.IsNotFound(err) {
+			//Machine was not found, let's create it
+			log.Printf("machine %s not found, create it", machineID)
+			password := strfmt.Password("")
+			_, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true)
+			if err != nil {
+				return "", errors.Wrapf(err, "while creating machine entry for %s", machineID)
+			}
+			clientMachine, err = j.DbClient.Ent.Machine.Query().
+				Where(machine.MachineId(machineID)).
+				First(j.DbClient.CTX)
+			if err != nil {
+				return "", errors.Wrapf(err, "while selecting machine entry for %s after creation", machineID)
+			}
+		} else {
+			machineID = clientMachine.MachineId
+			//we should still get the updated list of scenarios from the machine
+		}
 
-	if !machine.IsValidated {
-		return nil, fmt.Errorf("machine %s not validated", machineID)
-	}
+	} else {
+		//normal auth
 
-	if err = bcrypt.CompareHashAndPassword([]byte(machine.Password), []byte(password)); err != nil {
-		return nil, jwt.ErrFailedAuthentication
+		if err := c.ShouldBindJSON(&loginInput); err != nil {
+			return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
+		}
+		if err := loginInput.Validate(strfmt.Default); err != nil {
+			return "", errors.New("input format error")
+		}
+		machineID = *loginInput.MachineID
+		password := *loginInput.Password
+		scenariosInput = loginInput.Scenarios
+
+		clientMachine, err = j.DbClient.Ent.Machine.Query().
+			Where(machine.MachineId(machineID)).
+			First(j.DbClient.CTX)
+		if err != nil {
+			log.Printf("Error machine login for %s : %+v ", machineID, err)
+			return nil, err
+		}
+
+		if clientMachine == nil {
+			log.Errorf("Nothing for '%s'", machineID)
+			return nil, jwt.ErrFailedAuthentication
+		}
+
+		if !clientMachine.IsValidated {
+			return nil, fmt.Errorf("machine %s not validated", machineID)
+		}
+
+		if err = bcrypt.CompareHashAndPassword([]byte(clientMachine.Password), []byte(password)); err != nil {
+			return nil, jwt.ErrFailedAuthentication
+		}
+
+		//end of normal auth
 	}
 
 	if len(scenariosInput) > 0 {
@@ -86,26 +154,26 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				scenarios += "," + scenario
 			}
 		}
-		err = j.DbClient.UpdateMachineScenarios(scenarios, machine.ID)
+		err = j.DbClient.UpdateMachineScenarios(scenarios, clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update scenarios list for '%s': %s\n", machineID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
 
-	if machine.IpAddress == "" {
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
+	if clientMachine.IpAddress == "" {
+		err = j.DbClient.UpdateMachineIP(c.ClientIP(), clientMachine.ID)
 		if err != nil {
 			log.Errorf("Failed to update ip address for '%s': %s\n", machineID, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
 
-	if machine.IpAddress != c.ClientIP() && machine.IpAddress != "" {
-		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", machine.MachineId, c.ClientIP(), machine.IpAddress)
-		err = j.DbClient.UpdateMachineIP(c.ClientIP(), machine.ID)
+	if clientMachine.IpAddress != c.ClientIP() && clientMachine.IpAddress != "" {
+		log.Warningf("new IP address detected for machine '%s': %s (old: %s)", clientMachine.MachineId, c.ClientIP(), clientMachine.IpAddress)
+		err = j.DbClient.UpdateMachineIP(c.ClientIP(), clientMachine.ID)
 		if err != nil {
-			log.Errorf("Failed to update ip address for '%s': %s\n", machine.MachineId, err)
+			log.Errorf("Failed to update ip address for '%s': %s\n", clientMachine.MachineId, err)
 			return nil, jwt.ErrFailedAuthentication
 		}
 	}
@@ -116,8 +184,8 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		return nil, jwt.ErrFailedAuthentication
 	}
 
-	if err := j.DbClient.UpdateMachineVersion(useragent[1], machine.ID); err != nil {
-		log.Errorf("unable to update machine '%s' version '%s': %s", machine.MachineId, useragent[1], err)
+	if err := j.DbClient.UpdateMachineVersion(useragent[1], clientMachine.ID); err != nil {
+		log.Errorf("unable to update machine '%s' version '%s': %s", clientMachine.MachineId, useragent[1], err)
 		log.Errorf("bad user agent from : %s", c.ClientIP())
 		return nil, jwt.ErrFailedAuthentication
 	}

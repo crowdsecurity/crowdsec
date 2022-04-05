@@ -260,7 +260,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	}
 
 	return &tls.Config{
-		ServerName: s.TLS.ServerName,
+		ServerName: s.TLS.ServerName, //should it be removed ?
 		// ClientAuth: tls.NoClientCert,				// Client certificate will not be requested and it is not required
 		// ClientAuth: tls.RequestClientCert,			// Client certificate will be requested, but it is not required
 		// ClientAuth: tls.RequireAnyClientCert,		// Client certificate is required, but any client certificate is acceptable
