@@ -69,6 +69,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 					c.Abort()
 					return
+				} else {
+					bouncer = nil
 				}
 			}
 			log.Infof("Bouncer debug: %+v", bouncer)
