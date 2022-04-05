@@ -61,6 +61,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				c.Abort()
 				return
 			}
+			log.Infof("Trying to find bouncer %s for cert", bouncerName)
 			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
 			if err != nil {
 				if !strings.Contains(err.Error(), "bouncer not found") {
@@ -81,6 +82,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					c.Abort()
 					return
 				}
+				log.Infof("Creating bouncer %s", bouncerName)
 				err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey))
 				if err != nil {
 					log.Errorf("auth api key error: %s", err)
@@ -88,6 +90,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					c.Abort()
 					return
 				}
+				log.Info("Getting bouncer %s from db after creation", bouncerName)
 				bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
 				if err != nil {
 					log.Errorf("auth api key error: %s", err)
@@ -95,6 +98,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					c.Abort()
 					return
 				}
+				log.Infof("Got bouncer %s", bouncer.Name)
+				log.Infof("Bouncer details: %+v", bouncer)
 			}
 		} else {
 			val, ok := c.Request.Header[APIKeyHeader]
