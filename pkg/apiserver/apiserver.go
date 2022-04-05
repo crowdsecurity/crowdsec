@@ -250,6 +250,10 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	var caCertPool *x509.CertPool
 	var clientAuthType = tls.VerifyClientCertIfGiven //tls.ClientAuthType(s.TLS.ClientVerification)
 
+	if s.TLS == nil {
+		return &tls.Config{}, nil
+	}
+
 	if clientAuthType > tls.RequestClientCert {
 		caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
 		if err != nil {

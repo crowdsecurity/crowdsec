@@ -1,6 +1,8 @@
 package csconfig
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -18,9 +20,12 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	URL      string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login    string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password string `yaml:"password,omitempty" json:"-"`
+	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password   string `yaml:"password,omitempty" json:"-"`
+	CACertPath string `yaml:"ca_cert_path,omitempty"`
+	KeyPath    string `yaml:"key_path,omitempty"`
+	CertPath   string `yaml:"cert_path,omitempty"`
 }
 
 /*global api config (for lapi->oapi)*/
@@ -69,10 +74,33 @@ func (l *LocalApiClientCfg) Load() error {
 	} else {
 		log.Warningf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
+
+	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
+	}
+
 	if l.InsecureSkipVerify == nil {
 		apiclient.InsecureSkipVerify = false
 	} else {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
+	}
+
+	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		caCert, err := ioutil.ReadFile(l.Credentials.CACertPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load cacert")
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		apiclient.Cert = &cert
+		apiclient.CaCertPool = caCertPool
 	}
 	return nil
 }
