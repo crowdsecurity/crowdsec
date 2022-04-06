@@ -14,7 +14,7 @@ import (
 
 const CapiMachineID = "CAPI"
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (int, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
@@ -46,6 +46,7 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		SetPassword(string(hashPassword)).
 		SetIpAddress(ipAddress).
 		SetIsValidated(isValidated).
+		SetAuthType(authType).
 		Save(c.CTX)
 
 	if err != nil {

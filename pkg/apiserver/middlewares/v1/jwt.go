@@ -15,6 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 	log "github.com/sirupsen/logrus"
@@ -109,7 +110,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			//Machine was not found, let's create it
 			log.Printf("machine %s not found, create it", machineID)
 			password := strfmt.Password("")
-			_, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true)
+			_, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true, types.TlsAuthType)
 			if err != nil {
 				return "", errors.Wrapf(err, "while creating machine entry for %s", machineID)
 			}

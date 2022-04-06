@@ -36,6 +36,8 @@ type Machine struct {
 	IsValidated bool `json:"isValidated,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
+	// AuthType holds the value of the "auth_type" field.
+	AuthType string `json:"auth_type"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MachineQuery when eager-loading is set.
 	Edges MachineEdges `json:"edges"`
@@ -68,7 +70,7 @@ func (*Machine) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case machine.FieldID:
 			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus:
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
 			values[i] = new(sql.NullString)
 		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush:
 			values[i] = new(sql.NullTime)
@@ -156,6 +158,12 @@ func (m *Machine) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				m.Status = value.String
 			}
+		case machine.FieldAuthType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
+			} else if value.Valid {
+				m.AuthType = value.String
+			}
 		}
 	}
 	return nil
@@ -214,6 +222,8 @@ func (m *Machine) String() string {
 	builder.WriteString(fmt.Sprintf("%v", m.IsValidated))
 	builder.WriteString(", status=")
 	builder.WriteString(m.Status)
+	builder.WriteString(", auth_type=")
+	builder.WriteString(m.AuthType)
 	builder.WriteByte(')')
 	return builder.String()
 }

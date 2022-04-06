@@ -31,6 +31,8 @@ const (
 	FieldIsValidated = "is_validated"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
+	// FieldAuthType holds the string denoting the auth_type field in the database.
+	FieldAuthType = "auth_type"
 	// EdgeAlerts holds the string denoting the alerts edge name in mutations.
 	EdgeAlerts = "alerts"
 	// Table holds the table name of the machine in the database.
@@ -57,6 +59,7 @@ var Columns = []string{
 	FieldVersion,
 	FieldIsValidated,
 	FieldStatus,
+	FieldAuthType,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -86,4 +89,6 @@ var (
 	ScenariosValidator func(string) error
 	// DefaultIsValidated holds the default value on creation for the "isValidated" field.
 	DefaultIsValidated bool
+	// DefaultAuthType holds the default value on creation for the "auth_type" field.
+	DefaultAuthType string
 )

@@ -69,6 +69,7 @@ var (
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "until", Type: field.TypeTime, Nullable: true},
 		{Name: "last_pull", Type: field.TypeTime},
+		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 	}
 	// BouncersTable holds the schema information for the "bouncers" table.
 	BouncersTable = &schema.Table{
@@ -152,6 +153,7 @@ var (
 		{Name: "version", Type: field.TypeString, Nullable: true},
 		{Name: "is_validated", Type: field.TypeBool, Default: false},
 		{Name: "status", Type: field.TypeString, Nullable: true},
+		{Name: "auth_type", Type: field.TypeString, Default: "api-key"},
 	}
 	// MachinesTable holds the schema information for the "machines" table.
 	MachinesTable = &schema.Table{

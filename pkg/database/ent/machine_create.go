@@ -137,6 +137,20 @@ func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
 	return mc
 }
 
+// SetAuthType sets the "auth_type" field.
+func (mc *MachineCreate) SetAuthType(s string) *MachineCreate {
+	mc.mutation.SetAuthType(s)
+	return mc
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableAuthType(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetAuthType(*s)
+	}
+	return mc
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mc *MachineCreate) AddAlertIDs(ids ...int) *MachineCreate {
 	mc.mutation.AddAlertIDs(ids...)
@@ -239,6 +253,10 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
 	}
+	if _, ok := mc.mutation.AuthType(); !ok {
+		v := machine.DefaultAuthType
+		mc.mutation.SetAuthType(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -259,6 +277,9 @@ func (mc *MachineCreate) check() error {
 	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		return &ValidationError{Name: "isValidated", err: errors.New(`ent: missing required field "Machine.isValidated"`)}
+	}
+	if _, ok := mc.mutation.AuthType(); !ok {
+		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Machine.auth_type"`)}
 	}
 	return nil
 }
@@ -366,6 +387,14 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Column: machine.FieldStatus,
 		})
 		_node.Status = value
+	}
+	if value, ok := mc.mutation.AuthType(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldAuthType,
+		})
+		_node.AuthType = value
 	}
 	if nodes := mc.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

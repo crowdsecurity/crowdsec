@@ -10,6 +10,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -95,7 +96,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					return
 				}
 				log.Infof("Creating bouncer %s", bouncerName)
-				err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey))
+				err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
 				if err != nil {
 					log.Errorf("auth api key error: %s", err)
 					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})

@@ -276,7 +276,7 @@ func CreateTestBouncer() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to generate api key: %s", err)
 	}
-	err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey))
+	err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
 		return "", fmt.Errorf("unable to create blocker: %s", err)
 	}

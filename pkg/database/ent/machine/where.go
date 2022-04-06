@@ -163,6 +163,13 @@ func Status(v string) predicate.Machine {
 	})
 }
 
+// AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
+func AuthType(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAuthType), v))
+	})
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
@@ -1152,6 +1159,117 @@ func StatusEqualFold(v string) predicate.Machine {
 func StatusContainsFold(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldStatus), v))
+	})
+}
+
+// AuthTypeEQ applies the EQ predicate on the "auth_type" field.
+func AuthTypeEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeNEQ applies the NEQ predicate on the "auth_type" field.
+func AuthTypeNEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeIn applies the In predicate on the "auth_type" field.
+func AuthTypeIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldAuthType), v...))
+	})
+}
+
+// AuthTypeNotIn applies the NotIn predicate on the "auth_type" field.
+func AuthTypeNotIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldAuthType), v...))
+	})
+}
+
+// AuthTypeGT applies the GT predicate on the "auth_type" field.
+func AuthTypeGT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeGTE applies the GTE predicate on the "auth_type" field.
+func AuthTypeGTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeLT applies the LT predicate on the "auth_type" field.
+func AuthTypeLT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeLTE applies the LTE predicate on the "auth_type" field.
+func AuthTypeLTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeContains applies the Contains predicate on the "auth_type" field.
+func AuthTypeContains(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeHasPrefix applies the HasPrefix predicate on the "auth_type" field.
+func AuthTypeHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeHasSuffix applies the HasSuffix predicate on the "auth_type" field.
+func AuthTypeHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeEqualFold applies the EqualFold predicate on the "auth_type" field.
+func AuthTypeEqualFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeContainsFold applies the ContainsFold predicate on the "auth_type" field.
+func AuthTypeContainsFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldAuthType), v))
 	})
 }
 

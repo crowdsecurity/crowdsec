@@ -35,12 +35,13 @@ func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string) error {
+func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authType string) error {
 	_, err := c.Ent.Bouncer.
 		Create().
 		SetName(name).
 		SetAPIKey(apiKey).
 		SetRevoked(false).
+		SetAuthType(authType).
 		Save(c.CTX)
 	if err != nil {
 		if ent.IsConstraintError(err) {
