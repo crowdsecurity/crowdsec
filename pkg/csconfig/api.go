@@ -152,11 +152,13 @@ type LocalApiServerCfg struct {
 }
 
 type TLSCfg struct {
-	CertFilePath       string `yaml:"cert_file"`
-	KeyFilePath        string `yaml:"key_file"`
-	ClientVerification int    `yaml:"client_verification"`
-	ServerName         string `yaml:"server_name"`
-	CACertPath         string `yaml:"ca_cert_path"`
+	CertFilePath       string   `yaml:"cert_file"`
+	KeyFilePath        string   `yaml:"key_file"`
+	ClientVerification int      `yaml:"client_verification"`
+	ServerName         string   `yaml:"server_name"`
+	CACertPath         string   `yaml:"ca_cert_path"`
+	AllowedAgentsOU    []string `yaml:"agents_allowed_ou"`
+	AllowedBouncersOU  []string `yaml:"bouncers_allowed_ou"`
 }
 
 func (c *Config) LoadAPIServer() error {
