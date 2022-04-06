@@ -16,7 +16,12 @@ import (
 	"golang.org/x/crypto/ocsp"
 )
 
-func ocspQuery(server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
+type TLSAuth struct {
+	allowedOUs []string
+	crlPath    string
+}
+
+func (ta *TLSAuth) ocspQuery(server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
 	req, err := ocsp.CreateRequest(cert, issuer, &ocsp.RequestOptions{Hash: crypto.SHA256})
 	if err != nil {
 		log.Errorf("TLSAuth: error creating OCSP request: %s", err)
@@ -51,7 +56,7 @@ func ocspQuery(server string, cert *x509.Certificate, issuer *x509.Certificate) 
 	return ocspResponse, err
 }
 
-func isExpired(cert *x509.Certificate) bool {
+func (ta *TLSAuth) isExpired(cert *x509.Certificate) bool {
 	now := time.Now().UTC()
 
 	if cert.NotAfter.UTC().Before(now) {
@@ -65,13 +70,13 @@ func isExpired(cert *x509.Certificate) bool {
 	return false
 }
 
-func isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
+func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	if cert.OCSPServer == nil || (cert.OCSPServer != nil && len(cert.OCSPServer) == 0) {
 		log.Infof("TLSAuth: no OCSP Server present in client certificate, skipping OCSP verification")
 		return false, nil
 	}
 	for _, server := range cert.OCSPServer {
-		ocspResponse, err := ocspQuery(server, cert, issuer)
+		ocspResponse, err := ta.ocspQuery(server, cert, issuer)
 		if err != nil {
 			log.Errorf("TLSAuth: error querying OCSP server %s: %s", server, err)
 			continue
@@ -90,12 +95,12 @@ func isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, erro
 	return true, nil
 }
 
-func isCRLRevoked(cert *x509.Certificate, crlPath string) (bool, error) {
-	if crlPath == "" {
+func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
+	if ta.crlPath == "" {
 		log.Warn("no crl_path, skipping CRL check")
 		return false, nil
 	}
-	crlContent, err := ioutil.ReadFile(crlPath)
+	crlContent, err := ioutil.ReadFile(ta.crlPath)
 	if err != nil {
 		return false, errors.Wrap(err, "could not read CRL file")
 	}
@@ -114,22 +119,22 @@ func isCRLRevoked(cert *x509.Certificate, crlPath string) (bool, error) {
 	return false, nil
 }
 
-func isRevoked(cert *x509.Certificate, issuer *x509.Certificate, crlPath string) (bool, error) {
-	revoked, err := isOCSPRevoked(cert, issuer)
+func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
+	revoked, err := ta.isOCSPRevoked(cert, issuer)
 	if err != nil {
 		return true, err
 	}
 	if revoked {
 		return revoked, nil
 	}
-	return isCRLRevoked(cert, crlPath)
+	return ta.isCRLRevoked(cert)
 }
 
-func isInvalid(cert *x509.Certificate, issuer *x509.Certificate, crlPath string) (bool, error) {
-	if isExpired(cert) {
+func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
+	if ta.isExpired(cert) {
 		return true, nil
 	}
-	revoked, err := isRevoked(cert, issuer, crlPath)
+	revoked, err := ta.isRevoked(cert, issuer)
 	if err != nil {
 		//Fail securely, if we can't check the revokation status, let's consider the cert invalid
 		//We may change this in the future based on users feedback, but this seems the most sensible thing to do
@@ -139,9 +144,9 @@ func isInvalid(cert *x509.Certificate, issuer *x509.Certificate, crlPath string)
 	return revoked, nil
 }
 
-func ValidateCert(c *gin.Context, AllowedOu []string, crlPath string) (bool, string, error) {
+func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	//Checks cert validity, Returns true + CN if client cert matches requested OU
-
+	var clientCert *x509.Certificate
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
 		//do not error if it's not TLS or there are no peer certs
 		return false, "", nil
@@ -149,13 +154,9 @@ func ValidateCert(c *gin.Context, AllowedOu []string, crlPath string) (bool, str
 
 	if len(c.Request.TLS.VerifiedChains) > 0 {
 		validOU := false
-		clientCert := c.Request.TLS.VerifiedChains[0][0]
-		if len(c.Request.TLS.VerifiedChains[0]) == 1 {
-			log.Errorf("TLSAuth: no issuer cert in chain")
-			return false, "", errors.New("no issuer cert in chain")
-		}
+		clientCert = c.Request.TLS.VerifiedChains[0][0]
 		for _, ou := range clientCert.Subject.OrganizationalUnit {
-			for _, allowedOu := range AllowedOu {
+			for _, allowedOu := range ta.allowedOUs {
 				if allowedOu == ou {
 					validOU = true
 					break
@@ -163,10 +164,10 @@ func ValidateCert(c *gin.Context, AllowedOu []string, crlPath string) (bool, str
 			}
 		}
 		if !validOU {
-			log.Errorf("TLSAuth: client certificate is not from a bouncer")
-			return false, "", fmt.Errorf("client certificate OU (%+v) doesn't match expected OU", clientCert.Subject.OrganizationalUnit)
+			return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
+				clientCert.Subject.OrganizationalUnit, ta.allowedOUs)
 		}
-		revoked, err := isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1], crlPath)
+		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
 		if err != nil {
 			log.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
 			return false, "", errors.Wrap(err, "could not check for client certification revokation status")
@@ -174,6 +175,7 @@ func ValidateCert(c *gin.Context, AllowedOu []string, crlPath string) (bool, str
 		if revoked {
 			return false, "", fmt.Errorf("client certificate is revoked")
 		}
+		log.Infof("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.allowedOUs)
 		return true, clientCert.Subject.CommonName, nil
 	}
 	return false, "", fmt.Errorf("no verified cert in request")

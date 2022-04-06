@@ -32,7 +32,7 @@ func (Machine) Fields() []ent.Field {
 		field.Bool("isValidated").
 			Default(false),
 		field.String("status").Optional(),
-		field.String("auth_type").Default(types.ApiKeyAuthType).StructTag(`json:"auth_type"`),
+		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
 	}
 }
 
