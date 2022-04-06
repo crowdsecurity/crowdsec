@@ -7,10 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -886,6 +889,52 @@ func (c *Client) FlushOrphans() {
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
+}
+
+func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
+
+	if bouncersCfg != nil {
+		if bouncersCfg.ApiDuration != nil {
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.ApiDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+		if bouncersCfg.CertDuration != nil {
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.CertDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+	}
+
+	if agentsCfg != nil {
+		if agentsCfg.CertDuration != nil {
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.CertDuration)),
+			).Where(
+				machine.HasAlerts(),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {

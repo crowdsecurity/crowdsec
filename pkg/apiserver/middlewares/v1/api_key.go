@@ -34,11 +34,11 @@ func GenerateAPIKey(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func NewAPIKey(dbClient *database.Client) *APIKey {
+func NewAPIKey(dbClient *database.Client, AllowedOu []string) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		//TLSAuth:    &TLSAuth{AllowedOU: "bouncer"},
+		AllowedOu:  AllowedOu,
 	}
 }
 
@@ -60,6 +60,7 @@ func (a *APIKey) SetAllowedOUs(allowedOu []string) error {
 		}
 		a.AllowedOu = append(a.AllowedOu, ou)
 	}
+	log.Infof("%p Allowed Bouncers OU : %v", a, a.AllowedOu)
 	return nil
 }
 

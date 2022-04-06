@@ -122,14 +122,61 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 	if config.MaxItems != nil {
 		maxItems = *config.MaxItems
 	}
-
 	if config.MaxAge != nil && *config.MaxAge != "" {
 		maxAge = *config.MaxAge
 	}
-	// Init & Start cronjob every minute
+
+	// Init & Start cronjob every minute for alerts
 	scheduler := gocron.NewScheduler(time.UTC)
-	job, _ := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	job, err := scheduler.Every(1).Minute().Do(c.FlushAlerts, maxAge, maxItems)
+	if err != nil {
+		return nil, errors.Wrap(err, "while starting FlushAlerts scheduler")
+	}
 	job.SingletonMode()
+	// Init & Start cronjob every hour for bouncers/agents
+	if config.AgentsGC != nil {
+		if config.AgentsGC.Cert != nil {
+			duration, err := types.ParseDuration(*config.AgentsGC.Cert)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing agents cert auto-delete duration")
+			}
+			config.AgentsGC.CertDuration = &duration
+		}
+		if config.AgentsGC.LoginPassword != nil {
+			duration, err := types.ParseDuration(*config.AgentsGC.LoginPassword)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing agents login/password auto-delete duration")
+			}
+			config.AgentsGC.LoginPasswordDuration = &duration
+		}
+		if config.AgentsGC.Api != nil {
+			log.Warningf("agents auto-delete for API auth is not supported (use cert or login_password)")
+		}
+	}
+	if config.BouncersGC != nil {
+		if config.BouncersGC.Cert != nil {
+			duration, err := types.ParseDuration(*config.BouncersGC.Cert)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing bouncers cert auto-delete duration")
+			}
+			config.BouncersGC.CertDuration = &duration
+		}
+		if config.BouncersGC.Api != nil {
+			duration, err := types.ParseDuration(*config.BouncersGC.Api)
+			if err != nil {
+				return nil, errors.Wrap(err, "while parsing bouncers api auto-delete duration")
+			}
+			config.BouncersGC.ApiDuration = &duration
+		}
+		if config.BouncersGC.LoginPassword != nil {
+			log.Warningf("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+		}
+	}
+	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)
+	if err != nil {
+		return nil, errors.Wrap(err, "while starting FlushAgentsAndBouncers scheduler")
+	}
+	baJob.SingletonMode()
 	scheduler.StartAsync()
 
 	return scheduler, nil

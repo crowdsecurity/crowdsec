@@ -47,7 +47,7 @@ func IdentityHandler(c *gin.Context) interface{} {
 	}
 }
 
-var AllowedOU = "bouncer"
+//var AllowedOU = "bouncer"
 
 func (j *JWT) SetAllowedOUs(allowedOu []string) error {
 	for _, ou := range allowedOu {
@@ -58,6 +58,7 @@ func (j *JWT) SetAllowedOUs(allowedOu []string) error {
 		}
 		j.AllowedOu = append(j.AllowedOu, ou)
 	}
+	log.Infof("%p Allowed Agents OU : %v", j, j.AllowedOu)
 	return nil
 }
 
@@ -69,37 +70,20 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var clientMachine *ent.Machine
 	var machineID string
 
-	/*
-		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-				validCert, extractedCN, err := ValidateCert(c, a.AllowedOu)
-				if !validCert {
-					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-					c.Abort()
-					return
-				}
-				if err != nil {
-					log.Error(err)
-					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-					c.Abort()
-					return
-				}
-				bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
-				log.Debugf("Trying to find bouncer %s for cert", bouncerName)
-				bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
-				if ent.IsNotFound(err) {
-	*/
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
+		log.Infof("j = %p", j)
+		log.Infof("ou = %v", j.AllowedOu)
 		validCert, extractedCN, err := ValidateCert(c, j.AllowedOu)
-		if !validCert {
-			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-			c.Abort()
-			return nil, fmt.Errorf("failed cert authentication")
-		}
 		if err != nil {
 			log.Error(err)
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 			return nil, errors.Wrap(err, "while trying to validate client cert")
+		}
+		if !validCert {
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			c.Abort()
+			return nil, fmt.Errorf("failed cert authentication")
 		}
 
 		machineID := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
@@ -223,7 +207,7 @@ func Unauthorized(c *gin.Context, code int, message string) {
 	})
 }
 
-func NewJWT(dbClient *database.Client) (*JWT, error) {
+func NewJWT(dbClient *database.Client, AllowedOu []string) (*JWT, error) {
 	// Get secret from environment variable "SECRET"
 	var (
 		secret []byte
@@ -249,7 +233,8 @@ func NewJWT(dbClient *database.Client) (*JWT, error) {
 	}
 
 	jwtMiddleware := &JWT{
-		DbClient: dbClient,
+		DbClient:  dbClient,
+		AllowedOu: AllowedOu,
 	}
 
 	ret, err := jwt.New(&jwt.GinJWTMiddleware{
