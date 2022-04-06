@@ -90,7 +90,31 @@ func isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, erro
 	return true, nil
 }
 
-func isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
+func isCRLRevoked(cert *x509.Certificate, crlPath string) (bool, error) {
+	if crlPath == "" {
+		log.Warn("no crl_path, skipping CRL check")
+		return false, nil
+	}
+	crlContent, err := ioutil.ReadFile(crlPath)
+	if err != nil {
+		return false, errors.Wrap(err, "could not read CRL file")
+	}
+	crl, err := x509.ParseCRL(crlContent)
+	if err != nil {
+		return false, errors.Wrap(err, "could not parse CRL file")
+	}
+	if crl.HasExpired(time.Now().UTC()) {
+		log.Warn("CRL has expired, will still validate the cert against it.")
+	}
+	for _, revoked := range crl.TBSCertList.RevokedCertificates {
+		if revoked.SerialNumber.Cmp(cert.SerialNumber) == 0 {
+			return true, fmt.Errorf("client certificate is revoked by CRL")
+		}
+	}
+	return false, nil
+}
+
+func isRevoked(cert *x509.Certificate, issuer *x509.Certificate, crlPath string) (bool, error) {
 	revoked, err := isOCSPRevoked(cert, issuer)
 	if err != nil {
 		return true, err
@@ -98,14 +122,14 @@ func isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	if revoked {
 		return revoked, nil
 	}
-	return false, nil
+	return isCRLRevoked(cert, crlPath)
 }
 
-func isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
+func isInvalid(cert *x509.Certificate, issuer *x509.Certificate, crlPath string) (bool, error) {
 	if isExpired(cert) {
 		return true, nil
 	}
-	revoked, err := isRevoked(cert, issuer)
+	revoked, err := isRevoked(cert, issuer, crlPath)
 	if err != nil {
 		//Fail securely, if we can't check the revokation status, let's consider the cert invalid
 		//We may change this in the future based on users feedback, but this seems the most sensible thing to do
@@ -115,7 +139,7 @@ func isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (bool, error) {
 	return revoked, nil
 }
 
-func ValidateCert(c *gin.Context, AllowedOu []string) (bool, string, error) {
+func ValidateCert(c *gin.Context, AllowedOu []string, crlPath string) (bool, string, error) {
 	//Checks cert validity, Returns true + CN if client cert matches requested OU
 
 	if c.Request.TLS == nil || len(c.Request.TLS.PeerCertificates) == 0 {
@@ -142,7 +166,7 @@ func ValidateCert(c *gin.Context, AllowedOu []string) (bool, string, error) {
 			log.Errorf("TLSAuth: client certificate is not from a bouncer")
 			return false, "", fmt.Errorf("client certificate OU (%+v) doesn't match expected OU", clientCert.Subject.OrganizationalUnit)
 		}
-		revoked, err := isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
+		revoked, err := isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1], crlPath)
 		if err != nil {
 			log.Errorf("TLSAuth: error checking if client certificate is revoked: %s", err)
 			return false, "", errors.Wrap(err, "could not check for client certification revokation status")
