@@ -15,7 +15,7 @@ about() {
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "${THIS_DIR}"/../../
-#shellcheck disable=SC1090
+#shellcheck disable=SC1091
 . ./.environment.sh
 
 # you have not removed set -u above, have you?
@@ -57,8 +57,9 @@ config_generate() {
        "${CONFIG_DIR}/notifications/"
 
     yq '
-    .common.daemonize=false |
+    .common.daemonize=true |
     del(.common.pid_dir) |
+    .common.log_level="info" |
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
@@ -95,6 +96,7 @@ make_init_data() {
     "${CSCLI}" collections install crowdsecurity/linux
 
     "${TEST_DIR}/instance-crowdsec" start
+    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && sleep 4
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
 

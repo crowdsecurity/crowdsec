@@ -11,12 +11,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Set up Go 1.17
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v3
       with:
         go-version: 1.17
       id: go
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Build the binaries
       run: make release
     - name: Upload to release
@@ -35,7 +35,7 @@ jobs:
         go-version: 1.17
       id: go
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: Build the binaries
       run: make release_static
     - name: Upload to release
@@ -70,7 +70,7 @@ jobs:
         cd crowdsec-${{ steps.fetch_prerelease_version.outputs.release }}
         sudo ./wizard.sh --unattended
     - name: Check out code to get functional tests scripts
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     - name: "Test post-install base"
       run: |
           cd scripts/func_tests/
