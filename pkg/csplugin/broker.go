@@ -356,8 +356,8 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 		pluginCfg.TimeOut = time.Second * 5
 	}
 
-	if pluginCfg.GroupWait == time.Second*0 {
-		pluginCfg.GroupWait = time.Second * 1
+	if pluginCfg.GroupWait == time.Second*0 && pluginCfg.GroupThreshold == 0 {
+		pluginCfg.GroupThreshold = 1
 	}
 }
 
