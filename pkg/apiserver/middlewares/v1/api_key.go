@@ -21,7 +21,8 @@ var (
 type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
-	TLSAuth    *TLSAuth
+	//TLSAuth    *TLSAuth
+	AllowedOu []string
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -36,7 +37,7 @@ func NewAPIKey(dbClient *database.Client) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		TLSAuth:    &TLSAuth{AllowedOU: "bouncer"},
+		//TLSAuth:    &TLSAuth{AllowedOU: "bouncer"},
 	}
 }
 
@@ -49,35 +50,43 @@ func HashSHA512(str string) string {
 	return hashStr
 }
 
+func (a *APIKey) SetAllowedOUs(allowedOu []string) error {
+	for _, ou := range allowedOu {
+		//just drop empty strings, I guess ?
+		if ou == "" {
+			log.Warningf("Ignoring empty OU string in Bouncers Allowed OU (api-key)")
+			continue
+		}
+		a.AllowedOu = append(a.AllowedOu, ou)
+	}
+	return nil
+}
+
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bouncer *ent.Bouncer
 		var err error
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-			validCert, bouncerName := a.TLSAuth.ValidateCert(c)
+			validCert, extractedCN, err := ValidateCert(c, a.AllowedOu)
 			if !validCert {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return
 			}
-			log.Infof("Trying to find bouncer %s for cert", bouncerName)
-			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
 			if err != nil {
-				if !strings.Contains(err.Error(), "bouncer not found") {
-					log.Errorf("auth api key error: %s", err)
-					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-					c.Abort()
-					return
-				} else {
-					bouncer = nil
-				}
+				log.Error(err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
 			}
-			log.Infof("Bouncer debug: %+v", bouncer)
-
-			if bouncer == nil {
+			bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+			log.Debugf("Trying to find bouncer %s for cert", bouncerName)
+			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
+			if ent.IsNotFound(err) {
 				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
 				//Set a random API key, but it will never be used
+				//To fix
 				apiKey, err := GenerateAPIKey(64)
 				if err != nil {
 					log.Errorf("auth api key error: %s", err)
@@ -103,6 +112,11 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				}
 				log.Infof("Got bouncer %s", bouncer.Name)
 				log.Infof("Bouncer details: %+v", bouncer)
+			} else {
+				log.Errorf("auth api key error: %s", err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
 			}
 		} else {
 			val, ok := c.Request.Header[APIKeyHeader]

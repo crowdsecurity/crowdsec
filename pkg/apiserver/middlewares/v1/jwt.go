@@ -26,6 +26,7 @@ var identityKey = "id"
 type JWT struct {
 	Middleware *jwt.GinJWTMiddleware
 	DbClient   *database.Client
+	AllowedOu  []string
 }
 
 func PayloadFunc(data interface{}) jwt.MapClaims {
@@ -47,27 +48,16 @@ func IdentityHandler(c *gin.Context) interface{} {
 
 var AllowedOU = "bouncer"
 
-func (just *JWT) ValidateCert(c *gin.Context) (bool, string) {
-	if c.Request.TLS != nil {
-		if len(c.Request.TLS.VerifiedChains) > 0 {
-			validOU := false
-			clientCert := c.Request.TLS.VerifiedChains[0][0]
-			for _, ou := range clientCert.Subject.OrganizationalUnit {
-				if AllowedOU == ou {
-					validOU = true
-				}
-			}
-			if !validOU {
-				log.Errorf("APIKey: client certificate is not from an agent")
-				return false, ""
-			}
-			return true, fmt.Sprintf("%s-%s", clientCert.Subject.CommonName, c.ClientIP())
-		} else {
-			log.Error("Found no verified certs in request")
-			return false, ""
+func (j *JWT) SetAllowedOUs(allowedOu []string) error {
+	for _, ou := range allowedOu {
+		//just drop empty strings, I guess ?
+		if ou == "" {
+			log.Warningf("Ignoring empty OU string in Agents Allowed OU (jwt)")
+			continue
 		}
+		j.AllowedOu = append(j.AllowedOu, ou)
 	}
-	return false, ""
+	return nil
 }
 
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
@@ -78,15 +68,40 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var clientMachine *ent.Machine
 	var machineID string
 
+	/*
+		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
+				validCert, extractedCN, err := ValidateCert(c, a.AllowedOu)
+				if !validCert {
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
+				if err != nil {
+					log.Error(err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
+				bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+				log.Debugf("Trying to find bouncer %s for cert", bouncerName)
+				bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
+				if ent.IsNotFound(err) {
+	*/
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-		validCert, machineID := j.ValidateCert(c)
+		validCert, extractedCN, err := ValidateCert(c, j.AllowedOu)
 		if !validCert {
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 			c.Abort()
 			return nil, fmt.Errorf("failed cert authentication")
 		}
-		log.Printf("certificate auth ok for agent %s", machineID)
+		if err != nil {
+			log.Error(err)
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			c.Abort()
+			return nil, errors.Wrap(err, "while trying to validate client cert")
+		}
 
+		machineID := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 		clientMachine, err = j.DbClient.Ent.Machine.Query().
 			Where(machine.MachineId(machineID)).
 			First(j.DbClient.CTX)
