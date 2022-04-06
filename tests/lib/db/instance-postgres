@@ -41,14 +41,14 @@ requirements() {
 }
 
 setup() {
-    exec_sql "DROP OWNED BY crowdsec_test;"
+#    exec_sql "DROP OWNED BY crowdsec_test;"
     exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
     exec_sql "CREATE DATABASE crowdsec_test;"
     exec_sql "DROP USER IF EXISTS crowdsec_test;"
     exec_sql "CREATE USER crowdsec_test WITH ENCRYPTED PASSWORD 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON DATABASE crowdsec_test TO crowdsec_test;"
-    exec_sql "GRANT USAGE ON SCHEMA public to public;"
-    exec_sql "GRANT USAGE ON SCHEMA public to crowdsec_test;"
+#    exec_sql "GRANT USAGE ON SCHEMA public to public;"
+#    exec_sql "GRANT USAGE ON SCHEMA public to crowdsec_test;"
     # exec_sql "SET log_statement='all';"
     # exec_sql "SELECT pg_reload_conf();"
 }
