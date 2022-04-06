@@ -19,10 +19,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
-}
-
-teardown() {
-    # XXX myisam stopgap
+    # some environments in CI require more time (mysql, test coverage)
     sleep 0.3
 }
 

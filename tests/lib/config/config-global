@@ -15,7 +15,7 @@ about() {
 #shellcheck disable=SC1007
 THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "${THIS_DIR}"/../../
-#shellcheck disable=SC1090
+#shellcheck disable=SC1091
 . ./.environment.sh
 
 # you have not removed set -u above, have you?

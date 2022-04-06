@@ -16,6 +16,14 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 echo "Running tests..."
 echo "DB_BACKEND: $DB_BACKEND"
+if [ -z "$TEST_COVERAGE" ]; then
+    echo "Coverage report: no"
+else
+    echo "Coverage report: yes"
+    rm -f "${LOCAL_DIR}/var/lib/coverage/*"
+    mkdir -p "${LOCAL_DIR}/var/lib/coverage"
+fi
+
 
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
 if [ "$DB_BACKEND" != "$dump_backend" ]; then
@@ -34,4 +42,8 @@ else
         --jobs 1 \
         --print-output-on-failure \
         -T "${TEST_DIR}/bats" "${TEST_DIR}/dyn-bats"
+fi
+
+if [ -n "$TEST_COVERAGE" ]; then
+    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/* > "${LOCAL_DIR}/var/lib/coverage/coverage-bats.out"
 fi
