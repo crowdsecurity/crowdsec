@@ -367,5 +367,16 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 
 func (s *APIServer) InitController() error {
 	err := s.controller.Init()
+	if err != nil {
+		return errors.Wrap(err, "controller init")
+	}
+	err = s.controller.HandlerV1.Middlewares.JWT.SetAllowedOUs(s.TLS.AllowedAgentsOU)
+	if err != nil {
+		return errors.Wrap(err, "configuring jwt allowed ous")
+	}
+	err = s.controller.HandlerV1.Middlewares.APIKey.SetAllowedOUs(s.TLS.AllowedBouncersOU)
+	if err != nil {
+		return errors.Wrap(err, "configuring api allowed ous")
+	}
 	return err
 }
