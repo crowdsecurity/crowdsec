@@ -14,18 +14,15 @@ import (
 )
 
 type Controller struct {
-	Ectx              context.Context
-	DBClient          *database.Client
-	APIKeyHeader      string
-	Middlewares       *middlewares.Middlewares
-	Profiles          []*csconfig.ProfileCfg
-	CAPIChan          chan []*models.Alert
-	PluginChannel     chan csplugin.ProfileAlert
-	ConsoleConfig     csconfig.ConsoleConfig
-	TrustedIPs        []net.IPNet
-	AllowedAgentsOU   []string
-	AllowedBouncersOU []string
-	CRLPath           string
+	Ectx          context.Context
+	DBClient      *database.Client
+	APIKeyHeader  string
+	Middlewares   *middlewares.Middlewares
+	Profiles      []*csconfig.ProfileCfg
+	CAPIChan      chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
+	ConsoleConfig csconfig.ConsoleConfig
+	TrustedIPs    []net.IPNet
 }
 
 type ControllerV1Config struct {
