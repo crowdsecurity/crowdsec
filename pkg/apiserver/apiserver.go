@@ -372,7 +372,9 @@ func (s *APIServer) InitController() error {
 	if err != nil {
 		return errors.Wrap(err, "controller init")
 	}
-	s.controller.HandlerV1.Middlewares.JWT.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedAgentsOU, CrlPath: s.TLS.CRLPath}
-	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedBouncersOU, CrlPath: s.TLS.CRLPath}
+	if s.TLS != nil {
+		s.controller.HandlerV1.Middlewares.JWT.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedAgentsOU, CrlPath: s.TLS.CRLPath}
+		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedBouncersOU, CrlPath: s.TLS.CRLPath}
+	}
 	return err
 }

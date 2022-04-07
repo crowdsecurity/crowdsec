@@ -56,8 +56,11 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var machineID string
 
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-		log.Infof("j = %p", j)
-		log.Infof("ou = %v", j.TlsAuth.AllowedOUs)
+		if j.TlsAuth == nil {
+			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+			c.Abort()
+			return nil, errors.New("TLS auth is not configured")
+		}
 		validCert, extractedCN, err := j.TlsAuth.ValidateCert(c)
 		if err != nil {
 			log.Error(err)

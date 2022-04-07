@@ -56,6 +56,12 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		var err error
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
+			if a.TlsAuth == nil {
+				log.Error("TLS Auth is not configured")
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
 			validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
 			if !validCert {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
