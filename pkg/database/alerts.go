@@ -941,6 +941,23 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
 			}
 		}
+		if agentsCfg.LoginPasswordDuration != nil {
+			log.Printf("trying to delete old agents from password")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.LoginPasswordDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.PasswordAuthType),
+			).Exec(c.CTX)
+			log.Printf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
+			}
+		}
 	}
 	return nil
 }
