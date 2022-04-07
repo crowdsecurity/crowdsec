@@ -249,13 +249,20 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	var caCert []byte
 	var err error
 	var caCertPool *x509.CertPool
-	var clientAuthType = tls.VerifyClientCertIfGiven //tls.ClientAuthType(s.TLS.ClientVerification)
+	var clientAuthType tls.ClientAuthType
 
 	if s.TLS == nil {
 		return &tls.Config{}, nil
 	}
 
+	if s.TLS.ClientVerification == nil {
+		//sounds like a sane default : verify client cert if given, but don't make it mandatory
+		clientAuthType = tls.VerifyClientCertIfGiven
+	} else {
+		clientAuthType = tls.ClientAuthType(*s.TLS.ClientVerification)
+	}
 	if clientAuthType > tls.RequestClientCert {
+		log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
 		caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
 		if err != nil {
 			return nil, errors.Wrap(err, "Error opening cert file")
@@ -271,7 +278,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 		// ClientAuth: tls.RequireAnyClientCert,		// Client certificate is required, but any client certificate is acceptable
 		// ClientAuth: tls.VerifyClientCertIfGiven,		// Client certificate will be requested and if present must be in the server's Certificate Pool
 		// ClientAuth: tls.RequireAndVerifyClientCert,	// Client certificate will be required and must be present in the server's Certificate Pool
-		ClientAuth: clientAuthType, //tls.ClientAuthType() tls.VerifyClientCertIfGiven,
+		ClientAuth: clientAuthType,
 		ClientCAs:  caCertPool,
 		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
 	}, nil
