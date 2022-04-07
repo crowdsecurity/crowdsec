@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -366,12 +367,12 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 }
 
 func (s *APIServer) InitController() error {
-	s.controller.AgentsAllowedOu = s.TLS.AllowedAgentsOU
-	s.controller.BouncersAllowedOu = s.TLS.AllowedBouncersOU
-	s.controller.CRLPath = s.TLS.CRLPath
+
 	err := s.controller.Init()
 	if err != nil {
 		return errors.Wrap(err, "controller init")
 	}
+	s.controller.HandlerV1.Middlewares.JWT.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedAgentsOU, CrlPath: s.TLS.CRLPath}
+	s.controller.HandlerV1.Middlewares.APIKey.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedBouncersOU, CrlPath: s.TLS.CRLPath}
 	return err
 }
