@@ -16,19 +16,16 @@ import (
 )
 
 type Controller struct {
-	Ectx              context.Context
-	DBClient          *database.Client
-	Router            *gin.Engine
-	Profiles          []*csconfig.ProfileCfg
-	CAPIChan          chan []*models.Alert
-	PluginChannel     chan csplugin.ProfileAlert
-	Log               *log.Logger
-	ConsoleConfig     *csconfig.ConsoleConfig
-	TrustedIPs        []net.IPNet
-	HandlerV1         *v1.Controller
-	AgentsAllowedOu   []string
-	BouncersAllowedOu []string
-	CRLPath           string
+	Ectx          context.Context
+	DBClient      *database.Client
+	Router        *gin.Engine
+	Profiles      []*csconfig.ProfileCfg
+	CAPIChan      chan []*models.Alert
+	PluginChannel chan csplugin.ProfileAlert
+	Log           *log.Logger
+	ConsoleConfig *csconfig.ConsoleConfig
+	TrustedIPs    []net.IPNet
+	HandlerV1     *v1.Controller
 }
 
 func (c *Controller) Init() error {
@@ -62,16 +59,13 @@ func (c *Controller) NewV1() error {
 	var err error
 
 	v1Config := v1.ControllerV1Config{
-		DbClient:          c.DBClient,
-		Ctx:               c.Ectx,
-		Profiles:          c.Profiles,
-		CapiChan:          c.CAPIChan,
-		PluginChannel:     c.PluginChannel,
-		ConsoleConfig:     *c.ConsoleConfig,
-		TrustedIPs:        c.TrustedIPs,
-		AllowedAgentsOU:   c.AgentsAllowedOu,
-		AllowedBouncersOU: c.BouncersAllowedOu,
-		CRLPath:           c.CRLPath,
+		DbClient:      c.DBClient,
+		Ctx:           c.Ectx,
+		Profiles:      c.Profiles,
+		CapiChan:      c.CAPIChan,
+		PluginChannel: c.PluginChannel,
+		ConsoleConfig: *c.ConsoleConfig,
+		TrustedIPs:    c.TrustedIPs,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)
