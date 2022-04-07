@@ -228,11 +228,11 @@ func TestWatcherEnroll(t *testing.T) {
 		log.Fatalf("new api client: %s", err.Error())
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{})
+	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{}, false)
 	if err != nil {
 		t.Fatalf("unexpect enroll err: %s", err)
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{})
+	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{}, false)
 	assert.Contains(t, err.Error(), "the attachment key provided is not valid")
 }
