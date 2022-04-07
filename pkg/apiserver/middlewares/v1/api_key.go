@@ -100,11 +100,18 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				}
 				log.Infof("Got bouncer %s", bouncer.Name)
 				log.Infof("Bouncer details: %+v", bouncer)
-			} else {
+			} else if err != nil {
 				log.Errorf("auth api key error: %s", err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return
+			} else {
+				if bouncer.AuthType != types.TlsAuthType {
+					log.Errorf("auth api key error: %s", err)
+					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+					c.Abort()
+					return
+				}
 			}
 		} else {
 			val, ok := c.Request.Header[APIKeyHeader]
@@ -117,6 +124,12 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			bouncer, err = a.DbClient.SelectBouncer(hashStr)
 			if err != nil {
 				log.Errorf("auth api key error: %s", err)
+				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
+				c.Abort()
+				return
+			}
+			if bouncer.AuthType != types.ApiKeyAuthType {
+				log.Errorf("bouncer %s attempted to login using an API key but it is configured to auth with TLS cert", bouncer.Name)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return

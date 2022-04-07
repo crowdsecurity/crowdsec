@@ -89,7 +89,12 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			if err != nil {
 				return "", errors.Wrapf(err, "while selecting machine entry for %s after creation", machineID)
 			}
+		} else if err != nil {
+			return "", errors.Wrapf(err, "while selecting machine entry for %s", machineID)
 		} else {
+			if clientMachine.AuthType != types.TlsAuthType {
+				return "", errors.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", machineID, clientMachine.AuthType)
+			}
 			machineID = clientMachine.MachineId
 			//we should still get the updated list of scenarios from the machine
 		}
@@ -118,6 +123,10 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		if clientMachine == nil {
 			log.Errorf("Nothing for '%s'", machineID)
 			return nil, jwt.ErrFailedAuthentication
+		}
+
+		if clientMachine.AuthType != types.PasswordAuthType {
+			return nil, errors.Errorf("machine %s attempted to auth with password but it is configured to use %s", machineID, clientMachine.AuthType)
 		}
 
 		if !clientMachine.IsValidated {

@@ -242,7 +242,7 @@ cscli machines add MyTestMachine --password MyPassword
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.ApiKeyAuthType)
+			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
