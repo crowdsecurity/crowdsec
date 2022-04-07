@@ -892,9 +892,10 @@ func (c *Client) FlushOrphans() {
 }
 
 func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
-
+	log.Printf("starting FlushAgentsAndBouncers")
 	if bouncersCfg != nil {
 		if bouncersCfg.ApiDuration != nil {
+			log.Printf("trying to delete old bouncers from api")
 			deletionCount, err := c.Ent.Bouncer.Delete().Where(
 				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.ApiDuration)),
 			).Where(
@@ -907,6 +908,8 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 			}
 		}
 		if bouncersCfg.CertDuration != nil {
+			log.Printf("trying to delete old bouncers from cert")
+
 			deletionCount, err := c.Ent.Bouncer.Delete().Where(
 				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.CertDuration)),
 			).Where(
@@ -922,11 +925,16 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 
 	if agentsCfg != nil {
 		if agentsCfg.CertDuration != nil {
+			log.Printf("trying to delete old agents from cert")
+
 			deletionCount, err := c.Ent.Machine.Delete().Where(
 				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.CertDuration)),
 			).Where(
-				machine.HasAlerts(),
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.TlsAuthType),
 			).Exec(c.CTX)
+			log.Printf("deleted %d entries", deletionCount)
 			if err != nil {
 				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
 			} else if deletionCount > 0 {
