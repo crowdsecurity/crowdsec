@@ -7,16 +7,16 @@ type Middlewares struct {
 	JWT    *JWT
 }
 
-func NewMiddlewares(dbClient *database.Client, AllowedAgentsOU []string, AllowedBouncersOU []string, CRLPath string) (*Middlewares, error) {
+func NewMiddlewares(dbClient *database.Client) (*Middlewares, error) {
 	var err error
 
 	ret := &Middlewares{}
 
-	ret.JWT, err = NewJWT(dbClient, AllowedAgentsOU, CRLPath)
+	ret.JWT, err = NewJWT(dbClient)
 	if err != nil {
 		return &Middlewares{}, err
 	}
 
-	ret.APIKey = NewAPIKey(dbClient, AllowedBouncersOU, CRLPath)
+	ret.APIKey = NewAPIKey(dbClient)
 	return ret, nil
 }
