@@ -25,6 +25,7 @@ type DecisionsStreamOpts struct {
 	Scopes                 string `url:"scopes,omitempty"`
 	ScenariosContaining    string `url:"scenarios_containing,omitempty"`
 	ScenariosNotContaining string `url:"scenarios_not_containing,omitempty"`
+	Origins                string `url:"origins,omitempty"`
 }
 
 func (o *DecisionsStreamOpts) addQueryParamsToURL(url string) (string, error) {
