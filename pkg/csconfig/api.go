@@ -159,6 +159,7 @@ type TLSCfg struct {
 	CACertPath         string   `yaml:"ca_cert_path"`
 	AllowedAgentsOU    []string `yaml:"agents_allowed_ou"`
 	AllowedBouncersOU  []string `yaml:"bouncers_allowed_ou"`
+	CRLPath            string   `yaml:"crl_path"`
 }
 
 func (c *Config) LoadAPIServer() error {

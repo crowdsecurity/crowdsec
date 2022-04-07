@@ -28,6 +28,7 @@ type Controller struct {
 	HandlerV1         *v1.Controller
 	AgentsAllowedOu   []string
 	BouncersAllowedOu []string
+	CRLPath           string
 }
 
 func (c *Controller) Init() error {
@@ -70,22 +71,13 @@ func (c *Controller) NewV1() error {
 		TrustedIPs:        c.TrustedIPs,
 		AllowedAgentsOU:   c.AgentsAllowedOu,
 		AllowedBouncersOU: c.BouncersAllowedOu,
+		CRLPath:           c.CRLPath,
 	}
 
 	c.HandlerV1, err = v1.New(&v1Config)
 	if err != nil {
 		return err
 	}
-	/*
-		err = c.HandlerV1.Middlewares.JWT.SetAllowedOUs(c.AgentsAllowedOu)
-		if err != nil {
-			return errors.Wrap(err, "setting allowed agents ou")
-		}
-		c.HandlerV1.Middlewares.APIKey.SetAllowedOUs(c.BouncersAllowedOu)
-		if err != nil {
-			return errors.Wrap(err, "setting allowed bouncers ou")
-		}
-	*/
 	c.Router.GET("/health", gin.WrapF(serveHealth()))
 	c.Router.Use(v1.PrometheusMiddleware())
 	c.Router.HandleMethodNotAllowed = true

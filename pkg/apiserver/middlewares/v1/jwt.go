@@ -27,7 +27,7 @@ var identityKey = "id"
 type JWT struct {
 	Middleware *jwt.GinJWTMiddleware
 	DbClient   *database.Client
-	AllowedOu  []string
+	TlsAuth    *TLSAuth
 }
 
 func PayloadFunc(data interface{}) jwt.MapClaims {
@@ -47,21 +47,6 @@ func IdentityHandler(c *gin.Context) interface{} {
 	}
 }
 
-//var AllowedOU = "bouncer"
-
-func (j *JWT) SetAllowedOUs(allowedOu []string) error {
-	for _, ou := range allowedOu {
-		//just drop empty strings, I guess ?
-		if ou == "" {
-			log.Warningf("Ignoring empty OU string in Agents Allowed OU (jwt)")
-			continue
-		}
-		j.AllowedOu = append(j.AllowedOu, ou)
-	}
-	log.Infof("%p Allowed Agents OU : %v", j, j.AllowedOu)
-	return nil
-}
-
 func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var loginInput models.WatcherAuthRequest
 	var scenarios string
@@ -72,8 +57,8 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 		log.Infof("j = %p", j)
-		log.Infof("ou = %v", j.AllowedOu)
-		validCert, extractedCN, err := ValidateCert(c, j.AllowedOu)
+		log.Infof("ou = %v", j.TlsAuth.AllowedOUs)
+		validCert, extractedCN, err := j.TlsAuth.ValidateCert(c)
 		if err != nil {
 			log.Error(err)
 			c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
@@ -207,7 +192,7 @@ func Unauthorized(c *gin.Context, code int, message string) {
 	})
 }
 
-func NewJWT(dbClient *database.Client, AllowedOu []string) (*JWT, error) {
+func NewJWT(dbClient *database.Client, AllowedOu []string, CRLPath string) (*JWT, error) {
 	// Get secret from environment variable "SECRET"
 	var (
 		secret []byte
@@ -233,8 +218,8 @@ func NewJWT(dbClient *database.Client, AllowedOu []string) (*JWT, error) {
 	}
 
 	jwtMiddleware := &JWT{
-		DbClient:  dbClient,
-		AllowedOu: AllowedOu,
+		DbClient: dbClient,
+		TlsAuth:  &TLSAuth{AllowedOUs: AllowedOu, CrlPath: CRLPath},
 	}
 
 	ret, err := jwt.New(&jwt.GinJWTMiddleware{
@@ -262,5 +247,5 @@ func NewJWT(dbClient *database.Client, AllowedOu []string) (*JWT, error) {
 		return &JWT{}, err
 	}
 
-	return &JWT{Middleware: ret}, nil
+	return &JWT{Middleware: ret, TlsAuth: &TLSAuth{}}, nil
 }

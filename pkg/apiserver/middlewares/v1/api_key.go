@@ -22,8 +22,7 @@ var (
 type APIKey struct {
 	HeaderName string
 	DbClient   *database.Client
-	//TLSAuth    *TLSAuth
-	AllowedOu []string
+	TlsAuth    *TLSAuth
 }
 
 func GenerateAPIKey(n int) (string, error) {
@@ -34,11 +33,11 @@ func GenerateAPIKey(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func NewAPIKey(dbClient *database.Client, AllowedOu []string) *APIKey {
+func NewAPIKey(dbClient *database.Client, AllowedOu []string, CRLPath string) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		AllowedOu:  AllowedOu,
+		TlsAuth:    &TLSAuth{AllowedOUs: AllowedOu, CrlPath: CRLPath},
 	}
 }
 
@@ -51,26 +50,13 @@ func HashSHA512(str string) string {
 	return hashStr
 }
 
-func (a *APIKey) SetAllowedOUs(allowedOu []string) error {
-	for _, ou := range allowedOu {
-		//just drop empty strings, I guess ?
-		if ou == "" {
-			log.Warningf("Ignoring empty OU string in Bouncers Allowed OU (api-key)")
-			continue
-		}
-		a.AllowedOu = append(a.AllowedOu, ou)
-	}
-	log.Infof("%p Allowed Bouncers OU : %v", a, a.AllowedOu)
-	return nil
-}
-
 func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var bouncer *ent.Bouncer
 		var err error
 
 		if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
-			validCert, extractedCN, err := ValidateCert(c, a.AllowedOu)
+			validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
 			if !validCert {
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()

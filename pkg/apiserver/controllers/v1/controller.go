@@ -25,6 +25,7 @@ type Controller struct {
 	TrustedIPs        []net.IPNet
 	AllowedAgentsOU   []string
 	AllowedBouncersOU []string
+	CRLPath           string
 }
 
 type ControllerV1Config struct {
@@ -37,6 +38,7 @@ type ControllerV1Config struct {
 	TrustedIPs        []net.IPNet
 	AllowedAgentsOU   []string
 	AllowedBouncersOU []string
+	CRLPath           string
 }
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
@@ -52,8 +54,9 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		TrustedIPs:        cfg.TrustedIPs,
 		AllowedAgentsOU:   cfg.AllowedAgentsOU,
 		AllowedBouncersOU: cfg.AllowedBouncersOU,
+		CRLPath:           cfg.CRLPath,
 	}
-	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient, cfg.AllowedAgentsOU, cfg.AllowedBouncersOU)
+	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient, cfg.AllowedAgentsOU, cfg.AllowedBouncersOU, cfg.CRLPath)
 	if err != nil {
 		return v1, err
 	}

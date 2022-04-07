@@ -17,8 +17,8 @@ import (
 )
 
 type TLSAuth struct {
-	allowedOUs []string
-	crlPath    string
+	AllowedOUs []string
+	CrlPath    string
 }
 
 func (ta *TLSAuth) ocspQuery(server string, cert *x509.Certificate, issuer *x509.Certificate) (*ocsp.Response, error) {
@@ -96,17 +96,19 @@ func (ta *TLSAuth) isOCSPRevoked(cert *x509.Certificate, issuer *x509.Certificat
 }
 
 func (ta *TLSAuth) isCRLRevoked(cert *x509.Certificate) (bool, error) {
-	if ta.crlPath == "" {
+	if ta.CrlPath == "" {
 		log.Warn("no crl_path, skipping CRL check")
 		return false, nil
 	}
-	crlContent, err := ioutil.ReadFile(ta.crlPath)
+	crlContent, err := ioutil.ReadFile(ta.CrlPath)
 	if err != nil {
-		return false, errors.Wrap(err, "could not read CRL file")
+		log.Warnf("could not read CRL file, skipping check: %s", err)
+		return false, nil
 	}
 	crl, err := x509.ParseCRL(crlContent)
 	if err != nil {
-		return false, errors.Wrap(err, "could not parse CRL file")
+		log.Warnf("could not parse CRL file, skipping check: %s", err)
+		return false, nil
 	}
 	if crl.HasExpired(time.Now().UTC()) {
 		log.Warn("CRL has expired, will still validate the cert against it.")
@@ -156,7 +158,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		validOU := false
 		clientCert = c.Request.TLS.VerifiedChains[0][0]
 		for _, ou := range clientCert.Subject.OrganizationalUnit {
-			for _, allowedOu := range ta.allowedOUs {
+			for _, allowedOu := range ta.AllowedOUs {
 				if allowedOu == ou {
 					validOU = true
 					break
@@ -165,7 +167,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		}
 		if !validOU {
 			return false, "", fmt.Errorf("client certificate OU (%v) doesn't match expected OU (%v)",
-				clientCert.Subject.OrganizationalUnit, ta.allowedOUs)
+				clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
 		}
 		revoked, err := ta.isInvalid(clientCert, c.Request.TLS.VerifiedChains[0][1])
 		if err != nil {
@@ -175,7 +177,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		if revoked {
 			return false, "", fmt.Errorf("client certificate is revoked")
 		}
-		log.Infof("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.allowedOUs)
+		log.Infof("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
 		return true, clientCert.Subject.CommonName, nil
 	}
 	return false, "", fmt.Errorf("no verified cert in request")
