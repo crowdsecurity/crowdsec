@@ -146,6 +146,27 @@ func (ta *TLSAuth) isInvalid(cert *x509.Certificate, issuer *x509.Certificate) (
 	return revoked, nil
 }
 
+func (ta *TLSAuth) SetAllowedOu(allowedOus []string) error {
+	for _, ou := range allowedOus {
+		//disallow empty ou
+		if ou == "" {
+			return fmt.Errorf("allowed ou isn't allowed")
+		}
+		//drop & warn on duplicate ou
+		ok := true
+		for _, validOu := range ta.AllowedOUs {
+			if validOu == ou {
+				log.Warningf("dropping duplicate ou %s", ou)
+				ok = false
+			}
+		}
+		if ok {
+			ta.AllowedOUs = append(ta.AllowedOUs, ou)
+		}
+	}
+	return nil
+}
+
 func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 	//Checks cert validity, Returns true + CN if client cert matches requested OU
 	var clientCert *x509.Certificate

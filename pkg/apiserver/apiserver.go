@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
-	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -380,8 +379,14 @@ func (s *APIServer) InitController() error {
 		return errors.Wrap(err, "controller init")
 	}
 	if s.TLS != nil {
-		s.controller.HandlerV1.Middlewares.JWT.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedAgentsOU, CrlPath: s.TLS.CRLPath}
-		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth = &v1.TLSAuth{AllowedOUs: s.TLS.AllowedBouncersOU, CrlPath: s.TLS.CRLPath}
+		s.controller.HandlerV1.Middlewares.JWT.TlsAuth.CrlPath = s.TLS.CRLPath
+		if err := s.controller.HandlerV1.Middlewares.JWT.TlsAuth.SetAllowedOu(s.TLS.AllowedAgentsOU); err != nil {
+			return errors.Wrapf(err, "while setting allowed agents OUs (jwt)")
+		}
+		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth.CrlPath = s.TLS.CRLPath
+		if err := s.controller.HandlerV1.Middlewares.JWT.TlsAuth.SetAllowedOu(s.TLS.AllowedBouncersOU); err != nil {
+			return errors.Wrapf(err, "while setting allowed bouncers OUs (api-key)")
+		}
 	}
 	return err
 }
