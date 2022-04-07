@@ -33,11 +33,11 @@ func GenerateAPIKey(n int) (string, error) {
 	return hex.EncodeToString(bytes), nil
 }
 
-func NewAPIKey(dbClient *database.Client, AllowedOu []string, CRLPath string) *APIKey {
+func NewAPIKey(dbClient *database.Client) *APIKey {
 	return &APIKey{
 		HeaderName: APIKeyHeader,
 		DbClient:   dbClient,
-		TlsAuth:    &TLSAuth{AllowedOUs: AllowedOu, CrlPath: CRLPath},
+		TlsAuth:    &TLSAuth{},
 	}
 }
 

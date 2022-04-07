@@ -201,7 +201,7 @@ func Unauthorized(c *gin.Context, code int, message string) {
 	})
 }
 
-func NewJWT(dbClient *database.Client, AllowedOu []string, CRLPath string) (*JWT, error) {
+func NewJWT(dbClient *database.Client) (*JWT, error) {
 	// Get secret from environment variable "SECRET"
 	var (
 		secret []byte
@@ -228,7 +228,7 @@ func NewJWT(dbClient *database.Client, AllowedOu []string, CRLPath string) (*JWT
 
 	jwtMiddleware := &JWT{
 		DbClient: dbClient,
-		TlsAuth:  &TLSAuth{AllowedOUs: AllowedOu, CrlPath: CRLPath},
+		TlsAuth:  &TLSAuth{},
 	}
 
 	ret, err := jwt.New(&jwt.GinJWTMiddleware{
@@ -246,15 +246,15 @@ func NewJWT(dbClient *database.Client, AllowedOu []string, CRLPath string) (*JWT
 		TokenHeadName:   "Bearer",
 		TimeFunc:        time.Now,
 	})
+	if err != nil {
+		return &JWT{}, err
+	}
 
 	errInit := ret.MiddlewareInit()
 	if errInit != nil {
 		return &JWT{}, fmt.Errorf("authMiddleware.MiddlewareInit() Error:" + errInit.Error())
 	}
+	jwtMiddleware.Middleware = ret
 
-	if err != nil {
-		return &JWT{}, err
-	}
-
-	return &JWT{Middleware: ret, TlsAuth: &TLSAuth{}}, nil
+	return jwtMiddleware, nil
 }
