@@ -56,9 +56,11 @@ make_init_data() {
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
     "${TEST_DIR}/instance-crowdsec" stop
+    
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
+    "${CSCLI}" decisions delete --all
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
 
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
