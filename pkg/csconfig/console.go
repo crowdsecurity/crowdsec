@@ -21,7 +21,6 @@ const (
 var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_LABEL}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
-var DefaultLabelsConfigFilePath = DefaultConfigPath("console", "labels.yaml")
 
 type ConsoleConfig struct {
 	ShareManualDecisions  *bool               `yaml:"share_manual_decisions"`
@@ -50,15 +49,6 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	err = yaml.Unmarshal(yamlFile, c.ConsoleConfig)
 	if err != nil {
 		return fmt.Errorf("unmarshaling console config file '%s': %s", c.ConsoleConfigPath, err)
-	}
-
-	yamlFile, err = ioutil.ReadFile(DefaultLabelsConfigFilePath)
-	if err != nil {
-		return fmt.Errorf("reading console config file '%s': %s", DefaultLabelsConfigFilePath, err)
-	}
-	err = yaml.Unmarshal(yamlFile, c.ConsoleConfig.LabelsToSend)
-	if err != nil {
-		return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultLabelsConfigFilePath, err)
 	}
 
 	if c.ConsoleConfig.ShareCustomScenarios == nil {
@@ -99,21 +89,6 @@ func (c *LocalApiServerCfg) DumpConsoleConfig() error {
 
 	if err := os.WriteFile(c.ConsoleConfigPath, out, 0600); err != nil {
 		return errors.Wrapf(err, "while dumping console config to %s", c.ConsoleConfigPath)
-	}
-
-	return nil
-}
-
-func (c *LocalApiServerCfg) DumpLabelConfigFile() error {
-	var out []byte
-	var err error
-
-	if out, err = yaml.Marshal(c.ConsoleConfig.LabelsToSend); err != nil {
-		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", DefaultLabelsConfigFilePath)
-	}
-
-	if err := os.WriteFile(DefaultLabelsConfigFilePath, out, 0600); err != nil {
-		return errors.Wrapf(err, "while dumping console config to %s", DefaultLabelsConfigFilePath)
 	}
 
 	return nil

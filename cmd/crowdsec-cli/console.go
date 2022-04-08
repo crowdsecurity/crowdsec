@@ -39,6 +39,10 @@ func NewConsoleCmd() *cobra.Command {
 				}
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
+			if err := csConfig.LoadCrowdsec(); err != nil {
+				log.Fatalf("Unable to load CrowdSec Agent: %s", err)
+			}
+
 			if csConfig.DisableAPI {
 				log.Fatal("Local API is disabled, please run this command on the local API machine")
 			}
@@ -280,7 +284,7 @@ Disable given information push to the central API.`,
 				}
 				csConfig.API.Server.ConsoleConfig.LabelsToSend[key] = data
 			}
-			if err := csConfig.API.Server.DumpLabelConfigFile(); err != nil {
+			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
