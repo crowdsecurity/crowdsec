@@ -428,7 +428,7 @@ func (a *apic) PullTop() error {
 	}
 
 	if len(data.New) == 0 {
-		log.Warnf("capi/community-blocklist : received 0 new entries, CAPI failure ?")
+		log.Infof("capi/community-blocklist : received 0 new entries (expected if you just installed crowdsec)")
 		return nil
 	}
 

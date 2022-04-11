@@ -153,7 +153,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		log.Fatalf("failed to make branch hidden : %s", err)
 	}
 
-	if os.Args[1] != "completion" {
+	if len(os.Args) > 1 && os.Args[1] != "completion" {
 		cobra.OnInitialize(initConfig)
 	}
 

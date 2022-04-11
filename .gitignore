@@ -7,8 +7,9 @@
 *~
 .pc
 
-# Test binary, built with `go test -c`
+# Test binaries, built with `go test -c`
 *.test
+*.cover
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
@@ -19,7 +20,6 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-
 
 # crowdsec binaries
 cmd/crowdsec-cli/cscli

@@ -118,8 +118,14 @@ clean: testclean
 cscli: goversion
 	@$(MAKE) -C $(CSCLI_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
 
+cscli-bincover: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CSCLI_FOLDER) build-bincover --no-print-directory
+
 crowdsec: goversion
 	@$(MAKE) -C $(CROWDSEC_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
+
+crowdsec-bincover: goversion
+	@GOARCH=$(GOARCH) GOOS=$(GOOS) $(MAKE) -C $(CROWDSEC_FOLDER) build-bincover --no-print-directory
 
 http-plugin: goversion
 	@$(MAKE) -C $(HTTP_PLUGIN_FOLDER) build --no-print-directory GOARCH=$(GOARCH) GOOS=$(GOOS) RM="$(RM)" WIN_IGNORE_ERR="$(WIN_IGNORE_ERR)" CP="$(CP)" CPR="$(CPR)" MKDIR="$(MKDIR)"
