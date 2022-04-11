@@ -194,7 +194,7 @@ package-common:
 	@$(CP) $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
 	@$(CP) $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
 
-	@cp -R ./config/ $(RELDIR)
+	@$(CPR) ./config $(RELDIR)
 	@$(CP) wizard.sh $(RELDIR)
 	@$(CP) scripts/test_env.sh $(RELDIR)
 	@$(CP) scripts/test_env.ps1 $(RELDIR)

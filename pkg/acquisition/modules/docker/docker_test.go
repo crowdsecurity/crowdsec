@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	dockerTypes "github.com/docker/docker/api/types"
+	dockerContainer "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
@@ -231,6 +232,15 @@ func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, o
 		ret += fmt.Sprintf("%s%s\n", startLineByte, line)
 	}
 	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
+	return r, nil
+}
+
+func (cli *mockDockerCli) ContainerInspect(ctx context.Context, c string) (dockerTypes.ContainerJSON, error) {
+	r := dockerTypes.ContainerJSON{
+		Config: &dockerContainer.Config{
+			Tty: false,
+		},
+	}
 	return r, nil
 }
 

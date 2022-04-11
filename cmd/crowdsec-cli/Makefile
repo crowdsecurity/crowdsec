@@ -24,7 +24,7 @@ build: clean
 	@$(GOBUILD) $(LD_OPTS) -o $(BINARY_NAME) -v
 
 build-bincover: clean
-	$(GOTEST) . -tags testrunmain -coverpkg=all -covermode=atomic $(LD_OPTS) -c -o $(BINARY_NAME_COVER)
+	$(GOTEST) . -tags testrunmain -coverpkg=$(go list github.com/crowdsecurity/crowdsec/... | grep -v -e 'pkg/database' -e 'plugins/notifications' -e 'pkg/protobufs' -e 'pkg/cwversions' -e 'pkg/cstest' -e 'pkg/models') -covermode=atomic $(LD_OPTS) -c -o $(BINARY_NAME_COVER)
 
 static: clean
 	@$(GOBUILD) $(LD_OPTS_STATIC) -o $(BINARY_NAME) -v -a -tags netgo

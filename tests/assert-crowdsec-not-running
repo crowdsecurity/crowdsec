@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 
-pgrep crowdsec >/dev/null || exit 0
+is_crowdsec_running() {
+    PIDS=$(pgrep -x 'crowdsec|crowdsec.test|crowdsec.cover')
+}
 
-# removing this second test causes CI to fail sometimes
+is_crowdsec_running || exit 0
+
+# The process can be slow, especially on CI and during test coverage.
+# Give it some time, maybe it's quitting soon.
 sleep 2
-pgrep crowdsec >/dev/null || exit 0
+is_crowdsec_running || exit 0
+sleep 2
+is_crowdsec_running || exit 0
 
-msg="A CrowdSec process is already running. Please terminate it and run the tests again."
+PIDS=$(echo "$PIDS" | sed ':a;N;$!ba;s/\n/ /g')
+msg="CrowdSec is already running (PID $PIDS). Please terminate it and run the tests again."
 
 # Are we inside a setup() or @test? Is file descriptor 3 open?
 if { true >&3; } 2>/dev/null; then
