@@ -161,7 +161,7 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				continue
 			}
 			//wrong file
-			if v.Name+".yaml" != fauthor+"/"+fname {
+			if v.Name+".yaml" != fauthor+"/"+fname && v.Name+".yml" != fauthor+"/"+fname {
 				continue
 			}
 			if path == hubdir+"/"+v.RemotePath {
