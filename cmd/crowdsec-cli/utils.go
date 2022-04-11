@@ -286,7 +286,7 @@ func UpgradeConfig(itemType string, name string, force bool) {
 				continue
 			}
 		}
-		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, true)
+		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, false)
 		if err != nil {
 			log.Fatalf("%s : download failed : %v", v.Name, err)
 		}
