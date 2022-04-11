@@ -88,7 +88,8 @@ func WindowsRun() {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
-	if err := Serve(cConfig); err != nil {
-		log.Fatalf(err.Error())
+	if rc, err := Serve(cConfig); err != nil {
+		log.Errorf(err.Error())
+		os.Exit(rc)
 	}
 }
