@@ -274,15 +274,15 @@ Disable given information push to the central API.`,
 		Short:             "Add label to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if _, ok := csConfig.API.Server.ConsoleConfig.LabelsToSend[key]; !ok {
-				csConfig.API.Server.ConsoleConfig.LabelsToSend[key] = make([]string, 0)
+			if _, ok := csConfig.Crowdsec.LabelsToSend[key]; !ok {
+				csConfig.Crowdsec.LabelsToSend[key] = make([]string, 0)
 			}
-			data := csConfig.API.Server.ConsoleConfig.LabelsToSend[key]
+			data := csConfig.Crowdsec.LabelsToSend[key]
 			for _, val := range values {
 				if !inSlice(val, data) {
 					data = append(data, val)
 				}
-				csConfig.API.Server.ConsoleConfig.LabelsToSend[key] = data
+				csConfig.Crowdsec.LabelsToSend[key] = data
 			}
 			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
 				log.Fatalf(err.Error())

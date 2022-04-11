@@ -144,9 +144,11 @@ func (c *CrowdsecServiceCfg) DumpLabelConfigFile() error {
 		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", DefaultLabelsConfigFilePath)
 	}
 
-	if err := os.WriteFile(DefaultLabelsConfigFilePath, out, 0600); err != nil {
+	if err := os.WriteFile(c.ConsoleLabelsPath, out, 0600); err != nil {
 		return errors.Wrapf(err, "while dumping console config to %s", DefaultLabelsConfigFilePath)
 	}
+
+	log.Infof("%s file saved", c.ConsoleLabelsPath)
 
 	return nil
 }

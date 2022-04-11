@@ -23,16 +23,14 @@ var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEN
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
 type ConsoleConfig struct {
-	ShareManualDecisions  *bool               `yaml:"share_manual_decisions"`
-	ShareTaintedScenarios *bool               `yaml:"share_tainted"`
-	ShareCustomScenarios  *bool               `yaml:"share_custom"`
-	ShareLabel            *bool               `yaml:"share_labels"`
-	LabelsToSend          map[string][]string `yaml:"-"`
+	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
+	ShareTaintedScenarios *bool `yaml:"share_tainted"`
+	ShareCustomScenarios  *bool `yaml:"share_custom"`
+	ShareLabel            *bool `yaml:"share_labels"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 	c.ConsoleConfig = &ConsoleConfig{}
-	c.ConsoleConfig.LabelsToSend = make(map[string][]string)
 	if _, err := os.Stat(c.ConsoleConfigPath); err != nil && os.IsNotExist(err) {
 		log.Debugf("no console configuration to load")
 		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
