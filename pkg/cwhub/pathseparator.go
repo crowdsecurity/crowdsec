@@ -1,3 +1,4 @@
+//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
 // +build linux freebsd netbsd openbsd solaris !windows
 
 package cwhub
@@ -15,7 +16,7 @@ func CheckSuffix(hubpath string, remotePath string) bool {
 }
 
 func CheckName(vname string, fauthor string, fname string) bool {
-	if vname+".yaml" != fauthor+"/"+fname {
+	if vname+".yaml" != fauthor+"/"+fname && vname+".yml" != fauthor+"/"+fname {
 		return true
 	} else {
 		return false
