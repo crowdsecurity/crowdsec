@@ -15,9 +15,9 @@ func CheckSuffix(hubpath string, remotePath string) bool {
 }
 
 func CheckName(vname string, fauthor string, fname string) bool {
-	//if vname+".yaml" != fauthor+"/"+fname {
-	//	return true
-	//} else {
-	return false
-	//}
+	if vname+".yaml" != fauthor+"/"+fname && vname+".yml" != fauthor+"/"+fname {
+		return true
+	} else {
+		return false
+	}
 }
