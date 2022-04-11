@@ -48,7 +48,7 @@ func StartRunSvc() {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
-	if if rc, err := Serve(cConfig); err != nil {
+	if rc, err := Serve(cConfig); err != nil {
 		log.Errorf(err.Error())
 		os.Exit(rc)
 	}
