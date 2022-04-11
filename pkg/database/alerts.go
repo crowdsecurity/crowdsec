@@ -392,7 +392,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				return []string{}, errors.Wrapf(BulkError, "creating alert events: %s", err)
 			}
 		}
-
 		if len(alertItem.Meta) > 0 {
 			metaBulk := make([]*ent.MetaCreate, len(alertItem.Meta))
 			for i, metaItem := range alertItem.Meta {

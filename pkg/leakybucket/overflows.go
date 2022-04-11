@@ -1,6 +1,7 @@
 package leakybucket
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
@@ -232,7 +234,42 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
-func EventToLabel(Queue) {
+func EventToLabel(labels map[string][]*vm.Program, queue *Queue) models.Meta {
+	meta := make([]*models.MetaItems0, 0)
+	for _, evt := range queue.Queue {
+		for key, values := range labels {
+			tmpMeta := models.MetaItems0{}
+			tmpMeta.Key = key
+			tmpValue := make([]string, 0)
+
+			for _, value := range values {
+				var val string
+				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
+				if err != nil {
+					log.Warningf("failed to get value of '%v': %v", value, err)
+					continue
+				}
+				switch out := output.(type) {
+				case string:
+					val = out
+				case int:
+					val = strconv.Itoa(out)
+				default:
+					log.Warningf("unexpected return type for label to send : %T", output)
+					continue
+				}
+				tmpValue = append(tmpValue, val)
+			}
+			valueBytes, err := json.Marshal(tmpValue)
+			if err != nil {
+				log.Warningf("unable to marshall label values to send: %s", err)
+			}
+			tmpMeta.Value = string(valueBytes)
+			meta = append(meta, &tmpMeta)
+		}
+	}
+	ret := models.Meta(meta)
+	return ret
 
 }
 
@@ -296,6 +333,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
+	apiAlert.Meta = EventToLabel(leaky.LabelsToSend, leaky.Queue)
 
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {
@@ -321,5 +359,6 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	if leaky.Reprocess {
 		runtimeAlert.Reprocess = true
 	}
+
 	return runtimeAlert, nil
 }

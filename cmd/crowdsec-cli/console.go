@@ -20,6 +20,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v2"
 )
 
 func NewConsoleCmd() *cobra.Command {
@@ -294,6 +295,21 @@ Disable given information push to the central API.`,
 	cmdLabelAdd.MarkFlagRequired("key")
 	cmdLabelAdd.MarkFlagRequired("value")
 	cmdLabel.AddCommand(cmdLabelAdd)
+
+	cmdLabelStatus := &cobra.Command{
+		Use:               "status",
+		Short:             "List label to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			dump, err := yaml.Marshal(csConfig.Crowdsec.LabelsToSend)
+			if err != nil {
+				log.Fatalf("unable to show labels status: %s", err)
+			}
+			fmt.Println(dump)
+
+		},
+	}
+	cmdLabel.AddCommand(cmdLabelStatus)
 
 	cmdConsole.AddCommand(cmdLabel)
 
