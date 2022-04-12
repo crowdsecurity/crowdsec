@@ -37,6 +37,9 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
+//The broker is reponsible for running the plugins and dispatching events
+//It receives all the events from the main process and stacks them up
+//It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
@@ -100,6 +103,7 @@ func (pb *PluginBroker) Kill() {
 }
 
 func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
+	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(tomb)
 	for {
 		select {
@@ -109,6 +113,7 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 		case pluginName := <-pb.watcher.PluginEvents:
 			// this can be ran in goroutine, but then locks will be needed
 			pluginMutex.Lock()
+			log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
 			tmpAlerts := pb.alertsByPluginName[pluginName]
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
@@ -248,10 +253,12 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 }
 
 func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
+
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Executing plugin %s", binaryPath)
 	cmd := exec.Command(binaryPath)
 	if pb.pluginProcConfig.User != "" || pb.pluginProcConfig.Group != "" {
 		if !(pb.pluginProcConfig.User != "" && pb.pluginProcConfig.Group != "") {
@@ -293,7 +300,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
-	log.WithField("plugin", pluginName).Debug("pushing alerts to plugin")
+	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
 	if len(alerts) == 0 {
 		return nil
 	}
@@ -356,8 +363,13 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 		pluginCfg.TimeOut = time.Second * 5
 	}
 
-	if pluginCfg.GroupWait == time.Second*0 {
-		pluginCfg.GroupWait = time.Second * 1
+	// if pluginCfg.GroupWait == time.Second*0 {
+	// 	pluginCfg.GroupWait = time.Second * 1
+	// }
+
+	if pluginCfg.GroupWait == time.Second*0 && pluginCfg.GroupThreshold == 0 {
+		log.Printf("GroupThreshold is set to 1 by default")
+		pluginCfg.GroupThreshold = 1
 	}
 }
 
