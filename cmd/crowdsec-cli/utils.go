@@ -42,6 +42,24 @@ func inSlice(s string, slice []string) bool {
 	return false
 }
 
+func removeFromSlice(val string, slice []string) []string {
+	var i int
+	var value string
+
+	// get the index
+	for i, value = range slice {
+		if value == val {
+			break
+		}
+	}
+	slice[i] = slice[len(slice)-1]
+	slice[len(slice)-1] = ""
+	slice = slice[:len(slice)-1]
+
+	return slice
+
+}
+
 func indexOf(s string, slice []string) int {
 	for i, elem := range slice {
 		if s == elem {

@@ -268,30 +268,32 @@ Disable given information push to the central API.`,
 		},
 	}
 
-	var key string
-	var values []string
+	var keyToAdd string
+	var valuesToAdd []string
 	cmdLabelAdd := &cobra.Command{
 		Use:               "add",
 		Short:             "Add label to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if _, ok := csConfig.Crowdsec.LabelsToSend[key]; !ok {
-				csConfig.Crowdsec.LabelsToSend[key] = make([]string, 0)
+			if _, ok := csConfig.Crowdsec.LabelsToSend[keyToAdd]; !ok {
+				csConfig.Crowdsec.LabelsToSend[keyToAdd] = make([]string, 0)
+				log.Infof("key '%s' added", keyToAdd)
 			}
-			data := csConfig.Crowdsec.LabelsToSend[key]
-			for _, val := range values {
+			data := csConfig.Crowdsec.LabelsToSend[keyToAdd]
+			for _, val := range valuesToAdd {
 				if !inSlice(val, data) {
+					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
 					data = append(data, val)
 				}
-				csConfig.Crowdsec.LabelsToSend[key] = data
+				csConfig.Crowdsec.LabelsToSend[keyToAdd] = data
 			}
 			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
 	}
-	cmdLabelAdd.Flags().StringVarP(&key, "key", "k", "", "The key of the different values to send")
-	cmdLabelAdd.Flags().StringSliceVar(&values, "value", []string{}, "The expr fields to associate with the key")
+	cmdLabelAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
+	cmdLabelAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
 	cmdLabelAdd.MarkFlagRequired("key")
 	cmdLabelAdd.MarkFlagRequired("value")
 	cmdLabel.AddCommand(cmdLabelAdd)
@@ -310,6 +312,53 @@ Disable given information push to the central API.`,
 		},
 	}
 	cmdLabel.AddCommand(cmdLabelStatus)
+
+	var keysToDelete []string
+	var valuesToDelete []string
+	cmdLabelDelete := &cobra.Command{
+		Use:               "delete",
+		Short:             "List label to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
+				log.Fatalf("please provide at least a key or a value to delete")
+			}
+
+			for _, key := range keysToDelete {
+				if _, ok := csConfig.Crowdsec.LabelsToSend[key]; ok {
+					delete(csConfig.Crowdsec.LabelsToSend, key)
+					log.Infof("key '%s' has been removed", key)
+				} else {
+					log.Warningf("key '%s' doesn't exist", key)
+				}
+			}
+
+			for _, value := range valuesToDelete {
+				valueFound := false
+				for key, labels := range csConfig.Crowdsec.LabelsToSend {
+					if inSlice(value, labels) {
+						valueFound = true
+						csConfig.Crowdsec.LabelsToSend[key] = removeFromSlice(value, labels)
+						log.Infof("value '%s' has been removed from key '%s'", value, key)
+					}
+					if len(csConfig.Crowdsec.LabelsToSend[key]) == 0 {
+						delete(csConfig.Crowdsec.LabelsToSend, key)
+					}
+				}
+				if !valueFound {
+					log.Warningf("value '%s' not found", value)
+				}
+			}
+
+			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
+				log.Fatalf(err.Error())
+			}
+
+		},
+	}
+	cmdLabelDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
+	cmdLabelDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
+	cmdLabel.AddCommand(cmdLabelDelete)
 
 	cmdConsole.AddCommand(cmdLabel)
 
