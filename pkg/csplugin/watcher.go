@@ -7,6 +7,11 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
+/*
+ PluginWatcher is here to allow grouping and threshold features for notification plugins :
+ by frequency : it will signal the plugin to deliver notifications at this frequence (watchPluginTicker)
+ by threshold : it will signal the plugin to deliver notifications when the number of alerts for this plugin reaches this threshold (watchPluginAlertCounts)
+*/
 type PluginWatcher struct {
 	PluginConfigByName     map[string]PluginConfig
 	AlertCountByPluginName map[string]int
@@ -42,15 +47,58 @@ func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
 }
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
-	if pw.PluginConfigByName[pluginName].GroupWait <= time.Second*0 {
-		return
+	var watchTime time.Duration
+	var watchCount int = -1
+	// Threshold can be set : by time, by count, or both
+	// if only time is set, honor it
+	// if only count is set, put timer to 1 second and just check size
+	// if both are set, set timer to 1 second, but check size && time
+	interval := pw.PluginConfigByName[pluginName].GroupWait
+	threshold := pw.PluginConfigByName[pluginName].GroupThreshold
+
+	//only size is set
+	if threshold > 0 && interval == 0 {
+		watchCount = threshold
+		watchTime = time.Second
+	} else if interval != 0 && threshold == 0 {
+		//only time is set
+		watchTime = interval
+	} else if interval != 0 && threshold != 0 {
+		//both are set
+		watchTime = time.Second
+		watchCount = threshold
+	} else {
+		//none are set, we sent every event we receive
+		watchTime = time.Second
+		watchCount = 1
 	}
-	ticker := time.NewTicker(pw.PluginConfigByName[pluginName].GroupWait)
+
+	ticker := time.NewTicker(watchTime)
+	var lastSend time.Time = time.Now()
 	for {
 		select {
 		case <-ticker.C:
-			pw.PluginEvents <- pluginName
+			send := false
+			//if count threshold was set, honor no matter what
+			if watchCount > 0 && pw.AlertCountByPluginName[pluginName] >= watchCount {
+				send = true
+				pw.AlertCountByPluginName[pluginName] = 0
+			}
+			//if time threshold only was set
+			if watchTime > 0 && watchTime == interval {
+				send = true
+			}
 
+			//if we hit timer because it was set low to honor count, check if we should trigger
+			if watchTime == time.Second && watchTime != interval {
+				if lastSend.Add(interval).After(time.Now()) {
+					send = true
+					lastSend = time.Now()
+				}
+			}
+			if send {
+				pw.PluginEvents <- pluginName
+			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
 			return
@@ -62,12 +110,9 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 	for {
 		select {
 		case pluginName := <-pw.Inserts:
+			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
 			if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
 				pw.AlertCountByPluginName[pluginName]++
-				if pw.AlertCountByPluginName[pluginName] >= threshold {
-					pw.PluginEvents <- pluginName
-					pw.AlertCountByPluginName[pluginName] = 0
-				}
 			}
 		case <-pw.tomb.Dying():
 			return
