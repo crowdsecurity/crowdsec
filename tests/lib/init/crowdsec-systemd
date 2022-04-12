@@ -21,8 +21,10 @@ cd "${THIS_DIR}"/../../
 # you have not removed set -u above, have you?
 
 [ -z "${CROWDSEC-}" ] && die "\$CROWDSEC must be defined."
+[ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
 [ -z "${LOG_DIR-}" ] && die "\$LOG_DIR must be defined."
 [ -z "${PID_DIR-}" ] && die "\$PID_DIR must be defined."
+
 
 if [ ! -f "${CROWDSEC}" ]; then
     die "${CROWDSEC} is missing. Please build (with 'make bats-build') or install it."
@@ -31,6 +33,8 @@ fi
 start() {
     systemctl start crowdsec
     ./lib/util/wait-for-port 6060
+    sleep 30s
+    "${CSCLI}" decisions delete --all
 }
 
 stop() {
