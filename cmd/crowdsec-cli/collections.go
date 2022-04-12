@@ -55,7 +55,7 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				if err := InstallItem(name, cwhub.COLLECTIONS, forceAction); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -78,7 +78,7 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				RemoveMany(cwhub.COLLECTIONS, "")
+				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, forceAction)
 				return
 			}
 
@@ -98,7 +98,7 @@ func NewCollectionsCmd() *cobra.Command {
 						continue
 					}
 				}
-				RemoveMany(cwhub.COLLECTIONS, name)
+				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -115,13 +115,13 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target collection to upgrade")
 				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.COLLECTIONS, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, name, forceAction)
 				}
 			}
 		},
@@ -154,7 +154,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.COLLECTIONS}, args, false, true)
+			ListItems([]string{cwhub.COLLECTIONS}, args, false, true, all)
 		},
 	}
 	cmdCollectionsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
