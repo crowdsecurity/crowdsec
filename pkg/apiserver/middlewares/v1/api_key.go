@@ -64,7 +64,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 			validCert, extractedCN, err := a.TlsAuth.ValidateCert(c)
 			if !validCert {
-				log.WithField("ip", c.ClientIP()).Error("invalid client certificate")
+				log.WithField("ip", c.ClientIP()).Errorf("invalid client certificate: %s", err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return
