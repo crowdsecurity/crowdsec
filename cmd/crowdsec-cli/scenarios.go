@@ -58,7 +58,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				if err := InstallItem(name, cwhub.SCENARIOS, forceAction); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -81,7 +81,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				RemoveMany(cwhub.SCENARIOS, "")
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
 				return
 			}
 
@@ -90,7 +90,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 
 			for _, name := range args {
-				RemoveMany(cwhub.SCENARIOS, name)
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -107,13 +107,13 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target scenario to upgrade")
 				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.SCENARIOS, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, forceAction)
 				}
 			}
 		},
@@ -144,7 +144,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.SCENARIOS}, args, false, true)
+			ListItems([]string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
 	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
