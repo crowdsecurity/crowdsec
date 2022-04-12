@@ -47,14 +47,21 @@ declare stderr
 }
 
 @test "$FILE cscli alerts list: at startup returns at least one entry: community pull" {
-    loop_max=15
-    for ((i = 0; i <= loop_max; i++)); do
-        sleep 2
-        run -0 cscli alerts list -o json
-        [ "$output" != "null" ] && break
-    done
+    is_db_postgres && skip
+    # it should have been received while preparing the fixture
+    run -0 cscli alerts list -o json
     run -0 jq -r '. | length' <(output)
     refute_output 0
+
+    # if we want to trigger it here, we'll have to remove decisions, restart crowdsec and wait like this:
+    # loop_max=15
+    # for ((i = 0; i <= loop_max; i++)); do
+    #     sleep 2
+    #     run -0 cscli alerts list -o json
+    #     [ "$output" != "null" ] && break
+    # done
+    # run -0 jq -r '. | length' <(output)
+    # refute_output 0
 }
 
 @test "$FILE cscli capi status" {
@@ -116,7 +123,7 @@ declare stderr
 }
 
 @test "$FILE cscli lapi status" {
-    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && sleep 4
+    if is_db_postgres; then sleep 4; fi
     run -0 --separate-stderr cscli lapi status
 
     run -0 echo "$stderr"
