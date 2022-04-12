@@ -384,7 +384,7 @@ func (s *APIServer) InitController() error {
 			return errors.Wrapf(err, "while setting allowed agents OUs (jwt)")
 		}
 		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth.CrlPath = s.TLS.CRLPath
-		if err := s.controller.HandlerV1.Middlewares.JWT.TlsAuth.SetAllowedOu(s.TLS.AllowedBouncersOU); err != nil {
+		if err := s.controller.HandlerV1.Middlewares.APIKey.TlsAuth.SetAllowedOu(s.TLS.AllowedBouncersOU); err != nil {
 			return errors.Wrapf(err, "while setting allowed bouncers OUs (api-key)")
 		}
 	}
