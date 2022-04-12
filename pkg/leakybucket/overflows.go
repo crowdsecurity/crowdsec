@@ -235,13 +235,13 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 }
 
 func EventToLabel(labels map[string][]*vm.Program, queue *Queue) models.Meta {
-	meta := make([]*models.MetaItems0, 0)
+	metas := make([]*models.MetaItems0, 0)
+	tmpLabels := make(map[string][]string)
 	for _, evt := range queue.Queue {
 		for key, values := range labels {
-			tmpMeta := models.MetaItems0{}
-			tmpMeta.Key = key
-			tmpValue := make([]string, 0)
-
+			if _, ok := tmpLabels[key]; !ok {
+				tmpLabels[key] = make([]string, 0)
+			}
 			for _, value := range values {
 				var val string
 				output, err := expr.Run(value, exprhelpers.GetExprEnv(map[string]interface{}{"evt": evt}))
@@ -258,17 +258,29 @@ func EventToLabel(labels map[string][]*vm.Program, queue *Queue) models.Meta {
 					log.Warningf("unexpected return type for label to send : %T", output)
 					continue
 				}
-				tmpValue = append(tmpValue, val)
+				if val != "" && !types.InSlice(val, tmpLabels[key]) {
+					tmpLabels[key] = append(tmpLabels[key], val)
+				}
 			}
-			valueBytes, err := json.Marshal(tmpValue)
-			if err != nil {
-				log.Warningf("unable to marshall label values to send: %s", err)
-			}
-			tmpMeta.Value = string(valueBytes)
-			meta = append(meta, &tmpMeta)
 		}
 	}
-	ret := models.Meta(meta)
+	for key, values := range tmpLabels {
+		if len(values) == 0 {
+			continue
+		}
+		valueByte, err := json.Marshal(values)
+		if err != nil {
+			log.Warningf("unable to dump metas: %s", err)
+			continue
+		}
+		meta := models.MetaItems0{
+			Key:   key,
+			Value: string(valueByte),
+		}
+		metas = append(metas, &meta)
+	}
+
+	ret := models.Meta(metas)
 	return ret
 
 }

@@ -305,7 +305,7 @@ Disable given information push to the central API.`,
 			if err != nil {
 				log.Fatalf("unable to show labels status: %s", err)
 			}
-			fmt.Println(dump)
+			fmt.Println(string(dump))
 
 		},
 	}
