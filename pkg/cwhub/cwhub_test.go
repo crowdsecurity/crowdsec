@@ -2,6 +2,7 @@ package cwhub
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -21,6 +22,8 @@ import (
   - Taint existing parser + list
   - Upgrade collection
 */
+
+var responseByPath map[string]string
 
 func TestItemStatus(t *testing.T) {
 	cfg := test_prepenv()
@@ -144,6 +147,7 @@ func TestIndexDownload(t *testing.T) {
 }
 
 func test_prepenv() *csconfig.Config {
+	resetResponseByPath()
 	log.SetLevel(log.DebugLevel)
 
 	var cfg = &csconfig.Config{}
@@ -384,150 +388,40 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	log.Printf("---> %s", req.URL.Path)
 
 	/*FAKE PARSER*/
-	if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml" {
-		responseBody = `onsuccess: next_stage
-filter: evt.Parsed.program == 'foobar_parser'
-name: crowdsecurity/foobar_parser
-#debug: true
-description: A parser for foobar_parser WAF
-grok:
-  name: foobar_parser
-  apply_on: message
-`
-
-	} else if req.URL.Path == "/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml" {
-		responseBody = `onsuccess: next_stage
-filter: evt.Parsed.program == 'foobar_parser'
-name: crowdsecurity/foobar_parser
-#debug: true
-description: A parser for foobar_parser WAF
-grok:
-  name: foobar_parser
-  apply_on: message
-`
-		/*FAKE SCENARIO*/
-
-	} else if req.URL.Path == "/master/scenarios/crowdsecurity/foobar_scenario.yaml" {
-		responseBody = `filter: true
-name: crowdsecurity/foobar_scenario`
-		/*FAKE COLLECTIONS*/
-	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar.yaml" {
-		responseBody = `
-blah: blalala
-qwe: jejwejejw`
-	} else if req.URL.Path == "/master/collections/crowdsecurity/foobar_subcollection.yaml" {
-		responseBody = `
-blah: blalala
-qwe: jejwejejw`
-	} else if req.URL.Path == "/master/.index.json" {
-		responseBody =
-			`{
-				"collections": {
-				 "crowdsecurity/foobar": {
-				  "path": "collections/crowdsecurity/foobar.yaml",
-				  "version": "0.1",
-				  "versions": {
-				   "0.1": {
-					"digest": "786c9490e4dd234453e53aa9bb7d28c60668e31c3c0c71a7dd6d0abbfa60261a",
-					"deprecated": false
-				   }
-				  },
-				  "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "description": "foobar collection : foobar",
-				  "author": "crowdsecurity",
-				  "labels": null,
-				  "collections" : ["crowdsecurity/foobar_subcollection"],
-				  "parsers": [
-				   "crowdsecurity/foobar_parser"
-				  ],
-				  "scenarios": [
-				   "crowdsecurity/foobar_scenario"
-				  ]
-				 },
-				 "crowdsecurity/foobar_subcollection": {
-					"path": "collections/crowdsecurity/foobar_subcollection.yaml",
-					"version": "0.1",
-					"versions": {
-					 "0.1": {
-					  "digest": "786c9490e4dd234453e53aa9bb7d28c60668e31c3c0c71a7dd6d0abbfa60261a",
-					  "deprecated": false
-					 }
-					},
-					"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"description": "foobar collection : foobar",
-					"author": "crowdsecurity",
-					"labels": null,
-					"parsers": [
-					 "crowdsecurity/foobar_subparser"
-					]
-				   }
-				},
-				"parsers": {
-				 "crowdsecurity/foobar_parser": {
-				  "path": "parsers/s01-parse/crowdsecurity/foobar_parser.yaml",
-				  "stage": "s01-parse",
-				  "version": "0.1",
-				  "versions": {
-				   "0.1": {
-					"digest": "7d72765baa7227095d8e83803d81f2a8f383e5808f1a4d72deb425352afd59ae",
-					"deprecated": false
-				   }
-				  },
-				  "long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-				  "description": "A foobar parser",
-				  "author": "crowdsecurity",
-				  "labels": null
-				 },
-				 "crowdsecurity/foobar_subparser": {
-					"path": "parsers/s01-parse/crowdsecurity/foobar_subparser.yaml",
-					"stage": "s01-parse",
-					"version": "0.1",
-					"versions": {
-					 "0.1": {
-					  "digest": "7d72765baa7227095d8e83803d81f2a8f383e5808f1a4d72deb425352afd59ae",
-					  "deprecated": false
-					 }
-					},
-					"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-					"description": "A foobar parser",
-					"author": "crowdsecurity",
-					"labels": null
-				   }
-				},
-				"postoverflows": {
-				},
-				"scenarios": {
-					"crowdsecurity/foobar_scenario": {
-						"path": "scenarios/crowdsecurity/foobar_scenario.yaml",
-						"version": "0.1",
-						"versions": {
-						 "0.1": {
-						  "digest": "a76b389db944ca7a9e5a3f3ae61ee2d4ee98167164ec9b971174b1d44f5a01c6",
-						  "deprecated": false
-						 }
-						},
-						"long_description": "bG9uZyBkZXNjcmlwdGlvbgo=",
-						"content": "bG9uZyBkZXNjcmlwdGlvbgo=",
-						"description": "a foobar scenario",
-						"author": "crowdsecurity",
-						"labels": {
-						 "remediation": "true",
-						 "scope": "ip",
-						 "service": "http",
-						 "type": "web_attack"
-						}
-					   }
-				}
-			   }
-			   `
+	if resp, ok := responseByPath[req.URL.Path]; ok {
+		responseBody = resp
 	} else {
-		log.Fatalf("unexpected url :/")
+		log.Fatalf("unexpected url :/ %s", req.URL.Path)
 	}
 
 	response.Body = ioutil.NopCloser(strings.NewReader(responseBody))
 	return response, nil
+}
+
+func fileToStringX(path string) string {
+	if f, err := os.Open(path); err == nil {
+		if data, err := io.ReadAll(f); err == nil {
+			return string(data)
+		} else {
+			panic(err)
+		}
+	} else {
+		panic(err)
+	}
+}
+
+func resetResponseByPath() {
+	responseByPath = map[string]string{
+		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./tests/foobar_parser.yaml"),
+		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./tests/foobar_parser.yaml"),
+		"/master/.index.json": fileToStringX("./tests/index1.json"),
+		"/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
+name: crowdsecurity/foobar_scenario`,
+		"/master/collections/crowdsecurity/foobar_subcollection.yaml": `
+blah: blalala
+qwe: jejwejejw`,
+		"/master/collections/crowdsecurity/foobar.yaml": `
+blah: blalala
+qwe: jejwejejw`,
+	}
 }
