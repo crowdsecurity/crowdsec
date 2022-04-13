@@ -89,6 +89,10 @@ case "$1" in
         shift
         restore "$@"
         ;;
+    exec_sql)
+        shift
+        exec_sql "$@"
+        ;;
     *)
         about
         ;;

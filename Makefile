@@ -48,8 +48,10 @@ BUILD_TIMESTAMP = $(shell date +%F"_"%T)
 BUILD_TAG ?= "$(shell git rev-parse HEAD)"
 DEFAULT_CONFIGDIR ?= "/etc/crowdsec"
 DEFAULT_DATADIR ?= "/var/lib/crowdsec/data"
+BINCOVER_TESTING ?= false
 
 LD_OPTS_VARS= \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec/main.bincoverTesting=$(BINCOVER_TESTING) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
