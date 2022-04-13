@@ -38,7 +38,7 @@ declare stderr
 }
 
 @test "$FILE cscli decisions list, with and without --machine" {
-    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && skip
+    is_db_postgres && skip
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli decisions list
