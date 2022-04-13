@@ -74,6 +74,7 @@ func (s *DecisionsService) GetStream(ctx context.Context, opts DecisionsStreamOp
 		return nil, nil, err
 	}
 	req, err := s.client.NewRequest("GET", u, nil)
+	req.Header.Set("Accept-Encoding", "gzip")
 	if err != nil {
 		return nil, nil, err
 	}
