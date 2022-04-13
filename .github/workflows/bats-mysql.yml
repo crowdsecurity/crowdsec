@@ -1,12 +1,14 @@
-name: Functional tests with MariaDB
+name: Functional tests with MySQL
 
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
+  workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
   build:
@@ -15,7 +17,7 @@ jobs:
     timeout-minutes: 20
     services:
       database:
-        image: mariadb:latest
+        image: ${{ inputs.database_image }}
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:
@@ -28,13 +30,13 @@ jobs:
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
     - name: "Set up Go 1.17"
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v3
       with:
         go-version: 1.17
       id: go
 
     - name: "Clone CrowdSec"
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         submodules: true
@@ -45,6 +47,9 @@ jobs:
         GO111MODULE=on go get github.com/mikefarah/yq/v4
         GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssl
         GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssljson
+        sudo cp -u ~/go/bin/yq /usr/local/bin/
+        sudo cp -u ~/go/bin/cfssl /usr/local/bin
+        sudo cp -u ~/go/bin/cfssljson /usr/local/bin
 
     - name: "Build crowdsec and fixture"
       run: make bats-clean bats-build bats-fixture
