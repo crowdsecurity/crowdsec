@@ -414,8 +414,11 @@ func resetResponseByPath() {
 	responseByPath = map[string]string{
 		"/master/parsers/s01-parse/crowdsecurity/foobar_parser.yaml":    fileToStringX("./tests/foobar_parser.yaml"),
 		"/master/parsers/s01-parse/crowdsecurity/foobar_subparser.yaml": fileToStringX("./tests/foobar_parser.yaml"),
+		"/master/collections/crowdsecurity/test_collection.yaml":        fileToStringX("./tests/collection_v1.yaml"),
 		"/master/.index.json": fileToStringX("./tests/index1.json"),
 		"/master/scenarios/crowdsecurity/foobar_scenario.yaml": `filter: true
+name: crowdsecurity/foobar_scenario`,
+		"/master/scenarios/crowdsecurity/barfoo_scenario.yaml": `filter: true
 name: crowdsecurity/foobar_scenario`,
 		"/master/collections/crowdsecurity/foobar_subcollection.yaml": `
 blah: blalala
