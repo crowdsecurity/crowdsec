@@ -31,8 +31,10 @@ jobs:
       run: |
         sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssl
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssljson
         go install github.com/wadey/gocovmerge@latest
-        sudo cp -u ~/go/bin/yq ~/go/bin/gocovmerge /usr/local/bin/
+        sudo cp -u ~/go/bin/yq ~/go/bin/gocovmerge ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture"
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
