@@ -24,7 +24,9 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	if err != nil {
 		return fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
-	AddItem(obtype, item)
+	if err := AddItem(obtype, item); err != nil {
+		return fmt.Errorf("error while adding %s : %v", item.Name, err)
+	}
 	if downloadOnly {
 		log.Infof("Downloaded %s to %s", item.Name, csConfig.Hub.HubDir+"/"+item.RemotePath)
 		return nil
@@ -33,7 +35,9 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 	if err != nil {
 		return fmt.Errorf("error while enabling  %s : %v.", item.Name, err)
 	}
-	AddItem(obtype, item)
+	if err := AddItem(obtype, item); err != nil {
+		return fmt.Errorf("error while adding %s : %v", item.Name, err)
+	}
 	log.Infof("Enabled %s", item.Name)
 
 	return nil
