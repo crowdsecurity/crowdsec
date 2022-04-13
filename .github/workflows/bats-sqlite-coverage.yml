@@ -45,3 +45,9 @@ jobs:
       with:
         name: coverage-bats.out
         path: ./tests/local/var/lib/coverage/coverage-bats.out
+
+    - name: "Show crowdsec logs"
+      run:
+        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
+
