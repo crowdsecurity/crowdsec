@@ -11,9 +11,7 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	cfg := test_prepenv()
 
 	// fresh install of collection
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 
 	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -32,14 +30,12 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
 
 	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
-	responseByPath["/master/.index.json"] = fileToStringX("./tests/index2.json")
-	responseByPath["/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./tests/collection_v2.yaml")
+	pushUpdateToCollectionInHub()
+
 	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -52,6 +48,94 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Downloaded)
 	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
 
+}
+
+func TestUpgradeConfigInTaintedCollection(t *testing.T) {
+	cfg := test_prepenv()
+
+	// fresh install of collection
+	getHubIdxOrFail(t)
+
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+
+	require.NoError(t, InstallItem(cfg, "crowdsecurity/test_collection", COLLECTIONS, false, false))
+
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+
+	RemoveMany(cfg, SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
+	getHubIdxOrFail(t)
+	// scenario referenced by collection  was deleted hence, collection should be tainted
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
+
+	if err := UpdateHubIdx(cfg.Hub); err != nil {
+		t.Fatalf("failed to download index : %s", err)
+	}
+
+	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+
+	getHubIdxOrFail(t)
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+}
+
+func getHubIdxOrFail(t *testing.T) {
+	if err := GetHubIdx(getTestCfg().Hub); err != nil {
+		t.Fatalf("failed to load hub index")
+	}
+}
+func TestUpgradeConfigNewScenarioInTaintedCollection(t *testing.T) {
+	cfg := test_prepenv()
+
+	// fresh install of collection
+	getHubIdxOrFail(t)
+
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+
+	require.NoError(t, InstallItem(cfg, "crowdsecurity/test_collection", COLLECTIONS, false, false))
+
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
+	require.False(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	assertCollectionDepsInstalled(t, "crowdsecurity/test_collection")
+
+	RemoveMany(cfg, SCENARIOS, "crowdsecurity/foobar_scenario", false, false, false)
+	getHubIdxOrFail(t)
+	// scenario referenced by collection  was deleted hence, collection should be tainted
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
+	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].UpToDate)
+
+	// collection receives an update. It now adds new scenario "crowdsecurity/barfoo_scenario"
+	// we now attempt to upgrade the collection, however it shouldn't install the foobar_scenario
+	// we just removed. Nor should it install the newly added sceanrio
+	pushUpdateToCollectionInHub()
+
+	if err := UpdateHubIdx(cfg.Hub); err != nil {
+		t.Fatalf("failed to download index : %s", err)
+	}
+	getHubIdxOrFail(t)
+
+	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
+
+	getHubIdxOrFail(t)
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
 }
 
 func assertCollectionDepsInstalled(t *testing.T, collection string) {
@@ -69,4 +153,9 @@ func assertCollectionDepsInstalled(t *testing.T, collection string) {
 		require.True(t, hubIdx[PARSERS][scenario].UpToDate)
 		require.False(t, hubIdx[PARSERS][scenario].Tainted)
 	}
+}
+
+func pushUpdateToCollectionInHub() {
+	responseByPath["/master/.index.json"] = fileToStringX("./tests/index2.json")
+	responseByPath["/master/collections/crowdsecurity/test_collection.yaml"] = fileToStringX("./tests/collection_v2.yaml")
 }

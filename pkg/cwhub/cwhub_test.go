@@ -146,16 +146,18 @@ func TestIndexDownload(t *testing.T) {
 	}
 }
 
-func test_prepenv() *csconfig.Config {
-	resetResponseByPath()
-	log.SetLevel(log.DebugLevel)
-
-	var cfg = &csconfig.Config{}
-	cfg.Hub = &csconfig.Hub{}
+func getTestCfg() (cfg *csconfig.Config) {
+	cfg = &csconfig.Config{Hub: &csconfig.Hub{}}
 	cfg.Hub.ConfigDir, _ = filepath.Abs("./install")
 	cfg.Hub.HubDir, _ = filepath.Abs("./hubdir")
 	cfg.Hub.HubIndexFile = filepath.Clean("./hubdir/.index.json")
+	return
+}
 
+func test_prepenv() *csconfig.Config {
+	resetResponseByPath()
+	log.SetLevel(log.DebugLevel)
+	cfg := getTestCfg()
 	//Mock the http client
 	http.DefaultClient.Transport = newMockTransport()
 
@@ -316,9 +318,7 @@ func TestInstallParser(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 	//map iteration is random by itself
 	for _, it := range hubIdx[PARSERS] {
 		testInstallItem(cfg.Hub, t, it)
@@ -349,9 +349,7 @@ func TestInstallCollection(t *testing.T) {
 	*/
 	cfg := test_prepenv()
 
-	if err := GetHubIdx(cfg.Hub); err != nil {
-		t.Fatalf("failed to load hub index")
-	}
+	getHubIdxOrFail(t)
 	//map iteration is random by itself
 	for _, it := range hubIdx[COLLECTIONS] {
 		testInstallItem(cfg.Hub, t, it)
