@@ -36,6 +36,8 @@ jobs:
       run: |
         sudo apt install -qq daemonize netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssl
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssljson
 
     - name: "BATS: build crowdsec"
       run: make bats-clean bats-build bats-fixture

@@ -62,10 +62,28 @@ check_daemonizer() {
     esac
 }
 
+check_cfssl() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go get -u github.com/cloudflare/cfssl/cmd/cfssl" and add ~/go/bin to $PATH.'
+    if ! command -v cfssl >/dev/null; then
+        die "Missing required program 'cfssl'. $howto_install"
+    fi
+}
+
+check_cfssljson() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go get -u github.com/cloudflare/cfssl/cmd/cfssljson" and add ~/go/bin to $PATH.'
+    if ! command -v cfssljson >/dev/null; then
+        die "Missing required program 'cfssljson'. $howto_install"
+    fi
+}
+
 
 check_bats_core
 check_python3
 check_nc
 check_yq
 check_daemonizer
+check_cfssl
+check_cfssljson
 

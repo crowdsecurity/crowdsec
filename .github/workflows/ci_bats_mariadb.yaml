@@ -43,6 +43,8 @@ jobs:
       run: |
         sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
         GO111MODULE=on go get github.com/mikefarah/yq/v4
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssl
+        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssljson
 
     - name: "Build crowdsec and fixture"
       run: make bats-clean bats-build bats-fixture
