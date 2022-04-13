@@ -58,12 +58,12 @@ type PluginBroker struct {
 type PluginConfig struct {
 	Type           string        `yaml:"type"`
 	Name           string        `yaml:"name"`
-	GroupWait      time.Duration `yaml:"group_wait"`
-	GroupThreshold int           `yaml:"group_threshold"`
-	MaxRetry       int           `yaml:"max_retry"`
-	TimeOut        time.Duration `yaml:"timeout"`
+	GroupWait      time.Duration `yaml:"group_wait,omitempty"`
+	GroupThreshold int           `yaml:"group_threshold,omitempty"`
+	MaxRetry       int           `yaml:"max_retry,omitempty"`
+	TimeOut        time.Duration `yaml:"timeout,omitempty"`
 
-	Format string `yaml:"format"` // specific to notification plugins
+	Format string `yaml:"format,omitempty"` // specific to notification plugins
 
 	Config map[string]interface{} `yaml:",inline"` //to keep the plugin-specific config
 
@@ -368,7 +368,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 	// }
 
 	if pluginCfg.GroupWait == time.Second*0 && pluginCfg.GroupThreshold == 0 {
-		log.Printf("GroupThreshold is set to 1 by default")
 		pluginCfg.GroupThreshold = 1
 	}
 }
