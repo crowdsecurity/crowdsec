@@ -1,7 +1,8 @@
 package csplugin
 
 import (
-	"log"
+	"encoding/json"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -9,12 +10,14 @@ import (
 	"testing"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/tomb.v2"
+	"gopkg.in/yaml.v2"
 )
 
 var testPath string
@@ -252,6 +255,68 @@ func TestBrokerInit(t *testing.T) {
 	}
 }
 
+func readconfig(t *testing.T, path string) PluginConfig {
+	var config PluginConfig
+	orig, err := ioutil.ReadFile("tests/notifications/dummy.yaml")
+	if err != nil {
+		t.Fatalf("unable to read config file %s : %s", path, err)
+	}
+	if err := yaml.Unmarshal(orig, &config); err != nil {
+		t.Fatalf("unable to unmarshal config file : %s", err)
+	}
+	return config
+}
+
+func writeconfig(t *testing.T, config PluginConfig, path string) {
+	data, err := yaml.Marshal(&config)
+	if err != nil {
+		t.Fatalf("unable to marshal config file : %s", err)
+	}
+	if err := ioutil.WriteFile(path, data, 0644); err != nil {
+		t.Fatalf("unable to write config file %s : %s", path, err)
+	}
+}
+
+func TestBrokerRunTimeThreshold(t *testing.T) {
+	buildDummyPlugin()
+	setPluginPermTo744()
+	defer tearDown()
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	newCfg := cfg
+	newCfg.GroupWait = time.Duration(4 * time.Second)
+	writeconfig(t, newCfg, "tests/notifications/dummy.yaml")
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
+
+	assert.NoFileExists(t, "./out")
+	defer os.Remove("./out")
+
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	assert.NoFileExists(t, "./out")
+	time.Sleep(4 * time.Second)
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	var alerts []models.Alert
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(alerts))
+	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+}
+
 func TestBrokerRun(t *testing.T) {
 	buildDummyPlugin()
 	setPluginPermTo744()
@@ -278,8 +343,14 @@ func TestBrokerRun(t *testing.T) {
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(time.Second * 4)
 
-	assert.FileExists(t, "./out")
-	assert.Equal(t, types.GetLineCountForFile("./out"), 2)
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	var alerts []models.Alert
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, len(alerts))
 }
 
 func buildDummyPlugin() {
