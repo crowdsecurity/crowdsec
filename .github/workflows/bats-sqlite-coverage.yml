@@ -30,9 +30,9 @@ jobs:
     - name: "Install bats dependencies"
       run: |
         sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
-        GO111MODULE=on go get github.com/mikefarah/yq/v4
-        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssl
-        GO111MODULE=on go get github.com/cloudflare/cfssl/cmd/cfssljson
+        go install github.com/mikefarah/yq/v4@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
         go install github.com/wadey/gocovmerge@latest
         sudo cp -u ~/go/bin/yq ~/go/bin/gocovmerge ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
