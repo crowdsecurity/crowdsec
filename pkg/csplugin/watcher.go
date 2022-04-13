@@ -1,6 +1,7 @@
 package csplugin
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -81,8 +82,11 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			send := false
 			//if count threshold was set, honor no matter what
 			if watchCount > 0 && pw.AlertCountByPluginName[pluginName] >= watchCount {
+				fmt.Printf("[%s] %d alerts received, sending\n", pluginName, pw.AlertCountByPluginName[pluginName])
 				send = true
 				pw.AlertCountByPluginName[pluginName] = 0
+			} else {
+				fmt.Printf("[%s] %d alerts received, NOT sending\n", pluginName, pw.AlertCountByPluginName[pluginName])
 			}
 			//if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
@@ -91,13 +95,17 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 
 			//if we hit timer because it was set low to honor count, check if we should trigger
 			if watchTime == time.Second && watchTime != interval {
+				fmt.Printf("last send %s, %s elapsed send %s\n", lastSend, time.Now().Sub(lastSend), pluginName)
 				if lastSend.Add(interval).After(time.Now()) {
 					send = true
 					lastSend = time.Now()
 				}
 			}
 			if send {
+				fmt.Printf("trigger %s\n", pluginName)
 				pw.PluginEvents <- pluginName
+			} else {
+				fmt.Printf("skip %s\n", pluginName)
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()

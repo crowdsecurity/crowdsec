@@ -255,7 +255,7 @@ func TestBrokerInit(t *testing.T) {
 	}
 }
 
-func readconfig(t *testing.T, path string) PluginConfig {
+func readconfig(t *testing.T, path string) ([]byte, PluginConfig) {
 	var config PluginConfig
 	orig, err := ioutil.ReadFile("tests/notifications/dummy.yaml")
 	if err != nil {
@@ -264,7 +264,7 @@ func readconfig(t *testing.T, path string) PluginConfig {
 	if err := yaml.Unmarshal(orig, &config); err != nil {
 		t.Fatalf("unable to unmarshal config file : %s", err)
 	}
-	return config
+	return orig, config
 }
 
 func writeconfig(t *testing.T, config PluginConfig, path string) {
@@ -277,20 +277,22 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 	}
 }
 
-func TestBrokerRunTimeThreshold(t *testing.T) {
+func TestBrokerRunGroupThreshold(t *testing.T) {
+	//test grouping by "time"
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
+	//init
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	cfg := readconfig(t, "tests/notifications/dummy.yaml")
-	newCfg := cfg
-	newCfg.GroupWait = time.Duration(4 * time.Second)
-	writeconfig(t, newCfg, "tests/notifications/dummy.yaml")
+	//set groupwait
+	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg.GroupThreshold = 4
+	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
@@ -299,13 +301,62 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-
-	assert.NoFileExists(t, "./out")
-	defer os.Remove("./out")
-
+	//sleep one sec, send data
+	time.Sleep(1 * time.Second)
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(2 * time.Second)
+	//because of group threshold, we shouldn't have data yet
+	assert.NoFileExists(t, "./out")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(2 * time.Second)
+	//and now we should
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	var alerts []models.Alert
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(alerts))
+	//restore config
+	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+		t.Fatalf("unable to write config file %s", err)
+	}
+}
+
+func TestBrokerRunTimeThreshold(t *testing.T) {
+	//test grouping by "time"
+	buildDummyPlugin()
+	setPluginPermTo744()
+	defer tearDown()
+	//init
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	//set groupwait
+	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg.GroupWait = time.Duration(4 * time.Second)
+	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
+	//sleep one sec, send data
+	time.Sleep(1 * time.Second)
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	//because of sleep, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	time.Sleep(4 * time.Second)
+	//and now we should
 	content, err := ioutil.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
@@ -314,7 +365,10 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, len(alerts))
-	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	//restore config
+	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+		t.Fatalf("unable to write config file %s", err)
+	}
 }
 
 func TestBrokerRun(t *testing.T) {
@@ -363,6 +417,7 @@ func buildDummyPlugin() {
 		log.Fatal(err)
 	}
 	testPath = dir
+	os.Remove("./out")
 }
 
 func setPluginPermTo(perm string) {
@@ -396,4 +451,5 @@ func tearDown() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	os.Remove("./out")
 }
