@@ -56,7 +56,9 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 		if err != nil {
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
-		AddItem(itemType, item)
+		if err := AddItem(itemType, item); err != nil {
+			log.Fatalf("unable to add %s: %v", err)
+		}
 		return
 	} else if name == "" && all {
 		for _, v := range GetItemMap(itemType) {
@@ -64,7 +66,9 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 			if err != nil {
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
-			AddItem(itemType, v)
+			if err := AddItem(itemType, v); err != nil {
+				log.Fatalf("unable to add %s: %v", err)
+			}
 			disabled++
 		}
 	}
@@ -121,7 +125,9 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			log.Infof("%v %s : updated", emoji.Package, v.Name)
 			updated++
 		}
-		AddItem(itemType, v)
+		if err := AddItem(itemType, v); err != nil {
+			log.Fatalf("unable to add %s: %v", err)
+		}
 	}
 	if !found && name == "" {
 		log.Infof("No %s installed, nothing to upgrade", itemType)
