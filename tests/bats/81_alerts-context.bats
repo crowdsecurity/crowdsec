@@ -30,20 +30,30 @@ teardown() {
 #----------
 
 @test "$FILE 1.1.1.172 has context" {
-    skip
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
     ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
     echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     CONTEXT_YAML=$(config_yq '.crowdsec_service.console_labels_path')
-    echo -e "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip" >>"${CONTEXT_YAML}"
+    echo -e "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip\nsource_host:\n- evt.Meta.machine\n" >>"${CONTEXT_YAML}"
 
     ./instance-crowdsec start
     sleep 2
     fake_log >>"${tmpfile}"
     sleep 2
     rm -f -- "${tmpfile}"
-    run cscli alerts list
-    echo $output >&3
+    
+    run -0 cscli alerts inspect 2 -o json
+    run -0 jq -r '.meta' <(output)
+
+    assert_output --partial '"key": "target_user"'
+    assert_output --partial '"value": "[\"netflix\"]"'
+
+    assert_output --partial '"key": "source_ip"'
+    assert_output --partial '"value": "[\"1.1.1.172\"]"'
+
+    assert_output --partial '"key": "source_host"'
+    assert_output --partial '"value": "[\"sd-126005\"]"'
+
 }
