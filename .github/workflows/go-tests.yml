@@ -1,6 +1,6 @@
 name: Go tests
 
-#those env variables are for localstack, so we can emulate aws services
+# these env variables are for localstack, so we can emulate aws services
 env:
   AWS_HOST: localstack
   SERVICES: cloudwatch,logs,kinesis
@@ -42,22 +42,31 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
+
     steps:
-    - name: Set up Go 1.17
+
+    - name: "Set up Go 1.17"
       uses: actions/setup-go@v3
       with:
         go-version: 1.17
       id: go
-    - name: Check out code into the Go module directory
+
+    - name: "Clone CrowdSec"
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: false
+
     - name: Build
       run: make build && go get -u github.com/jandelgado/gcov2lcov && go get -u github.com/ory/go-acc
-    - name: All tests
-      run: go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
 
-    - name: Upload coverage report
+    - name: "Run tests"
+      run: |
+        go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+        bzip2 ./coverage.out
+
+    - name: "Coverage report artifact"
       uses: actions/upload-artifact@v2
       with:
-        name: coverage.out
-        path: ./coverage.out
-
+        name: coverage.out.bz2
+        path: ./coverage.out.bz2

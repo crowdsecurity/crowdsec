@@ -236,10 +236,10 @@ func ItemStatus(v Item) (string, bool, bool, bool) {
 	return strret, Ok, Warning, Managed
 }
 
-func GetUpstreamInstalledScenariosAsString() ([]string, error) {
+func GetInstalledScenariosAsString() ([]string, error) {
 	var retStr []string
 
-	items, err := GetUpstreamInstalledScenarios()
+	items, err := GetInstalledScenarios()
 	if err != nil {
 		return nil, errors.Wrap(err, "while fetching scenarios")
 	}
@@ -249,14 +249,14 @@ func GetUpstreamInstalledScenariosAsString() ([]string, error) {
 	return retStr, nil
 }
 
-func GetUpstreamInstalledScenarios() ([]Item, error) {
+func GetInstalledScenarios() ([]Item, error) {
 	var retItems []Item
 
 	if _, ok := hubIdx[SCENARIOS]; !ok {
 		return nil, fmt.Errorf("no scenarios in hubIdx")
 	}
 	for _, item := range hubIdx[SCENARIOS] {
-		if item.Installed && !item.Tainted {
+		if item.Installed {
 			retItems = append(retItems, item)
 		}
 	}

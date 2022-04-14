@@ -19,6 +19,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    if is_db_mysql; then sleep 0.3; fi
 }
 
 api() {
@@ -29,6 +30,8 @@ api() {
 #----------
 
 @test "$FILE cli - first decisions list: must be empty" {
+    # delete community pull
+    run -0 cscli decisions delete --all
     run -0 cscli decisions list -o json
     assert_output 'null'
 }

@@ -43,13 +43,15 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 # Current versioning information from env
 BUILD_VERSION ?= "$(shell git describe --tags)"
 BUILD_GOVERSION = "$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
-BUILD_CODENAME = $(shell cat RELEASE.json | jq -r .CodeName)
+BUILD_CODENAME = "alphaga"
 BUILD_TIMESTAMP = $(shell date +%F"_"%T)
 BUILD_TAG ?= "$(shell git rev-parse HEAD)"
 DEFAULT_CONFIGDIR ?= "/etc/crowdsec"
 DEFAULT_DATADIR ?= "/var/lib/crowdsec/data"
+BINCOVER_TESTING ?= false
 
 LD_OPTS_VARS= \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec/main.bincoverTesting=$(BINCOVER_TESTING) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
@@ -185,7 +187,7 @@ package-common:
 	@cp $(SPLUNK_PLUGIN_FOLDER)/$(SPLUNK_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(SPLUNK_PLUGIN_FOLDER))
 	@cp $(EMAIL_PLUGIN_FOLDER)/$(EMAIL_PLUGIN_CONFIG) $(RELDIR)/$(subst ./,,$(EMAIL_PLUGIN_FOLDER))
 
-	@cp -R ./config/ $(RELDIR)
+	@cp -R ./config $(RELDIR)
 	@cp wizard.sh $(RELDIR)
 	@cp scripts/test_env.sh $(RELDIR)
 

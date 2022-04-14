@@ -38,7 +38,7 @@ declare stderr
 }
 
 @test "$FILE cscli decisions list, with and without --machine" {
-    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && skip
+    is_db_postgres && skip
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli decisions list
@@ -56,4 +56,14 @@ declare stderr
     assert_output --partial 'MACHINE'
     assert_output --regexp "\| 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?' \|"
     assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
+}
+
+@test "$FILE cscli decisions list, incorrect parameters" {
+    run -1 --separate-stderr cscli decisions list --until toto
+    run echo "$stderr"
+    assert_output --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
+    run -1 --separate-stderr cscli decisions list --until toto -o json
+    run echo "$stderr"
+    run -0 jq -c '[.level, .msg]' <(output)
+    assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }
