@@ -75,6 +75,7 @@ config_generate() {
     .api.client.credentials_path=strenv(CONFIG_DIR)+"/local_api_credentials.yaml" |
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
+    .crowdsec_service.console_labels_path=strenv(CONFIG_DIR) + "/console/labels.yaml" |
     .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
     ' <../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
