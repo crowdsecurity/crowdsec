@@ -25,7 +25,7 @@ stages:
           - task: GoTool@0
             displayName: "Install Go 1.17"
             inputs:
-                version: '1.17'
+                version: '1.17.9'
           - pwsh: |
               make windows_installer
             displayName: "Build Crowdsec installer"
