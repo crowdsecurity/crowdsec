@@ -53,6 +53,8 @@ config_generate() {
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
 
+    cp ../config/labels.yaml "${CONFIG_DIR}/console/"
+
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
 
@@ -84,6 +86,7 @@ make_init_data() {
     mkdir -p "${CONFIG_DIR}/notifications"
     mkdir -p "${CONFIG_DIR}/hub"
     mkdir -p "${CONFIG_DIR}/patterns"
+    mkdir -p "${CONFIG_DIR}/console"
     cp -ax "../config/patterns" "${CONFIG_DIR}/"
     config_generate
     # XXX errors from instance-db should be reported...

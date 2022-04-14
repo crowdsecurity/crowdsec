@@ -313,6 +313,19 @@ Disable given information push to the central API.`,
 	}
 	cmdLabel.AddCommand(cmdLabelStatus)
 
+	var detectAll bool
+	cmdLabelDetect := &cobra.Command{
+		Use:               "status",
+		Short:             "List label to send with alerts",
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			// load all parsers
+			//
+		},
+	}
+	cmdLabelAdd.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
+	cmdLabel.AddCommand(cmdLabelDetect)
+
 	var keysToDelete []string
 	var valuesToDelete []string
 	cmdLabelDelete := &cobra.Command{
