@@ -29,6 +29,9 @@ stages:
 
           - pwsh: |
               $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
+              go env
+          - pwsh: |
+              $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
               make windows_installer
             displayName: "Build Crowdsec installer"
 
