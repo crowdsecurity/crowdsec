@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 
+	"github.com/confluentinc/bincover"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -88,8 +89,13 @@ func WindowsRun() {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
-	if rc, err := Serve(cConfig); err != nil {
-		log.Errorf(err.Error())
-		os.Exit(rc)
+	if exitCode, err := Serve(cConfig); err != nil {
+		if err != nil {
+			log.Errorf(err.Error())
+			if !bincoverTesting {
+				os.Exit(exitCode)
+			}
+			bincover.ExitCode = exitCode
+		}
 	}
 }

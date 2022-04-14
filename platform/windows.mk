@@ -15,7 +15,7 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 #hardcode it till i find a workaround
 BUILD_VERSION?=$(shell git describe --tags $$(git rev-list --tags --max-count=1))
 BUILD_GOVERSION?=$(shell (go env GOVERSION).replace("go",""))
-BUILD_CODENAME?=$(shell Get-Content RELEASE.json | jq -r .CodeName)
+BUILD_CODENAME?="alphaga"
 BUILD_TIMESTAMP?=$(shell Get-Date -Format "yyyy-MM-dd_HH:mm:ss")
 BUILD_TAG?=$(shell git rev-parse HEAD)
 DEFAULT_CONFIGDIR?=C:\\ProgramData\\CrowdSec\\config
