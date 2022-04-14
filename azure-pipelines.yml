@@ -29,7 +29,8 @@ stages:
 
           - pwsh: |
               $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
-              go env
+              (go env GOVERSION).replace("go","").split(".")[0]
+              (go env GOVERSION).replace("go","").split(".")[1]
           - pwsh: |
               $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
               make windows_installer
