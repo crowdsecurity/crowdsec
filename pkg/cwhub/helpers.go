@@ -20,7 +20,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 			return nil
 		}
 	}
-	item, err := DownloadLatest(csConfig.Hub, item, force, false)
+item, err := DownloadLatest(csConfig.Hub, item, force, true)
 	if err != nil {
 		return fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
