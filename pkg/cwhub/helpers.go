@@ -20,7 +20,7 @@ func InstallItem(csConfig *csconfig.Config, name string, obtype string, force bo
 			return nil
 		}
 	}
-item, err := DownloadLatest(csConfig.Hub, item, force, true)
+	item, err := DownloadLatest(csConfig.Hub, item, force, true)
 	if err != nil {
 		return fmt.Errorf("error while downloading %s : %v", item.Name, err)
 	}
@@ -57,7 +57,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 			log.Fatalf("unable to disable %s : %v", item.Name, err)
 		}
 		if err := AddItem(itemType, item); err != nil {
-			log.Fatalf("unable to add %s: %v", err)
+			log.Fatalf("unable to add %s: %v", item.Name, err)
 		}
 		return
 	} else if name == "" && all {
@@ -67,7 +67,7 @@ func RemoveMany(csConfig *csconfig.Config, itemType string, name string, all boo
 				log.Fatalf("unable to disable %s : %v", v.Name, err)
 			}
 			if err := AddItem(itemType, v); err != nil {
-				log.Fatalf("unable to add %s: %v", err)
+				log.Fatalf("unable to add %s: %v", v.Name, err)
 			}
 			disabled++
 		}
@@ -126,7 +126,7 @@ func UpgradeConfig(csConfig *csconfig.Config, itemType string, name string, forc
 			updated++
 		}
 		if err := AddItem(itemType, v); err != nil {
-			log.Fatalf("unable to add %s: %v", err)
+			log.Fatalf("unable to add %s: %v", v.Name, err)
 		}
 	}
 	if !found && name == "" {

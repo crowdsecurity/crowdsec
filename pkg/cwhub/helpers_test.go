@@ -7,6 +7,7 @@ import (
 )
 
 //Download index, install collection. Add scenario to collection (hub-side), update index, upgrade collection
+// We expect the new scenario to be installed
 func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 	cfg := test_prepenv()
 
@@ -50,7 +51,9 @@ func TestUpgradeConfigNewScenarioInCollection(t *testing.T) {
 
 }
 
-func TestUpgradeConfigInTaintedCollection(t *testing.T) {
+// Install a collection, disable a scenario.
+// Upgrade should install should not enable/download the disabled scenario.
+func TestUpgradeConfigInDisabledSceanarioShouldNotBeInstalled(t *testing.T) {
 	cfg := test_prepenv()
 
 	// fresh install of collection
@@ -93,7 +96,11 @@ func getHubIdxOrFail(t *testing.T) {
 		t.Fatalf("failed to load hub index")
 	}
 }
-func TestUpgradeConfigNewScenarioInTaintedCollection(t *testing.T) {
+
+// Install a collection. Disable a referenced scenario. Publish new version of collection with new scenario
+// Upgrade should not enable/download the disabled scenario.
+// Upgrade should install and enable the newly added scenario.
+func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *testing.T) {
 	cfg := test_prepenv()
 
 	// fresh install of collection
@@ -116,6 +123,7 @@ func TestUpgradeConfigNewScenarioInTaintedCollection(t *testing.T) {
 	getHubIdxOrFail(t)
 	// scenario referenced by collection  was deleted hence, collection should be tainted
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
+	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Downloaded) // this fails
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Tainted)
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Downloaded)
 	require.True(t, hubIdx[COLLECTIONS]["crowdsecurity/test_collection"].Installed)
@@ -129,13 +137,13 @@ func TestUpgradeConfigNewScenarioInTaintedCollection(t *testing.T) {
 	if err := UpdateHubIdx(cfg.Hub); err != nil {
 		t.Fatalf("failed to download index : %s", err)
 	}
+	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
 	getHubIdxOrFail(t)
 
 	UpgradeConfig(cfg, COLLECTIONS, "crowdsecurity/test_collection", false)
-
 	getHubIdxOrFail(t)
 	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/foobar_scenario"].Installed)
-	require.False(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
+	require.True(t, hubIdx[SCENARIOS]["crowdsecurity/barfoo_scenario"].Installed)
 }
 
 func assertCollectionDepsInstalled(t *testing.T, collection string) {
