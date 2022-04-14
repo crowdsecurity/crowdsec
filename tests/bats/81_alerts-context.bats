@@ -45,15 +45,8 @@ teardown() {
     rm -f -- "${tmpfile}"
     
     run -0 cscli alerts inspect 2 -o json
-    run -0 jq -r '.meta' <(output)
-
-    assert_output --partial '"key": "target_user"'
-    assert_output --partial '"value": "[\"netflix\"]"'
-
-    assert_output --partial '"key": "source_ip"'
-    assert_output --partial '"value": "[\"1.1.1.172\"]"'
-
-    assert_output --partial '"key": "source_host"'
-    assert_output --partial '"value": "[\"sd-126005\"]"'
+    run -0 jq -c '.meta | sort_by(.key) | map([.key,.value])' <(output)
+ 
+    assert_output '[["source_host","[\"sd-126005\"]"],["source_ip","[\"1.1.1.172\"]"],["target_user","[\"netflix\"]"]]'
 
 }
