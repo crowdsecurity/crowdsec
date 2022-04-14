@@ -90,19 +90,21 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 			//if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
+				fmt.Printf("watchTime triggered, sending\n")
 				send = true
 			}
 
 			//if we hit timer because it was set low to honor count, check if we should trigger
-			if watchTime == time.Second && watchTime != interval {
-				fmt.Printf("last send %s, %s elapsed send %s\n", lastSend, time.Now().Sub(lastSend), pluginName)
-				if lastSend.Add(interval).After(time.Now()) {
+			if watchTime == time.Second && watchTime != interval && interval != 0 {
+				fmt.Printf("last send [%s] %s elapsed, required [%s], send %s\n", lastSend, time.Now().Sub(lastSend), interval, pluginName)
+				if lastSend.Add(interval).Before(time.Now()) {
+					fmt.Printf("SENDING %s, %s elapsed send %s\n", lastSend, time.Now().Sub(lastSend), pluginName)
 					send = true
 					lastSend = time.Now()
 				}
 			}
 			if send {
-				fmt.Printf("trigger %s\n", pluginName)
+				fmt.Printf("SENDING TO %s\n", pluginName)
 				pw.PluginEvents <- pluginName
 			} else {
 				fmt.Printf("skip %s\n", pluginName)

@@ -34,7 +34,8 @@ func insertNAlertsToPlugin(pw *PluginWatcher, n int, pluginName string) {
 
 func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 	select {
-	case <-channel:
+	case x := <-channel:
+		log.Printf("received -> %v", x)
 	case <-ctx.Done():
 		return ctx.Err()
 	}

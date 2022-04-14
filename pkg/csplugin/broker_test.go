@@ -277,6 +277,112 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 	}
 }
 
+func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
+	//test grouping by "time"
+	buildDummyPlugin()
+	setPluginPermTo744()
+	defer tearDown()
+	//init
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	//set groupwait and groupthreshold, should honor whichever comes first
+	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg.GroupThreshold = 4
+	cfg.GroupWait = 10 * time.Second
+	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
+	//sleep one sec, send data
+	time.Sleep(1 * time.Second)
+	log.Printf("first send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	log.Printf("second send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	log.Printf("third send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(2 * time.Second)
+	//because of group threshold, we shouldn't have data yet
+	assert.NoFileExists(t, "./out")
+	time.Sleep(8 * time.Second)
+	//after 8 seconds, we should have data
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	var alerts []models.Alert
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 3, len(alerts))
+	//restore config
+	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+		t.Fatalf("unable to write config file %s", err)
+	}
+}
+
+func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
+	//test grouping by "time"
+	buildDummyPlugin()
+	setPluginPermTo744()
+	defer tearDown()
+	//init
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
+	//set groupwait and groupthreshold, should honor whichever comes first
+	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
+	cfg.GroupThreshold = 4
+	cfg.GroupWait = 10 * time.Second
+	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
+	//sleep one sec, send data
+	time.Sleep(1 * time.Second)
+	log.Printf("first send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	log.Printf("second send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	log.Printf("third send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(2 * time.Second)
+	//because of group threshold, we shouldn't have data yet
+	assert.NoFileExists(t, "./out")
+	log.Printf("fourth send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(2 * time.Second)
+	//and now we should
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	var alerts []models.Alert
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 4, len(alerts))
+	//restore config
+	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
+		t.Fatalf("unable to write config file %s", err)
+	}
+}
+
 func TestBrokerRunGroupThreshold(t *testing.T) {
 	//test grouping by "time"
 	buildDummyPlugin()
