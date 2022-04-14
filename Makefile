@@ -43,7 +43,7 @@ GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not suppo
 # Current versioning information from env
 BUILD_VERSION ?= "$(shell git describe --tags)"
 BUILD_GOVERSION = "$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
-BUILD_CODENAME = $(shell cat RELEASE.json | jq -r .CodeName)
+BUILD_CODENAME = "alphaga"
 BUILD_TIMESTAMP = $(shell date +%F"_"%T)
 BUILD_TAG ?= "$(shell git rev-parse HEAD)"
 DEFAULT_CONFIGDIR ?= "/etc/crowdsec"
