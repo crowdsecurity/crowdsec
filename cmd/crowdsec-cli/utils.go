@@ -29,7 +29,7 @@ import (
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
 	if err != nil {
-		log.Fatalf("uname to print help(): %s", err)
+		log.Fatalf("unable to print help(): %s", err)
 	}
 }
 

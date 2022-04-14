@@ -19,15 +19,21 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
-    # some environments in CI require more time (mysql, test coverage)
-    sleep 0.3
+    if is_db_mysql; then sleep 0.3; fi
 }
-
-#----------
 
 api() {
     URI="$1"
     curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
+}
+
+#----------
+
+@test "$FILE cli - first decisions list: must be empty" {
+    # delete community pull
+    run -0 cscli decisions delete --all
+    run -0 cscli decisions list -o json
+    assert_output 'null'
 }
 
 @test "$FILE adding decision for ip 1111:2222:3333:4444:5555:6666:7777:8888" {

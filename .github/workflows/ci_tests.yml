@@ -71,23 +71,32 @@ jobs:
       - name: Download unit report
         uses: actions/download-artifact@v3
         with:
-          name: coverage.out
+          name: coverage.out.bz2
 
       - name: Download bats report
         uses: actions/download-artifact@v3
         with:
-          name: coverage-bats.out
+          name: coverage-bats.out.bz2
 
       - name: merge coverage reports
         run: |
           go get -u github.com/wadey/gocovmerge
+          bunzip2 coverage.out.bz2
+          bunzip2 coverage-bats.out.bz2
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
+          bzip2 <coverage-all.out >coverage-all.out.bz2
 
       - name: gcov2lcov
         uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
+
+      - name: Coverage report artifact (merged)
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage-all.out.bz2
+          path: ./coverage-all.out.bz2
 
       - name: Coveralls
         uses: coverallsapp/github-action@master

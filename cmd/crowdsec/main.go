@@ -49,6 +49,8 @@ var (
 	pluginBroker      csplugin.PluginBroker
 )
 
+const bincoverTesting = false
+
 type Flags struct {
 	ConfigFile     string
 	TraceLevel     bool
