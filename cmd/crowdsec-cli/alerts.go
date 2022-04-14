@@ -126,17 +126,17 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 		if *alert.Source.Value != "" {
 			scopeAndValue += ":" + *alert.Source.Value
 		}
-		fmt.Printf(" - ID         : %d\n", alert.ID)
-		fmt.Printf(" - Date       : %s\n", alert.CreatedAt)
-		fmt.Printf(" - Machine    : %s\n", alert.MachineID)
-		fmt.Printf(" - Simulation : %v\n", *alert.Simulated)
-		fmt.Printf(" - Reason     : %s\n", *alert.Scenario)
+		fmt.Printf(" - ID           : %d\n", alert.ID)
+		fmt.Printf(" - Date         : %s\n", alert.CreatedAt)
+		fmt.Printf(" - Machine      : %s\n", alert.MachineID)
+		fmt.Printf(" - Simulation   : %v\n", *alert.Simulated)
+		fmt.Printf(" - Reason       : %s\n", *alert.Scenario)
 		fmt.Printf(" - Events Count : %d\n", *alert.EventsCount)
-		fmt.Printf(" - Scope:Value: %s\n", scopeAndValue)
-		fmt.Printf(" - Country    : %s\n", alert.Source.Cn)
-		fmt.Printf(" - AS         : %s\n", alert.Source.AsName)
-		fmt.Printf(" - Begin      : %s\n", *alert.StartAt)
-		fmt.Printf(" - End        : %s\n\n", *alert.StopAt)
+		fmt.Printf(" - Scope:Value  : %s\n", scopeAndValue)
+		fmt.Printf(" - Country      : %s\n", alert.Source.Cn)
+		fmt.Printf(" - AS           : %s\n", alert.Source.AsName)
+		fmt.Printf(" - Begin        : %s\n", *alert.StartAt)
+		fmt.Printf(" - End          : %s\n\n", *alert.StopAt)
 		foundActive := false
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "scope:value", "action", "expiration", "created_at"})
@@ -167,6 +167,28 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 			table.Render() // Send output
 		}
 
+		fmt.Printf("\n - Context  :\n")
+		sort.Slice(alert.Meta, func(i, j int) bool {
+			return alert.Meta[i].Key < alert.Meta[j].Key
+		})
+		table = tablewriter.NewWriter(os.Stdout)
+		table.SetHeader([]string{"Key", "Value"})
+		for _, meta := range alert.Meta {
+			var valSlice []string
+			if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+				log.Fatalf("unknown context value type '%s' : %s", meta.Value, err)
+			}
+			for _, value := range valSlice {
+				table.Append([]string{
+					meta.Key,
+					value,
+				})
+			}
+		}
+		table.SetAutoMergeCells(true)
+		table.SetRowLine(true)
+		table.Render()
+
 		if withDetail {
 			fmt.Printf("\n - Events  :\n")
 			for _, event := range alert.Events {
@@ -185,28 +207,6 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 
 				table.Render() // Send output
 			}
-
-			fmt.Printf("\n - Context  :\n")
-			sort.Slice(alert.Meta, func(i, j int) bool {
-				return alert.Meta[i].Key < alert.Meta[j].Key
-			})
-			table = tablewriter.NewWriter(os.Stdout)
-			table.SetHeader([]string{"Key", "Value"})
-			for _, meta := range alert.Meta {
-				var valSlice []string
-				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
-					log.Fatalf("unknown context value type '%s' : %s", meta.Value, err)
-				}
-				for _, value := range valSlice {
-					table.Append([]string{
-						meta.Key,
-						value,
-					})
-				}
-			}
-			table.SetAutoMergeCells(true)
-			table.SetRowLine(true)
-			table.Render() // Send output
 		}
 	}
 	return nil

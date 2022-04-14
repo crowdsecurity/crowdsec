@@ -9,11 +9,15 @@ import (
 	"io/fs"
 	"net/url"
 	"os"
+	"sort"
+	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
@@ -315,15 +319,80 @@ Disable given information push to the central API.`,
 
 	var detectAll bool
 	cmdLabelDetect := &cobra.Command{
-		Use:               "status",
-		Short:             "List label to send with alerts",
+		Use:               "detect",
+		Short:             "Detect available fields from the installed parsers",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			// load all parsers
-			//
+			var err error
+
+			// to avoid all the log.Info from the loaders functions
+			log.SetLevel(log.ErrorLevel)
+
+			err = exprhelpers.Init()
+			if err != nil {
+				log.Fatalf("Failed to init expr helpers : %s", err)
+			}
+
+			// Populate cwhub package tools
+			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Fatalf("Failed to load hub index : %s", err)
+			}
+
+			csParsers := parser.NewParsers()
+			if csParsers, err = parser.LoadParsers(csConfig, csParsers); err != nil {
+				log.Fatalf("unable to load parsers: %s", err)
+			}
+
+			fieldByParsers := make(map[string][]string)
+			for _, node := range csParsers.Nodes {
+				if !detectAll && !inSlice(node.Name, args) {
+					continue
+				}
+				if !detectAll {
+					args = removeFromSlice(node.Name, args)
+				}
+				fieldByParsers[node.Name] = make([]string, 0)
+				fieldByParsers[node.Name] = detectNode(node, *csParsers.Ctx)
+
+				subNodeFields := detectSubNode(node, *csParsers.Ctx)
+				for _, field := range subNodeFields {
+					if !inSlice(field, fieldByParsers[node.Name]) {
+						fieldByParsers[node.Name] = append(fieldByParsers[node.Name], field)
+					}
+				}
+
+			}
+
+			fmt.Printf("Acquisition :\n\n")
+			fmt.Printf("  - evt.Line.Module\n")
+			fmt.Printf("  - evt.Line.Raw\n")
+			fmt.Printf("  - evt.Line.Src\n")
+			fmt.Println()
+
+			parsersKey := make([]string, 0)
+			for k := range fieldByParsers {
+				parsersKey = append(parsersKey, k)
+			}
+			sort.Strings(parsersKey)
+
+			for _, k := range parsersKey {
+				fmt.Printf("%s :\n\n", k)
+				values := fieldByParsers[k]
+				sort.Strings(values)
+				for _, value := range values {
+					fmt.Printf("  - %s\n", value)
+				}
+				fmt.Println()
+			}
+
+			if len(args) > 0 {
+				for _, parserNotFound := range args {
+					log.Errorf("parser '%s' not found, can't detect fields", parserNotFound)
+				}
+			}
 		},
 	}
-	cmdLabelAdd.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
+	cmdLabelDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
 	cmdLabel.AddCommand(cmdLabelDetect)
 
 	var keysToDelete []string
@@ -438,4 +507,125 @@ func SetConsoleOpts(args []string, wanted bool) {
 		}
 	}
 
+}
+
+func detectStaticField(GrokStatics []types.ExtraField) []string {
+	ret := make([]string, 0)
+	for _, static := range GrokStatics {
+		if static.Parsed != "" {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", static.Parsed)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+		if static.Meta != "" {
+			fieldName := fmt.Sprintf("evt.Meta.%s", static.Meta)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+		if static.TargetByName != "" {
+			fieldName := static.TargetByName
+			if !strings.HasPrefix(fieldName, "evt.") {
+				fieldName = "evt." + fieldName
+			}
+			if !inSlice(static.TargetByName, ret) {
+				ret = append(ret, static.TargetByName)
+			}
+		}
+	}
+
+	return ret
+}
+
+func detectNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
+	var ret = make([]string, 0)
+	if node.Grok.RunTimeRegexp != nil {
+		for _, capturedField := range node.Grok.RunTimeRegexp.Names() {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+	}
+
+	if node.Grok.RegexpName != "" {
+		grokCompiled, err := parserCTX.Grok.Get(node.Grok.RegexpName)
+		if err != nil {
+			log.Warningf("Can't get subgrok: %s", err)
+		}
+		for _, capturedField := range grokCompiled.Names() {
+			fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+			if !inSlice(fieldName, ret) {
+				ret = append(ret, fieldName)
+			}
+		}
+	}
+
+	if len(node.Grok.Statics) > 0 {
+		staticsField := detectStaticField(node.Grok.Statics)
+		for _, staticField := range staticsField {
+			if !inSlice(staticField, ret) {
+				ret = append(ret, staticField)
+			}
+		}
+	}
+
+	if len(node.Statics) > 0 {
+		staticsField := detectStaticField(node.Statics)
+		for _, staticField := range staticsField {
+			if !inSlice(staticField, ret) {
+				ret = append(ret, staticField)
+			}
+		}
+	}
+
+	return ret
+}
+
+func detectSubNode(node parser.Node, parserCTX parser.UnixParserCtx) []string {
+	var ret = make([]string, 0)
+
+	for _, subnode := range node.LeavesNodes {
+		if subnode.Grok.RunTimeRegexp != nil {
+			for _, capturedField := range subnode.Grok.RunTimeRegexp.Names() {
+				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				if !inSlice(fieldName, ret) {
+					ret = append(ret, fieldName)
+				}
+			}
+		}
+		if subnode.Grok.RegexpName != "" {
+			grokCompiled, err := parserCTX.Grok.Get(subnode.Grok.RegexpName)
+			if err != nil {
+				log.Warningf("Can't get subgrok: %s", err)
+			}
+			for _, capturedField := range grokCompiled.Names() {
+				fieldName := fmt.Sprintf("evt.Parsed.%s", capturedField)
+				if !inSlice(fieldName, ret) {
+					ret = append(ret, fieldName)
+				}
+			}
+		}
+
+		if len(subnode.Grok.Statics) > 0 {
+			staticsField := detectStaticField(subnode.Grok.Statics)
+			for _, staticField := range staticsField {
+				if !inSlice(staticField, ret) {
+					ret = append(ret, staticField)
+				}
+			}
+		}
+
+		if len(subnode.Statics) > 0 {
+			staticsField := detectStaticField(subnode.Statics)
+			for _, staticField := range staticsField {
+				if !inSlice(staticField, ret) {
+					ret = append(ret, staticField)
+				}
+			}
+		}
+	}
+
+	return ret
 }
