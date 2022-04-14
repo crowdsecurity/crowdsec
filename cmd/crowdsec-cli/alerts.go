@@ -185,6 +185,28 @@ func DisplayOneAlert(alert *models.Alert, withDetail bool) error {
 
 				table.Render() // Send output
 			}
+
+			fmt.Printf("\n - Context  :\n")
+			sort.Slice(alert.Meta, func(i, j int) bool {
+				return alert.Meta[i].Key < alert.Meta[j].Key
+			})
+			table = tablewriter.NewWriter(os.Stdout)
+			table.SetHeader([]string{"Key", "Value"})
+			for _, meta := range alert.Meta {
+				var valSlice []string
+				if err := json.Unmarshal([]byte(meta.Value), &valSlice); err != nil {
+					log.Fatalf("unknown context value type '%s' : %s", meta.Value, err)
+				}
+				for _, value := range valSlice {
+					table.Append([]string{
+						meta.Key,
+						value,
+					})
+				}
+			}
+			table.SetAutoMergeCells(true)
+			table.SetRowLine(true)
+			table.Render() // Send output
 		}
 	}
 	return nil
