@@ -97,7 +97,7 @@ ifneq ($(OS),Windows_NT)
     fi
 else
 #This needs Set-ExecutionPolicy -Scope CurrentUser Unrestricted
-	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION) $(GO_MAJOR_VERSION) $(GO_MINOR_VERSION)
+	@$(ROOT)/scripts/check_go_version.ps1 $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION) $(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 endif
 
 .PHONY: clean
