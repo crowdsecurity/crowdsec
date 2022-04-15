@@ -33,7 +33,7 @@ stages:
               pwsh: true
               script: |
                 $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
-                make windows_installer
+                make -d windows_installer
 
           - task: AzureKeyVault@2
             inputs:
