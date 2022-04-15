@@ -1,10 +1,10 @@
 package csplugin
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/tomb.v2"
 )
 
@@ -20,6 +20,8 @@ type PluginWatcher struct {
 	Inserts                chan string
 	tomb                   *tomb.Tomb
 }
+
+var DefaultEmptyTicker = time.Second * 1
 
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
@@ -60,17 +62,17 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 	//only size is set
 	if threshold > 0 && interval == 0 {
 		watchCount = threshold
-		watchTime = time.Second
+		watchTime = DefaultEmptyTicker
 	} else if interval != 0 && threshold == 0 {
 		//only time is set
 		watchTime = interval
 	} else if interval != 0 && threshold != 0 {
 		//both are set
-		watchTime = time.Second
+		watchTime = DefaultEmptyTicker
 		watchCount = threshold
 	} else {
 		//none are set, we sent every event we receive
-		watchTime = time.Second
+		watchTime = DefaultEmptyTicker
 		watchCount = 1
 	}
 
@@ -82,32 +84,27 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			send := false
 			//if count threshold was set, honor no matter what
 			if watchCount > 0 && pw.AlertCountByPluginName[pluginName] >= watchCount {
-				fmt.Printf("[%s] %d alerts received, sending\n", pluginName, pw.AlertCountByPluginName[pluginName])
+				log.Tracef("sending alerts to %s, threshold %d reached", pluginName, pw.AlertCountByPluginName[pluginName])
 				send = true
 				pw.AlertCountByPluginName[pluginName] = 0
-			} else {
-				fmt.Printf("[%s] %d alerts received, NOT sending\n", pluginName, pw.AlertCountByPluginName[pluginName])
 			}
 			//if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
-				fmt.Printf("watchTime triggered, sending\n")
+				log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
 				send = true
 			}
 
 			//if we hit timer because it was set low to honor count, check if we should trigger
-			if watchTime == time.Second && watchTime != interval && interval != 0 {
-				fmt.Printf("last send [%s] %s elapsed, required [%s], send %s\n", lastSend, time.Now().Sub(lastSend), interval, pluginName)
+			if watchTime == DefaultEmptyTicker && watchTime != interval && interval != 0 {
 				if lastSend.Add(interval).Before(time.Now()) {
-					fmt.Printf("SENDING %s, %s elapsed send %s\n", lastSend, time.Now().Sub(lastSend), pluginName)
+					log.Tracef("sending alerts to %s, duration %s elapsed", pluginName, interval)
 					send = true
 					lastSend = time.Now()
 				}
 			}
 			if send {
-				fmt.Printf("SENDING TO %s\n", pluginName)
+				log.Tracef("sending alerts to %s", pluginName)
 				pw.PluginEvents <- pluginName
-			} else {
-				fmt.Printf("skip %s\n", pluginName)
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
