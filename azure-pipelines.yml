@@ -58,7 +58,7 @@ stages:
           - pwsh: |
               $build_version=(git describe --tags (git rev-list --tags --max-count=1))
               .\make_installer.ps1 -version $build_version
-            displayName: "Sign Crowdsec MSI"
+            displayName: "Build Crowdsec MSI"
 
           - pwsh: |
               SignClient.exe Sign --name "crowdsec-msi" `
