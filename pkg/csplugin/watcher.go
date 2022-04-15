@@ -22,8 +22,8 @@ type alertCounterByPluginName struct {
 	data map[string]int
 }
 
-func newAlertCounterByPluginName() *alertCounterByPluginName {
-	return &alertCounterByPluginName{
+func newAlertCounterByPluginName() alertCounterByPluginName {
+	return alertCounterByPluginName{
 		data: make(map[string]int),
 	}
 }
@@ -58,7 +58,7 @@ var DefaultEmptyTicker = time.Second * 1
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
 	pw.PluginEvents = make(chan string)
-	pw.AlertCountByPluginName = *newAlertCounterByPluginName()
+	pw.AlertCountByPluginName = newAlertCounterByPluginName()
 	pw.Inserts = make(chan string)
 	for name := range alertsByPluginName {
 		pw.AlertCountByPluginName.Set(name, 0)
