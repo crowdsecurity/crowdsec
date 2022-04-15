@@ -300,8 +300,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//sleep one sec, send data
-	log.Printf("first send")
+	//send one item, it should be processed right now
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
 	//we expect one now
@@ -318,7 +317,7 @@ func TestBrokerNoThreshold(t *testing.T) {
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
-	//we expect two now
+	//we expect one again, as we cleaned the file
 	content, err = ioutil.ReadFile("./out")
 	if err != nil {
 		log.Errorf("Error reading file: %s", err)
@@ -356,26 +355,20 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//sleep one sec, send data
-	log.Printf("first send")
+	//send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	log.Printf("third send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(500 * time.Millisecond)
 	//because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
-	log.Printf("before sleep")
 	time.Sleep(1 * time.Second)
-	//after 8 seconds, we should have data
+	//after 1 seconds, we should have data
 	content, err := ioutil.ReadFile("./out")
 	assert.NoError(t, err)
-	log.Printf("-> %s", err)
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
-	log.Printf("-> %s", err)
 	assert.Equal(t, 3, len(alerts))
 	//restore config
 	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
@@ -408,17 +401,13 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//sleep one sec, send data
-	log.Printf("first send")
+	//send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	log.Printf("third send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
 	//because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
-	log.Printf("fourth send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(100 * time.Millisecond)
 	//and now we should
@@ -442,7 +431,6 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
-
 	//init
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -462,7 +450,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//sleep one sec, send data
+	//send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
@@ -510,7 +498,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	tomb := tomb.Tomb{}
 	go pb.Run(&tomb)
 	defer pb.Kill()
-	//sleep one sec, send data
+	//send data
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	time.Sleep(200 * time.Millisecond)
 	//we shouldn't have data yet
