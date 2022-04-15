@@ -119,8 +119,6 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 				fmt.Printf("[%s] %d alerts received, sending\n", pluginName, pc)
 				send = true
 				pw.AlertCountByPluginName.Set(pluginName, 0)
-			} else {
-				fmt.Printf("[%s] %d alerts received, NOT sending\n", pluginName, pc)
 			}
 			//if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
