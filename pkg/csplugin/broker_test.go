@@ -277,8 +277,10 @@ func writeconfig(t *testing.T, config PluginConfig, path string) {
 	}
 }
 
-func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
-	//test grouping by "time"
+func TestBrokerNoThreshold(t *testing.T) {
+	var alerts []models.Alert
+	DefaultEmptyTicker = 50 * time.Millisecond
+
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
@@ -289,10 +291,62 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
+	//default config
+	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+		PluginDir:       testPath,
+		NotificationDir: "./tests/notifications",
+	})
+	assert.NoError(t, err)
+	tomb := tomb.Tomb{}
+	go pb.Run(&tomb)
+	defer pb.Kill()
+	//sleep one sec, send data
+	log.Printf("first send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(200 * time.Millisecond)
+	//we expect one now
+	content, err := ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	err = json.Unmarshal(content, &alerts)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(alerts))
+	//remove it
+	os.Remove("./out")
+	//and another one
+	log.Printf("second send")
+	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
+	time.Sleep(200 * time.Millisecond)
+	//we expect two now
+	content, err = ioutil.ReadFile("./out")
+	if err != nil {
+		log.Errorf("Error reading file: %s", err)
+	}
+	err = json.Unmarshal(content, &alerts)
+	log.Printf("content-> %s", content)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, len(alerts))
+}
+
+func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
+	//test grouping by "time"
+	DefaultEmptyTicker = 50 * time.Millisecond
+	buildDummyPlugin()
+	setPluginPermTo744()
+	defer tearDown()
+
+	//init
+	procCfg := csconfig.PluginCfg{}
+	pb := PluginBroker{}
+	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
+	profiles = append(profiles, &csconfig.ProfileCfg{
+		Notifications: []string{"dummy_default"},
+	})
 	//set groupwait and groupthreshold, should honor whichever comes first
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
-	cfg.GroupWait = 10 * time.Second
+	cfg.GroupWait = 1 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
@@ -303,25 +357,25 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	go pb.Run(&tomb)
 	defer pb.Kill()
 	//sleep one sec, send data
-	time.Sleep(1 * time.Second)
 	log.Printf("first send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	log.Printf("third send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(2 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	//because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
-	time.Sleep(8 * time.Second)
+	log.Printf("before sleep")
+	time.Sleep(1 * time.Second)
 	//after 8 seconds, we should have data
 	content, err := ioutil.ReadFile("./out")
-	if err != nil {
-		log.Errorf("Error reading file: %s", err)
-	}
+	assert.NoError(t, err)
+	log.Printf("-> %s", err)
 	var alerts []models.Alert
 	err = json.Unmarshal(content, &alerts)
 	assert.NoError(t, err)
+	log.Printf("-> %s", err)
 	assert.Equal(t, 3, len(alerts))
 	//restore config
 	if err := ioutil.WriteFile("tests/notifications/dummy.yaml", raw, 0644); err != nil {
@@ -330,7 +384,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 }
 
 func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
-	//test grouping by "time"
+	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
@@ -344,7 +398,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	//set groupwait and groupthreshold, should honor whichever comes first
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
-	cfg.GroupWait = 10 * time.Second
+	cfg.GroupWait = 4 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
@@ -355,19 +409,18 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	go pb.Run(&tomb)
 	defer pb.Kill()
 	//sleep one sec, send data
-	time.Sleep(1 * time.Second)
 	log.Printf("first send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	log.Printf("second send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	log.Printf("third send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(2 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	//because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	log.Printf("fourth send")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(2 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	//and now we should
 	content, err := ioutil.ReadFile("./out")
 	if err != nil {
@@ -384,10 +437,12 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 }
 
 func TestBrokerRunGroupThreshold(t *testing.T) {
-	//test grouping by "time"
+	//test grouping by "size"
+	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
+
 	//init
 	procCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
@@ -408,15 +463,14 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	go pb.Run(&tomb)
 	defer pb.Kill()
 	//sleep one sec, send data
-	time.Sleep(1 * time.Second)
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(2 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	//because of group threshold, we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(2 * time.Second)
+	time.Sleep(100 * time.Millisecond)
 	//and now we should
 	content, err := ioutil.ReadFile("./out")
 	if err != nil {
@@ -433,7 +487,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 }
 
 func TestBrokerRunTimeThreshold(t *testing.T) {
-	//test grouping by "time"
+	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
@@ -446,7 +500,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	})
 	//set groupwait
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
-	cfg.GroupWait = time.Duration(4 * time.Second)
+	cfg.GroupWait = time.Duration(1 * time.Second)
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
 	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
@@ -457,11 +511,11 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	go pb.Run(&tomb)
 	defer pb.Kill()
 	//sleep one sec, send data
-	time.Sleep(1 * time.Second)
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	//because of sleep, we shouldn't have data yet
+	time.Sleep(200 * time.Millisecond)
+	//we shouldn't have data yet
 	assert.NoFileExists(t, "./out")
-	time.Sleep(4 * time.Second)
+	time.Sleep(1 * time.Second)
 	//and now we should
 	content, err := ioutil.ReadFile("./out")
 	if err != nil {
@@ -478,6 +532,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 }
 
 func TestBrokerRun(t *testing.T) {
+	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
@@ -501,7 +556,7 @@ func TestBrokerRun(t *testing.T) {
 
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
 	pb.PluginChannel <- ProfileAlert{ProfileID: uint(0), Alert: &models.Alert{}}
-	time.Sleep(time.Second * 4)
+	time.Sleep(time.Millisecond * 200)
 
 	content, err := ioutil.ReadFile("./out")
 	if err != nil {
