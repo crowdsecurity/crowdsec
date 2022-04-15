@@ -11,6 +11,9 @@ ROOT?= $(shell pwd)
 SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
+$(info Curdir is $(CURDIR))
+
+$(info Wildcard output is "$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)")
 
 
 ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
