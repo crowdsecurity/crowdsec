@@ -56,9 +56,11 @@ stages:
             displayName: "Sign Crowdsec binaries + plugins"
 
           - pwsh: |
-              $build_version=(git describe --tags (git rev-list --tags --max-count=1))
+              $build_version=(git describe --tags (git rev-list --tags --max-count=1)).Substring(1)
               .\make_installer.ps1 -version $build_version
+              Write-Host  "##vso[task.setvariable variable=BuildVersion;isOutput=true]$build_version"
             displayName: "Build Crowdsec MSI"
+            name: BuildMSI
 
           - pwsh: |
               SignClient.exe Sign --name "crowdsec-msi" `
@@ -68,7 +70,7 @@ stages:
 
           - task: PublishBuildArtifacts@1
             inputs:
-              PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec.msi'
+              PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec_$(BuildMSI.BuildVersion).msi'
               ArtifactName: 'crowdsec.msi'
               publishLocation: 'Container'
             displayName: "Upload MSI artifact"
