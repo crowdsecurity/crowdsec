@@ -222,12 +222,12 @@ Disable given information push to the central API.`,
 							activated = string(emoji.CheckMarkButton)
 						}
 						table.Append([]string{option, activated, "Send alerts from tainted scenarios to the console"})
-					case csconfig.SEND_LABEL:
+					case csconfig.SEND_CONTEXT:
 						activated := string(emoji.CrossMark)
-						if *csConfig.API.Server.ConsoleConfig.ShareLabel {
+						if *csConfig.API.Server.ConsoleConfig.ShareContext {
 							activated = string(emoji.CheckMarkButton)
 						}
-						table.Append([]string{option, activated, "Send label with alerts to the console"})
+						table.Append([]string{option, activated, "Send context with alerts to the console"})
 					}
 				}
 				table.Render()
@@ -248,7 +248,7 @@ Disable given information push to the central API.`,
 					{"share_manual_decisions", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareManualDecisions)},
 					{"share_custom", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareCustomScenarios)},
 					{"share_tainted", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareTaintedScenarios)},
-					{"share_labels", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareLabel)},
+					{"share_context", fmt.Sprintf("%t", *csConfig.API.Server.ConsoleConfig.ShareContext)},
 				}
 				for _, row := range rows {
 					err = csvwriter.Write(row)
@@ -309,7 +309,7 @@ Disable given information push to the central API.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
 			if err != nil {
-				log.Fatalf("unable to show labels status: %s", err)
+				log.Fatalf("unable to show context status: %s", err)
 			}
 			fmt.Println(string(dump))
 
@@ -404,7 +404,7 @@ Disable given information push to the central API.`,
 	var valuesToDelete []string
 	cmdContextDelete := &cobra.Command{
 		Use:               "delete",
-		Short:             "List label to send with alerts",
+		Short:             "Delete context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if len(keysToDelete) == 0 && len(valuesToDelete) == 0 {
@@ -422,10 +422,10 @@ Disable given information push to the central API.`,
 
 			for _, value := range valuesToDelete {
 				valueFound := false
-				for key, labels := range csConfig.Crowdsec.ContextToSend {
-					if inSlice(value, labels) {
+				for key, context := range csConfig.Crowdsec.ContextToSend {
+					if inSlice(value, context) {
 						valueFound = true
-						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, labels)
+						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, context)
 						log.Infof("value '%s' has been removed from key '%s'", value, key)
 					}
 					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
@@ -494,18 +494,18 @@ func SetConsoleOpts(args []string, wanted bool) {
 				log.Infof("%s set to %t", csconfig.SEND_MANUAL_SCENARIOS, wanted)
 				csConfig.API.Server.ConsoleConfig.ShareManualDecisions = types.BoolPtr(wanted)
 			}
-		case csconfig.SEND_LABEL:
+		case csconfig.SEND_CONTEXT:
 			/*for each flag check if it's already set before setting it*/
-			if csConfig.API.Server.ConsoleConfig.ShareLabel != nil {
-				if *csConfig.API.Server.ConsoleConfig.ShareLabel == wanted {
-					log.Infof("%s already set to %t", csconfig.SEND_LABEL, wanted)
+			if csConfig.API.Server.ConsoleConfig.ShareContext != nil {
+				if *csConfig.API.Server.ConsoleConfig.ShareContext == wanted {
+					log.Infof("%s already set to %t", csconfig.SEND_CONTEXT, wanted)
 				} else {
-					log.Infof("%s set to %t", csconfig.SEND_LABEL, wanted)
-					*csConfig.API.Server.ConsoleConfig.ShareLabel = wanted
+					log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+					*csConfig.API.Server.ConsoleConfig.ShareContext = wanted
 				}
 			} else {
-				log.Infof("%s set to %t", csconfig.SEND_LABEL, wanted)
-				csConfig.API.Server.ConsoleConfig.ShareLabel = types.BoolPtr(wanted)
+				log.Infof("%s set to %t", csconfig.SEND_CONTEXT, wanted)
+				csConfig.API.Server.ConsoleConfig.ShareContext = types.BoolPtr(wanted)
 			}
 		default:
 			log.Fatalf("unknown flag %s", arg)

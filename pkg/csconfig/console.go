@@ -15,10 +15,10 @@ const (
 	SEND_CUSTOM_SCENARIOS  = "custom"
 	SEND_TAINTED_SCENARIOS = "tainted"
 	SEND_MANUAL_SCENARIOS  = "manual"
-	SEND_LABEL             = "label"
+	SEND_CONTEXT           = "context"
 )
 
-var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_LABEL}
+var CONSOLE_CONFIGS = []string{SEND_CUSTOM_SCENARIOS, SEND_MANUAL_SCENARIOS, SEND_TAINTED_SCENARIOS, SEND_CONTEXT}
 
 var DefaultConsoleConfigFilePath = DefaultConfigPath("console.yaml")
 
@@ -26,7 +26,7 @@ type ConsoleConfig struct {
 	ShareManualDecisions  *bool `yaml:"share_manual_decisions"`
 	ShareTaintedScenarios *bool `yaml:"share_tainted"`
 	ShareCustomScenarios  *bool `yaml:"share_custom"`
-	ShareLabel            *bool `yaml:"share_labels"`
+	ShareContext          *bool `yaml:"share_context"`
 }
 
 func (c *LocalApiServerCfg) LoadConsoleConfig() error {
@@ -36,7 +36,7 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareCustomScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareTaintedScenarios = types.BoolPtr(true)
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
-		c.ConsoleConfig.ShareLabel = types.BoolPtr(false)
+		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
 		return nil
 	}
 
@@ -62,9 +62,9 @@ func (c *LocalApiServerCfg) LoadConsoleConfig() error {
 		c.ConsoleConfig.ShareManualDecisions = types.BoolPtr(false)
 	}
 
-	if c.ConsoleConfig.ShareLabel == nil {
-		log.Debugf("no 'label' found, setting to false")
-		c.ConsoleConfig.ShareLabel = types.BoolPtr(false)
+	if c.ConsoleConfig.ShareContext == nil {
+		log.Debugf("no 'context' found, setting to false")
+		c.ConsoleConfig.ShareContext = types.BoolPtr(false)
 	}
 
 	log.Debugf("Console configuration '%s' loaded successfully", c.ConsoleConfigPath)
