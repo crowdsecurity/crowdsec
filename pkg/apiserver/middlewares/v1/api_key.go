@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -104,6 +105,15 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			if err := a.DbClient.UpdateBouncerTypeAndVersion(useragent[0], useragent[1], bouncer.ID); err != nil {
 				log.Errorf("failed to update bouncer version and type from '%s' (%s): %s", c.Request.UserAgent(), c.ClientIP(), err)
 				c.JSON(http.StatusForbidden, gin.H{"message": "bad user agent"})
+				c.Abort()
+				return
+			}
+		}
+
+		if c.Request.Method != "HEAD" && time.Now().UTC().Sub(bouncer.LastPull) >= time.Minute {
+			if err := a.DbClient.UpdateBouncerLastPull(time.Now().UTC(), bouncer.ID); err != nil {
+				log.Errorf("failed to update bouncer last pull: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				c.Abort()
 				return
 			}
