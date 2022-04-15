@@ -1,20 +1,13 @@
-$(info OS is $(OS))
-
 ifeq ($(OS),Windows_NT)
 SHELL := pwsh.exe
 .SHELLFLAGS := -NoProfile -Command
 ROOT= $(shell (Get-Location).Path)
-SYSTEM?=windows
+SYSTEM=windows
 EXT=.exe
 else
 ROOT?= $(shell pwd)
 SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
-
-$(info Curdir is $(CURDIR))
-$(info System is $(SYSTEM))
-$(info Wildcard output is "$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)")
-
 
 ifneq ("$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)", "")
 	include $(CURDIR)/platform/$(SYSTEM).mk
