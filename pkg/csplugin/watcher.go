@@ -152,7 +152,7 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		select {
 		case pluginName := <-pw.Inserts:
 			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
-			if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
+			if _, ok := pw.PluginConfigByName[pluginName]; ok {
 				curr, _ := pw.AlertCountByPluginName.Get(pluginName)
 				pw.AlertCountByPluginName.Set(pluginName, curr+1)
 			}

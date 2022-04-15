@@ -519,7 +519,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	}
 }
 
-func TestBrokerRun(t *testing.T) {
+func TestBrokerRunSimple(t *testing.T) {
 	DefaultEmptyTicker = 50 * time.Millisecond
 	buildDummyPlugin()
 	setPluginPermTo744()
