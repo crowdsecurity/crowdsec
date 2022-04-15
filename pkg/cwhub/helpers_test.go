@@ -148,19 +148,8 @@ func TestUpgradeConfigNewScenarioIsInstalledWhenReferencedScenarioIsDisabled(t *
 
 func assertCollectionDepsInstalled(t *testing.T, collection string) {
 	t.Helper()
-	for _, parser := range hubIdx[COLLECTIONS][collection].Parsers {
-		require.True(t, hubIdx[PARSERS][parser].Installed)
-		require.True(t, hubIdx[PARSERS][parser].Downloaded)
-		require.True(t, hubIdx[PARSERS][parser].UpToDate)
-		require.False(t, hubIdx[PARSERS][parser].Tainted)
-	}
-
-	for _, scenario := range hubIdx[SCENARIOS][collection].Parsers {
-		require.True(t, hubIdx[PARSERS][scenario].Installed)
-		require.True(t, hubIdx[PARSERS][scenario].Downloaded)
-		require.True(t, hubIdx[PARSERS][scenario].UpToDate)
-		require.False(t, hubIdx[PARSERS][scenario].Tainted)
-	}
+	c := hubIdx[COLLECTIONS][collection]
+	require.NoError(t, CollecDepsCheck(&c))
 }
 
 func pushUpdateToCollectionInHub() {
