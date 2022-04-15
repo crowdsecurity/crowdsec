@@ -35,9 +35,9 @@ stages:
             inputs:
               targetType: 'inline'
               pwsh: true
+              #we are not calling make windows_installer because we want to sign the binaries before they are added to the MSI
               script: |
-                make windows_installer
-
+                make build
           - task: AzureKeyVault@2
             inputs:
               azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
@@ -50,10 +50,21 @@ stages:
               secureFile: appsettings.json
 
           - pwsh: |
-              SignClient.exe Sign  --name "crowdsec.msi" `
-              --input "*.exe,dll" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
+              SignClient.exe Sign --name "crowdsec-binaries" `
+              --input "**/*.exe" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
               --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
-            displayName: "Sign crowdsec installer"
+            displayName: "Sign Crowdsec binaries + plugins"
+
+          - pwsh: |
+              $build_version=(git describe --tags (git rev-list --tags --max-count=1))
+              .\make_installer.ps1 -version $build_version
+            displayName: "Sign Crowdsec MSI"
+
+          - pwsh: |
+              SignClient.exe Sign --name "crowdsec-msi" `
+              --input "*.msi" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
+              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
+            displayName: "Sign Crowdsec MSI"
 
           - task: PublishBuildArtifacts@1
             inputs:
