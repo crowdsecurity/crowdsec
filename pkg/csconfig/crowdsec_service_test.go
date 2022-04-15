@@ -72,6 +72,7 @@ func TestLoadCrowdsec(t *testing.T) {
 			},
 			expectedResult: &CrowdsecServiceCfg{
 				AcquisitionDirPath:   "",
+				ConsoleContextPath:   "/etc/crowdsec/console/context.yaml",
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
 				DataDir:              dataFullPath,
@@ -110,6 +111,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
+				ConsoleContextPath:   "/etc/crowdsec/console/context.yaml",
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
