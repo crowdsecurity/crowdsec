@@ -27,13 +27,14 @@ stages:
             inputs:
                 version: '1.17.9'
 
-          - pwsh: |
-              $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
-              (go env GOVERSION).replace("go","").split(".")[0]
-              (go env GOVERSION).replace("go","").split(".")[1]
-          - pwsh: |
-              $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
-              make windows_installer
+          - task: AzurePowerShell@5
+            inputs:
+              azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
+              ScriptType: 'InlineScript'
+              Inline: |
+                $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
+                make windows_installer
+              pwsh: true
             displayName: "Build Crowdsec installer"
 
           - task: AzureKeyVault@2
