@@ -30,7 +30,7 @@ exec_sql() {
 [ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
 
 # ---------------------------
-# In most cases this called with setup argument, and it shouldn't fail for missinf config file.
+# In most cases this is called with setup argument, and it shouldn't fail for missing config file.
 if [ -f "${CONFIG_YAML}" ] ; then
     DATA_DIR=$(yq '.config_paths.data_dir' <"${CONFIG_YAML}")
     DB_FILE="${DATA_DIR}/crowdsec.db"

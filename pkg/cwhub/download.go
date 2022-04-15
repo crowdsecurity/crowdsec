@@ -69,7 +69,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 
 	wsize, err := file.WriteString(string(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "while writting hub index file")
+		return nil, errors.Wrap(err, "while writing hub index file")
 	}
 	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
 	return body, nil
@@ -208,7 +208,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, errors.Wrap(err, "while writting file")
+		return target, errors.Wrap(err, "while writing file")
 	}
 	target.Downloaded = true
 	target.Tainted = false

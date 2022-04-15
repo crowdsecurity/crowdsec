@@ -417,7 +417,7 @@ func (a *apic) PullTop() error {
 		return errors.Wrap(err, "get stream")
 	}
 	a.startup = false
-	/*to count additions/deletions accross lists*/
+	/*to count additions/deletions across lists*/
 
 	add_counters, delete_counters := makeAddAndDeleteCounters()
 	// process deleted decisions

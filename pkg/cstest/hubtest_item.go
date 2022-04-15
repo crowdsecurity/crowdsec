@@ -390,7 +390,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", parserName, err)
 			}
-			log.Debugf("parser '%s' installed succesfully in runtime environment", parserName)
+			log.Debugf("parser '%s' installed successfully in runtime environment", parserName)
 		}
 	}
 
@@ -401,7 +401,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", scenarioName, err)
 			}
-			log.Debugf("scenario '%s' installed succesfully in runtime environment", scenarioName)
+			log.Debugf("scenario '%s' installed successfully in runtime environment", scenarioName)
 		}
 	}
 
@@ -412,7 +412,7 @@ func (t *HubTestItem) InstallHub() error {
 			if err := cwhub.DownloadDataIfNeeded(t.RuntimeHubConfig, item, true); err != nil {
 				return fmt.Errorf("unable to download data for parser '%s': %+v", postoverflowName, err)
 			}
-			log.Debugf("postoverflow '%s' installed succesfully in runtime environment", postoverflowName)
+			log.Debugf("postoverflow '%s' installed successfully in runtime environment", postoverflowName)
 		}
 	}
 
