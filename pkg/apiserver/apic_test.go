@@ -60,6 +60,7 @@ func getAPIC(t *testing.T) *apic {
 			ShareManualDecisions:  types.BoolPtr(false),
 			ShareTaintedScenarios: types.BoolPtr(false),
 			ShareCustomScenarios:  types.BoolPtr(false),
+			ShareContext:          types.BoolPtr(false),
 		},
 	}
 }
