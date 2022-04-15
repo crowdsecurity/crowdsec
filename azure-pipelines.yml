@@ -79,7 +79,7 @@ stages:
     jobs:
       - deployment: "Publish"
         displayName: "Publish to GitHub"
-        environment: github-cs-windows-firewall-bouncer
+        environment: github
         strategy:
           runOnce:
             deploy:
