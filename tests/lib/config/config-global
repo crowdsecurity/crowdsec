@@ -51,11 +51,11 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
-    [ $DB_BACKEND != sqlite ] && ${CSCLI} machines add --auto
+    is_db_sqlite || ${CSCLI} machines add --auto
 
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
-    "${CSCLI}" decisions delete --all
+    [ -z "{PACKAGE_TESTING}" ] && "${CSCLI}" decisions delete --all
     "${TEST_DIR}/instance-crowdsec" stop
     
 
