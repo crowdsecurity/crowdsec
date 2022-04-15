@@ -36,8 +36,7 @@ stages:
               targetType: 'inline'
               pwsh: true
               script: |
-                Write-Output "SYSTEM is '$env:SYSTEM'"
-                make -d windows_installer
+                make windows_installer
 
           - task: AzureKeyVault@2
             inputs:
