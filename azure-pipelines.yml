@@ -27,12 +27,15 @@ stages:
             inputs:
                 version: '1.17.9'
 
+          - pwsh: |
+              choco install -y jq
+              choco install -y make
+            displayName: "Install builds deps"
           - task: PowerShell@2
             inputs:
               targetType: 'inline'
               pwsh: true
               script: |
-                $env:Path += ";C:\hostedtoolcache\windows\go\1.17.9\x64\bin"
                 make -d windows_installer
 
           - task: AzureKeyVault@2
