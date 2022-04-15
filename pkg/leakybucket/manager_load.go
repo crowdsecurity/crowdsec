@@ -218,7 +218,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 
 			bucketFactory.wgDumpState = buckets.wgDumpState
 			bucketFactory.wgPour = buckets.wgPour
-			bucketFactory.LabelsToSend = cscfg.LabelsToSend
+			bucketFactory.LabelsToSend = cscfg.ContextToSend
 			err = LoadBucket(&bucketFactory, tomb)
 			if err != nil {
 				log.Errorf("Failed to load bucket %s : %v", bucketFactory.Name, err)

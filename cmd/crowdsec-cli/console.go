@@ -263,9 +263,9 @@ Disable given information push to the central API.`,
 
 	cmdConsole.AddCommand(cmdConsoleStatus)
 
-	cmdLabel := &cobra.Command{
-		Use:               "label [feature-flag]",
-		Short:             "Manage label to send with alerts",
+	cmdContext := &cobra.Command{
+		Use:               "context [feature-flag]",
+		Short:             "Manage context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			printHelp(cmd)
@@ -274,40 +274,40 @@ Disable given information push to the central API.`,
 
 	var keyToAdd string
 	var valuesToAdd []string
-	cmdLabelAdd := &cobra.Command{
+	cmdContextAdd := &cobra.Command{
 		Use:               "add",
-		Short:             "Add label to send with alerts",
+		Short:             "Add context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			if _, ok := csConfig.Crowdsec.LabelsToSend[keyToAdd]; !ok {
-				csConfig.Crowdsec.LabelsToSend[keyToAdd] = make([]string, 0)
+			if _, ok := csConfig.Crowdsec.ContextToSend[keyToAdd]; !ok {
+				csConfig.Crowdsec.ContextToSend[keyToAdd] = make([]string, 0)
 				log.Infof("key '%s' added", keyToAdd)
 			}
-			data := csConfig.Crowdsec.LabelsToSend[keyToAdd]
+			data := csConfig.Crowdsec.ContextToSend[keyToAdd]
 			for _, val := range valuesToAdd {
 				if !inSlice(val, data) {
 					log.Infof("value '%s' added to key '%s'", val, keyToAdd)
 					data = append(data, val)
 				}
-				csConfig.Crowdsec.LabelsToSend[keyToAdd] = data
+				csConfig.Crowdsec.ContextToSend[keyToAdd] = data
 			}
-			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
+			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
 				log.Fatalf(err.Error())
 			}
 		},
 	}
-	cmdLabelAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
-	cmdLabelAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
-	cmdLabelAdd.MarkFlagRequired("key")
-	cmdLabelAdd.MarkFlagRequired("value")
-	cmdLabel.AddCommand(cmdLabelAdd)
+	cmdContextAdd.Flags().StringVarP(&keyToAdd, "key", "k", "", "The key of the different values to send")
+	cmdContextAdd.Flags().StringSliceVar(&valuesToAdd, "value", []string{}, "The expr fields to associate with the key")
+	cmdContextAdd.MarkFlagRequired("key")
+	cmdContextAdd.MarkFlagRequired("value")
+	cmdContext.AddCommand(cmdContextAdd)
 
-	cmdLabelStatus := &cobra.Command{
+	cmdContextStatus := &cobra.Command{
 		Use:               "status",
-		Short:             "List label to send with alerts",
+		Short:             "List context to send with alerts",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			dump, err := yaml.Marshal(csConfig.Crowdsec.LabelsToSend)
+			dump, err := yaml.Marshal(csConfig.Crowdsec.ContextToSend)
 			if err != nil {
 				log.Fatalf("unable to show labels status: %s", err)
 			}
@@ -315,15 +315,20 @@ Disable given information push to the central API.`,
 
 		},
 	}
-	cmdLabel.AddCommand(cmdLabelStatus)
+	cmdContext.AddCommand(cmdContextStatus)
 
 	var detectAll bool
-	cmdLabelDetect := &cobra.Command{
+	cmdContextDetect := &cobra.Command{
 		Use:               "detect",
 		Short:             "Detect available fields from the installed parsers",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
+
+			if !detectAll && len(args) == 0 {
+				log.Infof("Please provide parsers to detect or --all flag.")
+				printHelp(cmd)
+			}
 
 			// to avoid all the log.Info from the loaders functions
 			log.SetLevel(log.ErrorLevel)
@@ -392,12 +397,12 @@ Disable given information push to the central API.`,
 			}
 		},
 	}
-	cmdLabelDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
-	cmdLabel.AddCommand(cmdLabelDetect)
+	cmdContextDetect.Flags().BoolVarP(&detectAll, "all", "a", false, "Detect evt field for all installed parser")
+	cmdContext.AddCommand(cmdContextDetect)
 
 	var keysToDelete []string
 	var valuesToDelete []string
-	cmdLabelDelete := &cobra.Command{
+	cmdContextDelete := &cobra.Command{
 		Use:               "delete",
 		Short:             "List label to send with alerts",
 		DisableAutoGenTag: true,
@@ -407,8 +412,8 @@ Disable given information push to the central API.`,
 			}
 
 			for _, key := range keysToDelete {
-				if _, ok := csConfig.Crowdsec.LabelsToSend[key]; ok {
-					delete(csConfig.Crowdsec.LabelsToSend, key)
+				if _, ok := csConfig.Crowdsec.ContextToSend[key]; ok {
+					delete(csConfig.Crowdsec.ContextToSend, key)
 					log.Infof("key '%s' has been removed", key)
 				} else {
 					log.Warningf("key '%s' doesn't exist", key)
@@ -417,14 +422,14 @@ Disable given information push to the central API.`,
 
 			for _, value := range valuesToDelete {
 				valueFound := false
-				for key, labels := range csConfig.Crowdsec.LabelsToSend {
+				for key, labels := range csConfig.Crowdsec.ContextToSend {
 					if inSlice(value, labels) {
 						valueFound = true
-						csConfig.Crowdsec.LabelsToSend[key] = removeFromSlice(value, labels)
+						csConfig.Crowdsec.ContextToSend[key] = removeFromSlice(value, labels)
 						log.Infof("value '%s' has been removed from key '%s'", value, key)
 					}
-					if len(csConfig.Crowdsec.LabelsToSend[key]) == 0 {
-						delete(csConfig.Crowdsec.LabelsToSend, key)
+					if len(csConfig.Crowdsec.ContextToSend[key]) == 0 {
+						delete(csConfig.Crowdsec.ContextToSend, key)
 					}
 				}
 				if !valueFound {
@@ -432,17 +437,17 @@ Disable given information push to the central API.`,
 				}
 			}
 
-			if err := csConfig.Crowdsec.DumpLabelConfigFile(); err != nil {
+			if err := csConfig.Crowdsec.DumpContextConfigFile(); err != nil {
 				log.Fatalf(err.Error())
 			}
 
 		},
 	}
-	cmdLabelDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
-	cmdLabelDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
-	cmdLabel.AddCommand(cmdLabelDelete)
+	cmdContextDelete.Flags().StringSliceVarP(&keysToDelete, "key", "k", []string{}, "The keys to delete")
+	cmdContextDelete.Flags().StringSliceVar(&valuesToDelete, "value", []string{}, "The expr fields to delete")
+	cmdContext.AddCommand(cmdContextDelete)
 
-	cmdConsole.AddCommand(cmdLabel)
+	cmdConsole.AddCommand(cmdContext)
 
 	return cmdConsole
 }

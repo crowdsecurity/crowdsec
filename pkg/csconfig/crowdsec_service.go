@@ -15,7 +15,7 @@ import (
 type CrowdsecServiceCfg struct {
 	AcquisitionFilePath  string            `yaml:"acquisition_path,omitempty"`
 	AcquisitionDirPath   string            `yaml:"acquisition_dir,omitempty"`
-	ConsoleLabelsPath    string            `yaml:"console_labels_path"`
+	ConsoleContextPath   string            `yaml:"console_context_path"`
 	AcquisitionFiles     []string          `yaml:"-"`
 	ParserRoutinesCount  int               `yaml:"parser_routines"`
 	BucketsRoutinesCount int               `yaml:"buckets_routines"`
@@ -31,10 +31,10 @@ type CrowdsecServiceCfg struct {
 	ConfigDir          string              `yaml:"-"`
 	HubIndexFile       string              `yaml:"-"`
 	SimulationFilePath string              `yaml:"-"`
-	LabelsToSend       map[string][]string `yaml:"-"`
+	ContextToSend      map[string][]string `yaml:"-"`
 }
 
-var DefaultLabelsConfigFilePath = DefaultConfigPath("console", "labels.yaml")
+var DefaultContextConfigFilePath = DefaultConfigPath("console", "context.yaml")
 
 func (c *Config) LoadCrowdsec() error {
 	var err error
@@ -94,17 +94,17 @@ func (c *Config) LoadCrowdsec() error {
 	if c.Crowdsec.OutputRoutinesCount <= 0 {
 		c.Crowdsec.OutputRoutinesCount = 1
 	}
-	if c.Crowdsec.ConsoleLabelsPath == "" {
-		c.Crowdsec.ConsoleLabelsPath = DefaultLabelsConfigFilePath
+	if c.Crowdsec.ConsoleContextPath == "" {
+		c.Crowdsec.ConsoleContextPath = DefaultContextConfigFilePath
 	}
-	yamlFile, err := ioutil.ReadFile(c.Crowdsec.ConsoleLabelsPath)
+	yamlFile, err := ioutil.ReadFile(c.Crowdsec.ConsoleContextPath)
 	if err != nil {
-		return fmt.Errorf("reading console label file '%s': %s", c.Crowdsec.ConsoleLabelsPath, err)
+		return fmt.Errorf("reading console label file '%s': %s", c.Crowdsec.ConsoleContextPath, err)
 	}
-	c.Crowdsec.LabelsToSend = make(map[string][]string, 0)
-	err = yaml.Unmarshal(yamlFile, c.Crowdsec.LabelsToSend)
+	c.Crowdsec.ContextToSend = make(map[string][]string, 0)
+	err = yaml.Unmarshal(yamlFile, c.Crowdsec.ContextToSend)
 	if err != nil {
-		return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultLabelsConfigFilePath, err)
+		return fmt.Errorf("unmarshaling labels console config file '%s': %s", DefaultContextConfigFilePath, err)
 	}
 
 	var crowdsecCleanup = []*string{
@@ -136,19 +136,19 @@ func (c *Config) LoadCrowdsec() error {
 	return nil
 }
 
-func (c *CrowdsecServiceCfg) DumpLabelConfigFile() error {
+func (c *CrowdsecServiceCfg) DumpContextConfigFile() error {
 	var out []byte
 	var err error
 
-	if out, err = yaml.Marshal(c.LabelsToSend); err != nil {
-		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", DefaultLabelsConfigFilePath)
+	if out, err = yaml.Marshal(c.ContextToSend); err != nil {
+		return errors.Wrapf(err, "while marshaling ConsoleConfig (for %s)", DefaultContextConfigFilePath)
 	}
 
-	if err := os.WriteFile(c.ConsoleLabelsPath, out, 0600); err != nil {
-		return errors.Wrapf(err, "while dumping console config to %s", DefaultLabelsConfigFilePath)
+	if err := os.WriteFile(c.ConsoleContextPath, out, 0600); err != nil {
+		return errors.Wrapf(err, "while dumping console config to %s", DefaultContextConfigFilePath)
 	}
 
-	log.Infof("%s file saved", c.ConsoleLabelsPath)
+	log.Infof("%s file saved", c.ConsoleContextPath)
 
 	return nil
 }

@@ -35,7 +35,7 @@ teardown() {
     ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
     echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
-    CONTEXT_YAML=$(config_yq '.crowdsec_service.console_labels_path')
+    CONTEXT_YAML=$(config_yq '.crowdsec_service.console_context_path')
     echo -e "---\ntarget_user:\n- evt.Parsed.sshd_invalid_user\nsource_ip:\n- evt.Parsed.sshd_client_ip\nsource_host:\n- evt.Meta.machine\n" >>"${CONTEXT_YAML}"
 
     ./instance-crowdsec start

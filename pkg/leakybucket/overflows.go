@@ -19,6 +19,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 )
 
+const (
+	maxContextValueLen = 4000
+)
+
 //SourceFromEvent extracts and formats a valid models.Source object from an Event
 func SourceFromEvent(evt types.Event, leaky *Leaky) (map[string]models.Source, error) {
 	srcs := make(map[string]models.Source)
@@ -234,13 +238,34 @@ func alertFormatSource(leaky *Leaky, queue *Queue) (map[string]models.Source, st
 	return sources, source_type, nil
 }
 
-func EventToLabel(labels map[string][]*vm.Program, queue *Queue) models.Meta {
+func truncate(values []string) (string, error) {
+	var ret string
+	valueByte, err := json.Marshal(values)
+	if err != nil {
+		return "", fmt.Errorf("unable to dump metas: %s", err)
+	}
+	ret = string(valueByte)
+	for {
+		if len(ret) <= maxContextValueLen {
+			break
+		}
+		values = values[:len(values)-1]
+		valueByte, err = json.Marshal(values)
+		if err != nil {
+			return "", fmt.Errorf("unable to dump metas: %s", err)
+		}
+		ret = string(valueByte)
+	}
+	return ret, nil
+}
+
+func EventToContext(labels map[string][]*vm.Program, queue *Queue) models.Meta {
 	metas := make([]*models.MetaItems0, 0)
-	tmpLabels := make(map[string][]string)
+	tmpContext := make(map[string][]string)
 	for _, evt := range queue.Queue {
 		for key, values := range labels {
-			if _, ok := tmpLabels[key]; !ok {
-				tmpLabels[key] = make([]string, 0)
+			if _, ok := tmpContext[key]; !ok {
+				tmpContext[key] = make([]string, 0)
 			}
 			for _, value := range values {
 				var val string
@@ -255,27 +280,26 @@ func EventToLabel(labels map[string][]*vm.Program, queue *Queue) models.Meta {
 				case int:
 					val = strconv.Itoa(out)
 				default:
-					log.Warningf("unexpected return type for label to send : %T", output)
+					log.Warningf("unexpected return type for context to send : %T", output)
 					continue
 				}
-				if val != "" && !types.InSlice(val, tmpLabels[key]) {
-					tmpLabels[key] = append(tmpLabels[key], val)
+				if val != "" && !types.InSlice(val, tmpContext[key]) {
+					tmpContext[key] = append(tmpContext[key], val)
 				}
 			}
 		}
 	}
-	for key, values := range tmpLabels {
+	for key, values := range tmpContext {
 		if len(values) == 0 {
 			continue
 		}
-		valueByte, err := json.Marshal(values)
+		valueStr, err := truncate(values)
 		if err != nil {
-			log.Warningf("unable to dump metas: %s", err)
-			continue
+			log.Warningf(err.Error())
 		}
 		meta := models.MetaItems0{
 			Key:   key,
-			Value: string(valueByte),
+			Value: valueStr,
 		}
 		metas = append(metas, &meta)
 	}
@@ -345,7 +369,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 	*apiAlert.Message = fmt.Sprintf("%s %s performed '%s' (%d events over %s) at %s", source_scope, sourceStr, leaky.Name, leaky.Total_count, leaky.Ovflw_ts.Sub(leaky.First_ts), leaky.Last_ts)
 	//Get the events from Leaky/Queue
 	apiAlert.Events = EventsFromQueue(queue)
-	apiAlert.Meta = EventToLabel(leaky.LabelsToSend, leaky.Queue)
+	apiAlert.Meta = EventToContext(leaky.LabelsToSend, leaky.Queue)
 
 	//Loop over the Sources and generate appropriate number of ApiAlerts
 	for _, srcValue := range sources {

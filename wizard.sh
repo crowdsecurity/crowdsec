@@ -412,7 +412,7 @@ install_crowdsec() {
     install -v -m 644 -D ./config/profiles.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/simulation.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/"${CONSOLE_FILE}" "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
-    install -v -m 644 -D ./config/labels.yaml "${CROWDSEC_CONSOLE_DIR}" 1> /dev/null || exit
+    install -v -m 644 -D ./config/context.yaml "${CROWDSEC_CONSOLE_DIR}" 1> /dev/null || exit
 
     DATA=${CROWDSEC_DATA_DIR} CFG=${CROWDSEC_CONFIG_PATH} envsubst '$CFG $DATA' < ./config/user.yaml > ${CROWDSEC_CONFIG_PATH}"/user.yaml" || log_fatal "unable to generate user configuration file"
     if [[ ${DOCKER_MODE} == "false" ]]; then
