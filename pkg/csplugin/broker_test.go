@@ -285,14 +285,14 @@ func TestBrokerNoThreshold(t *testing.T) {
 	setPluginPermTo744()
 	defer tearDown()
 	//init
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
 	//default config
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
@@ -336,7 +336,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	defer tearDown()
 
 	//init
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
@@ -347,7 +347,7 @@ func TestBrokerRunGroupAndTimeThreshold_TimeFirst(t *testing.T) {
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 1 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
@@ -382,7 +382,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	setPluginPermTo744()
 	defer tearDown()
 	//init
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
@@ -393,7 +393,7 @@ func TestBrokerRunGroupAndTimeThreshold_CountFirst(t *testing.T) {
 	cfg.GroupThreshold = 4
 	cfg.GroupWait = 4 * time.Second
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
@@ -432,7 +432,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	setPluginPermTo744()
 	defer tearDown()
 	//init
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
@@ -442,7 +442,7 @@ func TestBrokerRunGroupThreshold(t *testing.T) {
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupThreshold = 4
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
@@ -480,7 +480,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	setPluginPermTo744()
 	defer tearDown()
 	//init
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
@@ -490,7 +490,7 @@ func TestBrokerRunTimeThreshold(t *testing.T) {
 	raw, cfg := readconfig(t, "tests/notifications/dummy.yaml")
 	cfg.GroupWait = time.Duration(1 * time.Second)
 	writeconfig(t, cfg, "tests/notifications/dummy.yaml")
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
@@ -524,13 +524,13 @@ func TestBrokerRunSimple(t *testing.T) {
 	buildDummyPlugin()
 	setPluginPermTo744()
 	defer tearDown()
-	procCfg := csconfig.PluginCfg{}
+	pluginCfg := csconfig.PluginCfg{}
 	pb := PluginBroker{}
 	profiles := csconfig.NewDefaultConfig().API.Server.Profiles
 	profiles = append(profiles, &csconfig.ProfileCfg{
 		Notifications: []string{"dummy_default"},
 	})
-	err := pb.Init(&procCfg, profiles, &csconfig.ConfigurationPaths{
+	err := pb.Init(&pluginCfg, profiles, &csconfig.ConfigurationPaths{
 		PluginDir:       testPath,
 		NotificationDir: "./tests/notifications",
 	})
