@@ -1,6 +1,8 @@
 package csplugin
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -13,9 +15,39 @@ import (
  by frequency : it will signal the plugin to deliver notifications at this frequence (watchPluginTicker)
  by threshold : it will signal the plugin to deliver notifications when the number of alerts for this plugin reaches this threshold (watchPluginAlertCounts)
 */
+
+// TODO: When we start using go 1.18, consider moving this struct in some utils pkg. Make the implementation more generic using generics :)
+type alertCounterByPluginName struct {
+	sync.Mutex
+	data map[string]int
+}
+
+func newAlertCounterByPluginName() alertCounterByPluginName {
+	return alertCounterByPluginName{
+		data: make(map[string]int),
+	}
+}
+
+func (acp *alertCounterByPluginName) Init() {
+	acp.data = make(map[string]int)
+}
+
+func (acp *alertCounterByPluginName) Get(key string) (int, bool) {
+	acp.Lock()
+	val, ok := acp.data[key]
+	acp.Unlock()
+	return val, ok
+}
+
+func (acp *alertCounterByPluginName) Set(key string, val int) {
+	acp.Lock()
+	acp.data[key] = val
+	acp.Unlock()
+}
+
 type PluginWatcher struct {
 	PluginConfigByName     map[string]PluginConfig
-	AlertCountByPluginName map[string]int
+	AlertCountByPluginName alertCounterByPluginName
 	PluginEvents           chan string
 	Inserts                chan string
 	tomb                   *tomb.Tomb
@@ -26,10 +58,10 @@ var DefaultEmptyTicker = time.Second * 1
 func (pw *PluginWatcher) Init(configs map[string]PluginConfig, alertsByPluginName map[string][]*models.Alert) {
 	pw.PluginConfigByName = configs
 	pw.PluginEvents = make(chan string)
-	pw.AlertCountByPluginName = make(map[string]int)
+	pw.AlertCountByPluginName = newAlertCounterByPluginName()
 	pw.Inserts = make(chan string)
 	for name := range alertsByPluginName {
-		pw.AlertCountByPluginName[name] = 0
+		pw.AlertCountByPluginName.Set(name, 0)
 	}
 }
 
@@ -83,10 +115,12 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 		case <-ticker.C:
 			send := false
 			//if count threshold was set, honor no matter what
-			if watchCount > 0 && pw.AlertCountByPluginName[pluginName] >= watchCount {
-				log.Tracef("sending alerts to %s, threshold %d reached", pluginName, pw.AlertCountByPluginName[pluginName])
+			if pc, _ := pw.AlertCountByPluginName.Get(pluginName); watchCount > 0 && pc >= watchCount {
+				fmt.Printf("[%s] %d alerts received, sending\n", pluginName, pc)
 				send = true
-				pw.AlertCountByPluginName[pluginName] = 0
+				pw.AlertCountByPluginName.Set(pluginName, 0)
+			} else {
+				fmt.Printf("[%s] %d alerts received, NOT sending\n", pluginName, pc)
 			}
 			//if time threshold only was set
 			if watchTime > 0 && watchTime == interval {
@@ -119,7 +153,8 @@ func (pw *PluginWatcher) watchPluginAlertCounts() {
 		case pluginName := <-pw.Inserts:
 			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
 			if threshold := pw.PluginConfigByName[pluginName].GroupThreshold; threshold > 0 {
-				pw.AlertCountByPluginName[pluginName]++
+				curr, _ := pw.AlertCountByPluginName.Get(pluginName)
+				pw.AlertCountByPluginName.Set(pluginName, curr+1)
 			}
 		case <-pw.tomb.Dying():
 			return
