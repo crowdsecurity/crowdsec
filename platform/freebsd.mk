@@ -3,3 +3,4 @@
 
 Make=gmake
 
+$(info building for FreeBSD)

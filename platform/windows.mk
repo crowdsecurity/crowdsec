@@ -29,4 +29,4 @@ MKDIR=New-Item -ItemType directory
 WIN_IGNORE_ERR=; exit 0
 
 
-$(warning Building for windows)
+$(info Building for windows)
