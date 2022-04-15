@@ -12,7 +12,7 @@ SYSTEM?= $(shell uname -s | tr '[A-Z]' '[a-z]')
 endif
 
 $(info Curdir is $(CURDIR))
-
+$(info System is $(SYSTEM))
 $(info Wildcard output is "$(wildcard $(CURDIR)/platform/$(SYSTEM).mk)")
 
 
