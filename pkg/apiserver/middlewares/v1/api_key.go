@@ -113,9 +113,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 		if c.Request.Method != "HEAD" && time.Now().UTC().Sub(bouncer.LastPull) >= time.Minute {
 			if err := a.DbClient.UpdateBouncerLastPull(time.Now().UTC(), bouncer.ID); err != nil {
 				log.Errorf("failed to update bouncer last pull: %v", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-				c.Abort()
-				return
 			}
 		}
 
