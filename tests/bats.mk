@@ -63,8 +63,10 @@ endef
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
 
 # Source this to run the scripts outside of the Makefile
+# Old version of make don't have $(file) directive
+bats-environment: export ENV:=$(ENV)
 bats-environment:
-	$(file >$(TEST_DIR)/.environment.sh,$(ENV))
+	@echo "$${ENV}" > $(TEST_DIR)/.environment.sh
 
 # Verify dependencies and submodules
 bats-check-requirements:
@@ -107,3 +109,5 @@ bats-test-package: bats-environment
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
+
+.PHONY: bats-environment

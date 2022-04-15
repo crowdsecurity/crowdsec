@@ -14,6 +14,8 @@ PGHOST=${PGHOST:-127.0.0.1}
 PGPORT=${PGPORT:-5432}
 PGPASSWORD=${PGPASSWORD:-postgres}
 PGUSER=${PGUSER:-postgres}
+PGDUMP=${PGDUMP:-pg_dumpall}
+PGRESTORE=${PGRESTORE:-psql}
 export PGHOST
 export PGPORT
 export PGPASSWORD
@@ -44,19 +46,17 @@ setup() {
     exec_sql "DROP USER IF EXISTS crowdsec_test;"
     exec_sql "CREATE USER crowdsec_test WITH ENCRYPTED PASSWORD 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON DATABASE crowdsec_test TO crowdsec_test;"
-    # exec_sql "SET log_statement='all';"
-    # exec_sql "SELECT pg_reload_conf();"
 }
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    pg_dump -Ft --dbname crowdsec_test > "$backup_file"
+    "${PGDUMP}"  > "$backup_file" 2>/dev/null
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-    pg_restore --dbname crowdsec_test --clean < "$backup_file"
+   "${PGRESTORE}"  < "$backup_file" #seems that in some system it needs for two run
 }
 
 config_yaml() {

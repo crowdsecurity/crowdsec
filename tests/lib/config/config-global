@@ -51,9 +51,15 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
+    # when installed pacakges are always using sqlite, so no need to regenerate
+    # local credz for sqlite
+    is_db_sqlite || ${CSCLI} machines add --auto
+
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
+    [ -z "{PACKAGE_TESTING}" ] && "${CSCLI}" decisions delete --all
     "${TEST_DIR}/instance-crowdsec" stop
+    
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
@@ -64,6 +70,7 @@ make_init_data() {
         --exclude "$REL_DATA_DIR"/crowdsec.db \
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
 
+    ./instance-db setup
     remove_init_data
 }
 
@@ -81,6 +88,8 @@ load_init_data() {
     remove_init_data
 
     tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
+
+    ./instance-db setup
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
