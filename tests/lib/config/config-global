@@ -51,6 +51,8 @@ make_init_data() {
     ./instance-db config-yaml
     ./instance-db setup
 
+    # when installed pacakges are always using sqlite, so no need to regenerate
+    # local credz for sqlite
     is_db_sqlite || ${CSCLI} machines add --auto
 
     "${TEST_DIR}/instance-crowdsec" start
