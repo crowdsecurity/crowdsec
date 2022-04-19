@@ -25,7 +25,13 @@ about() {
 
 check_requirements() {
     if ! command -v psql >/dev/null; then
-        die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
+        die "missing required program 'psql' as a postgres client (package postgressql-client on debian like system)"
+    fi
+    if ! command -v pg_dump >/dev/null; then
+        die "missing required program 'pg_dump' (package postgresql-client on debian like system)"
+    fi
+    if ! command -v pg_restore >/dev/null; then
+        die "missing required program 'pg_restore' (package postgresql-client on debian like system)"
     fi
 }
 
