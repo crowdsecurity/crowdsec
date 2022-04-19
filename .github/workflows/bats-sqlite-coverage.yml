@@ -38,8 +38,7 @@ jobs:
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
 
     - name: "Run tests (with coverage)"
-      #run: TEST_COVERAGE=true make bats-test
-      run: ./tests/run-tests tests/bats/70_http_plugin.bats
+      run: TEST_COVERAGE=true make bats-test
 
     - name: Upload coverage report
       uses: actions/upload-artifact@v2
