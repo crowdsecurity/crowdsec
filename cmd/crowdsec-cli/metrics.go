@@ -23,7 +23,7 @@ import (
 func lapiMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
 
 	//stats : machine -> route -> method -> count
-	/*we want consistant display order*/
+	/*we want consistent display order*/
 	machineKeys := []string{}
 	for k := range stats {
 		machineKeys = append(machineKeys, k)

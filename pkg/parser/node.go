@@ -32,9 +32,9 @@ type Node struct {
 	Rerferences []string `yaml:"references,omitempty"`
 	//if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
-	//This is mostly a hack to make writting less repetive.
+	//This is mostly a hack to make writing less repetitive.
 	//relying on stage, we know which field to parse, and we
-	//can as well promote log to next stage on success
+	//can also promote log to next stage on success
 	Stage string `yaml:"stage,omitempty"`
 	//OnSuccess allows to tag a node to be able to move log to next stage on success
 	OnSuccess string `yaml:"onsuccess,omitempty"`
@@ -259,7 +259,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		}
 		grok := n.Grok.RunTimeRegexp.Parse(gstr)
 		if len(grok) > 0 {
-			/*tag explicitely that the *current* node had a successful grok pattern. it's important to know success state*/
+			/*tag explicitly that the *current* node had a successful grok pattern. it's important to know success state*/
 			NodeHasOKGrok = true
 			clog.Debugf("+ Grok '%s' returned %d entries to merge in Parsed", groklabel, len(grok))
 			//We managed to grok stuff, merged into parse
@@ -301,7 +301,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				}
 			} else {
 				/*
-					If the parent node has a successful grok pattern, it's state will stay successfull even if one or more chil fails.
+					If the parent node has a successful grok pattern, it's state will stay successful even if one or more chil fails.
 					If the parent node is a skeleton node (no grok pattern), then at least one child must be successful for it to be a success.
 				*/
 				if !NodeHasOKGrok {
