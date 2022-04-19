@@ -46,6 +46,11 @@ func TestLoadCrowdsec(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 
+	contextFileFullPath, err := filepath.Abs("./tests/context.yaml")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
 	tests := []struct {
 		name           string
 		Input          *Config
@@ -73,7 +78,7 @@ func TestLoadCrowdsec(t *testing.T) {
 			},
 			expectedResult: &CrowdsecServiceCfg{
 				AcquisitionDirPath:   "",
-				ConsoleContextPath:   "./tests/context.yaml",
+				ConsoleContextPath:   contextFileFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
 				DataDir:              dataFullPath,
@@ -116,7 +121,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				AcquisitionDirPath:   acquisDirFullPath,
 				AcquisitionFilePath:  acquisFullPath,
 				ConfigDir:            configDirFullPath,
-				ConsoleContextPath:   "./tests/context.yaml",
+				ConsoleContextPath:   contextFileFullPath,
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
@@ -156,7 +161,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
-				ConsoleContextPath:   "./tests/context.yaml",
+				ConsoleContextPath:   contextFileFullPath,
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
