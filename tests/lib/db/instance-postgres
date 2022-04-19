@@ -14,8 +14,6 @@ PGHOST=${PGHOST:-127.0.0.1}
 PGPORT=${PGPORT:-5432}
 PGPASSWORD=${PGPASSWORD:-postgres}
 PGUSER=${PGUSER:-postgres}
-PGDUMP=${PGDUMP:-pg_dumpall}
-PGRESTORE=${PGRESTORE:-psql}
 export PGHOST
 export PGPORT
 export PGPASSWORD
@@ -50,13 +48,13 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    "${PGDUMP}"  > "$backup_file" 2>/dev/null
+    pg_dump -Ft --dbname crowdsec_test --file "$backup_file"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-   "${PGRESTORE}"  < "$backup_file" #seems that in some system it needs for two run
+    pg_restore --dbname crowdsec_test --clean "$backup_file"
 }
 
 config_yaml() {
