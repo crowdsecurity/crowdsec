@@ -50,7 +50,7 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    pg_dump -Ft --dbname crowdsec_test --file "$backup_file"
+    pg_dump -Ft --dbname crowdsec_test --clean --create --file "$backup_file"
 }
 
 restore() {

@@ -329,6 +329,9 @@ You can however easily test with a different engine.
 
 Run Postgres somewhere, version 10 or above - easy to do in a docker container.
 
+You also need to install a postgresql-client package or equivalent, to provide
+recent pg_dump and pg_restore executables (not older than the PG version in the docker container).
+
 ```
 $ sudo docker run --detach --name=postgres -p 5432:5432 --env="POSTGRES_PASSWORD=postgres" postgres:latest
 ```
@@ -372,6 +375,8 @@ or for MariaDB
 ```
 $ sudo docker run --cap-add=sys_nice --detach --name=mariadb -p 3306:3306  --env="MYSQL_ROOT_PASSWORD=password" mariadb
 ```
+
+A mysql-client package is required as well.
 
 ## gotchas
 
