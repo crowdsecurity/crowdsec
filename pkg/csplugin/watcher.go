@@ -1,7 +1,6 @@
 package csplugin
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -116,7 +115,7 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			send := false
 			//if count threshold was set, honor no matter what
 			if pc, _ := pw.AlertCountByPluginName.Get(pluginName); watchCount > 0 && pc >= watchCount {
-				fmt.Printf("[%s] %d alerts received, sending\n", pluginName, pc)
+				log.Tracef("[%s] %d alerts received, sending\n", pluginName, pc)
 				send = true
 				pw.AlertCountByPluginName.Set(pluginName, 0)
 			}
