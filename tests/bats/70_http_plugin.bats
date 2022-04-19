@@ -59,6 +59,7 @@ setup() {
 
 @test "$FILE expected 1 log line from http server" {
     run -0 wc -l <"${MOCK_OUT}"
+    echo ${MOCK_OUT} >&3
     cat ${MOCK_OUT} >&3
     # wc can pad with spaces on some platforms
     run -0 tr -d ' ' < <(output)
