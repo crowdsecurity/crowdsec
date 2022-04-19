@@ -156,10 +156,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
-				ContextToSend: map[string][]string{
-					"source_ip": {"evt.Parsed.source_ip"},
-				},
-				ConsoleContextPath: "./tests/context.yaml",
+				ConsoleContextPath:   "./tests/context.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
