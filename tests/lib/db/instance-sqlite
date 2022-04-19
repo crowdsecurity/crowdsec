@@ -25,6 +25,23 @@ exec_sql() {
     sqlite3 "${DB_FILE}" "$@"
 }
 
+setup() {
+    :
+}
+
+dump() {
+    backup_file="${1?Missing file to backup database to}"
+    # dirty fast cp. nothing should be accessing it right now, anyway.
+    [ -f "${DB_FILE}" ] || die "missing file ${DB_FILE}"
+    cp "${DB_FILE}" "$backup_file"
+}
+
+restore() {
+    backup_file="${1?missing file to restore database from}"
+    [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
+    cp "$backup_file" "${DB_FILE}"
+}
+
 # you have not removed set -u above, have you?
 
 [ -z "${CONFIG_YAML-}" ] && die "\$CONFIG_YAML must be defined."
@@ -51,17 +68,12 @@ case "$1" in
     setup)
         ;;
     dump)
-        [ $# -lt 2 ] && about
-        backup_file="$2"
-        # dirty fast cp. nothing should be accessing it right now, anyway.
-        [ -f "${DB_FILE}" ] || die "missing file ${DB_FILE}"
-        cp "${DB_FILE}" "$backup_file"
+        shift
+        dump "$@"
         ;;
     restore)
-        [ $# -lt 2 ] && about
-        backup_file="$2"
-        [ -f "$backup_file" ] || die "missing file $backup_file"
-        cp "$backup_file" "${DB_FILE}"
+        shift
+        restore "$@"
         ;;
     exec_sql)
         shift

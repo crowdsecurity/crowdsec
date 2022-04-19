@@ -14,8 +14,6 @@ PGHOST=${PGHOST:-127.0.0.1}
 PGPORT=${PGPORT:-5432}
 PGPASSWORD=${PGPASSWORD:-postgres}
 PGUSER=${PGUSER:-postgres}
-PGDUMP=${PGDUMP:-pg_dumpall}
-PGRESTORE=${PGRESTORE:-psql}
 export PGHOST
 export PGPORT
 export PGPASSWORD
@@ -25,8 +23,8 @@ about() {
     die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
-check_postgres_client() {
-    if ! command -v psql --version >/dev/null; then
+check_requirements() {
+    if ! command -v psql >/dev/null; then
         die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
     fi
 }
@@ -34,10 +32,6 @@ check_postgres_client() {
 exec_sql() {
     cmd="${1?Missing required sql command}"
     psql <<< "$cmd"
-}
-
-requirements() {
-    check_mysql_client
 }
 
 setup() {
@@ -50,13 +44,13 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    "${PGDUMP}"  > "$backup_file" 2>/dev/null
+    pg_dump -Ft --dbname crowdsec_test --file "$backup_file"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-   "${PGRESTORE}"  < "$backup_file" #seems that in some system it needs for two run
+    pg_restore --dbname crowdsec_test --clean "$backup_file"
 }
 
 config_yaml() {
@@ -73,6 +67,8 @@ config_yaml() {
 }
 
 [ $# -lt 1 ] && about
+
+check_requirements
 
 case "$1" in
     setup)
