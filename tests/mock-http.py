@@ -21,6 +21,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_header('Content-type','application/json')
         self.end_headers()
         self.wfile.write(json.dumps({}).encode())
+        self.wfile.flush()
         return
 
     def log_message(self, format, *args):
