@@ -161,7 +161,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
-				ConsoleContextPath:   contextFileFullPath,
+				ConsoleContextPath:   DefaultContextConfigFilePath,
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
