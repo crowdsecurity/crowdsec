@@ -60,7 +60,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 			if logFile != "" {
 				absolutePath, err := filepath.Abs(logFile)
 				if err != nil {
-					log.Fatalf("unable to get absolue path of '%s', exiting", logFile)
+					log.Fatalf("unable to get absolute path of '%s', exiting", logFile)
 				}
 				dsn = fmt.Sprintf("file://%s", absolutePath)
 				lineCount := types.GetLineCountForFile(absolutePath)

@@ -309,7 +309,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 				state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 				assoc[evt.Line.Time] = evt.Line.Raw
 			}
-			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
 			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if _, ok := state[evt.Line.Time]["buckets"]; !ok {
 				state[evt.Line.Time]["buckets"] = make(map[string]ParserResult)
@@ -330,7 +330,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		fmt.Printf("line: %s\n", rawstr)
 		skeys := make([]string, 0, len(state[tstamp]))
 		for k := range state[tstamp] {
-			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
 			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "buckets" {
 				continue
@@ -444,7 +444,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 		}
 		bnames := make([]string, 0, len(state[tstamp]["buckets"]))
 		for k := range state[tstamp]["buckets"] {
-			//there is a trick : to know if an event succesfully exit the parsers, we check if it reached the pour() phase
+			//there is a trick : to know if an event successfully exit the parsers, we check if it reached the pour() phase
 			//we thus use a fake stage "buckets" and a fake parser "OK" to know if it entered
 			if k == "OK" {
 				continue

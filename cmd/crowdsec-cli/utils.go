@@ -29,7 +29,7 @@ import (
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
 	if err != nil {
-		log.Fatalf("uname to print help(): %s", err)
+		log.Fatalf("unable to print help(): %s", err)
 	}
 }
 
@@ -51,66 +51,7 @@ func indexOf(s string, slice []string) int {
 	return -1
 }
 
-func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
-
-	/*if a range is provided, change the scope*/
-	if *ipRange != "" {
-		_, _, err := net.ParseCIDR(*ipRange)
-		if err != nil {
-			return fmt.Errorf("%s isn't a valid range", *ipRange)
-		}
-	}
-	if *ip != "" {
-		ipRepr := net.ParseIP(*ip)
-		if ipRepr == nil {
-			return fmt.Errorf("%s isn't a valid ip", *ip)
-		}
-	}
-
-	//avoid confusion on scope (ip vs Ip and range vs Range)
-	switch strings.ToLower(*scope) {
-	case "ip":
-		*scope = types.Ip
-	case "range":
-		*scope = types.Range
-	case "country":
-		*scope = types.Country
-	case "as":
-		*scope = types.AS
-	}
-	return nil
-}
-
-func setHubBranch() error {
-	/*
-		if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
-	*/
-	if cwhub.HubBranch == "" {
-		latest, err := cwversion.Latest()
-		if err != nil {
-			cwhub.HubBranch = "master"
-			return err
-		}
-		csVersion := cwversion.VersionStrip()
-		if csVersion == latest {
-			cwhub.HubBranch = "master"
-		} else if semver.Compare(csVersion, latest) == 1 { // if current version is greater than the latest we are in pre-release
-			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
-			cwhub.HubBranch = "master"
-		} else if csVersion == "" {
-			log.Warningf("Crowdsec version is '', using master branch for the hub")
-			cwhub.HubBranch = "master"
-		} else {
-			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and the latest stable version is '%s'. Please update it!", csVersion, latest)
-			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
-			cwhub.HubBranch = csVersion
-		}
-		log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
-	}
-	return nil
-}
-
-func ListItems(itemTypes []string, args []string, showType bool, showHeader bool) {
+func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
 
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
@@ -191,133 +132,6 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 	}
 }
 
-func InstallItem(name string, obtype string, force bool) error {
-	it := cwhub.GetItem(obtype, name)
-	if it == nil {
-		return fmt.Errorf("unable to retrieve item : %s", name)
-	}
-	item := *it
-	if downloadOnly && item.Downloaded && item.UpToDate {
-		log.Warningf("%s is already downloaded and up-to-date", item.Name)
-		if !force {
-			return nil
-		}
-	}
-	item, err := cwhub.DownloadLatest(csConfig.Hub, item, force, false)
-	if err != nil {
-		return fmt.Errorf("error while downloading %s : %v", item.Name, err)
-	}
-	cwhub.AddItem(obtype, item)
-	if downloadOnly {
-		log.Infof("Downloaded %s to %s", item.Name, csConfig.Hub.HubDir+"/"+item.RemotePath)
-		return nil
-	}
-	item, err = cwhub.EnableItem(csConfig.Hub, item)
-	if err != nil {
-		return fmt.Errorf("error while enabling  %s : %v.", item.Name, err)
-	}
-	cwhub.AddItem(obtype, item)
-	log.Infof("Enabled %s", item.Name)
-
-	return nil
-}
-
-func RemoveMany(itemType string, name string) {
-	var err error
-	var disabled int
-	if name != "" {
-		it := cwhub.GetItem(itemType, name)
-		if it == nil {
-			log.Fatalf("unable to retrieve: %s", name)
-		}
-		item := *it
-		item, err = cwhub.DisableItem(csConfig.Hub, item, purge, forceAction)
-		if err != nil {
-			log.Fatalf("unable to disable %s : %v", item.Name, err)
-		}
-		cwhub.AddItem(itemType, item)
-		return
-	} else if name == "" && all {
-		for _, v := range cwhub.GetItemMap(itemType) {
-			v, err = cwhub.DisableItem(csConfig.Hub, v, purge, forceAction)
-			if err != nil {
-				log.Fatalf("unable to disable %s : %v", v.Name, err)
-			}
-			cwhub.AddItem(itemType, v)
-			disabled++
-		}
-	}
-	if name != "" && !all {
-		log.Errorf("%s not found", name)
-		return
-	}
-	log.Infof("Disabled %d items", disabled)
-}
-
-func UpgradeConfig(itemType string, name string, force bool) {
-	var err error
-	var updated int
-	var found bool
-
-	for _, v := range cwhub.GetItemMap(itemType) {
-		if name != "" && name != v.Name {
-			continue
-		}
-
-		if !v.Installed {
-			log.Tracef("skip %s, not installed", v.Name)
-			continue
-		}
-
-		if !v.Downloaded {
-			log.Warningf("%s : not downloaded, please install.", v.Name)
-			continue
-		}
-
-		found = true
-		if v.UpToDate {
-			log.Infof("%s : up-to-date", v.Name)
-
-			if err = cwhub.DownloadDataIfNeeded(csConfig.Hub, v, force); err != nil {
-				log.Fatalf("%s : download failed : %v", v.Name, err)
-			}
-
-			if !force {
-				continue
-			}
-		}
-		v, err = cwhub.DownloadLatest(csConfig.Hub, v, force, true)
-		if err != nil {
-			log.Fatalf("%s : download failed : %v", v.Name, err)
-		}
-		if !v.UpToDate {
-			if v.Tainted {
-				log.Infof("%v %s is tainted, --force to overwrite", emoji.Warning, v.Name)
-			} else if v.Local {
-				log.Infof("%v %s is local", emoji.Prohibited, v.Name)
-			}
-		} else {
-			log.Infof("%v %s : updated", emoji.Package, v.Name)
-			updated++
-		}
-		cwhub.AddItem(itemType, v)
-	}
-	if !found && name == "" {
-		log.Infof("No %s installed, nothing to upgrade", itemType)
-	} else if !found {
-		log.Errorf("Item '%s' not found in hub", name)
-	} else if updated == 0 && found {
-		if name == "" {
-			log.Infof("All %s are already up-to-date", itemType)
-		} else {
-			log.Infof("Item '%s' is up-to-date", name)
-		}
-	} else if updated != 0 {
-		log.Infof("Upgraded %d items", updated)
-	}
-
-}
-
 func InspectItem(name string, objecitemType string) {
 
 	hubItem := cwhub.GetItem(objecitemType, name)
@@ -355,6 +169,65 @@ func InspectItem(name string, objecitemType string) {
 		fmt.Printf("\nCurrent metrics : \n\n")
 		ShowMetrics(hubItem)
 	}
+}
+
+func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *string) error {
+
+	/*if a range is provided, change the scope*/
+	if *ipRange != "" {
+		_, _, err := net.ParseCIDR(*ipRange)
+		if err != nil {
+			return fmt.Errorf("%s isn't a valid range", *ipRange)
+		}
+	}
+	if *ip != "" {
+		ipRepr := net.ParseIP(*ip)
+		if ipRepr == nil {
+			return fmt.Errorf("%s isn't a valid ip", *ip)
+		}
+	}
+
+	//avoid confusion on scope (ip vs Ip and range vs Range)
+	switch strings.ToLower(*scope) {
+	case "ip":
+		*scope = types.Ip
+	case "range":
+		*scope = types.Range
+	case "country":
+		*scope = types.Country
+	case "as":
+		*scope = types.AS
+	}
+	return nil
+}
+
+func setHubBranch() error {
+	/*
+		if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
+	*/
+	if cwhub.HubBranch == "" {
+		latest, err := cwversion.Latest()
+		if err != nil {
+			cwhub.HubBranch = "master"
+			return err
+		}
+		csVersion := cwversion.VersionStrip()
+		if csVersion == latest {
+			cwhub.HubBranch = "master"
+		} else if semver.Compare(csVersion, latest) == 1 { // if current version is greater than the latest we are in pre-release
+			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
+			cwhub.HubBranch = "master"
+		} else if csVersion == "" {
+			log.Warningf("Crowdsec version is '', using master branch for the hub")
+			cwhub.HubBranch = "master"
+		} else {
+			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and the latest stable version is '%s'. Please update it!", csVersion, latest)
+			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
+			cwhub.HubBranch = csVersion
+		}
+		log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
+	}
+	return nil
 }
 
 func ShowMetrics(hubItem *cwhub.Item) {
@@ -515,6 +388,37 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 	return stats
 }
 
+//it's a rip of the cli version, but in silent-mode
+func silenceInstallItem(name string, obtype string) (string, error) {
+	var item = cwhub.GetItem(obtype, name)
+	if item == nil {
+		return "", fmt.Errorf("error retrieving item")
+	}
+	it := *item
+	if downloadOnly && it.Downloaded && it.UpToDate {
+		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
+	}
+	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
+	if err != nil {
+		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+
+	if downloadOnly {
+		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
+	}
+	it, err = cwhub.EnableItem(csConfig.Hub, it)
+	if err != nil {
+		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
+	}
+	if err := cwhub.AddItem(obtype, it); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Enabled %s", it.Name), nil
+}
+
 func GetPrometheusMetric(url string) []*prom2json.Family {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
@@ -572,37 +476,6 @@ func ShowParserMetric(itemName string, metrics map[string]map[string]int) {
 		table.Render()
 		fmt.Println()
 	}
-}
-
-//it's a rip of the cli version, but in silent-mode
-func silenceInstallItem(name string, obtype string) (string, error) {
-	var item = cwhub.GetItem(obtype, name)
-	if item == nil {
-		return "", fmt.Errorf("error retrieving item")
-	}
-	it := *item
-	if downloadOnly && it.Downloaded && it.UpToDate {
-		return fmt.Sprintf("%s is already downloaded and up-to-date", it.Name), nil
-	}
-	it, err := cwhub.DownloadLatest(csConfig.Hub, it, forceAction, false)
-	if err != nil {
-		return "", fmt.Errorf("error while downloading %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-
-	if downloadOnly {
-		return fmt.Sprintf("Downloaded %s to %s", it.Name, csConfig.Cscli.HubDir+"/"+it.RemotePath), nil
-	}
-	it, err = cwhub.EnableItem(csConfig.Hub, it)
-	if err != nil {
-		return "", fmt.Errorf("error while enabling %s : %v", it.Name, err)
-	}
-	if err := cwhub.AddItem(obtype, it); err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("Enabled %s", it.Name), nil
 }
 
 func RestoreHub(dirPath string) error {

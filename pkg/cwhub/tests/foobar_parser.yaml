@@ -1,0 +1,8 @@
+onsuccess: next_stage
+filter: evt.Parsed.program == 'foobar_parser'
+name: crowdsecurity/foobar_parser
+#debug: true
+description: A parser for foobar_parser WAF
+grok:
+  name: foobar_parser
+  apply_on: message

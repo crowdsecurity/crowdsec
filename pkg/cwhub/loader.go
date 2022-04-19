@@ -206,6 +206,9 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 				v.LocalHash = sha
 				x := strings.Split(path, "/")
 				target.FileName = x[len(x)-1]
+			} else {
+				v.Downloaded = true
+				v.LocalHash = sha
 			}
 			if version == v.Version {
 				log.Tracef("%s is up-to-date", v.Name)
@@ -231,11 +234,13 @@ func parser_visit(path string, f os.FileInfo, err error) error {
 
 		}
 		//update the entry if appropriate
-		if _, ok := hubIdx[ftype][k]; !ok {
-			hubIdx[ftype][k] = v
-		} else if !inhub {
-			hubIdx[ftype][k] = v
-		}
+		// if _, ok := hubIdx[ftype][k]; !ok || !inhub || v.D {
+		// 	fmt.Printf("Updating %s", k)
+		// 	hubIdx[ftype][k] = v
+		// } else if !inhub {
+
+		// } else if
+		hubIdx[ftype][k] = v
 		return nil
 	}
 	log.Infof("Ignoring file %s of type %s", path, ftype)

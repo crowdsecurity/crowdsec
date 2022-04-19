@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/confluentinc/bincover"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
@@ -49,6 +50,8 @@ var (
 	lastProcessedItem time.Time /*keep track of last item timestamp in time-machine. it is used to GC buckets when we dump them.*/
 	pluginBroker      csplugin.PluginBroker
 )
+
+const bincoverTesting = false
 
 type Flags struct {
 	ConfigFile     string
@@ -303,10 +306,13 @@ func main() {
 		go registerPrometheus(cConfig.Prometheus)
 	}
 
-	if rc, err := Serve(cConfig); err != nil {
+	if exitCode, err := Serve(cConfig); err != nil {
 		if err != nil {
 			log.Errorf(err.Error())
-			os.Exit(rc)
+			if !bincoverTesting {
+				os.Exit(exitCode)
+			}
+			bincover.ExitCode = exitCode
 		}
 	}
 }

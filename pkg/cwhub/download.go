@@ -69,7 +69,7 @@ func DownloadHubIdx(hub *csconfig.Hub) ([]byte, error) {
 
 	wsize, err := file.WriteString(string(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "while writting hub index file")
+		return nil, errors.Wrap(err, "while writing hub index file")
 	}
 	log.Infof("Wrote new %d bytes index to %s", wsize, hub.HubIndexFile)
 	return body, nil
@@ -90,10 +90,11 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
 				}
 
-				if !val.Installed && updateOnly {
+				if !val.Installed && updateOnly && val.Downloaded {
 					log.Debugf("skipping upgrade of %s : not installed", target.Name)
 					continue
 				}
+
 				log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
 				//recurse as it's a collection
 				if ptrtype == COLLECTIONS {
@@ -208,7 +209,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 	defer f.Close()
 	_, err = f.WriteString(string(body))
 	if err != nil {
-		return target, errors.Wrap(err, "while writting file")
+		return target, errors.Wrap(err, "while writing file")
 	}
 	target.Downloaded = true
 	target.Tainted = false
