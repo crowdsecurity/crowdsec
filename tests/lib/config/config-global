@@ -53,7 +53,8 @@ make_init_data() {
 
     # when installed pacakges are always using sqlite, so no need to regenerate
     # local credz for sqlite
-    is_db_sqlite || ${CSCLI} machines add --auto
+   
+    [ "${DB_BACKEND}" == "sqlite" ] || ${CSCLI} machines add --auto
 
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
