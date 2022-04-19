@@ -302,7 +302,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	ret := []string{}
 	bulkSize := 20
 
-	c.Log.Debugf("writting %d items", len(alertList))
+	c.Log.Debugf("writing %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	alertDecisions := make([][]*ent.Decision, 0, bulkSize)
 	for i, alertItem := range alertList {
@@ -996,7 +996,7 @@ func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {
 	}
 	if MaxItems > 0 {
 		//We get the highest id for the alerts
-		//We substract MaxItems to avoid deleting alerts that are not old enough
+		//We subtract MaxItems to avoid deleting alerts that are not old enough
 		//This gives us the oldest alert that we want to keep
 		//We then delete all the alerts with an id lower than this one
 		//We can do this because the id is auto-increment, and the database won't reuse the same id twice

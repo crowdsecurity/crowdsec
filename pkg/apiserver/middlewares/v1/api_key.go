@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -230,6 +231,13 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 				return
 			}
 		}
+
+		if c.Request.Method != "HEAD" && time.Now().UTC().Sub(bouncer.LastPull) >= time.Minute {
+			if err := a.DbClient.UpdateBouncerLastPull(time.Now().UTC(), bouncer.ID); err != nil {
+				log.Errorf("failed to update bouncer last pull: %v", err)
+			}
+		}
+
 		c.Next()
 	}
 }

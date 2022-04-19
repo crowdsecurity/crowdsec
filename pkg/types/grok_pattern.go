@@ -36,6 +36,6 @@ type GrokPattern struct {
 	//the output of the expression is going to be the source for regexp
 	ExpValue     string      `yaml:"expression,omitempty"`
 	RunTimeValue *vm.Program `json:"-"` //the actual compiled filter
-	//a grok can contain statics that apply if pattern is successfull
+	//a grok can contain statics that apply if pattern is successful
 	Statics []ExtraField `yaml:"statics,omitempty"`
 }

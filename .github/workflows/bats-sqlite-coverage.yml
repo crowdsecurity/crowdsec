@@ -4,10 +4,12 @@ on:
   workflow_call:
 
 jobs:
+
   build:
     name: "Build + tests"
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
+
     steps:
 
     - name: "Force machineid"
@@ -39,11 +41,18 @@ jobs:
     - name: "Build crowdsec and fixture"
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
 
-    - name: "Run tests (with coverage)"
-      run: TEST_COVERAGE=true make bats-test
+    - name: "Run tests"
+      run: |
+        TEST_COVERAGE=true make bats-test
+        bzip2 ./tests/local/var/lib/coverage/coverage-bats.out
 
-    - name: Upload coverage report
+    - name: "Coverage report artifact"
       uses: actions/upload-artifact@v2
       with:
-        name: coverage-bats.out
-        path: ./tests/local/var/lib/coverage/coverage-bats.out
+        name: coverage-bats.out.bz2
+        path: ./tests/local/var/lib/coverage/coverage-bats.out.bz2
+
+    - name: "Show crowdsec logs"
+      run:
+        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}

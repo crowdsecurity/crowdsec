@@ -30,11 +30,13 @@ DB_BACKEND ?= sqlite
 ifdef TEST_COVERAGE
   CROWDSEC = "$(TEST_DIR)/crowdsec-wrapper"
   CSCLI = "$(TEST_DIR)/cscli-wrapper"
+  BINCOVER_TESTING = true
 else
   # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
   # overriding the path to the binaries
   CROWDSEC ?= "$(BIN_DIR)/crowdsec"
   CSCLI ?= "$(BIN_DIR)/cscli"
+  BINCOVER_TESTING = false
 endif
 
 # If you change the name of the crowdsec executable, make sure the pgrep
@@ -61,8 +63,10 @@ endef
 bats-all: bats-clean bats-build bats-fixture bats-test bats-test-hub
 
 # Source this to run the scripts outside of the Makefile
+# Old versions of make don't have $(file) directive
+bats-environment: export ENV:=$(ENV)
 bats-environment:
-	$(file >$(TEST_DIR)/.environment.sh,$(ENV))
+	@echo "$${ENV}" > $(TEST_DIR)/.environment.sh
 
 # Verify dependencies and submodules
 bats-check-requirements:
@@ -71,10 +75,10 @@ bats-check-requirements:
 # Build and installs crowdsec in a local directory. Rebuilds if already exists.
 bats-build: bats-environment bats-check-requirements
 	@mkdir -p $(BIN_DIR) $(LOG_DIR) $(PID_DIR) $(PLUGIN_DIR)
-	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
+	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec cscli plugins
 	@install -m 0755 cmd/crowdsec/crowdsec cmd/crowdsec-cli/cscli $(BIN_DIR)/
 	@install -m 0755 plugins/notifications/*/notification-* $(PLUGIN_DIR)/
-	@DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover cscli-bincover
+	@BINCOVER_TESTING=$(BINCOVER_TESTING) DEFAULT_CONFIGDIR=$(CONFIG_DIR) DEFAULT_DATADIR=$(DATA_DIR) $(MAKE) goversion crowdsec-bincover cscli-bincover
 	@install -m 0755 cmd/crowdsec/crowdsec.cover cmd/crowdsec-cli/cscli.cover $(BIN_DIR)/
 
 # Create a reusable package with initial configuration + data
@@ -105,3 +109,5 @@ bats-test-package: bats-environment
 	$(TEST_DIR)/instance-data make
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 	$(TEST_DIR)/run-tests $(TEST_DIR)/dyn-bats
+
+.PHONY: bats-environment

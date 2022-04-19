@@ -98,6 +98,19 @@ make_init_data() {
     "${TEST_DIR}/instance-crowdsec" start
     [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]] && sleep 4
     "${CSCLI}" lapi status
+
+    # a restart is required to receive community pull
+    "${TEST_DIR}/instance-crowdsec" stop
+    sleep 2
+    "${TEST_DIR}/instance-crowdsec" start
+
+    loop_max=15
+    for ((i = 0; i <= loop_max; i++)); do
+        sleep 2
+        [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
+    done
+    [[ $("${CSCLI}" alerts list -o json) != "null" ]] || die "could not get community data"
+
     "${TEST_DIR}/instance-crowdsec" stop
 
     mkdir -p "${LOCAL_INIT_DIR}"

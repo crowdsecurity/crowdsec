@@ -19,7 +19,7 @@ about() {
     die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
-check_mysql_client() {
+check_requirements() {
     if ! command -v mysql >/dev/null; then
         die "missing required program 'mysql' as a mysql client (package mariadb-client-core-10.6 on debian like system)"
     fi
@@ -41,10 +41,6 @@ exec_sql() {
         "--password=${MYSQL_PASSWORD}" <<< "$cmd"
 }
 
-requirements() {
-    check_mysql_client
-}
-
 setup() {
     exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
     exec_sql "CREATE DATABASE crowdsec_test;"
@@ -59,6 +55,7 @@ dump() {
     if mysqldump --column-statistics 2>&1 | grep -q -v 'unknown option'; then
         COLUMN_STATISTICS='--column-statistics=0'
     fi
+
     silence_password_warning \
         mysqldump \
         $COLUMN_STATISTICS \
@@ -99,6 +96,8 @@ config_yaml() {
 
 [ $# -lt 1 ] && about
 
+check_requirements
+
 case "$1" in
     setup)
         setup
@@ -113,6 +112,10 @@ case "$1" in
     restore)
         shift
         restore "$@"
+        ;;
+    exec_sql)
+        shift
+        exec_sql "$@"
         ;;
     *)
         about

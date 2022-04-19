@@ -11,6 +11,7 @@ on:
         required: true
 
 jobs:
+
   build:
     name: "Build + tests"
     runs-on: ubuntu-latest
@@ -22,6 +23,7 @@ jobs:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:
           - 3306:3306
+
     steps:
 
     - name: "Force machineid"
@@ -68,6 +70,11 @@ jobs:
         MYSQL_PORT: 3306
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
+
+    - name: "Show crowdsec logs"
+      run:
+        for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
+      if: ${{ always() }}
 
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"
