@@ -54,6 +54,7 @@ setup() {
 
     run -0 cscli decisions add --ip 1.2.3.5 --duration 30s
     assert_output --partial 'Decision successfully added'
+    sleep 5
 }
 
 @test "$FILE expected 1 log line from http server" {
