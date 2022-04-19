@@ -23,8 +23,8 @@ about() {
     die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
-check_postgres_client() {
-    if ! command -v psql --version >/dev/null; then
+check_requirements() {
+    if ! command -v psql >/dev/null; then
         die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
     fi
 }
@@ -32,10 +32,6 @@ check_postgres_client() {
 exec_sql() {
     cmd="${1?Missing required sql command}"
     psql <<< "$cmd"
-}
-
-requirements() {
-    check_mysql_client
 }
 
 setup() {
@@ -71,6 +67,8 @@ config_yaml() {
 }
 
 [ $# -lt 1 ] && about
+
+check_requirements
 
 case "$1" in
     setup)
