@@ -74,7 +74,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			return nil, fmt.Errorf("failed cert authentication")
 		}
 
-		machineID := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
+		machineID = fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 		clientMachine, err = j.DbClient.Ent.Machine.Query().
 			Where(machine.MachineId(machineID)).
 			First(j.DbClient.CTX)
@@ -186,7 +186,6 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		log.Errorf("bad user agent from : %s", c.ClientIP())
 		return nil, jwt.ErrFailedAuthentication
 	}
-
 	return &models.WatcherAuthRequest{
 		MachineID: &machineID,
 	}, nil
