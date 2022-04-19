@@ -82,6 +82,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
 				AcquisitionFiles:     []string{acquisFullPath},
+				ContextToSend:        make(map[string][]string, 0),
 				SimulationFilePath:   "./tests/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
@@ -118,6 +119,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				BucketsRoutinesCount: 1,
 				ParserRoutinesCount:  1,
 				OutputRoutinesCount:  1,
+				ContextToSend:        make(map[string][]string, 0),
 				AcquisitionFiles:     []string{acquisFullPath, acquisInDirFullPath},
 				SimulationFilePath:   "./tests/simulation.yaml",
 				SimulationConfig: &SimulationConfig{
@@ -148,6 +150,8 @@ func TestLoadCrowdsec(t *testing.T) {
 				HubIndexFile:         hubIndexFileFullPath,
 				DataDir:              dataFullPath,
 				HubDir:               hubFullPath,
+				ContextToSend:        make(map[string][]string, 0),
+				ConsoleContextPath:   "/etc/crowdsec/console/context.yaml",
 				SimulationConfig: &SimulationConfig{
 					Simulation: &falseBoolPtr,
 				},
@@ -171,6 +175,7 @@ func TestLoadCrowdsec(t *testing.T) {
 				},
 			},
 			expectedResult: &CrowdsecServiceCfg{
+				ConsoleContextPath:   "",
 				AcquisitionFilePath:  "./tests/acquis_not_exist.yaml",
 				BucketsRoutinesCount: 0,
 				ParserRoutinesCount:  0,
