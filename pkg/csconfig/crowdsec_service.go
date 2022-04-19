@@ -109,6 +109,7 @@ func (c *Config) LoadCrowdsec() error {
 
 	var crowdsecCleanup = []*string{
 		&c.Crowdsec.AcquisitionFilePath,
+		&c.Crowdsec.ConsoleContextPath,
 	}
 	for _, k := range crowdsecCleanup {
 		if *k == "" {
