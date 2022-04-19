@@ -99,7 +99,16 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				return "", errors.Errorf("machine %s attempted to auth with TLS cert but it is configured to use %s", machineID, clientMachine.AuthType)
 			}
 			machineID = clientMachine.MachineId
-			//we should still get the updated list of scenarios from the machine
+			loginInput := struct {
+				Scenarios []string `json:"scenarios"`
+			}{
+				Scenarios: []string{},
+			}
+			err := c.ShouldBindJSON(&loginInput)
+			if err != nil {
+				return "", errors.Wrap(err, "missing scenarios list in login request for TLS auth")
+			}
+			scenariosInput = loginInput.Scenarios
 		}
 
 	} else {
