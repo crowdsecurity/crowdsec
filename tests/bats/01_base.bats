@@ -173,6 +173,9 @@ declare stderr
 }
 
 @test "$FILE cscli hub list" {
+    # we check for the presence of some objects. There may be others when we
+    # use $PACKAGE_TESTING, so the order is not important.
+
     run -0 cscli hub list -o human
     assert_line --regexp '^ crowdsecurity/linux'
     assert_line --regexp '^ crowdsecurity/sshd'
@@ -194,6 +197,13 @@ declare stderr
     assert_line --regexp '^crowdsecurity/ssh-slow-bf,enabled,[0-9]+\.[0-9]+,Detect slow ssh bruteforce,scenarios$'
 
     run -0 cscli hub list -o json
-    run jq -c '[[.collections[].name], [.parsers[].name], [.scenarios[].name]]' <(output)
-    assert_output '[["crowdsecurity/linux","crowdsecurity/sshd"],["crowdsecurity/dateparse-enrich","crowdsecurity/geoip-enrich","crowdsecurity/sshd-logs","crowdsecurity/syslog-logs"],["crowdsecurity/ssh-bf","crowdsecurity/ssh-slow-bf"]]'
+    run jq -r '.collections[].name, .parsers[].name, .scenarios[].name' <(output)
+    assert_line 'crowdsecurity/linux'
+    assert_line 'crowdsecurity/sshd'
+    assert_line 'crowdsecurity/dateparse-enrich'
+    assert_line 'crowdsecurity/geoip-enrich'
+    assert_line 'crowdsecurity/sshd-logs'
+    assert_line 'crowdsecurity/syslog-logs'
+    assert_line 'crowdsecurity/ssh-bf'
+    assert_line 'crowdsecurity/ssh-slow-bf'
 }
