@@ -58,7 +58,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				if err := InstallItem(name, cwhub.PARSERS, forceAction); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -81,7 +81,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				RemoveMany(cwhub.PARSERS, "")
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, forceAction)
 				return
 			}
 
@@ -90,7 +90,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 			}
 
 			for _, name := range args {
-				RemoveMany(cwhub.PARSERS, name)
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -107,13 +107,13 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				UpgradeConfig(cwhub.PARSERS, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target parser to upgrade")
 				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, name, forceAction)
 				}
 			}
 		},
@@ -144,7 +144,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 cscli parser list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.PARSERS}, args, false, true)
+			ListItems([]string{cwhub.PARSERS}, args, false, true, all)
 		},
 	}
 	cmdParsersList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

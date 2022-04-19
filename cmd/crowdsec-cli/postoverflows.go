@@ -57,7 +57,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				if err := InstallItem(name, cwhub.PARSERS_OVFLW, forceAction); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -80,7 +80,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				RemoveMany(cwhub.PARSERS_OVFLW, "")
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
 				return
 			}
 
@@ -89,7 +89,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 			}
 
 			for _, name := range args {
-				RemoveMany(cwhub.PARSERS_OVFLW, name)
+				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -106,13 +106,13 @@ func NewPostOverflowsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target postoverflow to upgrade")
 				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.PARSERS_OVFLW, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, name, forceAction)
 				}
 			}
 		},
@@ -142,7 +142,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 cscli postoverflows list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.PARSERS_OVFLW}, args, false, true)
+			ListItems([]string{cwhub.PARSERS_OVFLW}, args, false, true, all)
 		},
 	}
 	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
