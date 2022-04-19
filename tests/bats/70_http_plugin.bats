@@ -54,17 +54,13 @@ setup() {
 
     run -0 cscli decisions add --ip 1.2.3.5 --duration 30s
     assert_output --partial 'Decision successfully added'
-    sleep 2
+    sleep 5
 }
 
 @test "$FILE expected 1 log line from http server" {
     run -0 wc -l <"${MOCK_OUT}"
-    echo "YEAH YEAH YEAH" >&3
-    echo ${MOCK_OUT} >&3
-    cat ${MOCK_OUT} >&3
     # wc can pad with spaces on some platforms
     run -0 tr -d ' ' < <(output)
-    echo $output >&3
     assert_output 1
 }
 
