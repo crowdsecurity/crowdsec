@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"crypto/sha512"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -107,10 +105,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
 
-	val := gctx.Request.Header.Get(c.APIKeyHeader)
-	hashedKey := sha512.New()
-	hashedKey.Write([]byte(val))
-	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
+	hashStr := gctx.GetString("BOUNCER_HASHED_KEY")
 	bouncerInfo, err := c.DBClient.SelectBouncer(hashStr)
 	if err != nil {
 		if _, ok := err.(*ent.NotFoundError); ok {

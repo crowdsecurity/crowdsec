@@ -77,7 +77,8 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 			bouncerName := fmt.Sprintf("%s@%s", extractedCN, c.ClientIP())
 			bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
-			if ent.IsNotFound(err) {
+			//This is likely not the proper way, but isNotFound does not seem to work
+			if err != nil && strings.Contains(err.Error(), "bouncer not found") {
 				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
 				//Set a random API key, but it will never be used
 				//To fix
@@ -176,7 +177,10 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			return
 		}
 
+		//maybe we want to store the whole bouncer object in the context instead, this would avoid another db query
+		//in StreamDecision
 		c.Set("BOUNCER_NAME", bouncer.Name)
+		c.Set("BOUNCER_HASHED_KEY", bouncer.APIKey)
 
 		if bouncer.IPAddress == "" {
 			err = a.DbClient.UpdateBouncerIP(c.ClientIP(), bouncer.ID)
