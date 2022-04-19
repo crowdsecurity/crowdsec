@@ -57,9 +57,8 @@ repositories).
 
 ## pre-requisites
 
-
  - `git submodule init; git submodule update`
- - `daemonize bash, python3, openbsd-netcat`
+ - `daemonize (linux) or daemon (freebsd), bash, python3, openbsd-netcat`
  - `yq` from https://github.com/mikefarah/yq
 
 ## Running all tests
@@ -98,7 +97,9 @@ descriptor 3:
 }
 ```
 
-If you do that, please remove it once the test is finished, because this practice breaks the test protocol.
+If you do that, please remove it once the test development is finished, because
+this practice breaks the TAP protocol (unless each line has a '#' as first
+character, but really, it's better to avoid unnecessary output when tests succeed).
 
 You can find here the documentation for the main framework and the plugins we use in this test suite:
 
@@ -316,4 +317,65 @@ on files, symlinks, directories, sockets.
 
  - using the `load` command in `teardown()` causes tests to be silently skipped or break in "funny"
    ways. The other functions seem safe.
+
+# Testing with MySQL and Postgres
+
+By default, the tests are run with the embedded sqlite database engine. This should be
+enough in most cases, since the database operations are abstracted via the `ent` ORM.
+
+You can however easily test with a different engine.
+
+## Postgres
+
+Run Postgres somewhere, version 10 or above - easy to do in a docker container.
+
+```
+$ sudo docker run --detach --name=postgres -p 5432:5432 --env="POSTGRES_PASSWORD=postgres" postgres:latest
+```
+
+The name of the container is not really important.
+If you are not using Docker, you may need to adjust the `PGHOST`/`PGPORT`/`PGPASSWORD`/`PGUSER` variables
+(defaults are 127.0.0.1, 5432, postgres, postgres).
+
+An additional user and database both named `crowdsec_test` will be created.
+
+Now you can build and run the tests (we skip bats-test-hub here, they really
+should not be affected by a change in DB).
+
+```
+$ export DB_BACKEND=postgres
+$ make clean bats-build bats-fixture bats-test
+```
+
+or with the pgx driver:
+
+```
+$ export DB_BACKEND=pgx
+$ make clean bats-build bats-fixture bats-test
+```
+
+The value of DB_BACKEND must not change between the build/fixture/test steps.
+
+## MySQL/MariaDB
+
+Same considerations as above, with the following changes:
+
+```
+$ sudo docker run --cap-add=sys_nice --detach --name=mysql -p 3306:3306  --env="MYSQL_ROOT_PASSWORD=password" mysql
+[...]
+$ export DB_BACKEND=mysql
+$ make clean bats-build bats-fixture bats-test
+```
+
+or for MariaDB
+
+```
+$ sudo docker run --cap-add=sys_nice --detach --name=mariadb -p 3306:3306  --env="MYSQL_ROOT_PASSWORD=password" mariadb
+```
+
+## gotchas
+
+ - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
+   tests in the GitHub workflows, so we had to disable them by default. We do
+   run these in a separate environment before doing releases.
 
