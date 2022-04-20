@@ -65,6 +65,21 @@ if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
     fi
 fi
 
+## Enroll instance if enroll key is provided
+if [ "$DISABLE_ONLINE_API" == "" ] && [ "$ENROLL_KEY" != "" ] ; then
+    enroll_args=""
+    if [ "$ENROLL_INSTANCE_NAME"  != "" ] ; then
+        enroll_args="--name $ENROLL_INSTANCE_NAME"
+    fi
+    if [ "$ENROLL_TAGS"  != "" ] ; then
+        for tag in ${ENROLL_TAGS}
+        do
+            enroll_args="$enroll_args --tags $tag"
+        done
+    fi
+    cscli console enroll $enroll_args $ENROLL_KEY
+fi
+
 # crowdsec sqlite database permissions
 if [ "$GID" != "" ]; then
     IS_SQLITE=$(yq eval '.db_config.type == "sqlite"' "$CS_CONFIG_FILE")
