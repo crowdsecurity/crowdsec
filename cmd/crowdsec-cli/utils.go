@@ -75,8 +75,6 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	cobra.CompDebugln(fmt.Sprintf("args: %+v | toComplete: %s", args, toComplete), true)
-
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
