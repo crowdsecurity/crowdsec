@@ -60,7 +60,7 @@ restore() {
 }
 
 config_yaml() {
-    yq '
+    yq e '
         .db_config.type=strenv(DB_BACKEND)|
         .db_config.user="crowdsec_test" |
         .db_config.password="crowdsec_test" |

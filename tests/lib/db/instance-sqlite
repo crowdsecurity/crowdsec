@@ -49,12 +49,12 @@ restore() {
 # ---------------------------
 # In most cases this is called with setup argument, and it shouldn't fail for missing config file.
 if [ -f "${CONFIG_YAML}" ] ; then
-    DATA_DIR=$(yq '.config_paths.data_dir' <"${CONFIG_YAML}")
+    DATA_DIR=$(yq e '.config_paths.data_dir' - <"${CONFIG_YAML}")
     DB_FILE="${DATA_DIR}/crowdsec.db"
 fi
 
 config_yaml() {
-    yq '
+    yq e '
         .db_config.type=strenv(DB_BACKEND) |
         .db_config.db_path="${DB_FILE}"
     ' -i "${CONFIG_YAML}"

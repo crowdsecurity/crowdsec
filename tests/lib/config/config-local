@@ -56,7 +56,7 @@ config_generate() {
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
 
-    yq '
+    yq e '
     .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
@@ -74,7 +74,7 @@ config_generate() {
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
-    ' <../config/config.yaml >"${CONFIG_DIR}/config.yaml"
+    ' - <../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
 make_init_data() {
