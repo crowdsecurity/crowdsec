@@ -57,6 +57,7 @@ type Flags struct {
 	TraceLevel     bool
 	DebugLevel     bool
 	InfoLevel      bool
+	WarnLevel      bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -183,6 +184,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
 	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
 	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
+	flag.BoolVar(&f.DebugLevel, "warning", false, "print warning-level on stdout")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
@@ -224,12 +226,16 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		return errors.New("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.DebugLevel {
-		logLevel := log.DebugLevel
+	if flags.WarnLevel {
+		logLevel := log.WarnLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
 		logLevel := log.InfoLevel
+		cConfig.Common.LogLevel = &logLevel
+	}
+	if flags.DebugLevel {
+		logLevel := log.DebugLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.TraceLevel {
