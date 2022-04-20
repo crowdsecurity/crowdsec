@@ -60,7 +60,7 @@ func LoadHub() error {
 	}
 
 	if err := setHubBranch(); err != nil {
-		log.Warningf("unable to set hub branch (%s), default to master")
+		log.Warningf("unable to set hub branch (%s), default to master", err)
 	}
 
 	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
@@ -68,6 +68,49 @@ func LoadHub() error {
 	}
 
 	return nil
+}
+
+func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	comp := make([]string, 0)
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		comp = append(comp, item.Name)
+	}
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+	return comp, cobra.ShellCompDirectiveNoFileComp
+}
+
+func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	var comp []string
+	var err error
+	switch itemType {
+	case cwhub.PARSERS:
+		comp, err = cwhub.GetInstalledParsersAsString()
+	case cwhub.SCENARIOS:
+		comp, err = cwhub.GetInstalledScenariosAsString()
+	case cwhub.PARSERS_OVFLW:
+		comp, err = cwhub.GetInstalledPostOverflowsAsString()
+	case cwhub.COLLECTIONS:
+		comp, err = cwhub.GetInstalledCollectionsAsString()
+	default:
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	if err != nil {
+		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+
+	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
 func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {

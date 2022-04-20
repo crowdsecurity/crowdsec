@@ -59,16 +59,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Example: `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
 		Args:    cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if err := LoadHub(); err != nil {
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			upstreamScenario := make([]string, 0)
-			hubItems := cwhub.GetHubStatusForItemType(cwhub.SCENARIOS, "", true)
-			for _, item := range hubItems {
-				upstreamScenario = append(upstreamScenario, item.Name)
-			}
-			cobra.CompDebugln(fmt.Sprintf("scenarios: %+v", upstreamScenario), true)
-			return upstreamScenario, cobra.ShellCompDirectiveNoFileComp
+			return compAllItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -95,16 +86,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
 		Aliases: []string{"delete"},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if err := LoadHub(); err != nil {
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			installedScenario, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				cobra.CompDebugln(fmt.Sprintf("list installed scenarios err: %s", err), true)
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			cobra.CompDebugln(fmt.Sprintf("scenarios: %+v", installedScenario), true)
-			return installedScenario, cobra.ShellCompDirectiveNoFileComp
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -133,16 +115,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Long:    `Fetch and Upgrade given scenario(s) from hub`,
 		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if err := LoadHub(); err != nil {
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			installedScenario, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				cobra.CompDebugln(fmt.Sprintf("list installed scenarios err: %s", err), true)
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			cobra.CompDebugln(fmt.Sprintf("scenarios: %+v", installedScenario), true)
-			return installedScenario, cobra.ShellCompDirectiveNoFileComp
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -169,16 +142,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Example: `cscli scenarios inspect crowdsec/xxx`,
 		Args:    cobra.MinimumNArgs(1),
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-			if err := LoadHub(); err != nil {
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			installedScenario, err := cwhub.GetInstalledScenariosAsString()
-			if err != nil {
-				cobra.CompDebugln(fmt.Sprintf("list installed scenarios err: %s", err), true)
-				return nil, cobra.ShellCompDirectiveDefault
-			}
-			cobra.CompDebugln(fmt.Sprintf("scenarios: %+v", installedScenario), true)
-			return installedScenario, cobra.ShellCompDirectiveNoFileComp
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
 		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
