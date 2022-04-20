@@ -16,6 +16,7 @@ type enrollRequest struct {
 	EnrollKey string   `json:"attachment_key"`
 	Name      string   `json:"name"`
 	Tags      []string `json:"tags"`
+	Overwrite bool     `json:"overwrite"`
 }
 
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
@@ -63,9 +64,9 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 	return resp, nil
 }
 
-func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string) (*Response, error) {
+func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string, overwrite bool) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers/enroll", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags})
+	req, err := s.client.NewRequest("POST", u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite})
 	if err != nil {
 		return nil, err
 	}
