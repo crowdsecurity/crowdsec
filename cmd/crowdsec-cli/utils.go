@@ -51,6 +51,86 @@ func indexOf(s string, slice []string) int {
 	return -1
 }
 
+func LoadHub() error {
+	if err := csConfig.LoadHub(); err != nil {
+		log.Fatalf(err.Error())
+	}
+	if csConfig.Hub == nil {
+		return fmt.Errorf("unable to load hub")
+	}
+
+	if err := setHubBranch(); err != nil {
+		log.Warningf("unable to set hub branch (%s), default to master", err)
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		return fmt.Errorf("Failed to get Hub index : '%v'. Run 'sudo cscli hub update' to get the hub index", err)
+	}
+
+	return nil
+}
+
+func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	comp := make([]string, 0)
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		if toComplete == "" {
+			comp = append(comp, item.Name)
+		} else {
+			if strings.Contains(item.Name, toComplete) {
+				comp = append(comp, item.Name)
+			}
+		}
+	}
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+	return comp, cobra.ShellCompDirectiveNoFileComp
+}
+
+func compInstalledItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+	if err := LoadHub(); err != nil {
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	var items []string
+	var err error
+	switch itemType {
+	case cwhub.PARSERS:
+		items, err = cwhub.GetInstalledParsersAsString()
+	case cwhub.SCENARIOS:
+		items, err = cwhub.GetInstalledScenariosAsString()
+	case cwhub.PARSERS_OVFLW:
+		items, err = cwhub.GetInstalledPostOverflowsAsString()
+	case cwhub.COLLECTIONS:
+		items, err = cwhub.GetInstalledCollectionsAsString()
+	default:
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+
+	if err != nil {
+		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
+		return nil, cobra.ShellCompDirectiveDefault
+	}
+	comp := make([]string, 0)
+
+	if toComplete != "" {
+		for _, item := range items {
+			if strings.Contains(item, toComplete) {
+				comp = append(comp, item)
+			}
+		}
+	} else {
+		comp = items
+	}
+
+	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
+
+	return comp, cobra.ShellCompDirectiveNoFileComp
+}
+
 func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
 
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
