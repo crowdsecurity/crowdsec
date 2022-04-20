@@ -193,7 +193,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
-		return
 	})
 	router.Use(CustomRecoveryWithWriter())
 
@@ -263,14 +262,17 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 			return nil, err
 		}
 	}
-	if clientAuthType > tls.RequestClientCert {
-		log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
-		caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
-		if err != nil {
-			return nil, errors.Wrap(err, "Error opening cert file")
+
+	if s.TLS.CACertPath != "" {
+		if clientAuthType > tls.RequestClientCert {
+			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
+			caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "Error opening cert file")
+			}
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
 		}
-		caCertPool = x509.NewCertPool()
-		caCertPool.AppendCertsFromPEM(caCert)
 	}
 
 	return &tls.Config{
