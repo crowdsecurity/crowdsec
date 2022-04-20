@@ -53,6 +53,7 @@ func NewConsoleCmd() *cobra.Command {
 	}
 
 	name := ""
+	overwrite := false
 	tags := []string{}
 
 	cmdEnroll := &cobra.Command{
@@ -102,9 +103,13 @@ After running this command your will need to validate the enrollment in the weba
 				URL:           apiURL,
 				VersionPrefix: "v2",
 			})
-			_, err = c.Auth.EnrollWatcher(context.Background(), args[0], name, tags)
+			resp, err := c.Auth.EnrollWatcher(context.Background(), args[0], name, tags, overwrite)
 			if err != nil {
 				log.Fatalf("Could not enroll instance: %s", err)
+			}
+			if resp.Response.StatusCode == 200 && !overwrite {
+				log.Warningf("Instance already enrolled. You can use '--overwrite' to force enroll")
+				return
 			}
 
 			SetConsoleOpts(csconfig.CONSOLE_CONFIGS, true)
@@ -117,6 +122,7 @@ After running this command your will need to validate the enrollment in the weba
 		},
 	}
 	cmdEnroll.Flags().StringVarP(&name, "name", "n", "", "Name to display in the console")
+	cmdEnroll.Flags().BoolVarP(&overwrite, "overwrite", "", false, "Force enroll the instance")
 	cmdEnroll.Flags().StringSliceVarP(&tags, "tags", "t", tags, "Tags to display in the console")
 	cmdConsole.AddCommand(cmdEnroll)
 

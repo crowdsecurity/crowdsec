@@ -153,6 +153,9 @@ Using binds rather than named volumes ([more explanation here](https://docs.dock
 * `DISABLE_POSTOVERFLOWS`   - Postoverflows to remove from the [hub](https://hub.crowdsec.net/browse/#configurations), separated by space : `-e DISABLE_POSTOVERFLOWS="crowdsecurity/cdn-whitelist crowdsecurity/seo-bots-whitelist"`
 * `PLUGIN_DIR`              - Directory for plugins (default: `/usr/local/lib/crowdsec/plugins/`) : `-e PLUGIN_DIR="<path>"`
 * `BOUNCER_KEY_<name>`      - Register a bouncer with the name `<name>` and a key equal to the value of the environment variable.
+* `ENROLL_KEY`              - Enroll key retrieved from [the console](https://app.crowdsec.net/) to enroll the instance.
+* `ENROLL_INSTANCE_NAME`    - To set an instance name and see it on [the console](https://app.crowdsec.net/).
+* `ENROLL_TAGS`             - To set tags when enrolling an instance and use them for search and filtering on [the console](https://app.crowdsec.net/)
 
 ## Volumes
 
