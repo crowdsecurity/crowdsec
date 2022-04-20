@@ -154,7 +154,7 @@ type LocalApiServerCfg struct {
 type TLSCfg struct {
 	CertFilePath       string   `yaml:"cert_file"`
 	KeyFilePath        string   `yaml:"key_file"`
-	ClientVerification *int     `yaml:"client_verification,omitempty"`
+	ClientVerification string   `yaml:"client_verification,omitempty"`
 	ServerName         string   `yaml:"server_name"`
 	CACertPath         string   `yaml:"ca_cert_path"`
 	AllowedAgentsOU    []string `yaml:"agents_allowed_ou"`

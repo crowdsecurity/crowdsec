@@ -254,11 +254,14 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 		return &tls.Config{}, nil
 	}
 
-	if s.TLS.ClientVerification == nil {
+	if s.TLS.ClientVerification == "" {
 		//sounds like a sane default : verify client cert if given, but don't make it mandatory
 		clientAuthType = tls.VerifyClientCertIfGiven
 	} else {
-		clientAuthType = tls.ClientAuthType(*s.TLS.ClientVerification)
+		clientAuthType, err = getTLSAuthType(s.TLS.ClientVerification)
+		if err != nil {
+			return nil, err
+		}
 	}
 	if clientAuthType > tls.RequestClientCert {
 		log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
@@ -272,11 +275,6 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 
 	return &tls.Config{
 		ServerName: s.TLS.ServerName, //should it be removed ?
-		// ClientAuth: tls.NoClientCert,				// Client certificate will not be requested and it is not required
-		// ClientAuth: tls.RequestClientCert,			// Client certificate will be requested, but it is not required
-		// ClientAuth: tls.RequireAnyClientCert,		// Client certificate is required, but any client certificate is acceptable
-		// ClientAuth: tls.VerifyClientCertIfGiven,		// Client certificate will be requested and if present must be in the server's Certificate Pool
-		// ClientAuth: tls.RequireAndVerifyClientCert,	// Client certificate will be required and must be present in the server's Certificate Pool
 		ClientAuth: clientAuthType,
 		ClientCAs:  caCertPool,
 		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
