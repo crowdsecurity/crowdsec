@@ -25,7 +25,7 @@ declare stderr
 #----------
 
 config_disable_agent() {
-    yq 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
+    yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
 }
 
 @test "$FILE with agent: test without -no-cs flag" {
