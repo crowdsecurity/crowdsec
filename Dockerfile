@@ -5,7 +5,7 @@ FROM golang:${GOVERSION}-alpine AS build
 WORKDIR /go/src/crowdsec
 
 # wizard.sh requires GNU coreutils
-RUN apk add --no-cache git jq gcc libc-dev make bash gettext binutils-gold coreutils
+RUN apk add --no-cache git gcc libc-dev make bash gettext binutils-gold coreutils
 
 COPY . .
 
