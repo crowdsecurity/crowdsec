@@ -74,10 +74,19 @@ func compAllItems(itemType string, args []string, toComplete string) ([]string, 
 	if err := LoadHub(); err != nil {
 		return nil, cobra.ShellCompDirectiveDefault
 	}
+
+	cobra.CompDebugln(fmt.Sprintf("args: %+v | toComplete: %s", args, toComplete), true)
+
 	comp := make([]string, 0)
 	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
 	for _, item := range hubItems {
-		comp = append(comp, item.Name)
+		if toComplete == "" {
+			comp = append(comp, item.Name)
+		} else {
+			if strings.Contains(item.Name, toComplete) {
+				comp = append(comp, item.Name)
+			}
+		}
 	}
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
 	return comp, cobra.ShellCompDirectiveNoFileComp
@@ -88,17 +97,17 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 		return nil, cobra.ShellCompDirectiveDefault
 	}
 
-	var comp []string
+	var items []string
 	var err error
 	switch itemType {
 	case cwhub.PARSERS:
-		comp, err = cwhub.GetInstalledParsersAsString()
+		items, err = cwhub.GetInstalledParsersAsString()
 	case cwhub.SCENARIOS:
-		comp, err = cwhub.GetInstalledScenariosAsString()
+		items, err = cwhub.GetInstalledScenariosAsString()
 	case cwhub.PARSERS_OVFLW:
-		comp, err = cwhub.GetInstalledPostOverflowsAsString()
+		items, err = cwhub.GetInstalledPostOverflowsAsString()
 	case cwhub.COLLECTIONS:
-		comp, err = cwhub.GetInstalledCollectionsAsString()
+		items, err = cwhub.GetInstalledCollectionsAsString()
 	default:
 		return nil, cobra.ShellCompDirectiveDefault
 	}
@@ -106,6 +115,17 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 	if err != nil {
 		cobra.CompDebugln(fmt.Sprintf("list installed %s err: %s", itemType, err), true)
 		return nil, cobra.ShellCompDirectiveDefault
+	}
+	comp := make([]string, 0)
+
+	if toComplete != "" {
+		for _, item := range items {
+			if strings.Contains(item, toComplete) {
+				comp = append(comp, item)
+			}
+		}
+	} else {
+		comp = items
 	}
 
 	cobra.CompDebugln(fmt.Sprintf("%s: %+v", itemType, comp), true)
