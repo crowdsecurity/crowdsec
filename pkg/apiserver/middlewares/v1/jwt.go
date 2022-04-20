@@ -81,7 +81,16 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		if ent.IsNotFound(err) {
 			//Machine was not found, let's create it
 			log.Printf("machine %s not found, create it", machineID)
-			password := strfmt.Password("")
+			//let's use an apikey as the password, doesn't matter in this case (generatePassword is only available in cscli)
+			pwd, err := GenerateAPIKey(64)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"ip": c.ClientIP(),
+					"cn": extractedCN,
+				}).Errorf("error generating password: %s", err)
+				return nil, fmt.Errorf("error generating password")
+			}
+			password := strfmt.Password(pwd)
 			_, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true, types.TlsAuthType)
 			if err != nil {
 				return "", errors.Wrapf(err, "while creating machine entry for %s", machineID)
