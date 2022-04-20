@@ -93,6 +93,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		Short:   "Remove given scenario(s)",
 		Long:    `remove given scenario(s)`,
 		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
+		Aliases: []string{"delete"},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if err := LoadHub(); err != nil {
 				return nil, cobra.ShellCompDirectiveDefault

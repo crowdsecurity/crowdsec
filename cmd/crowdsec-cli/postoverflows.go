@@ -91,6 +91,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `remove given postoverflow(s)`,
 		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		Aliases:           []string{"delete"},
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if err := LoadHub(); err != nil {
 				return nil, cobra.ShellCompDirectiveDefault

@@ -420,6 +420,7 @@ cscli decisions add --scope username --value foobar
 		Use:               "delete [options]",
 		Short:             "Delete decisions",
 		DisableAutoGenTag: true,
+		Aliases:           []string{"remove"},
 		Example: `cscli decisions delete -r 1.2.3.0/24
 cscli decisions delete -i 1.2.3.4
 cscli decisions delete -s crowdsecurity/ssh-bf

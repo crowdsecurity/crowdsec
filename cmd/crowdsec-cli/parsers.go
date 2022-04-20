@@ -90,6 +90,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Use:               "remove [config]",
 		Short:             "Remove given parser(s)",
 		Long:              `Remove given parse(s) from hub`,
+		Aliases:           []string{"delete"},
 		Example:           `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

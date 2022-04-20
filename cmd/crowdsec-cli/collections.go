@@ -88,6 +88,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Short:             "Remove given collection(s)",
 		Long:              `Remove given collection(s) from hub`,
 		Example:           `cscli collections remove crowdsec/xxx crowdsec/xyz`,
+		Aliases:           []string{"delete"},
 		DisableAutoGenTag: true,
 		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 			if err := LoadHub(); err != nil {

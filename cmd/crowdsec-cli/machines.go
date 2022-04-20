@@ -291,6 +291,7 @@ cscli machines add MyTestMachine --password MyPassword
 		Short:             "delete machines",
 		Example:           `cscli machines delete "machine_name"`,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error
