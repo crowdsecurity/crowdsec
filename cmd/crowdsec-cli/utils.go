@@ -51,6 +51,25 @@ func indexOf(s string, slice []string) int {
 	return -1
 }
 
+func LoadHub() error {
+	if err := csConfig.LoadHub(); err != nil {
+		log.Fatalf(err.Error())
+	}
+	if csConfig.Hub == nil {
+		return fmt.Errorf("unable to load hub")
+	}
+
+	if err := setHubBranch(); err != nil {
+		log.Warningf("unable to set hub branch (%s), default to master")
+	}
+
+	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+		return fmt.Errorf("Failed to get Hub index : '%v'. Run 'sudo cscli hub update' to get the hub index", err)
+	}
+
+	return nil
+}
+
 func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
 
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)

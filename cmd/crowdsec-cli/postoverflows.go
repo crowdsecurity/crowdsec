@@ -20,6 +20,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 		cscli postoverflows list
 		cscli postoverflows remove crowdsecurity/cdn-whitelist`,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"postoverflow"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
@@ -55,6 +56,18 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Example:           `cscli postoverflows install crowdsec/xxx crowdsec/xyz`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			upstreamPostOverflow := make([]string, 0)
+			hubItems := cwhub.GetHubStatusForItemType(cwhub.PARSERS_OVFLW, "", true)
+			for _, item := range hubItems {
+				upstreamPostOverflow = append(upstreamPostOverflow, item.Name)
+			}
+			cobra.CompDebugln(fmt.Sprintf("postoverflows: %+v", upstreamPostOverflow), true)
+			return upstreamPostOverflow, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
@@ -78,6 +91,18 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `remove given postoverflow(s)`,
 		Example:           `cscli postoverflows remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedPostoverflow, err := cwhub.GetInstalledPostOverflowsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed postoverflow err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("postoverflow: %+v", installedPostoverflow), true)
+			return installedPostoverflow, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.PARSERS_OVFLW, "", all, purge, forceAction)
@@ -104,6 +129,18 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `Fetch and Upgrade given postoverflow(s) from hub`,
 		Example:           `cscli postoverflows upgrade crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedPostoverflow, err := cwhub.GetInstalledPostOverflowsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed postoverflow err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("postoverflow: %+v", installedPostoverflow), true)
+			return installedPostoverflow, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
@@ -127,7 +164,19 @@ func NewPostOverflowsCmd() *cobra.Command {
 		Long:              `Inspect given postoverflow`,
 		Example:           `cscli postoverflows inspect crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
-		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedPostoverflow, err := cwhub.GetInstalledPostOverflowsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed postoverflow err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("postoverflow: %+v", installedPostoverflow), true)
+			return installedPostoverflow, cobra.ShellCompDirectiveNoFileComp
+		},
+		Args: cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.PARSERS_OVFLW)
 		},

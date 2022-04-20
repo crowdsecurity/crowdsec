@@ -17,6 +17,7 @@ func NewCollectionsCmd() *cobra.Command {
 		Long:  `Install/Remove/Upgrade/Inspect collections from the CrowdSec Hub.`,
 		/*TBD fix help*/
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"collection"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
@@ -47,11 +48,23 @@ func NewCollectionsCmd() *cobra.Command {
 
 	var ignoreError bool
 	var cmdCollectionsInstall = &cobra.Command{
-		Use:               "install collection",
-		Short:             "Install given collection(s)",
-		Long:              `Fetch and install given collection(s) from hub`,
-		Example:           `cscli collections install crowdsec/xxx crowdsec/xyz`,
-		Args:              cobra.MinimumNArgs(1),
+		Use:     "install collection",
+		Short:   "Install given collection(s)",
+		Long:    `Fetch and install given collection(s) from hub`,
+		Example: `cscli collections install crowdsec/xxx crowdsec/xyz`,
+		Args:    cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			upstreamCollections := make([]string, 0)
+			hubItems := cwhub.GetHubStatusForItemType(cwhub.COLLECTIONS, "", true)
+			for _, item := range hubItems {
+				upstreamCollections = append(upstreamCollections, item.Name)
+			}
+			cobra.CompDebugln(fmt.Sprintf("collections: %+v", upstreamCollections), true)
+			return upstreamCollections, cobra.ShellCompDirectiveNoFileComp
+		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
@@ -76,6 +89,18 @@ func NewCollectionsCmd() *cobra.Command {
 		Long:              `Remove given collection(s) from hub`,
 		Example:           `cscli collections remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedCollections, err := cwhub.GetInstalledCollectionsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed collections err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("collections: %+v", installedCollections), true)
+			return installedCollections, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.COLLECTIONS, "", all, purge, forceAction)
@@ -113,6 +138,18 @@ func NewCollectionsCmd() *cobra.Command {
 		Long:              `Fetch and upgrade given collection(s) from hub`,
 		Example:           `cscli collections upgrade crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedCollections, err := cwhub.GetInstalledCollectionsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed collections err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("collections: %+v", installedCollections), true)
+			return installedCollections, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", forceAction)
@@ -137,6 +174,18 @@ func NewCollectionsCmd() *cobra.Command {
 		Example:           `cscli collections inspect crowdsec/xxx crowdsec/xyz`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedCollections, err := cwhub.GetInstalledCollectionsAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed collections err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("collections: %+v", installedCollections), true)
+			return installedCollections, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				InspectItem(name, cwhub.COLLECTIONS)

@@ -143,6 +143,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Short:   "Manage decisions",
 		Long:    `Add/List/Delete/Import decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
+		Aliases: []string{"decision"},
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,

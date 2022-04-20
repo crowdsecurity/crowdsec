@@ -21,6 +21,7 @@ cscli parsers list
 cscli parsers remove crowdsecurity/sshd-logs
 `,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"parser"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
@@ -56,6 +57,18 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example:           `cscli parsers install crowdsec/xxx crowdsec/xyz`,
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			upstreamParsers := make([]string, 0)
+			hubItems := cwhub.GetHubStatusForItemType(cwhub.PARSERS, "", true)
+			for _, item := range hubItems {
+				upstreamParsers = append(upstreamParsers, item.Name)
+			}
+			cobra.CompDebugln(fmt.Sprintf("parsers: %+v", upstreamParsers), true)
+			return upstreamParsers, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
@@ -79,6 +92,18 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Long:              `Remove given parse(s) from hub`,
 		Example:           `cscli parsers remove crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedParsers, err := cwhub.GetInstalledParsersAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed parsers err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("parsers: %+v", installedParsers), true)
+			return installedParsers, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.RemoveMany(csConfig, cwhub.PARSERS, "", all, purge, forceAction)
@@ -105,6 +130,18 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Long:              `Fetch and upgrade given parser(s) from hub`,
 		Example:           `cscli parsers upgrade crowdsec/xxx crowdsec/xyz`,
 		DisableAutoGenTag: true,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedParsers, err := cwhub.GetInstalledParsersAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed parsers err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("parsers: %+v", installedParsers), true)
+			return installedParsers, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
 				cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", forceAction)
@@ -129,6 +166,18 @@ cscli parsers remove crowdsecurity/sshd-logs
 		Example:           `cscli parsers inspect crowdsec/xxx`,
 		DisableAutoGenTag: true,
 		Args:              cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			if err := LoadHub(); err != nil {
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			installedParsers, err := cwhub.GetInstalledParsersAsString()
+			if err != nil {
+				cobra.CompDebugln(fmt.Sprintf("list installed parsers err: %s", err), true)
+				return nil, cobra.ShellCompDirectiveDefault
+			}
+			cobra.CompDebugln(fmt.Sprintf("parsers: %+v", installedParsers), true)
+			return installedParsers, cobra.ShellCompDirectiveNoFileComp
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.PARSERS)
 		},

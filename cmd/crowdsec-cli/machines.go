@@ -102,6 +102,7 @@ Note: This command requires database direct access, so is intended to be run on 
 `,
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
+		Aliases:           []string{"machine"},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				if err != nil {

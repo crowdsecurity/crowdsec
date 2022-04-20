@@ -394,6 +394,7 @@ func NewMetricsCmd() *cobra.Command {
 		Short:             "Display crowdsec prometheus metrics.",
 		Long:              `Fetch metrics from the prometheus server and display them in a human-friendly way`,
 		Args:              cobra.ExactArgs(0),
+		Aliases:           []string{"metric"},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadPrometheus(); err != nil {

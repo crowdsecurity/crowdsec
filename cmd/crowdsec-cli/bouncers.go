@@ -28,6 +28,7 @@ func NewBouncersCmd() *cobra.Command {
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"bouncer"},
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
