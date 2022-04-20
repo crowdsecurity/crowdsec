@@ -44,6 +44,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"JsonExtract":         JsonExtract,
 		"JsonExtractUnescape": JsonExtractUnescape,
 		"JsonExtractLib":      JsonExtractLib,
+		"JsonExtractSlice":    JsonExtractSlice,
 		"File":                File,
 		"RegexpInFile":        RegexpInFile,
 		"Upper":               Upper,

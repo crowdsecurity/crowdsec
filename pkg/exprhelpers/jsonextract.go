@@ -1,6 +1,7 @@
 package exprhelpers
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/buger/jsonparser"
@@ -58,3 +59,29 @@ func JsonExtract(jsblob string, target string) string {
 	log.Tracef("extract path %+v", fullpath)
 	return JsonExtractLib(jsblob, fullpath...)
 }
+
+func JsonExtractSlice(jsblob string, target string) []interface{} {
+	if !strings.HasPrefix(target, "[") {
+		target = strings.Replace(target, "[", ".[", -1)
+	}
+	fullpath := strings.Split(target, ".")
+
+	log.Tracef("extract path %+v", fullpath)
+	bContent := JsonExtractLib(jsblob, fullpath...)
+	ret := make([]interface{}, 0)
+	json.Unmarshal([]byte(bContent), &ret)
+	return ret
+}
+
+/*func JsonExtractMap(jsblob string, target string) map[string]interface{} {
+	if !strings.HasPrefix(target, "[") {
+		target = strings.Replace(target, "[", ".[", -1)
+	}
+	fullpath := strings.Split(target, ".")
+
+	log.Tracef("extract path %+v", fullpath)
+	bContent := JsonExtractLib(jsblob, fullpath...)
+	ret := make(map[string]interface{}, 0)
+	json.Unmarshal([]byte(bContent), &ret)
+	return ret
+}*/
