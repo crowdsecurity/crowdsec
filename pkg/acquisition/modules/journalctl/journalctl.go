@@ -54,7 +54,7 @@ func readLine(scanner *bufio.Scanner, out chan string, errChan chan error) error
 	if errChan != nil && scanner.Err() != nil {
 		errChan <- scanner.Err()
 		close(errChan)
-		return scanner.Err()
+		return nil //error is already consumed by runJournalCtl
 	}
 	if errChan != nil {
 		close(errChan)
@@ -79,7 +79,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 
 	stderrChan := make(chan string)
 	stdoutChan := make(chan string)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 
 	logger := j.logger.WithField("src", j.src)
 
