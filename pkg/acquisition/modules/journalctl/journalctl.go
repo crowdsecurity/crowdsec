@@ -79,7 +79,7 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 
 	stderrChan := make(chan string)
 	stdoutChan := make(chan string)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 
 	logger := j.logger.WithField("src", j.src)
 
