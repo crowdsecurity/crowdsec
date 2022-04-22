@@ -23,7 +23,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 		case parsed := <-input:
 			count++
 			if count%5000 == 0 {
-				log.Warningf("%d existing buckets", leaky.LeakyRoutineCount)
+				log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
 				//when in forensics mode, garbage collect buckets
 				if cConfig.Crowdsec.BucketsGCEnabled {
 					if parsed.MarshaledTime != "" {
