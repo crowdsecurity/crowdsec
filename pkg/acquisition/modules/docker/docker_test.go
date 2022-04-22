@@ -183,7 +183,7 @@ container_name_regexp:
 					ticker.Reset(1 * time.Second)
 				case <-ticker.C:
 					log.Infof("no more line to read")
-					readerTomb.Kill(nil)
+					streamTomb.Kill(nil)
 					return nil
 				}
 			}
