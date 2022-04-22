@@ -2,7 +2,7 @@
 /var/log/crowdsec_api.log
 {
   rotate 4
-  weekly
+  daily
   compress
   missingok
   notifempty
