@@ -269,7 +269,7 @@ func ShowPrometheus(url string) {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 		bucketsTable := tablewriter.NewWriter(os.Stdout)
-		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
+		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
 		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
 		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
