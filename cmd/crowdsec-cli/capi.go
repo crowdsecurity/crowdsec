@@ -103,7 +103,9 @@ func NewCapiCmd() *cobra.Command {
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	cmdCapiRegister.Flags().MarkHidden("schmilblick")
+	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+		log.Fatalf("failed to hide flag: %s", err)
+	}
 	cmdCapi.AddCommand(cmdCapiRegister)
 
 	var cmdCapiStatus = &cobra.Command{

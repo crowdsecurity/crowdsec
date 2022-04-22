@@ -155,7 +155,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
-		log.Fatalf("failed to make branch hidden : %s", err)
+		log.Fatalf("failed to hide flag: %s", err)
 	}
 
 	if len(os.Args) > 1 && os.Args[1] != "completion" && os.Args[1] != "version" && os.Args[1] != "help" {
