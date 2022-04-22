@@ -183,7 +183,7 @@ container_name_regexp:
 					ticker.Reset(1 * time.Second)
 				case <-ticker.C:
 					log.Infof("no more line to read")
-					streamTomb.Kill(nil)
+					dockerSource.t.Kill(nil)
 					return nil
 				}
 			}
@@ -198,7 +198,6 @@ container_name_regexp:
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
-		dockerSource.t.Kill(nil)
 		err = streamTomb.Wait()
 		if err != nil {
 			t.Fatalf("docker acquisition error: %s", err)
