@@ -3,7 +3,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>crowdsec</id>
-    <version>1.3.2</version>
+    <version>1.3.3</version>
     <packageSourceUrl>https://github.com/crowdsecurity/crowdsec</packageSourceUrl>
     <owners>CrowdSecurity</owners>
     <!-- ============================== -->
@@ -12,7 +12,7 @@
     <title>CrowdSec</title>
     <authors>CrowdSecurity</authors>
     <projectUrl>https://crowdsec.net/</projectUrl>
-    <copyright>2022</copyright>
+    <copyright>CrowdSec, 2022</copyright>
     <licenseUrl>https://github.com/crowdsecurity/crowdsec/blob/main/LICENSE</licenseUrl>
     <requireLicenseAcceptance>true</requireLicenseAcceptance>
     <projectSourceUrl>https://github.com/crowdsecurity/crowdsec</projectSourceUrl>
