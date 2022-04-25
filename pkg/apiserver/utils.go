@@ -12,14 +12,14 @@ func getTLSAuthType(authType string) (tls.ClientAuthType, error) {
 	case "NoClientCert":
 		return tls.NoClientCert, nil
 	case "RequestClientCert":
-		log.Warn("RequestClientCert is insecure, please use VerifyClientCertIfGiven or RequestAndVerifyClientCert instead")
+		log.Warn("RequestClientCert is insecure, please use VerifyClientCertIfGiven or RequireAndVerifyClientCert instead")
 		return tls.RequestClientCert, nil
 	case "RequireAnyClientCert":
-		log.Warn("RequireAnyClientCert is insecure, please use VerifyClientCertIfGiven or RequestAndVerifyClientCert instead")
+		log.Warn("RequireAnyClientCert is insecure, please use VerifyClientCertIfGiven or RequireAndVerifyClientCert instead")
 		return tls.RequireAnyClientCert, nil
 	case "VerifyClientCertIfGiven":
 		return tls.VerifyClientCertIfGiven, nil
-	case "RequestAndVerifyClientCert":
+	case "RequireAndVerifyClientCert":
 		return tls.RequireAndVerifyClientCert, nil
 	default:
 		return 0, fmt.Errorf("unknown TLS client_verification value: %s", authType)
