@@ -1,0 +1,49 @@
+run:
+  timeout: 2m
+  issues-exit-code: 1
+  tests: true
+
+issues:
+  max-same-issues: 100
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - bodyclose
+        - errcheck
+        - gosec
+
+linters:
+  enable:
+    - bodyclose
+    - deadcode
+    - errcheck
+    - gofmt
+    - revive
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - structcheck
+    - typecheck
+    - unused
+    - varcheck
+
+output:
+  # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
+  format: colored-line-number
+  # print lines of code with issue, default is true
+  print-issued-lines: true
+  # print linter name in the end of issue text, default is true
+  print-linter-name: true
+  # make issues output unique by line, default is true
+  uniq-by-line: true
+  # add a prefix to the output file references; default is no prefix
+  path-prefix: ""
+  # sorts results by: filepath, line and column
+  sort-results: true
+
+linters-settings:
+  golint:
+    min-confidence: 0.8

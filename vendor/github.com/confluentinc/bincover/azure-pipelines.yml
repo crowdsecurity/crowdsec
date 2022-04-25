@@ -1,0 +1,34 @@
+# Go
+# Build your Go project.
+# Add steps that test, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/go
+trigger:
+ - master
+
+pool:
+   vmImage: 'ubuntu-latest'
+
+steps:
+  - task: GoTool@0
+    inputs:
+      version: '1.12'
+
+  - script: |
+      make deps
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    displayName: 'make deps'
+
+  - script: |
+      make test
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    displayName: 'make test'
+
+  - script: |
+      ./ci/check-tidy.sh
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    displayName: 'check-tidy'
+
+  - script: |
+      bash <(curl -s https://codecov.io/bash) -t '$(CODECOV_TOKEN)'
+    workingDirectory: '$(System.DefaultWorkingDirectory)'
+    displayName: 'Generate Codecov report'
