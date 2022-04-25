@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -379,13 +380,29 @@ func (s *APIServer) InitController() error {
 		return errors.Wrap(err, "controller init")
 	}
 	if s.TLS != nil {
-		s.controller.HandlerV1.Middlewares.JWT.TlsAuth.CrlPath = s.TLS.CRLPath
-		if err := s.controller.HandlerV1.Middlewares.JWT.TlsAuth.SetAllowedOu(s.TLS.AllowedAgentsOU); err != nil {
-			return errors.Wrapf(err, "while setting allowed agents OUs (jwt)")
+		var cacheExpiration time.Duration
+		if s.TLS.CacheExpiration != nil {
+			cacheExpiration = *s.TLS.CacheExpiration
+		} else {
+			cacheExpiration = time.Hour
 		}
-		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth.CrlPath = s.TLS.CRLPath
-		if err := s.controller.HandlerV1.Middlewares.APIKey.TlsAuth.SetAllowedOu(s.TLS.AllowedBouncersOU); err != nil {
-			return errors.Wrapf(err, "while setting allowed bouncers OUs (api-key)")
+		s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
+			cacheExpiration,
+			log.WithFields(log.Fields{
+				"component": "tls-auth",
+				"type":      "agent",
+			}))
+		if err != nil {
+			return errors.Wrap(err, "while creating TLS auth for agents")
+		}
+		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
+			cacheExpiration,
+			log.WithFields(log.Fields{
+				"component": "tls-auth",
+				"type":      "bouncer",
+			}))
+		if err != nil {
+			return errors.Wrap(err, "while creating TLS auth for bouncers")
 		}
 	}
 	return err

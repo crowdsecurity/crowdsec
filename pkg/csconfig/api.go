@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/pkg/errors"
@@ -152,14 +153,15 @@ type LocalApiServerCfg struct {
 }
 
 type TLSCfg struct {
-	CertFilePath       string   `yaml:"cert_file"`
-	KeyFilePath        string   `yaml:"key_file"`
-	ClientVerification string   `yaml:"client_verification,omitempty"`
-	ServerName         string   `yaml:"server_name"`
-	CACertPath         string   `yaml:"ca_cert_path"`
-	AllowedAgentsOU    []string `yaml:"agents_allowed_ou"`
-	AllowedBouncersOU  []string `yaml:"bouncers_allowed_ou"`
-	CRLPath            string   `yaml:"crl_path"`
+	CertFilePath       string         `yaml:"cert_file"`
+	KeyFilePath        string         `yaml:"key_file"`
+	ClientVerification string         `yaml:"client_verification,omitempty"`
+	ServerName         string         `yaml:"server_name"`
+	CACertPath         string         `yaml:"ca_cert_path"`
+	AllowedAgentsOU    []string       `yaml:"agents_allowed_ou"`
+	AllowedBouncersOU  []string       `yaml:"bouncers_allowed_ou"`
+	CRLPath            string         `yaml:"crl_path"`
+	CacheExpiration    *time.Duration `yaml:"cache_expiration,omitempty"`
 }
 
 func (c *Config) LoadAPIServer() error {
