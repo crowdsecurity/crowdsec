@@ -233,6 +233,7 @@ func DownloadDataIfNeeded(hub *csconfig.Hub, target Item, force bool) error {
 	if itemFile, err = os.Open(itemFilePath); err != nil {
 		return errors.Wrapf(err, "while opening %s", itemFilePath)
 	}
+	defer itemFile.Close()
 	if err = downloadData(dataFolder, force, itemFile); err != nil {
 		return errors.Wrapf(err, "while downloading data for %s", itemFilePath)
 	}
