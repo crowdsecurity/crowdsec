@@ -1,0 +1,128 @@
+{
+  "lines": [
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE1 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:00+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aaa"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:01+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aaa"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aab"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aab"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aac"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aad"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aae"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:02+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4",
+        "uniq_key": "aaf"
+      }
+    }
+  ],
+  "results": [
+    {
+      "Alert": {
+        "sources": {
+          "1.2.3.4": {
+              "scope": "Ip",
+              "value": "1.2.3.4",
+            
+            "ip": "1.2.3.4"
+          }
+        },
+        "Alert" : {
+        "scenario": "test/simple-leaky",
+        "events_count": 6
+        }
+       
+      }
+    }
+  ]
+}
+
