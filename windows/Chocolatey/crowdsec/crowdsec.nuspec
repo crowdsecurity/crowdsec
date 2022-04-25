@@ -20,7 +20,17 @@
     <bugTrackerUrl>https://github.com/crowdsecurity/crowdsec/issues</bugTrackerUrl>
     <tags>crowdsec crowdsecurity security ips ids</tags>
     <summary>CrowdSec IDS</summary>
-    <description>CrowdSec is a free, modern and collaborative behavior detection engine, coupled with a global IP reputation network. It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security.</description>
+    <description>
+      CrowdSec is a free, modern and collaborative behavior detection engine, coupled with a global IP reputation network.
+      It stacks on fail2ban's philosophy but is IPV6 compatible and 60x faster (Go vs Python), uses Grok patterns to parse logs and YAML scenario to identify behaviors. 
+      CrowdSec is engineered for modern Cloud / Containers / VM based infrastructures (by decoupling detection and remediation). Once detected you can remedy threats with various bouncers (firewall block, nginx http 403, Captchas, etc.) while the aggressive IP can be sent to CrowdSec for curation before being shared among all users to further improve everyone's security.
+      
+      ### Package Specific
+      #### Package parameters
+
+       - AgentOnly: If set, the local API will be disabled. You will need to register the agent in LAPI yourself and configure the service to start on boot.
+    
+    </description>
     <!-- =============================== -->
 
     <dependencies>
