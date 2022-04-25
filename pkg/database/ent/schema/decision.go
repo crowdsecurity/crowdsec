@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/dialect"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
@@ -22,7 +23,9 @@ func (Decision) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
-		field.Time("until"),
+		field.Time("until").SchemaType(map[string]string{
+			dialect.MySQL: "datetime",
+		}),
 		field.String("scenario"),
 		field.String("type"),
 		field.Int64("start_ip").Optional(),
