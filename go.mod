@@ -6,7 +6,7 @@ require (
 	entgo.io/ent v0.10.1
 	github.com/AlecAivazis/survey/v2 v2.2.7
 	github.com/Masterminds/sprig v2.22.0+incompatible
-	github.com/Microsoft/go-winio v0.4.16 // indirect
+	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/ahmetb/dlog v0.0.0-20170105205344-4fb5f8204f26
 	github.com/alexliesenfeld/health v0.5.1
 	github.com/antonmedv/expr v1.8.9
@@ -70,13 +70,13 @@ require (
 require (
 	github.com/beevik/etree v1.1.0
 	github.com/google/winops v0.0.0-20211216095627-f0e86eb1453b
+	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad
 )
 
 require (
 	ariga.io/atlas v0.3.7-0.20220303204946-787354f533c3 // indirect
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/Microsoft/go-winio v0.5.2 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/agext/levenshtein v1.2.3 // indirect
@@ -158,7 +158,6 @@ require (
 	go.mongodb.org/mongo-driver v1.9.0 // indirect
 	golang.org/x/net v0.0.0-20220418201149-a630d4f3e7a2 // indirect
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c // indirect
-	golang.org/x/sys v0.0.0-20220412211240-33da011f77ad // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
