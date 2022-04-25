@@ -4,9 +4,9 @@ debug: true
 name: test/simple-leaky
 description: "Simple leaky"
 filter: "evt.Line.Labels.type =='testlog'"
-leakspeed: "10s"
-capacity: 5
-cache_size: 2
+leakspeed: "20s"
+capacity: 3
+cache_size: 1
 distinct: evt.Meta.uniq_key
 groupby: evt.Meta.source_ip
 labels:
