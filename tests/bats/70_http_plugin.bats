@@ -15,18 +15,18 @@ setup_file() {
     export MOCK_URL
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
-    yq '
+    yq e '
         .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
     ' -i "$(config_yq '.config_paths.notification_dir')/http.yaml"
 
-    yq '
+    yq e '
         .notifications=["http_default"] |
         .filters=["Alert.GetScope() == \"Ip\""]
     ' -i "$(config_yq '.api.server.profiles_path')"
 
-    yq '
+    yq e '
         .plugin_config.user="" |
         .plugin_config.group=""
     ' -i "${CONFIG_YAML}"
@@ -54,6 +54,7 @@ setup() {
 
     run -0 cscli decisions add --ip 1.2.3.5 --duration 30s
     assert_output --partial 'Decision successfully added'
+    sleep 5
 }
 
 @test "$FILE expected 1 log line from http server" {

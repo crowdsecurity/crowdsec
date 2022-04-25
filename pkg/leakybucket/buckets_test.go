@@ -223,7 +223,7 @@ POLL_AGAIN:
 
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
-			log.Warningf("Test is successfull")
+			log.Warningf("Test is successful")
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
 					t.Fatalf("Failed dumping bucket state : %s", err)

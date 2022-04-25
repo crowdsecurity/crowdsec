@@ -17,6 +17,7 @@ jobs:
         id: prep
         run: |
           DOCKER_IMAGE=crowdsecurity/crowdsec
+          GHCR_IMAGE=ghcr.io/${{ github.repository_owner }}/crowdsec
           VERSION=edge
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
@@ -25,9 +26,9 @@ jobs:
           elif [[ $GITHUB_REF == refs/pull/* ]]; then
             VERSION=pr-${{ github.event.number }}
           fi
-          TAGS="${DOCKER_IMAGE}:${VERSION}"
+          TAGS="${DOCKER_IMAGE}:${VERSION},${GHCR_IMAGE}:${VERSION}"
           if [[ ${{ github.event.action }} == released ]]; then
-            TAGS=$TAGS,${DOCKER_IMAGE}:latest
+            TAGS=$TAGS,${DOCKER_IMAGE}:latest,${GHCR_IMAGE}:latest
           fi
           echo ::set-output name=version::${VERSION}
           echo ::set-output name=tags::${TAGS}
@@ -44,6 +45,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1.12.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       -
         name: Build and push
         uses: docker/build-push-action@v2

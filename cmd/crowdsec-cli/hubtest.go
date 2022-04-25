@@ -463,7 +463,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 							status = emoji.GreenCircle.String()
 							parserTested += 1
 						}
-						table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
+						table.Append([]string{test.Parser, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
 					}
 					table.Render()
 				}
@@ -482,7 +482,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 						if test.TestsCount > 0 {
 							status = emoji.GreenCircle.String()
 						}
-						table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (accross %d tests)", test.TestsCount, len(test.PresentIn))})
+						table.Append([]string{test.Scenario, status, fmt.Sprintf("%d times (across %d tests)", test.TestsCount, len(test.PresentIn))})
 					}
 					table.Render()
 				}

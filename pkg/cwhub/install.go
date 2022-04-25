@@ -90,6 +90,8 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 	return target, nil
 }
 
+// creates symlink between actual config file at hub.HubDir and hub.ConfigDir
+// Handles collections recursively
 func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 	var tdir = hub.ConfigDir
 	var hdir = hub.HubDir
@@ -134,6 +136,7 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		}
 	}
 
+	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
 	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
 		//tdir+target.RemotePath
 		srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)

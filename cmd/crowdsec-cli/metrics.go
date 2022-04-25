@@ -23,7 +23,7 @@ import (
 func lapiMetricsToTable(table *tablewriter.Table, stats map[string]map[string]map[string]int) error {
 
 	//stats : machine -> route -> method -> count
-	/*we want consistant display order*/
+	/*we want consistent display order*/
 	machineKeys := []string{}
 	for k := range stats {
 		machineKeys = append(machineKeys, k)
@@ -269,7 +269,7 @@ func ShowPrometheus(url string) {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 		bucketsTable := tablewriter.NewWriter(os.Stdout)
-		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instanciated", "Poured", "Expired"})
+		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
 		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
 		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)

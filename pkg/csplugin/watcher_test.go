@@ -22,9 +22,11 @@ func resetTestTomb(testTomb *tomb.Tomb) {
 }
 
 func resetWatcherAlertCounter(pw *PluginWatcher) {
-	for k := range pw.AlertCountByPluginName {
-		pw.AlertCountByPluginName[k] = 0
+	pw.AlertCountByPluginName.Lock()
+	for k := range pw.AlertCountByPluginName.data {
+		pw.AlertCountByPluginName.data[k] = 0
 	}
+	pw.AlertCountByPluginName.Unlock()
 }
 
 func insertNAlertsToPlugin(pw *PluginWatcher, n int, pluginName string) {
@@ -35,7 +37,8 @@ func insertNAlertsToPlugin(pw *PluginWatcher, n int, pluginName string) {
 
 func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 	select {
-	case <-channel:
+	case x := <-channel:
+		log.Printf("received -> %v", x)
 	case <-ctx.Done():
 		return ctx.Err()
 	}

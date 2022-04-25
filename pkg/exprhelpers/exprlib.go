@@ -122,7 +122,7 @@ func PathEscape(s string) string {
 func PathUnescape(s string) string {
 	ret, err := url.PathUnescape(s)
 	if err != nil {
-		log.Errorf("unable to PathUnescape '%s': %+v", s, err)
+		log.Debugf("unable to PathUnescape '%s': %+v", s, err)
 		return s
 	}
 	return ret
@@ -131,7 +131,7 @@ func PathUnescape(s string) string {
 func QueryUnescape(s string) string {
 	ret, err := url.QueryUnescape(s)
 	if err != nil {
-		log.Errorf("unable to QueryUnescape '%s': %+v", s, err)
+		log.Debugf("unable to QueryUnescape '%s': %+v", s, err)
 		return s
 	}
 	return ret

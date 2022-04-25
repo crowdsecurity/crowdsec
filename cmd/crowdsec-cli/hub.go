@@ -56,7 +56,9 @@ cscli hub update # Download list of available configurations from the hub
 				log.Info(v)
 			}
 			cwhub.DisplaySummary()
-			ListItems([]string{cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW}, args, true, false)
+			ListItems([]string{
+				cwhub.COLLECTIONS, cwhub.PARSERS, cwhub.SCENARIOS, cwhub.PARSERS_OVFLW,
+			}, args, true, false, all)
 		},
 	}
 	cmdHubList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")
@@ -124,13 +126,13 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 			}
 
 			log.Infof("Upgrading collections")
-			UpgradeConfig(cwhub.COLLECTIONS, "", forceAction)
+			cwhub.UpgradeConfig(csConfig, cwhub.COLLECTIONS, "", forceAction)
 			log.Infof("Upgrading parsers")
-			UpgradeConfig(cwhub.PARSERS, "", forceAction)
+			cwhub.UpgradeConfig(csConfig, cwhub.PARSERS, "", forceAction)
 			log.Infof("Upgrading scenarios")
-			UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
+			cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			log.Infof("Upgrading postoverflows")
-			UpgradeConfig(cwhub.PARSERS_OVFLW, "", forceAction)
+			cwhub.UpgradeConfig(csConfig, cwhub.PARSERS_OVFLW, "", forceAction)
 		},
 	}
 	cmdHubUpgrade.PersistentFlags().BoolVar(&forceAction, "force", false, "Force upgrade : Overwrite tainted and outdated files")

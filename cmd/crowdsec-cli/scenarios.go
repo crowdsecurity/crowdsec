@@ -11,6 +11,7 @@ import (
 )
 
 func NewScenariosCmd() *cobra.Command {
+
 	var cmdScenarios = &cobra.Command{
 		Use:   "scenarios [action] [config]",
 		Short: "Install/Remove/Upgrade/Inspect scenario(s) from hub",
@@ -21,6 +22,7 @@ cscli scenarios upgrade crowdsecurity/ssh-bf
 cscli scenarios remove crowdsecurity/ssh-bf
 `,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"scenario"},
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
@@ -38,6 +40,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
+
 			return nil
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
@@ -50,15 +53,18 @@ cscli scenarios remove crowdsecurity/ssh-bf
 
 	var ignoreError bool
 	var cmdScenariosInstall = &cobra.Command{
-		Use:               "install [config]",
-		Short:             "Install given scenario(s)",
-		Long:              `Fetch and install given scenario(s) from hub`,
-		Example:           `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
-		Args:              cobra.MinimumNArgs(1),
+		Use:     "install [config]",
+		Short:   "Install given scenario(s)",
+		Long:    `Fetch and install given scenario(s) from hub`,
+		Example: `cscli scenarios install crowdsec/xxx crowdsec/xyz`,
+		Args:    cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compAllItems(cwhub.SCENARIOS, args, toComplete)
+		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
-				if err := InstallItem(name, cwhub.SCENARIOS, forceAction); err != nil {
+				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
 					} else {
@@ -74,14 +80,18 @@ cscli scenarios remove crowdsecurity/ssh-bf
 	cmdScenarios.AddCommand(cmdScenariosInstall)
 
 	var cmdScenariosRemove = &cobra.Command{
-		Use:               "remove [config]",
-		Short:             "Remove given scenario(s)",
-		Long:              `remove given scenario(s)`,
-		Example:           `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
+		Use:     "remove [config]",
+		Short:   "Remove given scenario(s)",
+		Long:    `remove given scenario(s)`,
+		Example: `cscli scenarios remove crowdsec/xxx crowdsec/xyz`,
+		Aliases: []string{"delete"},
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				RemoveMany(cwhub.SCENARIOS, "")
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, "", all, purge, forceAction)
 				return
 			}
 
@@ -90,7 +100,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 			}
 
 			for _, name := range args {
-				RemoveMany(cwhub.SCENARIOS, name)
+				cwhub.RemoveMany(csConfig, cwhub.SCENARIOS, name, all, purge, forceAction)
 			}
 		},
 	}
@@ -100,20 +110,23 @@ cscli scenarios remove crowdsecurity/ssh-bf
 	cmdScenarios.AddCommand(cmdScenariosRemove)
 
 	var cmdScenariosUpgrade = &cobra.Command{
-		Use:               "upgrade [config]",
-		Short:             "Upgrade given scenario(s)",
-		Long:              `Fetch and Upgrade given scenario(s) from hub`,
-		Example:           `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		Use:     "upgrade [config]",
+		Short:   "Upgrade given scenario(s)",
+		Long:    `Fetch and Upgrade given scenario(s) from hub`,
+		Example: `cscli scenarios upgrade crowdsec/xxx crowdsec/xyz`,
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if all {
-				UpgradeConfig(cwhub.SCENARIOS, "", forceAction)
+				cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, "", forceAction)
 			} else {
 				if len(args) == 0 {
 					log.Fatalf("no target scenario to upgrade")
 				}
 				for _, name := range args {
-					UpgradeConfig(cwhub.SCENARIOS, name, forceAction)
+					cwhub.UpgradeConfig(csConfig, cwhub.SCENARIOS, name, forceAction)
 				}
 			}
 		},
@@ -123,11 +136,14 @@ cscli scenarios remove crowdsecurity/ssh-bf
 	cmdScenarios.AddCommand(cmdScenariosUpgrade)
 
 	var cmdScenariosInspect = &cobra.Command{
-		Use:               "inspect [config]",
-		Short:             "Inspect given scenario",
-		Long:              `Inspect given scenario`,
-		Example:           `cscli scenarios inspect crowdsec/xxx`,
-		Args:              cobra.MinimumNArgs(1),
+		Use:     "inspect [config]",
+		Short:   "Inspect given scenario",
+		Long:    `Inspect given scenario`,
+		Example: `cscli scenarios inspect crowdsec/xxx`,
+		Args:    cobra.MinimumNArgs(1),
+		ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+			return compInstalledItems(cwhub.SCENARIOS, args, toComplete)
+		},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			InspectItem(args[0], cwhub.SCENARIOS)
@@ -144,7 +160,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 cscli scenarios list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.SCENARIOS}, args, false, true)
+			ListItems([]string{cwhub.SCENARIOS}, args, false, true, all)
 		},
 	}
 	cmdScenariosList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

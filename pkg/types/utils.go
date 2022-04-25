@@ -248,7 +248,7 @@ func UtcNow() time.Time {
 func GetLineCountForFile(filepath string) int {
 	f, err := os.Open(filepath)
 	if err != nil {
-		log.Fatalf("unable to open log file %s", filepath)
+		log.Fatalf("unable to open log file %s : %s", filepath, err)
 	}
 	defer f.Close()
 	lc := 0

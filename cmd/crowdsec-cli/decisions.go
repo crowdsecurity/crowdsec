@@ -143,6 +143,7 @@ func NewDecisionsCmd() *cobra.Command {
 		Short:   "Manage decisions",
 		Long:    `Add/List/Delete/Import decisions from LAPI`,
 		Example: `cscli decisions [action] [filter]`,
+		Aliases: []string{"decision"},
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
@@ -419,6 +420,7 @@ cscli decisions add --scope username --value foobar
 		Use:               "delete [options]",
 		Short:             "Delete decisions",
 		DisableAutoGenTag: true,
+		Aliases:           []string{"remove"},
 		Example: `cscli decisions delete -r 1.2.3.0/24
 cscli decisions delete -i 1.2.3.4
 cscli decisions delete -s crowdsecurity/ssh-bf

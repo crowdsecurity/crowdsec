@@ -12,18 +12,18 @@ setup_file() {
     tempfile=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
     export tempfile
 
-    yq '
+    yq e '
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile)
        ' -i "$(config_yq '.config_paths.notification_dir')/dummy.yaml"
 
-    yq '
+    yq e '
        .notifications=["dummy_default"] |
        .filters=["Alert.GetScope() == \"Ip\""]
        ' -i "$(config_yq '.api.server.profiles_path')"
 
-    yq '
+    yq e '
        .plugin_config.user="" |
        .plugin_config.group=""
        ' -i "${CONFIG_YAML}"

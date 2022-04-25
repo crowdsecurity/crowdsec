@@ -192,7 +192,7 @@ func TestWatcherEnroll(t *testing.T) {
 		_, _ = buf.ReadFrom(r.Body)
 		newStr := buf.String()
 		log.Debugf("body -> %s", newStr)
-		if newStr == `{"attachment_key":"goodkey","name":"","tags":[]}
+		if newStr == `{"attachment_key":"goodkey","name":"","tags":[],"overwrite":false}
 ` {
 			log.Print("good key")
 			w.WriteHeader(http.StatusOK)
@@ -228,11 +228,11 @@ func TestWatcherEnroll(t *testing.T) {
 		log.Fatalf("new api client: %s", err.Error())
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{})
+	_, err = client.Auth.EnrollWatcher(context.Background(), "goodkey", "", []string{}, false)
 	if err != nil {
 		t.Fatalf("unexpect enroll err: %s", err)
 	}
 
-	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{})
+	_, err = client.Auth.EnrollWatcher(context.Background(), "badkey", "", []string{}, false)
 	assert.Contains(t, err.Error(), "the attachment key provided is not valid")
 }

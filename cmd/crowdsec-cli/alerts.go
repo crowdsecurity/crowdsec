@@ -350,6 +350,7 @@ cscli alerts list --type ban`,
 cscli alerts delete --range 1.2.3.0/24
 cscli alerts delete -s crowdsecurity/ssh-bf"`,
 		DisableAutoGenTag: true,
+		Aliases:           []string{"remove"},
 		Args:              cobra.ExactArgs(0),
 		PreRun: func(cmd *cobra.Command, args []string) {
 			if AlertDeleteAll {

@@ -23,9 +23,15 @@ about() {
     die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
-check_postgres_client() {
-    if ! command -v psql --version >/dev/null; then
-        die "missing required program 'psql' as a postgres client (package postgres-client-13 on debian like system)"
+check_requirements() {
+    if ! command -v psql >/dev/null; then
+        die "missing required program 'psql' as a postgres client (package postgressql-client on debian like system)"
+    fi
+    if ! command -v pg_dump >/dev/null; then
+        die "missing required program 'pg_dump' (package postgresql-client on debian like system)"
+    fi
+    if ! command -v pg_restore >/dev/null; then
+        die "missing required program 'pg_restore' (package postgresql-client on debian like system)"
     fi
 }
 
@@ -34,33 +40,27 @@ exec_sql() {
     psql <<< "$cmd"
 }
 
-requirements() {
-    check_mysql_client
-}
-
 setup() {
     exec_sql "DROP DATABASE IF EXISTS crowdsec_test;"
     exec_sql "CREATE DATABASE crowdsec_test;"
     exec_sql "DROP USER IF EXISTS crowdsec_test;"
     exec_sql "CREATE USER crowdsec_test WITH ENCRYPTED PASSWORD 'crowdsec_test';"
     exec_sql "GRANT ALL PRIVILEGES ON DATABASE crowdsec_test TO crowdsec_test;"
-    # exec_sql "SET log_statement='all';"
-    # exec_sql "SELECT pg_reload_conf();"
 }
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    pg_dump -Ft --dbname crowdsec_test > "$backup_file"
+    pg_dump -Ft --dbname crowdsec_test --clean --create --file "$backup_file"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
     [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-    pg_restore --dbname crowdsec_test --clean < "$backup_file"
+    pg_restore --dbname crowdsec_test --clean "$backup_file"
 }
 
 config_yaml() {
-    yq '
+    yq e '
         .db_config.type=strenv(DB_BACKEND)|
         .db_config.user="crowdsec_test" |
         .db_config.password="crowdsec_test" |
@@ -73,6 +73,8 @@ config_yaml() {
 }
 
 [ $# -lt 1 ] && about
+
+check_requirements
 
 case "$1" in
     setup)

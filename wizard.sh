@@ -508,7 +508,7 @@ install_plugins(){
 
 check_running_bouncers() {
     #when uninstalling, check if user still has bouncers
-    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=json | jq '. | length')
+    BOUNCERS_COUNT=$(${CSCLI_BIN} bouncers list -o=raw | tail -n +2 | wc -l)
     if [[ ${BOUNCERS_COUNT} -gt 0 ]] ; then
         if [[ ${FORCE_MODE} == "false" ]]; then
             echo "WARNING : You have at least one bouncer registered (cscli bouncers list)."

@@ -31,6 +31,9 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
+//The broker is reponsible for running the plugins and dispatching events
+//It receives all the events from the main process and stacks them up
+//It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {
 	PluginChannel                   chan ProfileAlert
 	alertsByPluginName              map[string][]*models.Alert
@@ -49,12 +52,12 @@ type PluginBroker struct {
 type PluginConfig struct {
 	Type           string        `yaml:"type"`
 	Name           string        `yaml:"name"`
-	GroupWait      time.Duration `yaml:"group_wait"`
-	GroupThreshold int           `yaml:"group_threshold"`
-	MaxRetry       int           `yaml:"max_retry"`
-	TimeOut        time.Duration `yaml:"timeout"`
+	GroupWait      time.Duration `yaml:"group_wait,omitempty"`
+	GroupThreshold int           `yaml:"group_threshold,omitempty"`
+	MaxRetry       int           `yaml:"max_retry,omitempty"`
+	TimeOut        time.Duration `yaml:"timeout,omitempty"`
 
-	Format string `yaml:"format"` // specific to notification plugins
+	Format string `yaml:"format,omitempty"` // specific to notification plugins
 
 	Config map[string]interface{} `yaml:",inline"` //to keep the plugin-specific config
 
@@ -94,6 +97,7 @@ func (pb *PluginBroker) Kill() {
 }
 
 func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
+	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(tomb)
 	for {
 		select {
@@ -103,6 +107,7 @@ func (pb *PluginBroker) Run(tomb *tomb.Tomb) {
 		case pluginName := <-pb.watcher.PluginEvents:
 			// this can be ran in goroutine, but then locks will be needed
 			pluginMutex.Lock()
+			log.Tracef("going to deliver %d alerts to plugin %s", len(pb.alertsByPluginName[pluginName]), pluginName)
 			tmpAlerts := pb.alertsByPluginName[pluginName]
 			pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 			pluginMutex.Unlock()
@@ -242,10 +247,12 @@ func (pb *PluginBroker) loadPlugins(path string) error {
 }
 
 func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (Notifier, error) {
+
 	handshake, err := getHandshake()
 	if err != nil {
 		return nil, err
 	}
+	log.Debugf("Executing plugin %s", binaryPath)
 	cmd, err := pb.CreateCmd(binaryPath)
 	if err != nil {
 		return nil, err
@@ -280,7 +287,7 @@ func (pb *PluginBroker) loadNotificationPlugin(name string, binaryPath string) (
 }
 
 func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*models.Alert) error {
-	log.WithField("plugin", pluginName).Debug("pushing alerts to plugin")
+	log.WithField("plugin", pluginName).Debugf("pushing %d alerts to plugin", len(alerts))
 	if len(alerts) == 0 {
 		return nil
 	}
@@ -343,9 +350,6 @@ func setRequiredFields(pluginCfg *PluginConfig) {
 		pluginCfg.TimeOut = time.Second * 5
 	}
 
-	if pluginCfg.GroupWait == time.Second*0 {
-		pluginCfg.GroupWait = time.Second * 1
-	}
 }
 
 // helper which gives paths to all files in the given directory non-recursively
