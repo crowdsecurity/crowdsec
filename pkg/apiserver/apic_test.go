@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"reflect"
-	"runtime"
 	"sort"
 	"sync"
 	"testing"
@@ -729,15 +728,15 @@ func TestAPICSendMetrics(t *testing.T) {
 	}{
 		{
 			name:            "basic",
-			duration:        time.Millisecond * 5,
-			metricsInterval: time.Millisecond,
+			duration:        time.Millisecond * 30,
+			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
 			setUp:           func() {},
 		},
 		{
 			name:            "with some metrics",
-			duration:        time.Millisecond * 5,
-			metricsInterval: time.Millisecond,
+			duration:        time.Millisecond * 30,
+			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
 			setUp: func() {
 				api.dbClient.Ent.Machine.Create().
@@ -788,11 +787,7 @@ func TestAPICSendMetrics(t *testing.T) {
 					panic(err)
 				}
 			}()
-			if runtime.GOOS == "windows" {
-				time.Sleep(time.Second)
-			} else {
-				time.Sleep(testCase.duration)
-			}
+			time.Sleep(testCase.duration)
 			assert.LessOrEqual(t, absDiff(testCase.expectedCalls, httpmock.GetTotalCallCount()), 2)
 		})
 	}
