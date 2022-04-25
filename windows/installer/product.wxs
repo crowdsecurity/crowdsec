@@ -16,7 +16,7 @@
 
       <Package InstallerVersion="200" Compressed="yes" Comments="Crowdsec Installer Package" InstallScope="perMachine" />
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes" />
-      <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+      <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." Schedule="afterInstallExecute" />
 
       <SetProperty After="AppSearch" Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="LAPI is disabled and no agents credentials were generated.Please register your agent in your LAPI instance, update C:\ProgramData\CrowdSec\config\local_api_credentials.yaml, and configure the CrowdSec service to start on boot." >
          AGENT_ONLY
@@ -48,10 +48,20 @@
                <Directory Id="ConfigDir" Name="config">
                   <Component Id="AcquisConfig" Guid="08bfc6fd-4811-48ed-b63e-035acb1f69d8">
                      <File Id="acquis.yaml" Source="config\acquis_win.yaml" Name="acquis.yaml" />
+                  </Component>
+                  <Component Id="LocalCreds" Guid="fea92471-ba4b-4067-a92a-19af0d581b60">
                      <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml" />
+                  </Component>
+                  <Component Id="OnlineCreds" Guid="a652a6cb-d464-40b1-8f50-78dce0135d20">
                      <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
+                  </Component>
+                  <Component Id="ProfilesConfig" Guid="8d6fca04-b3be-4a52-a9df-278139d0498e">
                      <File Id="profiles.yaml" Source="config\profiles.yaml" />
+                  </Component>
+                  <Component Id="SimulationConfig" Guid="a27346e6-af4a-4ee6-aea9-d783b036cd21">
                      <File Id="simulation.yaml" Source="config\simulation.yaml" />
+                  </Component>
+                  <Component Id="ConsoleConfig" Guid="8393e488-18d5-4578-9e4c-99b54f7b2bb6">
                      <File Id="console.yaml" Source="config\console.yaml" />
                   </Component>
                   <Component Id="Csconfig_lapi" Guid="a99bd70c-61af-43ca-8394-6dc789cec566">
@@ -116,8 +126,8 @@
          <WriteEnvironmentStrings />
          <Custom Action="HubUpdate" After="InstallFiles">NOT Installed AND NOT REMOVE</Custom>
          <Custom Action="InstallWinCollection" After="HubUpdate">NOT Installed AND NOT REMOVE</Custom>
-         <Custom Action="RegisterMachine" After="InstallWinCollection">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY</Custom>
-         <Custom Action="RegisterCAPI" After="RegisterMachine">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY</Custom>
+         <Custom Action="RegisterMachine" After="InstallWinCollection">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
+         <Custom Action="RegisterCAPI" After="RegisterMachine">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
       </InstallExecuteSequence>
 
       <Feature Id="DefaultFeature" Level="1">
@@ -125,6 +135,11 @@
          <ComponentRef Id="CrowdsecNoStart" />
          <ComponentRef Id="Cscli" />
          <ComponentRef Id="AcquisConfig"/>
+         <ComponentRef Id="LocalCreds"/>
+         <ComponentRef Id="OnlineCreds"/>
+         <ComponentRef Id="ProfilesConfig"/>
+         <ComponentRef Id="SimulationConfig"/>
+         <ComponentRef Id="ConsoleConfig"/>
          <ComponentRef Id="CreateLog" />
          <ComponentRef Id="CreateHub" />
          <ComponentRef Id="NotifConfig" />
