@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"runtime"
 	"sort"
 	"sync"
 	"testing"
@@ -787,7 +788,11 @@ func TestAPICSendMetrics(t *testing.T) {
 					panic(err)
 				}
 			}()
-			time.Sleep(testCase.duration)
+			if runtime.GOOS == "windows" {
+				time.Sleep(time.Second)
+			} else {
+				time.Sleep(testCase.duration)
+			}
 			assert.LessOrEqual(t, absDiff(testCase.expectedCalls, httpmock.GetTotalCallCount()), 2)
 		})
 	}
