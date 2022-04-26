@@ -111,10 +111,12 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	var NodeHasOKGrok bool
 	clog := n.Logger
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": p})
+
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -124,7 +126,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				n.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
@@ -188,7 +190,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -197,7 +199,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				e.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
@@ -238,7 +240,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
