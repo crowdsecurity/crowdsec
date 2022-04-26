@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -269,8 +268,6 @@ func main() {
 	)
 
 	defer types.CatchPanic("crowdsec/main")
-
-	runtime.SetBlockProfileRate(1)
 
 	log.Debugf("os.Args: %v", os.Args)
 
