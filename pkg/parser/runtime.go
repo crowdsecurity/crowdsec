@@ -257,6 +257,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &event})
+
 	if ParseDump {
 		if StageParseCache == nil {
 			StageParseCache = make(map[string]map[string][]ParserResult)
@@ -300,7 +302,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				node.Profiling = true
 			}
-			ret, err := node.process(&event, ctx)
+			ret, err := node.process(&event, ctx, cachedExprEnv)
 			if err != nil {
 				clog.Fatalf("Error while processing node : %v", err)
 			}

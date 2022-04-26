@@ -106,12 +106,12 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
+func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
 	var NodeState bool
 	var NodeHasOKGrok bool
 	clog := n.Logger
 
-	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": p})
+	cachedExprEnv := expressionEnv
 
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
@@ -287,7 +287,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	//Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
-			ret, err := leaf.process(p, ctx)
+			ret, err := leaf.process(p, ctx, cachedExprEnv)
 			if err != nil {
 				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
 				clog.Debugf("Event leaving node : ko")
