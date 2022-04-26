@@ -124,7 +124,7 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 			return target, fmt.Errorf("failed to download item : %s", err)
 		}
 	} else {
-		if !target.Installed && updateOnly {
+		if !target.Installed && updateOnly && target.Downloaded {
 			log.Debugf("skipping upgrade of %s : not installed", target.Name)
 			return target, nil
 		}
