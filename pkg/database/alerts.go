@@ -772,7 +772,6 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		if err != nil {
 			return []*ent.Alert{}, errors.Wrapf(QueryFail, "pagination size: %d, offset: %d: %s", paginationSize, offset, err)
 		}
-		log.Infof("Limit: %d | ret size: %d | pagination size: %d", limit, len(ret), paginationSize)
 		if diff := limit - len(ret); diff < paginationSize {
 			if len(result) < diff {
 				ret = append(ret, result...)
