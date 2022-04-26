@@ -296,13 +296,15 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		BucketPourCache["OK"] = append(BucketPourCache["OK"], evt.(types.Event))
 	}
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed})
+
 	//find the relevant holders (scenarios)
 	for idx, holder := range holders {
 
 		//evaluate bucket's condition
 		if holder.RunTimeFilter != nil {
 			holder.logger.Tracef("event against holder %d/%d", idx, len(holders))
-			output, err := expr.Run(holder.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
+			output, err := expr.Run(holder.RunTimeFilter, cachedExprEnv)
 			if err != nil {
 				holder.logger.Errorf("failed parsing : %v", err)
 				return false, fmt.Errorf("leaky failed : %s", err)
@@ -314,7 +316,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 
 			if holder.Debug {
-				holder.ExprDebugger.Run(holder.logger, condition, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
+				holder.ExprDebugger.Run(holder.logger, condition, cachedExprEnv)
 			}
 			if !condition {
 				holder.logger.Debugf("Event leaving node : ko (filter mismatch)")
@@ -325,7 +327,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		//groupby determines the partition key for the specific bucket
 		var groupby string
 		if holder.RunTimeGroupBy != nil {
-			tmpGroupBy, err := expr.Run(holder.RunTimeGroupBy, exprhelpers.GetExprEnv(map[string]interface{}{"evt": &parsed}))
+			tmpGroupBy, err := expr.Run(holder.RunTimeGroupBy, cachedExprEnv)
 			if err != nil {
 				holder.logger.Errorf("failed groupby : %v", err)
 				return false, errors.New("leaky failed :/")

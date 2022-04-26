@@ -111,12 +111,14 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 	var value string
 	clog := n.Logger
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": event})
+
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": event}))
+			output, err := expr.Run(static.RunTimeValue, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
