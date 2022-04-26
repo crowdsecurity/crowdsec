@@ -48,7 +48,7 @@ function init
       cd ..
       BUILD_VERSION=${CROWDSEC_VERSION} make release
       if [ $? != 0 ]; then
-        echo "Unable to make the release (make sur you have go installed), exiting"
+        echo "Unable to make the release (make sure you have go installed), exiting"
         exit 1
       fi
       RELEASE_FOLDER="crowdsec-${CROWDSEC_VERSION}"
@@ -124,7 +124,7 @@ function init
     md5sum ${SYSTEMD_FILE} >> systemd.md5
 
     echo "[*] Setup done"
-    echo "[*] Lauching the upgrade"
+    echo "[*] Launching the upgrade"
     cd ${RELEASE_FOLDER}/
     ./wizard.sh --upgrade --force
     cd ${CURRENT_FOLDER}

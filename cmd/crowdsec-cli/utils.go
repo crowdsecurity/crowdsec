@@ -622,7 +622,7 @@ func RestoreHub(dirPath string) error {
 				if err != nil {
 					return fmt.Errorf("failed enumerating files of %s : %s", itemDirectory+"/"+stage, err)
 				}
-				//finaly copy item
+				//finally copy item
 				for _, tfile := range ifiles {
 					log.Infof("Going to restore local/tainted [%s]", tfile.Name())
 					sourceFile := fmt.Sprintf("%s/%s/%s", itemDirectory, stage, tfile.Name())

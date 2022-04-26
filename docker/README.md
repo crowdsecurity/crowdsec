@@ -82,7 +82,7 @@ The container is built with specific docker [configuration](https://github.com/c
 If you wish to use the [notification system](https://docs.crowdsec.net/docs/notification_plugins/intro), you will need to mount at least a custom `profiles.yaml` and a notification configuration to `/etc/crowdsec/notifications`
 
 # Deployment use cases
-Crowdsec is composed of an `agent` that parse logs and creates `alerts` that `local API` or `LAPI` tranform into decisions. Both can run in the same process but also on separated containers as it makes sense in complex configurations to have agents on the same machines as the protected component and a LAPI that gather all signals from agents and communicate with the `central api`.
+Crowdsec is composed of an `agent` that parse logs and creates `alerts` that `local API` or `LAPI` transform into decisions. Both can run in the same process but also on separated containers as it makes sense in complex configurations to have agents on the same machines as the protected component and a LAPI that gather all signals from agents and communicate with the `central api`.
 
 ## Register a new agent with LAPI
 ```shell
@@ -92,7 +92,7 @@ docker exec -it crowdsec_lapi_container_name cscli machines add agent_user_name 
 ## Run an agent connected to LAPI
 Add following environment variables to your docker run command:
 * `DISABLE_LOCAL_API=true`
-* `AGENT_USERNAME="agent_user_name"` - agent_user_name previously registred with LAPI
+* `AGENT_USERNAME="agent_user_name"` - agent_user_name previously registered with LAPI
 * `AGENT_PASSWORD="agent_password"` - agent_password previously registered with LAPI
 * `LOCAL_API_URL="http://LAPI_host:LAPI_port"`
 

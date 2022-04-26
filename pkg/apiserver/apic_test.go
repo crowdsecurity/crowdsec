@@ -538,7 +538,7 @@ func TestAPICPullTop(t *testing.T) {
 						Scope:    types.StrPtr("Ip"),
 						Duration: types.StrPtr("24h"),
 						Type:     types.StrPtr("ban"),
-					}, // Thie is already present in DB
+					}, // This is already present in DB
 					&models.Decision{
 						Origin:   &SCOPE_LISTS,
 						Scenario: types.StrPtr("crowdsecurity/ssh-bf"),
@@ -910,7 +910,7 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedTrust: "manual",
 		},
 		{
-			name: "manaul alert should not be shared if config disables it",
+			name: "manual alert should not be shared if config disables it",
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareManualDecisions: types.BoolPtr(false),
 			},
@@ -934,7 +934,7 @@ func TestShouldShareAlert(t *testing.T) {
 			expectedTrust: "tainted",
 		},
 		{
-			name: "manaul alert should not be shared if config disables it",
+			name: "manual alert should not be shared if config disables it",
 			consoleConfig: &csconfig.ConsoleConfig{
 				ShareTaintedScenarios: types.BoolPtr(false),
 			},

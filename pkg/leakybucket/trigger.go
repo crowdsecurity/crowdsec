@@ -13,7 +13,7 @@ type Trigger struct {
 
 func (t *Trigger) OnBucketPour(b *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	// Pour makes the bucket overflow all the time
-	// TriggerPour unconditionnaly overflows
+	// TriggerPour unconditionally overflows
 	return func(msg types.Event, l *Leaky) *types.Event {
 		if l.Mode == TIMEMACHINE {
 			var d time.Time

@@ -37,7 +37,7 @@ const (
 	CrowdsecPluginKey     string = "CROWDSEC_PLUGIN_KEY"
 )
 
-//The broker is reponsible for running the plugins and dispatching events
+//The broker is responsible for running the plugins and dispatching events
 //It receives all the events from the main process and stacks them up
 //It is as well notified by the watcher when it needs to deliver events to plugins (based on time or count threshold)
 type PluginBroker struct {

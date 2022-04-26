@@ -213,7 +213,7 @@ func (c *Controller) FindAlerts(gctx *gin.Context) {
 	gctx.JSON(http.StatusOK, data)
 }
 
-// FindAlertByID return the alert assiocated to the ID
+// FindAlertByID return the alert associated to the ID
 func (c *Controller) FindAlertByID(gctx *gin.Context) {
 	alertIDStr := gctx.Param("alert_id")
 	alertID, err := strconv.Atoi(alertIDStr)

@@ -29,7 +29,7 @@ type Node struct {
 	Name        string   `yaml:"name,omitempty"`
 	Author      string   `yaml:"author,omitempty"`
 	Description string   `yaml:"description,omitempty"`
-	Rerferences []string `yaml:"references,omitempty"`
+	References  []string `yaml:"references,omitempty"`
 	//if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
 	//This is mostly a hack to make writing less repetitive.
