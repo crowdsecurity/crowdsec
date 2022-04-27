@@ -25,10 +25,10 @@ format: |
 smtp_host:            # example: smtp.gmail.com
 smtp_username:        # Replace with your actual username
 smtp_password:        # Replace with your actual password
-smtp_port:            # Common values are any of [25, 465, 587, 2525]
+#smtp_port: 25        # Common value for port is one of [25, 465, 587, 2525]
 auth_type:            # Valid choices are "none", "crammd5", "login", "plain"
 sender_name: "CrowdSec"
-sender_email:         # example: foo@gmail.com
+#sender_email: "crowdsec@©rowdsec.local"
 email_subject: "CrowdSec Notification"
 receiver_emails:
 # - email1@gmail.com
