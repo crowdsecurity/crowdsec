@@ -161,7 +161,7 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 			!!! ugly hack !!!
 			Due to a bug in the syslog parser we use (https://github.com/influxdata/go-syslog/issues/31),
 			the ProcID field will contain garbage if the message as a ] anywhere in it.
-			Assume that a correctly formated ProcID only contains number, and if this is not the case, set it to an arbitrary value
+			Assume that a correctly formatted ProcID only contains number, and if this is not the case, set it to an arbitrary value
 		*/
 		_, err := strconv.Atoi(*pid)
 		if err != nil {

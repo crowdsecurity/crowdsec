@@ -36,9 +36,9 @@ repositories).
 | Feature                        | Covered        | Notes                                      |
 | :----------------------------- | :------------- | :----------------------------------------- |
 | `systemctl` start/stop/restart | -              |                                            |
-| agent behaviour                | `40_live-ban`  | minimal testing  (simple ssh-bf detection) |
+| agent behavior                 | `40_live-ban`  | minimal testing  (simple ssh-bf detection) |
 | forensic mode                  | `40_cold-logs` | minimal testing (simple ssh-bf detection)  |
-| starting withou LAPI           | `02_nolapi`    |                                            |
+| starting without LAPI          | `02_nolapi`    |                                            |
 | starting without agent         | `03_noagent`   |                                            |
 | starting without CAPI          | `04_nocapi`    |                                            |
 | prometheus testing             | -              |                                            |
@@ -264,7 +264,7 @@ Here are some ways to use these two scripts.
     configuration inside the test function before running the lapi/agent. See
     how we use `yq` to change the YAML files to that effect.
 
- - case 3: start crowdsec with the inital set of configuration+data once, and keep it
+ - case 3: start crowdsec with the initial set of configuration+data once, and keep it
    running for all the tests (50_simulation, 98_ipv4, 98_ipv6)
 
      This offers no isolation across tests, which over time could break more

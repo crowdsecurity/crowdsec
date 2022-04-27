@@ -513,7 +513,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			outChan <- evt
 			d.logger.Debugf("Sent line to parsing: %+v", evt.Line.Raw)
 		case <-readerTomb.Dying():
-			//This case is to handle temporarly losing the connection to the docker socket
+			//This case is to handle temporarily losing the connection to the docker socket
 			//The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
 			d.logger.Debugf("readerTomb dying for container %s, removing it from runningContainerState", container.Name)
 			delete(d.runningContainerState, container.ID)

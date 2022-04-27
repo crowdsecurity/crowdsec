@@ -321,7 +321,7 @@ detect_cs_install () {
     if [[ -f "$CROWDSEC_BIN_INSTALLED" ]]; then
         log_warn "Crowdsec is already installed !"
         echo ""
-        echo "We recommand to upgrade : sudo ./wizard.sh --upgrade "
+        echo "We recommend to upgrade : sudo ./wizard.sh --upgrade "
         echo "If you want to install it anyway, please use '--force'."
         echo ""
         echo "Run : sudo ./wizard.sh -i --force"
@@ -352,7 +352,7 @@ check_cs_version () {
         if [[ $ACTION != "upgrade" ]] ; then 
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
-                echo "We recommand to upgrade with : sudo ./wizard.sh --upgrade "
+                echo "We recommend to upgrade with : sudo ./wizard.sh --upgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
                 echo ""
                 echo "Run : sudo ./wizard.sh --$ACTION --force"
@@ -364,7 +364,7 @@ check_cs_version () {
         if [[ $ACTION != "binupgrade" ]] ; then 
             if [[ ${FORCE_MODE} == "false" ]]; then
                 echo ""
-                echo "We recommand to upgrade binaries only : sudo ./wizard.sh --binupgrade "
+                echo "We recommend to upgrade binaries only : sudo ./wizard.sh --binupgrade "
                 echo "If you want to $ACTION anyway, please use '--force'."
                 echo ""
                 echo "Run : sudo ./wizard.sh --$ACTION --force"
@@ -375,7 +375,7 @@ check_cs_version () {
         log_warn "new version ($NEW_CS_VERSION) is same as current version ($CURRENT_CS_VERSION) !"
         if [[ ${FORCE_MODE} == "false" ]]; then
             echo ""
-            echo "We recommand to $ACTION only if it's an higher version. "
+            echo "We recommend to $ACTION only if it's an higher version. "
             echo "If it's an RC version (vX.X.X-rc) you can upgrade it using '--force'."
             echo ""
             echo "Run : sudo ./wizard.sh --$ACTION --force"

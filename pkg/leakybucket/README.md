@@ -36,7 +36,7 @@ event is poured in a trigger, it always raises an overflow.
 
 It's a bucket working as the standard leaky bucket except for one
 thing: a filter returns a property for each event and only one
-occurence of this property is allowed in the bucket, thus the bucket
+occurrence of this property is allowed in the bucket, thus the bucket
 is called uniq.
 
 ## Counter
@@ -64,9 +64,9 @@ duration.
 * leakspeed: leakspeed is a time duration (has to be parseable by
   https://golang.org/pkg/time/#ParseDuration). After each interval an
   event is leaked from the bucket.
-* stackkey: mandatory field. This field is used to differenciate on
-  which bucket ongoing events will be poured. When an unknows stackkey
-  is seen in an event a new bucekt is created.
+* stackkey: mandatory field. This field is used to differentiate on
+  which bucket ongoing events will be poured. When an unknown stackkey
+  is seen in an event a new bucket is created.
 * on_overflow: optional field, that tells the what to do when the
   bucket is returning the overflow event. As of today, the possibility
   are these: "ban,1h", "Reprocess", "Delete".
@@ -96,7 +96,7 @@ Nevertheless, this kind of bucket is often used with an infinite
 leakspeed and an infinite capacity [capacity set to -1 for now].
 
 
-## Add exemples here
+## Add examples here
 
 ```
 # ssh bruteforce

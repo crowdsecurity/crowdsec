@@ -9,12 +9,12 @@ import (
 )
 
 // ResetFilter allows to kill the bucket (without overflowing), if a particular condition is met.
-// An example would be a scenario to detect aggressive crawlers that *do not* fetch any static ressources :
+// An example would be a scenario to detect aggressive crawlers that *do not* fetch any static resources :
 // type : leaky
 // filter: filter: "evt.Meta.log_type == 'http_access-log'
 // reset_filter: evt.Parsed.request endswith '.css'
 // ....
-// Thus, if the bucket receives a request that matches fetching a static ressource (here css), it cancels itself
+// Thus, if the bucket receives a request that matches fetching a static resource (here css), it cancels itself
 
 type CancelOnFilter struct {
 	CancelOnFilter      *vm.Program

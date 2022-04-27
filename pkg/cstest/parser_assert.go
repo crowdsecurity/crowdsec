@@ -304,7 +304,7 @@ func DumpTree(parser_results ParserResults, bucket_pour BucketPourInfo, opts Dum
 			if evt.Line.Raw == "" {
 				continue
 			}
-			//it might be bucket oveflow being reprocessed, skip this
+			//it might be bucket overflow being reprocessed, skip this
 			if _, ok := state[evt.Line.Time]; !ok {
 				state[evt.Line.Time] = make(map[string]map[string]ParserResult)
 				assoc[evt.Line.Time] = evt.Line.Raw

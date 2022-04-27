@@ -8,11 +8,11 @@ The alphabetical order dictates the order in which the stages/parsers are proces
 
 The runtime representation of a line being parsed (or an overflow) is an `Event`, and has fields that can be manipulated by user :
  - Parsed : a string dict containing parser outputs
- - Meta : a string dict containing meta informations about the event
+ - Meta : a string dict containing meta information about the event
  - Line : a raw line representation
  - Overflow : a representation of the overflow if applicable
 
-The Event structure goes trough the stages, being altered with each parsing step.
+The Event structure goes through the stages, being altered with each parsing step.
 It's the same object that will be later poured into buckets.
 
 # Parser configuration
@@ -123,7 +123,7 @@ pattern_syntax:
 
 ### Enrichment
 
-Enrichment mecanism is exposed via statics :
+Enrichment mechanism is exposed via statics :
 
 ```yaml
 statics:
