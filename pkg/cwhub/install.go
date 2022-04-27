@@ -100,7 +100,11 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 func isInstalledInOtherCollection(item Item, currentCollection Item) (bool, error) {
 	installedCollections, err := GetInstalledCollections()
 	if err != nil {
-		return true, err
+		/*
+			the error can happen only if we have no collection in the hub
+			which means the item is not installed in any others collections
+		*/
+		return false, err
 	}
 	for _, installedCollection := range installedCollections {
 		if installedCollection.Name == currentCollection.Name {
