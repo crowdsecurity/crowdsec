@@ -47,6 +47,8 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 						if err != nil {
 							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
 						}
+					} else {
+						log.Infof("%s was not removed because it belongs to another collection", val.Name)
 					}
 				} else {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
