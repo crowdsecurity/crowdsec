@@ -172,7 +172,7 @@ func TestShutdownBuckets(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := ShutdownAllBuckets(buckets); err != nil {
-		t.Fatalf("while shuting down buckets : %s", err)
+		t.Fatalf("while shutting down buckets : %s", err)
 	}
 	time.Sleep(2 * time.Second)
 	if err := expectBucketCount(buckets, 2); err != nil {

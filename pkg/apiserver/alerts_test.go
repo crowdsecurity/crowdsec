@@ -272,7 +272,7 @@ func TestAlertListFilters(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Ip 91.121.79.195 performed 'crowdsecurity/ssh-bf' (6 events over ")
 	assert.Contains(t, w.Body.String(), `scope":"Ip","simulated":false,"type":"ban","value":"91.121.79.195"`)
 
-	//test since (ok but yelds no results)
+	//test since (ok but yields no results)
 
 	w = lapi.RecordResponse("GET", "/v1/alerts?since=1ns", emptyBody)
 	assert.Equal(t, 200, w.Code)

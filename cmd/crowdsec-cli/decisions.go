@@ -521,7 +521,7 @@ decisions.json :
 `,
 		Run: func(cmd *cobra.Command, args []string) {
 			if importFile == "" {
-				log.Fatalf("Please provide a input file contaning decisions with -i flag")
+				log.Fatalf("Please provide a input file containing decisions with -i flag")
 			}
 			csvData, err := os.ReadFile(importFile)
 			if err != nil {
