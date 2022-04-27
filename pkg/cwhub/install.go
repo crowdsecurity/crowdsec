@@ -34,9 +34,21 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+					// check if the item doesn't belong to another collection before removing it
+					toRemove := true
+					for _, collection := range val.BelongsToCollections {
+						if collection != target.Name {
+							toRemove = false
+							break
+						}
+					}
+					if toRemove {
+						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
+						if err != nil {
+							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+						}
+					} else {
+						log.Infof("%s was not removed because it belongs to another collection", val.Name)
 					}
 				} else {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
