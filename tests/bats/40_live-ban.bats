@@ -30,7 +30,6 @@ teardown() {
 #----------
 
 @test "$FILE 1.1.1.172 has been banned" {
-    skip
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
     ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')

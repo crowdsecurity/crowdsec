@@ -1,15 +1,16 @@
 package csconfig
 
 import (
+	"bytes"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -33,13 +34,15 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 		return fmt.Errorf("empty profiles path")
 	}
 
-	yamlFile, err := os.Open(c.ProfilesPath)
+	patcher := yamlpatch.NewPatcher(c.ProfilesPath)
+	fcontent, err := patcher.PrependedPatchContent()
 	if err != nil {
-		return errors.Wrapf(err, "while opening %s", c.ProfilesPath)
+		return err
 	}
+	reader := bytes.NewReader(fcontent)
 
 	//process the yaml
-	dec := yaml.NewDecoder(yamlFile)
+	dec := yaml.NewDecoder(reader)
 	dec.SetStrict(true)
 	for {
 		t := ProfileCfg{}

@@ -2,10 +2,9 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"path/filepath"
 
-	"github.com/pkg/errors"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"gopkg.in/yaml.v2"
 )
 
@@ -39,9 +38,11 @@ func (c *Config) LoadSimulation() error {
 	if c.ConfigPaths.SimulationFilePath == "" {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
 	}
-	rcfg, err := ioutil.ReadFile(c.ConfigPaths.SimulationFilePath)
+
+	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath)
+	rcfg, err := patcher.MergedPatchContent()
 	if err != nil {
-		return errors.Wrapf(err, "while reading '%s'", c.ConfigPaths.SimulationFilePath)
+		return err
 	}
 	if err := yaml.UnmarshalStrict(rcfg, &simCfg); err != nil {
 		return fmt.Errorf("while unmarshaling simulation file '%s' : %s", c.ConfigPaths.SimulationFilePath, err)

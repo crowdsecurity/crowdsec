@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -54,7 +55,8 @@ func (o *OnlineApiClientCfg) Load() error {
 }
 
 func (l *LocalApiClientCfg) Load() error {
-	fcontent, err := ioutil.ReadFile(l.CredentialsFilePath)
+	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath)
+	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return errors.Wrapf(err, "failed to read api client credential configuration file '%s'", l.CredentialsFilePath)
 	}

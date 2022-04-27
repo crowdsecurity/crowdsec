@@ -49,6 +49,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
+			err: fmt.Sprintf("while reading %s: open %s: no such file or directory", testXXFullPath, testXXFullPath),
 		},
 		{
 			name: "basic bad file content",
@@ -115,7 +116,8 @@ func TestSimulationLoading(t *testing.T) {
 		if err == nil && test.err != "" {
 			fmt.Printf("TEST '%s': NOK\n", test.name)
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
+		}
+		if test.err != "" {
 			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
 				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),
