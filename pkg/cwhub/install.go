@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
@@ -34,9 +35,15 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
 				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
+					ok, err := isInstalledInOtherCollection(val, target)
 					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+						log.Errorf("Can't get installed collections")
+					}
+					if !ok {
+						hubIdx[ptrtype][p], err = DisableItem(hub, val, purge, force)
+						if err != nil {
+							return target, errors.Wrap(err, fmt.Sprintf("while disabling %s", p))
+						}
 					}
 				} else {
 					log.Errorf("Referred %s %s in collection %s doesn't exist.", ptrtype, p, target.Name)
@@ -88,6 +95,38 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 	}
 	hubIdx[target.Type][target.Name] = target
 	return target, nil
+}
+
+func isInstalledInOtherCollection(item Item, currentCollection Item) (bool, error) {
+	installedCollections, err := GetInstalledCollections()
+	if err != nil {
+		return true, err
+	}
+	for _, installedCollection := range installedCollections {
+		if installedCollection.Name == currentCollection.Name {
+			continue
+		}
+		switch item.Type {
+		case SCENARIOS:
+			if types.InSlice(item.Name, installedCollection.Scenarios) {
+				return true, nil
+			}
+		case PARSERS:
+			if types.InSlice(item.Name, installedCollection.Parsers) {
+				return true, nil
+			}
+		case COLLECTIONS:
+			if types.InSlice(item.Name, installedCollection.Collections) {
+				return true, nil
+			}
+		case PARSERS_OVFLW:
+			if types.InSlice(item.Name, installedCollection.PostOverflows) {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
 
 // creates symlink between actual config file at hub.HubDir and hub.ConfigDir
