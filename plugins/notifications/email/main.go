@@ -72,14 +72,6 @@ func (n *EmailPlugin) Configure(ctx context.Context, config *protobufs.Config) (
 		return nil, fmt.Errorf("SMTP host is not set")
 	}
 
-	if d.SMTPUsername == "" {
-		return nil, fmt.Errorf("SMTP username is not set")
-	}
-
-	if d.SMTPPassword == "" {
-		return nil, fmt.Errorf("SMTP password is not set")
-	}
-
 	if d.SenderEmail == "" {
 		return nil, fmt.Errorf("Sender email is not set")
 	}
