@@ -65,7 +65,7 @@ func generatePassword(length int) string {
 // string.
 func generateIDPrefix() (string, error) {
 	prefix, err := machineid.ID()
-	if err == nil {
+	if err == nil && prefix != "" {
 		return prefix, nil
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
