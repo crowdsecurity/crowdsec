@@ -2,6 +2,7 @@ package dockeracquisition
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
@@ -218,11 +219,13 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	startLineByte := "\x01\x00\x00\x00\x00\x00\x00\x1f"
-	data := []string{"docker", "test", "1234"}
+	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
 	for _, line := range data {
-		ret += fmt.Sprintf("%s%s\n", startLineByte, line)
+		startLineByte := make([]byte, 8)
+		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
+		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
+		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
 	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
 	return r, nil
