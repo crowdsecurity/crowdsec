@@ -55,15 +55,15 @@ declare stderr
 
     run -0 cscli alerts list -o json
     run -0 jq -c '.[].decisions[0] | [.origin, .scenario, .scope, .simulated, .type, .value]' <(output)
-    assert_line "[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'\",\"Ip\",false,\"ban\",\"10.20.30.40\"]"
+    assert_line --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
 
     run -0 cscli alerts list -o raw
     assert_line "id,scope,value,reason,country,as,decisions,created_at"
-    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX',,\" \",ban:1,.*"
+    assert_line --regexp ".*,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,\" \",ban:1,.*"
 
     run -0 cscli alerts list -o raw --machine
     assert_line "id,scope,value,reason,country,as,decisions,created_at,machine"
-    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX',,\" \",ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX$"
+    assert_line --regexp "^[0-9]+,Ip,10.20.30.40,manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?',,\" \",ban:1,.*,githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})?$"
 }
 
 @test "$FILE cscli alerts inspect" {
@@ -77,9 +77,9 @@ declare stderr
     assert_line --regexp '^#+$'
     assert_line --regexp "^ - ID *: $ALERT_ID$"
     assert_line --regexp "^ - Date *: .*$"
-    assert_line --regexp "^ - Machine *: githubciXXXXXXXXXXXXXXXXXXXXXXXX"
+    assert_line --regexp "^ - Machine *: githubciXXXXXXXXXXXXXXXXXXXXXXXX.*"
     assert_line --regexp "^ - Simulation *: false$"
-    assert_line --regexp "^ - Reason *: manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'$"
+    assert_line --regexp "^ - Reason *: manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'$"
     assert_line --regexp "^ - Events Count *: 1$"
     assert_line --regexp "^ - Scope:Value *: Ip:10.20.30.40$"
     assert_line --regexp "^ - Country *: *$"
@@ -97,7 +97,7 @@ declare stderr
     assert_line --regexp "^ *capacity: 0$"
     assert_line --regexp "^ *id: $ALERT_ID$"
     assert_line --regexp "^ *origin: cscli$"
-    assert_line --regexp "^ *scenario: manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'$"
+    assert_line --regexp "^ *scenario: manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'$"
     assert_line --regexp "^ *scope: Ip$"
     assert_line --regexp "^ *simulated: false$"
     assert_line --regexp "^ *type: ban$"
@@ -106,7 +106,7 @@ declare stderr
     run -0 cscli alerts inspect "$ALERT_ID" -o json
     alert=$output
     run jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<< "$alert"
-    assert_output "[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX'\",\"Ip\",false,\"ban\",\"10.20.30.40\"]"
+    assert_output --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
     run jq -c '.source' <<< "$alert"
     assert_output '{"ip":"10.20.30.40","scope":"Ip","value":"10.20.30.40"}'
 }
