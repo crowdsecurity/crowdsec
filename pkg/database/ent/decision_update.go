@@ -59,6 +59,20 @@ func (du *DecisionUpdate) SetUntil(t time.Time) *DecisionUpdate {
 	return du
 }
 
+// SetNillableUntil sets the "until" field if the given value is not nil.
+func (du *DecisionUpdate) SetNillableUntil(t *time.Time) *DecisionUpdate {
+	if t != nil {
+		du.SetUntil(*t)
+	}
+	return du
+}
+
+// ClearUntil clears the value of the "until" field.
+func (du *DecisionUpdate) ClearUntil() *DecisionUpdate {
+	du.mutation.ClearUntil()
+	return du
+}
+
 // SetScenario sets the "scenario" field.
 func (du *DecisionUpdate) SetScenario(s string) *DecisionUpdate {
 	du.mutation.SetScenario(s)
@@ -386,6 +400,12 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldUntil,
 		})
 	}
+	if du.mutation.UntilCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: decision.FieldUntil,
+		})
+	}
 	if value, ok := du.mutation.Scenario(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
@@ -609,6 +629,20 @@ func (duo *DecisionUpdateOne) ClearUpdatedAt() *DecisionUpdateOne {
 // SetUntil sets the "until" field.
 func (duo *DecisionUpdateOne) SetUntil(t time.Time) *DecisionUpdateOne {
 	duo.mutation.SetUntil(t)
+	return duo
+}
+
+// SetNillableUntil sets the "until" field if the given value is not nil.
+func (duo *DecisionUpdateOne) SetNillableUntil(t *time.Time) *DecisionUpdateOne {
+	if t != nil {
+		duo.SetUntil(*t)
+	}
+	return duo
+}
+
+// ClearUntil clears the value of the "until" field.
+func (duo *DecisionUpdateOne) ClearUntil() *DecisionUpdateOne {
+	duo.mutation.ClearUntil()
 	return duo
 }
 
@@ -960,6 +994,12 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Value:  value,
+			Column: decision.FieldUntil,
+		})
+	}
+	if duo.mutation.UntilCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
 			Column: decision.FieldUntil,
 		})
 	}
