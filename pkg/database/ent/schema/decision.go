@@ -23,7 +23,7 @@ func (Decision) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
-		field.Time("until").SchemaType(map[string]string{
+		field.Time("until").Nillable().Optional().SchemaType(map[string]string{
 			dialect.MySQL: "datetime",
 		}),
 		field.String("scenario"),
@@ -52,5 +52,7 @@ func (Decision) Edges() []ent.Edge {
 func (Decision) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("start_ip", "end_ip"),
+		index.Fields("value"),
+		index.Fields("until"),
 	}
 }

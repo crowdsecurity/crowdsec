@@ -81,7 +81,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
-		{Name: "until", Type: field.TypeTime, SchemaType: map[string]string{"mysql": "datetime"}},
+		{Name: "until", Type: field.TypeTime, Nullable: true, SchemaType: map[string]string{"mysql": "datetime"}},
 		{Name: "scenario", Type: field.TypeString},
 		{Name: "type", Type: field.TypeString},
 		{Name: "start_ip", Type: field.TypeInt64, Nullable: true},
@@ -113,6 +113,16 @@ var (
 				Name:    "decision_start_ip_end_ip",
 				Unique:  false,
 				Columns: []*schema.Column{DecisionsColumns[6], DecisionsColumns[7]},
+			},
+			{
+				Name:    "decision_value",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[12]},
+			},
+			{
+				Name:    "decision_until",
+				Unique:  false,
+				Columns: []*schema.Column{DecisionsColumns[3]},
 			},
 		},
 	}

@@ -447,6 +447,20 @@ func UntilLTE(v time.Time) predicate.Decision {
 	})
 }
 
+// UntilIsNil applies the IsNil predicate on the "until" field.
+func UntilIsNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldUntil)))
+	})
+}
+
+// UntilNotNil applies the NotNil predicate on the "until" field.
+func UntilNotNil() predicate.Decision {
+	return predicate.Decision(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldUntil)))
+	})
+}
+
 // ScenarioEQ applies the EQ predicate on the "scenario" field.
 func ScenarioEQ(v string) predicate.Decision {
 	return predicate.Decision(func(s *sql.Selector) {
