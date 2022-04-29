@@ -23,6 +23,8 @@ import (
 
 const testContainerName = "docker_test"
 
+var readLogs = false
+
 func TestConfigure(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
 
@@ -160,6 +162,7 @@ container_name_regexp:
 			})
 		}
 
+		readLogs = false
 		dockerTomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
@@ -189,13 +192,11 @@ container_name_regexp:
 				}
 			}
 		})
-		time.Sleep(10 * time.Second)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err := readerTomb.Wait(); err != nil {
 			t.Fatal(err)
 		}
-		//time.Sleep(4 * time.Second)
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
@@ -208,6 +209,9 @@ container_name_regexp:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
+	if readLogs == true {
+		return []dockerTypes.Container{}, nil
+	}
 	containers := make([]dockerTypes.Container, 0)
 	container := &dockerTypes.Container{
 		ID:    "12456",
@@ -219,6 +223,10 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
+	if readLogs == true {
+		return io.NopCloser(strings.NewReader("")), nil
+	}
+	readLogs = true
 	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
 	for _, line := range data {
@@ -284,6 +292,7 @@ func TestOneShot(t *testing.T) {
 			})
 		}
 
+		readLogs = false
 		dockerClient := &DockerSource{}
 		labels := make(map[string]string)
 		labels["type"] = ts.logType
