@@ -41,6 +41,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				fmt.Printf("Please provide --type flag\n")
 				os.Exit(1)
 			}
+			var f *os.File
 
 			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
@@ -83,6 +84,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 
 			// rm the temporary log file if only a log line was provided
 			if logLine != "" {
+				f.Close()
 				if err := os.Remove(logFile); err != nil {
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
 				}
