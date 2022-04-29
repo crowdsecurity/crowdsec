@@ -19,6 +19,7 @@ require (
 	github.com/crowdsecurity/grokky v0.0.0-20220120093523-d5b3478363fa
 	github.com/davecgh/go-spew v1.1.1
 	github.com/denisbrodbeck/machineid v1.0.1
+	github.com/crowdsecurity/machineid v1.0.1
 	github.com/dghubble/sling v1.3.0
 	github.com/docker/docker v20.10.2+incompatible
 	github.com/docker/go-connections v0.4.0

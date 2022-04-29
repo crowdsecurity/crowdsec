@@ -4,6 +4,9 @@ common:
   log_media: file
   log_level: info
   log_dir: /var/log/
+  log_max_size: 20
+  compress_logs: true
+  log_max_files: 10
   working_dir: .
 config_paths:
   config_dir: /etc/crowdsec/

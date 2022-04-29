@@ -1,9 +1,0 @@
-/var/log/crowdsec.log
-/var/log/crowdsec_api.log
-{
-  rotate 4
-  daily
-  compress
-  missingok
-  notifempty
-}
