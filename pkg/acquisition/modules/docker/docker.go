@@ -462,10 +462,10 @@ func ReadTailScanner(scanner *bufio.Scanner, out chan string, t *tomb.Tomb) erro
 	for scanner.Scan() {
 		out <- scanner.Text()
 	}
-	return nil
+	return scanner.Err()
 }
 
-func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types.Event) error {
+func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types.Event, deleteChan chan *ContainerConfig) error {
 	container.logger.Infof("start tail for container %s", container.Name)
 	dockerReader, err := d.Client.ContainerLogs(context.Background(), container.ID, *d.containerLogsOptions)
 	if err != nil {
@@ -516,7 +516,7 @@ func (d *DockerSource) TailDocker(container *ContainerConfig, outChan chan types
 			//This case is to handle temporarily losing the connection to the docker socket
 			//The only known case currently is when using docker-socket-proxy (and maybe a docker daemon restart)
 			d.logger.Debugf("readerTomb dying for container %s, removing it from runningContainerState", container.Name)
-			delete(d.runningContainerState, container.ID)
+			deleteChan <- container
 			//Also reset the Since to avoid re-reading logs
 			d.Config.Since = time.Now().UTC().Format(time.RFC3339)
 			d.containerLogsOptions.Since = d.Config.Since
@@ -534,7 +534,7 @@ func (d *DockerSource) DockerManager(in chan *ContainerConfig, deleteChan chan *
 				newContainer.t = &tomb.Tomb{}
 				newContainer.logger = d.logger.WithFields(log.Fields{"container_name": newContainer.Name})
 				newContainer.t.Go(func() error {
-					return d.TailDocker(newContainer, outChan)
+					return d.TailDocker(newContainer, outChan, deleteChan)
 				})
 				d.runningContainerState[newContainer.ID] = newContainer
 			}
