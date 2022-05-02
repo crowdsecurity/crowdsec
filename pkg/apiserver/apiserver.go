@@ -94,7 +94,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
+		return &APIServer{}, errors.Wrap(err, "unable to init database client")
 	}
 
 	if config.DbConfig.Flush != nil {

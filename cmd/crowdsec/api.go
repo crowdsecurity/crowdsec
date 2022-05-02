@@ -14,7 +14,7 @@ import (
 func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	apiServer, err := apiserver.NewServer(cConfig.API.Server)
 	if err != nil {
-		return nil, fmt.Errorf("unable to run local API: %s", err)
+		return nil, errors.Wrap(err, "unable to run local API")
 	}
 
 	if hasPlugins(cConfig.API.Server.Profiles) {
