@@ -1,8 +1,8 @@
 # PIE is not relevant for Go packages (for reference, lintian's
 # $built_with_golang variable is the one that's not set properly
 # for this package, meaning this tag is emitted regardless):
-crowdsec: hardening-no-pie usr/bin/crowdsec
-crowdsec: hardening-no-pie usr/bin/cscli
+crowdsec: hardening-no-pie [usr/bin/crowdsec]
+crowdsec: hardening-no-pie [usr/bin/cscli]
 
 # The postinst script implements custom actions, sharing code with the
 # "configure" one:

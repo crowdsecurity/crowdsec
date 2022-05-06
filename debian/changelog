@@ -1,3 +1,9 @@
+crowdsec (1.0.9-4) UNRELEASED; urgency=medium
+
+  * Add square brackets around paths for hardening-no-pie lintian overrides.
+
+ -- Cyril Brulebois <cyril@debamax.com>  Fri, 06 May 2022 03:45:11 +0000
+
 crowdsec (1.0.9-3) unstable; urgency=medium
 
   * Backport upstream patches to deal with missing MMDB files gracefully
