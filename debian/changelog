@@ -2,6 +2,9 @@ crowdsec (1.0.9-4) UNRELEASED; urgency=medium
 
   * Add square brackets around paths for hardening-no-pie lintian overrides.
   * Add library package, which is a build dependency bouncers require.
+  * Adjust debhelper control files for the switch from building a single
+    package to building multiple packages (mostly marking existing files
+    with a crowdsec. prefix).
 
  -- Cyril Brulebois <cyril@debamax.com>  Fri, 06 May 2022 03:45:11 +0000
 
