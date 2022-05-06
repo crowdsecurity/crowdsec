@@ -33,7 +33,7 @@ override_dh_auto_build:
 	dh_auto_build -- $(LD_FLAGS)
 
 override_dh_auto_install:
-	dh_auto_install -- --no-source
+	dh_auto_install --
 
 override_dh_install:
 	dh_install
