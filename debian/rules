@@ -5,7 +5,7 @@ export DH_GOLANG_EXCLUDES := hub\d+ data\d+
 
 export BUILD_VERSION   := $(shell dpkg-parsechangelog -SVersion)
 export BUILD_TAG       := debian
-export BUILD_CODENAME  := $(shell awk '/CodeName/ { gsub(/\"/, "", $$2); print $$2 }' RELEASE.json)
+export BUILD_CODENAME  := $(shell awk '/CodeName/ { gsub(/["]/, "", $$2); print $$2 }' RELEASE.json)
 export BUILD_GOVERSION := $(shell go version | awk '{ gsub(/^go/, "", $$3); print $$3 }')
 export BUILD_DATE      := $(shell TZ=Etc/UTC date +'%F_%T' -d @$(SOURCE_DATE_EPOCH))
 export set_cwversion   := -X github.com/crowdsecurity/crowdsec/pkg/cwversion

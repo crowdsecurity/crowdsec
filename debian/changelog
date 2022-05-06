@@ -5,6 +5,7 @@ crowdsec (1.0.9-4) UNRELEASED; urgency=medium
   * Adjust debhelper control files for the switch from building a single
     package to building multiple packages (mostly marking existing files
     with a crowdsec. prefix).
+  * Adjust setting BUILD_CODENAME, avoiding an awk(ward) warning.
 
  -- Cyril Brulebois <cyril@debamax.com>  Fri, 06 May 2022 03:45:11 +0000
 
