@@ -1,4 +1,4 @@
-crowdsec (1.0.9-4) UNRELEASED; urgency=medium
+crowdsec (1.0.9-4) experimental; urgency=medium
 
   * Add square brackets around paths for hardening-no-pie lintian overrides.
   * Add library package, which is a build dependency bouncers require.
@@ -7,7 +7,7 @@ crowdsec (1.0.9-4) UNRELEASED; urgency=medium
     with a crowdsec. prefix).
   * Adjust setting BUILD_CODENAME, avoiding an awk(ward) warning.
 
- -- Cyril Brulebois <cyril@debamax.com>  Fri, 06 May 2022 03:45:11 +0000
+ -- Cyril Brulebois <cyril@debamax.com>  Fri, 06 May 2022 04:48:13 +0000
 
 crowdsec (1.0.9-3) unstable; urgency=medium
 
