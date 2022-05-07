@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -33,8 +34,6 @@ var (
 	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
-
-	recMem = uint64(math.Pow(2, 30))
 
 	/*informations needed to setup a random password on user's behalf*/
 )
@@ -85,9 +84,6 @@ cscli dashboard remove
 					metabaseContainerID = oldContainerID
 				}
 			}
-			if recMem >= memory.TotalMemory() {
-				log.Warnf("Metabase container requires 1-2gb of RAM, your system is below this requirement")
-			}
 		},
 	}
 
@@ -116,6 +112,18 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				}
 			}
 			var answer bool
+			if valid, err := checkSystemMemory(); err == nil && !valid {
+				prompt := &survey.Confirm{
+					Message: fmt.Sprintf("Metabase requires 1-2GB of RAM, your system is below this requirement continue ?"),
+					Default: true,
+				}
+				if err := survey.AskOne(prompt, &answer); err != nil {
+					log.Fatalf("unable to ask about RAM check: %s", err)
+				}
+			}
+			if !answer && !forceYes {
+				log.Fatal("Unable to continue due to RAM requirement")
+			}
 			groupExist := false
 			dockerGroup, err := user.LookupGroup(crowdsecGroup)
 			if err == nil {
@@ -310,4 +318,15 @@ func passwordIsValid(password string) bool {
 	}
 	return true
 
+}
+
+func checkSystemMemory() (bool, error) {
+	totMem := memory.TotalMemory()
+	if totMem == 0 {
+		return true, errors.New("Unable to get system total memory")
+	}
+	if uint64(math.Pow(2, 30)) >= totMem {
+		return false, nil
+	}
+	return true, nil
 }
