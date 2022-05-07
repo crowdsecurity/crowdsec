@@ -112,17 +112,17 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				}
 			}
 			var answer bool
-			if valid, err := checkSystemMemory(); err == nil && !valid {
+			if valid, err := checkSystemMemory(); err == nil && !valid && !forceYes {
 				prompt := &survey.Confirm{
-					Message: fmt.Sprintf("Metabase requires 1-2GB of RAM, your system is below this requirement continue ?"),
+					Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
 					Default: true,
 				}
 				if err := survey.AskOne(prompt, &answer); err != nil {
 					log.Fatalf("unable to ask about RAM check: %s", err)
 				}
-			}
-			if !answer && !forceYes {
-				log.Fatal("Unable to continue due to RAM requirement")
+				if !answer {
+					log.Fatal("Unable to continue due to RAM requirement")
+				}
 			}
 			groupExist := false
 			dockerGroup, err := user.LookupGroup(crowdsecGroup)
