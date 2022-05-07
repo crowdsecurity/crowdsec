@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"os/user"
@@ -13,6 +14,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 
+	"github.com/pbnjay/memory"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -31,6 +33,8 @@ var (
 	crowdsecGroup         = "crowdsec"
 
 	forceYes bool
+
+	recMem = uint64(math.Pow(2, 30))
 
 	/*informations needed to setup a random password on user's behalf*/
 )
@@ -80,6 +84,9 @@ cscli dashboard remove
 				if metabase.IsContainerExist(oldContainerID) {
 					metabaseContainerID = oldContainerID
 				}
+			}
+			if recMem >= memory.TotalMemory() {
+				log.Warnf("Metabase container requires 1-2gb of RAM, your system is below this requirement")
 			}
 		},
 	}
