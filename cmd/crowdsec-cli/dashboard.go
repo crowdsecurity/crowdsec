@@ -125,7 +125,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 						log.Fatal("Unable to continue due to RAM requirement")
 					}
 				} else {
-					log.Warnf("Metabase requires 1-2GB of RAM, your system is below this requirement, however, force yes was provided")
+					log.Warnf("Metabase requires 1-2GB of RAM, your system is below this requirement, however, force yes flag was provided")
 				}
 			}
 			groupExist := false
