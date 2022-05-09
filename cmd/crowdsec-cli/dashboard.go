@@ -119,7 +119,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 						Default: true,
 					}
 					if err := survey.AskOne(prompt, &answer); err != nil {
-						log.Fatalf("unable to ask about RAM check: %s", err)
+						log.Warnf("unable to ask about RAM check: %s", err)
 					}
 					if !answer {
 						log.Fatal("Unable to continue due to RAM requirement")
