@@ -162,7 +162,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				return
 			}
 
-			if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+			if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
 				log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
