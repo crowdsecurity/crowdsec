@@ -106,6 +106,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
+	streamStartTime := time.Now().UTC()
 
 	val := gctx.Request.Header.Get(c.APIKeyHeader)
 	hashedKey := sha512.New()
@@ -203,7 +204,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		return
 	}
 
-	if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+	if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
 		log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
