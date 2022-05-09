@@ -55,7 +55,7 @@ func (o *OnlineApiClientCfg) Load() error {
 }
 
 func (l *LocalApiClientCfg) Load() error {
-	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath)
+	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return errors.Wrapf(err, "failed to read api client credential configuration file '%s'", l.CredentialsFilePath)

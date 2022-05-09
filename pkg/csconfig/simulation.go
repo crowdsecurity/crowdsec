@@ -39,7 +39,7 @@ func (c *Config) LoadSimulation() error {
 		c.ConfigPaths.SimulationFilePath = filepath.Clean(c.ConfigPaths.ConfigDir + "/simulation.yaml")
 	}
 
-	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath)
+	patcher := yamlpatch.NewPatcher(c.ConfigPaths.SimulationFilePath, ".local")
 	rcfg, err := patcher.MergedPatchContent()
 	if err != nil {
 		return err

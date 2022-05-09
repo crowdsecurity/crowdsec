@@ -15,10 +15,10 @@ type Patcher struct {
 	PatchFilePath string
 }
 
-func NewPatcher(filePath string) *Patcher {
+func NewPatcher(filePath string, suffix string) *Patcher {
 	return &Patcher{
 		BaseFilePath:  filePath,
-		PatchFilePath: filePath + ".patch",
+		PatchFilePath: filePath + suffix,
 	}
 }
 
@@ -40,7 +40,7 @@ func readYAML(filePath string) ([]byte, error) {
 	return content, nil
 }
 
-// MergedPatchContent reads a YAML file and, if it exists, its '.patch' file,
+// MergedPatchContent reads a YAML file and, if it exists, its patch file,
 // then merges them and returns it serialized.
 func (p *Patcher) MergedPatchContent() ([]byte, error) {
 	var err error

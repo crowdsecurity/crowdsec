@@ -46,7 +46,7 @@ func (c *Config) Dump() error {
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
-	patcher := yamlpatch.NewPatcher(configFile)
+	patcher := yamlpatch.NewPatcher(configFile, ".local")
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
 		return nil, err

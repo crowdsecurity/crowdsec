@@ -48,7 +48,7 @@ func TestMergedPatchContent(t *testing.T) {
 			"",
 			"notayaml",
 			"",
-			"/config.yaml.patch: yaml: unmarshal errors:",
+			"/config.yaml.local: yaml: unmarshal errors:",
 		},
 		{
 			"",
@@ -162,7 +162,7 @@ func TestMergedPatchContent(t *testing.T) {
 
 	defer os.RemoveAll(dirPath)
 	configPath := filepath.Join(dirPath, "config.yaml")
-	patchPath := filepath.Join(dirPath, "config.yaml.patch")
+	patchPath := filepath.Join(dirPath, "config.yaml.local")
 
 	for testNum, test := range tests {
 		if err = os.WriteFile(configPath, []byte(test.base), 0o600); err != nil {
@@ -173,7 +173,7 @@ func TestMergedPatchContent(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		patcher := yamlpatch.NewPatcher(configPath)
+		patcher := yamlpatch.NewPatcher(configPath, ".local")
 		patchedBytes, err := patcher.MergedPatchContent()
 		assertErrorContains(t, err, test.expectedErr, testNum)
 		assert.YAMLEq(test.expected, string(patchedBytes))
@@ -240,7 +240,7 @@ func TestPrependedPatchContent(t *testing.T) {
 			"",
 			"blablabla",
 			"",
-			"/config.yaml.patch: yaml: unmarshal errors:",
+			"/config.yaml.local: yaml: unmarshal errors:",
 		},
 		{
 			"",
@@ -257,7 +257,7 @@ func TestPrependedPatchContent(t *testing.T) {
 
 	defer os.RemoveAll(dirPath)
 	configPath := filepath.Join(dirPath, "config.yaml")
-	patchPath := filepath.Join(dirPath, "config.yaml.patch")
+	patchPath := filepath.Join(dirPath, "config.yaml.local")
 
 	for testNum, test := range tests {
 		if err = os.WriteFile(configPath, []byte(test.base), 0o600); err != nil {
@@ -268,7 +268,7 @@ func TestPrependedPatchContent(t *testing.T) {
 			t.Fatal(err.Error())
 		}
 
-		patcher := yamlpatch.NewPatcher(configPath)
+		patcher := yamlpatch.NewPatcher(configPath, ".local")
 		patchedBytes, err := patcher.PrependedPatchContent()
 		assertErrorContains(t, err, test.expectedErr, testNum)
 		// YAMLeq does not handle multiple documents

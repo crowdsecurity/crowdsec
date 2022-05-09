@@ -34,7 +34,7 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 		return fmt.Errorf("empty profiles path")
 	}
 
-	patcher := yamlpatch.NewPatcher(c.ProfilesPath)
+	patcher := yamlpatch.NewPatcher(c.ProfilesPath, ".local")
 	fcontent, err := patcher.PrependedPatchContent()
 	if err != nil {
 		return err

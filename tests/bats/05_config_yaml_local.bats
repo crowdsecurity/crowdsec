@@ -29,35 +29,46 @@ teardown() {
 
 #----------
 
-@test "$FILE config.yaml.patch - cscli (log_level)" {
+@test "$FILE config.yaml.local - cscli (log_level)" {
     yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
 
-    echo "{'common':{'log_level':'debug'}}" > "${CONFIG_YAML}.patch"
+    echo "{'common':{'log_level':'debug'}}" > "${CONFIG_YAML}.local"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "debug"
 }
 
-@test "$FILE config.yaml.patch - crowdsec (listen_url)" {
+@test "$FILE config.yaml.local - cscli (log_level - with envvar)" {
+    yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
+    run -0 cscli config show --key Config.Common.LogLevel
+    assert_output "warning"
+
+    export CROWDSEC_LOG_LEVEL=debug
+    echo "{'common':{'log_level':'${CROWDSEC_LOG_LEVEL}'}}" > "${CONFIG_YAML}.local"
+    run -0 cscli config show --key Config.Common.LogLevel
+    assert_output "debug"
+}
+
+@test "$FILE config.yaml.local - crowdsec (listen_url)" {
     run -0 ./instance-crowdsec start
     run -0 nc -z localhost 8080
     run -0 ./instance-crowdsec stop
 
-    echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.patch"
+    echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
     run -0 nc -z localhost 8083
     run -1 nc -z localhost 8080
     run -0 ./instance-crowdsec stop
 
-    rm -f "${CONFIG_YAML}.patch"
+    rm -f "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
     run -1 nc -z localhost 8083
     run -0 nc -z localhost 8080
 }
 
-@test "$FILE local_api_credentials.yaml.patch" {
-    echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.patch"
+@test "$FILE local_api_credentials.yaml.local" {
+    echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
     run -0 nc -z localhost 8083
 
@@ -65,11 +76,11 @@ teardown() {
     LOCAL_API_CREDENTIALS="$output"
 
     run -1 cscli decisions list
-    echo "{'url':'http://127.0.0.1:8083'}" > "${LOCAL_API_CREDENTIALS}.patch"
+    echo "{'url':'http://127.0.0.1:8083'}" > "${LOCAL_API_CREDENTIALS}.local"
     run -0 cscli decisions list
 }
 
-@test "$FILE simulation.yaml.patch" {
+@test "$FILE simulation.yaml.local" {
     run -0 yq e '.config_paths.simulation_path' < "${CONFIG_YAML}"
     refute_output null
     SIMULATION="$output"
@@ -82,22 +93,22 @@ teardown() {
     run -0 cscli simulation status -o human
     assert_output --partial "global simulation: enabled"
 
-    echo "simulation: off" > "${SIMULATION}.patch"
+    echo "simulation: off" > "${SIMULATION}.local"
     run -0 cscli simulation status -o human
     assert_output --partial "global simulation: disabled"
 
-    rm -f "${SIMULATION}.patch"
+    rm -f "${SIMULATION}.local"
     run -0 cscli simulation status -o human
     assert_output --partial "global simulation: enabled"
 }
 
 
-@test "$FILE profiles.yaml.patch" {
+@test "$FILE profiles.yaml.local" {
     run -0 yq e '.api.server.profiles_path' < "${CONFIG_YAML}"
     refute_output null
     PROFILES="$output"
 
-    cat <<-EOT > "${PROFILES}.patch"
+    cat <<-EOT > "${PROFILES}.local"
 	name: default_ip_remediation
 	filters:
 	 - Alert.Remediation == true && Alert.GetScope() == "Ip"
