@@ -166,7 +166,7 @@ log_input_tags[smb]='type: smb'
 log_input_tags[linux]="type: syslog"
 
 declare -A log_locations
-log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log'
+log_locations[apache2]='/var/log/apache2/*.log,/var/log/*httpd*.log,/var/log/httpd/*log,/var/log/ispconfig/httpd/access.log'
 log_locations[nginx]='/var/log/nginx/*.log,/usr/local/openresty/nginx/logs/*.log'
 log_locations[sshd]='/var/log/auth.log,/var/log/sshd.log,/var/log/secure'
 log_locations[rsyslog]='/var/log/syslog'
