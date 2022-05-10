@@ -6,25 +6,26 @@ import (
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // similar to the one in cstest, but with test number too. We cannot import
 // cstest here because of circular dependency.
-func assertErrorContains(t *testing.T, err error, expectedErr string, testNum int) {
+func requireErrorContains(t *testing.T, err error, expectedErr string, testNum int) {
 	t.Helper()
 
 	if expectedErr != "" {
-		assert.ErrorContainsf(t, err, expectedErr, `Error "%s" in test #%d`, err, testNum)
+		require.ErrorContainsf(t, err, expectedErr, `Error "%s" in test #%d`, err, testNum)
+
 		return
 	}
 
-	assert.NoErrorf(t, err, `Error "%s" in test #%d`, err, testNum)
+	require.NoErrorf(t, err, `Error "%s" in test #%d`, err, testNum)
 }
 
 func TestMergedPatchContent(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
+	require := require.New(t)
 
 	tests := []struct {
 		base        string
@@ -156,33 +157,29 @@ func TestMergedPatchContent(t *testing.T) {
 	}
 
 	dirPath, err := os.MkdirTemp("", "yamlpatch")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(err)
 
 	defer os.RemoveAll(dirPath)
 	configPath := filepath.Join(dirPath, "config.yaml")
 	patchPath := filepath.Join(dirPath, "config.yaml.local")
 
 	for testNum, test := range tests {
-		if err = os.WriteFile(configPath, []byte(test.base), 0o600); err != nil {
-			t.Fatal(err.Error())
-		}
+		err = os.WriteFile(configPath, []byte(test.base), 0o600)
+		require.NoError(err)
 
-		if err = os.WriteFile(patchPath, []byte(test.patch), 0o600); err != nil {
-			t.Fatal(err.Error())
-		}
+		err = os.WriteFile(patchPath, []byte(test.patch), 0o600)
+		require.NoError(err)
 
 		patcher := yamlpatch.NewPatcher(configPath, ".local")
 		patchedBytes, err := patcher.MergedPatchContent()
-		assertErrorContains(t, err, test.expectedErr, testNum)
-		assert.YAMLEq(test.expected, string(patchedBytes))
+		requireErrorContains(t, err, test.expectedErr, testNum)
+		require.YAMLEq(test.expected, string(patchedBytes))
 	}
 }
 
 func TestPrependedPatchContent(t *testing.T) {
 	t.Parallel()
-	assert := assert.New(t)
+	require := require.New(t)
 
 	tests := []struct {
 		base        string
@@ -251,27 +248,23 @@ func TestPrependedPatchContent(t *testing.T) {
 	}
 
 	dirPath, err := os.MkdirTemp("", "yamlpatch")
-	if err != nil {
-		t.Fatal(err.Error())
-	}
+	require.NoError(err)
 
 	defer os.RemoveAll(dirPath)
 	configPath := filepath.Join(dirPath, "config.yaml")
 	patchPath := filepath.Join(dirPath, "config.yaml.local")
 
 	for testNum, test := range tests {
-		if err = os.WriteFile(configPath, []byte(test.base), 0o600); err != nil {
-			t.Fatal(err.Error())
-		}
+		err = os.WriteFile(configPath, []byte(test.base), 0o600)
+		require.NoError(err)
 
-		if err = os.WriteFile(patchPath, []byte(test.patch), 0o600); err != nil {
-			t.Fatal(err.Error())
-		}
+		err = os.WriteFile(patchPath, []byte(test.patch), 0o600)
+		require.NoError(err)
 
 		patcher := yamlpatch.NewPatcher(configPath, ".local")
 		patchedBytes, err := patcher.PrependedPatchContent()
-		assertErrorContains(t, err, test.expectedErr, testNum)
+		requireErrorContains(t, err, test.expectedErr, testNum)
 		// YAMLeq does not handle multiple documents
-		assert.Equal(test.expected, string(patchedBytes))
+		require.Equal(test.expected, string(patchedBytes))
 	}
 }
