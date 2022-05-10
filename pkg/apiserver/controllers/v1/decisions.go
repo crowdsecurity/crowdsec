@@ -177,7 +177,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	// getting new decisions
-	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull, filters)
+	data, err = c.DBClient.QueryNewDecisionsSinceWithFilters(bouncerInfo.LastPull.Add((-2 * time.Second)), filters)
 	if err != nil {
 		log.Errorf("unable to query new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
