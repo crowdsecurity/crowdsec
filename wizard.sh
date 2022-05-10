@@ -401,7 +401,7 @@ install_crowdsec() {
 
     ## end tmp
 
-    install -v -m 644 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
+    install -v -m 600 -D ./config/config.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/dev.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/user.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit
     install -v -m 644 -D ./config/acquis.yaml "${CROWDSEC_CONFIG_PATH}" 1> /dev/null || exit

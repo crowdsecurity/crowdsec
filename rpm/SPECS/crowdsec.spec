@@ -58,7 +58,7 @@ install -m 755 -D cmd/crowdsec-cli/cscli %{buildroot}%{_bindir}/cscli
 install -m 755 -D wizard.sh %{buildroot}/usr/share/crowdsec/wizard.sh
 install -m 644 -D config/crowdsec.service %{buildroot}%{_unitdir}/%{name}.service
 install -m 644 -D config/patterns/* -t %{buildroot}%{_sysconfdir}/crowdsec/patterns
-install -m 644 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
+install -m 600 -D config/config.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/simulation.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/profiles.yaml %{buildroot}%{_sysconfdir}/crowdsec
 install -m 644 -D config/console.yaml %{buildroot}%{_sysconfdir}/crowdsec
