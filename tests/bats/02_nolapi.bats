@@ -31,12 +31,10 @@ declare stderr
 }
 
 @test "$FILE crowdsec should not run without LAPI (-no-api flag)" {
-    skip
     run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
 }
 
 @test "$FILE crowdsec should not run without LAPI (no api.server in configuration file)" {
-    skip
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr timeout 2s "${CROWDSEC}"
 

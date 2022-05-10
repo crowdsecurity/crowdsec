@@ -34,7 +34,6 @@ jobs:
   # here by default. Remove the if..false to enable them.
 
   bats-mariadb:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mariadb:latest
@@ -42,7 +41,6 @@ jobs:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   bats-mysql:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mysql:latest
