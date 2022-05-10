@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/gin-gonic/gin"
@@ -15,7 +14,8 @@ import (
 )
 
 var (
-	APIKeyHeader = "X-Api-Key"
+	APIKeyHeader      = "X-Api-Key"
+	bouncerContextKey = "bouncer_info"
 )
 
 type APIKey struct {
@@ -110,11 +110,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 		}
 
-		if c.Request.Method != "HEAD" && time.Now().UTC().Sub(bouncer.LastPull) >= time.Minute {
-			if err := a.DbClient.UpdateBouncerLastPull(time.Now().UTC(), bouncer.ID); err != nil {
-				log.Errorf("failed to update bouncer last pull: %v", err)
-			}
-		}
+		c.Set("bouncer_info", bouncer)
 
 		c.Next()
 	}
