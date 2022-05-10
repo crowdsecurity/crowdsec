@@ -29,7 +29,7 @@ teardown() {
 
 #----------
 
-@test "$FILE config.yaml.local - cscli (log_level)" {
+@test "${FILE} config.yaml.local - cscli (log_level)" {
     yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
@@ -39,7 +39,7 @@ teardown() {
     assert_output "debug"
 }
 
-@test "$FILE config.yaml.local - cscli (log_level - with envvar)" {
+@test "${FILE} config.yaml.local - cscli (log_level - with envvar)" {
     yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
@@ -50,40 +50,40 @@ teardown() {
     assert_output "debug"
 }
 
-@test "$FILE config.yaml.local - crowdsec (listen_url)" {
+@test "${FILE} config.yaml.local - crowdsec (listen_url)" {
     run -0 ./instance-crowdsec start
-    run -0 nc -z localhost 8080
+    run -0 ./lib/util/wait-for-port -q 8080
     run -0 ./instance-crowdsec stop
 
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
-    run -0 nc -z localhost 8083
-    run -1 nc -z localhost 8080
+    run -0 ./lib/util/wait-for-port -q 8083
+    run -1 ./lib/util/wait-for-port -q 8080
     run -0 ./instance-crowdsec stop
 
     rm -f "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
-    run -1 nc -z localhost 8083
-    run -0 nc -z localhost 8080
+    run -1 ./lib/util/wait-for-port -q 8083
+    run -0 ./lib/util/wait-for-port -q 8080
 }
 
-@test "$FILE local_api_credentials.yaml.local" {
+@test "${FILE} local_api_credentials.yaml.local" {
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
     run -0 nc -z localhost 8083
 
     run -0 yq e '.api.client.credentials_path' < "${CONFIG_YAML}"
-    LOCAL_API_CREDENTIALS="$output"
+    LOCAL_API_CREDENTIALS="${output}"
 
     run -1 cscli decisions list
     echo "{'url':'http://127.0.0.1:8083'}" > "${LOCAL_API_CREDENTIALS}.local"
     run -0 cscli decisions list
 }
 
-@test "$FILE simulation.yaml.local" {
+@test "${FILE} simulation.yaml.local" {
     run -0 yq e '.config_paths.simulation_path' < "${CONFIG_YAML}"
     refute_output null
-    SIMULATION="$output"
+    SIMULATION="${output}"
 
     echo "simulation: off" > "${SIMULATION}"
     run -0 cscli simulation status -o human
@@ -103,10 +103,10 @@ teardown() {
 }
 
 
-@test "$FILE profiles.yaml.local" {
+@test "${FILE} profiles.yaml.local" {
     run -0 yq e '.api.server.profiles_path' < "${CONFIG_YAML}"
     refute_output null
-    PROFILES="$output"
+    PROFILES="${output}"
 
     cat <<-EOT > "${PROFILES}.local"
 	name: default_ip_remediation
@@ -121,12 +121,12 @@ teardown() {
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
     ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
-    sleep 2
+    sleep 1
     fake_log >>"${tmpfile}"
-    sleep 2
+    sleep 1
     rm -f -- "${tmpfile}"
     run -0 cscli decisions list -o json
     run -0 jq -c '.[].decisions[0] | [.value,.type]' <(output)
