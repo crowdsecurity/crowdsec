@@ -110,7 +110,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			}
 		}
 
-		c.Set("bouncer_info", bouncer)
+		c.Set(bouncerContextKey, bouncer)
 
 		c.Next()
 	}
