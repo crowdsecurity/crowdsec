@@ -17,7 +17,7 @@ and they are also run from the GitHub CI.
 
 ### Go tests
 
-Go test include unit and integration tests written in the `*_test.go` files,
+They include unit and integration tests written in the `*_test.go` files,
 you need a working [localstack](https://github.com/localstack/localstack)
 environment and run a test suite with `make test`.
 
