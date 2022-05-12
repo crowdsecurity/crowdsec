@@ -2,13 +2,9 @@
 
 There are many ways to contribute to CrowdSec. Already by using our product, you are contributing to the data pool by reporting attacks to your systems, and this is what makes us (and you!) special.
 
-Going further, you can contribute scenarios, parsers and collections.
+Going further, you can contribute scenarios, parsers and collections. For these cases please refer to [Contribute to CrowdSec](https://doc.crowdsec.net/docs/next/contributing/getting_started).
 
 The rest of this document will focus on contributions to the crowdsecurity/crowdsec repository, style guides and branch policy.
-
-## Reporting bugs
-
-TBD
 
 ## Testing
 
@@ -17,11 +13,11 @@ and they are also run from the GitHub CI.
 
 ### Go tests
 
-They include unit and integration tests written in the `*_test.go` files,
-you need a working [localstack](https://github.com/localstack/localstack)
-environment and run a test suite with `make test`.
+They include unit and integration tests written in the `*_test.go` files.
 
-XXX TODO: how to run localstack
+You will need Docker in order to use [localstack](https://github.com/localstack/localstack) to emulate AWS and also for testing the log collector for Docker.
+
+If you have installed docker-compose and have access to Docker via `/var/run/docker.sock`, open a shell and run `make localstack`. In a second shell, run `make test`.
 
 ### Bats tests
 
@@ -62,8 +58,5 @@ TBD (black, flake8)
 
 ### Bash, bats
 
-TBD (shellcheck, shfmt, checkbashisms)
+We recommend, whenever possible, the use of [ShellCheck](https://www.shellcheck.net/), [shfmt](https://github.com/patrickvane/shfmt) (with spaces, not tabs) and checkbashisms.
 
-## Code Of Conduct
-
-TBD

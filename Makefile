@@ -162,8 +162,13 @@ testclean: bats-clean
 	@$(RM) -r pkg/cwhub/hubdir
 
 .PHONY: test
+test: export AWS_ENDPOINT_FORCE=http://localhost:4566
 test: goversion
 	$(GOTEST) $(LD_OPTS) ./...
+
+.PHONY: localstack
+localstack:
+	docker-compose -f tests/localstack/docker-compose.yml up
 
 package-common:
 	@echo Building Release to dir $(RELDIR)
