@@ -21,7 +21,7 @@ If you have installed docker-compose and have access to Docker via `/var/run/doc
 
 ### Bats tests
 
-These are documented in [./tests/README.md](./tests/README.md).
+These are documented in [tests/README.md](./tests/README.md).
 They are easier to write than the Go tests, but can only test
 a binary's external behavior. Run with `make bats-all`.
 
