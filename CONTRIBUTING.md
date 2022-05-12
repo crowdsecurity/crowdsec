@@ -46,17 +46,3 @@ As work progresses on the release branch, we eventually create pre-release tags 
 
 This is where we create the 1.6.x branch and we put the 1.5.x in maintenance mode. A maintenance branch is divorced from master, and can receive code from branches other than master, to allow for backporting features and fixes. These lead eventually to _patch versions_ (1.5.1, 1.5.2) which correspond to git tags but don't have dedicated branches.
 
-## Style guides
-
-### Go
-
-TBD (gofmt, golangci-lint)
-
-### Python
-
-TBD (black, flake8)
-
-### Bash, bats
-
-We recommend, whenever possible, the use of [ShellCheck](https://www.shellcheck.net/), [shfmt](https://github.com/patrickvane/shfmt) (with spaces, not tabs) and checkbashisms.
-
