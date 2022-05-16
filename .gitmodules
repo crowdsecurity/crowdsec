@@ -10,3 +10,6 @@
 [submodule "tests/lib/bats-support"]
 	path = tests/lib/bats-support
 	url = https://github.com/crowdsecurity/bats-support.git
+[submodule "tests/lib/bats-mock"]
+	path = tests/lib/bats-mock
+	url = https://github.com/crowdsecurity/bats-mock.git
