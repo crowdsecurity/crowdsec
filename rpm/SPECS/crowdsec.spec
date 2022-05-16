@@ -20,6 +20,7 @@ BuildRequires:  systemd
 %{?fc33:BuildRequires: systemd-rpm-macros}
 %{?fc34:BuildRequires: systemd-rpm-macros}
 %{?fc35:BuildRequires: systemd-rpm-macros}
+%{?fc36:BuildRequires: systemd-rpm-macros}
 
 %define debug_package %{nil}
 
@@ -204,7 +205,7 @@ if [ $1 == 1 ]; then
         PORT=$(cscli config show --key "Config.API.Server.ListenURI"|cut -d ":" -f2)
     fi
     if [ "$LAPI" = false ] || [ -z "$(ss -nlt "sport = ${PORT}" | grep -v ^State)" ]  ; then
-        %if 0%{?fc35}
+        %if 0%{?fc35} || 0%{?fc36}
         systemctl enable crowdsec 
         %endif
         systemctl start crowdsec || echo "crowdsec is not started"
