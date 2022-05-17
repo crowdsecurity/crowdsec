@@ -35,8 +35,8 @@ func (c *Client) ListBouncers() ([]*ent.Bouncer, error) {
 	return result, nil
 }
 
-func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authType string) error {
-	_, err := c.Ent.Bouncer.
+func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authType string) (*ent.Bouncer, error) {
+	bouncer, err := c.Ent.Bouncer.
 		Create().
 		SetName(name).
 		SetAPIKey(apiKey).
@@ -45,11 +45,11 @@ func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authTy
 		Save(c.CTX)
 	if err != nil {
 		if ent.IsConstraintError(err) {
-			return fmt.Errorf("bouncer %s already exists", name)
+			return nil, fmt.Errorf("bouncer %s already exists", name)
 		}
-		return fmt.Errorf("unable to save api key in database: %s", err)
+		return nil, fmt.Errorf("unable to save api key in database: %s", err)
 	}
-	return nil
+	return bouncer, nil
 }
 
 func (c *Client) DeleteBouncer(name string) error {

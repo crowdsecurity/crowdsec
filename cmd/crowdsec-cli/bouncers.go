@@ -130,7 +130,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			if err != nil {
 				log.Fatalf("unable to generate api key: %s", err)
 			}
-			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
+			_, err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 			if err != nil {
 				log.Fatalf("unable to create bouncer: %s", err)
 			}

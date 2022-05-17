@@ -96,22 +96,12 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 					"ip": c.ClientIP(),
 					"cn": extractedCN,
 				}).Infof("Creating bouncer %s", bouncerName)
-				err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
+				bouncer, err = a.DbClient.CreateBouncer(bouncerName, c.ClientIP(), HashSHA512(apiKey), types.TlsAuthType)
 				if err != nil {
 					log.WithFields(log.Fields{
 						"ip": c.ClientIP(),
 						"cn": extractedCN,
 					}).Errorf("creating bouncer db entry : %s", err)
-					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
-					c.Abort()
-					return
-				}
-				bouncer, err = a.DbClient.SelectBouncerByName(bouncerName)
-				if err != nil {
-					log.WithFields(log.Fields{
-						"ip": c.ClientIP(),
-						"cn": extractedCN,
-					}).Errorf("auth api key error: %s", err)
 					c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 					c.Abort()
 					return
