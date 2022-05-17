@@ -39,42 +39,6 @@ type WinEventLogSource struct {
 	name      string
 }
 
-type WindowsEvent struct {
-	System struct {
-		Provider struct {
-			Name string `xml:"Name,attr"`
-			Guid string `xml:"GUID,attr"`
-		} `xml:"Provider"`
-		EventId     int    `xml:"EventID"`
-		Version     int    `xml:"Version"`
-		Level       int    `xml:"Level"`
-		Task        int    `xml:"Task"`
-		Opcode      int    `xml:"Opcode"`
-		Keywords    string `xml:"Keywords"`
-		TimeCreated struct {
-			SystemTime time.Time `xml:"SystemTime,attr"`
-		} `xml:"TimeCreated"`
-		EventRecordID int `xml:"EventRecordID"`
-		Correlation   struct {
-			ActivityID string `xml:"ActivityID,attr"`
-		} `xml:"Correlation"`
-		Execution struct {
-			ProcessID int `xml:"ProcessID,attr"`
-			ThreadID  int `xml:"ThreadID,attr"`
-		} `xml:"Execution"`
-		Channel  string `xml:"Channel"`
-		Computer string `xml:"Computer"`
-		Security struct {
-		} `xml:"Security"`
-	} `xml:"System"`
-	EventData struct {
-		Data []struct {
-			Name  string `xml:",attr"`
-			Value string `xml:",chardata"`
-		} `xml:"Data"`
-	} `xml:"EventData"`
-}
-
 type QueryList struct {
 	Select Select `xml:"Query>Select"`
 }
