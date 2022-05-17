@@ -82,7 +82,6 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			if err != nil && strings.Contains(err.Error(), "bouncer not found") {
 				//Because we have a valid cert, automatically create the bouncer in the database if it does not exist
 				//Set a random API key, but it will never be used
-				//To fix
 				apiKey, err := GenerateAPIKey(64)
 				if err != nil {
 					log.WithFields(log.Fields{
@@ -162,7 +161,7 @@ func (a *APIKey) MiddlewareFunc() gin.HandlerFunc {
 			if bouncer.AuthType != types.ApiKeyAuthType {
 				log.WithFields(log.Fields{
 					"ip": c.ClientIP(),
-				}).Errorf("bouncer %s attempted to login using an API key but it is configured to auth with TLS cert", bouncer.Name)
+				}).Errorf("bouncer %s attempted to login using an API key but it is configured to auth with %s", bouncer.Name, bouncer.AuthType)
 				c.JSON(http.StatusForbidden, gin.H{"message": "access forbidden"})
 				c.Abort()
 				return
