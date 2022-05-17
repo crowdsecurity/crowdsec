@@ -32,46 +32,47 @@ import (
 // BucketFactory struct holds all fields for any bucket configuration. This is to have a
 // generic struct for buckets. This can be seen as a bucket factory.
 type BucketFactory struct {
-	FormatVersion   string                    `yaml:"format"`
-	Author          string                    `yaml:"author"`
-	Description     string                    `yaml:"description"`
-	References      []string                  `yaml:"references"`
-	Type            string                    `yaml:"type"`                //Type can be : leaky, counter, trigger. It determines the main bucket characteristics
-	Name            string                    `yaml:"name"`                //Name of the bucket, used later in log and user-messages. Should be unique
-	Capacity        int                       `yaml:"capacity"`            //Capacity is applicable to leaky buckets and determines the "burst" capacity
-	LeakSpeed       string                    `yaml:"leakspeed"`           //Leakspeed is a float representing how many events per second leak out of the bucket
-	Duration        string                    `yaml:"duration"`            //Duration allows 'counter' buckets to have a fixed life-time
-	Filter          string                    `yaml:"filter"`              //Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
-	GroupBy         string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
-	Distinct        string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
-	Debug           bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
-	Labels          map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
-	Blackhole       string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
-	logger          *log.Entry                `yaml:"-"`                   //logger is bucket-specific logger (used by Debug as well)
-	Reprocess       bool                      `yaml:"reprocess"`           //Reprocess, if true, will for the bucket to be re-injected into processing chain
-	CacheSize       int                       `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
-	Profiling       bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
-	OverflowFilter  string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
-	ScopeType       types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
-	BucketName      string                    `yaml:"-"`
-	Filename        string                    `yaml:"-"`
-	RunTimeFilter   *vm.Program               `json:"-"`
-	ExprDebugger    *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
-	RunTimeGroupBy  *vm.Program               `json:"-"`
-	Data            []*types.DataSource       `yaml:"data,omitempty"`
-	DataDir         string                    `yaml:"-"`
-	CancelOnFilter  string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
-	leakspeed       time.Duration             //internal representation of `Leakspeed`
-	duration        time.Duration             //internal representation of `Duration`
-	ret             chan types.Event          //the bucket-specific output chan for overflows
-	processors      []Processor               //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
-	output          bool                      //??
-	ScenarioVersion string                    `yaml:"version,omitempty"`
-	hash            string                    `yaml:"-"`
-	Simulated       bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
-	tomb            *tomb.Tomb                `yaml:"-"`
-	wgPour          *sync.WaitGroup           `yaml:"-"`
-	wgDumpState     *sync.WaitGroup           `yaml:"-"`
+	FormatVersion    string                    `yaml:"format"`
+	Author           string                    `yaml:"author"`
+	Description      string                    `yaml:"description"`
+	References       []string                  `yaml:"references"`
+	Type             string                    `yaml:"type"`                //Type can be : leaky, counter, trigger. It determines the main bucket characteristics
+	Name             string                    `yaml:"name"`                //Name of the bucket, used later in log and user-messages. Should be unique
+	Capacity         int                       `yaml:"capacity"`            //Capacity is applicable to leaky buckets and determines the "burst" capacity
+	LeakSpeed        string                    `yaml:"leakspeed"`           //Leakspeed is a float representing how many events per second leak out of the bucket
+	Duration         string                    `yaml:"duration"`            //Duration allows 'counter' buckets to have a fixed life-time
+	Filter           string                    `yaml:"filter"`              //Filter is an expr that determines if an event is elligible for said bucket. Filter is evaluated against the Event struct
+	GroupBy          string                    `yaml:"groupby,omitempty"`   //groupy is an expr that allows to determine the partitions of the bucket. A common example is the source_ip
+	Distinct         string                    `yaml:"distinct"`            //Distinct, when present, adds a `Pour()` processor that will only pour uniq items (based on distinct expr result)
+	Debug            bool                      `yaml:"debug"`               //Debug, when set to true, will enable debugging for _this_ scenario specifically
+	Labels           map[string]string         `yaml:"labels"`              //Labels is K:V list aiming at providing context the overflow
+	Blackhole        string                    `yaml:"blackhole,omitempty"` //Blackhole is a duration that, if present, will prevent same bucket partition to overflow more often than $duration
+	logger           *log.Entry                `yaml:"-"`                   //logger is bucket-specific logger (used by Debug as well)
+	Reprocess        bool                      `yaml:"reprocess"`           //Reprocess, if true, will for the bucket to be re-injected into processing chain
+	CacheSize        int                       `yaml:"cache_size"`          //CacheSize, if > 0, limits the size of in-memory cache of the bucket
+	Profiling        bool                      `yaml:"profiling"`           //Profiling, if true, will make the bucket record pours/overflows/etc.
+	OverflowFilter   string                    `yaml:"overflow_filter"`     //OverflowFilter if present, is a filter that must return true for the overflow to go through
+	OverflowBehavior string                    `yaml:"overflow_behavior"`   //OverflowBehavior, if value is keep-alive, bucket will not die after the first overflow and continue with the overflows
+	ScopeType        types.ScopeType           `yaml:"scope,omitempty"`     //to enforce a different remediation than blocking an IP. Will default this to IP
+	BucketName       string                    `yaml:"-"`
+	Filename         string                    `yaml:"-"`
+	RunTimeFilter    *vm.Program               `json:"-"`
+	ExprDebugger     *exprhelpers.ExprDebugger `yaml:"-" json:"-"` // used to debug expression by printing the content of each variable of the expression
+	RunTimeGroupBy   *vm.Program               `json:"-"`
+	Data             []*types.DataSource       `yaml:"data,omitempty"`
+	DataDir          string                    `yaml:"-"`
+	CancelOnFilter   string                    `yaml:"cancel_on,omitempty"` //a filter that, if matched, kills the bucket
+	leakspeed        time.Duration             //internal representation of `Leakspeed`
+	duration         time.Duration             //internal representation of `Duration`
+	ret              chan types.Event          //the bucket-specific output chan for overflows
+	processors       []Processor               //processors is the list of hooks for pour/overflow/create (cf. uniq, blackhole etc.)
+	output           bool                      //??
+	ScenarioVersion  string                    `yaml:"version,omitempty"`
+	hash             string                    `yaml:"-"`
+	Simulated        bool                      `yaml:"simulated"` //Set to true if the scenario instanciating the bucket was in the exclusion list
+	tomb             *tomb.Tomb                `yaml:"-"`
+	wgPour           *sync.WaitGroup           `yaml:"-"`
+	wgDumpState      *sync.WaitGroup           `yaml:"-"`
 }
 
 func ValidateFactory(bucketFactory *BucketFactory) error {
@@ -318,6 +319,16 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			return fmt.Errorf("error creating overflow_filter : %s", err)
 		}
 		bucketFactory.processors = append(bucketFactory.processors, filovflw)
+	}
+
+	if bucketFactory.OverflowBehavior != "" {
+		bucketFactory.logger.Tracef("Using OverflowBehavior %s", bucketFactory.OverflowBehavior)
+		switch bucketFactory.OverflowBehavior {
+		// case "die": // Not sure if we need this value, since it is the default behavior
+		case "keep-alive":
+		default:
+			return fmt.Errorf("invalid OverflowBehavior '%s' in %s : %v", bucketFactory.OverflowBehavior, bucketFactory.Filename, err)
+		}
 	}
 
 	if bucketFactory.Blackhole != "" {

@@ -350,5 +350,10 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 
 	BucketsOverflow.With(prometheus.Labels{"name": leaky.Name}).Inc()
 
+	if leaky.BucketConfig.OverflowBehavior == "keep-alive" {
+		leaky.logger.Debugf("BucketConfig.OverflowBehavior will keep bucket alive.")
+		return
+	}
+
 	leaky.AllOut <- types.Event{Overflow: alert, Type: types.OVFLW, MarshaledTime: string(mt)}
 }

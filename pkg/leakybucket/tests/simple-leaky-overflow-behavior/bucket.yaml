@@ -1,0 +1,12 @@
+type: leaky
+debug: true
+name: test/simple-leaky-by-asn
+description: "Simple leaky"
+filter: "evt.Line.Labels.type =='testlog'"
+leakspeed: "10s"
+capacity: 1
+groupby: evt.Enriched.ASNumber
+overflowBehavior: keep-alive
+labels:
+ type: overflow_1
+
