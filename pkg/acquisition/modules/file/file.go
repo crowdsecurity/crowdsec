@@ -77,7 +77,7 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 	f.logger.Tracef("Actual FileAcquisition Configuration %+v", f.config)
 	for _, pattern := range f.config.Filenames {
 		if f.config.ForceInotify {
-			directory := path.Dir(pattern)
+			directory := filepath.Dir(pattern)
 			f.logger.Infof("Force add watch on %s", directory)
 			if !f.watchedDirectories[directory] {
 				err = f.watcher.Add(directory)
@@ -98,7 +98,8 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 		}
 		for _, file := range files {
 			if files[0] != pattern && f.config.Mode == configuration.TAIL_MODE { //we have a glob pattern
-				directory := path.Dir(file)
+				directory := filepath.Dir(file)
+				f.logger.Debugf("Will add watch to directory: %s", directory)
 				if !f.watchedDirectories[directory] {
 
 					err = f.watcher.Add(directory)
@@ -107,6 +108,8 @@ func (f *FileSource) Configure(Config []byte, logger *log.Entry) error {
 						continue
 					}
 					f.watchedDirectories[directory] = true
+				} else {
+					f.logger.Debugf("Watch for directory %s already exists", directory)
 				}
 			}
 			f.logger.Infof("Adding file %s to datasources", file)
@@ -374,7 +377,7 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
-			l.Raw = line.Text
+			l.Raw = trimLine(line.Text)
 			l.Labels = f.config.Labels
 			l.Time = line.Time
 			l.Src = tail.Filename
@@ -382,7 +385,11 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 			l.Module = f.GetName()
 			//we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			if !f.config.UseTimeMachine {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			} else {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+			}
 		}
 	}
 }

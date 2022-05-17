@@ -29,7 +29,7 @@ type Node struct {
 	Name        string   `yaml:"name,omitempty"`
 	Author      string   `yaml:"author,omitempty"`
 	Description string   `yaml:"description,omitempty"`
-	Rerferences []string `yaml:"references,omitempty"`
+	References  []string `yaml:"references,omitempty"`
 	//if debug is present in the node, keep its specific Logger in runtime structure
 	Logger *log.Entry `yaml:"-"`
 	//This is mostly a hack to make writing less repetitive.
@@ -106,15 +106,17 @@ func (n *Node) validate(pctx *UnixParserCtx, ectx EnricherCtx) error {
 	return nil
 }
 
-func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
+func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[string]interface{}) (bool, error) {
 	var NodeState bool
 	var NodeHasOKGrok bool
 	clog := n.Logger
 
+	cachedExprEnv := expressionEnv
+
 	clog.Tracef("Event entering node")
 	if n.RunTimeFilter != nil {
 		//Evaluate node's filter
-		output, err := expr.Run(n.RunTimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(n.RunTimeFilter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run filter : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -124,7 +126,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				n.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				n.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if !out {
 				clog.Debugf("Event leaving node : ko (failed filter)")
@@ -188,7 +190,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	}
 	/* run whitelist expression tests anyway */
 	for eidx, e := range n.Whitelist.B_Exprs {
-		output, err := expr.Run(e.Filter, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
 			clog.Debugf("Event leaving node : ko")
@@ -197,7 +199,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 		switch out := output.(type) {
 		case bool:
 			if n.Debug {
-				e.ExprDebugger.Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+				e.ExprDebugger.Run(clog, out, cachedExprEnv)
 			}
 			if out {
 				clog.Debugf("Event is whitelisted by expr, reason [%s]", n.Whitelist.Reason)
@@ -238,7 +240,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 				NodeState = false
 			}
 		} else if n.Grok.RunTimeValue != nil {
-			output, err := expr.Run(n.Grok.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": p}))
+			output, err := expr.Run(n.Grok.RunTimeValue, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				NodeState = false
@@ -285,7 +287,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx) (bool, error) {
 	//Iterate on leafs
 	if len(n.LeavesNodes) > 0 {
 		for _, leaf := range n.LeavesNodes {
-			ret, err := leaf.process(p, ctx)
+			ret, err := leaf.process(p, ctx, cachedExprEnv)
 			if err != nil {
 				clog.Tracef("\tNode (%s) failed : %v", leaf.rn, err)
 				clog.Debugf("Event leaving node : ko")

@@ -263,6 +263,87 @@ func GetInstalledScenarios() ([]Item, error) {
 	return retItems, nil
 }
 
+func GetInstalledParsers() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[PARSERS]; !ok {
+		return nil, fmt.Errorf("no parsers in hubIdx")
+	}
+	for _, item := range hubIdx[PARSERS] {
+		if item.Installed {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
+}
+
+func GetInstalledParsersAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetInstalledParsers()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching parsers")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
+}
+
+func GetInstalledPostOverflows() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[PARSERS_OVFLW]; !ok {
+		return nil, fmt.Errorf("no post overflows in hubIdx")
+	}
+	for _, item := range hubIdx[PARSERS_OVFLW] {
+		if item.Installed {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
+}
+
+func GetInstalledPostOverflowsAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetInstalledPostOverflows()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching post overflows")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
+}
+
+func GetInstalledCollectionsAsString() ([]string, error) {
+	var retStr []string
+
+	items, err := GetInstalledCollections()
+	if err != nil {
+		return nil, errors.Wrap(err, "while fetching collections")
+	}
+	for _, it := range items {
+		retStr = append(retStr, it.Name)
+	}
+	return retStr, nil
+}
+
+func GetInstalledCollections() ([]Item, error) {
+	var retItems []Item
+
+	if _, ok := hubIdx[COLLECTIONS]; !ok {
+		return nil, fmt.Errorf("no collection in hubIdx")
+	}
+	for _, item := range hubIdx[COLLECTIONS] {
+		if item.Installed {
+			retItems = append(retItems, item)
+		}
+	}
+	return retItems, nil
+}
+
 //Returns a list of entries for packages : name, status, local_path, local_version, utf8_status (fancy)
 func GetHubStatusForItemType(itemType string, name string, all bool) []ItemHubStatus {
 	if _, ok := hubIdx[itemType]; !ok {

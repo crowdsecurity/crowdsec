@@ -25,6 +25,13 @@ check_python3() {
     fi
 }
 
+check_jq() {
+    # shellcheck disable=SC2016
+    if ! command -v jq >/dev/null; then
+        die "Missing required program 'jq'"
+    fi
+}
+
 check_nc() {
     if ! command -v nc >/dev/null; then
         die "missing required program 'nc' (package 'netcat-openbsd')"
@@ -40,7 +47,6 @@ check_yq() {
     if ! (yq --version | grep mikefarah >/dev/null); then
         die "yq exists but it's not the one we need (mikefarah/yq). $howto_install"
     fi
-
 }
 
 check_daemonizer() {
@@ -85,12 +91,13 @@ check_gocovmerge() {
 }
 
 check_bats_core
-check_python3
-check_nc
-check_yq
 check_daemonizer
 check_cfssl
 check_cfssljson
+check_jq
+check_nc
+check_python3
+check_yq
 if [ -n "${TEST_COVERAGE}" ]; then
     check_gocovmerge
 fi

@@ -111,12 +111,14 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 	var value string
 	clog := n.Logger
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": event})
+
 	for _, static := range statics {
 		value = ""
 		if static.Value != "" {
 			value = static.Value
 		} else if static.RunTimeValue != nil {
-			output, err := expr.Run(static.RunTimeValue, exprhelpers.GetExprEnv(map[string]interface{}{"evt": event}))
+			output, err := expr.Run(static.RunTimeValue, cachedExprEnv)
 			if err != nil {
 				clog.Warningf("failed to run RunTimeValue : %v", err)
 				continue
@@ -255,6 +257,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 		log.Tracef("INPUT '%s'", event.Line.Raw)
 	}
 
+	cachedExprEnv := exprhelpers.GetExprEnv(map[string]interface{}{"evt": &event})
+
 	if ParseDump {
 		if StageParseCache == nil {
 			StageParseCache = make(map[string]map[string][]ParserResult)
@@ -298,7 +302,7 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			if ctx.Profiling {
 				node.Profiling = true
 			}
-			ret, err := node.process(&event, ctx)
+			ret, err := node.process(&event, ctx, cachedExprEnv)
 			if err != nil {
 				clog.Fatalf("Error while processing node : %v", err)
 			}

@@ -2,3 +2,4 @@
 
 MAKE=make
 
+$(info Building for linux)

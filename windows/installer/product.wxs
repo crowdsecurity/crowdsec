@@ -1,0 +1,165 @@
+<?xml version="1.0"?>
+
+<?if $(sys.BUILDARCH)="x86"?>
+<?define Program_Files="ProgramFilesFolder"?>
+<?elseif $(sys.BUILDARCH)="x64"?>
+<?define Program_Files="ProgramFiles64Folder"?>
+<?else ?>
+<?error Unsupported value of sys.BUILDARCH=$(sys.BUILDARCH)?>
+<?endif ?>
+
+<?define ProductName="CrowdSec"?>
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+
+   <Product Id="*" UpgradeCode="8eab6970-25e3-4b7d-882f-5b7efa311afc" Name="$(var.ProductName)" Version="$(var.Version)" Manufacturer="CrowdSecurity" Language="1033">
+
+      <Package InstallerVersion="200" Compressed="yes" Comments="Crowdsec Installer Package" InstallScope="perMachine" />
+      <Media Id="1" Cabinet="product.cab" EmbedCab="yes" />
+      <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." Schedule="afterInstallExecute" />
+
+      <SetProperty After="AppSearch" Id="WIXUI_EXITDIALOGOPTIONALTEXT" Value="LAPI is disabled and no agents credentials were generated.Please register your agent in your LAPI instance, update C:\ProgramData\CrowdSec\config\local_api_credentials.yaml, and configure the CrowdSec service to start on boot." >
+         AGENT_ONLY
+       </SetProperty>
+
+      <Directory Id="TARGETDIR" Name="SourceDir">
+         <Directory Id="$(var.Program_Files)">
+            <Directory Id="INSTALLDIR" Name="$(var.ProductName)">
+               <Component Id="Crowdsec" Guid="200299fc-e728-4749-a283-cfbd20c02a59">
+                  <File Id="crowdsec.exe" Source="cmd\crowdsec\crowdsec.exe" />
+                  <Condition>NOT AGENT_ONLY</Condition>
+                  <ServiceInstall Id="CrowdsecService" Name="Crowdsec" DisplayName="Crowdsec" Description="Crowdsec IPS/IDS" Start="auto" Type="ownProcess" ErrorControl="normal" Account="LocalSystem" Vital="yes" Interactive="no" />
+                  <ServiceControl Id="CrowdsecService" Name="Crowdsec" Start="install" Stop="both" Remove="uninstall" Wait="yes" />
+               </Component>
+               <Component Id="CrowdsecNoStart" Guid="a9fac892-a7ea-4a3b-9a00-4f4bf2205de9">
+                  <File Id="crowdsec2.exe" Source="cmd\crowdsec\crowdsec.exe" />
+                  <Condition>AGENT_ONLY</Condition>
+                  <ServiceInstall Id="CrowdsecService2" Name="Crowdsec" DisplayName="Crowdsec" Description="Crowdsec IPS/IDS" Start="disabled" Type="ownProcess" ErrorControl="normal" Account="LocalSystem" Vital="yes" Interactive="no" />
+                  <ServiceControl Id="CrowdsecService2" Name="Crowdsec" Stop="both" Remove="uninstall" Wait="yes" />
+               </Component>
+               <Component Id="Cscli" Guid="b3da82cb-d111-4205-b0ee-5499b34dd57b">
+                  <File Id="cscli.exe" Source="cmd\crowdsec-cli\cscli.exe" />
+                  <Environment Id="UpdatePath" Name="PATH" Value="[INSTALLDIR]" Part="last" Action="set" System="yes" />
+               </Component>
+            </Directory>
+         </Directory>
+         <Directory Id="CommonAppDataFolder">
+            <Directory Id="CrowdSecCommonDir" Name="CrowdSec">
+               <Directory Id="ConfigDir" Name="config">
+                  <Component Id="AcquisConfig" Guid="08bfc6fd-4811-48ed-b63e-035acb1f69d8">
+                     <File Id="acquis.yaml" Source="config\acquis_win.yaml" Name="acquis.yaml" />
+                  </Component>
+                  <Component Id="LocalCreds" Guid="fea92471-ba4b-4067-a92a-19af0d581b60">
+                     <File Id="local_api_credentials.yaml" Source="config\local_api_credentials.yaml" />
+                  </Component>
+                  <Component Id="OnlineCreds" Guid="a652a6cb-d464-40b1-8f50-78dce0135d20">
+                     <File Id="online_api_credentials.yaml" Source="config\online_api_credentials.yaml" />
+                  </Component>
+                  <Component Id="ProfilesConfig" Guid="8d6fca04-b3be-4a52-a9df-278139d0498e">
+                     <File Id="profiles.yaml" Source="config\profiles.yaml" />
+                  </Component>
+                  <Component Id="SimulationConfig" Guid="a27346e6-af4a-4ee6-aea9-d783b036cd21">
+                     <File Id="simulation.yaml" Source="config\simulation.yaml" />
+                  </Component>
+                  <Component Id="ConsoleConfig" Guid="8393e488-18d5-4578-9e4c-99b54f7b2bb6">
+                     <File Id="console.yaml" Source="config\console.yaml" />
+                  </Component>
+                  <Component Id="Csconfig_lapi" Guid="a99bd70c-61af-43ca-8394-6dc789cec566">
+                     <Condition>
+                        NOT AGENT_ONLY
+                     </Condition>
+                     <File Id="config.yaml" Source="config\config_win.yaml" Name="config.yaml"/>
+                  </Component>
+                  <Component Id="Csconfig_no_lapi" Guid="494d2e56-9db0-4d31-bde4-826f28a5683c">
+                     <Condition>
+                        AGENT_ONLY
+                     </Condition>
+                     <File Id="config_no_lapi.yaml" Source="config\config_win_no_lapi.yaml" Name="config.yaml"/>
+                  </Component>
+                  <Directory Id="NotifConfigDir" Name="notifications">
+                     <Component Id="NotifConfig" Guid="4d04a852-e876-408f-95a7-a7effa7762c4">
+                        <File Id="slack.yaml" Source="plugins\notifications\slack\slack.yaml" Name="slack.yaml" />
+                        <File Id="http.yaml" Source="plugins\notifications\http\http.yaml" Name="http.yaml" />
+                        <File Id="email.yaml" Source="plugins\notifications\email\email.yaml" Name="email.yaml" />
+                        <File Id="splunk.yaml" Source="plugins\notifications\splunk\splunk.yaml" Name="splunk.yaml" />
+                     </Component>
+                  </Directory>
+                  <Directory Id="PatternsDir" Name="patterns" />
+               </Directory>
+               <Directory Id="logCrowdsec" Name="log">
+                  <Component Id="CreateLog" Guid="bfb37d14-10c4-40fb-bafa-2a29f95e4a53">
+                     <CreateFolder />
+                  </Component>
+               </Directory>
+               <Directory Id="hubCrowdsec" Name="hub">
+                  <Component Id="CreateHub" Guid="ac528dd2-49f7-4448-a9e7-91c66061404b">
+                     <CreateFolder />
+                  </Component>
+               </Directory>
+               <Directory Id="CrowdsecDataDir" Name="data">
+                  <Component Id="CreateCrowdsecDataDir" Guid="de529565-a499-4327-948d-2a318f8e822a">
+                     <CreateFolder />
+                  </Component>
+               </Directory>
+               <Directory Id="CrowdsecPluginsDir" Name="plugins">
+                  <Component Id="CreateCrowdsecPluginsDir" Guid="bb7c8f19-8457-44b9-a538-aed494ec575d">
+                     <File Id="notification_slack.exe" Source="plugins\notifications\slack\notification-slack.exe" />
+                     <File Id="notification_email.exe" Source="plugins\notifications\email\notification-email.exe" />
+                     <File Id="notification_http.exe" Source="plugins\notifications\http\notification-http.exe" />
+                     <File Id="notification_splunk.exe" Source="plugins\notifications\splunk\notification-splunk.exe" />
+                  </Component>
+               </Directory>
+            </Directory>
+         </Directory>
+      </Directory>
+
+
+      <SetProperty Id="HubUpdate" Value="&quot;[INSTALLDIR]\cscli.exe&quot; hub update" Sequence="execute" Before="HubUpdate" />
+      <CustomAction Id="HubUpdate" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <SetProperty Id="InstallWinCollection" Value="&quot;[INSTALLDIR]\cscli.exe&quot; collections install crowdsecurity/windows" Sequence="execute" Before="InstallWinCollection" />
+      <CustomAction Id="InstallWinCollection" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <SetProperty Id="RegisterMachine" Value="&quot;[INSTALLDIR]\cscli.exe&quot; machines add -a" Sequence="execute" Before="RegisterMachine" />
+      <CustomAction Id="RegisterMachine" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <SetProperty Id="RegisterCAPI" Value="&quot;[INSTALLDIR]\cscli.exe&quot; capi register" Sequence="execute" Before="RegisterMachine" />
+      <CustomAction Id="RegisterCAPI" BinaryKey="WixCA" DllEntry="WixQuietExec" Execute="deferred" Return="check" Impersonate="no" />
+      <InstallExecuteSequence>
+         <WriteEnvironmentStrings />
+         <Custom Action="HubUpdate" After="InstallFiles">NOT Installed AND NOT REMOVE</Custom>
+         <Custom Action="InstallWinCollection" After="HubUpdate">NOT Installed AND NOT REMOVE</Custom>
+         <Custom Action="RegisterMachine" After="InstallWinCollection">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
+         <Custom Action="RegisterCAPI" After="RegisterMachine">NOT Installed AND NOT REMOVE AND NOT AGENT_ONLY AND NOT WIX_UPGRADE_DETECTED</Custom>
+      </InstallExecuteSequence>
+
+      <Feature Id="DefaultFeature" Level="1">
+         <ComponentRef Id="Crowdsec" />
+         <ComponentRef Id="CrowdsecNoStart" />
+         <ComponentRef Id="Cscli" />
+         <ComponentRef Id="AcquisConfig"/>
+         <ComponentRef Id="LocalCreds"/>
+         <ComponentRef Id="OnlineCreds"/>
+         <ComponentRef Id="ProfilesConfig"/>
+         <ComponentRef Id="SimulationConfig"/>
+         <ComponentRef Id="ConsoleConfig"/>
+         <ComponentRef Id="CreateLog" />
+         <ComponentRef Id="CreateHub" />
+         <ComponentRef Id="NotifConfig" />
+         <ComponentRef Id="CreateCrowdsecPluginsDir"/>
+         <ComponentRef Id="CreateCrowdsecDataDir" />
+         <ComponentRef Id="Csconfig_lapi" />
+         <ComponentRef Id="Csconfig_no_lapi" />
+         <ComponentGroupRef Id="CrowdsecPatterns" />
+      </Feature>
+
+      <UI>
+         <UIRef Id="WixUI_HK" />
+      </UI>
+
+      <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR" />
+      <Property Id="MsiLogging" Value="voicewarmupx!" />
+
+      <!-- this should help to propagate env var changes -->
+      <CustomActionRef Id="WixBroadcastEnvironmentChange" />
+
+   </Product>
+
+</Wix>

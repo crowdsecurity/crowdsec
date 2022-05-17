@@ -3536,7 +3536,7 @@ func (m *DecisionMutation) Until() (r time.Time, exists bool) {
 // OldUntil returns the old "until" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldUntil(ctx context.Context) (v time.Time, err error) {
+func (m *DecisionMutation) OldUntil(ctx context.Context) (v *time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUntil is only allowed on UpdateOne operations")
 	}
@@ -3550,9 +3550,22 @@ func (m *DecisionMutation) OldUntil(ctx context.Context) (v time.Time, err error
 	return oldValue.Until, nil
 }
 
+// ClearUntil clears the value of the "until" field.
+func (m *DecisionMutation) ClearUntil() {
+	m.until = nil
+	m.clearedFields[decision.FieldUntil] = struct{}{}
+}
+
+// UntilCleared returns if the "until" field was cleared in this mutation.
+func (m *DecisionMutation) UntilCleared() bool {
+	_, ok := m.clearedFields[decision.FieldUntil]
+	return ok
+}
+
 // ResetUntil resets all changes to the "until" field.
 func (m *DecisionMutation) ResetUntil() {
 	m.until = nil
+	delete(m.clearedFields, decision.FieldUntil)
 }
 
 // SetScenario sets the "scenario" field.
@@ -4501,6 +4514,9 @@ func (m *DecisionMutation) ClearedFields() []string {
 	if m.FieldCleared(decision.FieldUpdatedAt) {
 		fields = append(fields, decision.FieldUpdatedAt)
 	}
+	if m.FieldCleared(decision.FieldUntil) {
+		fields = append(fields, decision.FieldUntil)
+	}
 	if m.FieldCleared(decision.FieldStartIP) {
 		fields = append(fields, decision.FieldStartIP)
 	}
@@ -4535,6 +4551,9 @@ func (m *DecisionMutation) ClearField(name string) error {
 		return nil
 	case decision.FieldUpdatedAt:
 		m.ClearUpdatedAt()
+		return nil
+	case decision.FieldUntil:
+		m.ClearUntil()
 		return nil
 	case decision.FieldStartIP:
 		m.ClearStartIP()

@@ -10,7 +10,6 @@ import (
 	_ "net/http/pprof"
 	"time"
 
-	"github.com/confluentinc/bincover"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
@@ -23,7 +22,6 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -65,6 +63,7 @@ type Flags struct {
 	TestMode       bool
 	DisableAgent   bool
 	DisableAPI     bool
+	WinSvc         string
 }
 
 type labelsMap map[string]string
@@ -190,8 +189,8 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-
 	flag.Parse()
 }
 
@@ -262,10 +261,6 @@ func LoadConfig(cConfig *csconfig.Config) error {
 }
 
 func main() {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
 
 	defer types.CatchPanic("crowdsec/main")
 
@@ -278,41 +273,5 @@ func main() {
 		cwversion.Show()
 		os.Exit(0)
 	}
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
-		Writer: os.Stderr,
-		LogLevels: []log.Level{
-			log.PanicLevel,
-			log.FatalLevel,
-		},
-	})
-
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
-	}
-
-	if exitCode, err := Serve(cConfig); err != nil {
-		if err != nil {
-			log.Errorf(err.Error())
-			if !bincoverTesting {
-				os.Exit(exitCode)
-			}
-			bincover.ExitCode = exitCode
-		}
-	}
+	StartRunSvc()
 }

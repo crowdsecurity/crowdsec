@@ -12,7 +12,7 @@ import (
 )
 
 func TestCreateMachine(t *testing.T) {
-	router, err := NewAPITest()
+	router, _, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestCreateMachine(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedFor(t *testing.T) {
-	router, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -74,7 +74,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -82,7 +82,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
-	router, err := NewAPITest()
+	router, config, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -103,7 +103,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -113,7 +113,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 }
 
 func TestCreateMachineWithoutForwardedFor(t *testing.T) {
-	router, err := NewAPITestForwardedFor()
+	router, config, err := NewAPITestForwardedFor()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -133,7 +133,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	assert.Equal(t, 201, w.Code)
 	assert.Equal(t, "", w.Body.String())
 
-	ip, err := GetMachineIP(*MachineTest.MachineID)
+	ip, err := GetMachineIP(*MachineTest.MachineID, config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalf("Could not get machine IP : %s", err)
 	}
@@ -143,7 +143,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 }
 
 func TestCreateMachineAlreadyExist(t *testing.T) {
-	router, err := NewAPITest()
+	router, _, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}

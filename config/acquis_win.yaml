@@ -1,0 +1,8 @@
+source: wineventlog
+event_channel: Security
+event_ids:
+ - 4625
+ - 4623
+event_level: information
+labels:
+ type: eventlog

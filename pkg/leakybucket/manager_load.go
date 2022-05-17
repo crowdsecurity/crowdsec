@@ -287,7 +287,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	bucketFactory.logger.Infof("Adding %s bucket", bucketFactory.Type)
-	//return the Holder correponding to the type of bucket
+	//return the Holder corresponding to the type of bucket
 	bucketFactory.processors = []Processor{}
 	switch bucketFactory.Type {
 	case "leaky":

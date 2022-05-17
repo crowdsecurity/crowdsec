@@ -29,6 +29,7 @@ func NewBouncersCmd() *cobra.Command {
 Note: This command requires database direct access, so is intended to be run on Local API/master.
 `,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"bouncer"},
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			var err error
@@ -157,6 +158,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 		Use:               "delete MyBouncerName",
 		Short:             "delete bouncer",
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, bouncerID := range args {

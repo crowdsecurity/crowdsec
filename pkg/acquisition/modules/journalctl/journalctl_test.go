@@ -3,6 +3,7 @@ package journalctlacquisition
 import (
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 	"time"
 
@@ -15,6 +16,9 @@ import (
 )
 
 func TestBadConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -50,6 +54,9 @@ journalctl_filter:
 }
 
 func TestConfigureDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		dsn         string
 		expectedErr string
@@ -94,6 +101,9 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -182,6 +192,9 @@ journalctl_filter:
 }
 
 func TestStreaming(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config         string
 		expectedErr    string

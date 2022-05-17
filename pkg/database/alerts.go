@@ -561,7 +561,6 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		if v[0] == "false" {
 			alerts = alerts.Where(alert.SimulatedEQ(false))
 		}
-		delete(filter, "simulated")
 	}
 
 	if _, ok := filter["origin"]; ok {
@@ -644,6 +643,8 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		case "limit":
 			continue
 		case "sort":
+			continue
+		case "simulated":
 			continue
 		default:
 			return nil, errors.Wrapf(InvalidFilter, "Filter parameter '%s' is unknown (=%s)", param, value[0])
@@ -781,10 +782,11 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 				break
 			}
 			ret = append(ret, result[0:diff]...)
+
 		} else {
 			ret = append(ret, result...)
 		}
-		if len(ret) == limit || len(ret) == 0 {
+		if len(ret) == limit || len(ret) == 0 || len(ret) < paginationSize {
 			c.Log.Debugf("Pagination done len(ret) = %d", len(ret))
 			break
 		}

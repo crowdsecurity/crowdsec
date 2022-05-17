@@ -1,3 +1,5 @@
+//go:build linux || freebsd || netbsd || openbsd || solaris || !windows
+
 package csplugin
 
 import (
@@ -6,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -109,8 +113,8 @@ func TestListFilesAtPath(t *testing.T) {
 				path: testPath,
 			},
 			want: []string{
-				path.Join(testPath, "notification-gitter"),
-				path.Join(testPath, "slack"),
+				filepath.Join(testPath, "notification-gitter"),
+				filepath.Join(testPath, "slack"),
 			},
 		},
 		{
@@ -136,6 +140,9 @@ func TestListFilesAtPath(t *testing.T) {
 }
 
 func TestBrokerInit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 
 	tests := []struct {
 		name        string
@@ -570,8 +577,10 @@ func buildDummyPlugin() {
 }
 
 func setPluginPermTo(perm string) {
-	if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
-		log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
+	if runtime.GOOS != "windows" {
+		if err := exec.Command("chmod", perm, path.Join(testPath, "notification-dummy")).Run(); err != nil {
+			log.Fatal(errors.Wrapf(err, "chmod 744 %s", path.Join(testPath, "notification-dummy")))
+		}
 	}
 }
 
@@ -580,14 +589,16 @@ func setUp() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = os.Create(path.Join(dir, "slack"))
+	f, err := os.Create(path.Join(dir, "slack"))
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = os.Create(path.Join(dir, "notification-gitter"))
+	f.Close()
+	f, err = os.Create(path.Join(dir, "notification-gitter"))
 	if err != nil {
 		log.Fatal(err)
 	}
+	f.Close()
 	err = os.Mkdir(path.Join(dir, "dummy_dir"), 0666)
 	if err != nil {
 		log.Fatal(err)

@@ -15,7 +15,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/denisbrodbeck/machineid"
+	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -103,6 +103,7 @@ Note: This command requires database direct access, so is intended to be run on 
 `,
 		Example:           `cscli machines [action]`,
 		DisableAutoGenTag: true,
+		Aliases:           []string{"machine"},
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
 				if err != nil {
@@ -291,6 +292,7 @@ cscli machines add MyTestMachine --password MyPassword
 		Short:             "delete machines",
 		Example:           `cscli machines delete "machine_name"`,
 		Args:              cobra.MinimumNArgs(1),
+		Aliases:           []string{"remove"},
 		DisableAutoGenTag: true,
 		PreRun: func(cmd *cobra.Command, args []string) {
 			var err error

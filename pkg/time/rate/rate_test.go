@@ -182,6 +182,9 @@ func TestLongRunningQPS(t *testing.T) {
 		t.Skip("low resolution time.Sleep invalidates test (golang.org/issue/14183)")
 		return
 	}
+	if runtime.GOOS == "windows" {
+		t.Skip("test is unreliable on windows")
+	}
 
 	// The test runs for a few seconds executing many requests and then checks
 	// that overall number of requests is reasonable.
@@ -270,7 +273,7 @@ func TestMix(t *testing.T) {
 
 	runReserve(t, lim, request{t0, 3, t1, false}) // should return false because n > Burst
 	runReserve(t, lim, request{t0, 2, t0, true})
-	run(t, lim, []allow{{t1, 2, false}}) // not enought tokens - don't allow
+	run(t, lim, []allow{{t1, 2, false}}) // not enough tokens - don't allow
 	runReserve(t, lim, request{t1, 2, t2, true})
 	run(t, lim, []allow{{t1, 1, false}}) // negative tokens - don't allow
 	run(t, lim, []allow{{t3, 1, true}})

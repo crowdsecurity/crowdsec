@@ -54,7 +54,7 @@ func TestParserConfigs(t *testing.T) {
 			t.Fatalf("Compile: (%d/%d) expected valid, got : %s", idx+1, len(CfgTests), err)
 		}
 		if CfgTests[idx].Compiles == false && err == nil {
-			t.Fatalf("Compile: (%d/%d) expected errror", idx+1, len(CfgTests))
+			t.Fatalf("Compile: (%d/%d) expected error", idx+1, len(CfgTests))
 		}
 
 		err = CfgTests[idx].NodeCfg.validate(pctx, EnricherCtx{})
