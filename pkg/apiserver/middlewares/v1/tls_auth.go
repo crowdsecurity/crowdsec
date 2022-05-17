@@ -134,7 +134,7 @@ func (ta *TLSAuth) isRevoked(cert *x509.Certificate, issuer *x509.Certificate) (
 	sn := cert.SerialNumber.String()
 	if cacheValue, ok := ta.revokationCache[sn]; ok {
 		if time.Now().UTC().Sub(cacheValue.timestamp) < ta.cacheExpiration {
-			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %s | %s", sn, cacheValue.revoked, cacheValue.err)
+			ta.logger.Debugf("TLSAuth: using cached value for cert %s: %t | %s", sn, cacheValue.revoked, cacheValue.err)
 			return cacheValue.revoked, cacheValue.err
 		} else {
 			ta.logger.Debugf("TLSAuth: cached value expired, removing from cache")
