@@ -100,7 +100,7 @@ func Clone(a, b interface{}) error {
 }
 
 func WriteStackTrace(iErr interface{}) string {
-	tmpfile, err := ioutil.TempFile("/tmp/", "crowdsec-crash.*.txt")
+	tmpfile, err := ioutil.TempFile("", "crowdsec-crash.*.txt")
 	if err != nil {
 		log.Fatal(err)
 	}

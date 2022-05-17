@@ -182,6 +182,9 @@ func TestLongRunningQPS(t *testing.T) {
 		t.Skip("low resolution time.Sleep invalidates test (golang.org/issue/14183)")
 		return
 	}
+	if runtime.GOOS == "windows" {
+		t.Skip("test is unreliable on windows")
+	}
 
 	// The test runs for a few seconds executing many requests and then checks
 	// that overall number of requests is reasonable.

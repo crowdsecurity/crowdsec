@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -103,6 +104,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestBadConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config      string
 		expectedErr string
@@ -144,6 +148,9 @@ stream_arn: arn:aws:kinesis:eu-west-1:123456789012:stream/my-stream`,
 }
 
 func TestReadFromStream(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int
@@ -187,6 +194,9 @@ stream_name: stream-1-shard`,
 }
 
 func TestReadFromMultipleShards(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int
@@ -232,6 +242,9 @@ stream_name: stream-2-shards`,
 }
 
 func TestFromSubscription(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	tests := []struct {
 		config string
 		count  int

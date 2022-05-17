@@ -1,3 +1,9 @@
+ifeq ($(OS),Windows_NT)
+SHELL := pwsh.exe
+.SHELLFLAGS := -NoProfile -Command
+EXT=.exe
+endif
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -5,7 +11,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 
-CROWDSEC_BIN=crowdsec
+CROWDSEC_BIN=crowdsec$(EXT)
 # names longer than 15 chars break 'pgrep'
 CROWDSEC_BIN_COVER=$(CROWDSEC_BIN).cover
 PREFIX?="/"
@@ -32,7 +38,7 @@ test:
 	$(GOTEST) $(LD_OPTS) -v ./...
 
 clean:
-	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER)
+	@$(RM) $(CROWDSEC_BIN) $(CROWDSEC_BIN).test $(CROWDSEC_BIN_COVER)  $(WIN_IGNORE_ERR)
 
 .PHONY: install
 install: install-conf install-bin
@@ -67,7 +73,7 @@ systemd: install
 
 .PHONY: uninstall
 uninstall:
-	$(RM) -r "$(CFG_PREFIX)"
-	$(RM) -r "$(DATA_PREFIX)"
-	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)"
-	$(RM) "$(SYSTEMD_PATH_FILE)"
+	$(RM) $(CFG_PREFIX) $(WIN_IGNORE_ERR)
+	$(RM) $(DATA_PREFIX) $(WIN_IGNORE_ERR) 
+	$(RM) "$(BIN_PREFIX)/$(CROWDSEC_BIN)" $(WIN_IGNORE_ERR)
+	$(RM) "$(SYSTEMD_PATH_FILE)" $(WIN_IGNORE_ERR)

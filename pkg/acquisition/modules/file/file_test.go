@@ -3,6 +3,7 @@ package fileacquisition
 import (
 	"fmt"
 	"os"
+	"runtime"
 	"testing"
 	"time"
 
@@ -44,6 +45,12 @@ func TestBadConfiguration(t *testing.T) {
 }
 
 func TestConfigureDSN(t *testing.T) {
+	var file string
+	if runtime.GOOS != "windows" {
+		file = "/etc/passwd"
+	} else {
+		file = "C:\\Windows\\System32\\drivers\\etc\\hosts"
+	}
 	tests := []struct {
 		dsn         string
 		expectedErr string
@@ -57,11 +64,11 @@ func TestConfigureDSN(t *testing.T) {
 			expectedErr: "empty file:// DSN",
 		},
 		{
-			dsn:         "file:///etc/passwd?log_level=warn",
+			dsn:         fmt.Sprintf("file://%s?log_level=warn", file),
 			expectedErr: "",
 		},
 		{
-			dsn:         "file:///etc/passwd?log_level=foobar",
+			dsn:         fmt.Sprintf("file://%s?log_level=foobar", file),
 			expectedErr: "unknown level foobar: not a valid logrus Level:",
 		},
 	}
@@ -76,6 +83,17 @@ func TestConfigureDSN(t *testing.T) {
 }
 
 func TestOneShot(t *testing.T) {
+	var permDeniedFile string
+	var permDeniedError string
+	if runtime.GOOS != "windows" {
+		permDeniedFile = "/etc/shadow"
+		permDeniedError = "failed opening /etc/shadow: open /etc/shadow: permission denied"
+	} else {
+		//Technically, this is not a permission denied error, but we just want to test what happens
+		//if we do not have access to the file
+		permDeniedFile = "C:\\Windows\\System32\\config\\SAM"
+		permDeniedError = "failed opening C:\\Windows\\System32\\config\\SAM: open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process."
+	}
 	tests := []struct {
 		config            string
 		expectedConfigErr string
@@ -88,11 +106,11 @@ func TestOneShot(t *testing.T) {
 		teardown          func()
 	}{
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: cat
-filename: /etc/shadow`,
+filename: %s`, permDeniedFile),
 			expectedConfigErr: "",
-			expectedErr:       "failed opening /etc/shadow: open /etc/shadow: permission denied",
+			expectedErr:       permDeniedError,
 			expectedOutput:    "",
 			logLevel:          log.WarnLevel,
 			expectedLines:     0,
@@ -162,12 +180,13 @@ filename: test_files/bad.gz`,
 mode: cat
 filename: test_files/test_delete.log`,
 			setup: func() {
-				os.Create("test_files/test_delete.log")
+				f, _ := os.Create("test_files/test_delete.log")
+				f.Close()
 			},
 			afterConfigure: func() {
 				os.Remove("test_files/test_delete.log")
 			},
-			expectedErr: "could not stat file test_files/test_delete.log : stat test_files/test_delete.log: no such file or directory",
+			expectedErr: "could not stat file test_files/test_delete.log",
 		},
 	}
 
@@ -223,10 +242,25 @@ filename: test_files/test_delete.log`,
 }
 
 func TestLiveAcquisition(t *testing.T) {
+	var permDeniedFile string
+	var permDeniedError string
+	var testPattern string
+	if runtime.GOOS != "windows" {
+		permDeniedFile = "/etc/shadow"
+		permDeniedError = "unable to read /etc/shadow : open /etc/shadow: permission denied"
+		testPattern = "test_files/*.log"
+	} else {
+		//Technically, this is not a permission denied error, but we just want to test what happens
+		//if we do not have access to the file
+		permDeniedFile = "C:\\Windows\\System32\\config\\SAM"
+		permDeniedError = "unable to read C:\\Windows\\System32\\config\\SAM : open C:\\Windows\\System32\\config\\SAM: The process cannot access the file because it is being used by another process"
+		testPattern = "test_files\\\\*.log" // the \ must be escaped twice: once for the string, once for the yaml config
+	}
 	tests := []struct {
 		config         string
 		expectedErr    string
 		expectedOutput string
+		name           string
 		expectedLines  int
 		logLevel       log.Level
 		setup          func()
@@ -234,13 +268,14 @@ func TestLiveAcquisition(t *testing.T) {
 		teardown       func()
 	}{
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: tail
-filename: /etc/shadow`,
+filename: %s`, permDeniedFile),
 			expectedErr:    "",
-			expectedOutput: "unable to read /etc/shadow : open /etc/shadow: permission denied",
+			expectedOutput: permDeniedError,
 			logLevel:       log.InfoLevel,
 			expectedLines:  0,
+			name:           "PermissionDenied",
 		},
 		{
 			config: `
@@ -250,6 +285,7 @@ filename: /`,
 			expectedOutput: "/ is a directory, ignoring it",
 			logLevel:       log.WarnLevel,
 			expectedLines:  0,
+			name:           "Directory",
 		},
 		{
 			config: `
@@ -259,45 +295,52 @@ filename: /do/not/exist`,
 			expectedOutput: "No matching files for pattern /do/not/exist",
 			logLevel:       log.WarnLevel,
 			expectedLines:  0,
+			name:           "badPattern",
 		},
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: tail
 filenames:
- - test_files/*.log
-force_inotify: true`,
+ - %s
+force_inotify: true`, testPattern),
 			expectedErr:    "",
 			expectedOutput: "",
 			expectedLines:  5,
 			logLevel:       log.DebugLevel,
+			name:           "basicGlob",
 		},
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: tail
 filenames:
- - test_files/*.log
-force_inotify: true`,
+ - %s
+force_inotify: true`, testPattern),
 			expectedErr:    "",
 			expectedOutput: "",
 			expectedLines:  0,
 			logLevel:       log.DebugLevel,
+			name:           "GlobInotify",
 			afterConfigure: func() {
-				os.Create("test_files/a.log")
+				f, _ := os.Create("test_files/a.log")
+				f.Close()
+				time.Sleep(1 * time.Second)
 				os.Remove("test_files/a.log")
 			},
 		},
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: tail
 filenames:
- - test_files/*.log
-force_inotify: true`,
+ - %s
+force_inotify: true`, testPattern),
 			expectedErr:    "",
 			expectedOutput: "",
 			expectedLines:  5,
 			logLevel:       log.DebugLevel,
+			name:           "GlobInotifyChmod",
 			afterConfigure: func() {
-				os.Create("test_files/a.log")
+				f, _ := os.Create("test_files/a.log")
+				f.Close()
 				time.Sleep(1 * time.Second)
 				os.Chmod("test_files/a.log", 0000)
 			},
@@ -307,15 +350,16 @@ force_inotify: true`,
 			},
 		},
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: tail
 filenames:
- - test_files/*.log
-force_inotify: true`,
+ - %s
+force_inotify: true`, testPattern),
 			expectedErr:    "",
 			expectedOutput: "",
 			expectedLines:  5,
 			logLevel:       log.DebugLevel,
+			name:           "InotifyMkDir",
 			afterConfigure: func() {
 				os.Mkdir("test_files/pouet/", 0700)
 			},
@@ -326,6 +370,7 @@ force_inotify: true`,
 	}
 
 	for _, ts := range tests {
+		t.Logf("test: %s", ts.name)
 		logger, hook := test.NewNullLogger()
 		logger.SetLevel(ts.logLevel)
 		subLogger := logger.WithFields(log.Fields{
@@ -377,7 +422,7 @@ force_inotify: true`,
 			//we sleep to make sure we detect the new file
 			time.Sleep(1 * time.Second)
 			os.Remove("test_files/stream.log")
-			assert.Equal(t, actualLines, ts.expectedLines)
+			assert.Equal(t, ts.expectedLines, actualLines)
 		}
 
 		if ts.expectedOutput != "" {

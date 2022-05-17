@@ -230,11 +230,11 @@ func testTaintItem(cfg *csconfig.Hub, t *testing.T, item Item) {
 	if err != nil {
 		t.Fatalf("(taint) opening %s (%s) : %s", item.LocalPath, item.Name, err)
 	}
+	defer f.Close()
 
 	if _, err = f.WriteString("tainted"); err != nil {
 		t.Fatalf("tainting %s : %s", item.Name, err)
 	}
-	f.Close()
 	//Local sync and check status
 	if err, _ := LocalSync(cfg); err != nil {
 		t.Fatalf("taint: failed to run localSync : %s", err)
@@ -398,8 +398,9 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func fileToStringX(path string) string {
 	if f, err := os.Open(path); err == nil {
+		defer f.Close()
 		if data, err := io.ReadAll(f); err == nil {
-			return string(data)
+			return strings.ReplaceAll(string(data), "\r\n", "\n")
 		} else {
 			panic(err)
 		}

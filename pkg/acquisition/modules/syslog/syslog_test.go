@@ -3,6 +3,7 @@ package syslogacquisition
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"testing"
 	"time"
 
@@ -78,10 +79,6 @@ func TestStreamingAcquisition(t *testing.T) {
 		expectedLines int
 	}{
 		{
-			config:      `source: syslog`,
-			expectedErr: "could not start syslog server: could not listen on port 514: listen udp 127.0.0.1:514: bind: permission denied",
-		},
-		{
 			config: `
 source: syslog
 listen_port: 4242
@@ -108,6 +105,17 @@ listen_addr: 127.0.0.1`,
 				`<13>May 18 12:37:56 mantis sshd: blabla2`,
 				`<13>May 18 12:37:56 mantis sshd`},
 		},
+	}
+	if runtime.GOOS != "windows" {
+		tests = append(tests, struct {
+			config        string
+			expectedErr   string
+			logs          []string
+			expectedLines int
+		}{
+			config:      `source: syslog`,
+			expectedErr: "could not start syslog server: could not listen on port 514: listen udp 127.0.0.1:514: bind: permission denied",
+		})
 	}
 
 	for _, ts := range tests {

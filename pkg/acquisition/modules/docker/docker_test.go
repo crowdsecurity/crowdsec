@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -64,7 +65,12 @@ container_name:
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
-
+	var dockerHost string
+	if runtime.GOOS == "windows" {
+		dockerHost = "npipe:////./pipe/docker_engine"
+	} else {
+		dockerHost = "unix:///var/run/podman/podman.sock"
+	}
 	tests := []struct {
 		name        string
 		dsn         string
@@ -92,7 +98,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:        "DSN ok with multiple parameters",
-			dsn:         "docker://test_docker?since=42min&docker_host=unix:///var/run/podman/podman.sock",
+			dsn:         fmt.Sprintf("docker://test_docker?since=42min&docker_host=%s", dockerHost),
 			expectedErr: "",
 		},
 	}

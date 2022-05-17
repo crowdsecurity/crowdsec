@@ -728,15 +728,15 @@ func TestAPICSendMetrics(t *testing.T) {
 	}{
 		{
 			name:            "basic",
-			duration:        time.Millisecond * 5,
-			metricsInterval: time.Millisecond,
+			duration:        time.Millisecond * 30,
+			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
 			setUp:           func() {},
 		},
 		{
 			name:            "with some metrics",
-			duration:        time.Millisecond * 5,
-			metricsInterval: time.Millisecond,
+			duration:        time.Millisecond * 30,
+			metricsInterval: time.Millisecond * 5,
 			expectedCalls:   5,
 			setUp: func() {
 				api.dbClient.Ent.Machine.Create().
@@ -862,7 +862,8 @@ func TestAPICPull(t *testing.T) {
 					panic(err)
 				}
 			}()
-			time.Sleep(time.Millisecond * 10)
+			//Slightly long because the CI runner for windows are slow, and this can lead to random failure
+			time.Sleep(time.Millisecond * 500)
 			logrus.SetOutput(os.Stderr)
 			assert.Contains(t, buf.String(), testCase.logContains)
 			assertTotalDecisionCount(t, api.dbClient, testCase.expectedDecisionCount)

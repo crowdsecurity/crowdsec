@@ -193,10 +193,10 @@ func (t *HubTestItem) InstallHub() error {
 					//return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
 				}
 
-				customParserPathSplit := strings.Split(customParserPath, "/")
-				customParserName := customParserPathSplit[len(customParserPathSplit)-1]
+				customParserPathSplit, customParserName := filepath.Split(customParserPath)
 				// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-				customParserStage := customParserPathSplit[len(customParserPathSplit)-3]
+				splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
+				customParserStage := splittedPath[len(splittedPath)-3]
 
 				// check if stage exist
 				hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))

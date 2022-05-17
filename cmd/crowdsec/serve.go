@@ -179,10 +179,11 @@ func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 
 func HandleSignals(cConfig *csconfig.Config) int {
 	signalChan := make(chan os.Signal, 1)
+	//We add os.Interrupt mostly to ease windows dev, it allows to simulate a clean shutdown when running in the console
 	signal.Notify(signalChan,
 		syscall.SIGHUP,
-		syscall.SIGINT,
-		syscall.SIGTERM)
+		syscall.SIGTERM,
+		os.Interrupt)
 
 	exitChan := make(chan int)
 	go func() {
@@ -200,7 +201,7 @@ func HandleSignals(cConfig *csconfig.Config) int {
 					log.Fatalf("Reload handler failure : %s", err)
 				}
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
-			case syscall.SIGINT, syscall.SIGTERM:
+			case os.Interrupt, syscall.SIGTERM:
 				log.Warningf("SIGTERM received, shutting down")
 				if err := shutdown(s, cConfig); err != nil {
 					log.Fatalf("failed shutdown : %s", err)

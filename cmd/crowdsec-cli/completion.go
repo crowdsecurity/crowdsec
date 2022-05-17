@@ -9,7 +9,7 @@ import (
 func NewCompletionCmd() *cobra.Command {
 
 	var completionCmd = &cobra.Command{
-		Use:   "completion [bash|zsh]",
+		Use:   "completion [bash|zsh|powershell|fish]",
 		Short: "Generate completion script",
 		Long: `To load completions:
 
@@ -49,10 +49,25 @@ func NewCompletionCmd() *cobra.Command {
   $ cscli completion zsh > "${fpath[1]}/_cscli"
 
   # You will need to start a new shell for this setup to take effect.
+
+### fish:
+` + "```shell" + `
+  $ cscli completion fish | source
+
+  # To load completions for each session, execute once:
+  $ cscli completion fish > ~/.config/fish/completions/cscli.fish
+` + "```" + `
+### PowerShell:
+` + "```powershell" + `
+  PS> cscli completion powershell | Out-String | Invoke-Expression
+
+  # To load completions for every new session, run:
+  PS> cscli completion powershell > cscli.ps1
+  # and source this file from your PowerShell profile.
 ` + "```",
 		DisableFlagsInUseLine: true,
 		DisableAutoGenTag:     true,
-		ValidArgs:             []string{"bash", "zsh"},
+		ValidArgs:             []string{"bash", "zsh", "powershell", "fish"},
 		Args:                  cobra.ExactValidArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			switch args[0] {
@@ -60,9 +75,10 @@ func NewCompletionCmd() *cobra.Command {
 				cmd.Root().GenBashCompletion(os.Stdout)
 			case "zsh":
 				cmd.Root().GenZshCompletion(os.Stdout)
-				/*case "fish":
+			case "powershell":
+				cmd.Root().GenPowerShellCompletion(os.Stdout)
+			case "fish":
 				cmd.Root().GenFishCompletion(os.Stdout, true)
-				*/
 			}
 		},
 	}
