@@ -49,7 +49,6 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: fmt.Sprintf("while reading %s: open %s: no such file or directory", testXXFullPath, testXXFullPath),
 		},
 		{
 			name: "basic bad file content",
