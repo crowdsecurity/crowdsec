@@ -317,7 +317,7 @@ func (w *WinEventLogSource) GetMode() string {
 }
 
 func (w *WinEventLogSource) SupportedModes() []string {
-	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
+	return []string{configuration.TAIL_MODE}
 }
 
 func (w *WinEventLogSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
