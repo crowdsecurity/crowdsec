@@ -16,6 +16,7 @@ import (
 
 type Uniq struct {
 	DistinctCompiled *vm.Program
+	KeyCache         map[string]bool
 }
 
 func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
@@ -26,17 +27,15 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 			return &msg
 		}
 		leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
-		for _, evt := range leaky.Queue.GetQueue() {
-			if val, err := getElement(evt, u.DistinctCompiled); err == nil && val == element {
-				leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
-				return nil
-			}
-			if err != nil {
-				leaky.logger.Errorf("Uniq filter exec failed : %v", err)
-			}
+		if _, ok := u.KeyCache[element]; !ok {
+			leaky.logger.Debugf("Uniq(%s) : ok", element)
+			u.KeyCache[element] = true
+			return &msg
+
+		} else {
+			leaky.logger.Debugf("Uniq(%s) : ko, discard event", element)
+			return nil
 		}
-		leaky.logger.Debugf("Uniq(%s) : ok", element)
-		return &msg
 	}
 }
 
@@ -50,6 +49,7 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
 
 	u.DistinctCompiled, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	u.KeyCache = make(map[string]bool)
 	return err
 }
 

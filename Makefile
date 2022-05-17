@@ -166,10 +166,18 @@ dummy-plugin_static:goversion
 testclean: bats-clean
 	@$(RM) pkg/apiserver/ent $(WIN_IGNORE_ERR)
 	@$(RM) pkg/cwhub/hubdir $(WIN_IGNORE_ERR)
+	@$(RM) pkg/cwhub/install $(WIN_IGNORE_ERR)
+	@$(RM) pkg/types/example.txt $(WIN_IGNORE_ERR)
 
 .PHONY: test
+test: export AWS_ENDPOINT_FORCE=http://localhost:4566
 test: goversion
+	@echo NOTE: You need Docker, docker-compose and run \"make localstack\" in a separate shell
 	$(GOTEST) $(LD_OPTS) ./...
+
+.PHONY: localstack
+localstack:
+	docker-compose -f tests/localstack/docker-compose.yml up
 
 package-common:
 	@echo "Building Release to dir $(RELDIR)"
