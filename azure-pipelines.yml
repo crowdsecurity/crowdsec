@@ -95,6 +95,7 @@ stages:
                     action: 'edit'
                     tag: '$(GetLatestPrelease.LatestPreRelease)'
                     assetUploadMode: 'replace'
+                    addChangeLog: false
                     isPreRelease: true #we force prerelease because the pipeline is invoked on tag creation, which happens when we do a prerelease
                     #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
                     assets: |
