@@ -218,7 +218,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err := m.LoadConfig(metabaseConfigPath); err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("%s", m.Config.Password)
+			log.Printf("'%s'", m.Config.Password)
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashShowPassword)
