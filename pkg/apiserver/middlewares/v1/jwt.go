@@ -91,15 +91,9 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 				return nil, fmt.Errorf("error generating password")
 			}
 			password := strfmt.Password(pwd)
-			_, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true, types.TlsAuthType)
+			clientMachine, err = j.DbClient.CreateMachine(&machineID, &password, "", true, true, types.TlsAuthType)
 			if err != nil {
 				return "", errors.Wrapf(err, "while creating machine entry for %s", machineID)
-			}
-			clientMachine, err = j.DbClient.Ent.Machine.Query().
-				Where(machine.MachineId(machineID)).
-				First(j.DbClient.CTX)
-			if err != nil {
-				return "", errors.Wrapf(err, "while selecting machine entry for %s after creation", machineID)
 			}
 		} else if err != nil {
 			return "", errors.Wrapf(err, "while selecting machine entry for %s", machineID)
