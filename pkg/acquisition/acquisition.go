@@ -176,6 +176,7 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 		dec.SetStrict(true)
 		for {
 			var sub configuration.DataSourceCommonCfg
+			var idx int
 			err = dec.Decode(&sub)
 			if err != nil {
 				if err == io.EOF {
@@ -193,21 +194,23 @@ func LoadAcquisitionFromFile(config *csconfig.CrowdsecServiceCfg) ([]DataSource,
 			if len(sub.Labels) == 0 {
 				if sub.Source == "" {
 					log.Debugf("skipping empty item in %s", acquisFile)
+					idx += 1
 					continue
 				}
-				return nil, fmt.Errorf("missing labels in %s", acquisFile)
+				return nil, fmt.Errorf("missing labels in %s (position: %d)", acquisFile, idx)
 			}
 			if sub.Source == "" {
-				return nil, fmt.Errorf("data source type is empty ('source') in %s", acquisFile)
+				return nil, fmt.Errorf("data source type is empty ('source') in %s (position: %d)", acquisFile, idx)
 			}
 			if GetDataSourceIface(sub.Source) == nil {
-				return nil, fmt.Errorf("unknown data source %s in %s", sub.Source, acquisFile)
+				return nil, fmt.Errorf("unknown data source %s in %s (position: %d)", sub.Source, acquisFile, idx)
 			}
 			src, err := DataSourceConfigure(sub)
 			if err != nil {
-				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s", sub.Source, acquisFile)
+				return nil, errors.Wrapf(err, "while configuring datasource of type %s from %s (position: %d)", sub.Source, acquisFile, idx)
 			}
 			sources = append(sources, *src)
+			idx += 1
 		}
 	}
 	return sources, nil
