@@ -16,7 +16,7 @@ on:
       - 'README.md'
 jobs:
   golangci:
-    name: lint
+    name: lint-windows
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v2
