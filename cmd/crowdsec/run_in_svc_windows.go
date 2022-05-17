@@ -15,7 +15,7 @@ import (
 func StartRunSvc() {
 
 	const svcName = "CrowdSec"
-	const svcDisplayName = "massively multiplayer firewall"
+	const svcDescription = "Crowdsec IPS/IDS"
 
 	isRunninginService, err := svc.IsWindowsService()
 	if err != nil {
@@ -27,7 +27,7 @@ func StartRunSvc() {
 	}
 
 	if flags.WinSvc == "Install" {
-		err = installService(svcName, svcDisplayName)
+		err = installService(svcName, svcDescription)
 		if err != nil {
 			log.Fatalf("failed to %s %s: %v", flags.WinSvc, svcName, err)
 		}
