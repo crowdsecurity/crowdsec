@@ -31,6 +31,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+func trimcr(s string) string {
+	return strings.ReplaceAll(s, "\r\n", "\n")
+}
+
 func mustRead(t testing.TB, fname string) []byte {
 	contents, err := ioutil.ReadFile(fname)
 	require.NoError(t, err, "failed to read file: %s", fname)
@@ -97,7 +101,7 @@ func TestIntegration(t *testing.T) {
 	merged, err := YAML([][]byte{base, prod}, true /* strict */)
 	require.NoError(t, err, "merge failed")
 
-	if !assert.Equal(t, string(expect), merged.String(), "unexpected contents") {
+	if !assert.Equal(t, trimcr(string(expect)), merged.String(), "unexpected contents") {
 		dump(t, merged.String(), string(expect))
 	}
 }

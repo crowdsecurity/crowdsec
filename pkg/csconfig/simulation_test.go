@@ -89,7 +89,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: fmt.Sprintf("while reading '%s': open %s: The system cannot find the file specified.", testXXFullPath, testXXFullPath),
+			err: fmt.Sprintf("while reading %s: open %s: The system cannot find the file specified.", testXXFullPath, testXXFullPath),
 		})
 	} else {
 		tests = append(tests, struct {
@@ -106,7 +106,7 @@ func TestSimulationLoading(t *testing.T) {
 				},
 				Crowdsec: &CrowdsecServiceCfg{},
 			},
-			err: fmt.Sprintf("while reading '%s': open %s: no such file or directory", testXXFullPath, testXXFullPath),
+			err: fmt.Sprintf("while reading %s: open %s: no such file or directory", testXXFullPath, testXXFullPath),
 		})
 	}
 

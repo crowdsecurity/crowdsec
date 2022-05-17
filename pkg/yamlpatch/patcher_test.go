@@ -38,7 +38,7 @@ func TestMergedPatchContent(t *testing.T) {
 			"notayaml",
 			"",
 			"",
-			"/config.yaml: yaml: unmarshal errors:",
+			"config.yaml: yaml: unmarshal errors:",
 		},
 		{
 			"invalid yaml in base (detailed message)",
@@ -52,7 +52,7 @@ func TestMergedPatchContent(t *testing.T) {
 			"",
 			"notayaml",
 			"",
-			"/config.yaml.local: yaml: unmarshal errors:",
+			"config.yaml.local: yaml: unmarshal errors:",
 		},
 		{
 			"invalid yaml in patch (detailed message)",
@@ -260,7 +260,7 @@ func TestPrependedPatchContent(t *testing.T) {
 			"blablabla",
 			"",
 			"",
-			"/config.yaml: yaml: unmarshal errors:",
+			"config.yaml: yaml: unmarshal errors:",
 		},
 		{
 			"invalid yaml in base (detailed message)",
@@ -274,7 +274,7 @@ func TestPrependedPatchContent(t *testing.T) {
 			"",
 			"blablabla",
 			"",
-			"/config.yaml.local: yaml: unmarshal errors:",
+			"config.yaml.local: yaml: unmarshal errors:",
 		},
 		{
 			"invalid yaml in patch (detailed message)",
