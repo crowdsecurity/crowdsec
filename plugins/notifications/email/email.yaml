@@ -37,3 +37,9 @@ receiver_emails:
 # One of "ssltls", "none"
 encryption_type: ssltls
 
+---
+
+# type: email
+# name: email_second_notification
+# ...
+
