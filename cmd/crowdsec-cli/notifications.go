@@ -173,7 +173,7 @@ func getNotificationsConfiguration() map[string]NotificationsCfg {
 					}
 					tmp := ncfgs[pc.Name]
 					for _, pr := range tmp.Profiles {
-						var profiles []*csconfig.ProfileCfg = []*csconfig.ProfileCfg{}
+						var profiles []*csconfig.ProfileCfg
 						if pr.Name == profile.Name {
 							continue
 						}
