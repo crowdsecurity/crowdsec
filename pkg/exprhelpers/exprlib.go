@@ -188,6 +188,7 @@ func IsIPV6(ip string) bool {
 		return false
 	}
 
+	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
 	return ipParsed.To4() == nil
 }
 
