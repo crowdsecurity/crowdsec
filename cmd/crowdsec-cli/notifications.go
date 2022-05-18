@@ -22,11 +22,6 @@ type NotificationsCfg struct {
 	Profiles []*csconfig.ProfileCfg `json:"associated_profiles"`
 }
 
-type Plugins struct {
-	config   csplugin.PluginConfig
-	profiles []string
-}
-
 func NewNotificationsCmd() *cobra.Command {
 	var cmdNotifications = &cobra.Command{
 		Use:               "Notifications [action]",
@@ -88,10 +83,12 @@ func NewNotificationsCmd() *cobra.Command {
 					for _, p := range b.Profiles {
 						profilesList = append(profilesList, p.Name)
 					}
-					csvwriter.Write([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
+					err := csvwriter.Write([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
+					if err != nil {
+						log.Fatalf("failed to write raw content: %s", err)
+					}
 				}
 				csvwriter.Flush()
-
 			}
 		},
 	}
@@ -176,10 +173,10 @@ func getNotificationsConfiguration() map[string]NotificationsCfg {
 					}
 					tmp := ncfgs[pc.Name]
 					for _, pr := range tmp.Profiles {
+						var profiles []*csconfig.ProfileCfg = []*csconfig.ProfileCfg{}
 						if pr.Name == profile.Name {
 							continue
 						}
-						profiles := []*csconfig.ProfileCfg{}
 						profiles = append(tmp.Profiles, profile)
 						ncfgs[pc.Name] = NotificationsCfg{
 							Config:   tmp.Config,
