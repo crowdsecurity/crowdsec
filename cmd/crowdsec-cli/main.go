@@ -113,6 +113,8 @@ func main() {
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
 		ValidArgs:         validArgs,
 		DisableAutoGenTag: true,
+		SilenceErrors:     true,
+		SilenceUsage:      true,
 		/*TBD examples*/
 	}
 	var cmdDocGen = &cobra.Command{
