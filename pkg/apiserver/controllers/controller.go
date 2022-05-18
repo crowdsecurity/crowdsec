@@ -87,6 +87,7 @@ func (c *Controller) NewV1() error {
 		jwtAuth.DELETE("/alerts", handlerV1.DeleteAlerts)
 		jwtAuth.DELETE("/decisions", handlerV1.DeleteDecisions)
 		jwtAuth.DELETE("/decisions/:decision_id", handlerV1.DeleteDecisionById)
+		jwtAuth.GET("/heartbeat", handlerV1.HeartBeat)
 	}
 
 	apiKeyAuth := groupV1.Group("")
