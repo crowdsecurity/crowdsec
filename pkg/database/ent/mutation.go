@@ -5232,26 +5232,27 @@ func (m *EventMutation) ResetEdge(name string) error {
 // MachineMutation represents an operation that mutates the Machine nodes in the graph.
 type MachineMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	created_at    *time.Time
-	updated_at    *time.Time
-	last_push     *time.Time
-	machineId     *string
-	password      *string
-	ipAddress     *string
-	scenarios     *string
-	version       *string
-	isValidated   *bool
-	status        *string
-	clearedFields map[string]struct{}
-	alerts        map[int]struct{}
-	removedalerts map[int]struct{}
-	clearedalerts bool
-	done          bool
-	oldValue      func(context.Context) (*Machine, error)
-	predicates    []predicate.Machine
+	op             Op
+	typ            string
+	id             *int
+	created_at     *time.Time
+	updated_at     *time.Time
+	last_push      *time.Time
+	last_heartbeat *time.Time
+	machineId      *string
+	password       *string
+	ipAddress      *string
+	scenarios      *string
+	version        *string
+	isValidated    *bool
+	status         *string
+	clearedFields  map[string]struct{}
+	alerts         map[int]struct{}
+	removedalerts  map[int]struct{}
+	clearedalerts  bool
+	done           bool
+	oldValue       func(context.Context) (*Machine, error)
+	predicates     []predicate.Machine
 }
 
 var _ ent.Mutation = (*MachineMutation)(nil)
@@ -5497,6 +5498,55 @@ func (m *MachineMutation) LastPushCleared() bool {
 func (m *MachineMutation) ResetLastPush() {
 	m.last_push = nil
 	delete(m.clearedFields, machine.FieldLastPush)
+}
+
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (m *MachineMutation) SetLastHeartbeat(t time.Time) {
+	m.last_heartbeat = &t
+}
+
+// LastHeartbeat returns the value of the "last_heartbeat" field in the mutation.
+func (m *MachineMutation) LastHeartbeat() (r time.Time, exists bool) {
+	v := m.last_heartbeat
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastHeartbeat returns the old "last_heartbeat" field's value of the Machine entity.
+// If the Machine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MachineMutation) OldLastHeartbeat(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastHeartbeat is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastHeartbeat requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastHeartbeat: %w", err)
+	}
+	return oldValue.LastHeartbeat, nil
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (m *MachineMutation) ClearLastHeartbeat() {
+	m.last_heartbeat = nil
+	m.clearedFields[machine.FieldLastHeartbeat] = struct{}{}
+}
+
+// LastHeartbeatCleared returns if the "last_heartbeat" field was cleared in this mutation.
+func (m *MachineMutation) LastHeartbeatCleared() bool {
+	_, ok := m.clearedFields[machine.FieldLastHeartbeat]
+	return ok
+}
+
+// ResetLastHeartbeat resets all changes to the "last_heartbeat" field.
+func (m *MachineMutation) ResetLastHeartbeat() {
+	m.last_heartbeat = nil
+	delete(m.clearedFields, machine.FieldLastHeartbeat)
 }
 
 // SetMachineId sets the "machineId" field.
@@ -5863,7 +5913,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -5872,6 +5922,9 @@ func (m *MachineMutation) Fields() []string {
 	}
 	if m.last_push != nil {
 		fields = append(fields, machine.FieldLastPush)
+	}
+	if m.last_heartbeat != nil {
+		fields = append(fields, machine.FieldLastHeartbeat)
 	}
 	if m.machineId != nil {
 		fields = append(fields, machine.FieldMachineId)
@@ -5908,6 +5961,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case machine.FieldLastPush:
 		return m.LastPush()
+	case machine.FieldLastHeartbeat:
+		return m.LastHeartbeat()
 	case machine.FieldMachineId:
 		return m.MachineId()
 	case machine.FieldPassword:
@@ -5937,6 +5992,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUpdatedAt(ctx)
 	case machine.FieldLastPush:
 		return m.OldLastPush(ctx)
+	case machine.FieldLastHeartbeat:
+		return m.OldLastHeartbeat(ctx)
 	case machine.FieldMachineId:
 		return m.OldMachineId(ctx)
 	case machine.FieldPassword:
@@ -5980,6 +6037,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLastPush(v)
+		return nil
+	case machine.FieldLastHeartbeat:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastHeartbeat(v)
 		return nil
 	case machine.FieldMachineId:
 		v, ok := value.(string)
@@ -6069,6 +6133,9 @@ func (m *MachineMutation) ClearedFields() []string {
 	if m.FieldCleared(machine.FieldLastPush) {
 		fields = append(fields, machine.FieldLastPush)
 	}
+	if m.FieldCleared(machine.FieldLastHeartbeat) {
+		fields = append(fields, machine.FieldLastHeartbeat)
+	}
 	if m.FieldCleared(machine.FieldScenarios) {
 		fields = append(fields, machine.FieldScenarios)
 	}
@@ -6101,6 +6168,9 @@ func (m *MachineMutation) ClearField(name string) error {
 	case machine.FieldLastPush:
 		m.ClearLastPush()
 		return nil
+	case machine.FieldLastHeartbeat:
+		m.ClearLastHeartbeat()
+		return nil
 	case machine.FieldScenarios:
 		m.ClearScenarios()
 		return nil
@@ -6126,6 +6196,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldLastPush:
 		m.ResetLastPush()
+		return nil
+	case machine.FieldLastHeartbeat:
+		m.ResetLastHeartbeat()
 		return nil
 	case machine.FieldMachineId:
 		m.ResetMachineId()
