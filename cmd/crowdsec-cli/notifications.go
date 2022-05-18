@@ -24,7 +24,7 @@ type NotificationsCfg struct {
 
 func NewNotificationsCmd() *cobra.Command {
 	var cmdNotifications = &cobra.Command{
-		Use:               "Notifications [action]",
+		Use:               "notifications [action]",
 		Short:             "Helper for notification plugin configuration",
 		Long:              "To list/inspect/test notification template",
 		Args:              cobra.MinimumNArgs(1),
@@ -141,7 +141,7 @@ func NewNotificationsCmd() *cobra.Command {
 func getNotificationsConfiguration() map[string]NotificationsCfg {
 	pcfgs := map[string]csplugin.PluginConfig{}
 	wf := func(path string, info fs.FileInfo, err error) error {
-		name := fmt.Sprintf("%s/%s", csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
+		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
 			if err != nil {
