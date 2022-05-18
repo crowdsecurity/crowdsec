@@ -18,9 +18,9 @@ func TestNormalLoad(t *testing.T) {
 
 	_, err = NewConfig("./tests/xxx.yaml", false, false)
 	if runtime.GOOS != "windows" {
-		assert.EqualError(t, err, "while reading ./tests/xxx.yaml: open ./tests/xxx.yaml: no such file or directory")
+		assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: no such file or directory")
 	} else {
-		assert.EqualError(t, err, "while reading ./tests/xxx.yaml: open ./tests/xxx.yaml: The system cannot find the file specified.")
+		assert.EqualError(t, err, "while reading yaml file: open ./tests/xxx.yaml: The system cannot find the file specified.")
 	}
 
 	_, err = NewConfig("./tests/simulation.yaml", false, false)

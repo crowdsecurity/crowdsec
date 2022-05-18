@@ -58,7 +58,7 @@ func (l *LocalApiClientCfg) Load() error {
 	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return errors.Wrap(err, "while reading credential configuration file")
+		return err
 	}
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {

@@ -154,15 +154,15 @@ declare stderr
     rm -f "${LOCAL_API_CREDENTIALS}"
     run -1 --separate-stderr cscli lapi status
     run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 
     run -1 --separate-stderr cscli alerts list
     run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 
     run -1 --separate-stderr cscli decisions list
     run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading credential configuration file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 }
 
 @test "${FILE} cscli - empty LAPI credentials file" {
