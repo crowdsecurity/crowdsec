@@ -1,0 +1,13 @@
+fun:
+  - lamborghini
+  - porsche
+
+practical:
+  honda: civic
+  nissan: altima
+
+occupants:
+  honda:
+    passenger: arthur
+    backseat:
+      - nora

@@ -111,15 +111,10 @@ func CopyDir(src string, dest string) error {
 }
 
 func AssertErrorContains(t *testing.T, err error, expectedErr string) {
-	if expectedErr == "" {
-		if err != nil {
-			t.Fatalf("Unexpected error: %s", err)
-		}
-		assert.Equal(t, err, nil)
+	if expectedErr != "" {
+		assert.ErrorContains(t, err, expectedErr)
 		return
 	}
-	if err == nil {
-		t.Fatalf("Expected '%s', got nil", expectedErr)
-	}
-	assert.Contains(t, err.Error(), expectedErr)
+
+	assert.NoError(t, err)
 }

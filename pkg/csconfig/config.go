@@ -2,11 +2,11 @@ package csconfig
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -46,9 +46,10 @@ func (c *Config) Dump() error {
 }
 
 func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, error) {
-	fcontent, err := ioutil.ReadFile(configFile)
+	patcher := yamlpatch.NewPatcher(configFile, ".local")
+	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read config file")
+		return nil, err
 	}
 	configData := os.ExpandEnv(string(fcontent))
 	cfg := Config{
@@ -59,7 +60,8 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, 
 
 	err = yaml.UnmarshalStrict([]byte(configData), &cfg)
 	if err != nil {
-		return nil, err
+		// this is actually the "merged" yaml
+		return nil, errors.Wrap(err, configFile)
 	}
 	return &cfg, nil
 }
