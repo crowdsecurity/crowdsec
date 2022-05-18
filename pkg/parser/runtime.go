@@ -17,7 +17,6 @@ import (
 
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -38,7 +37,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	log.Debugf("setting target %s to %s", target, value)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Errorf("Runtime error while trying to set '%s' in %s : %+v", target, spew.Sdump(evt), r)
+			log.Errorf("Runtime error while trying to set '%s': %+v", target, r)
 			return
 		}
 	}()
@@ -65,11 +64,17 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		case reflect.Struct:
 			tmp := iter.FieldByName(f)
 			if !tmp.IsValid() {
-				log.Debugf("%s IsValid false", f)
+				log.Errorf("%s IsValid false", f)
 				return false
+			}
+			if tmp.Kind() == reflect.Ptr {
+				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
 			break
+		case reflect.Ptr:
+			tmp := iter.Elem()
+			iter = reflect.Indirect(tmp.FieldByName(f))
 		default:
 			log.Errorf("unexpected type %s in '%s'", iter.Kind(), target)
 			return false
