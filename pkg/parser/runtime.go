@@ -64,7 +64,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		case reflect.Struct:
 			tmp := iter.FieldByName(f)
 			if !tmp.IsValid() {
-				log.Errorf("%s IsValid false", f)
+				log.Debugf("'%s' is not a valid target because '%s' is not valid", target, f)
 				return false
 			}
 			if tmp.Kind() == reflect.Ptr {
