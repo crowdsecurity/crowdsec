@@ -13,6 +13,8 @@ setup_file() {
     MOCK_PORT="9999"
     MOCK_URL="http://localhost:${MOCK_PORT}"
     export MOCK_URL
+    PLUGIN_DIR=$(config_yq '.config_paths.plugin_dir')
+    export PLUGIN_DIR
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
     yq e '
@@ -39,6 +41,9 @@ setup_file() {
 
 teardown_file() {
     load "../lib/teardown_file.sh"
+    rm -f "${PLUGIN_DIR}"/badname
+    chmod go-w "${PLUGIN_DIR}"/notification-http
+    ./instance-crowdsec stop
     ./instance-mock-http stop
 }
 
@@ -48,7 +53,7 @@ setup() {
 
 #----------
 
-@test "$FILE add two bans" {
+@test "${FILE} add two bans" {
     run -0 cscli decisions add --ip 1.2.3.4 --duration 30s
     assert_output --partial 'Decision successfully added'
 
@@ -57,25 +62,26 @@ setup() {
     sleep 5
 }
 
-@test "$FILE expected 1 log line from http server" {
+@test "${FILE} expected 1 log line from http server" {
     run -0 wc -l <"${MOCK_OUT}"
     # wc can pad with spaces on some platforms
     run -0 tr -d ' ' < <(output)
     assert_output 1
 }
 
-@test "$FILE expected to receive 2 alerts in the request body from plugin" {
+@test "${FILE} expected to receive 2 alerts in the request body from plugin" {
     run -0 jq -r '.request_body' <"${MOCK_OUT}"
     run -0 jq -r 'length' <(output)
     assert_output 2
 }
 
-@test "$FILE expected to receive IP 1.2.3.4 as value of first decision" {
+@test "${FILE} expected to receive IP 1.2.3.4 as value of first decision" {
     run -0 jq -r '.request_body[0].decisions[0].value' <"${MOCK_OUT}"
     assert_output 1.2.3.4
 }
 
-@test "$FILE expected to receive IP 1.2.3.5 as value of second decision" {
+@test "${FILE} expected to receive IP 1.2.3.5 as value of second decision" {
     run -0 jq -r '.request_body[1].decisions[0].value' <"${MOCK_OUT}"
     assert_output 1.2.3.5
 }
+
