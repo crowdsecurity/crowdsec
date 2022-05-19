@@ -33,20 +33,28 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 	t.Go(func() error {
 		defer types.CatchPanic("crowdsec/apiClient/heartbeat")
+		hbTimer := time.NewTicker(1 * time.Minute)
 		for {
-			time.Sleep(1 * time.Minute)
-			ok, resp, err := h.Ping(ctx)
-			if err != nil {
-				log.Errorf("heartbeat error : %s", err)
-				continue
-			}
-			if resp.Response.StatusCode != http.StatusOK {
-				log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)
-				continue
-			}
-			if !ok {
-				log.Errorf("heartbeat returned false")
-				continue
+			select {
+			case <-hbTimer.C:
+				log.Debug("heartbeat: sending heartbeat")
+				ok, resp, err := h.Ping(ctx)
+				if err != nil {
+					log.Errorf("heartbeat error : %s", err)
+					continue
+				}
+				if resp.Response.StatusCode != http.StatusOK {
+					log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)
+					continue
+				}
+				if !ok {
+					log.Errorf("heartbeat returned false")
+					continue
+				}
+			case <-t.Dying():
+				log.Debugf("heartbeat: stopping")
+				hbTimer.Stop()
+				return nil
 			}
 		}
 	})
