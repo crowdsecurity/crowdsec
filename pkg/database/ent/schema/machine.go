@@ -24,6 +24,9 @@ func (Machine) Fields() []ent.Field {
 		field.Time("last_push").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
+		field.Time("last_heartbeat").
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("machineId").Unique(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),

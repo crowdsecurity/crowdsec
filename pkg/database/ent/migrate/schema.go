@@ -155,6 +155,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_push", Type: field.TypeTime, Nullable: true},
+		{Name: "last_heartbeat", Type: field.TypeTime, Nullable: true},
 		{Name: "machine_id", Type: field.TypeString, Unique: true},
 		{Name: "password", Type: field.TypeString},
 		{Name: "ip_address", Type: field.TypeString},

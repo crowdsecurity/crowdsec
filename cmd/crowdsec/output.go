@@ -100,6 +100,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}); err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
+	//start the heartbeat service
+	log.Debugf("Starting HeartBeat service")
+	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
 LOOP:
 	for {
 		select {

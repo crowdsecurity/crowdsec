@@ -65,6 +65,18 @@ func (mu *MachineUpdate) ClearLastPush() *MachineUpdate {
 	return mu
 }
 
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (mu *MachineUpdate) SetLastHeartbeat(t time.Time) *MachineUpdate {
+	mu.mutation.SetLastHeartbeat(t)
+	return mu
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (mu *MachineUpdate) ClearLastHeartbeat() *MachineUpdate {
+	mu.mutation.ClearLastHeartbeat()
+	return mu
+}
+
 // SetMachineId sets the "machineId" field.
 func (mu *MachineUpdate) SetMachineId(s string) *MachineUpdate {
 	mu.mutation.SetMachineId(s)
@@ -273,6 +285,10 @@ func (mu *MachineUpdate) defaults() {
 		v := machine.UpdateDefaultLastPush()
 		mu.mutation.SetLastPush(v)
 	}
+	if _, ok := mu.mutation.LastHeartbeat(); !ok && !mu.mutation.LastHeartbeatCleared() {
+		v := machine.UpdateDefaultLastHeartbeat()
+		mu.mutation.SetLastHeartbeat(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -340,6 +356,19 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Column: machine.FieldLastPush,
+		})
+	}
+	if value, ok := mu.mutation.LastHeartbeat(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastHeartbeat,
+		})
+	}
+	if mu.mutation.LastHeartbeatCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldLastHeartbeat,
 		})
 	}
 	if value, ok := mu.mutation.MachineId(); ok {
@@ -515,6 +544,18 @@ func (muo *MachineUpdateOne) SetLastPush(t time.Time) *MachineUpdateOne {
 // ClearLastPush clears the value of the "last_push" field.
 func (muo *MachineUpdateOne) ClearLastPush() *MachineUpdateOne {
 	muo.mutation.ClearLastPush()
+	return muo
+}
+
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (muo *MachineUpdateOne) SetLastHeartbeat(t time.Time) *MachineUpdateOne {
+	muo.mutation.SetLastHeartbeat(t)
+	return muo
+}
+
+// ClearLastHeartbeat clears the value of the "last_heartbeat" field.
+func (muo *MachineUpdateOne) ClearLastHeartbeat() *MachineUpdateOne {
+	muo.mutation.ClearLastHeartbeat()
 	return muo
 }
 
@@ -733,6 +774,10 @@ func (muo *MachineUpdateOne) defaults() {
 		v := machine.UpdateDefaultLastPush()
 		muo.mutation.SetLastPush(v)
 	}
+	if _, ok := muo.mutation.LastHeartbeat(); !ok && !muo.mutation.LastHeartbeatCleared() {
+		v := machine.UpdateDefaultLastHeartbeat()
+		muo.mutation.SetLastHeartbeat(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -817,6 +862,19 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeTime,
 			Column: machine.FieldLastPush,
+		})
+	}
+	if value, ok := muo.mutation.LastHeartbeat(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastHeartbeat,
+		})
+	}
+	if muo.mutation.LastHeartbeatCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Column: machine.FieldLastHeartbeat,
 		})
 	}
 	if value, ok := muo.mutation.MachineId(); ok {
