@@ -19,6 +19,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/jszwec/csvutil"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -147,20 +148,14 @@ func NewDecisionsCmd() *cobra.Command {
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				log.Fatalf(err.Error())
-			}
-			if csConfig.API.Client == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
+				return errors.Wrap(err, "loading api client")
 			}
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Client.Credentials.URL, err)
+				return errors.Wrapf(err, "parsing api url %s", csConfig.API.Client.Credentials.URL)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -170,8 +165,9 @@ func NewDecisionsCmd() *cobra.Command {
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				log.Fatalf("creating api client : %s", err)
+				return errors.Wrap(err, "creating api client")
 			}
+			return nil
 		},
 	}
 

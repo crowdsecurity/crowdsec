@@ -58,18 +58,20 @@ func (l *LocalApiClientCfg) Load() error {
 	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
 	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return errors.Wrapf(err, "failed to read api client credential configuration file '%s'", l.CredentialsFilePath)
+		return err
 	}
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {
 		return errors.Wrapf(err, "failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath)
 	}
+	if l.Credentials == nil || l.Credentials.URL == "" {
+		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
+	}
+
 	if l.Credentials != nil && l.Credentials.URL != "" {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL = l.Credentials.URL + "/"
 		}
-	} else {
-		log.Warningf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
 	if l.InsecureSkipVerify == nil {
 		apiclient.InsecureSkipVerify = false
@@ -177,12 +179,12 @@ func (c *Config) LoadAPIServer() error {
 }
 
 func (c *Config) LoadAPIClient() error {
-	if c.API != nil && c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
-		if err := c.API.Client.Load(); err != nil {
-			return err
-		}
-	} else {
+	if c.API == nil || c.API.Client == nil || c.API.Client.CredentialsFilePath == "" || c.DisableAgent {
 		return fmt.Errorf("no API client section in configuration")
+	}
+
+	if err := c.API.Client.Load(); err != nil {
+		return err
 	}
 
 	return nil

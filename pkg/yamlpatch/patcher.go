@@ -29,7 +29,7 @@ func readYAML(filePath string) ([]byte, error) {
 	var err error
 
 	if content, err = os.ReadFile(filePath); err != nil {
-		return nil, errors.Wrapf(err, "while reading %s", filePath)
+		return nil, errors.Wrap(err, "while reading yaml file")
 	}
 
 	var yamlMap map[interface{}]interface{}

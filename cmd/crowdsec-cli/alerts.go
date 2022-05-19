@@ -18,6 +18,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -197,20 +198,14 @@ func NewAlertsCmd() *cobra.Command {
 		Short:             "Manage alerts",
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			if err := csConfig.LoadAPIClient(); err != nil {
-				log.Fatalf("loading api client: %s", err.Error())
-			}
-			if csConfig.API.Client == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
+				return errors.Wrap(err, "loading api client")
 			}
 			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("parsing api url: %s", apiURL)
+				return errors.Wrapf(err, "parsing api url %s", apiURL)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -221,8 +216,9 @@ func NewAlertsCmd() *cobra.Command {
 			})
 
 			if err != nil {
-				log.Fatalf("new api client: %s", err.Error())
+				return errors.Wrap(err, "new api client")
 			}
+			return nil
 		},
 	}
 
