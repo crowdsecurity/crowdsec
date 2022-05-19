@@ -70,7 +70,7 @@ teardown() {
 @test "${FILE} local_api_credentials.yaml.local" {
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" > "${CONFIG_YAML}.local"
     run -0 ./instance-crowdsec start
-    run -0 nc -z localhost 8083
+    run -0 ./lib/util/wait-for-port -q 8083
 
     run -0 yq e '.api.client.credentials_path' < "${CONFIG_YAML}"
     LOCAL_API_CREDENTIALS="${output}"
