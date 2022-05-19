@@ -102,7 +102,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}
 	//start the heartbeat service
 	log.Debugf("Starting HeartBeat service")
-	Client.HeartBeat.StartHeartBeat(context.Background(), outputsTomb)
+	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
 LOOP:
 	for {
 		select {

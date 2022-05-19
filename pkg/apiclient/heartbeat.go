@@ -30,7 +30,7 @@ func (h *HeartBeatService) Ping(ctx context.Context) (bool, *Response, error) {
 	return true, resp, nil
 }
 
-func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t tomb.Tomb) {
+func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 	t.Go(func() error {
 		defer types.CatchPanic("crowdsec/apiClient/heartbeat")
 		for {
