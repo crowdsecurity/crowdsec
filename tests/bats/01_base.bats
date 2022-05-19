@@ -31,6 +31,13 @@ declare stderr
     assert_output --partial "Usage:"
     assert_output --partial "cscli [command]"
     assert_output --partial "Available Commands:"
+
+    # no "usage" output after every error
+    run -1 --separate-stderr cscli blahblah
+    run -0 echo "${stderr}"
+    # error is displayed as log entry, not with print
+    assert_output --partial 'level=fatal msg="unknown command \"blahblah\" for \"cscli\""'
+    refute_output --partial 'unknown command "blahblah" for "cscli"'
 }
 
 @test "${FILE} cscli version" {
@@ -208,12 +215,12 @@ declare stderr
     run -1 --separate-stderr cscli alerts list
     run -0 echo "${stderr}"
     assert_output --partial 'parsing api url'
-    assert_output --partial 'invalid port ":-80" after host'
+    assert_output --partial 'invalid port \":-80\" after host'
 
     run -1 --separate-stderr cscli decisions list
     run -0 echo "${stderr}"
     assert_output --partial 'parsing api url'
-    assert_output --partial 'invalid port ":-80" after host'
+    assert_output --partial 'invalid port \":-80\" after host'
 }
 
 @test "${FILE} cscli metrics" {
