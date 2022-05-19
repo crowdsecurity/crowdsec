@@ -18,5 +18,4 @@ func (c *Controller) HeartBeat(gctx *gin.Context) {
 		return
 	}
 	gctx.Status(http.StatusOK)
-	return
 }
