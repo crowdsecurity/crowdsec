@@ -36,8 +36,7 @@ setup_file() {
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
         .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
-        .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" |
-        .common.log_level="trace" | 
+        .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" | 
         .api.server.tls.bouncers_allowed_ou=["bouncer-ou"]
     ' -i "${CONFIG_YAML}"
  
