@@ -100,7 +100,6 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(&tomb.Tomb{})
 	for {
-		fmt.Printf("looping")
 		select {
 		case profileAlert := <-pb.PluginChannel:
 			pb.addProfileAlert(profileAlert)
