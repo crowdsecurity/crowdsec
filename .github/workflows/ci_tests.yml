@@ -66,14 +66,11 @@ jobs:
     name: Coverage
     runs-on: ubuntu-latest
     steps:
-      - name: Set up Go 1.17
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.17
-        id: go
-
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+          path: go/src/github.com/crowdsecurity/crowdsec
 
       - name: Download unit report
         uses: actions/download-artifact@v3
@@ -85,19 +82,30 @@ jobs:
         with:
           name: coverage-bats.out.bz2
 
+#      - name: Environment
+#        run: env | sort
+
       - name: merge coverage reports
         run: |
-          go get -u github.com/wadey/gocovmerge
+          go install github.com/wadey/gocovmerge@latest
           bunzip2 coverage.out.bz2
           bunzip2 coverage-bats.out.bz2
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
           bzip2 <coverage-all.out >coverage-all.out.bz2
+
+#      - name: coverage.out
+#        run: cat coverage.out
+
+#      - name: coverage-bats.out
+#        run: cat coverage-bats.out
 
       - name: gcov2lcov
         uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
+        env:
+          GOPATH: /home/runner/work/crowdsec/crowdsec/go
 
       - name: Coverage report artifact (merged)
         uses: actions/upload-artifact@v2

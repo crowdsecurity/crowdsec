@@ -28,6 +28,6 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
     - name: Build
-      run: make build && go get -u github.com/jandelgado/gcov2lcov
+      run: make build
     - name: All tests
       run: go test -coverprofile coverage.out -covermode=atomic ./...

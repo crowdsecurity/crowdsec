@@ -58,7 +58,7 @@ jobs:
         submodules: false
 
     - name: Build
-      run: make build && go get -u github.com/jandelgado/gcov2lcov && go get -u github.com/ory/go-acc
+      run: make build && go get -u github.com/ory/go-acc
 
     - name: "Run tests"
       run: |
