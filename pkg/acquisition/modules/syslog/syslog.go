@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal"
+	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/influxdata/go-syslog/v3/rfc3164"
