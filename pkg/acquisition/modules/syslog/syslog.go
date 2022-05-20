@@ -7,11 +7,10 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/influxdata/go-syslog/v3/rfc3164"
-	"github.com/influxdata/go-syslog/v3/rfc5424"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -199,7 +198,7 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			logger := s.logger.WithField("client", syslogLine.Client)
 			logger.Tracef("raw: %s", syslogLine)
 			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
-			p := rfc5424.NewParser()
+			/*p := rfc5424.NewParser()
 			m, err := p.Parse(syslogLine.Message)
 			if err != nil {
 				logger.Debugf("could not parse as RFC5424 (%s)", err)
@@ -230,6 +229,17 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 				linesParsed.With(prometheus.Labels{"source": syslogLine.Client,
 					"type": "RFC5424"}).Inc()
 
+			}*/
+			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
+			err := p.Parse(syslogLine.Message)
+			if err != nil {
+				logger.Debugf("could not parse as RFC3164 (%s)", err)
+				continue
+			}
+			line, err = s.buildLogFromSyslog(&p.Timestamp, &p.Hostname, &p.Tag, &p.PID, &p.Message)
+			if err != nil {
+				logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
+				continue
 			}
 			l := types.Line{}
 			l.Raw = line
