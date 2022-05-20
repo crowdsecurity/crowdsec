@@ -134,7 +134,10 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
-			pw.PluginEvents <- pluginName
+			select {
+			case pw.PluginEvents <- pluginName:
+			default:
+			}
 			log.Tracef("sending alerts to %s", pluginName)
 			return
 		}
