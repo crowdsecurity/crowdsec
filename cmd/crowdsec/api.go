@@ -33,6 +33,10 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 			return nil, errors.Wrap(err, "unable to run local API")
 		}
 		log.Info("initiated plugin broker")
+		apiserver := &apiserver.APIServer{
+			URL: "",
+			TLS: &csconfig.TLSCfg{},
+		}
 		apiServer.AttachPluginBroker(&pluginBroker)
 	}
 
