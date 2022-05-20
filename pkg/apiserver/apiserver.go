@@ -30,9 +30,9 @@ var (
 type APIServer struct {
 	URL            string
 	TLS            *csconfig.TLSCfg
+	Controller     *controllers.Controller
 	dbClient       *database.Client
 	logFile        string
-	controller     *controllers.Controller
 	flushScheduler *gocron.Scheduler
 	router         *gin.Engine
 	httpServer     *http.Server
@@ -227,7 +227,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		TLS:            config.TLS,
 		logFile:        logFile,
 		dbClient:       dbClient,
-		controller:     controller,
+		Controller:     controller,
 		flushScheduler: flushScheduler,
 		router:         router,
 		apic:           apiClient,
@@ -323,10 +323,10 @@ func (s *APIServer) Shutdown() error {
 }
 
 func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
-	s.controller.PluginChannel = broker.PluginChannel
+	s.Controller.PluginChannel = broker.PluginChannel
 }
 
 func (s *APIServer) InitController() error {
-	err := s.controller.Init()
+	err := s.Controller.Init()
 	return err
 }

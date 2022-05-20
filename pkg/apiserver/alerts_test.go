@@ -146,7 +146,7 @@ func TestCreateAlertChannels(t *testing.T) {
 	if err != nil {
 		log.Fatalln(err.Error())
 	}
-	apiServer.controller.PluginChannel = make(chan csplugin.ProfileAlert)
+	apiServer.Controller.PluginChannel = make(chan csplugin.ProfileAlert)
 	apiServer.InitController()
 
 	loginResp, err := LoginToTestAPI(apiServer.router, config)
@@ -160,7 +160,7 @@ func TestCreateAlertChannels(t *testing.T) {
 
 	wg.Add(1)
 	go func() {
-		pd = <-apiServer.controller.PluginChannel
+		pd = <-apiServer.Controller.PluginChannel
 		wg.Done()
 	}()
 

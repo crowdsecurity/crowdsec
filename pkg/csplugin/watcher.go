@@ -73,11 +73,6 @@ func (pw *PluginWatcher) Start(tomb *tomb.Tomb) {
 			return nil
 		})
 	}
-
-	pw.tomb.Go(func() error {
-		pw.watchPluginAlertCounts()
-		return nil
-	})
 }
 
 func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
@@ -139,21 +134,8 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
-			return
-		}
-	}
-}
-
-func (pw *PluginWatcher) watchPluginAlertCounts() {
-	for {
-		select {
-		case pluginName := <-pw.Inserts:
-			//we only "count" pending alerts, and watchPluginTicker is actually going to send it
-			if _, ok := pw.PluginConfigByName[pluginName]; ok {
-				curr, _ := pw.AlertCountByPluginName.Get(pluginName)
-				pw.AlertCountByPluginName.Set(pluginName, curr+1)
-			}
-		case <-pw.tomb.Dying():
+			pw.PluginEvents <- pluginName
+			log.Tracef("sending alerts to %s", pluginName)
 			return
 		}
 	}
