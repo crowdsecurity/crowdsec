@@ -82,32 +82,19 @@ func getPluginTypeAndSubtypeFromPath(path string) (string, string, error) {
 }
 
 func getProcessAttr(username string, groupname string) (*syscall.SysProcAttr, error) {
-	u, err := user.Lookup(username)
+	uid, err := getUID(username)
 	if err != nil {
 		return nil, err
 	}
-	g, err := user.LookupGroup(groupname)
+	gid, err := getGID(groupname)
 	if err != nil {
 		return nil, err
 	}
-	uid, err := strconv.ParseInt(u.Uid, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-	if uid < 0 && uid > math.MaxInt32 {
-		return nil, fmt.Errorf("out of bound uid")
-	}
-	gid, err := strconv.ParseInt(g.Gid, 10, 32)
-	if err != nil {
-		return nil, err
-	}
-	if gid < 0 && gid > math.MaxInt32 {
-		return nil, fmt.Errorf("out of bound gid")
-	}
+
 	return &syscall.SysProcAttr{
 		Credential: &syscall.Credential{
-			Uid: uint32(uid),
-			Gid: uint32(gid),
+			Uid: uid,
+			Gid: gid,
 		},
 	}, nil
 }
