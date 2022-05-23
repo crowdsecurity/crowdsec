@@ -20,7 +20,7 @@ import (
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
-	err := exprhelpers.Init()
+	err := exprhelpers.Init(cConfig.API.Server.DbConfig)
 	if err != nil {
 		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
 	}

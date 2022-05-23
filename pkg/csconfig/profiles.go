@@ -18,15 +18,18 @@ import (
 
 //Profile structure(s) are used by the local API to "decide" what kind of decision should be applied when a scenario with an active remediation has been triggered
 type ProfileCfg struct {
-	Name           string                      `yaml:"name,omitempty"`
-	Debug          *bool                       `yaml:"debug,omitempty"`
-	Filters        []string                    `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
-	RuntimeFilters []*vm.Program               `json:"-" yaml:"-"`
-	DebugFilters   []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
-	Decisions      []models.Decision           `yaml:"decisions,omitempty"`
-	OnSuccess      string                      `yaml:"on_success,omitempty"` //continue or break
-	OnFailure      string                      `yaml:"on_failure,omitempty"` //continue or break
-	Notifications  []string                    `yaml:"notifications,omitempty"`
+	Name                string                      `yaml:"name,omitempty"`
+	Debug               *bool                       `yaml:"debug,omitempty"`
+	Filters             []string                    `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
+	RuntimeFilters      []*vm.Program               `json:"-" yaml:"-"`
+	DebugFilters        []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
+	Decisions           []models.Decision           `yaml:"decisions,omitempty"`
+	DurationExpr        string                      `yaml:"decision_expr,omitempty"`
+	RuntimeDurationExpr *vm.Program                 `json:"-" yaml:"-"`
+	DebugDurationExpr   *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
+	OnSuccess           string                      `yaml:"on_success,omitempty"` //continue or break
+	OnFailure           string                      `yaml:"on_failure,omitempty"` //continue or break
+	Notifications       []string                    `yaml:"notifications,omitempty"`
 }
 
 func (c *LocalApiServerCfg) LoadProfiles() error {
@@ -57,8 +60,8 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 	}
 
 	for pIdx, profile := range c.Profiles {
-		var runtimeFilter *vm.Program
-		var debugFilter *exprhelpers.ExprDebugger
+		var runtimeFilter, runtimeDurationExpr *vm.Program
+		var debugFilter, debugDurationExpr *exprhelpers.ExprDebugger
 
 		c.Profiles[pIdx].RuntimeFilters = make([]*vm.Program, len(profile.Filters))
 		c.Profiles[pIdx].DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
@@ -81,6 +84,15 @@ func (c *LocalApiServerCfg) LoadProfiles() error {
 				return errors.Wrapf(err, "Error parsing duration '%s' of %s", *decision.Duration, profile.Name)
 			}
 		}
+
+		if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+			return errors.Wrapf(err, "Error compiling duration_expr of %s", profile.Name)
+		}
+		c.Profiles[pIdx].RuntimeDurationExpr = runtimeDurationExpr
+		if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+			log.Debugf("Error compiling debug duration_expr of %s : %s", profile.Name, err)
+		}
+		c.Profiles[pIdx].DebugDurationExpr = debugDurationExpr
 
 	}
 	if len(c.Profiles) == 0 {

@@ -13,13 +13,17 @@ import (
 	"time"
 
 	"github.com/c-robinson/iplib"
+	"github.com/pkg/errors"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
 )
 
 var dataFile map[string][]string
 var dataFileRegex map[string][]*regexp.Regexp
+var dbClient *database.Client
 
 func Atof(x string) float64 {
 	log.Debugf("debug atof %s", x)
@@ -59,6 +63,8 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetNodeValue":      XMLGetNodeValue,
 		"IpToRange":            IpToRange,
 		"IsIPV6":               IsIPV6,
+		"GetDecisionsCount":    GetDecisionsCount,
+		"sprintf":              fmt.Sprintf,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -66,9 +72,14 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
-func Init() error {
+func Init(databaseConfig *csconfig.DatabaseCfg) error {
+	var err error
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
+	dbClient, err = database.NewClient(databaseConfig)
+	if err != nil {
+		return errors.Wrap(err, "unable to create new database client.")
+	}
 	return nil
 }
 
@@ -238,4 +249,12 @@ func ParseUri(uri string) map[string][]string {
 func KeyExists(key string, dict map[string]interface{}) bool {
 	_, ok := dict[key]
 	return ok
+}
+
+func GetDecisionsCount(scope string, value string) int {
+	count, err := dbClient.CountDecisionsByScopeValue(scope, value)
+	if err != nil {
+		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", scope, value)
+	}
+	return count
 }

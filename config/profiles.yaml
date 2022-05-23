@@ -5,6 +5,7 @@ filters:
 decisions:
  - type: ban
    duration: 4h
+#duration_expr: sprintf('%dh', GetDecisionsCount(Alert.GetScope(), Alert.GetValue()) * 4)
 # notifications:
 #   - slack_default  # Set the webhook in /etc/crowdsec/notifications/slack.yaml before enabling this.
 #   - splunk_default # Set the splunk url and token in /etc/crowdsec/notifications/splunk.yaml before enabling this.

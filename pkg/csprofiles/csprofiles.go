@@ -2,6 +2,7 @@ package csprofiles
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -12,8 +13,21 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var clog *log.Entry
+
 func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, error) {
 	var decisions []*models.Decision
+
+	if clog == nil {
+		xlog := log.New()
+		if err := types.ConfigureLogger(xlog); err != nil {
+			log.Fatalf("While creating profiles-specific logger : %s", err)
+		}
+		xlog.SetLevel(log.TraceLevel)
+		clog = xlog.WithFields(log.Fields{
+			"type": "profile",
+		})
+	}
 
 	for _, refDecision := range Profile.Decisions {
 		decision := models.Decision{}
@@ -36,7 +50,18 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		}
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
-		*decision.Duration = *refDecision.Duration
+		if Profile.DurationExpr != "" {
+			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			if err != nil {
+				log.Warningf("failed to run duration_expr : %v", err)
+			}
+			durationStr := fmt.Sprint(duration)
+			if _, err := time.ParseDuration(durationStr); err != nil {
+				log.Debugf("Failed to parse expr duration result '%s'", duration)
+				*decision.Duration = *refDecision.Duration
+			}
+			*decision.Duration = durationStr
+		}
 		decision.Type = new(string)
 		*decision.Type = *refDecision.Type
 
@@ -54,8 +79,6 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 	}
 	return decisions, nil
 }
-
-var clog *log.Entry
 
 //EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
 func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, bool, error) {
