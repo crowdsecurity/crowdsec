@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -20,10 +19,6 @@ import (
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
-	err := exprhelpers.Init(cConfig.API.Server.DbConfig)
-	if err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
-	}
 
 	// Populate cwhub package tools
 	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {

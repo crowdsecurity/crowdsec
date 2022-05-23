@@ -13,9 +13,7 @@ import (
 	"time"
 
 	"github.com/c-robinson/iplib"
-	"github.com/pkg/errors"
 
-	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/davecgh/go-spew/spew"
 	log "github.com/sirupsen/logrus"
@@ -72,14 +70,10 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 	return ExprLib
 }
 
-func Init(databaseConfig *csconfig.DatabaseCfg) error {
-	var err error
+func Init(databaseClient *database.Client) error {
 	dataFile = make(map[string][]string)
 	dataFileRegex = make(map[string][]*regexp.Regexp)
-	dbClient, err = database.NewClient(databaseConfig)
-	if err != nil {
-		return errors.Wrap(err, "unable to create new database client.")
-	}
+	dbClient = databaseClient
 	return nil
 }
 
@@ -252,9 +246,14 @@ func KeyExists(key string, dict map[string]interface{}) bool {
 }
 
 func GetDecisionsCount(scope string, value string) int {
+	if dbClient == nil {
+		log.Warning("No database config to call GetDecisionsCount()")
+		return 0
+	}
 	count, err := dbClient.CountDecisionsByScopeValue(scope, value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", scope, value)
+		return 0
 	}
 	return count
 }

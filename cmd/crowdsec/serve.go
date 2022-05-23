@@ -11,6 +11,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -224,6 +226,20 @@ func Serve(cConfig *csconfig.Config) (int, error) {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+
+	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
+		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
+		err = exprhelpers.Init(dbClient)
+		if err != nil {
+			return 1, fmt.Errorf("Failed to init expr helpers : %s", err)
+		}
+	} else {
+		err := exprhelpers.Init(nil)
+		if err != nil {
+			return 1, fmt.Errorf("Failed to init expr helpers : %s", err)
+		}
+	}
+
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
