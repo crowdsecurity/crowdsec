@@ -144,7 +144,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					continue
 				}
 				c.sendAlertToPluginChannel(alert, uint(pIdx))
-				if profile.OnSuccess == "break" {
+				if profile.Cfg.OnSuccess == "break" {
 					break
 				}
 			}
@@ -171,7 +171,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" {
 				break
 			}
 		}

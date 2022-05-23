@@ -7,8 +7,10 @@ import (
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
 type Controller struct {
@@ -16,15 +18,21 @@ type Controller struct {
 	DBClient      *database.Client
 	APIKeyHeader  string
 	Middlewares   *middlewares.Middlewares
-	Profiles      []*csconfig.ProfileCfg
+	Profiles      []*csprofiles.Runtime
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
 }
 
-func New(dbClient *database.Client, ctx context.Context, profiles []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, trustedIPs []net.IPNet) (*Controller, error) {
+func New(dbClient *database.Client, ctx context.Context, profilesCfg []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, trustedIPs []net.IPNet) (*Controller, error) {
 	var err error
+
+	profiles, err := csprofiles.CompileProfile(profilesCfg)
+	if err != nil {
+		return &Controller{}, errors.Wrapf(err, "Failed to compile profiles")
+	}
+
 	v1 := &Controller{
 		Ectx:          ctx,
 		DBClient:      dbClient,
