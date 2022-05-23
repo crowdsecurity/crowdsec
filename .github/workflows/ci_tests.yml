@@ -69,8 +69,8 @@ jobs:
       - name: Check out code into the Go module directory
         uses: actions/checkout@v3
         with:
-          fetch-depth: 1
-          path: go/src/github.com/crowdsecurity/crowdsec
+          fetch-depth: 0
+          submodules: false
 
       - name: Download unit report
         uses: actions/download-artifact@v3
@@ -93,19 +93,11 @@ jobs:
           ~/go/bin/gocovmerge coverage.out coverage-bats.out > coverage-all.out
           bzip2 <coverage-all.out >coverage-all.out.bz2
 
-#      - name: coverage.out
-#        run: cat coverage.out
-
-#      - name: coverage-bats.out
-#        run: cat coverage-bats.out
-
       - name: gcov2lcov
         uses: jandelgado/gcov2lcov-action@v1.0.8
         with:
           infile: coverage-all.out
           outfile: coverage-all.txt
-        env:
-          GOPATH: /home/runner/work/crowdsec/crowdsec/go
 
       - name: Coverage report artifact (merged)
         uses: actions/upload-artifact@v2
@@ -113,9 +105,14 @@ jobs:
           name: coverage-all.out.bz2
           path: ./coverage-all.out.bz2
 
+      - name: gcov2lcov
+        uses: jandelgado/gcov2lcov-action@v1.0.9
+        with:
+          infile: coverage-all.out
+          outfile: coverage-all.txt
+
       - name: Coveralls
         uses: coverallsapp/github-action@master
-        continue-on-error: true
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path-to-lcov: coverage-all.txt
