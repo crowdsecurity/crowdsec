@@ -18,7 +18,7 @@ func NewHubCmd() *cobra.Command {
 Hub management
 
 List/update parsers/scenarios/postoverflows/collections from [Crowdsec Hub](https://hub.crowdsec.net).
-Hub is manage by cscli, to get latest hub files from [Crowdsec Hub](https://hub.crowdsec.net), you need to update.
+The Hub is managed by cscli, to get the latest hub files from [Crowdsec Hub](https://hub.crowdsec.net), you need to update.
 		`,
 		Example: `
 cscli hub list   # List all installed configurations
@@ -77,7 +77,7 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := setHubBranch(); err != nil {
+			if err := cwhub.SetHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 			return nil
@@ -111,7 +111,7 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := setHubBranch(); err != nil {
+			if err := cwhub.SetHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 			return nil

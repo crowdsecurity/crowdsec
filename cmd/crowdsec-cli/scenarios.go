@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 
@@ -32,13 +33,13 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := setHubBranch(); err != nil {
-				return fmt.Errorf("error while setting hub branch: %s", err)
+			if err := cwhub.SetHubBranch(); err != nil {
+				return errors.Wrap(err, "while setting hub branch")
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to get Hub index : %v", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+				log.Fatalf("Failed to get Hub index : %v", err)
 			}
 
 			return nil
