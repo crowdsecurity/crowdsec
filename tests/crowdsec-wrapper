@@ -18,5 +18,5 @@ THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # The '=' between flags and values is required.
 exec "${BIN_DIR}/crowdsec.cover" \
     -test.run="^TestBincoverRunMain$" \
-    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/$(date +'%s')-$$.out" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/crowdsec-$(date +'%s')-$$.out" \
     -args-file=<(for i; do echo "$i"; done)     # Behold the amazing parameter contraption!

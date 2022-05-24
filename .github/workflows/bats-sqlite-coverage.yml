@@ -43,15 +43,21 @@ jobs:
     - name: "Run tests"
       run: |
         TEST_COVERAGE=true make bats-test
-        bzip2 ./tests/local/var/lib/coverage/coverage-bats.out
-
-    - name: "Coverage report artifact"
-      uses: actions/upload-artifact@v2
-      with:
-        name: coverage-bats.out.bz2
-        path: ./tests/local/var/lib/coverage/coverage-bats.out.bz2
 
     - name: "Show crowdsec logs"
       run:
         for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
+
+    - name: Upload crowdsec coverage to codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./tests/local/var/lib/coverage/coverage-crowdsec.out
+        flags: func-crowdsec
+
+    - name: Upload cscli coverage to codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./tests/local/var/lib/coverage/coverage-cscli.out
+        flags: func-cscli
+
