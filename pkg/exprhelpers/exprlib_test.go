@@ -18,7 +18,7 @@ var (
 )
 
 func TestVisitor(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -105,7 +105,7 @@ func TestVisitor(t *testing.T) {
 }
 
 func TestRegexpInFile(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -162,7 +162,7 @@ func TestRegexpInFile(t *testing.T) {
 }
 
 func TestFileInit(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -230,7 +230,7 @@ func TestFileInit(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 

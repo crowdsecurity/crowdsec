@@ -8,7 +8,7 @@ import (
 )
 
 func TestJsonExtract(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -48,7 +48,7 @@ func TestJsonExtract(t *testing.T) {
 
 }
 func TestJsonExtractUnescape(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 

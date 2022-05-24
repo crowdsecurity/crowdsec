@@ -19,6 +19,7 @@ import (
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
+	var err error
 
 	// Populate cwhub package tools
 	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {

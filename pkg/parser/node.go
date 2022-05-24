@@ -58,7 +58,7 @@ type Node struct {
 	//Statics can be present in any type of node and is executed last
 	Statics []types.ExtraField `yaml:"statics,omitempty"`
 	//Whitelists
-	Whitelist types.Whitelist     `yaml:"whitelist,omitempty"`
+	Whitelist Whitelist           `yaml:"whitelist,omitempty"`
 	Data      []*types.DataSource `yaml:"data,omitempty"`
 }
 
@@ -529,7 +529,7 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 		valid = true
 	}
 	for _, filter := range n.Whitelist.Exprs {
-		expression := &types.ExprWhitelist{}
+		expression := &ExprWhitelist{}
 		expression.Filter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			n.Logger.Fatalf("Unable to compile whitelist expression '%s' : %v.", filter, err)
