@@ -8,6 +8,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
 	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -133,11 +134,8 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 }
 
 func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
-	appname *string, pid *string, msg *string) (string, error) {
+	appname *string, pid *string, msg *string) string {
 	ret := ""
-	if msg == nil {
-		return "", errors.Errorf("missing message field in syslog message")
-	}
 	if ts != nil {
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
@@ -152,8 +150,6 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	}
 	if appname != nil {
 		ret += " " + *appname
-	} else {
-		return "", errors.Errorf("missing appname field in syslog message")
 	}
 	if pid != nil {
 		/*
@@ -174,7 +170,7 @@ func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
 	if msg != nil {
 		ret += *msg
 	}
-	return ret, nil
+	return ret
 
 }
 
@@ -234,12 +230,16 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			err := p.Parse(syslogLine.Message)
 			if err != nil {
 				logger.Debugf("could not parse as RFC3164 (%s)", err)
-				continue
-			}
-			line, err = s.buildLogFromSyslog(&p.Timestamp, &p.Hostname, &p.Tag, &p.PID, &p.Message)
-			if err != nil {
-				logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
-				continue
+				p2 := rfc5424.NewRFC5424Parser()
+				err = p2.Parse(syslogLine.Message)
+				if err != nil {
+					logger.Errorf("could not parse message: %s", err)
+					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
+					continue
+				}
+				line = s.buildLogFromSyslog(&p2.Timestamp, &p2.Hostname, &p2.Tag, &p2.PID, &p2.Message)
+			} else {
+				line = s.buildLogFromSyslog(&p.Timestamp, &p.Hostname, &p.Tag, &p.PID, &p.Message)
 			}
 			l := types.Line{}
 			l.Raw = line

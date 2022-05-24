@@ -278,6 +278,9 @@ func TestParse(t *testing.T) {
 			"<12>", expected{}, "timestamp is not valid", []RFC3164Option{},
 		},
 		{
+			"<12 May 02 09:33:54 foo.bar", expected{}, "PRI must be a number", []RFC3164Option{},
+		},
+		{
 			"<12>May 02 09:33:54", expected{}, "hostname is empty", []RFC3164Option{},
 		},
 		{
@@ -300,6 +303,9 @@ func TestParse(t *testing.T) {
 		},
 		{
 			"", expected{}, "message is empty", []RFC3164Option{},
+		},
+		{
+			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{}, "timestamp is not valid", []RFC3164Option{},
 		},
 	}
 
