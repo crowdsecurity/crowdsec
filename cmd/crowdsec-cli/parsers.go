@@ -31,7 +31,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 				return fmt.Errorf("you must configure cli before interacting with hub")
 			}
 
-			if err := setHubBranch(); err != nil {
+			if err := cwhub.SetHubBranch(); err != nil {
 				return fmt.Errorf("error while setting hub branch: %s", err)
 			}
 
