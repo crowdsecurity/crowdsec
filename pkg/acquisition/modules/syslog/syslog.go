@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -241,6 +242,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			} else {
 				line = s.buildLogFromSyslog(&p.Timestamp, &p.Hostname, &p.Tag, &p.PID, &p.Message)
 			}
+
+			line = strings.TrimSuffix(line, "\n")
+
 			l := types.Line{}
 			l.Raw = line
 			l.Module = s.GetName()
