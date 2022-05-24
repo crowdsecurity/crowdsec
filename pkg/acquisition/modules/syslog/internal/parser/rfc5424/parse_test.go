@@ -112,6 +112,9 @@ func TestParse(t *testing.T) {
 		PRI       int
 		MsgID     string
 	}
+
+	cestLoc, _ := time.LoadLocation("Europe/Paris")
+
 	tests := []struct {
 		name        string
 		input       string
@@ -122,7 +125,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg",
 			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{
-				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("CEST", 7200)),
+				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, cestLoc),
 				Hostname:  "mantis",
 				Tag:       "sshd",
 				PID:       "49340",
@@ -134,7 +137,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with msgid",
 			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{
-				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("CEST", 7200)),
+				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, cestLoc),
 				Hostname:  "mantis",
 				Tag:       "foobar",
 				PID:       "49340",
@@ -146,7 +149,7 @@ func TestParse(t *testing.T) {
 		{
 			"valid msg with repeating SD",
 			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis foobar 49340 123123 [timeQuality isSynced="0" tzKnown="1"][foo="bar][a] blabla`, expected{
-				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, time.FixedZone("CEST", 7200)),
+				Timestamp: time.Date(2021, 5, 18, 11, 58, 40, 828081000, cestLoc),
 				Hostname:  "mantis",
 				Tag:       "foobar",
 				PID:       "49340",
