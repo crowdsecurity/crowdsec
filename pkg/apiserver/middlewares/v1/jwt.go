@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"errors"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -48,7 +47,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var scenarios string
 	var err error
 	if err := c.ShouldBindJSON(&loginInput); err != nil {
-		return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
+		return "", errors.Wrap(err, "missing")
 	}
 	if err := loginInput.Validate(strfmt.Default); err != nil {
 		return "", errors.New("input format error")

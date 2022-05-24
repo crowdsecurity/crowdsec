@@ -170,6 +170,11 @@ issues:
     - path: go.mod
       text: "replacement are not allowed: golang.org/x/time/rate"
 
+    # `err` is often shadowed, we may continue to do it
+    - linters:
+        - govet
+      text: "shadow: declaration of \"err\" shadows declaration"
+
     #
     # govet
     #

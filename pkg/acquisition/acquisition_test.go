@@ -371,10 +371,8 @@ func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		evt.Line.Src = "test"
 		out <- evt
 	}
-	select {
-	case <-t.Dying():
-		return nil
-	}
+	<-t.Dying()
+	return nil
 }
 func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }

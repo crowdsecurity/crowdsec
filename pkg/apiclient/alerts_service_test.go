@@ -399,7 +399,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	}
 
 	//fail
-	alerts, resp, err = client.Alerts.GetByID(context.Background(), 2)
+	_, resp, err = client.Alerts.GetByID(context.Background(), 2)
 	assert.Contains(t, fmt.Sprintf("%s", err), "API error: object not found")
 
 }
