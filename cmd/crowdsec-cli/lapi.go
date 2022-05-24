@@ -134,12 +134,12 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 				log.Fatalf("parsing api url ('%s'): %s", apiurl, err)
 			}
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
