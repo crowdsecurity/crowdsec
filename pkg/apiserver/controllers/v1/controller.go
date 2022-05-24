@@ -28,7 +28,7 @@ type Controller struct {
 func New(dbClient *database.Client, ctx context.Context, profilesCfg []*csconfig.ProfileCfg, capiChan chan []*models.Alert, pluginChannel chan csplugin.ProfileAlert, consoleConfig csconfig.ConsoleConfig, trustedIPs []net.IPNet) (*Controller, error) {
 	var err error
 
-	profiles, err := csprofiles.CompileProfile(profilesCfg)
+	profiles, err := csprofiles.NewProfile(profilesCfg)
 	if err != nil {
 		return &Controller{}, errors.Wrapf(err, "Failed to compile profiles")
 	}

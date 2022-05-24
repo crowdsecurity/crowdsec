@@ -245,14 +245,14 @@ func KeyExists(key string, dict map[string]interface{}) bool {
 	return ok
 }
 
-func GetDecisionsCount(scope string, value string) int {
+func GetDecisionsCount(value string) int {
 	if dbClient == nil {
 		log.Warning("No database config to call GetDecisionsCount()")
 		return 0
 	}
-	count, err := dbClient.CountDecisionsByScopeValue(scope, value)
+	count, err := dbClient.CountDecisionsByScopeValue(value)
 	if err != nil {
-		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", scope, value)
+		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", value)
 		return 0
 	}
 	return count

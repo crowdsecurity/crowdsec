@@ -11,7 +11,6 @@ import (
 	jwt "github.com/appleboy/gin-jwt/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
-	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -135,7 +134,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
-				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
+				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 					return
@@ -156,7 +155,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		for pIdx, profile := range c.Profiles {
-			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
+			profileDecisions, matched, err := profile.EvaluateProfile(alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return

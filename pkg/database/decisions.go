@@ -469,7 +469,7 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 	return nil
 }
 
-func (c *Client) CountDecisionsByScopeValue(decisionScope string, decisionValue string) (int, error) {
+func (c *Client) CountDecisionsByScopeValue(decisionValue string) (int, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz, count int
@@ -486,7 +486,6 @@ func (c *Client) CountDecisionsByScopeValue(decisionScope string, decisionValue 
 		return 0, errors.Wrapf(err, "Fail to apply StartIpEndIpFilter")
 	}
 
-	decisions = decisions.Where(decision.ScopeEQ(decisionScope))
 	count, err = decisions.Count(c.CTX)
 	if err != nil {
 		return 0, errors.Wrapf(err, "Fail to count decisions")
