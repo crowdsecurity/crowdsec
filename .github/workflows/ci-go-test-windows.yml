@@ -31,3 +31,10 @@ jobs:
       run: make build
     - name: All tests
       run: go test -coverprofile coverage.out -covermode=atomic ./...
+
+    - name: Upload unit coverage to Codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: coverage.out
+        flags: unit-windows
+

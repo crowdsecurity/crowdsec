@@ -25,7 +25,7 @@ set +e
 # The '=' between flags and values is required.
 output=$("${BIN_DIR}/cscli.cover" \
     -test.run="^TestBincoverRunMain$" \
-    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/$(date +'%s')-$$.out" \
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/cscli-$(date +'%s')-$$.out" \
     -args-file=<(for i; do echo "$i"; done))
 rc=$?
 

@@ -63,10 +63,10 @@ jobs:
     - name: "Run tests"
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
-        bzip2 ./coverage.out
 
-    - name: "Coverage report artifact"
-      uses: actions/upload-artifact@v2
+    - name: Upload unit coverage to Codecov
+      uses: codecov/codecov-action@v2
       with:
-        name: coverage.out.bz2
-        path: ./coverage.out.bz2
+        files: coverage.out
+        flags: unit-linux
+

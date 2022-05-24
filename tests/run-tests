@@ -45,5 +45,6 @@ else
 fi
 
 if [ -n "$TEST_COVERAGE" ]; then
-    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/* > "${LOCAL_DIR}/var/lib/coverage/coverage-bats.out"
+    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/crowdsec-* > "${LOCAL_DIR}/var/lib/coverage/coverage-crowdsec.out"
+    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/cscli-* > "${LOCAL_DIR}/var/lib/coverage/coverage-cscli.out"
 fi
