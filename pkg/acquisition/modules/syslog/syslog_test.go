@@ -85,15 +85,15 @@ listen_port: 4242
 listen_addr: 127.0.0.1`,
 			logs: []string{"foobar", "bla", "pouet"},
 		},
-		/*{
-					config: `
+		{
+			config: `
 		source: syslog
 		listen_port: 4242
 		listen_addr: 127.0.0.1`,
-					expectedLines: 2,
-					logs: []string{`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
-						`<13>1 2021-05-18T12:12:37.560695+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla2[foobar]`},
-				},*/
+			expectedLines: 2,
+			logs: []string{`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
+				`<13>1 2021-05-18T12:12:37.560695+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla2[foobar]`},
+		},
 		{
 			config: `
 source: syslog

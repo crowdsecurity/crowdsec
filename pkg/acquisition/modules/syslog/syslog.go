@@ -3,7 +3,6 @@ package syslogacquisition
 import (
 	"fmt"
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -134,42 +133,31 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 	return nil
 }
 
-func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
-	appname *string, pid *string, msg *string) string {
+func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
+	appname string, pid string, msg string) string {
 	ret := ""
-	if ts != nil {
+	if !ts.IsZero() {
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
-		s.logger.Tracef("%s - missing TS", *msg)
+		s.logger.Tracef("%s - missing TS", msg)
 		ret += time.Now().UTC().Format("Jan 2 15:04:05")
 	}
-	if hostname != nil {
-		ret += " " + *hostname
+	if hostname != "" {
+		ret += " " + hostname
 	} else {
-		s.logger.Tracef("%s - missing host", *msg)
+		s.logger.Tracef("%s - missing host", msg)
 		ret += " unknownhost"
 	}
-	if appname != nil {
-		ret += " " + *appname
+	if appname != "" {
+		ret += " " + appname
 	}
-	if pid != nil {
-		/*
-			!!! ugly hack !!!
-			Due to a bug in the syslog parser we use (https://github.com/influxdata/go-syslog/issues/31),
-			the ProcID field will contain garbage if the message as a ] anywhere in it.
-			Assume that a correctly formatted ProcID only contains number, and if this is not the case, set it to an arbitrary value
-		*/
-		_, err := strconv.Atoi(*pid)
-		if err != nil {
-			ret += "[1]: "
-		} else {
-			ret += "[" + *pid + "]: "
-		}
+	if pid != "" {
+		ret += "[" + pid + "]: "
 	} else {
 		ret += ": "
 	}
-	if msg != nil {
-		ret += *msg
+	if msg != "" {
+		ret += msg
 	}
 	return ret
 
@@ -195,38 +183,6 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			logger := s.logger.WithField("client", syslogLine.Client)
 			logger.Tracef("raw: %s", syslogLine)
 			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
-			/*p := rfc5424.NewParser()
-			m, err := p.Parse(syslogLine.Message)
-			if err != nil {
-				logger.Debugf("could not parse as RFC5424 (%s)", err)
-				p = rfc3164.NewParser(rfc3164.WithYear(rfc3164.CurrentYear{}))
-				m, err = p.Parse(syslogLine.Message)
-				if err != nil {
-					logger.Errorf("could not parse message: %s", err)
-					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
-					continue
-				}
-				msg := m.(*rfc3164.SyslogMessage)
-				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
-				if err != nil {
-					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
-					logger.Error(err)
-					continue
-				}
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client,
-					"type": "RFC3164"}).Inc()
-			} else {
-				msg := m.(*rfc5424.SyslogMessage)
-				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
-				if err != nil {
-					log.Debugf("could not parse message as RFC5424 (%s) : %s", err, syslogLine.Message)
-					logger.Error(err)
-					continue
-				}
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client,
-					"type": "RFC5424"}).Inc()
-
-			}*/
 			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
 			err := p.Parse(syslogLine.Message)
 			if err != nil {
@@ -238,9 +194,9 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
 					continue
 				}
-				line = s.buildLogFromSyslog(&p2.Timestamp, &p2.Hostname, &p2.Tag, &p2.PID, &p2.Message)
+				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
 			} else {
-				line = s.buildLogFromSyslog(&p.Timestamp, &p.Hostname, &p.Tag, &p.PID, &p.Message)
+				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
 			}
 
 			line = strings.TrimSuffix(line, "\n")
