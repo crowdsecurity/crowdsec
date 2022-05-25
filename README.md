@@ -8,7 +8,9 @@
 <p align="center">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/tests/badge.svg">
 <img src="https://github.com/crowdsecurity/crowdsec/workflows/build/badge.svg">
-<a href='https://coveralls.io/github/crowdsecurity/crowdsec?branch=master'><img src='https://coveralls.io/repos/github/crowdsecurity/crowdsec/badge.svg?branch=master' alt='Coverage Status' /></a>
+<a href="https://codecov.io/gh/crowdsecurity/crowdsec">
+  <img src="https://codecov.io/gh/crowdsecurity/crowdsec/branch/master/graph/badge.svg?token=CQGSPNY3PT"/>
+</a>
 <img src="https://goreportcard.com/badge/github.com/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/github/license/crowdsecurity/crowdsec">
 <img src="https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/AlteredCoder/ed74e50c43e3b17bdfc4d93149f23d37/raw/crowdsec_parsers_badge.json">
