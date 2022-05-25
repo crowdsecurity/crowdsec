@@ -252,7 +252,7 @@ func GetDecisionsCount(value string) int {
 	}
 	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
-		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", value)
+		log.Errorf("Failed to get decisions count from value '%s'", value)
 		return 0
 	}
 	return count
