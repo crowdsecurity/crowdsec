@@ -2,7 +2,6 @@ package rfc3164
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/utils"
@@ -136,7 +135,7 @@ func (r *RFC3164) parseHostname() error {
 //We do not enforce tag len as quite a lot of syslog client send tags with more than 32 chars
 func (r *RFC3164) parseTag() error {
 	tag := []byte{}
-	pid := 0
+	tmpPid := []byte{}
 	pidEnd := false
 	hasPid := false
 	for r.position < r.len {
@@ -170,7 +169,7 @@ func (r *RFC3164) parseTag() error {
 			if c < '0' || c > '9' {
 				return fmt.Errorf("pid inside tag must be a number")
 			}
-			pid = pid*10 + int(c-'0')
+			tmpPid = append(tmpPid, c)
 			r.position++
 		}
 	}
@@ -180,7 +179,7 @@ func (r *RFC3164) parseTag() error {
 	}
 
 	if hasPid {
-		r.PID = strconv.Itoa(pid)
+		r.PID = string(tmpPid)
 	}
 	return nil
 }
