@@ -31,6 +31,6 @@ declare stderr
     run -1 --separate-stderr "${BIN_DIR}/crowdsec"
     refute_output
     run -0 echo "${stderr}"
-    assert_output --partial "api server init: unable to run local API: unable to init database client: unknown database type 'meh'"
+    assert_output --partial "Failed to get database client: unknown database type 'meh'"
 }
 
