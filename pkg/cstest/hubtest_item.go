@@ -2,14 +2,19 @@ package cstest
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
 
+	"github.com/antonmedv/expr"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -64,6 +69,8 @@ type HubTestItem struct {
 
 	Success    bool
 	ErrorsList []string
+
+	LintResult *Lint
 
 	AutoGen        bool
 	ParserAssert   *ParserAssert
@@ -440,6 +447,127 @@ func (t *HubTestItem) InstallHub() error {
 
 func (t *HubTestItem) Clean() error {
 	return os.RemoveAll(t.RuntimePath)
+}
+
+func (t *HubTestItem) Lint() error {
+	ret := &Lint{}
+	t.LintResult = &Lint{}
+
+	scenarios := make([]string, 0)
+	err := filepath.Walk(path.Join(t.RuntimePath, "scenarios"), func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+			scenarios = append(scenarios, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, scenarioFile := range scenarios {
+		//process the yaml
+		bucketConfigurationFile, err := os.Open(scenarioFile)
+		if err != nil {
+			log.Errorf("Can't access bucket configuration file %s", scenarioFile)
+			return err
+		}
+		dec := yaml.NewDecoder(bucketConfigurationFile)
+		dec.SetStrict(true)
+		for {
+			bucketFactory := leakybucket.BucketFactory{}
+			err = dec.Decode(&bucketFactory)
+			if err != nil {
+				if err != io.EOF {
+					log.Errorf("Bad yaml in %s : %v", scenarioFile, err)
+					return err
+				}
+				log.Tracef("End of yaml file")
+				break
+			}
+			lintObj := &BucketLint{
+				ItemName: bucketFactory.Name,
+				ItemPath: scenarioFile,
+				Warning:  make([]string, 0),
+				TestName: t.Name,
+			}
+
+			if bucketFactory.Debug == true {
+				lintObj.Warning = append(lintObj.Warning, DEBUG_ENABLE)
+			}
+			if bucketFactory.Filter == "" {
+				lintObj.Warning = append(lintObj.Warning, NO_FILTER)
+			}
+			lintObj.Filters = append(lintObj.Filters, bucketFactory.Filter)
+
+			ret.Bucket = append(ret.Bucket, lintObj)
+		}
+	}
+
+	parserDump, err := LoadParserDump(t.ParserResultFile)
+	if err != nil {
+		return nil
+	}
+	if _, ok := (*parserDump)["s01-parse"]; !ok {
+		return nil
+	}
+	metaSourceIPFound := false
+	for parserName, parsers := range (*parserDump)["s01-parse"] {
+		lintObj := &ParserLint{
+			ItemName: parserName,
+			Warning:  make([]string, 0),
+			TestName: t.Name,
+			Fields:   make([]string, 0),
+		}
+		for _, result := range parsers {
+			for field := range result.Evt.Meta {
+				if field == "source_ip" {
+					metaSourceIPFound = true
+				}
+				lintObj.Fields = append(lintObj.Fields, fmt.Sprintf("evt.Meta.%s", field))
+			}
+			for field := range result.Evt.Parsed {
+				lintObj.Fields = append(lintObj.Fields, fmt.Sprintf("evt.Parsed.%s", field))
+			}
+			for field := range result.Evt.Enriched {
+				lintObj.Fields = append(lintObj.Fields, fmt.Sprintf("evt.Enriched.%s", field))
+			}
+		}
+		if !metaSourceIPFound {
+			lintObj.Warning = append(lintObj.Warning, NO_SOURCE_IP)
+		}
+		ret.Parser = append(ret.Parser, lintObj)
+	}
+
+	for _, bucket := range ret.Bucket {
+		for _, filter := range bucket.Filters {
+			exprDebugger, err := exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			if err != nil {
+				log.Errorf("unable to build debug filter for '%s' : %s", filter, err)
+			}
+			for _, variable := range exprDebugger.GetExpressions() {
+				variableStr := variable.Str
+				variableFound := false
+				for _, parserLint := range ret.Parser {
+					if types.InSlice(variableStr, parserLint.Fields) {
+						variableFound = true
+						break
+					}
+				}
+				if !variableFound {
+					warningMsg := fmt.Sprintf("filter '%s' not found in parsers: %+v", variableStr, t.Config.Parsers)
+					if !types.InSlice(warningMsg, bucket.Warning) {
+						bucket.Warning = append(bucket.Warning, warningMsg)
+					}
+				}
+			}
+		}
+	}
+	t.LintResult = ret
+	return nil
 }
 
 func (t *HubTestItem) Run() error {

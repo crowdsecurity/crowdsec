@@ -157,7 +157,9 @@ func (s *ScenarioAssert) RunExpression(expression string) (interface{}, error) {
 
 	//dump opcode in trace level
 	log.Tracef("%s", runtimeFilter.Disassemble())
-
+	if len(*s.TestData) == 0 {
+		return false, errors.Wrapf(err, "no result to run expression against")
+	}
 	output, err = expr.Run(runtimeFilter, exprhelpers.GetExprEnv(map[string]interface{}{"results": *s.TestData}))
 	if err != nil {
 		log.Warningf("running : %s", expression)

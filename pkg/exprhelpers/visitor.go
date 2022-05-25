@@ -102,6 +102,10 @@ type ExprDebugger struct {
 	expression []*expression
 }
 
+func (e *ExprDebugger) GetExpressions() []*expression {
+	return e.expression
+}
+
 // expression is the structure that represents the variable in string and compiled format
 type expression struct {
 	Str      string

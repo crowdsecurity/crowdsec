@@ -189,12 +189,17 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if err != nil {
 					log.Errorf("running test '%s' failed: %+v", test.Name, err)
 				}
+				err = test.Lint()
+				if err != nil {
+					log.Errorf("lint error for '%s': %s", test.Name, err)
+				}
 			}
 
 		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			success := true
 			testResult := make(map[string]bool)
+
 			for _, test := range HubTest.Tests {
 				if test.AutoGen {
 					if test.ParserAssert.AutoGenAssert {
@@ -263,7 +268,6 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 							}
 						}
 					}
-
 					if cleanTestEnv || forceClean {
 						if err := test.Clean(); err != nil {
 							log.Fatalf("unable to clean test '%s' env: %s", test.Name, err)
@@ -271,6 +275,10 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 					}
 				}
 			}
+			for _, test := range HubTest.Tests {
+				PrintLint(test.LintResult)
+			}
+
 			if csConfig.Cscli.Output == "human" {
 				table := tablewriter.NewWriter(os.Stdout)
 				table.SetCenterSeparator("")
@@ -582,4 +590,25 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 	cmdHubTest.AddCommand(cmdHubTestExplain)
 
 	return cmdHubTest
+}
+
+func PrintLint(lintResult *cstest.Lint) {
+	if len(lintResult.Parser) > 0 {
+		for _, lint := range lintResult.Parser {
+			fmt.Printf("Parser '%s' (path: '%s'):\n", lint.ItemName, lint.ItemPath)
+			for _, warn := range lint.Warning {
+				fmt.Printf("  - %s\n", warn)
+			}
+		}
+	}
+	fmt.Println()
+	if len(lintResult.Bucket) > 0 {
+		for _, lint := range lintResult.Bucket {
+			fmt.Printf("Scenario '%s' (path: '%s'):\n", lint.ItemName, lint.ItemPath)
+			for _, warn := range lint.Warning {
+				fmt.Printf("  - %s\n", warn)
+			}
+		}
+	}
+	fmt.Println()
 }
