@@ -135,7 +135,10 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 				*decision.Duration = *refDecision.Duration
 			}
 			*decision.Duration = durationStr
+		} else {
+			*decision.Duration = *refDecision.Duration
 		}
+
 		decision.Type = new(string)
 		*decision.Type = *refDecision.Type
 
@@ -151,7 +154,6 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		*decision.Scenario = *Alert.Scenario
 		decisions = append(decisions, &decision)
 	}
-	fmt.Printf("Decisions returned : %+v\n", decisions)
 	return decisions, nil
 }
 
@@ -202,5 +204,6 @@ func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision
 		}
 
 	}
+
 	return decisions, matched, nil
 }

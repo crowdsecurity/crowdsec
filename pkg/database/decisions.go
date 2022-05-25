@@ -469,7 +469,7 @@ func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
 	return nil
 }
 
-func (c *Client) CountDecisionsByScopeValue(decisionValue string) (int, error) {
+func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz, count int

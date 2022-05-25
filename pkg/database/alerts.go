@@ -184,7 +184,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
 				log.Warningf("nil scope in community decision")
@@ -421,7 +421,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */

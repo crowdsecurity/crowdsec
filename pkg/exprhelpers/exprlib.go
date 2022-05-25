@@ -250,7 +250,7 @@ func GetDecisionsCount(value string) int {
 		log.Warning("No database config to call GetDecisionsCount()")
 		return 0
 	}
-	count, err := dbClient.CountDecisionsByScopeValue(value)
+	count, err := dbClient.CountDecisionsByValue(value)
 	if err != nil {
 		log.Errorf("Failed to get decisions count from scope '%s' and value '%s'", value)
 		return 0
