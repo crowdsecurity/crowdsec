@@ -248,7 +248,7 @@ func (r *RFC5424) parseMsgID() error {
 		return fmt.Errorf("msgid is empty")
 	}
 
-	if len(msgid) > 128 {
+	if len(msgid) > 32 {
 		return fmt.Errorf("msgid is too long")
 	}
 
