@@ -1,9 +1,17 @@
 package exprhelpers
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 
 	"testing"
@@ -16,6 +24,23 @@ import (
 var (
 	TestFolder = "tests"
 )
+
+func getDBClient(t *testing.T) *database.Client {
+	t.Helper()
+	dbPath, err := os.CreateTemp("", "*sqlite")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
+		Type:   "sqlite",
+		DbName: "crowdsec",
+		DbPath: dbPath.Name(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return dbClient
+}
 
 func TestVisitor(t *testing.T) {
 	if err := Init(nil); err != nil {
@@ -726,6 +751,95 @@ func TestLower(t *testing.T) {
 		program, err := expr.Compile(test.code, expr.Env(test.env))
 		require.NoError(t, err)
 		output, err := expr.Run(program, test.env)
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+
+func TestGetDecisionsCount(t *testing.T) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+	if err != nil {
+		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
+	}
+	// Add sample data to DB
+	dbClient = getDBClient(t)
+
+	decision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+
+	if decision == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "GetDecisionsCount() test: existing IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsCount": GetDecisionsCount,
+				"sprintf":           fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			result: "1",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsCount() test: unknown IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+				"GetDecisionsCount": GetDecisionsCount,
+			},
+			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			result: "0",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		require.NoError(t, err)
+		output, err := expr.Run(program, GetExprEnv(test.env))
 		require.NoError(t, err)
 		require.Equal(t, test.result, output)
 		log.Printf("test '%s' : OK", test.name)

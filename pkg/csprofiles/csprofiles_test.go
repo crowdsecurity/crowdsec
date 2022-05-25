@@ -2,12 +2,10 @@ package csprofiles
 
 import (
 	"fmt"
-	"os"
 	"reflect"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
-	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"gotest.tools/v3/assert"
 )
@@ -22,23 +20,6 @@ var (
 	value    = "CH"
 	scenario = "ssh-bf"
 )
-
-func getDBClient(t *testing.T) *database.Client {
-	t.Helper()
-	dbPath, err := os.CreateTemp("", "*sqlite")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbName: "crowdsec",
-		DbPath: dbPath.Name(),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return dbClient
-}
 
 func TestNewProfile(t *testing.T) {
 	tests := []struct {
