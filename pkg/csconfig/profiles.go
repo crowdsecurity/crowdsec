@@ -17,7 +17,7 @@ type ProfileCfg struct {
 	Debug         *bool             `yaml:"debug,omitempty"`
 	Filters       []string          `yaml:"filters,omitempty"` //A list of OR'ed expressions. the models.Alert object
 	Decisions     []models.Decision `yaml:"decisions,omitempty"`
-	DurationExpr  string            `yaml:"decision_expr,omitempty"`
+	DurationExpr  string            `yaml:"duration_expr,omitempty"`
 	OnSuccess     string            `yaml:"on_success,omitempty"` //continue or break
 	OnFailure     string            `yaml:"on_failure,omitempty"` //continue or break
 	Notifications []string          `yaml:"notifications,omitempty"`
