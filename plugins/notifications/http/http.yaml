@@ -28,3 +28,9 @@ method: POST
 
 # skip_tls_verification:  # true or false. Default is false
 
+---
+
+# type: http
+# name: http_second_notification
+# ...
+

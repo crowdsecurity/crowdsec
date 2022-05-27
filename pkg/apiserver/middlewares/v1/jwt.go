@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -18,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -54,6 +53,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var scenariosInput []string
 	var clientMachine *ent.Machine
 	var machineID string
+	var password strfmt.Password
 
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 		if j.TlsAuth == nil {
@@ -118,13 +118,13 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 		//normal auth
 
 		if err := c.ShouldBindJSON(&loginInput); err != nil {
-			return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
+			return "", errors.Wrap(err, "missing")
 		}
 		if err := loginInput.Validate(strfmt.Default); err != nil {
 			return "", errors.New("input format error")
 		}
 		machineID = *loginInput.MachineID
-		password := *loginInput.Password
+		password = *loginInput.Password
 		scenariosInput = loginInput.Scenarios
 
 		clientMachine, err = j.DbClient.Ent.Machine.Query().

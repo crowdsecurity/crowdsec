@@ -545,12 +545,13 @@ func (n *Node) compile(pctx *UnixParserCtx, ectx EnricherCtx) error {
 
 	if !valid {
 		/* node is empty, error force return */
-		n.Logger.Infof("Node is empty: %s", spew.Sdump(n))
+		n.Logger.Error("Node is empty or invalid, abort")
 		n.Stage = ""
+		return fmt.Errorf("Node is empty")
 	}
+
 	if err := n.validate(pctx, ectx); err != nil {
 		return err
-		//n.logger.Fatalf("Node is invalid : %s", err)
 	}
 	return nil
 }

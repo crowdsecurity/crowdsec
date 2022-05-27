@@ -51,7 +51,11 @@ func StartRunSvc() {
 
 	if exitCode, err := Serve(cConfig); err != nil {
 		if err != nil {
-			log.Errorf(err.Error())
+			// this method of logging a fatal error does not
+			// trigger a program exit (as stated by the authors, it
+			// is not going to change in logrus to keep backward
+			// compatibility), and allows us to report coverage.
+			log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
 			if !bincoverTesting {
 				os.Exit(exitCode)
 			}

@@ -156,7 +156,7 @@ func (pb *PluginBroker) loadConfig(path string) error {
 			continue
 		}
 
-		pluginConfigs, err := parsePluginConfigFile(configFilePath)
+		pluginConfigs, err := ParsePluginConfigFile(configFilePath)
 		if err != nil {
 			return err
 		}
@@ -319,7 +319,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 	return err
 }
 
-func parsePluginConfigFile(path string) ([]PluginConfig, error) {
+func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 	parsedConfigs := make([]PluginConfig, 0)
 	yamlFile, err := os.Open(path)
 	if err != nil {

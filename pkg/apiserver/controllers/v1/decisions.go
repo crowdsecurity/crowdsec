@@ -80,7 +80,6 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
-	return
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
@@ -96,7 +95,6 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
-	return
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
@@ -205,5 +203,4 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusOK, ret)
-	return
 }

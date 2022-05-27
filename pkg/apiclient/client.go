@@ -35,6 +35,7 @@ type ApiClient struct {
 	Auth      *AuthService
 	Metrics   *MetricsService
 	Signal    *SignalService
+	HeartBeat *HeartBeatService
 }
 
 type service struct {
@@ -64,6 +65,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.HeartBeat = (*HeartBeatService)(&c.common)
 
 	return c, nil
 }
@@ -88,6 +90,8 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	c.Auth = (*AuthService)(&c.common)
 	c.Metrics = (*MetricsService)(&c.common)
 	c.Signal = (*SignalService)(&c.common)
+	c.HeartBeat = (*HeartBeatService)(&c.common)
+
 	return c, nil
 }
 

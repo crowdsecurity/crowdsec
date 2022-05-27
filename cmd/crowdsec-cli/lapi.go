@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
@@ -29,13 +30,7 @@ func NewLapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				return fmt.Errorf("loading api client: %s", err.Error())
-			}
-			if csConfig.API.Client == nil {
-				log.Fatalln("There is no API->client configuration")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("no configuration for Local API (LAPI) in '%s'", *csConfig.FilePath)
+				return errors.Wrap(err, "loading api client")
 			}
 			return nil
 		},

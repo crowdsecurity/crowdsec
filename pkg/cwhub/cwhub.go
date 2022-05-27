@@ -2,20 +2,17 @@ package cwhub
 
 import (
 	"crypto/sha256"
+	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	//"errors"
-	"fmt"
-	"io"
-	"os"
-
 	"github.com/enescakir/emoji"
 	"github.com/pkg/errors"
-	"golang.org/x/mod/semver"
-
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 )
 
 /*managed configuration types*/

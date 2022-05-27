@@ -86,7 +86,7 @@ func initConfig() {
 var validArgs = []string{
 	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console",
+	"config", "completion", "version", "console", "notifications",
 }
 
 func prepender(filename string) string {
@@ -113,6 +113,8 @@ func main() {
 It is meant to allow you to manage bans, parsers/scenarios/etc, api and generally manage you crowdsec setup.`,
 		ValidArgs:         validArgs,
 		DisableAutoGenTag: true,
+		SilenceErrors:     true,
+		SilenceUsage:      true,
 		/*TBD examples*/
 	}
 	var cmdDocGen = &cobra.Command{
@@ -181,7 +183,8 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewConsoleCmd())
 	rootCmd.AddCommand(NewExplainCmd())
 	rootCmd.AddCommand(NewHubTestCmd())
+	rootCmd.AddCommand(NewNotificationsCmd())
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("While executing root command : %s", err)
+		log.Fatal(err)
 	}
 }

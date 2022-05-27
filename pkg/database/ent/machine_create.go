@@ -63,6 +63,20 @@ func (mc *MachineCreate) SetNillableLastPush(t *time.Time) *MachineCreate {
 	return mc
 }
 
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (mc *MachineCreate) SetLastHeartbeat(t time.Time) *MachineCreate {
+	mc.mutation.SetLastHeartbeat(t)
+	return mc
+}
+
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableLastHeartbeat(t *time.Time) *MachineCreate {
+	if t != nil {
+		mc.SetLastHeartbeat(*t)
+	}
+	return mc
+}
+
 // SetMachineId sets the "machineId" field.
 func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
 	mc.mutation.SetMachineId(s)
@@ -249,6 +263,10 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultLastPush()
 		mc.mutation.SetLastPush(v)
 	}
+	if _, ok := mc.mutation.LastHeartbeat(); !ok {
+		v := machine.DefaultLastHeartbeat()
+		mc.mutation.SetLastHeartbeat(v)
+	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
@@ -331,6 +349,14 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Column: machine.FieldLastPush,
 		})
 		_node.LastPush = &value
+	}
+	if value, ok := mc.mutation.LastHeartbeat(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastHeartbeat,
+		})
+		_node.LastHeartbeat = &value
 	}
 	if value, ok := mc.mutation.MachineId(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{

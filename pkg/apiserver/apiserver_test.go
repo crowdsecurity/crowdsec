@@ -289,7 +289,7 @@ func TestWithWrongDBConfig(t *testing.T) {
 	apiServer, err := NewServer(config.API.Server)
 
 	assert.Equal(t, apiServer, &APIServer{})
-	assert.Equal(t, "unable to init database client: unknown database type", err.Error())
+	assert.Equal(t, "unable to init database client: unknown database type 'test'", err.Error())
 }
 
 func TestWithWrongFlushConfig(t *testing.T) {

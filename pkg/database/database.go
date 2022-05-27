@@ -100,7 +100,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 		}
 		client = ent.NewClient(ent.Driver(drv), entOpt)
 	default:
-		return &Client{}, fmt.Errorf("unknown database type")
+		return &Client{}, fmt.Errorf("unknown database type '%s'", config.Type)
 	}
 
 	if config.LogLevel != nil && *config.LogLevel >= log.DebugLevel {

@@ -22,6 +22,8 @@ type Machine struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// LastPush holds the value of the "last_push" field.
 	LastPush *time.Time `json:"last_push,omitempty"`
+	// LastHeartbeat holds the value of the "last_heartbeat" field.
+	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
 	// MachineId holds the value of the "machineId" field.
 	MachineId string `json:"machineId,omitempty"`
 	// Password holds the value of the "password" field.
@@ -72,7 +74,7 @@ func (*Machine) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullInt64)
 		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
 			values[i] = new(sql.NullString)
-		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush:
+		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Machine", columns[i])
@@ -115,6 +117,13 @@ func (m *Machine) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				m.LastPush = new(time.Time)
 				*m.LastPush = value.Time
+			}
+		case machine.FieldLastHeartbeat:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_heartbeat", values[i])
+			} else if value.Valid {
+				m.LastHeartbeat = new(time.Time)
+				*m.LastHeartbeat = value.Time
 			}
 		case machine.FieldMachineId:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -207,6 +216,10 @@ func (m *Machine) String() string {
 	}
 	if v := m.LastPush; v != nil {
 		builder.WriteString(", last_push=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	if v := m.LastHeartbeat; v != nil {
+		builder.WriteString(", last_heartbeat=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", machineId=")
