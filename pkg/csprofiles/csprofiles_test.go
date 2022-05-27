@@ -166,7 +166,7 @@ func TestEvaluateProfile(t *testing.T) {
 					Decisions: []models.Decision{
 						{Type: &typ, Scope: &scope, Simulated: &boolFalse},
 					},
-					DurationExpr: "sprintf('%dh', 4*4)",
+					DurationExpr: "Sprintf('%dh', 4*4)",
 				},
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
 			},
