@@ -494,6 +494,33 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 	return count, nil
 }
 
+func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Time) (int, error) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz, count int
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(decisionValue)
+
+	if err != nil {
+		return 0, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", decisionValue, err)
+	}
+
+	contains := true
+	decisions := c.Ent.Decision.Query().Where(
+		decision.CreatedAtGT(since),
+		decision.UntilGT(time.Now().UTC()),
+	)
+	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Fail to apply StartIpEndIpFilter")
+	}
+	count, err = decisions.Count(c.CTX)
+	if err != nil {
+		return 0, errors.Wrapf(err, "Fail to count decisions")
+	}
+
+	return count, nil
+}
+
 func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz int, start_ip int64, start_sfx int64, end_ip int64, end_sfx int64) (*ent.DecisionQuery, error) {
 	if ip_sz == 4 {
 		if contains {

@@ -23,10 +23,10 @@ type Runtime struct {
 }
 
 var clog *log.Entry
+var defaultDuration = "4h"
 
 func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 	var err error
-	var validDurationExpr bool
 	profilesRuntime := make([]*Runtime, 0)
 
 	for _, profile := range profilesCfg {
@@ -58,15 +58,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 				return []*Runtime{}, errors.Wrapf(err, "Error compiling duration_expr of %s", profile.Name)
 			}
 
-			duration, err := expr.Run(runtimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))
-			if err != nil {
-				log.Warningf("failed to run duration_expr : %v", err)
-			}
-			if _, err := time.ParseDuration(fmt.Sprint(duration)); err != nil {
-				validDurationExpr = false
-				log.Debugf("Error parsing duration_expr result '%s' of %s : %+v", fmt.Sprint(duration), profile.Name, err)
-			}
-
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
 			if profile.Debug != nil && *profile.Debug {
 				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
@@ -78,7 +69,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		for _, decision := range profile.Decisions {
 			if runtime.RuntimeDurationExpr == nil {
-				if _, err := time.ParseDuration(*decision.Duration); err != nil && !validDurationExpr {
+				if _, err := time.ParseDuration(*decision.Duration); err != nil {
 					return []*Runtime{}, errors.Wrapf(err, "Error parsing duration '%s' of %s", *decision.Duration, profile.Name)
 				}
 			}
@@ -128,14 +119,20 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 			if err != nil {
 				log.Warningf("failed to run duration_expr : %v", err)
-			}
-			durationStr := fmt.Sprint(duration)
-			if _, err := time.ParseDuration(durationStr); err != nil {
-				log.Debugf("Failed to parse expr duration result '%s'", duration)
 				*decision.Duration = *refDecision.Duration
+			} else {
+				durationStr := fmt.Sprint(duration)
+				if _, err := time.ParseDuration(durationStr); err != nil {
+					log.Warningf("Failed to parse expr duration result '%s'", duration)
+					*decision.Duration = *refDecision.Duration
+				} else {
+					*decision.Duration = durationStr
+				}
 			}
-			*decision.Duration = durationStr
 		} else {
+			if refDecision.Duration == nil {
+				*decision.Duration = defaultDuration
+			}
 			*decision.Duration = *refDecision.Duration
 		}
 

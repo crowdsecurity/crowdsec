@@ -829,8 +829,134 @@ func TestGetDecisionsCount(t *testing.T) {
 					},
 				},
 				"GetDecisionsCount": GetDecisionsCount,
+				"sprintf":           fmt.Sprintf,
 			},
 			code:   "sprintf('%d', GetDecisionsCount(Alert.GetValue()))",
+			result: "0",
+			err:    "",
+		},
+	}
+
+	for _, test := range tests {
+		program, err := expr.Compile(test.code, expr.Env(GetExprEnv(test.env)))
+		require.NoError(t, err)
+		output, err := expr.Run(program, GetExprEnv(test.env))
+		require.NoError(t, err)
+		require.Equal(t, test.result, output)
+		log.Printf("test '%s' : OK", test.name)
+	}
+}
+func TestGetDecisionsSinceCount(t *testing.T) {
+	var err error
+	var start_ip, start_sfx, end_ip, end_sfx int64
+	var ip_sz int
+	existingIP := "1.2.3.4"
+	unknownIP := "1.2.3.5"
+	ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(existingIP)
+	if err != nil {
+		t.Errorf("unable to convert '%s' to int: %s", existingIP, err)
+	}
+	// Add sample data to DB
+	dbClient = getDBClient(t)
+
+	decision := dbClient.Ent.Decision.Create().
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+	if decision == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+	decision2 := dbClient.Ent.Decision.Create().
+		SetCreatedAt(time.Now().AddDate(0, 0, -1)).
+		SetUntil(time.Now().Add(time.Hour)).
+		SetScenario("crowdsec/test").
+		SetStartIP(start_ip).
+		SetStartSuffix(start_sfx).
+		SetEndIP(end_ip).
+		SetEndSuffix(end_sfx).
+		SetIPSize(int64(ip_sz)).
+		SetType("ban").
+		SetScope("IP").
+		SetValue(existingIP).
+		SetOrigin("CAPI").
+		SaveX(context.Background())
+	if decision2 == nil {
+		assert.Error(t, errors.Errorf("Failed to create sample decision"))
+	}
+
+	tests := []struct {
+		name   string
+		env    map[string]interface{}
+		code   string
+		result string
+		err    string
+	}{
+		{
+			name: "GetDecisionsSinceCount() test: existing IP count since more than 1 day",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '25h'))",
+			result: "2",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsSinceCount() test: existing IP count since more than 1 hour",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &existingIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &existingIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
+			result: "1",
+			err:    "",
+		},
+		{
+			name: "GetDecisionsSinceCount() test: unknown IP count",
+			env: map[string]interface{}{
+				"Alert": &models.Alert{
+					Source: &models.Source{
+						Value: &unknownIP,
+					},
+					Decisions: []*models.Decision{
+						{
+							Value: &unknownIP,
+						},
+					},
+				},
+				"GetDecisionsSinceCount": GetDecisionsSinceCount,
+				"sprintf":                fmt.Sprintf,
+			},
+			code:   "sprintf('%d', GetDecisionsSinceCount(Alert.GetValue(), '1h'))",
 			result: "0",
 			err:    "",
 		},
