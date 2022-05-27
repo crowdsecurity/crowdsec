@@ -763,9 +763,9 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		}
 
 		if sort == "ASC" {
-			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt), ent.Asc(alert.FieldID))
 		} else {
-			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt), ent.Desc(alert.FieldID))
 		}
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
