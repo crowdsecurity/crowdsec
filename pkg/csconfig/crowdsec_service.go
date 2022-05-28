@@ -57,13 +57,13 @@ func (c *Config) LoadCrowdsec() error {
 		}
 		files, err := filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yaml")
 		if err != nil {
-			return errors.Wrap(err, "while globing acquis_dir")
+			return errors.Wrap(err, "while globbing acquis_dir")
 		}
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 
 		files, err = filepath.Glob(c.Crowdsec.AcquisitionDirPath + "/*.yml")
 		if err != nil {
-			return errors.Wrap(err, "while globing acquis_dir")
+			return errors.Wrap(err, "while globbing acquis_dir")
 		}
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 	}
