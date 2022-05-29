@@ -17,7 +17,7 @@ import (
 	//"github.com/sevlyar/go-daemon"
 )
 
-// debugHandler is kept as a dev convenience : it shuts down and serialize internal state
+//nolint: deadcode,unused // debugHandler is kept as a dev convenience : it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error

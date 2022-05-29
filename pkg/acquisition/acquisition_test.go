@@ -493,6 +493,7 @@ READLOOP:
 	}
 }
 
+//nolint: structcheck,unused
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string `yaml:"toto"`
