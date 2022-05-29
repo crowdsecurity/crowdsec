@@ -275,12 +275,14 @@ declare stderr
     assert_output --partial "# bash completion for cscli"
     run -0 cscli completion zsh
     assert_output --partial "# zsh completion for cscli"
+    run -0 cscli completion powershell
+    assert_output --partial "# powershell completion for cscli"
+    run -0 cscli completion fish
+    assert_output --partial "# fish completion for cscli"
 
     rm "${CONFIG_YAML}"
     run -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
-    run -0 cscli completion zsh
-    assert_output --partial "# zsh completion for cscli"
 }
 
 @test "${FILE} cscli hub list" {
