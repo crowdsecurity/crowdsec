@@ -205,20 +205,6 @@ issues:
       text: "SA1006: printf-style function with dynamic format string and no further arguments should use print-style function instead"
 
     #
-    # gosimple
-    #
-
-    - linters:
-        - gosimple
-      text: "S1023: redundant .* statement"
-    - linters:
-        - gosimple
-      text: "S1000: should use a simple channel send/receive instead of `select` with a single case"
-    - linters:
-        - gosimple
-      text: "S1028: should use .* instead of .*"
-
-    #
     # ineffassign
     #
 
