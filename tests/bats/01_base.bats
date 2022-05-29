@@ -13,6 +13,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
     ./instance-crowdsec start
 }
@@ -139,15 +140,45 @@ declare stderr
     assert_output "127.0.0.1:8080"
 }
 
-@test "${FILE} cscli config backup" {
+@test "${FILE} cscli config backup / restore" {
+    # test that we need a valid path
+    # disabled because in CI, the empty string is not passed as a parameter
+    ## run -1 --separate-stderr cscli config backup ""
+    ## run -0 echo "${stderr}"
+    ## assert_output --partial "Failed to backup configurations: directory path can't be empty"
+
+    run -1 --separate-stderr cscli config backup "/dev/null/blah"
+    run -0 echo "${stderr}"
+    assert_output --partial "Failed to backup configurations: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
+
+    # pick a dirpath
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+
+    # succeed the first time
     run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${backupdir}"
 
+    # don't overwrite an existing backup
+    run -1 --separate-stderr cscli config backup "${backupdir}"
     run -0 echo "${stderr}"
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
+
+    SIMULATION_YAML="$(config_yq '.config_paths.simulation_path')"
+
+    # restore
+    rm "${SIMULATION_YAML}"
+    run -0 cscli config restore "${backupdir}"
+    assert_file_exist "${SIMULATION_YAML}"
+
+    # cleanup
+    rm -rf -- "${backupdir:?}"
+
+    # backup: detect missing files
+    rm "${SIMULATION_YAML}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
+    run -0 echo "${stderr}"
+    assert_output --regexp "Failed to backup configurations: failed copy .* to .*: stat .*: no such file or directory"
     rm -rf -- "${backupdir:?}"
 }
 

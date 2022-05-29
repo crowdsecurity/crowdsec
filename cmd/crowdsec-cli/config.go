@@ -47,13 +47,13 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	if err = os.Mkdir(dirPath, 0700); err != nil {
-		return fmt.Errorf("error while creating %s : %s", dirPath, err)
+		return errors.Wrapf(err, "while creating %s", dirPath)
 	}
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
 		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
 		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
+			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
 		}
 		log.Infof("Saved simulation to %s", backupSimulation)
 	}
