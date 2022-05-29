@@ -180,20 +180,6 @@ issues:
       text: "shadow: declaration of \"err\" shadows declaration"
 
     #
-    # govet
-    #
-
-    - linters:
-        - govet
-      text: "shadow: declaration of .* shadows declaration"
-    - linters:
-        - govet
-      text: "copylocks: assignment copies lock value to newStream:"
-    - linters:
-        - govet
-      text: "composites: .* composite literal uses unkeyed fields"
-
-    #
     # errcheck
     #
 

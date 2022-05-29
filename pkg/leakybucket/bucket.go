@@ -226,7 +226,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
-				msg := processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End

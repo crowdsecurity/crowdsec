@@ -297,7 +297,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			ShowScenarioMetric(item, metrics)
 		}
 		for _, item := range hubItem.Collections {
-			hubItem := cwhub.GetItem(cwhub.COLLECTIONS, item)
+			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
 			if hubItem == nil {
 				log.Fatalf("unable to retrieve item '%s' from collection '%s'", item, hubItem.Name)
 			}

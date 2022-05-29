@@ -132,7 +132,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
