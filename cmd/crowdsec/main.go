@@ -49,7 +49,7 @@ var (
 	pluginBroker      csplugin.PluginBroker
 )
 
-const bincoverTesting = false
+var bincoverTesting = ""
 
 type Flags struct {
 	ConfigFile     string

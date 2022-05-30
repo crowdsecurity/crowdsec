@@ -93,6 +93,12 @@ declare stderr
     assert_output --partial "Trying to authenticate with username"
     assert_output --partial " on https://api.crowdsec.net/"
     assert_output --partial "You can successfully interact with Central API (CAPI)"
+
+    ONLINE_API_CREDENTIALS_YAML="$(config_yq '.api.server.online_client.credentials_path')"
+    rm "${ONLINE_API_CREDENTIALS_YAML}"
+    run -1 --separate-stderr cscli capi status
+    run -0 echo "${stderr}"
+    assert_output --partial "Local API is disabled, please run this command on the local API machine: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
 }
 
 @test "${FILE} cscli config show -o human" {

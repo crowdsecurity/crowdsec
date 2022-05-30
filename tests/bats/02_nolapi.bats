@@ -49,7 +49,8 @@ declare stderr
     run -1 --separate-stderr cscli capi status
 
     run -0 echo "$stderr"
-    assert_output --partial "Local API is disabled, please run this command on the local API machine"
+    assert_output --partial "crowdsec local API is disabled"
+    assert_output --partial "There is no configuration on 'api.server:'"
 }
 
 @test "$FILE cscli config show -o human" {

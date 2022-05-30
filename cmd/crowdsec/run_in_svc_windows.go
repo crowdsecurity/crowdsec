@@ -84,6 +84,10 @@ func WindowsRun() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
+	if bincoverTesting != "" {
+		log.Debug("coverage report is enabled")
+	}
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
@@ -91,8 +95,12 @@ func WindowsRun() {
 
 	if exitCode, err := Serve(cConfig); err != nil {
 		if err != nil {
-			log.Errorf(err.Error())
-			if !bincoverTesting {
+			// this method of logging a fatal error does not
+			// trigger a program exit (as stated by the authors, it
+			// is not going to change in logrus to keep backward
+			// compatibility), and allows us to report coverage.
+			log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
+			if bincoverTesting != "" {
 				os.Exit(exitCode)
 			}
 			bincover.ExitCode = exitCode
