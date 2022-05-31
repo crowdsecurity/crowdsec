@@ -15,7 +15,6 @@ import (
 )
 
 func StartRunSvc() {
-
 	var (
 		cConfig *csconfig.Config
 		err     error
@@ -44,6 +43,10 @@ func StartRunSvc() {
 
 	log.Infof("Crowdsec %s", cwversion.VersionStr())
 
+	if bincoverTesting != "" {
+		log.Debug("coverage report is enabled")
+	}
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		go registerPrometheus(cConfig.Prometheus)
@@ -56,7 +59,7 @@ func StartRunSvc() {
 			// is not going to change in logrus to keep backward
 			// compatibility), and allows us to report coverage.
 			log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
-			if !bincoverTesting {
+			if bincoverTesting == "" {
 				os.Exit(exitCode)
 			}
 			bincover.ExitCode = exitCode

@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -30,7 +31,7 @@ func NewCapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+				return errors.Wrap(err, "Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
@@ -113,7 +114,7 @@ func NewCapiCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Server == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
+				log.Fatalln("There is no configuration on 'api.server:'")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
@@ -134,8 +135,8 @@ func NewCapiCmd() *cobra.Command {
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Fatalf("Failed to load hub index : %s", err)
 				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+				log.Fatalf("Failed to load hub index : %s", err)
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {

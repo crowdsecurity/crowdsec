@@ -51,7 +51,8 @@ MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec/main.bincoverTesting=$(BINCOVER_TESTING) \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING) \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
