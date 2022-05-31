@@ -13,9 +13,10 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
-func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
+func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, []*sql.Predicate, error) {
 
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
@@ -25,6 +26,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	  else, return bans that are *contained* by the given value (value is the outer)*/
 
 	/*the simulated filter is a bit different : if it's not present *or* set to false, specifically exclude records with simulated to true */
+
 	if v, ok := filter["simulated"]; ok {
 		if v[0] == "false" {
 			query = query.Where(decision.SimulatedEQ(false))
@@ -33,13 +35,14 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	} else {
 		query = query.Where(decision.SimulatedEQ(false))
 	}
-
+	t := sql.Table(decision.Table)
+	joinPredicate := make([]*sql.Predicate, 0)
 	for param, value := range filter {
 		switch param {
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return nil, nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scopes":
 			scopes := strings.Split(value[0], ",")
@@ -67,6 +70,14 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 		case "scenarios_containing":
 			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
 			query = query.Where(decision.Or(predicates...))
+
+			scenarios := strings.Split(value[0], ",")
+			scenariosContainsPredicate := make([]*sql.Predicate, 0)
+			for _, scenario := range scenarios {
+				pred := sql.ContainsFold(t.C(decision.FieldScenario), scenario)
+				scenariosContainsPredicate = append(scenariosContainsPredicate, pred)
+			}
+			joinPredicate = append(joinPredicate, sql.Or(scenariosContainsPredicate...))
 		case "scenarios_not_containing":
 			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
 			query = query.Where(decision.Not(
@@ -74,10 +85,17 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 					predicates...,
 				),
 			))
+			scenarios := strings.Split(value[0], ",")
+			scenariosContainsPredicate := make([]*sql.Predicate, 0)
+			for _, scenario := range scenarios {
+				pred := sql.ContainsFold(t.C(decision.FieldScenario), scenario)
+				scenariosContainsPredicate = append(scenariosContainsPredicate, sql.Not(pred))
+			}
+			joinPredicate = append(joinPredicate, sql.Or(scenariosContainsPredicate...))
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
+				return nil, nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		}
 	}
@@ -149,9 +167,9 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			))
 		}
 	} else if ip_sz != 0 {
-		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+		return nil, nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
-	return query, nil
+	return query, joinPredicate, nil
 }
 
 func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Decision, error) {
@@ -161,7 +179,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	decisions := c.Ent.Decision.Query().
 		Where(decision.UntilGTE(time.Now().UTC()))
 
-	decisions, err = BuildDecisionRequestWithFilter(decisions, filter)
+	decisions, _, err = BuildDecisionRequestWithFilter(decisions, filter)
 	if err != nil {
 		return []*ent.Decision{}, err
 	}
@@ -185,40 +203,65 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
-// ent translation of https://stackoverflow.com/a/28090544
-func longestDecisionForScopeTypeValue(s *sql.Selector) {
-	t := sql.Table(decision.Table)
-	s.LeftJoin(t).OnP(sql.And(
-		sql.ColumnsEQ(
-			t.C(decision.FieldValue),
-			s.C(decision.FieldValue),
-		),
-		sql.ColumnsEQ(
-			t.C(decision.FieldType),
-			s.C(decision.FieldType),
-		),
-		sql.ColumnsEQ(
-			t.C(decision.FieldScope),
-			s.C(decision.FieldScope),
-		),
-		sql.ColumnsGT(
-			t.C(decision.FieldUntil),
-			s.C(decision.FieldUntil),
-		),
-	))
-	s.Where(
-		sql.IsNull(
-			t.C(decision.FieldUntil),
-		),
-	)
-}
-
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	if err != nil {
+		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
+	}
+	query = query.Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.LeftJoin(t)
+			defaultPredicates := []*sql.Predicate{
+				sql.ColumnsEQ(
+					t.C(decision.FieldValue),
+					s.C(decision.FieldValue),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldType),
+					s.C(decision.FieldType),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldScope),
+					s.C(decision.FieldScope),
+				),
+				sql.ColumnsGT(
+					t.C(decision.FieldUntil),
+					s.C(decision.FieldUntil),
+				),
+			}
+			for param := range filters {
+				switch param {
+				case "origins":
+					defaultPredicates = append(defaultPredicates, sql.EQ(
+						t.C(decision.FieldOrigin),
+						s.C(decision.FieldOrigin),
+					))
+				case "scenarios_containing":
+					defaultPredicates = append(defaultPredicates, sql.ContainsFold(
+						t.C(decision.FieldScenario),
+						s.C(decision.FieldScenario),
+					))
+				case "scenarios_not_containing":
+					defaultPredicates = append(defaultPredicates, sql.Not(sql.ContainsFold(
+						t.C(decision.FieldScenario),
+						s.C(decision.FieldScenario),
+					)))
+				}
+			}
+			defaultPredicates = append(defaultPredicates, predicates...)
+			s.OnP(sql.And(defaultPredicates...))
+			s.Where(
+				sql.IsNull(
+					t.C(decision.FieldUntil),
+				),
+			)
+		},
+	)
 
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
@@ -230,15 +273,71 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
+
 	return data, nil
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	if err != nil {
+		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
+	}
+	query = query.Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.LeftJoin(t)
+			defaultPredicates := []*sql.Predicate{
+				sql.ColumnsEQ(
+					t.C(decision.FieldValue),
+					s.C(decision.FieldValue),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldType),
+					s.C(decision.FieldType),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldScope),
+					s.C(decision.FieldScope),
+				),
+				sql.ColumnsLT(
+					t.C(decision.FieldUntil),
+					s.C(decision.FieldUntil),
+				),
+			}
+			for param := range filters {
+				switch param {
+				case "origins":
+					defaultPredicates = append(defaultPredicates, sql.EQ(
+						t.C(decision.FieldOrigin),
+						s.C(decision.FieldOrigin),
+					))
+				case "scenarios_containing":
+					defaultPredicates = append(defaultPredicates, sql.ContainsFold(
+						t.C(decision.FieldScenario),
+						s.C(decision.FieldScenario),
+					))
+				case "scenarios_not_containing":
+					defaultPredicates = append(defaultPredicates, sql.Not(sql.ContainsFold(
+						t.C(decision.FieldScenario),
+						s.C(decision.FieldScenario),
+					)))
+				}
+			}
+			defaultPredicates = append(defaultPredicates, predicates...)
+			s.OnP(sql.And(defaultPredicates...))
+			s.Where(
+				sql.IsNull(
+					t.C(decision.FieldUntil),
+				),
+			)
+
+		},
+	)
 
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
@@ -249,6 +348,8 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
 	}
+	log.Infof("OLDDEDECISIONSFILTER: %+v (len: %d)", data, len(data))
+
 	return data, nil
 }
 
@@ -256,9 +357,46 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 		decision.UntilGT(since),
-		longestDecisionForScopeTypeValue,
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	if err != nil {
+		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
+	}
+	query = query.Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			defaultPredicates := []*sql.Predicate{
+				sql.ColumnsEQ(
+					t.C(decision.FieldValue),
+					s.C(decision.FieldValue),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldType),
+					s.C(decision.FieldType),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldScope),
+					s.C(decision.FieldScope),
+				),
+				sql.ColumnsGT(
+					t.C(decision.FieldUntil),
+					s.C(decision.FieldUntil),
+				),
+				sql.ContainsFold(
+					t.C(decision.FieldScenario),
+					s.C(decision.FieldScenario),
+				),
+			}
+			defaultPredicates = append(defaultPredicates, predicates...)
+			s.LeftJoin(t).OnP(sql.And(defaultPredicates...))
+			s.Where(
+				sql.IsNull(
+					t.C(decision.FieldUntil),
+				),
+			)
+		},
+	)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
@@ -277,9 +415,49 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	query := c.Ent.Decision.Query().Where(
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
-	query, err := BuildDecisionRequestWithFilter(query, filters)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	if err != nil {
+		c.Log.Warningf("BuildDecisionRequestWithFilter : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
+	}
+	query = query.Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.LeftJoin(t)
+
+			defaultPredicates := []*sql.Predicate{
+				sql.ColumnsEQ(
+					t.C(decision.FieldValue),
+					s.C(decision.FieldValue),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldType),
+					s.C(decision.FieldType),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldScope),
+					s.C(decision.FieldScope),
+				),
+				sql.ColumnsGT(
+					t.C(decision.FieldUntil),
+					s.C(decision.FieldUntil),
+				),
+				sql.ContainsFold(
+					t.C(decision.FieldScenario),
+					s.C(decision.FieldScenario),
+				),
+			}
+			defaultPredicates = append(defaultPredicates, predicates...)
+
+			s.OnP(sql.And(defaultPredicates...))
+			s.Where(
+				sql.IsNull(
+					t.C(decision.FieldUntil),
+				),
+			)
+		},
+	)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
