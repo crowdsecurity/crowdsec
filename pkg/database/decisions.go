@@ -66,6 +66,13 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			query = query.Where(
 				decision.OriginIn(strings.Split(value[0], ",")...),
 			)
+			origins := strings.Split(value[0], ",")
+			originsContainsPredicate := make([]*sql.Predicate, 0)
+			for _, origin := range origins {
+				pred := sql.EqualFold(t.C(decision.FieldScenario), origin)
+				originsContainsPredicate = append(originsContainsPredicate, pred)
+			}
+			joinPredicate = append(joinPredicate, sql.Or(originsContainsPredicate...))
 		case "scenarios_containing":
 			predicates := decisionPredicatesFromStr(value[0], decision.ScenarioContainsFold)
 			query = query.Where(decision.Or(predicates...))
@@ -233,25 +240,6 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 					s.C(decision.FieldUntil),
 				),
 			}
-			for param := range filters {
-				switch param {
-				case "origins":
-					defaultPredicates = append(defaultPredicates, sql.EQ(
-						t.C(decision.FieldOrigin),
-						s.C(decision.FieldOrigin),
-					))
-				case "scenarios_containing":
-					defaultPredicates = append(defaultPredicates, sql.ContainsFold(
-						t.C(decision.FieldScenario),
-						s.C(decision.FieldScenario),
-					))
-				case "scenarios_not_containing":
-					defaultPredicates = append(defaultPredicates, sql.Not(sql.ContainsFold(
-						t.C(decision.FieldScenario),
-						s.C(decision.FieldScenario),
-					)))
-				}
-			}
 			defaultPredicates = append(defaultPredicates, predicates...)
 			s.OnP(sql.And(defaultPredicates...))
 			s.Where(
@@ -307,25 +295,6 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 					t.C(decision.FieldUntil),
 					s.C(decision.FieldUntil),
 				),
-			}
-			for param := range filters {
-				switch param {
-				case "origins":
-					defaultPredicates = append(defaultPredicates, sql.EQ(
-						t.C(decision.FieldOrigin),
-						s.C(decision.FieldOrigin),
-					))
-				case "scenarios_containing":
-					defaultPredicates = append(defaultPredicates, sql.ContainsFold(
-						t.C(decision.FieldScenario),
-						s.C(decision.FieldScenario),
-					))
-				case "scenarios_not_containing":
-					defaultPredicates = append(defaultPredicates, sql.Not(sql.ContainsFold(
-						t.C(decision.FieldScenario),
-						s.C(decision.FieldScenario),
-					)))
-				}
 			}
 			defaultPredicates = append(defaultPredicates, predicates...)
 			s.OnP(sql.And(defaultPredicates...))
