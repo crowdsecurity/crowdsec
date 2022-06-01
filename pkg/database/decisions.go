@@ -209,16 +209,8 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
-func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
-	query := c.Ent.Decision.Query().Where(
-		decision.UntilGT(time.Now().UTC()),
-	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
-	if err != nil {
-		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
-	}
-	query = query.Where(
+func queryLeftJoin(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
+	return query.Where(
 		func(s *sql.Selector) {
 			t := sql.Table(decision.Table)
 			s.LeftJoin(t)
@@ -249,12 +241,19 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 			)
 		},
 	)
+}
 
+func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+	)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
+	query = queryLeftJoin(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
@@ -274,43 +273,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
-	query = query.Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.LeftJoin(t)
-			defaultPredicates := []*sql.Predicate{
-				sql.ColumnsEQ(
-					t.C(decision.FieldValue),
-					s.C(decision.FieldValue),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldType),
-					s.C(decision.FieldType),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldScope),
-					s.C(decision.FieldScope),
-				),
-				sql.ColumnsLT(
-					t.C(decision.FieldUntil),
-					s.C(decision.FieldUntil),
-				),
-			}
-			defaultPredicates = append(defaultPredicates, predicates...)
-			s.OnP(sql.And(defaultPredicates...))
-			s.Where(
-				sql.IsNull(
-					t.C(decision.FieldUntil),
-				),
-			)
-
-		},
-	)
-
-	if err != nil {
-		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
-	}
+	query = queryLeftJoin(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
@@ -330,45 +293,8 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-	query = query.Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			defaultPredicates := []*sql.Predicate{
-				sql.ColumnsEQ(
-					t.C(decision.FieldValue),
-					s.C(decision.FieldValue),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldType),
-					s.C(decision.FieldType),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldScope),
-					s.C(decision.FieldScope),
-				),
-				sql.ColumnsGT(
-					t.C(decision.FieldUntil),
-					s.C(decision.FieldUntil),
-				),
-				sql.ContainsFold(
-					t.C(decision.FieldScenario),
-					s.C(decision.FieldScenario),
-				),
-			}
-			defaultPredicates = append(defaultPredicates, predicates...)
-			s.LeftJoin(t).OnP(sql.And(defaultPredicates...))
-			s.Where(
-				sql.IsNull(
-					t.C(decision.FieldUntil),
-				),
-			)
-		},
-	)
-	if err != nil {
-		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
-	}
 
+	query = queryLeftJoin(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -388,47 +314,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		c.Log.Warningf("BuildDecisionRequestWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-	query = query.Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.LeftJoin(t)
-
-			defaultPredicates := []*sql.Predicate{
-				sql.ColumnsEQ(
-					t.C(decision.FieldValue),
-					s.C(decision.FieldValue),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldType),
-					s.C(decision.FieldType),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldScope),
-					s.C(decision.FieldScope),
-				),
-				sql.ColumnsGT(
-					t.C(decision.FieldUntil),
-					s.C(decision.FieldUntil),
-				),
-				sql.ContainsFold(
-					t.C(decision.FieldScenario),
-					s.C(decision.FieldScenario),
-				),
-			}
-			defaultPredicates = append(defaultPredicates, predicates...)
-
-			s.OnP(sql.And(defaultPredicates...))
-			s.Where(
-				sql.IsNull(
-					t.C(decision.FieldUntil),
-				),
-			)
-		},
-	)
-	if err != nil {
-		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
-		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
-	}
+	query = queryLeftJoin(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
