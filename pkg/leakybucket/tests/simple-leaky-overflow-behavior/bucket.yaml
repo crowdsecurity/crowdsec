@@ -6,7 +6,7 @@ filter: "evt.Line.Labels.type =='testlog'"
 leakspeed: "10s"
 capacity: 1
 groupby: evt.Enriched.ASNumber
-overflowBehavior: keep-alive
+overflow_behavior: keep-alive
 labels:
  type: overflow_1
 
