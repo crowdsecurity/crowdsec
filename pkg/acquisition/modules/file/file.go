@@ -137,14 +137,14 @@ func (f *FileSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	if len(args) == 2 && len(args[1]) != 0 {
 		params, err := url.ParseQuery(args[1])
 		if err != nil {
-			return fmt.Errorf("could not parse file args : %s", err)
+			return errors.Wrap(err, "could not parse file args")
 		}
 		for key, value := range params {
 			if key != "log_level" {
 				return fmt.Errorf("unsupported key %s in file DSN", key)
 			}
 			if len(value) != 1 {
-				return fmt.Errorf("expected zero or one value for 'log_level'")
+				return errors.New("expected zero or one value for 'log_level'")
 			}
 			lvl, err := log.ParseLevel(value[0])
 			if err != nil {
@@ -351,7 +351,6 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 	logger := f.logger.WithField("tail", tail.Filename)
 	logger.Debugf("-> Starting tail of %s", tail.Filename)
 	for {
-		l := types.Line{}
 		select {
 		case <-t.Dying():
 			logger.Infof("File datasource %s stopping", tail.Filename)
@@ -377,19 +376,22 @@ func (f *FileSource) tailFile(out chan types.Event, t *tomb.Tomb, tail *tail.Tai
 				continue
 			}
 			linesRead.With(prometheus.Labels{"source": tail.Filename}).Inc()
-			l.Raw = trimLine(line.Text)
-			l.Labels = f.config.Labels
-			l.Time = line.Time
-			l.Src = tail.Filename
-			l.Process = true
-			l.Module = f.GetName()
+			l := types.Line{
+				Raw:     trimLine(line.Text),
+				Labels:  f.config.Labels,
+				Time:    line.Time,
+				Src:     tail.Filename,
+				Process: true,
+				Module:  f.GetName(),
+			}
 			//we're tailing, it must be real time logs
 			logger.Debugf("pushing %+v", l)
-			if !f.config.UseTimeMachine {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
-			} else {
-				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+
+			expectMode := leaky.LIVE
+			if f.config.UseTimeMachine {
+				expectMode = leaky.TIMEMACHINE
 			}
+			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: expectMode}
 		}
 	}
 }
@@ -421,14 +423,15 @@ func (f *FileSource) readFile(filename string, out chan types.Event, t *tomb.Tom
 		if scanner.Text() == "" {
 			continue
 		}
-		logger.Debugf("line %s", scanner.Text())
-		l := types.Line{}
-		l.Raw = scanner.Text()
-		l.Time = time.Now().UTC()
-		l.Src = filename
-		l.Labels = f.config.Labels
-		l.Process = true
-		l.Module = f.GetName()
+		l := types.Line{
+			Raw:     scanner.Text(),
+			Time:    time.Now().UTC(),
+			Src:     filename,
+			Labels:  f.config.Labels,
+			Process: true,
+			Module:  f.GetName(),
+		}
+		logger.Debugf("line %s", l.Raw)
 		linesRead.With(prometheus.Labels{"source": filename}).Inc()
 
 		//we're reading logs at once, it must be time-machine buckets
