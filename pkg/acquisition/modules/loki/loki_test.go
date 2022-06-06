@@ -1,10 +1,13 @@
 package loki
 
 import (
+	"os"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cstest"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
+	tomb "gopkg.in/tomb.v2"
 )
 
 func TestConfiguration(t *testing.T) {
@@ -49,5 +52,66 @@ url: http://localhost:3100/
 		f := LokiSource{}
 		err := f.Configure([]byte(test.config), subLogger)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
+	}
+}
+
+func TestConfigureDSN(t *testing.T) {
+	// TODO
+}
+
+func TestStreamingAcquisition(t *testing.T) {
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+	log.Info("Test 'TestStreamingAcquisition'")
+	tests := []struct {
+		config         string
+		expectedErr    string
+		streamErr      string
+		expectedOutput string
+		expectedLines  int
+		logType        string
+		logLevel       log.Level
+	}{
+		{
+			config: `
+mode: tail
+source: loki
+url: http://127.0.0.1:3101
+`, // No Loki server here
+			expectedErr:    "",
+			streamErr:      `Get "http://127.0.0.1:3101/ready": dial tcp 127.0.0.1:3101: connect: connection refused`,
+			expectedOutput: "",
+			expectedLines:  0,
+			logType:        "test",
+			logLevel:       log.InfoLevel,
+		},
+	}
+	for _, ts := range tests {
+		var logger *log.Logger
+		var subLogger *log.Entry
+		if ts.expectedOutput != "" {
+			logger.SetLevel(ts.logLevel)
+			subLogger = logger.WithFields(log.Fields{
+				"type": "loki",
+			})
+		} else {
+			subLogger = log.WithFields(log.Fields{
+				"type": "loki",
+			})
+		}
+		out := make(chan types.Event)
+		lokiTomb := tomb.Tomb{}
+		lokiSource := LokiSource{}
+		err := lokiSource.Configure([]byte(ts.config), subLogger)
+		if err != nil {
+			t.Fatalf("Unexpected error : %s", err)
+		}
+		streamTomb := tomb.Tomb{}
+		streamTomb.Go(func() error {
+			return lokiSource.StreamingAcquisition(out, &lokiTomb)
+		})
+
+		err = streamTomb.Wait()
+		cstest.AssertErrorContains(t, err, ts.streamErr)
 	}
 }
