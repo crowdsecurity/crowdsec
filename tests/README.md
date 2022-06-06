@@ -69,9 +69,9 @@ To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
 ## Troubleshooting tests
 
-See `./tests/run-tests` usage to run/debug single test.
+See `./tests/run-tests --help` to run/debug specific tests.
 
-
+Example: `./tests/run-tests tests/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp)
 
 
 # How does it work?

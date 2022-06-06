@@ -41,7 +41,7 @@ func TestApiAuth(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	alert := DecisionsListOpts{IPEquals: new(string)}

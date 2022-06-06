@@ -38,10 +38,11 @@ linters:
     #
     # DEPRECATED by golangi-lint
     #
-    - golint          # [deprecated]: Golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
-    - interfacer      # [deprecated]: Linter that suggests narrower interface types
-    - maligned        # [deprecated]: Tool to detect Go structs that would take less memory if their fields were sorted
-    - scopelint       # [deprecated]: Scopelint checks for unpinned variables in go programs
+    - exhaustivestruct  # The owner seems to have abandoned the linter. Replaced by exhaustruct.
+    - golint            # Golint differs from gofmt. Gofmt reformats Go source code, whereas golint prints out style mistakes
+    - interfacer        # Linter that suggests narrower interface types
+    - maligned          # Tool to detect Go structs that would take less memory if their fields were sorted
+    - scopelint         # Scopelint checks for unpinned variables in go programs
 
     #
     # Enabled
@@ -96,6 +97,8 @@ linters:
     - misspell              # Finds commonly misspelled English words in comments
     - nakedret              # Finds naked returns in functions greater than a specified function length
     - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
+    - nonamedreturns        # Reports all named returns
+    - nosprintfhostport   # Checks for misuse of Sprintf to construct a host with port in a URL.
     - predeclared           # find code that shadows one of Go's predeclared identifiers
     - promlinter            # Check Prometheus metrics naming via promlint
     - revive                # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
@@ -148,13 +151,14 @@ linters:
     - testpackage           # linter that makes you use a separate _test package
 
     #
-    # Too strict (for now?)
+    # Too strict / too many false positives (for now?)
     #
+    - execinquery           # execinquery is a linter about query string checker in Query function which reads your Go src files and warning it finds
     - forbidigo             # Forbids identifiers
     - tagliatelle           # Checks the struct tags.
     - varnamelen            # checks that the length of a variable's name matches its scope
     - gochecknoglobals      # check that no global variables exist
-    - exhaustivestruct      # Checks if all struct's fields are initialized
+    - exhaustruct           # Checks if all structure fields are initialized
     - goconst               # Finds repeated strings that could be replaced by a constant
     - stylecheck            # Stylecheck is a replacement for golint
 
@@ -227,16 +231,6 @@ issues:
     - linters:
         - gosimple
       text: "S1028: should use .* instead of .*"
-
-    #
-    # deadcode
-    #
-
-    - linters:
-        - deadcode
-        - unused
-        - structcheck
-      text: ".* is unused"
 
     #
     # ineffassign

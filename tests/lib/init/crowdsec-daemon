@@ -1,20 +1,20 @@
-    #!/usr/bin/env bash
+#!/usr/bin/env bash
 
-    set -eu
-    script_name=$0
+set -eu
+script_name=$0
 
-    die() {
-        echo >&2 "$@"
-        exit 1
-    }
+die() {
+    echo >&2 "$@"
+    exit 1
+}
 
-    about() {
-        die "usage: $script_name [ start | stop ]"
-    }
+about() {
+    die "usage: $script_name [ start | stop ]"
+}
 
-    #shellcheck disable=SC1007
-    THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-    cd "${THIS_DIR}"/../../
+#shellcheck disable=SC1007
+THIS_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "${THIS_DIR}"/../../
 #shellcheck disable=SC1091
 . ./.environment.sh
 

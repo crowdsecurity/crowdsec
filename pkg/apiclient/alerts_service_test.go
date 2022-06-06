@@ -37,7 +37,7 @@ func TestAlertsListAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
@@ -240,7 +240,7 @@ func TestAlertsGetAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
@@ -431,7 +431,7 @@ func TestAlertsCreateAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()
@@ -475,7 +475,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	defer teardown()

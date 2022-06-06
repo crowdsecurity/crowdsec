@@ -34,3 +34,8 @@ declare stderr
     assert_output --partial "api server init: unable to run local API: unable to init database client: unknown database type 'meh'"
 }
 
+@test "${FILE} CS_LAPI_SECRET not strong enough" {
+    CS_LAPI_SECRET=foo run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    run -0 echo "${stderr}"
+    assert_output --partial "api server init: unable to run local API: CS_LAPI_SECRET not strong enough"
+}

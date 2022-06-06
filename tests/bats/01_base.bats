@@ -13,6 +13,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    load "../lib/bats-file/load.bash"
     ./instance-data load
     ./instance-crowdsec start
 }
@@ -93,6 +94,12 @@ declare stderr
     assert_output --partial "Trying to authenticate with username"
     assert_output --partial " on https://api.crowdsec.net/"
     assert_output --partial "You can successfully interact with Central API (CAPI)"
+
+    ONLINE_API_CREDENTIALS_YAML="$(config_yq '.api.server.online_client.credentials_path')"
+    rm "${ONLINE_API_CREDENTIALS_YAML}"
+    run -1 --separate-stderr cscli capi status
+    run -0 echo "${stderr}"
+    assert_output --partial "Local API is disabled, please run this command on the local API machine: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
 }
 
 @test "${FILE} cscli config show -o human" {
@@ -133,15 +140,45 @@ declare stderr
     assert_output "127.0.0.1:8080"
 }
 
-@test "${FILE} cscli config backup" {
+@test "${FILE} cscli config backup / restore" {
+    # test that we need a valid path
+    # disabled because in CI, the empty string is not passed as a parameter
+    ## run -1 --separate-stderr cscli config backup ""
+    ## run -0 echo "${stderr}"
+    ## assert_output --partial "Failed to backup configurations: directory path can't be empty"
+
+    run -1 --separate-stderr cscli config backup "/dev/null/blah"
+    run -0 echo "${stderr}"
+    assert_output --partial "Failed to backup configurations: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
+
+    # pick a dirpath
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
+
+    # succeed the first time
     run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
-    run -1 --separate-stderr cscli config backup "${backupdir}"
 
+    # don't overwrite an existing backup
+    run -1 --separate-stderr cscli config backup "${backupdir}"
     run -0 echo "${stderr}"
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
+
+    SIMULATION_YAML="$(config_yq '.config_paths.simulation_path')"
+
+    # restore
+    rm "${SIMULATION_YAML}"
+    run -0 cscli config restore "${backupdir}"
+    assert_file_exist "${SIMULATION_YAML}"
+
+    # cleanup
+    rm -rf -- "${backupdir:?}"
+
+    # backup: detect missing files
+    rm "${SIMULATION_YAML}"
+    run -1 --separate-stderr cscli config backup "${backupdir}"
+    run -0 echo "${stderr}"
+    assert_output --regexp "Failed to backup configurations: failed copy .* to .*: stat .*: no such file or directory"
     rm -rf -- "${backupdir:?}"
 }
 
@@ -238,12 +275,14 @@ declare stderr
     assert_output --partial "# bash completion for cscli"
     run -0 cscli completion zsh
     assert_output --partial "# zsh completion for cscli"
+    run -0 cscli completion powershell
+    assert_output --partial "# powershell completion for cscli"
+    run -0 cscli completion fish
+    assert_output --partial "# fish completion for cscli"
 
     rm "${CONFIG_YAML}"
     run -0 cscli completion bash
     assert_output --partial "# bash completion for cscli"
-    run -0 cscli completion zsh
-    assert_output --partial "# zsh completion for cscli"
 }
 
 @test "${FILE} cscli hub list" {

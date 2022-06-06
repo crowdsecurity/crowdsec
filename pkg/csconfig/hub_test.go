@@ -12,22 +12,22 @@ import (
 func TestLoadHub(t *testing.T) {
 	hubFullPath, err := filepath.Abs("./hub")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	dataFullPath, err := filepath.Abs("./data")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	configDirFullPath, err := filepath.Abs("./tests")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	hubIndexFileFullPath, err := filepath.Abs("./hub/.index.json")
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err)
 	}
 
 	tests := []struct {

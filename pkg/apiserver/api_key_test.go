@@ -18,7 +18,7 @@ func TestAPIKey(t *testing.T) {
 
 	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
-		log.Fatalf("%s", err.Error())
+		log.Fatal(err)
 	}
 	// Login with empty token
 	w := httptest.NewRecorder()

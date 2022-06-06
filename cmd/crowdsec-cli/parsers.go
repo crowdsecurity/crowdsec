@@ -25,7 +25,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if csConfig.Hub == nil {
 				return fmt.Errorf("you must configure cli before interacting with hub")
@@ -36,8 +36,8 @@ cscli parsers remove crowdsecurity/sshd-logs
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			return nil
 		},
