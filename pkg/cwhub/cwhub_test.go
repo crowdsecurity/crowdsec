@@ -133,7 +133,6 @@ func TestGetters(t *testing.T) {
 }
 
 func TestIndexDownload(t *testing.T) {
-
 	cfg := test_prepenv()
 
 	err := UpdateHubIdx(cfg.Hub)

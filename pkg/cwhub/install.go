@@ -19,6 +19,7 @@ func DisableItem(hub *csconfig.Hub, target Item, purge bool, force bool) (Item, 
 	if err != nil {
 		return Item{}, err
 	}
+
 	if target.Local {
 		return target, fmt.Errorf("%s isn't managed by hub. Please delete manually", target.Name)
 	}
@@ -136,38 +137,41 @@ func EnableItem(hub *csconfig.Hub, target Item) (Item, error) {
 		for idx, ptr := range tmp {
 			ptrtype := ItemTypes[idx]
 			for _, p := range ptr {
-				if val, ok := hubIdx[ptrtype][p]; ok {
-					hubIdx[ptrtype][p], err = EnableItem(hub, val)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
-					}
-				} else {
+				val, ok := hubIdx[ptrtype][p]
+				if !ok {
 					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort.", ptrtype, p, target.Name)
+				}
+
+				hubIdx[ptrtype][p], err = EnableItem(hub, val)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while installing %s", p))
 				}
 			}
 		}
 	}
 
 	// check if file already exists where it should in configdir (eg /etc/crowdsec/collections/)
-	if _, err := os.Lstat(parent_dir + "/" + target.FileName); os.IsNotExist(err) {
-		//tdir+target.RemotePath
-		srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting source path")
-		}
-		dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
-		if err != nil {
-			return target, errors.Wrap(err, "while getting destination path")
-		}
-		err = os.Symlink(srcPath, dstPath)
-		if err != nil {
-			return target, errors.Wrap(err, fmt.Sprintf("while creating symlink from %s to %s", srcPath, dstPath))
-		}
-		log.Printf("Enabled %s : %s", target.Type, target.Name)
-	} else {
+	if _, err := os.Lstat(parent_dir + "/" + target.FileName); !os.IsNotExist(err) {
 		log.Printf("%s already exists.", parent_dir+"/"+target.FileName)
 		return target, nil
 	}
+
+	//tdir+target.RemotePath
+	srcPath, err := filepath.Abs(hdir + "/" + target.RemotePath)
+	if err != nil {
+		return target, errors.Wrap(err, "while getting source path")
+	}
+
+	dstPath, err := filepath.Abs(parent_dir + "/" + target.FileName)
+	if err != nil {
+		return target, errors.Wrap(err, "while getting destination path")
+	}
+
+	if err = os.Symlink(srcPath, dstPath); err != nil {
+		return target, errors.Wrap(err, fmt.Sprintf("while creating symlink from %s to %s", srcPath, dstPath))
+	}
+
+	log.Printf("Enabled %s : %s", target.Type, target.Name)
 	target.Installed = true
 	hubIdx[target.Type][target.Name] = target
 	return target, nil

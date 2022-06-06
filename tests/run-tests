@@ -35,7 +35,7 @@ if [ $# -ge 1 ]; then
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \
-        -T "$@"
+        "$@"
 else
     echo "test files: ${TEST_DIR}/bats ${TEST_DIR}/dyn-bats"
     "${TEST_DIR}/lib/bats-core/bin/bats" \
@@ -45,5 +45,9 @@ else
 fi
 
 if [ -n "$TEST_COVERAGE" ]; then
-    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/* > "${LOCAL_DIR}/var/lib/coverage/coverage-bats.out"
+    # empty files just to avoid merge errors
+    touch "${LOCAL_DIR}"/var/lib/coverage/crowdsec-
+    touch "${LOCAL_DIR}"/var/lib/coverage/cscli-
+    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/crowdsec-* > "${LOCAL_DIR}/var/lib/coverage/coverage-crowdsec.out"
+    gocovmerge "${LOCAL_DIR}"/var/lib/coverage/cscli-* > "${LOCAL_DIR}/var/lib/coverage/coverage-cscli.out"
 fi

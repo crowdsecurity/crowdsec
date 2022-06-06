@@ -46,7 +46,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, "{\"code\":401,\"message\":\"missing : invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
+	assert.Equal(t, "{\"code\":401,\"message\":\"missing: invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
 
 	// Login with invalid format
 	w = httptest.NewRecorder()

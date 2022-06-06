@@ -190,7 +190,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
-		return
 	})
 	router.Use(CustomRecoveryWithWriter())
 
@@ -277,11 +276,11 @@ func (s *APIServer) Run() error {
 		go func() {
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf(err.Error())
+					log.Fatal(err)
 				}
 			} else {
 				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf(err.Error())
+					log.Fatal(err)
 				}
 			}
 		}()

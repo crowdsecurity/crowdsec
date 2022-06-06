@@ -7,14 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"errors"
-
 	jwt "github.com/appleboy/gin-jwt/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -48,7 +47,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var scenarios string
 	var err error
 	if err := c.ShouldBindJSON(&loginInput); err != nil {
-		return "", errors.New(fmt.Sprintf("missing : %v", err.Error()))
+		return "", errors.Wrap(err, "missing")
 	}
 	if err := loginInput.Validate(strfmt.Default); err != nil {
 		return "", errors.New("input format error")
@@ -139,29 +138,42 @@ func Unauthorized(c *gin.Context, code int, message string) {
 	})
 }
 
+func randomSecret() ([]byte, error) {
+	size := 64
+	secret := make([]byte, size)
+
+	n, err := rand.Read(secret)
+	if err != nil {
+		return nil, errors.New("unable to generate a new random seed for JWT generation")
+	}
+
+	if n != size {
+		return nil, errors.New("not enough entropy at random seed generation for JWT generation")
+	}
+
+	return secret, nil
+}
+
 func NewJWT(dbClient *database.Client) (*JWT, error) {
 	// Get secret from environment variable "SECRET"
 	var (
 		secret []byte
+		err    error
 	)
 
-	//Please be aware that brute force HS256 is possible.
-	//PLEASE choose a STRONG secret
-	secret_string := os.Getenv("CS_LAPI_SECRET")
-	if secret_string == "" {
-		secret = make([]byte, 64)
-		if n, err := rand.Read(secret); err != nil {
-			log.Fatalf("unable to generate a new random seed for JWT generation")
-		} else {
-			if n != 64 {
-				log.Fatalf("not enough entropy at random seed generation for JWT generation")
-			}
+	// Please be aware that brute force HS256 is possible.
+	// PLEASE choose a STRONG secret
+	secretString := os.Getenv("CS_LAPI_SECRET")
+	secret = []byte(secretString)
+
+	switch l := len(secret); {
+	case l == 0:
+		secret, err = randomSecret()
+		if err != nil {
+			return &JWT{}, err
 		}
-	} else {
-		secret = []byte(secret_string)
-		if len(secret) < 64 {
-			log.Fatalf("secret not strong enough")
-		}
+	case l < 64:
+		return &JWT{}, errors.New("CS_LAPI_SECRET not strong enough")
 	}
 
 	jwtMiddleware := &JWT{

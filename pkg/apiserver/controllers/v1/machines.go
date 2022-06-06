@@ -27,5 +27,4 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 	}
 
 	gctx.Status(http.StatusCreated)
-	return
 }

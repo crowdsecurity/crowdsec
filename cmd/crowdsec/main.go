@@ -10,6 +10,7 @@ import (
 	_ "net/http/pprof"
 	"time"
 
+	"github.com/confluentinc/bincover"
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
@@ -49,7 +50,7 @@ var (
 	pluginBroker      csplugin.PluginBroker
 )
 
-const bincoverTesting = false
+var bincoverTesting = ""
 
 type Flags struct {
 	ConfigFile     string
@@ -196,7 +197,6 @@ func (f *Flags) Parse() {
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
-
 	if dumpFolder != "" {
 		parser.ParseDump = true
 		parser.DumpFolder = dumpFolder
@@ -217,11 +217,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if !cConfig.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
-		log.Fatalf("missing local API credentials for crowdsec agent, abort")
+		return errors.New("missing local API credentials for crowdsec agent, abort")
 	}
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
-		log.Fatalf("You must run at least the API Server or crowdsec")
+		return errors.New("You must run at least the API Server or crowdsec")
 	}
 
 	if flags.DebugLevel {
@@ -260,8 +260,26 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	return nil
 }
 
-func main() {
+// This must be called right before the program termination, to allow
+// measuring functional test coverage in case of abnormal exit.
+//
+// without bincover: log error and exit with code
+// with bincover: log error and tell bincover the exit code, then return
+func exitWithCode(exitCode int, err error) {
+	if err != nil {
+		// this method of logging a fatal error does not
+		// trigger a program exit (as stated by the authors, it
+		// is not going to change in logrus to keep backward
+		// compatibility), and allows us to report coverage.
+		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
+	}
+	if bincoverTesting == "" {
+		os.Exit(exitCode)
+	}
+	bincover.ExitCode = exitCode
+}
 
+func main() {
 	defer types.CatchPanic("crowdsec/main")
 
 	log.Debugf("os.Args: %v", os.Args)
@@ -269,9 +287,25 @@ func main() {
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
+		flag.Usage()
+		// the flag package exits with 2 in case of unknown flag
+		exitWithCode(2, nil)
+		return
+	}
+
 	if flags.PrintVersion {
 		cwversion.Show()
-		os.Exit(0)
+		exitWithCode(0, nil)
+		return
 	}
-	StartRunSvc()
+
+	exitCode := 0
+	err := StartRunSvc()
+	if err != nil {
+		exitCode = 1
+	}
+	exitWithCode(exitCode, err)
 }

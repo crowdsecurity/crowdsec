@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -313,6 +314,8 @@ func TestStreamDecisionDedup(t *testing.T) {
 	// Create Valid Alert : 3 decisions for 127.0.0.1, longest has id=3
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
+	time.Sleep(2 * time.Second)
+
 	// Get Stream, we only get one decision (the longest one)
 	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
 	decisions, code, err := readDecisionsStreamResp(w)
@@ -335,7 +338,6 @@ func TestStreamDecisionDedup(t *testing.T) {
 	assert.Equal(t, code, 200)
 	assert.Equal(t, len(decisions["deleted"]), 0)
 	assert.Equal(t, len(decisions["new"]), 0)
-
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
 	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody)
 	assert.Equal(t, 200, w.Code)
