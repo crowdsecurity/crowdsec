@@ -305,7 +305,7 @@ func (r *RFC5424) parseMessage() error {
 func (r *RFC5424) Parse(message []byte) error {
 	r.len = len(message)
 	if r.len == 0 {
-		return fmt.Errorf("message is empty")
+		return fmt.Errorf("syslog line is empty")
 	}
 	r.buf = message
 

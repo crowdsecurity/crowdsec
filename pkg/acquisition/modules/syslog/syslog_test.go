@@ -67,7 +67,15 @@ func writeToSyslog(logs []string) {
 		return
 	}
 	for _, log := range logs {
-		fmt.Fprint(conn, log)
+		n, err := fmt.Fprint(conn, log)
+		if err != nil {
+			fmt.Printf("could not write to syslog server : %s", err)
+			return
+		}
+		if n != len(log) {
+			fmt.Printf("could not write to syslog server : %s", err)
+			return
+		}
 	}
 }
 
@@ -81,26 +89,23 @@ func TestStreamingAcquisition(t *testing.T) {
 	}{
 		{
 			name: "invalid msgs",
-			config: `
-source: syslog
+			config: `source: syslog
 listen_port: 4242
 listen_addr: 127.0.0.1`,
 			logs: []string{"foobar", "bla", "pouet"},
 		},
 		{
 			name: "RFC5424",
-			config: `
-		source: syslog
-		listen_port: 4242
-		listen_addr: 127.0.0.1`,
+			config: `source: syslog
+listen_port: 4242
+listen_addr: 127.0.0.1`,
 			expectedLines: 2,
 			logs: []string{`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`,
 				`<13>1 2021-05-18T12:12:37.560695+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla2[foobar]`},
 		},
 		{
 			name: "RFC3164",
-			config: `
-source: syslog
+			config: `source: syslog
 listen_port: 4242
 listen_addr: 127.0.0.1`,
 			expectedLines: 3,
@@ -130,12 +135,19 @@ listen_addr: 127.0.0.1`,
 				"type": "syslog",
 			})
 			s := SyslogSource{}
-			_ = s.Configure([]byte(ts.config), subLogger)
+			err := s.Configure([]byte(ts.config), subLogger)
+			if err != nil {
+				t.Fatalf("could not configure syslog source : %s", err)
+			}
 			tomb := tomb.Tomb{}
 			out := make(chan types.Event)
-			err := s.StreamingAcquisition(out, &tomb)
+			err = s.StreamingAcquisition(out, &tomb)
 			cstest.AssertErrorContains(t, err, ts.expectedErr)
-			if err != nil {
+			if ts.expectedErr != "" {
+				return
+			}
+			if err != nil && ts.expectedErr == "" {
+				t.Fatalf("unexpected error while starting syslog server: %s", err)
 				return
 			}
 
