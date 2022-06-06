@@ -44,11 +44,11 @@ cscli hub update # Download list of available configurations from the hub
 		Run: func(cmd *cobra.Command, args []string) {
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			//use LocalSync to get warnings about tainted / outdated items
 			_, warn := cwhub.LocalSync(csConfig.Hub)
@@ -84,7 +84,7 @@ Fetches the [.index.json](https://github.com/crowdsecurity/hub/blob/master/.inde
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if err := cwhub.UpdateHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to get Hub index : %v", err)
@@ -118,11 +118,11 @@ Upgrade all configs installed from Crowdsec Hub. Run 'sudo cscli hub update' if 
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			log.Infof("Upgrading collections")

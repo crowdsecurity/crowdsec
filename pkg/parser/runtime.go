@@ -187,7 +187,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				clog.Debugf("%s = '%s'", static.TargetByName, value)
 			}
 		} else {
-			clog.Fatalf("unable to process static : unknown tartget")
+			clog.Fatal("unable to process static : unknown target")
 		}
 
 	}

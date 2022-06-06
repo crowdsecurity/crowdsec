@@ -46,7 +46,7 @@ func TestDecisionsList(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	tduration := "3h59m55.756182786s"
@@ -77,7 +77,7 @@ func TestDecisionsList(t *testing.T) {
 	}
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
@@ -137,7 +137,7 @@ func TestDecisionsStream(t *testing.T) {
 
 	newcli, err := NewDefaultClient(apiURL, "v1", "toto", auth.Client())
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	tduration := "3h59m55.756182786s"
@@ -168,7 +168,7 @@ func TestDecisionsStream(t *testing.T) {
 	}
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 	if !reflect.DeepEqual(*decisions, *expected) {
 		t.Fatalf("returned %+v, want %+v", resp, expected)
@@ -220,7 +220,7 @@ func TestDeleteDecisions(t *testing.T) {
 	})
 
 	if err != nil {
-		log.Fatalf("new api client: %s", err.Error())
+		log.Fatalf("new api client: %s", err)
 	}
 
 	filters := DecisionsDeleteOpts{IPEquals: new(string)}

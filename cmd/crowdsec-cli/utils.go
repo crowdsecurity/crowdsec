@@ -51,7 +51,7 @@ func indexOf(s string, slice []string) int {
 
 func LoadHub() error {
 	if err := csConfig.LoadHub(); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 	if csConfig.Hub == nil {
 		return fmt.Errorf("unable to load hub")

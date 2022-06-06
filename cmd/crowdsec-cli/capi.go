@@ -103,7 +103,9 @@ func NewCapiCmd() *cobra.Command {
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	cmdCapiRegister.Flags().MarkHidden("schmilblick")
+	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+		log.Fatalf("failed to hide flag: %s", err)
+	}
 	cmdCapi.AddCommand(cmdCapiRegister)
 
 	var cmdCapiStatus = &cobra.Command{
@@ -131,11 +133,11 @@ func NewCapiCmd() *cobra.Command {
 			}
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to load hub index : %s", err)
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()

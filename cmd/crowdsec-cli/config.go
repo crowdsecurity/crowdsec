@@ -47,13 +47,13 @@ func backupConfigToDirectory(dirPath string) error {
 	}
 
 	if err = os.Mkdir(dirPath, 0700); err != nil {
-		return fmt.Errorf("error while creating %s : %s", dirPath, err)
+		return errors.Wrapf(err, "while creating %s", dirPath)
 	}
 
 	if csConfig.ConfigPaths.SimulationFilePath != "" {
 		backupSimulation := filepath.Join(dirPath, "simulation.yaml")
 		if err = types.CopyFile(csConfig.ConfigPaths.SimulationFilePath, backupSimulation); err != nil {
-			return fmt.Errorf("failed copy %s to %s : %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation, err)
+			return errors.Wrapf(err, "failed copy %s to %s", csConfig.ConfigPaths.SimulationFilePath, backupSimulation)
 		}
 		log.Infof("Saved simulation to %s", backupSimulation)
 	}
@@ -437,11 +437,11 @@ func NewConfigCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if err = backupConfigToDirectory(args[0]); err != nil {
 				log.Fatalf("Failed to backup configurations: %s", err)
@@ -466,11 +466,11 @@ func NewConfigCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 			if err = cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to get Hub index : %v", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			if err := restoreConfigFromDirectory(args[0]); err != nil {
 				log.Fatalf("failed restoring configurations from %s : %s", args[0], err)

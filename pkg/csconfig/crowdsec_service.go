@@ -114,7 +114,7 @@ func (c *Config) LoadCrowdsec() error {
 		return fmt.Errorf("loading api client: %s", err.Error())
 	}
 	if err := c.LoadHub(); err != nil {
-		return fmt.Errorf("loading hub: %s", err)
+		return errors.Wrap(err, "while loading hub")
 	}
 	return nil
 }
