@@ -30,9 +30,9 @@ const PRI_MAX_LEN = 3
 var VALID_TIMESTAMPS = []string{
 	time.RFC3339,
 	"Jan 02 15:04:05 2006",
-	"Jan 2 15:04:05 2006",
+	"Jan _2 15:04:05 2006",
 	"Jan 02 15:04:05",
-	"Jan 2 15:04:05",
+	"Jan _2 15:04:05",
 }
 
 func WithCurrentYear() RFC3164Option {

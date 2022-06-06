@@ -307,6 +307,26 @@ func TestParse(t *testing.T) {
 		{
 			`<13>1 2021-05-18T11:58:40.828081+02:00 mantis sshd 49340 - [timeQuality isSynced="0" tzKnown="1"] blabla`, expected{}, "timestamp is not valid", []RFC3164Option{},
 		},
+		{
+			`<46>Jun  2 06:55:39 localhost haproxy[27213]: Connect from 100.100.100.99:52611 to 100.100.100.99:443 (https_shared-merged/HTTP)\\n 10.0.0.1}`, expected{
+				Timestamp: time.Date(time.Now().Year(), time.June, 2, 6, 55, 39, 0, time.UTC),
+				Hostname:  "localhost",
+				Tag:       "haproxy",
+				PID:       "27213",
+				Message:   `Connect from 100.100.100.99:52611 to 100.100.100.99:443 (https_shared-merged/HTTP)\\n 10.0.0.1}`,
+				PRI:       46,
+			}, "", []RFC3164Option{WithCurrentYear()},
+		},
+		{
+			`<46>Jun  2 06:55:39 2022 localhost haproxy[27213]: Connect from 100.100.100.99:52611 to 100.100.100.99:443 (https_shared-merged/HTTP)\\n 10.0.0.1}`, expected{
+				Timestamp: time.Date(2022, time.June, 2, 6, 55, 39, 0, time.UTC),
+				Hostname:  "localhost",
+				Tag:       "haproxy",
+				PID:       "27213",
+				Message:   `Connect from 100.100.100.99:52611 to 100.100.100.99:443 (https_shared-merged/HTTP)\\n 10.0.0.1}`,
+				PRI:       46,
+			}, "", []RFC3164Option{},
+		},
 	}
 
 	for _, test := range tests {
