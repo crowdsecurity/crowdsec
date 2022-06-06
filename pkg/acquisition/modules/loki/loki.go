@@ -41,14 +41,14 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type LokiConfiguration struct {
+	URL                               string        `yaml:"url"`   // Loki url
+	Query                             string        `yaml:"query"` // LogQL query
+	DelayFor                          time.Duration `yaml:"delay_for"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	URL                               string // Loki url
-	Query                             string // LogQL query
-	DelayFor                          time.Duration
 }
 
 type LokiSource struct {
-	config        LokiConfiguration
+	Config        LokiConfiguration
 	logger        *log.Entry
 	lokiWebsocket string
 	lokiReady     string
@@ -64,25 +64,25 @@ func (l *LokiSource) GetAggregMetrics() []prometheus.Collector {
 }
 
 func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
-	lokiConfig := LokiConfiguration{}
+	l.Config = LokiConfiguration{}
 	l.logger = logger
-	err := yaml.UnmarshalStrict(config, &lokiConfig)
+	err := yaml.UnmarshalStrict(config, &l.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse LokiAcquisition configuration")
 	}
 	l.dialer = &websocket.Dialer{}
 	err = l.buildUrl()
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse Loki url")
+		return errors.Wrap(err, "Cannot build Loki url")
 	}
 
 	return nil
 }
 
 func (l *LokiSource) buildUrl() error {
-	u, err := url.Parse(l.config.URL)
+	u, err := url.Parse(l.Config.URL)
 	if err != nil {
-		return errors.Wrap(err, "Cannot parse Loki URL")
+		return errors.Wrap(err, "Cannot parse Loki URL : "+l.Config.URL)
 	}
 	l.lokiReady = fmt.Sprintf("%s://%s/ready", u.Scheme, u.Host)
 
@@ -104,10 +104,10 @@ func (l *LokiSource) buildUrl() error {
 	}
 	buff.WriteByte('?')
 	params := url.Values{}
-	params.Add("query", l.config.Query)
+	params.Add("query", l.Config.Query)
 	params.Add("limit", fmt.Sprintf("%d", lokiLimit))
-	if l.config.DelayFor != 0 {
-		params.Add("delay_for", fmt.Sprintf("%d", int64(l.config.DelayFor.Seconds())))
+	if l.Config.DelayFor != 0 {
+		params.Add("delay_for", fmt.Sprintf("%d", int64(l.Config.DelayFor.Seconds())))
 	}
 	start := time.Now() // FIXME config
 	params.Add("start", fmt.Sprintf("%d", start.UnixNano()))
@@ -118,9 +118,9 @@ func (l *LokiSource) buildUrl() error {
 
 func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	l.logger = logger
-	l.config = LokiConfiguration{}
-	l.config.Mode = configuration.CAT_MODE
-	l.config.Labels = labels
+	l.Config = LokiConfiguration{}
+	l.Config.Mode = configuration.CAT_MODE
+	l.Config.Labels = labels
 
 	if !strings.HasPrefix(dsn, "loki://") {
 		return fmt.Errorf("invalid DSN %s for loki source, must start with loki://", dsn)
@@ -130,7 +130,7 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 }
 
 func (l *LokiSource) GetMode() string {
-	return l.config.Mode
+	return l.Config.Mode
 }
 
 func (l *LokiSource) GetName() string {
@@ -167,12 +167,12 @@ func (l *LokiSource) readOneTail(resp Tail, out chan types.Event) {
 			ll := types.Line{}
 			ll.Raw = entry.Line
 			ll.Time = entry.Timestamp
-			ll.Src = l.config.URL
+			ll.Src = l.Config.URL
 			ll.Labels = stream.Stream
 			ll.Process = true
 			ll.Module = l.GetName()
 
-			linesRead.With(prometheus.Labels{"source": l.config.URL}).Inc()
+			linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
 			out <- types.Event{
 				Line:       ll,
 				Process:    true,
