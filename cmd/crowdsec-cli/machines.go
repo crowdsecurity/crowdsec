@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -37,10 +38,6 @@ var (
 	upper          = "ABCDEFGHIJKLMNOPQRSTUVWXY"
 	lower          = "abcdefghijklmnopqrstuvwxyz"
 	digits         = "0123456789"
-)
-
-const (
-	uuid = "/proc/sys/kernel/random/uuid"
 )
 
 func generatePassword(length int) string {
@@ -70,9 +67,9 @@ func generateIDPrefix() (string, error) {
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
-	bID, err := ioutil.ReadFile(uuid)
+	bId, err := uuid.NewRandom()
 	if err == nil {
-		return string(bID), nil
+		return bId.String(), nil
 	}
 	return "", errors.Wrap(err, "generating machine id")
 }
