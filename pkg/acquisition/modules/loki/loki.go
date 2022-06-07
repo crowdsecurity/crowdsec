@@ -7,6 +7,7 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -205,7 +206,13 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			defer c.Close()
 			var resp Tail
 			for { // draining the websocket
-				err = c.ReadJSON(&resp)
+				t, msg, err := c.ReadMessage()
+				if len(msg) == 0 {
+					time.Sleep(100 * time.Millisecond)
+					continue
+				}
+				fmt.Println(t, string(msg))
+				err = json.Unmarshal(msg, &resp)
 				if err != nil {
 					return errors.Wrap(err, "OneShotAcquisition error while reading JSON websocket")
 				}
