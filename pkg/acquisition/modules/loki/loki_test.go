@@ -24,6 +24,7 @@ func TestConfiguration(t *testing.T) {
 	tests := []struct {
 		config      string
 		expectedErr string
+		password    string
 	}{
 		{
 			config:      `foobar: asd`,
@@ -51,6 +52,16 @@ url: http://localhost:3100/
 `,
 			expectedErr: "",
 		},
+		{
+
+			config: `
+mode: tail
+source: loki
+url: http://foo:bar@localhost:3100/
+`,
+			expectedErr: "",
+			password:    "bar",
+		},
 	}
 	subLogger := log.WithFields(log.Fields{
 		"type": "loki",
@@ -59,6 +70,16 @@ url: http://localhost:3100/
 		lokiSource := LokiSource{}
 		err := lokiSource.Configure([]byte(test.config), subLogger)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
+		if test.password == "" {
+			if lokiSource.auth != nil {
+				t.Fatalf("No auth should be here : %v", lokiSource.auth)
+			}
+		} else {
+			p, _ := lokiSource.auth.Password()
+			if test.password != p {
+				t.Fatalf("Bad password %s != %s", test.password, p)
+			}
+		}
 	}
 }
 
@@ -69,6 +90,7 @@ func TestConfigureDSN(t *testing.T) {
 		dsn         string
 		expectedErr string
 		since       time.Duration
+		password    string
 	}{
 		{
 			name:        "Wrong scheme",
@@ -95,6 +117,11 @@ func TestConfigureDSN(t *testing.T) {
 			dsn:   "loki://127.0.0.1:3100/?since=3h",
 			since: 3 * time.Hour,
 		},
+		{
+			name:     "Basic Auth",
+			dsn:      "loki://login:password@localhost:3100",
+			password: "password",
+		},
 	}
 
 	for _, test := range tests {
@@ -107,6 +134,20 @@ func TestConfigureDSN(t *testing.T) {
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 		if lokiSource.Config.Since != test.since {
 			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
+		}
+		if test.password == "" {
+			if lokiSource.auth != nil {
+				t.Fatalf("Password should be empty : %v", lokiSource.auth)
+			}
+		} else {
+			p, _ := lokiSource.auth.Password()
+			if test.password != p {
+				t.Fatalf("Wrong password : %s != %s", test.password, p)
+			}
+			a := lokiSource.header.Get("authorization")
+			if !strings.HasPrefix(a, "Basic ") {
+				t.Fatalf("Bad auth header : %s", a)
+			}
 		}
 	}
 }
