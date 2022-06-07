@@ -160,13 +160,11 @@ query: >
 					Line: fmt.Sprintf("Log line #%d", i),
 				}
 			}
-			buff := &bytes.Buffer{}
-			encoder := json.NewEncoder(buff)
-			err := encoder.Encode(streams)
+			buff, err := json.Marshal(streams)
 			if err != nil {
 				return err
 			}
-			resp, err := http.Post("http://127.0.0.1:3100/loki/api/v1/push", "application/json", buff)
+			resp, err := http.Post("http://127.0.0.1:3100/loki/api/v1/push", "application/json", bytes.NewBuffer(buff))
 			if err != nil {
 				return err
 			}
