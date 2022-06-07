@@ -44,6 +44,7 @@ type LokiConfiguration struct {
 	URL                               string        `yaml:"url"`   // Loki url
 	Query                             string        `yaml:"query"` // LogQL query
 	DelayFor                          time.Duration `yaml:"delay_for"`
+	Since                             time.Duration `yaml:"since"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -110,6 +111,9 @@ func (l *LokiSource) buildUrl() error {
 		params.Add("delay_for", fmt.Sprintf("%d", int64(l.Config.DelayFor.Seconds())))
 	}
 	start := time.Now() // FIXME config
+	if l.Config.Since != 0 {
+		start = start.Add(-l.Config.Since)
+	}
 	params.Add("start", fmt.Sprintf("%d", start.UnixNano()))
 	buff.WriteString(params.Encode())
 	l.lokiWebsocket = buff.String()
