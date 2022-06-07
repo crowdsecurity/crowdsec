@@ -56,14 +56,59 @@ url: http://localhost:3100/
 		"type": "loki",
 	})
 	for _, test := range tests {
-		f := LokiSource{}
-		err := f.Configure([]byte(test.config), subLogger)
+		lokiSource := LokiSource{}
+		err := lokiSource.Configure([]byte(test.config), subLogger)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
 	}
 }
 
 func TestConfigureDSN(t *testing.T) {
-	// TODO
+	log.Infof("Test 'TestConfigureDSN'")
+	tests := []struct {
+		name        string
+		dsn         string
+		expectedErr string
+		since       time.Duration
+	}{
+		{
+			name:        "Wrong scheme",
+			dsn:         "wrong://",
+			expectedErr: "invalid DSN wrong:// for loki source, must start with loki://",
+		},
+		{
+			name:        "Correct DSN",
+			dsn:         "loki://localhost:3100/",
+			expectedErr: "",
+		},
+		{
+			name:        "Empty host",
+			dsn:         "loki://",
+			expectedErr: "Empty loki host",
+		},
+		{
+			name:        "Invalid DSN",
+			dsn:         "loki",
+			expectedErr: "invalid DSN loki for loki source, must start with loki://",
+		},
+		{
+			name:  "Bad since param",
+			dsn:   "loki://127.0.0.1:3100/?since=3h",
+			since: 3 * time.Hour,
+		},
+	}
+
+	for _, test := range tests {
+		subLogger := log.WithFields(log.Fields{
+			"type": "loki",
+			"name": test.name,
+		})
+		lokiSource := &LokiSource{}
+		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
+		cstest.AssertErrorContains(t, err, test.expectedErr)
+		if lokiSource.Config.Since != test.since {
+			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
+		}
+	}
 }
 
 func TestStreamingAcquisition(t *testing.T) {

@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
@@ -126,14 +125,50 @@ func (l *LokiSource) buildUrl() error {
 
 func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger *log.Entry) error {
 	l.logger = logger
+	l.dialer = &websocket.Dialer{}
 	l.Config = LokiConfiguration{}
 	l.Config.Mode = configuration.CAT_MODE
 	l.Config.Labels = labels
 
-	if !strings.HasPrefix(dsn, "loki://") {
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return errors.Wrap(err, "can't parse dsn configuration : "+dsn)
+	}
+	if u.Scheme != "loki" {
 		return fmt.Errorf("invalid DSN %s for loki source, must start with loki://", dsn)
 	}
-	// FIXME DSN parsing
+	if u.Host == "" {
+		return errors.New("Empty loki host")
+	}
+	scheme := "https"
+	// FIXME how can use http with container, in a private network?
+	if u.Host == "localhost" || u.Host == "127.0.0.1" || u.Host == "[::1]" {
+		scheme = "http"
+	}
+	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
+	params := u.Query()
+	if q := params.Get("query"); q != "" {
+		l.Config.Query = q
+	}
+	if d := params.Get("delay_for"); d != "" {
+		delayFor, err := time.ParseDuration(d)
+		if err != nil {
+			return err
+		}
+		l.Config.DelayFor = delayFor
+	}
+	if s := params.Get("since"); s != "" {
+		since, err := time.ParseDuration(s)
+		if err != nil {
+			return errors.Wrap(err, "can't parse since in DSB configuration")
+		}
+		l.Config.Since = since
+	}
+
+	err = l.buildUrl()
+	if err != nil {
+		return errors.Wrap(err, "Cannot build Loki url from DSN")
+	}
 	return nil
 }
 
