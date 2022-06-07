@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -69,6 +70,7 @@ func TestStreamingAcquisition(t *testing.T) {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
+	title := time.Now().String()
 	tests := []struct {
 		config         string
 		expectedErr    string
@@ -137,6 +139,9 @@ query: >
 			for i := 0; i < 20; i++ {
 				evt := <-out
 				fmt.Println(evt)
+				if !strings.HasSuffix(evt.Line.Raw, title) {
+					return fmt.Errorf("Incorrect suffix : %s", evt.Line.Raw)
+				}
 			}
 			return nil
 		})
@@ -157,7 +162,7 @@ query: >
 			for i := 0; i < 20; i++ {
 				streams.Streams[0].Values[i] = LogValue{
 					Time: time.Now(),
-					Line: fmt.Sprintf("Log line #%d", i),
+					Line: fmt.Sprintf("Log line #%d %v", i, title),
 				}
 			}
 			buff, err := json.Marshal(streams)
