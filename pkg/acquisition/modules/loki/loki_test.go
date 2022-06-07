@@ -96,6 +96,8 @@ url: http://127.0.0.1:3101
 mode: tail
 source: loki
 url: http://127.0.0.1:3100
+query: >
+        {server="demo"}
 `, // No Loki server here
 			expectedErr:    "",
 			streamErr:      "",
@@ -128,6 +130,15 @@ url: http://127.0.0.1:3100
 		streamTomb := tomb.Tomb{}
 		streamTomb.Go(func() error {
 			return lokiSource.StreamingAcquisition(out, &lokiTomb)
+		})
+
+		readTomb := tomb.Tomb{}
+		readTomb.Go(func() error {
+			for i := 0; i < 20; i++ {
+				evt := <-out
+				fmt.Println(evt)
+			}
+			return nil
 		})
 
 		writerTomb := tomb.Tomb{}
@@ -164,6 +175,7 @@ url: http://127.0.0.1:3100
 				log.Error(string(b))
 				return fmt.Errorf("Bad post status %d", resp.StatusCode)
 			}
+			subLogger.Info("20 Events sent")
 			return nil
 		})
 		err = writerTomb.Wait()
@@ -173,6 +185,13 @@ url: http://127.0.0.1:3100
 
 		err = streamTomb.Wait()
 		cstest.AssertErrorContains(t, err, ts.streamErr)
+
+		if err == nil {
+			err = readTomb.Wait()
+			if err != nil {
+				t.Fatalf("Unexpected error : %s", err)
+			}
+		}
 	}
 }
 
