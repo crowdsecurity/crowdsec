@@ -7,6 +7,7 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -58,6 +59,7 @@ type LokiSource struct {
 	lokiReady     string
 	dialer        *websocket.Dialer
 	header        http.Header
+	auth          *url.Userinfo
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
@@ -74,6 +76,13 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	err := yaml.UnmarshalStrict(config, &l.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse LokiAcquisition configuration")
+	}
+	u, err := url.Parse(l.Config.URL)
+	if err != nil {
+		return err
+	}
+	if u.User != nil {
+		l.auth = u.User
 	}
 	err = l.buildUrl()
 	if err != nil {
@@ -95,6 +104,9 @@ func (l *LokiSource) prepareConfig() error {
 	l.header.Set("User-Agent", "Crowdsec "+cwversion.Version)
 	for k, v := range l.Config.Headers {
 		l.header.Set(k, v)
+	}
+	if l.auth != nil {
+		l.header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(l.auth.String())))
 	}
 	return nil
 }
@@ -162,6 +174,9 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	// FIXME how can use http with container, in a private network?
 	if u.Host == "localhost" || u.Host == "127.0.0.1" || u.Host == "[::1]" {
 		scheme = "http"
+	}
+	if u.User != nil {
+		l.auth = u.User
 	}
 	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
 	params := u.Query()
