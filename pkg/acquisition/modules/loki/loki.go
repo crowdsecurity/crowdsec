@@ -42,11 +42,12 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type LokiConfiguration struct {
-	URL                               string        `yaml:"url"`   // Loki url
-	Query                             string        `yaml:"query"` // LogQL query
-	DelayFor                          time.Duration `yaml:"delay_for"`
-	Since                             time.Duration `yaml:"since"`
-	TenantID                          string        `yaml:"tenant_id"`
+	URL                               string            `yaml:"url"`   // Loki url
+	Query                             string            `yaml:"query"` // LogQL query
+	DelayFor                          time.Duration     `yaml:"delay_for"`
+	Since                             time.Duration     `yaml:"since"`
+	TenantID                          string            `yaml:"tenant_id"`
+	Headers                           map[string]string `yaml:"headers"` // HTTP headers for talking to Loki
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -82,7 +83,6 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot prepare Loki config")
 	}
-
 	return nil
 }
 
@@ -93,6 +93,9 @@ func (l *LokiSource) prepareConfig() error {
 		l.header.Set("X-Scope-OrgID", l.Config.TenantID)
 	}
 	l.header.Set("User-Agent", "Crowdsec "+cwversion.Version)
+	for k, v := range l.Config.Headers {
+		l.header.Set(k, v)
+	}
 	return nil
 }
 
