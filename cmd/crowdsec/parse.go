@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -29,10 +27,9 @@ LOOP:
 			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 
 			/* parse the log using magic */
-			parsed, error := parser.Parse(parserCTX, event, nodes)
-			if error != nil {
-				log.Errorf("failed parsing : %v\n", error)
-				return errors.New("parsing failed :/")
+			parsed, err := parser.Parse(parserCTX, event, nodes)
+			if err != nil {
+				log.Errorf("failed parsing : %v\n", err)
 			}
 			if !parsed.Process {
 				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()

@@ -272,7 +272,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 			// if the grok succeed, process associated statics
 			err := n.ProcessStatics(n.Grok.Statics, p)
 			if err != nil {
-				clog.Fatalf("(%s) Failed to process statics : %v", n.rn, err)
+				clog.Errorf("(%s) Failed to process statics : %v", n.rn, err)
+				return false, err
 			}
 		} else {
 			//grok failed, node failed
@@ -337,7 +338,8 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		// if all else is good in whitelist, process node's statics
 		err := n.ProcessStatics(n.Statics, p)
 		if err != nil {
-			clog.Fatalf("Failed to process statics : %v", err)
+			clog.Errorf("Failed to process statics : %v", err)
+			return false, err
 		}
 	} else {
 		clog.Tracef("! No node statics")

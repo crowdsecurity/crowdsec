@@ -9,6 +9,7 @@ import (
 
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
 	log "github.com/sirupsen/logrus"
@@ -65,7 +66,7 @@ Note: This command requires database direct access, so is intended to be run on 
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version"})
+				table.SetHeader([]string{"Name", "IP Address", "Valid", "Last API pull", "Type", "Version", "Auth Type"})
 				for _, b := range blockers {
 					var revoked string
 					if !b.Revoked {
@@ -73,7 +74,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						revoked = emoji.Prohibited.String()
 					}
-					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
+					table.Append([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -84,7 +85,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version"})
+				err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
 				if err != nil {
 					log.Fatalf("failed to write raw header: %s", err)
 				}
@@ -95,7 +96,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						revoked = "pending"
 					}
-					err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version})
+					err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
 					if err != nil {
 						log.Fatalf("failed to write raw: %s", err)
 					}
@@ -129,7 +130,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			if err != nil {
 				log.Fatalf("unable to generate api key: %s", err)
 			}
-			err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey))
+			_, err = dbClient.CreateBouncer(keyName, keyIP, middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 			if err != nil {
 				log.Fatalf("unable to create bouncer: %s", err)
 			}

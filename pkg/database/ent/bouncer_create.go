@@ -136,6 +136,20 @@ func (bc *BouncerCreate) SetNillableLastPull(t *time.Time) *BouncerCreate {
 	return bc
 }
 
+// SetAuthType sets the "auth_type" field.
+func (bc *BouncerCreate) SetAuthType(s string) *BouncerCreate {
+	bc.mutation.SetAuthType(s)
+	return bc
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (bc *BouncerCreate) SetNillableAuthType(s *string) *BouncerCreate {
+	if s != nil {
+		bc.SetAuthType(*s)
+	}
+	return bc
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bc *BouncerCreate) Mutation() *BouncerMutation {
 	return bc.mutation
@@ -227,6 +241,10 @@ func (bc *BouncerCreate) defaults() {
 		v := bouncer.DefaultLastPull()
 		bc.mutation.SetLastPull(v)
 	}
+	if _, ok := bc.mutation.AuthType(); !ok {
+		v := bouncer.DefaultAuthType
+		bc.mutation.SetAuthType(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -242,6 +260,9 @@ func (bc *BouncerCreate) check() error {
 	}
 	if _, ok := bc.mutation.LastPull(); !ok {
 		return &ValidationError{Name: "last_pull", err: errors.New(`ent: missing required field "Bouncer.last_pull"`)}
+	}
+	if _, ok := bc.mutation.AuthType(); !ok {
+		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Bouncer.auth_type"`)}
 	}
 	return nil
 }
@@ -349,6 +370,14 @@ func (bc *BouncerCreate) createSpec() (*Bouncer, *sqlgraph.CreateSpec) {
 			Column: bouncer.FieldLastPull,
 		})
 		_node.LastPull = value
+	}
+	if value, ok := bc.mutation.AuthType(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldAuthType,
+		})
+		_node.AuthType = value
 	}
 	return _node, _spec
 }

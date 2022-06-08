@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/gin-gonic/gin"
 	"github.com/go-openapi/strfmt"
 )
@@ -20,7 +21,7 @@ func (c *Controller) CreateMachine(gctx *gin.Context) {
 		return
 	}
 
-	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false)
+	_, err = c.DBClient.CreateMachine(input.MachineID, input.Password, gctx.ClientIP(), false, false, types.PasswordAuthType)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return

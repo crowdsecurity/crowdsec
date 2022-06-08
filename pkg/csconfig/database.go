@@ -2,6 +2,7 @@ package csconfig
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -23,9 +24,20 @@ type DatabaseCfg struct {
 	MaxOpenConns *int        `yaml:"max_open_conns,omitempty"`
 }
 
+type AuthGCCfg struct {
+	Cert                  *string `yaml:"cert,omitempty"`
+	CertDuration          *time.Duration
+	Api                   *string `yaml:"api_key,omitempty"`
+	ApiDuration           *time.Duration
+	LoginPassword         *string `yaml:"login_password,omitempty"`
+	LoginPasswordDuration *time.Duration
+}
+
 type FlushDBCfg struct {
-	MaxItems *int    `yaml:"max_items"`
-	MaxAge   *string `yaml:"max_age"`
+	MaxItems   *int       `yaml:"max_items,omitempty"`
+	MaxAge     *string    `yaml:"max_age,omitempty"`
+	BouncersGC *AuthGCCfg `yaml:"bouncers_autodelete,omitempty"`
+	AgentsGC   *AuthGCCfg `yaml:"agents_autodelete,omitempty"`
 }
 
 func (c *Config) LoadDBConfig() error {
