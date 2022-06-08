@@ -82,14 +82,14 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
 		return
 	}
-	err = c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
-		NbDeleted: "1",
+		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
