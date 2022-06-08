@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, []*sql.Predicate, error) {
@@ -34,7 +35,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 	} else {
 		query = query.Where(decision.SimulatedEQ(false))
 	}
-	t := sql.Table(decision.Table)
+	t := sql.Table(decision.Table).As("t1")
 	joinPredicate := make([]*sql.Predicate, 0)
 	for param, value := range filter {
 		switch param {
@@ -69,7 +70,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 			origins := strings.Split(value[0], ",")
 			originsContainsPredicate := make([]*sql.Predicate, 0)
 			for _, origin := range origins {
-				pred := sql.EqualFold(t.C(decision.FieldScenario), origin)
+				pred := sql.EqualFold(t.C(decision.FieldOrigin), origin)
 				originsContainsPredicate = append(originsContainsPredicate, pred)
 			}
 			joinPredicate = append(joinPredicate, sql.Or(originsContainsPredicate...))
@@ -214,6 +215,7 @@ func queryLeftJoin(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.D
 		func(s *sql.Selector) {
 			t := sql.Table(decision.Table)
 			s.LeftJoin(t)
+
 			defaultPredicates := []*sql.Predicate{
 				sql.ColumnsEQ(
 					t.C(decision.FieldValue),
@@ -227,9 +229,21 @@ func queryLeftJoin(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.D
 					t.C(decision.FieldScope),
 					s.C(decision.FieldScope),
 				),
-				sql.ColumnsGT(
-					t.C(decision.FieldUntil),
-					s.C(decision.FieldUntil),
+				sql.Or(
+					sql.ColumnsGT(
+						t.C(decision.FieldUntil),
+						s.C(decision.FieldUntil),
+					),
+					sql.And(
+						sql.ColumnsGT(
+							t.C(decision.FieldScenario),
+							s.C(decision.FieldScenario),
+						),
+						sql.ColumnsEQ(
+							t.C(decision.FieldUntil),
+							s.C(decision.FieldUntil),
+						),
+					),
 				),
 			}
 			defaultPredicates = append(defaultPredicates, predicates...)
@@ -268,12 +282,12 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
-	query = queryLeftJoin(query, predicates)
+	//query = queryLeftJoin(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
@@ -329,6 +343,7 @@ func (c *Client) DeleteDecisionById(decisionId int) error {
 		c.Log.Warningf("DeleteDecisionById : %s", err)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
 	}
+	log.Infof("DELETEEEEED")
 	return nil
 }
 
@@ -552,17 +567,17 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 }
 
 //SoftDeleteDecisionByID set the expiration of a decision to now()
-func (c *Client) SoftDeleteDecisionByID(decisionID int) error {
+func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, error) {
 	nbUpdated, err := c.Ent.Decision.Update().Where(decision.IDEQ(decisionID)).SetUntil(time.Now().UTC()).Save(c.CTX)
 	if err != nil || nbUpdated == 0 {
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, nbUpdated)
-		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
+		return 0, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 
 	if nbUpdated == 0 {
-		return ItemNotFound
+		return 0, ItemNotFound
 	}
-	return nil
+	return nbUpdated, nil
 }
 
 func decisionPredicatesFromStr(s string, predicateFunc func(string) predicate.Decision) []predicate.Decision {

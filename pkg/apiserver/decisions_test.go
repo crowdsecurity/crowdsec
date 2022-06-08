@@ -1,10 +1,11 @@
 package apiserver
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/models"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -308,6 +309,24 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, 0, len(decisions["new"]))
 }
 
+func show(data map[string][]*models.Decision) {
+	new := data["new"]
+	del := data["deleted"]
+
+	if len(new) > 0 {
+		log.Infof("NEW DECISIONS")
+		for _, dec := range new {
+			log.Infof("ID: %d | %v | %v | %v | %s | ", dec.ID, *dec.Value, *dec.Scenario, *dec.Origin, *dec.Duration)
+		}
+	}
+	if len(del) > 0 {
+		log.Infof("DELETED DECISIONS")
+		for _, dec := range del {
+			log.Infof("ID: %d | %v | %v | %v | %s |", dec.ID, *dec.Value, *dec.Scenario, *dec.Origin, *dec.Duration)
+		}
+	}
+}
+
 func TestStreamDecisionDedupWithParameters(t *testing.T) {
 	//Ensure that at stream startup we only get the longest decision
 	lapi := SetupLAPITest(t)
@@ -321,49 +340,111 @@ func TestStreamDecisionDedupWithParameters(t *testing.T) {
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, 0, len(decisions["deleted"]))
-	for _, dec := range decisions["new"] {
-		fmt.Printf("DECISIONS: %s | %s | %s \n", *dec.Value, *dec.Scenario, *dec.Origin)
-	}
 	assert.Equal(t, 2, len(decisions["new"]))
-	assert.Equal(t, int64(3), decisions["new"][0].ID)
-	assert.Equal(t, "another_origin", *decisions["new"][0].Origin)
-	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][0].Scenario)
-	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
+	assert.Equal(t, int64(4), decisions["new"][0].ID)
+	assert.Equal(t, "test", *decisions["new"][0].Origin)
+	assert.Equal(t, "crowdsecurity/test", *decisions["new"][0].Scenario)
+	assert.Equal(t, "127.0.0.2", *decisions["new"][0].Value)
+	assert.Contains(t, *decisions["new"][0].Duration, "2h59")
 
-	assert.Equal(t, int64(4), decisions["new"][1].ID)
-	assert.Equal(t, "another_origin", *decisions["new"][1].Origin)
-	assert.Equal(t, "crowdsecurity/http_bf", *decisions["new"][1].Scenario)
-	assert.Equal(t, "127.0.0.2", *decisions["new"][1].Value)
+	assert.Equal(t, int64(3), decisions["new"][1].ID)
+	assert.Equal(t, "test", *decisions["new"][1].Origin)
+	assert.Equal(t, "crowdsecurity/longest", *decisions["new"][1].Scenario)
+	assert.Equal(t, "127.0.0.1", *decisions["new"][1].Value)
+	assert.Contains(t, *decisions["new"][1].Duration, "4h59")
 
 	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf", emptyBody)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, 0, len(decisions["deleted"]))
-	for _, dec := range decisions["new"] {
-		fmt.Printf("DECISIONS: %+v\n", dec)
-	}
-	assert.Equal(t, 2, len(decisions["new"]))
-	assert.Equal(t, int64(3), decisions["new"][0].ID)
+	assert.Equal(t, int64(2), decisions["new"][0].ID)
 	assert.Equal(t, "another_origin", *decisions["new"][0].Origin)
 	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][0].Scenario)
 	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
+	assert.Contains(t, *decisions["new"][0].Duration, "2h59")
 
+	assert.Equal(t, 2, len(decisions["new"]))
 	assert.Equal(t, int64(5), decisions["new"][1].ID)
 	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][1].Scenario)
-	assert.Equal(t, "another_origin", *decisions["new"][1].Origin)
+	assert.Equal(t, "test", *decisions["new"][1].Origin)
 	assert.Equal(t, "127.0.0.2", *decisions["new"][1].Value)
+	assert.Contains(t, *decisions["new"][1].Duration, "2h59")
 
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http_bf", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf", emptyBody)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
 	assert.Equal(t, 0, len(decisions["deleted"]))
-	assert.Equal(t, 1, len(decisions["new"]))
-	assert.Equal(t, int64(4), decisions["new"][0].ID)
-	assert.Equal(t, "crowdsecurity/http_bf", *decisions["new"][0].Origin)
-	assert.Equal(t, "127.0.0.2", *decisions["new"][0].Value)
+	assert.Equal(t, int64(2), decisions["new"][0].ID)
+	assert.Equal(t, "another_origin", *decisions["new"][0].Origin)
+	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][0].Scenario)
+	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
+	assert.Contains(t, *decisions["new"][0].Duration, "2h59")
 
+	assert.Equal(t, 2, len(decisions["new"]))
+	assert.Equal(t, int64(5), decisions["new"][1].ID)
+	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][1].Scenario)
+	assert.Equal(t, "test", *decisions["new"][1].Origin)
+	assert.Equal(t, "127.0.0.2", *decisions["new"][1].Value)
+	assert.Contains(t, *decisions["new"][1].Duration, "2h59")
+
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&origins=another_origin", emptyBody)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 2, len(decisions["new"]))
+	assert.Equal(t, int64(7), decisions["new"][0].ID)
+	assert.Equal(t, "crowdsecurity/test", *decisions["new"][0].Scenario)
+	assert.Equal(t, "another_origin", *decisions["new"][0].Origin)
+	assert.Equal(t, "127.0.0.2", *decisions["new"][0].Value)
+	assert.Contains(t, *decisions["new"][0].Duration, "1h59")
+
+	assert.Equal(t, int64(2), decisions["new"][1].ID)
+	assert.Equal(t, "crowdsecurity/ssh_bf", *decisions["new"][1].Scenario)
+	assert.Equal(t, "another_origin", *decisions["new"][1].Origin)
+	assert.Equal(t, "127.0.0.1", *decisions["new"][1].Value)
+	assert.Contains(t, *decisions["new"][1].Duration, "2h59")
+
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&origins=test", emptyBody)
+	decisions, code, err = readDecisionsStreamResp(w)
+
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 2, len(decisions["new"]))
+
+	assert.Equal(t, int64(4), decisions["new"][0].ID)
+	assert.Equal(t, "crowdsecurity/test", *decisions["new"][0].Scenario)
+	assert.Equal(t, "test", *decisions["new"][0].Origin)
+	assert.Equal(t, "127.0.0.2", *decisions["new"][0].Value)
+	assert.Contains(t, *decisions["new"][0].Duration, "2h59")
+
+	assert.Equal(t, int64(3), decisions["new"][1].ID)
+	assert.Equal(t, "crowdsecurity/longest", *decisions["new"][1].Scenario)
+	assert.Equal(t, "test", *decisions["new"][1].Origin)
+	assert.Equal(t, "127.0.0.1", *decisions["new"][1].Value)
+	assert.Contains(t, *decisions["new"][1].Duration, "4h59")
+
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&origins=another_origin,test", emptyBody)
+	decisions, code, err = readDecisionsStreamResp(w)
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 2, len(decisions["new"]))
+
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody)
+	assert.Equal(t, 200, w.Code)
+	log.Infof("%+v", string(w.Body.Bytes()))
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	decisions, code, err = readDecisionsStreamResp(w)
+	show(decisions)
+
+	assert.Equal(t, nil, err)
+	assert.Equal(t, 200, code)
+	assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 2, len(decisions["new"]))
 }
 
 func TestStreamDecisionDedup(t *testing.T) {

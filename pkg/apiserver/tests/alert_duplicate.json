@@ -1,0 +1,233 @@
+[
+    {
+        "id": 42,
+        "machine_id": "test",
+        "capacity": 1,
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "1h",
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.1",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.1",
+            "range": "127.0.0.1/32",
+            "scope": "ip",
+            "value": "127.0.0.1"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "scenario": "crowdsecurity/test",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 44,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "3h",
+                "origin": "another_origin",
+                "scenario": "crowdsecurity/ssh_bf",
+                "scope": "Ip",
+                "value": "127.0.0.1",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.1",
+            "range": "127.0.0.1/32",
+            "scope": "ip",
+            "value": "127.0.0.1"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/ssh_bf",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 45,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "5h",
+                "origin": "test",
+                "scenario": "crowdsecurity/longest",
+                "scope": "Ip",
+                "value": "127.0.0.1",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.1",
+            "range": "127.0.0.1/32",
+            "scope": "ip",
+            "value": "127.0.0.1"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/longest",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 46,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "3h",
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.2",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.2",
+            "range": "127.0.0.2/32",
+            "scope": "ip",
+            "value": "127.0.0.2"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/test",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 47,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "3h",
+                "origin": "test",
+                "scenario": "crowdsecurity/ssh_bf",
+                "scope": "Ip",
+                "value": "127.0.0.2",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.2",
+            "range": "127.0.0.2/32",
+            "scope": "ip",
+            "value": "127.0.0.2"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/ssh_bf",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 48,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "1h",
+                "origin": "test",
+                "scenario": "crowdsecurity/ssh_bf",
+                "scope": "Ip",
+                "value": "127.0.0.2",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.2",
+            "range": "127.0.0.2/32",
+            "scope": "ip",
+            "value": "127.0.0.2"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/ssh_bf",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 49,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "2h",
+                "origin": "another_origin",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.2",
+                "type": "ban"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.2",
+            "range": "127.0.0.2/32",
+            "scope": "ip",
+            "value": "127.0.0.2"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/test",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
+    }
+]
