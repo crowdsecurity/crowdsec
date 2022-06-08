@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -15,6 +16,8 @@ import (
 
 var (
 	InsecureSkipVerify = false
+	Cert               *tls.Certificate
+	CaCertPool         *x509.CertPool
 )
 
 type ApiClient struct {
@@ -49,7 +52,12 @@ func NewClient(config *Config) (*ApiClient, error) {
 		VersionPrefix:  config.VersionPrefix,
 		UpdateScenario: config.UpdateScenario,
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
 	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
@@ -66,7 +74,12 @@ func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *htt
 	if client == nil {
 		client = &http.Client{}
 		if ht, ok := http.DefaultTransport.(*http.Transport); ok {
-			ht.TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+			tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+			if Cert != nil {
+				tlsconfig.RootCAs = CaCertPool
+				tlsconfig.Certificates = []tls.Certificate{*Cert}
+			}
+			ht.TLSClientConfig = &tlsconfig
 			client.Transport = ht
 		}
 	}
@@ -86,7 +99,12 @@ func RegisterClient(config *Config, client *http.Client) (*ApiClient, error) {
 	if client == nil {
 		client = &http.Client{}
 	}
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
 	c := &ApiClient{client: client, BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)

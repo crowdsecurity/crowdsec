@@ -68,6 +68,22 @@ check_daemonizer() {
     esac
 }
 
+check_cfssl() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go get -u github.com/cloudflare/cfssl/cmd/cfssl" and add ~/go/bin to $PATH.'
+    if ! command -v cfssl >/dev/null; then
+        die "Missing required program 'cfssl'. $howto_install"
+    fi
+}
+
+check_cfssljson() {
+    # shellcheck disable=SC2016
+    howto_install='You can install it with "go get -u github.com/cloudflare/cfssl/cmd/cfssljson" and add ~/go/bin to $PATH.'
+    if ! command -v cfssljson >/dev/null; then
+        die "Missing required program 'cfssljson'. $howto_install"
+    fi
+}
+
 check_gocovmerge() {
     if ! command -v gocovmerge >/dev/null; then
         die "missing required program 'gocovmerge'. You can install it with \"go install github.com/wadey/gocovmerge@latest\""
@@ -76,6 +92,8 @@ check_gocovmerge() {
 
 check_bats_core
 check_daemonizer
+check_cfssl
+check_cfssljson
 check_jq
 check_nc
 check_python3

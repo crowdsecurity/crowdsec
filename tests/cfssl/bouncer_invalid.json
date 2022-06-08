@@ -1,0 +1,16 @@
+{
+    "CN": "localhost",
+    "key": {
+      "algo": "rsa",
+      "size": 2048
+    },
+    "names": [
+    {
+      "C": "FR",
+      "L": "Paris",
+      "O": "Crowdsec",
+      "OU": "this-is-not-the-ou-youre-looking-for",
+      "ST": "France"
+    }
+    ]
+  }

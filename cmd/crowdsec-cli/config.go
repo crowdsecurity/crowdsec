@@ -368,6 +368,29 @@ func NewConfigCmd() *cobra.Command {
 							if csConfig.API.Server.TLS.KeyFilePath != "" {
 								fmt.Printf("  - Key File  : %s\n", csConfig.API.Server.TLS.KeyFilePath)
 							}
+							if csConfig.API.Server.TLS.CACertPath != "" {
+								fmt.Printf("  - CA Cert   : %s\n", csConfig.API.Server.TLS.CACertPath)
+							}
+							if csConfig.API.Server.TLS.CRLPath != "" {
+								fmt.Printf("  - CRL       : %s\n", csConfig.API.Server.TLS.CRLPath)
+							}
+							if csConfig.API.Server.TLS.CacheExpiration != nil {
+								fmt.Printf("  - Cache Expiration : %s\n", csConfig.API.Server.TLS.CacheExpiration)
+							}
+							if csConfig.API.Server.TLS.ClientVerification != "" {
+								fmt.Printf("  - Client Verification : %s\n", csConfig.API.Server.TLS.ClientVerification)
+							}
+							if csConfig.API.Server.TLS.AllowedAgentsOU != nil {
+								for _, ou := range csConfig.API.Server.TLS.AllowedAgentsOU {
+									fmt.Printf("      - Allowed Agents OU       : %s\n", ou)
+								}
+							}
+							if csConfig.API.Server.TLS.AllowedBouncersOU != nil {
+								for _, ou := range csConfig.API.Server.TLS.AllowedBouncersOU {
+									fmt.Printf("      - Allowed Bouncers OU       : %s\n", ou)
+								}
+							}
+
 						}
 						fmt.Printf("  - Trusted IPs: \n")
 						for _, ip := range csConfig.API.Server.TrustedIPs {

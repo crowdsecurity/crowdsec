@@ -47,8 +47,12 @@ jobs:
     - name: "Install bats dependencies"
       run: |
         sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
-        GO111MODULE=on go get github.com/mikefarah/yq/v4
+        go install github.com/mikefarah/yq/v4@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
         sudo cp -u ~/go/bin/yq /usr/local/bin/
+        sudo cp -u ~/go/bin/cfssl /usr/local/bin
+        sudo cp -u ~/go/bin/cfssljson /usr/local/bin
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
       run: make clean bats-build bats-fixture

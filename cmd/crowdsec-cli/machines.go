@@ -14,6 +14,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
@@ -140,7 +141,7 @@ Note: This command requires database direct access, so is intended to be run on 
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Last Heartbeat"})
+				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -153,7 +154,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					if lastHeartBeat > 2*time.Minute {
 						hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
 					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, hbDisplay})
+					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, hbDisplay})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -164,7 +165,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "last_heartbeat"})
+				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 				if err != nil {
 					log.Fatalf("failed to write header: %s", err)
 				}
@@ -175,7 +176,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, time.Now().UTC().Sub(*w.LastHeartbeat).Truncate(time.Second).String()})
+					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, time.Now().UTC().Sub(*w.LastHeartbeat).Truncate(time.Second).String()})
 					if err != nil {
 						log.Fatalf("failed to write raw output : %s", err)
 					}
@@ -244,7 +245,7 @@ cscli machines add MyTestMachine --password MyPassword
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd)
+			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}
