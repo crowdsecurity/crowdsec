@@ -104,7 +104,7 @@ func JsonExtractSlice(jsblob string, target string) []interface{} {
 
 	err = json.Unmarshal(value, &s)
 	if err != nil {
-		log.Errorf("JsonExtractSlice : %s : %s", target, err)
+		log.Errorf("JsonExtractSlice: could not convert '%s' to slice: %s", value, err)
 		return nil
 	}
 	return s
@@ -123,7 +123,7 @@ func JsonExtractObject(jsblob string, target string) map[string]interface{} {
 
 	err = json.Unmarshal(value, &s)
 	if err != nil {
-		log.Errorf("JsonExtractObject: %s : %s", target, err)
+		log.Errorf("JsonExtractObject: could not convert '%s' to map[string]interface{}: %s", value, err)
 		return nil
 	}
 	return s
