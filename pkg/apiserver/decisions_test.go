@@ -2,11 +2,17 @@ package apiserver
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+)
+
+const (
+	APIKEY   = "apikey"
+	PASSWORD = "password"
 )
 
 func TestDeleteDecisionRange(t *testing.T) {
@@ -16,20 +22,20 @@ func TestDeleteDecisionRange(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_minibulk.json")
 
 	// delete by ip wrong
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?range=1.2.3.0/24", emptyBody, "password")
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?range=1.2.3.0/24", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by range
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
 
 	// delete by range : ensure it was already deleted
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 }
@@ -42,19 +48,19 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	// delete by ip wrong
 
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?ip=1.2.3.4", emptyBody, "password")
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?ip=1.2.3.4", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by ip good
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?ip=91.121.79.179", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?ip=91.121.79.179", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 
 	// delete by scope/value
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
@@ -67,7 +73,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision
 
-	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, "apikey")
+	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err := readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -82,7 +88,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : type filter
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?type=ban", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions?type=ban", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -100,7 +106,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : scope/value
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -115,7 +121,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : ip filter
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?ip=91.121.79.179", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions?ip=91.121.79.179", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -129,7 +135,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	// assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get decision : by range
-	w = lapi.RecordResponse("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -147,7 +153,7 @@ func TestGetDecision(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Get Decision
-	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, "apikey")
+	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err := readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -167,7 +173,7 @@ func TestGetDecision(t *testing.T) {
 	assert.Equal(t, int64(3), decisions[2].ID)
 
 	// Get Decision with invalid filter. It should ignore this filter
-	w = lapi.RecordResponse("GET", "/v1/decisions?test=test", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions?test=test", emptyBody, APIKEY)
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, 3, len(decisions))
 }
@@ -179,7 +185,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	//Have one alerts
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err := readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -187,21 +193,21 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, 1, len(decisions["new"]))
 
 	// Delete alert with Invalid ID
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/test", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/test", emptyBody, PASSWORD)
 	assert.Equal(t, 400, w.Code)
 	err_resp, _, err := readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, "decision_id must be valid integer", err_resp["message"])
 
 	// Delete alert with ID that not exist
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/100", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/100", emptyBody, PASSWORD)
 	assert.Equal(t, 500, w.Code)
 	err_resp, _, err = readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, "decision with id '100' doesn't exist: unable to delete", err_resp["message"])
 
 	//Have one alerts
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -209,14 +215,14 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, 1, len(decisions["new"]))
 
 	// Delete alert with valid ID
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	resp, _, err := readDecisionsDeleteResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.NbDeleted, "1")
 
 	//Have one alert (because we delete an alert that has dup targets)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -231,14 +237,14 @@ func TestDeleteDecision(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Delete alert with Invalid filter
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?test=test", emptyBody, "password")
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?test=test", emptyBody, PASSWORD)
 	assert.Equal(t, 500, w.Code)
 	err_resp, _, err := readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, err_resp["message"], "'test' doesn't exist: invalid filter")
 
 	// Delete all alert
-	w = lapi.RecordResponse("DELETE", "/v1/decisions", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 	resp, _, err := readDecisionsDeleteResp(w)
 	assert.NoError(t, err)
@@ -253,7 +259,7 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Get Stream, we only get one decision (the longest one)
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err := readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
@@ -264,11 +270,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
 
 	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions on the same ip
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 
 	// Get Stream, we only get one decision (the longest one, id=2)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
@@ -279,11 +285,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
 
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 
 	// And get the remaining decision (1)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
@@ -294,11 +300,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
 
 	// We delete the last decision, we receive the delete order
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, "password")
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
 
 	//and now we only get a deleted decision
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, APIKEY)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
@@ -367,7 +373,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks: []DecisionCheck{
 				{
@@ -394,7 +400,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks: []DecisionCheck{
 				{
@@ -421,7 +427,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{
@@ -449,7 +455,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        0,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{},
@@ -462,7 +468,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks: []DecisionCheck{
 				{
@@ -489,7 +495,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        1,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks: []DecisionCheck{
 				{
@@ -509,7 +515,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{
@@ -537,7 +543,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        1,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{
@@ -558,7 +564,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{
@@ -586,7 +592,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 
 			NewChecks: []DecisionCheck{
@@ -614,7 +620,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        0,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -626,7 +632,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        0,
 			LenDeleted:    0,
-			AuthType:      "password",
+			AuthType:      PASSWORD,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -638,7 +644,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -650,7 +656,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        0,
 			LenDeleted:    0,
-			AuthType:      "password",
+			AuthType:      PASSWORD,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -662,7 +668,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        2,
 			LenDeleted:    0,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -674,7 +680,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        0,
 			LenDeleted:    0,
-			AuthType:      "password",
+			AuthType:      PASSWORD,
 			DelChecks:     []DecisionCheck{},
 			NewChecks:     []DecisionCheck{},
 		},
@@ -686,7 +692,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Code:          200,
 			LenNew:        1,
 			LenDeleted:    1,
-			AuthType:      "apikey",
+			AuthType:      APIKEY,
 			DelChecks: []DecisionCheck{
 				{
 					ID:       int64(1),
@@ -721,6 +727,7 @@ func TestStreamDecision(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true",
 			CheckCodeOnly: false,
 			Code:          200,
+			AuthType:      APIKEY,
 			LenNew:        0,
 			LenDeleted:    0,
 			DelChecks:     []DecisionCheck{},
@@ -738,6 +745,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        2,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
@@ -764,6 +772,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -775,6 +784,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -786,6 +796,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -797,6 +808,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -808,6 +820,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -819,6 +832,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    1,
+				AuthType:      APIKEY,
 				DelChecks: []DecisionCheck{
 					{
 						ID:       int64(1),
@@ -840,6 +854,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        2,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
@@ -866,6 +881,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -877,6 +893,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -888,6 +905,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -899,6 +917,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    1,
+				AuthType:      APIKEY,
 				DelChecks: []DecisionCheck{
 					{
 						ID:       int64(2),
@@ -920,6 +939,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        2,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
@@ -946,6 +966,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -957,6 +978,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -968,6 +990,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -979,6 +1002,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -990,6 +1014,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -1001,6 +1026,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    1,
+				AuthType:      APIKEY,
 				DelChecks: []DecisionCheck{
 					{
 						ID:       int64(1),
@@ -1022,6 +1048,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        2,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
@@ -1048,6 +1075,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -1059,6 +1087,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -1070,6 +1099,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    0,
+				AuthType:      PASSWORD,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
@@ -1081,6 +1111,7 @@ func TestStreamDecision(t *testing.T) {
 				Code:          200,
 				LenNew:        0,
 				LenDeleted:    1,
+				AuthType:      APIKEY,
 				DelChecks: []DecisionCheck{
 					{
 						ID:       int64(2),
@@ -1114,7 +1145,7 @@ func TestStreamDecision(t *testing.T) {
 		}
 
 		// clean the db after each test
-		cleanFile(lapi.DBConfig.DbPath)
+		os.Remove(lapi.DBConfig.DbPath)
 	}
 }
 
