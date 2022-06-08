@@ -13,7 +13,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, []*sql.Predicate, error) {
@@ -210,7 +209,7 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
-func queryLeftJoin(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
+func leftJoinLongestDecision(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
 	return query.Where(
 		func(s *sql.Selector) {
 			t := sql.Table(decision.Table)
@@ -267,7 +266,7 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
-	query = queryLeftJoin(query, predicates)
+	query = leftJoinLongestDecision(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
@@ -277,17 +276,52 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	return data, nil
 }
 
+func leftJoinExpiredDecisions(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
+	return query.Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.LeftJoin(t)
+
+			defaultPredicates := []*sql.Predicate{
+				sql.ColumnsEQ(
+					t.C(decision.FieldValue),
+					s.C(decision.FieldValue),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldType),
+					s.C(decision.FieldType),
+				),
+				sql.ColumnsEQ(
+					t.C(decision.FieldScope),
+					s.C(decision.FieldScope),
+				),
+				sql.ColumnsGT(
+					t.C(decision.FieldUntil),
+					s.C(decision.FieldUntil),
+				),
+			}
+			defaultPredicates = append(defaultPredicates, predicates...)
+			s.OnP(sql.And(defaultPredicates...))
+			s.Where(
+				sql.IsNull(
+					t.C(decision.FieldUntil),
+				),
+			)
+		},
+	)
+}
+
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
-	query, _, err := BuildDecisionRequestWithFilter(query, filters)
+	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
-	//query = queryLeftJoin(query, predicates)
+	query = leftJoinExpiredDecisions(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
@@ -308,7 +342,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
 
-	query = queryLeftJoin(query, predicates)
+	query = leftJoinExpiredDecisions(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -328,7 +362,7 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		c.Log.Warningf("BuildDecisionRequestWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-	query = queryLeftJoin(query, predicates)
+	query = leftJoinLongestDecision(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
@@ -343,7 +377,6 @@ func (c *Client) DeleteDecisionById(decisionId int) error {
 		c.Log.Warningf("DeleteDecisionById : %s", err)
 		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
 	}
-	log.Infof("DELETEEEEED")
 	return nil
 }
 
