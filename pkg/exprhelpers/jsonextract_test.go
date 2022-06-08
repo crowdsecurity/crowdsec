@@ -35,6 +35,12 @@ func TestJsonExtract(t *testing.T) {
 			targetField:  "non_existing_field",
 			expectResult: "",
 		},
+		{
+			name:         "extract subfield",
+			jsonBlob:     `{"test" : {"a": "b"}}`,
+			targetField:  "test.a",
+			expectResult: "b",
+		},
 	}
 
 	for _, test := range tests {
@@ -115,6 +121,18 @@ func TestJsonExtractSlice(t *testing.T) {
 			targetField:  "test",
 			expectResult: []interface{}{"1234"},
 		},
+		{
+			name:         "extract with complex expression",
+			jsonBlob:     `{"test": {"foo": [{"a":"b"}]}}`,
+			targetField:  "test.foo",
+			expectResult: []interface{}{map[string]interface{}{"a": "b"}},
+		},
+		{
+			name:         "extract non-existing key",
+			jsonBlob:     `{"test: "11234"}`,
+			targetField:  "foo",
+			expectResult: nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -153,11 +171,77 @@ func TestJsonExtractObject(t *testing.T) {
 			targetField:  "test",
 			expectResult: map[string]interface{}{"1234": map[string]interface{}{"foo": "bar"}},
 		},
+		{
+			name:         "extract with complex expression",
+			jsonBlob:     `{"test": {"foo": [{"a":"b"}]}}`,
+			targetField:  "test.foo[0]",
+			expectResult: map[string]interface{}{"a": "b"},
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			result := JsonExtractObject(test.jsonBlob, test.targetField)
+			assert.Equal(t, test.expectResult, result)
+		})
+	}
+}
+
+func TestToJson(t *testing.T) {
+	tests := []struct {
+		name         string
+		obj          interface{}
+		expectResult string
+	}{
+		{
+			name:         "convert int",
+			obj:          42,
+			expectResult: "42",
+		},
+		{
+			name:         "convert slice",
+			obj:          []string{"foo", "bar"},
+			expectResult: `["foo","bar"]`,
+		},
+		{
+			name:         "convert map",
+			obj:          map[string]string{"foo": "bar"},
+			expectResult: `{"foo":"bar"}`,
+		},
+		{
+			name:         "convert struct",
+			obj:          struct{ Foo string }{"bar"},
+			expectResult: `{"Foo":"bar"}`,
+		},
+		{
+			name: "convert complex struct",
+			obj: struct {
+				Foo string
+				Bar struct {
+					Baz string
+				}
+				Bla []string
+			}{
+				Foo: "bar",
+				Bar: struct {
+					Baz string
+				}{
+					Baz: "baz",
+				},
+				Bla: []string{"foo", "bar"},
+			},
+			expectResult: `{"Foo":"bar","Bar":{"Baz":"baz"},"Bla":["foo","bar"]}`,
+		},
+		{
+			name:         "convert invalid type",
+			obj:          func() {},
+			expectResult: "",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			result := ToJson(test.obj)
 			assert.Equal(t, test.expectResult, result)
 		})
 	}
