@@ -191,7 +191,7 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 				err = p2.Parse(syslogLine.Message)
 				if err != nil {
 					logger.Errorf("could not parse message: %s", err)
-					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
+					logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
 					continue
 				}
 				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
