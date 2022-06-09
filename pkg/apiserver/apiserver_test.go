@@ -43,12 +43,10 @@ func LoadTestConfig() csconfig.Config {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
-	log.Infof("TEMP DIR: %+v", tempDir)
 	dbconfig := csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
-		//LogLevel: &log.AllLevels[log.TraceLevel],
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
