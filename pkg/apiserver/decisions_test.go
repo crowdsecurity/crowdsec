@@ -5,8 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/crowdsecurity/crowdsec/pkg/models"
-	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -313,24 +311,6 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, "test", *decisions["deleted"][0].Origin)
 	assert.Equal(t, "127.0.0.1", *decisions["deleted"][0].Value)
 	assert.Equal(t, 0, len(decisions["new"]))
-}
-
-func show(data map[string][]*models.Decision) {
-	new := data["new"]
-	del := data["deleted"]
-
-	if len(new) > 0 {
-		log.Infof("NEW DECISIONS")
-		for _, dec := range new {
-			log.Infof("ID: %d | %v | %v | %v | %s | ", dec.ID, *dec.Value, *dec.Scenario, *dec.Origin, *dec.Duration)
-		}
-	}
-	if len(del) > 0 {
-		log.Infof("DELETED DECISIONS")
-		for _, dec := range del {
-			log.Infof("ID: %d | %v | %v | %v | %s |", dec.ID, *dec.Value, *dec.Scenario, *dec.Origin, *dec.Duration)
-		}
-	}
 }
 
 type DecisionCheck struct {
