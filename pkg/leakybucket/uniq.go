@@ -17,6 +17,7 @@ import (
 // on leak
 
 var uniqExprCache map[string]vm.Program
+var uniqExprCacheLock sync.Mutex
 
 type Uniq struct {
 	DistinctCompiled *vm.Program
@@ -60,12 +61,18 @@ func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 		uniqExprCache = make(map[string]vm.Program)
 	}
 
+	uniqExprCacheLock.Lock()
 	if compiled, ok := uniqExprCache[bucketFactory.Distinct]; ok {
+		uniqExprCacheLock.Unlock()
 		u.DistinctCompiled = &compiled
 	} else {
+		uniqExprCacheLock.Unlock()
+		//release the lock during compile
 		compiledExpr, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		u.DistinctCompiled = compiledExpr
+		uniqExprCacheLock.Lock()
 		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
+		uniqExprCacheLock.Unlock()
 	}
 	u.KeyCache = make(map[string]bool)
 	return err

@@ -1,6 +1,8 @@
 package leakybucket
 
 import (
+	"sync"
+
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 
@@ -21,6 +23,7 @@ type CancelOnFilter struct {
 	CancelOnFilterDebug *exprhelpers.ExprDebugger
 }
 
+var cancelExprCacheLock sync.Mutex
 var cancelExprCache map[string]struct {
 	CancelOnFilter      *vm.Program
 	CancelOnFilterDebug *exprhelpers.ExprDebugger
@@ -74,10 +77,16 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 			CancelOnFilterDebug *exprhelpers.ExprDebugger
 		})
 	}
+
+	cancelExprCacheLock.Lock()
 	if compiled, ok := cancelExprCache[bucketFactory.CancelOnFilter]; ok {
+		cancelExprCacheLock.Unlock()
 		u.CancelOnFilter = compiled.CancelOnFilter
 		u.CancelOnFilterDebug = compiled.CancelOnFilterDebug
+		return nil
 	} else {
+		cancelExprCacheLock.Unlock()
+		//release the lock during compile
 		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
 			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
@@ -92,8 +101,9 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 			}
 			u.CancelOnFilterDebug = compiledExpr.CancelOnFilterDebug
 		}
+		cancelExprCacheLock.Lock()
 		cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
+		cancelExprCacheLock.Unlock()
 	}
-
 	return err
 }
