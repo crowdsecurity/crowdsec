@@ -1,6 +1,8 @@
 package leakybucket
 
 import (
+	"sync"
+
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
 
@@ -17,6 +19,7 @@ import (
 type Uniq struct {
 	DistinctCompiled *vm.Program
 	KeyCache         map[string]bool
+	CacheMutex       sync.Mutex
 }
 
 func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
@@ -27,6 +30,8 @@ func (u *Uniq) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Lea
 			return &msg
 		}
 		leaky.logger.Tracef("Uniq '%s' -> '%s'", bucketFactory.Distinct, element)
+		u.CacheMutex.Lock()
+		defer u.CacheMutex.Unlock()
 		if _, ok := u.KeyCache[element]; !ok {
 			leaky.logger.Debugf("Uniq(%s) : ok", element)
 			u.KeyCache[element] = true
