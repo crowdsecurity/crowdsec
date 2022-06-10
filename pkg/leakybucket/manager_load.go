@@ -385,7 +385,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.Queue = v.Queue
 				/*Trying to set the limiter to the saved values*/
 				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan *types.Event, 3)
+				tbucket.In = make(chan *types.Event)
 				tbucket.Mapkey = k
 				tbucket.Signal = make(chan bool, 1)
 				tbucket.First_ts = v.First_ts
