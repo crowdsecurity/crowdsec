@@ -186,10 +186,10 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				}
 				continue
 			}
-			holder.logger.Tracef("Signal exists, try to pour :)")
+			//holder.logger.Tracef("Signal exists, try to pour :)")
 		default:
 			/*nothing to read, but not closed, try to pour */
-			holder.logger.Tracef("Signal exists but empty, try to pour :)")
+			//holder.logger.Tracef("Signal exists but empty, try to pour :)")
 		}
 
 		/*let's see if this time-bucket should have expired */
@@ -221,7 +221,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		/*the bucket seems to be up & running*/
 		select {
 		case bucket.In <- parsed:
-			holder.logger.Tracef("Successfully sent !")
+			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
@@ -233,7 +233,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 			continue
 		default:
 			failed_sent += 1
-			holder.logger.Tracef("Failed to send, try again")
+			//holder.logger.Tracef("Failed to send, try again")
 			continue
 
 		}
