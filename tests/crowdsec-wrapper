@@ -26,7 +26,7 @@ set +e
 output=$("${BIN_DIR}/crowdsec.cover" \
     -test.run="^TestBincoverRunMain$" \
     -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/crowdsec-$(date +'%s')-$$-${RANDOM}.out" \
-    -args-file=<(for i; do echo "$i"; done))
+    -args-file=<(for i; do echo "${i}"; done))
 rc=$?
 
 # If there is bincover metadata, we take the status code from there. Otherwise,

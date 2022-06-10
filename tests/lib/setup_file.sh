@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 debug() {
     echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
@@ -48,28 +49,28 @@ export -f config_yq
 
 # shellcheck disable=SC2154
 stderr() {
-    printf '%s' "$stderr"
+    printf '%s' "${stderr}"
 }
 export -f stderr
 
 # shellcheck disable=SC2154
 output() {
-    printf '%s' "$output"
+    printf '%s' "${output}"
 }
 export -f output
 
 is_db_postgres() {
-    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]]
+    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]]
 }
 export -f is_db_postgres
 
 is_db_mysql() {
-    [[ "$DB_BACKEND" == "mysql" ]]
+    [[ "${DB_BACKEND}" == "mysql" ]]
 }
 export -f is_db_mysql
 
 is_db_sqlite() {
-    [[ "$DB_BACKEND" == "sqlite" ]]
+    [[ "${DB_BACKEND}" == "sqlite" ]]
 }
 export -f is_db_sqlite
 
