@@ -220,7 +220,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 		/*the bucket seems to be up & running*/
 		select {
-		case bucket.In <- *parsed:
+		case bucket.In <- parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
@@ -260,7 +260,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 		default:
 			return nil, fmt.Errorf("input event has no expected mode : %+v", expectMode)
 		}
-		fresh_bucket.In = make(chan types.Event)
+		fresh_bucket.In = make(chan *types.Event)
 		fresh_bucket.Mapkey = partitionKey
 		fresh_bucket.Signal = make(chan bool, 1)
 		actual, stored := buckets.Bucket_map.LoadOrStore(partitionKey, fresh_bucket)

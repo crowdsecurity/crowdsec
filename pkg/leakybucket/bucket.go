@@ -35,7 +35,7 @@ type Leaky struct {
 	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *Queue
 	//Leaky buckets are receiving message through a chan
-	In chan types.Event `json:"-"`
+	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
 	Out chan *Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterwards)
@@ -227,7 +227,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
-				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
+				msg := processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -238,7 +238,7 @@ func LeakRoutine(leaky *Leaky) error {
 			}
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			leaky.Pour(leaky, msg) // glue for now
+			leaky.Pour(leaky, *msg) // glue for now
 			//Clear cache on behalf of pour
 			tmp := time.NewTicker(leaky.Duration)
 			durationTicker = tmp.C
