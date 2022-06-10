@@ -154,7 +154,7 @@ func ShutdownAllBuckets(buckets *Buckets) error {
 	return nil
 }
 
-func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed types.Event) (bool, error) {
+func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, parsed *types.Event) (bool, error) {
 	var sent bool
 	var buckey = bucket.Mapkey
 	var err error
@@ -220,7 +220,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 		}
 		/*the bucket seems to be up & running*/
 		select {
-		case bucket.In <- parsed:
+		case bucket.In <- *parsed:
 			//holder.logger.Tracef("Successfully sent !")
 			if BucketPourTrack {
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
@@ -347,7 +347,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			return false, errors.Wrap(err, "failed to load or store bucket")
 		}
 		//finally, pour the even into the bucket
-		ok, err := PourItemToBucket(bucket, holders[idx], buckets, parsed)
+		ok, err := PourItemToBucket(bucket, holders[idx], buckets, &parsed)
 		if err != nil {
 			return false, errors.Wrap(err, "failed to pour bucket")
 		}
