@@ -92,7 +92,7 @@ func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
 			return err
 		}
-		u.CancelOnFilter = compiled.CancelOnFilter
+		u.CancelOnFilter = compiledExpr.CancelOnFilter
 		if bucketFactory.Debug {
 			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 			if err != nil {
