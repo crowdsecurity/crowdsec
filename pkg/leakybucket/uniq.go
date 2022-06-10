@@ -16,6 +16,8 @@ import (
 // on overflow
 // on leak
 
+var uniqExprCache map[string]vm.Program
+
 type Uniq struct {
 	DistinctCompiled *vm.Program
 	KeyCache         map[string]bool
@@ -52,8 +54,19 @@ func (u *Uniq) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types
 
 func (u *Uniq) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
+	var compiledExpr *vm.Program
 
-	u.DistinctCompiled, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+	if uniqExprCache == nil {
+		uniqExprCache = make(map[string]vm.Program)
+	}
+
+	if compiled, ok := uniqExprCache[bucketFactory.Distinct]; ok {
+		u.DistinctCompiled = &compiled
+	} else {
+		compiledExpr, err = expr.Compile(bucketFactory.Distinct, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+		u.DistinctCompiled = compiledExpr
+		uniqExprCache[bucketFactory.Distinct] = *compiledExpr
+	}
 	u.KeyCache = make(map[string]bool)
 	return err
 }

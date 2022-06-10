@@ -21,6 +21,11 @@ type CancelOnFilter struct {
 	CancelOnFilterDebug *exprhelpers.ExprDebugger
 }
 
+var cancelExprCache map[string]struct {
+	CancelOnFilter      *vm.Program
+	CancelOnFilterDebug *exprhelpers.ExprDebugger
+}
+
 func (u *CancelOnFilter) OnBucketPour(bucketFactory *BucketFactory) func(types.Event, *Leaky) *types.Event {
 	return func(msg types.Event, leaky *Leaky) *types.Event {
 		var condition, ok bool
@@ -58,18 +63,37 @@ func (u *CancelOnFilter) OnBucketOverflow(bucketFactory *BucketFactory) func(*Le
 
 func (u *CancelOnFilter) OnBucketInit(bucketFactory *BucketFactory) error {
 	var err error
-
-	u.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
-	if err != nil {
-		bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
-		return err
+	var compiledExpr struct {
+		CancelOnFilter      *vm.Program
+		CancelOnFilterDebug *exprhelpers.ExprDebugger
 	}
-	if bucketFactory.Debug {
-		u.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+
+	if cancelExprCache == nil {
+		cancelExprCache = make(map[string]struct {
+			CancelOnFilter      *vm.Program
+			CancelOnFilterDebug *exprhelpers.ExprDebugger
+		})
+	}
+	if compiled, ok := cancelExprCache[bucketFactory.CancelOnFilter]; ok {
+		u.CancelOnFilter = compiled.CancelOnFilter
+		u.CancelOnFilterDebug = compiled.CancelOnFilterDebug
+	} else {
+		compiledExpr.CancelOnFilter, err = expr.Compile(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
 		if err != nil {
-			bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
+			bucketFactory.logger.Errorf("reset_filter compile error : %s", err)
 			return err
 		}
+		u.CancelOnFilter = compiled.CancelOnFilter
+		if bucketFactory.Debug {
+			compiledExpr.CancelOnFilterDebug, err = exprhelpers.NewDebugger(bucketFactory.CancelOnFilter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
+			if err != nil {
+				bucketFactory.logger.Errorf("reset_filter debug error : %s", err)
+				return err
+			}
+			u.CancelOnFilterDebug = compiledExpr.CancelOnFilterDebug
+		}
+		cancelExprCache[bucketFactory.CancelOnFilter] = compiledExpr
 	}
+
 	return err
 }
