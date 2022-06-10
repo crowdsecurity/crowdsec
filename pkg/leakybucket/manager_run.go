@@ -226,7 +226,7 @@ func PourItemToBucket(bucket *Leaky, holder BucketFactory, buckets *Buckets, par
 				if _, ok := BucketPourCache[bucket.Name]; !ok {
 					BucketPourCache[bucket.Name] = make([]types.Event, 0)
 				}
-				evt := deepcopy.Copy(parsed)
+				evt := deepcopy.Copy(*parsed)
 				BucketPourCache[bucket.Name] = append(BucketPourCache[bucket.Name], evt.(types.Event))
 			}
 			sent = true
