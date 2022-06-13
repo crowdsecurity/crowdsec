@@ -117,4 +117,3 @@ teardown() {
     run -0 echo "${stderr}"
     assert_output --partial "api server init: unable to run local API: while loading plugin config: open /this/path/does/not/exist: no such file or directory"
 }
-

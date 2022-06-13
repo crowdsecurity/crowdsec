@@ -77,7 +77,7 @@ declare stderr
 
 @test "$FILE lapi status shouldn't be ok without api.server" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
-    ./instance-crowdsec start || true 
+    ./instance-crowdsec start || true
     run -1 --separate-stderr cscli machines list
     run -0 echo "$stderr"
     assert_output --partial "Local API is disabled, please run this command on the local API machine"

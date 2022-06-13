@@ -84,4 +84,3 @@ setup() {
     run -0 jq -r '.request_body[1].decisions[0].value' <"${MOCK_OUT}"
     assert_output 1.2.3.5
 }
-

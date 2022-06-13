@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # any stdout, stderr from now on will go to &3
 eval "$(debug)"
