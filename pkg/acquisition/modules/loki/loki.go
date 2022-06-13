@@ -289,11 +289,11 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 					time.Sleep(100 * time.Millisecond)
 					continue
 				}
-				fmt.Println(t, string(msg))
 				err = json.Unmarshal(msg, &resp)
 				if err != nil {
 					return errors.Wrap(err, "OneShotAcquisition error while reading JSON websocket")
 				}
+				l.logger.WithField("type", t).WithField("message", resp).Debug("Message receveid")
 				l.readOneTail(resp, out)
 			}
 		}
