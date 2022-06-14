@@ -344,3 +344,8 @@ func (l *LokiSource) ready() error {
 
 	return fmt.Errorf("Loki service %s is not ready", l.lokiReady)
 }
+
+//SupportedModes returns the supported modes by the acquisition module
+func (l *LokiSource) SupportedModes() []string {
+	return []string{configuration.TAIL_MODE, configuration.CAT_MODE}
+}
