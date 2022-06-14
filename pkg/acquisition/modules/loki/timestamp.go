@@ -23,3 +23,7 @@ func (t *timestamp) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	}
 	return err
 }
+
+func (t *timestamp) IsZero() bool {
+	return time.Time(*t).IsZero()
+}

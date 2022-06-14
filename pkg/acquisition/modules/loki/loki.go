@@ -46,7 +46,7 @@ type LokiConfiguration struct {
 	URL                               string            `yaml:"url"`   // Loki url
 	Query                             string            `yaml:"query"` // LogQL query
 	DelayFor                          time.Duration     `yaml:"delay_for"`
-	Since                             time.Duration     `yaml:"since"`
+	Since                             timestamp         `yaml:"since"`
 	TenantID                          string            `yaml:"tenant_id"`
 	Headers                           map[string]string `yaml:"headers"` // HTTP headers for talking to Loki
 	configuration.DataSourceCommonCfg `yaml:",inline"`
@@ -80,6 +80,9 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	u, err := url.Parse(l.Config.URL)
 	if err != nil {
 		return err
+	}
+	if l.Config.Since.IsZero() {
+		l.Config.Since = timestamp(time.Now())
 	}
 	if u.User != nil {
 		l.auth = u.User
@@ -143,10 +146,7 @@ func (l *LokiSource) buildUrl() error {
 	if l.Config.DelayFor != 0 {
 		params.Add("delay_for", fmt.Sprintf("%d", int64(l.Config.DelayFor.Seconds())))
 	}
-	start := time.Now() // FIXME config
-	if l.Config.Since != 0 {
-		start = start.Add(-l.Config.Since)
-	}
+	start := time.Time(l.Config.Since)
 	params.Add("start", fmt.Sprintf("%d", start.UnixNano()))
 	buff.WriteString(params.Encode())
 	l.lokiWebsocket = buff.String()
@@ -191,11 +191,10 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		l.Config.DelayFor = delayFor
 	}
 	if s := params.Get("since"); s != "" {
-		since, err := time.ParseDuration(s)
+		err = yaml.Unmarshal([]byte(s), &l.Config.Since)
 		if err != nil {
 			return errors.Wrap(err, "can't parse since in DSB configuration")
 		}
-		l.Config.Since = since
 	}
 	l.Config.TenantID = params.Get("tenantID")
 
@@ -219,6 +218,7 @@ func (l *LokiSource) GetName() string {
 	return "loki"
 }
 
+// OneShotAcquisition reads a set of file and returns when done
 func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
 	err := l.ready()
 	if err != nil {
