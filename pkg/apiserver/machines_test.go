@@ -38,7 +38,7 @@ func TestCreateMachine(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
@@ -61,7 +61,7 @@ func TestCreateMachineWithForwardedFor(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
@@ -90,7 +90,7 @@ func TestCreateMachineWithForwardedForNoConfig(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 
@@ -121,7 +121,7 @@ func TestCreateMachineWithoutForwardedFor(t *testing.T) {
 	// Create machine
 	b, err := json.Marshal(MachineTest)
 	if err != nil {
-		log.Fatalf("unable to marshal MachineTest")
+		log.Fatal("unable to marshal MachineTest")
 	}
 	body := string(b)
 

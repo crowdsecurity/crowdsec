@@ -2,22 +2,17 @@ package cwhub
 
 import (
 	"encoding/json"
-	//"errors"
 	"fmt"
 	"io/ioutil"
-	"sort"
-
-	"github.com/pkg/errors"
-	"golang.org/x/mod/semver"
-
-	//"log"
-
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/mod/semver"
 )
 
 /*the walk/parser_visit function can't receive extra args*/

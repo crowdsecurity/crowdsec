@@ -24,7 +24,7 @@ setup_file() {
        .format="{{.|toJson}}"
        ' -i "${DUMMY_YAML}"
 
-    cat <<- EOT >> "${DUMMY_YAML}"
+    cat <<-EOT >>"${DUMMY_YAML}"
 	---
 	type: dummy
 	name: dummy_2

@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -13,20 +14,20 @@ func TestDeleteDecisionRange(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_minibulk.json")
 
 	// delete by ip wrong
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?range=1.2.3.0/24", emptyBody)
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?range=1.2.3.0/24", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by range
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"2"}`, w.Body.String())
 
 	// delete by range : ensure it was already deleted
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?range=91.121.79.0/24", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 }
@@ -39,19 +40,19 @@ func TestDeleteDecisionFilter(t *testing.T) {
 
 	// delete by ip wrong
 
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?ip=1.2.3.4", emptyBody)
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?ip=1.2.3.4", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"0"}`, w.Body.String())
 
 	// delete by ip good
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?ip=91.121.79.179", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?ip=91.121.79.179", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 
 	// delete by scope/value
 
-	w = lapi.RecordResponse("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions?scopes=Ip&value=91.121.79.178", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, `{"nbDeleted":"1"}`, w.Body.String())
 }
@@ -64,7 +65,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision
 
-	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err := readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -79,7 +80,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : type filter
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?type=ban", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions?type=ban", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -97,7 +98,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : scope/value
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions?scopes=Ip&value=91.121.79.179", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -112,7 +113,7 @@ func TestGetDecisionFilters(t *testing.T) {
 
 	// Get Decision : ip filter
 
-	w = lapi.RecordResponse("GET", "/v1/decisions?ip=91.121.79.179", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions?ip=91.121.79.179", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -126,7 +127,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	// assert.NotContains(t, w.Body.String(), `"id":2,"origin":"crowdsec","scenario":"crowdsecurity/ssh-bf","scope":"Ip","type":"ban","value":"91.121.79.178"`)
 
 	// Get decision : by range
-	w = lapi.RecordResponse("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions?range=91.121.79.0/24&contains=false", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err = readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -144,7 +145,7 @@ func TestGetDecision(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Get Decision
-	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	decisions, code, err := readDecisionsGetResp(w)
 	assert.Nil(t, err)
@@ -164,7 +165,7 @@ func TestGetDecision(t *testing.T) {
 	assert.Equal(t, int64(3), decisions[2].ID)
 
 	// Get Decision with invalid filter. It should ignore this filter
-	w = lapi.RecordResponse("GET", "/v1/decisions?test=test", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions?test=test", emptyBody, "apikey")
 	assert.Equal(t, 200, w.Code)
 	assert.Equal(t, 3, len(decisions))
 }
@@ -176,7 +177,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	//Have one alerts
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err := readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -184,21 +185,21 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, len(decisions["new"]), 1)
 
 	// Delete alert with Invalid ID
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/test", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/test", emptyBody, "password")
 	assert.Equal(t, 400, w.Code)
 	err_resp, _, err := readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, err_resp["message"], "decision_id must be valid integer")
 
 	// Delete alert with ID that not exist
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/100", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/100", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	err_resp, _, err = readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, err_resp["message"], "decision with id '100' doesn't exist: unable to delete")
 
 	//Have one alerts
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -206,14 +207,14 @@ func TestDeleteDecisionByID(t *testing.T) {
 	assert.Equal(t, len(decisions["new"]), 1)
 
 	// Delete alert with valid ID
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	resp, _, err := readDecisionsDeleteResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, resp.NbDeleted, "1")
 
 	//Have one alert (because we delete an alert that has dup targets)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -228,14 +229,14 @@ func TestDeleteDecision(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Delete alert with Invalid filter
-	w := lapi.RecordResponse("DELETE", "/v1/decisions?test=test", emptyBody)
+	w := lapi.RecordResponse("DELETE", "/v1/decisions?test=test", emptyBody, "password")
 	assert.Equal(t, 500, w.Code)
 	err_resp, _, err := readDecisionsErrorResp(w)
 	assert.NoError(t, err)
 	assert.Equal(t, err_resp["message"], "'test' doesn't exist: invalid filter")
 
 	// Delete all alert
-	w = lapi.RecordResponse("DELETE", "/v1/decisions", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 	resp, _, err := readDecisionsDeleteResp(w)
 	assert.NoError(t, err)
@@ -250,7 +251,7 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
 	// Get Stream, we only get one decision (the longest one)
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err := readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -261,11 +262,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
 	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions on the same ip
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
 	// Get Stream, we only get one decision (the longest one, id=2)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -276,11 +277,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
 	// And get the remaining decision (1)
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -291,11 +292,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
 	// We delete the last decision, we receive the delete order
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
 	//and now we only get a deleted decision
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -313,8 +314,10 @@ func TestStreamDecisionDedup(t *testing.T) {
 	// Create Valid Alert : 3 decisions for 127.0.0.1, longest has id=3
 	lapi.InsertAlertFromFile("./tests/alert_sample.json")
 
+	time.Sleep(2 * time.Second)
+
 	// Get Stream, we only get one decision (the longest one)
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err := readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -325,22 +328,21 @@ func TestStreamDecisionDedup(t *testing.T) {
 	assert.Equal(t, *decisions["new"][0].Value, "127.0.0.1")
 
 	// id=3 decision is deleted, this won't affect `deleted`, because there are decisions on the same ip
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/3", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody, "apikey")
 	assert.Equal(t, err, nil)
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
 	assert.Equal(t, len(decisions["deleted"]), 0)
 	assert.Equal(t, len(decisions["new"]), 0)
-
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -348,10 +350,10 @@ func TestStreamDecisionDedup(t *testing.T) {
 	assert.Equal(t, len(decisions["new"]), 0)
 
 	// We delete the last decision, we receive the delete order
-	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody)
+	w = lapi.RecordResponse("DELETE", "/v1/decisions/1", emptyBody, "password")
 	assert.Equal(t, 200, w.Code)
 
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, code, 200)
@@ -369,7 +371,7 @@ func TestStreamDecisionFilters(t *testing.T) {
 	// Create Valid Alert
 	lapi.InsertAlertFromFile("./tests/alert_stream_fixture.json")
 
-	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody)
+	w := lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true", emptyBody, "apikey")
 	decisions, code, err := readDecisionsStreamResp(w)
 
 	assert.Equal(t, 200, code)
@@ -390,7 +392,7 @@ func TestStreamDecisionFilters(t *testing.T) {
 	assert.Equal(t, *decisions["new"][2].Scenario, "crowdsecurity/ddos")
 
 	// test filter scenarios_not_containing
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=http", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=http", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -400,7 +402,7 @@ func TestStreamDecisionFilters(t *testing.T) {
 	assert.Equal(t, decisions["new"][1].ID, int64(3))
 
 	// test  filter scenarios_containing
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_containing=http", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -409,7 +411,7 @@ func TestStreamDecisionFilters(t *testing.T) {
 	assert.Equal(t, decisions["new"][0].ID, int64(1))
 
 	// test filters both by scenarios_not_containing and scenarios_containing
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh&scenarios_containing=ddos", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh&scenarios_containing=ddos", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
@@ -418,7 +420,7 @@ func TestStreamDecisionFilters(t *testing.T) {
 	assert.Equal(t, decisions["new"][0].ID, int64(3))
 
 	// test filter by origin
-	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&origins=test1,test2", emptyBody)
+	w = lapi.RecordResponse("GET", "/v1/decisions/stream?startup=true&origins=test1,test2", emptyBody, "apikey")
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)

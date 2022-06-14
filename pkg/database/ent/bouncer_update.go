@@ -164,6 +164,20 @@ func (bu *BouncerUpdate) SetNillableLastPull(t *time.Time) *BouncerUpdate {
 	return bu
 }
 
+// SetAuthType sets the "auth_type" field.
+func (bu *BouncerUpdate) SetAuthType(s string) *BouncerUpdate {
+	bu.mutation.SetAuthType(s)
+	return bu
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (bu *BouncerUpdate) SetNillableAuthType(s *string) *BouncerUpdate {
+	if s != nil {
+		bu.SetAuthType(*s)
+	}
+	return bu
+}
+
 // Mutation returns the BouncerMutation object of the builder.
 func (bu *BouncerUpdate) Mutation() *BouncerMutation {
 	return bu.mutation
@@ -360,6 +374,13 @@ func (bu *BouncerUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: bouncer.FieldLastPull,
 		})
 	}
+	if value, ok := bu.mutation.AuthType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldAuthType,
+		})
+	}
 	if n, err = sqlgraph.UpdateNodes(ctx, bu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{bouncer.Label}
@@ -511,6 +532,20 @@ func (buo *BouncerUpdateOne) SetLastPull(t time.Time) *BouncerUpdateOne {
 func (buo *BouncerUpdateOne) SetNillableLastPull(t *time.Time) *BouncerUpdateOne {
 	if t != nil {
 		buo.SetLastPull(*t)
+	}
+	return buo
+}
+
+// SetAuthType sets the "auth_type" field.
+func (buo *BouncerUpdateOne) SetAuthType(s string) *BouncerUpdateOne {
+	buo.mutation.SetAuthType(s)
+	return buo
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (buo *BouncerUpdateOne) SetNillableAuthType(s *string) *BouncerUpdateOne {
+	if s != nil {
+		buo.SetAuthType(*s)
 	}
 	return buo
 }
@@ -733,6 +768,13 @@ func (buo *BouncerUpdateOne) sqlSave(ctx context.Context) (_node *Bouncer, err e
 			Type:   field.TypeTime,
 			Value:  value,
 			Column: bouncer.FieldLastPull,
+		})
+	}
+	if value, ok := buo.mutation.AuthType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: bouncer.FieldAuthType,
 		})
 	}
 	_node = &Bouncer{config: buo.config}

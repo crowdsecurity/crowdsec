@@ -17,7 +17,6 @@ import (
 
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/mohae/deepcopy"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -38,7 +37,7 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 	log.Debugf("setting target %s to %s", target, value)
 	defer func() {
 		if r := recover(); r != nil {
-			log.Errorf("Runtime error while trying to set '%s' in %s : %+v", target, spew.Sdump(evt), r)
+			log.Errorf("Runtime error while trying to set '%s': %+v", target, r)
 			return
 		}
 	}()
@@ -65,11 +64,17 @@ func SetTargetByName(target string, value string, evt *types.Event) bool {
 		case reflect.Struct:
 			tmp := iter.FieldByName(f)
 			if !tmp.IsValid() {
-				log.Debugf("%s IsValid false", f)
+				log.Debugf("'%s' is not a valid target because '%s' is not valid", target, f)
 				return false
+			}
+			if tmp.Kind() == reflect.Ptr {
+				tmp = reflect.Indirect(tmp)
 			}
 			iter = tmp
 			break
+		case reflect.Ptr:
+			tmp := iter.Elem()
+			iter = reflect.Indirect(tmp.FieldByName(f))
 		default:
 			log.Errorf("unexpected type %s in '%s'", iter.Kind(), target)
 			return false
@@ -128,8 +133,12 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				value = out
 			case int:
 				value = strconv.Itoa(out)
+			case map[string]interface{}:
+				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
+			case []interface{}:
+				clog.Warnf("Expression returned a map, please use ToJsonString() to convert it to string if you want to keep it as is, or refine your expression to extract a string")
 			default:
-				clog.Fatalf("unexpected return type for RunTimeValue : %T", output)
+				clog.Errorf("unexpected return type for RunTimeValue : %T", output)
 				return errors.New("unexpected return type for RunTimeValue")
 			}
 		}
@@ -182,7 +191,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 				clog.Debugf("%s = '%s'", static.TargetByName, value)
 			}
 		} else {
-			clog.Fatalf("unable to process static : unknown tartget")
+			clog.Fatal("unable to process static : unknown target")
 		}
 
 	}
@@ -304,7 +313,8 @@ func Parse(ctx UnixParserCtx, xp types.Event, nodes []Node) (types.Event, error)
 			}
 			ret, err := node.process(&event, ctx, cachedExprEnv)
 			if err != nil {
-				clog.Fatalf("Error while processing node : %v", err)
+				clog.Errorf("Error while processing node : %v", err)
+				return event, err
 			}
 			clog.Tracef("node (%s) ret : %v", node.rn, ret)
 			if ParseDump {

@@ -13,7 +13,7 @@ about() {
     die "usage: ${script_name} [-q] <port_number>"
 }
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
 
 QUIET=
 if [[ "$1" == "-q" ]]; then
@@ -21,7 +21,7 @@ if [[ "$1" == "-q" ]]; then
     shift
 fi
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
 
 port_number=$1
 

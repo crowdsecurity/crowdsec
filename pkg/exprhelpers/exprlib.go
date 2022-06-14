@@ -44,6 +44,9 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"JsonExtract":          JsonExtract,
 		"JsonExtractUnescape":  JsonExtractUnescape,
 		"JsonExtractLib":       JsonExtractLib,
+		"JsonExtractSlice":     JsonExtractSlice,
+		"JsonExtractObject":    JsonExtractObject,
+		"ToJsonString":         ToJson,
 		"File":                 File,
 		"RegexpInFile":         RegexpInFile,
 		"Upper":                Upper,
@@ -58,6 +61,7 @@ func GetExprEnv(ctx map[string]interface{}) map[string]interface{} {
 		"XMLGetAttributeValue": XMLGetAttributeValue,
 		"XMLGetNodeValue":      XMLGetNodeValue,
 		"IpToRange":            IpToRange,
+		"IsIPV6":               IsIPV6,
 	}
 	for k, v := range ctx {
 		ExprLib[k] = v
@@ -178,6 +182,17 @@ func IpInRange(ip string, ipRange string) bool {
 		return true
 	}
 	return false
+}
+
+func IsIPV6(ip string) bool {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		log.Debugf("'%s' is not a valid IP", ip)
+		return false
+	}
+
+	// If it's a valid IP and can't be converted to IPv4 then it is an IPv6
+	return ipParsed.To4() == nil
 }
 
 func IpToRange(ip string, cidr string) string {
