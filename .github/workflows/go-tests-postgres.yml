@@ -93,6 +93,7 @@ jobs:
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
       env:
+        # These are only used in pkg/apiserver_test
         CROWDSEC_TEST_DB_TYPE: "postgres"
         CROWDSEC_TEST_DB_HOST: "127.0.0.1"
         CROWDSEC_TEST_DB_NAME: "postgres"
