@@ -1,5 +1,5 @@
 ---
-name: Go tests (sqlite + coverage)
+name: Go tests (postgres)
 
 # these env variables are for localstack, so we can emulate aws services
 env:
@@ -15,6 +15,13 @@ env:
 
 on:
   workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
 
@@ -22,6 +29,19 @@ jobs:
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
+
+      database:
+        image: postgres:latest
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+        - 5432:5432
+        options: >-
+          --health-cmd pg_isready -u postgres
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
       localstack:
         image: localstack/localstack:0.13.3
         ports:
@@ -62,9 +82,31 @@ jobs:
     - name: Build
       run: make build && go get -u github.com/ory/go-acc
 
-    - name: "Run tests"
+    - name: "Run tests (db backend: pgx)"
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+      env:
+        CROWDSEC_DB_TYPE: "pgx"
+        CROWDSEC_DB_HOST: "127.0.0.1"
+        CROWDSEC_DB_NAME: "postgres"
+        CROWDSEC_DB_PORT: 5432
+        CROWDSEC_DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        CROWDSEC_DB_USER: "postgres"
+
+    - name: "Run tests (db backend: postgres)"
+      run: |
+        go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+      env:
+        CROWDSEC_DB_TYPE: "postgres"
+        CROWDSEC_DB_HOST: "127.0.0.1"
+        CROWDSEC_DB_NAME: "postgres"
+        CROWDSEC_DB_PORT: 5432
+        CROWDSEC_DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        CROWDSEC_DB_USER: "postgres"
+
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
+      if: ${{ always() }}
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2

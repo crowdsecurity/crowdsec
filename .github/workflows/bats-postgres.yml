@@ -1,4 +1,5 @@
-name: Functional tests with PostgreSQL
+---
+name: Functional tests (postgres)
 
 on:
   workflow_call:
@@ -18,7 +19,7 @@ jobs:
         env:
           POSTGRES_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:
-          - 5432:5432
+        - 5432:5432
         options: >-
           --health-cmd pg_isready -u postgres
           --health-interval 10s
@@ -98,4 +99,3 @@ jobs:
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}
-

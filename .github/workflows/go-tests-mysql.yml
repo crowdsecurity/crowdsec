@@ -1,5 +1,5 @@
 ---
-name: Go tests (sqlite + coverage)
+name: Go tests (mysql)
 
 # these env variables are for localstack, so we can emulate aws services
 env:
@@ -15,6 +15,13 @@ env:
 
 on:
   workflow_call:
+    inputs:
+      database_image:
+        required: true
+        type: string
+    secrets:
+      DATABASE_PASSWORD:
+        required: true
 
 jobs:
 
@@ -22,6 +29,14 @@ jobs:
     name: "Build + tests"
     runs-on: ubuntu-latest
     services:
+
+      database:
+        image: ${{ inputs.database_image }}
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        ports:
+        - 3306:3306
+
       localstack:
         image: localstack/localstack:0.13.3
         ports:
@@ -65,6 +80,17 @@ jobs:
     - name: "Run tests"
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
+      env:
+        CROWDSEC_DB_TYPE: "mysql"
+        CROWDSEC_DB_HOST: "127.0.0.1"
+        CROWDSEC_DB_NAME: "mysql"
+        CROWDSEC_DB_PORT: 3306
+        CROWDSEC_DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        CROWDSEC_DB_USER: "root"
+
+    - name: "Show database logs"
+      run: docker logs "${{ job.services.database.id }}"
+      if: ${{ always() }}
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2

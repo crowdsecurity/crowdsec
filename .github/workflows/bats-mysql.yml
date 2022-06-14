@@ -1,4 +1,5 @@
-name: Functional tests with MySQL
+---
+name: Functional tests (mysql/mariadb)
 
 on:
   workflow_call:
@@ -22,7 +23,7 @@ jobs:
         env:
           MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         ports:
-          - 3306:3306
+        - 3306:3306
 
     steps:
 

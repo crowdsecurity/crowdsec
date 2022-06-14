@@ -1,4 +1,5 @@
-name: Functional tests with sqlite
+---
+name: Functional tests (sqlite + coverage)
 
 on:
   workflow_call:
