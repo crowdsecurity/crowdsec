@@ -71,6 +71,14 @@ var globalActiveDecisions = prometheus.NewGaugeVec(
 	[]string{"scenario", "origin", "action"},
 )
 
+var globalAlerts = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_alerts",
+		Help: "Number of alerts (excluding CAPI).",
+	},
+	[]string{"scenario"},
+)
+
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if dbClient == nil {
@@ -78,8 +86,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		filters := make(map[string][]string, 0)
-		decisions, err := dbClient.QueryAllDecisionsWithFilters(filters)
+		decisionsFilters := make(map[string][]string, 0)
+		decisions, err := dbClient.QueryAllDecisionsWithFilters(decisionsFilters)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
@@ -89,6 +97,25 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		for _, d := range decisions {
 			globalActiveDecisions.With(prometheus.Labels{"scenario": d.Scenario, "origin": d.Origin, "action": d.Type}).Inc()
 		}
+
+		alertsFilter := map[string][]string{
+			"include_capi": {"false"},
+		}
+
+		globalAlerts.Reset()
+
+		alerts, err := dbClient.QueryAlertWithFilter(alertsFilter)
+
+		if err != nil {
+			log.Errorf("Error querying alerts for metrics: %v", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		for _, a := range alerts {
+			globalAlerts.With(prometheus.Labels{"scenario": a.Scenario}).Inc()
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -135,7 +162,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.Datab
 			globalCsInfo,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
-			globalActiveDecisions)
+			globalActiveDecisions, globalAlerts)
 
 	}
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
