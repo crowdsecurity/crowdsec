@@ -89,7 +89,7 @@ func TestConfigureDSN(t *testing.T) {
 		name        string
 		dsn         string
 		expectedErr string
-		since       time.Duration
+		since       time.Time
 		password    string
 	}{
 		{
@@ -115,7 +115,7 @@ func TestConfigureDSN(t *testing.T) {
 		{
 			name:  "Bad since param",
 			dsn:   "loki://127.0.0.1:3100/?since=3h",
-			since: 3 * time.Hour,
+			since: time.Now().Add(-3 * time.Hour),
 		},
 		{
 			name:     "Basic Auth",
@@ -132,7 +132,7 @@ func TestConfigureDSN(t *testing.T) {
 		lokiSource := &LokiSource{}
 		err := lokiSource.ConfigureByDSN(test.dsn, map[string]string{"type": "testtype"}, subLogger)
 		cstest.AssertErrorContains(t, err, test.expectedErr)
-		if lokiSource.Config.Since != test.since {
+		if time.Time(lokiSource.Config.Since).Round(time.Second) != test.since.Round(time.Second) {
 			t.Fatalf("Invalid since %v", lokiSource.Config.Since)
 		}
 		if test.password == "" {
