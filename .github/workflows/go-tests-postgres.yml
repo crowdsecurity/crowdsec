@@ -15,10 +15,6 @@ env:
 
 on:
   workflow_call:
-    inputs:
-      database_image:
-        required: true
-        type: string
     secrets:
       DATABASE_PASSWORD:
         required: true
