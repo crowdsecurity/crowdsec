@@ -46,7 +46,7 @@ func StartRunSvc() {
 
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
+		go registerPrometheus(cConfig.Prometheus, cConfig.DbConfig)
 	}
 
 	if exitCode, err := Serve(cConfig); err != nil {

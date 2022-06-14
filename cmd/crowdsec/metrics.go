@@ -6,6 +6,7 @@ import (
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -62,7 +63,37 @@ var globalCsInfo = prometheus.NewGauge(
 	},
 )
 
-func registerPrometheus(config *csconfig.PrometheusCfg) {
+var globalActiveDecisions = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "cs_active_decisions",
+		Help: "Number of active decisions.",
+	},
+	[]string{"scenario", "origin", "action"},
+)
+
+func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if dbClient == nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		filters := make(map[string][]string, 0)
+		decisions, err := dbClient.QueryAllDecisionsWithFilters(filters)
+		if err != nil {
+			log.Errorf("Error querying decisions for metrics: %v", err)
+			next.ServeHTTP(w, r)
+			return
+		}
+		globalActiveDecisions.Reset()
+		for _, d := range decisions {
+			globalActiveDecisions.With(prometheus.Labels{"scenario": d.Scenario, "origin": d.Origin, "action": d.Type}).Inc()
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.DatabaseCfg) {
 	if !config.Enabled {
 		return
 	}
@@ -73,6 +104,18 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	if config.ListenPort == 0 {
 		log.Warningf("prometheus is enabled, but the listen port is empty, using '6060'")
 		config.ListenPort = 6060
+	}
+
+	var dbClient *database.Client
+	var err error
+
+	if dbConfig != nil {
+		dbClient, err = database.NewClient(dbConfig)
+
+		if err != nil {
+			log.Errorf("unable to create database client: %v", err)
+			return
+		}
 	}
 
 	defer types.CatchPanic("crowdsec/registerPrometheus")
@@ -91,10 +134,11 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
 			globalCsInfo,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
-			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount)
+			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
+			globalActiveDecisions)
 
 	}
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		log.Warningf("prometheus: %s", err)
 	}
