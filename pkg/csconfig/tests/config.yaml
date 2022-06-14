@@ -13,13 +13,13 @@ crowdsec_service:
 cscli:
   output: human
 db_config:
-  user: "${CROWDSEC_DB_USER}"
-  password: "${CROWDSEC_DB_PASSWORD}"
-  db_name: "${CROWDSEC_DB_NAME}"
-  host: "${CROWDSEC_DB_HOST}"
-  port: ${CROWDSEC_DB_PORT}
+  user: ""
+  password: ""
+  db_name: ""
+  host: ""
+  port: 0
   db_path: ./crowdsec.db
-  type: "${CROWDSEC_DB_TYPE}"
+  type: sqlite
 api:
   client:
     credentials_path: ./tests/lapi-secrets.yaml

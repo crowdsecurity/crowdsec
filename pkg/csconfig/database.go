@@ -45,11 +45,6 @@ func (c *Config) LoadDBConfig() error {
 		return fmt.Errorf("no database configuration provided")
 	}
 
-	if c.DbConfig.Type == "" {
-		c.DbConfig.Type = "sqlite"
-		log.Info("Missing database type: defaults to 'sqlite'")
-	}
-
 	if c.Cscli != nil {
 		c.Cscli.DbConfig = c.DbConfig
 	}

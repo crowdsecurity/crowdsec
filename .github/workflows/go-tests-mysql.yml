@@ -81,12 +81,12 @@ jobs:
       run: |
         go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models
       env:
-        CROWDSEC_DB_TYPE: "mysql"
-        CROWDSEC_DB_HOST: "127.0.0.1"
-        CROWDSEC_DB_NAME: "mysql"
-        CROWDSEC_DB_PORT: 3306
-        CROWDSEC_DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
-        CROWDSEC_DB_USER: "root"
+        CROWDSEC_TEST_DB_TYPE: "mysql"
+        CROWDSEC_TEST_DB_HOST: "127.0.0.1"
+        CROWDSEC_TEST_DB_NAME: "mysql"
+        CROWDSEC_TEST_DB_PORT: 3306
+        CROWDSEC_TEST_DB_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        CROWDSEC_TEST_DB_USER: "root"
 
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"

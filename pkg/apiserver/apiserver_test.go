@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -43,10 +44,29 @@ func LoadTestConfig() csconfig.Config {
 		MaxAge: &maxAge,
 	}
 	tempDir, _ := os.MkdirTemp("", "crowdsec_tests")
+
+	dbType := os.Getenv("CROWDSEC_TEST_DB_TYPE")
+	if dbType == "" {
+		dbType = "sqlite"
+	}
+
+	log.Infof("Using database driver: %s", dbType)
+
+	dbUser := os.Getenv("CROWDSEC_TEST_DB_USER")
+	dbPassword := os.Getenv("CROWDSEC_TEST_DB_PASSWORD")
+	dbName := os.Getenv("CROWDSEC_TEST_DB_NAME")
+	dbHost := os.Getenv("CROWDSEC_TEST_DB_HOST")
+	dbPort, _ := strconv.ParseInt(os.Getenv("CROWDSEC_TEST_DB_PORT"), 10, 16)
+
 	dbconfig := csconfig.DatabaseCfg{
-		Type:   "sqlite",
-		DbPath: filepath.Join(tempDir, "ent"),
-		Flush:  &flushConfig,
+		Type:     dbType,
+		User:     dbUser,
+		Password: dbPassword,
+		DbName:   dbName,
+		Host:     dbHost,
+		Port:     int(dbPort),
+		DbPath:   filepath.Join(tempDir, "ent"),
+		Flush:    &flushConfig,
 	}
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
