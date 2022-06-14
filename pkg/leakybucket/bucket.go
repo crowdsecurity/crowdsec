@@ -9,7 +9,6 @@ import (
 	//"log"
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/goombaio/namegenerator"
 	"gopkg.in/tomb.v2"
 
 	//rate "time/rate"
@@ -158,7 +157,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
+		Uuid:            seed.Generate(),
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),
