@@ -105,9 +105,9 @@ declare stderr
 
     run -0 cscli alerts inspect "$ALERT_ID" -o json
     alert=$output
-    run jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<< "$alert"
+    run jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<<"$alert"
     assert_output --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
-    run jq -c '.source' <<< "$alert"
+    run jq -c '.source' <<<"$alert"
     assert_output '{"ip":"10.20.30.40","scope":"Ip","value":"10.20.30.40"}'
 }
 

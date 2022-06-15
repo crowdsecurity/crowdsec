@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,7 +19,7 @@ import (
 	//"github.com/sevlyar/go-daemon"
 )
 
-//debugHandler is kept as a dev convenience : it shuts down and serialize internal state
+//nolint: deadcode,unused // debugHandler is kept as a dev convenience : it shuts down and serialize internal state
 func debugHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	var tmpFile string
 	var err error
@@ -55,22 +54,22 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 
 	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 
 	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
 		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
-		log.Fatal(err.Error())
+		return err
 	}
 
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return fmt.Errorf("unable to init api server: %s", err)
+			return errors.Wrap(err, "unable to init api server")
 		}
 
 		serveAPIServer(apiServer)
@@ -79,7 +78,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return fmt.Errorf("unable to init crowdsec: %s", err)
+			return errors.Wrap(err, "unable to init crowdsec")
 		}
 		//restore bucket state
 		if tmpFile != "" {
@@ -166,20 +165,18 @@ func shutdownCrowdsec() error {
 func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
-			log.Errorf("Failed to shut down crowdsec: %s", err)
-			return err
+			return errors.Wrap(err, "Failed to shut down crowdsec")
 		}
 	}
 	if !cConfig.DisableAPI {
 		if err := shutdownAPI(); err != nil {
-			log.Errorf("Failed to shut down api routines: %s", err)
-			return err
+			return errors.Wrap(err, "Failed to shut down api routines")
 		}
 	}
 	return nil
 }
 
-func HandleSignals(cConfig *csconfig.Config) int {
+func HandleSignals(cConfig *csconfig.Config) error {
 	signalChan := make(chan os.Signal, 1)
 	//We add os.Interrupt mostly to ease windows dev, it allows to simulate a clean shutdown when running in the console
 	signal.Notify(signalChan,
@@ -187,9 +184,10 @@ func HandleSignals(cConfig *csconfig.Config) int {
 		syscall.SIGTERM,
 		os.Interrupt)
 
-	exitChan := make(chan int)
+	exitChan := make(chan error)
 	go func() {
 		defer types.CatchPanic("crowdsec/HandleSignals")
+	Loop:
 		for {
 			s := <-signalChan
 			switch s {
@@ -197,28 +195,33 @@ func HandleSignals(cConfig *csconfig.Config) int {
 			case syscall.SIGHUP:
 				log.Warningf("SIGHUP received, reloading")
 				if err := shutdown(s, cConfig); err != nil {
-					log.Fatalf("failed shutdown : %s", err)
+					exitChan <- errors.Wrap(err, "failed shutdown")
+					break Loop
 				}
 				if err := reloadHandler(s, cConfig); err != nil {
-					log.Fatalf("Reload handler failure : %s", err)
+					exitChan <- errors.Wrap(err, "reload handler failure")
+					break Loop
 				}
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
 				log.Warningf("SIGTERM received, shutting down")
 				if err := shutdown(s, cConfig); err != nil {
-					log.Fatalf("failed shutdown : %s", err)
+					exitChan <- errors.Wrap(err, "failed shutdown")
+					break Loop
 				}
-				exitChan <- 0
+				exitChan <- nil
 			}
 		}
 	}()
 
-	code := <-exitChan
-	log.Warningf("Crowdsec service shutting down")
-	return code
+	err := <-exitChan
+	if err == nil {
+		log.Warningf("Crowdsec service shutting down")
+	}
+	return err
 }
 
-func Serve(cConfig *csconfig.Config) (int, error) {
+func Serve(cConfig *csconfig.Config) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -246,7 +249,7 @@ func Serve(cConfig *csconfig.Config) (int, error) {
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
-			return 1, errors.Wrap(err, "api server init")
+			return errors.Wrap(err, "api server init")
 		}
 		if !flags.TestMode {
 			serveAPIServer(apiServer)
@@ -256,7 +259,7 @@ func Serve(cConfig *csconfig.Config) (int, error) {
 	if !cConfig.DisableAgent {
 		csParsers, err := initCrowdsec(cConfig)
 		if err != nil {
-			return 1, errors.Wrap(err, "crowdsec init")
+			return errors.Wrap(err, "crowdsec init")
 		}
 		/* if it's just linting, we're done */
 		if !flags.TestMode {
@@ -275,7 +278,7 @@ func Serve(cConfig *csconfig.Config) (int, error) {
 			log.Errorf("Failed to notify(sent: %v): %v", sent, err)
 		}
 		/*wait for signals*/
-		return HandleSignals(cConfig), nil
+		return HandleSignals(cConfig)
 	}
 
 	for {

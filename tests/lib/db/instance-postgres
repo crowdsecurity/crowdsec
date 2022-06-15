@@ -2,7 +2,7 @@
 
 set -eu
 script_name=$0
-DB_BACKEND=$(echo $script_name | cut -d- -f2)
+DB_BACKEND=$(echo "${script_name}" | cut -d- -f2)
 export DB_BACKEND
 
 die() {
@@ -20,7 +20,7 @@ export PGPASSWORD
 export PGUSER
 
 about() {
-    die "usage: $script_name [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
+    die "usage: ${script_name} [ config_yaml | setup | dump <backup_file> | restore <backup_file> ]"
 }
 
 check_requirements() {
@@ -37,7 +37,7 @@ check_requirements() {
 
 exec_sql() {
     cmd="${1?Missing required sql command}"
-    psql <<< "$cmd"
+    psql <<< "${cmd}"
 }
 
 setup() {
@@ -50,13 +50,13 @@ setup() {
 
 dump() {
     backup_file="${1?Missing file to backup database to}"
-    pg_dump -Ft --dbname crowdsec_test --clean --create --file "$backup_file"
+    pg_dump -Ft --dbname crowdsec_test --clean --create --file "${backup_file}"
 }
 
 restore() {
     backup_file="${1?missing file to restore database from}"
-    [ -f "$backup_file" ] || die "Backup file $backup_file doesn't exist"
-    pg_restore --dbname crowdsec_test --clean "$backup_file"
+    [[ -f "${backup_file}" ]] || die "Backup file ${backup_file} doesn't exist"
+    pg_restore --dbname crowdsec_test --clean "${backup_file}"
 }
 
 config_yaml() {
@@ -72,7 +72,7 @@ config_yaml() {
     ' -i "${CONFIG_YAML}"
 }
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
 
 check_requirements
 

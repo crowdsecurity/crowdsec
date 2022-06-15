@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
@@ -22,7 +21,6 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"golang.org/x/mod/semver"
 	"gopkg.in/yaml.v2"
 )
 
@@ -53,18 +51,18 @@ func indexOf(s string, slice []string) int {
 
 func LoadHub() error {
 	if err := csConfig.LoadHub(); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err)
 	}
 	if csConfig.Hub == nil {
 		return fmt.Errorf("unable to load hub")
 	}
 
-	if err := setHubBranch(); err != nil {
+	if err := cwhub.SetHubBranch(); err != nil {
 		log.Warningf("unable to set hub branch (%s), default to master", err)
 	}
 
 	if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
-		return fmt.Errorf("Failed to get Hub index : '%v'. Run 'sudo cscli hub update' to get the hub index", err)
+		return fmt.Errorf("Failed to get Hub index : '%w'. Run 'sudo cscli hub update' to get the hub index", err)
 	}
 
 	return nil
@@ -277,35 +275,6 @@ func manageCliDecisionAlerts(ip *string, ipRange *string, scope *string, value *
 		*scope = types.Country
 	case "as":
 		*scope = types.AS
-	}
-	return nil
-}
-
-func setHubBranch() error {
-	/*
-		if no branch has been specified in flags for the hub, then use the one corresponding to crowdsec version
-	*/
-	if cwhub.HubBranch == "" {
-		latest, err := cwversion.Latest()
-		if err != nil {
-			cwhub.HubBranch = "master"
-			return err
-		}
-		csVersion := cwversion.VersionStrip()
-		if csVersion == latest {
-			cwhub.HubBranch = "master"
-		} else if semver.Compare(csVersion, latest) == 1 { // if current version is greater than the latest we are in pre-release
-			log.Debugf("Your current crowdsec version seems to be a pre-release (%s)", csVersion)
-			cwhub.HubBranch = "master"
-		} else if csVersion == "" {
-			log.Warningf("Crowdsec version is '', using master branch for the hub")
-			cwhub.HubBranch = "master"
-		} else {
-			log.Warnf("Crowdsec is not the latest version. Current version is '%s' and the latest stable version is '%s'. Please update it!", csVersion, latest)
-			log.Warnf("As a result, you will not be able to use parsers/scenarios/collections added to Crowdsec Hub after CrowdSec %s", latest)
-			cwhub.HubBranch = csVersion
-		}
-		log.Debugf("Using branch '%s' for the hub", cwhub.HubBranch)
 	}
 	return nil
 }
@@ -564,7 +533,7 @@ func RestoreHub(dirPath string) error {
 	if err := csConfig.LoadHub(); err != nil {
 		return err
 	}
-	if err := setHubBranch(); err != nil {
+	if err := cwhub.SetHubBranch(); err != nil {
 		return fmt.Errorf("error while setting hub branch: %s", err)
 	}
 

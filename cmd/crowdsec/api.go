@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"runtime"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
@@ -21,17 +20,17 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 		log.Info("initiating plugin broker")
 		//On windows, the plugins are always run as medium-integrity processes, so we don't care about plugin_config
 		if cConfig.PluginConfig == nil && runtime.GOOS != "windows" {
-			return nil, fmt.Errorf("plugins are enabled, but the plugin_config section is missing in the configuration")
+			return nil, errors.New("plugins are enabled, but the plugin_config section is missing in the configuration")
 		}
 		if cConfig.ConfigPaths.NotificationDir == "" {
-			return nil, fmt.Errorf("plugins are enabled, but config_paths.notification_dir is not defined")
+			return nil, errors.New("plugins are enabled, but config_paths.notification_dir is not defined")
 		}
 		if cConfig.ConfigPaths.PluginDir == "" {
-			return nil, fmt.Errorf("plugins are enabled, but config_paths.plugin_dir is not defined")
+			return nil, errors.New("plugins are enabled, but config_paths.plugin_dir is not defined")
 		}
 		err = pluginBroker.Init(cConfig.PluginConfig, cConfig.API.Server.Profiles, cConfig.ConfigPaths)
 		if err != nil {
-			return nil, fmt.Errorf("unable to run local API: %s", err)
+			return nil, errors.Wrap(err, "unable to run local API")
 		}
 		log.Info("initiated plugin broker")
 		apiServer.AttachPluginBroker(&pluginBroker)

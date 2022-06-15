@@ -295,7 +295,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		only the keys of the expected part are checked against result
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
-		log.Fatalf("No results, no tests, abort.")
+		log.Fatal("No results, no tests, abort.")
 		return false, fmt.Errorf("no tests, no results")
 	}
 

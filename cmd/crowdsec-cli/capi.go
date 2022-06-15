@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/go-openapi/strfmt"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
@@ -30,7 +31,7 @@ func NewCapiCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIServer(); err != nil || csConfig.DisableAPI {
-				log.Fatal("Local API is disabled, please run this command on the local API machine")
+				return errors.Wrap(err, "Local API is disabled, please run this command on the local API machine")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("no configuration for Central API in '%s'", *csConfig.FilePath)
@@ -102,7 +103,9 @@ func NewCapiCmd() *cobra.Command {
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
 	cmdCapiRegister.Flags().StringVar(&capiUserPrefix, "schmilblick", "", "set a schmilblick (use in tests only)")
-	cmdCapiRegister.Flags().MarkHidden("schmilblick")
+	if err := cmdCapiRegister.Flags().MarkHidden("schmilblick"); err != nil {
+		log.Fatalf("failed to hide flag: %s", err)
+	}
 	cmdCapi.AddCommand(cmdCapiRegister)
 
 	var cmdCapiStatus = &cobra.Command{
@@ -113,7 +116,7 @@ func NewCapiCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			var err error
 			if csConfig.API.Server == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
+				log.Fatalln("There is no configuration on 'api.server:'")
 			}
 			if csConfig.API.Server.OnlineClient == nil {
 				log.Fatalf("Please provide credentials for the Central API (CAPI) in '%s'", csConfig.API.Server.OnlineClient.CredentialsFilePath)
@@ -130,12 +133,12 @@ func NewCapiCmd() *cobra.Command {
 			}
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/confluentinc/bincover"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
@@ -16,6 +17,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
 )
+
+var bincoverTesting = ""
 
 var trace_lvl, dbg_lvl, nfo_lvl, wrn_lvl, err_lvl bool
 
@@ -152,7 +155,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 
 	rootCmd.PersistentFlags().StringVar(&cwhub.HubBranch, "branch", "", "Override hub branch on github")
 	if err := rootCmd.PersistentFlags().MarkHidden("branch"); err != nil {
-		log.Fatalf("failed to make branch hidden : %s", err)
+		log.Fatalf("failed to hide flag: %s", err)
 	}
 
 	if len(os.Args) > 1 && os.Args[1] != "completion" && os.Args[1] != "version" && os.Args[1] != "help" {
@@ -184,7 +187,17 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewExplainCmd())
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
+
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		if bincoverTesting != "" {
+			log.Debug("coverage report is enabled")
+		}
+
+		exitCode := 1
+		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
+		if bincoverTesting == "" {
+			os.Exit(exitCode)
+		}
+		bincover.ExitCode = exitCode
 	}
 }

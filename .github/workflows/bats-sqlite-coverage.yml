@@ -32,10 +32,11 @@ jobs:
     - name: "Install bats dependencies"
       run: |
         sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
-        GO111MODULE=on go get github.com/mikefarah/yq/v4
-        sudo cp -u ~/go/bin/yq /usr/local/bin/
+        go install github.com/mikefarah/yq/v4@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
         go install github.com/wadey/gocovmerge@latest
-        sudo cp -u ~/go/bin/gocovmerge /usr/local/bin/
+        sudo cp -u ~/go/bin/yq ~/go/bin/gocovmerge ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture"
       run: TEST_COVERAGE=true make bats-clean bats-build bats-fixture
@@ -43,15 +44,21 @@ jobs:
     - name: "Run tests"
       run: |
         TEST_COVERAGE=true make bats-test
-        bzip2 ./tests/local/var/lib/coverage/coverage-bats.out
-
-    - name: "Coverage report artifact"
-      uses: actions/upload-artifact@v2
-      with:
-        name: coverage-bats.out.bz2
-        path: ./tests/local/var/lib/coverage/coverage-bats.out.bz2
 
     - name: "Show crowdsec logs"
       run:
         for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
       if: ${{ always() }}
+
+    - name: Upload crowdsec coverage to codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./tests/local/var/lib/coverage/coverage-crowdsec.out
+        flags: func-crowdsec
+
+    - name: Upload cscli coverage to codecov
+      uses: codecov/codecov-action@v2
+      with:
+        files: ./tests/local/var/lib/coverage/coverage-cscli.out
+        flags: func-cscli
+

@@ -25,14 +25,16 @@ set +e
 # The '=' between flags and values is required.
 output=$("${BIN_DIR}/cscli.cover" \
     -test.run="^TestBincoverRunMain$" \
-    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/$(date +'%s')-$$.out" \
-    -args-file=<(for i; do echo "$i"; done))
+    -test.coverprofile="${LOCAL_DIR}/var/lib/coverage/cscli-$(date +'%s')-$$-${RANDOM}.out" \
+    -args-file=<(for i; do echo "${i}"; done))
 rc=$?
 
-# We also cut the metadata stuff that we don't need.
-echo -n "$output" | tr '\n' '\f' | sed 's/START_BINCOVER_METADATA.*//' | tr '\f' '\n'
+# If there is bincover metadata, we take the status code from there. Otherwise,
+# we keep the status from the above command.
+if [[ ${output} =~ (.*)(START_BINCOVER_METADATA[[:space:]]*)(.*)([[:space:]]END_BINCOVER_METADATA) ]]; then
+    echo -n "${BASH_REMATCH[1]}"
+    exit "$(jq '.exit_code' <<< "${BASH_REMATCH[3]}")"
+fi
 
-# this does not work because cscli output does not always end with \n
-# echo -n "$output" | sed -n '/START_BINCOVER_METADATA/q;p'
-
-exit $rc
+echo -n "${output}"
+exit "${rc}"
