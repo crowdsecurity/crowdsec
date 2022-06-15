@@ -229,12 +229,13 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		return errors.Wrap(err, "error while getting OneShotAcquisition")
 	}
 	// FIXME: Paginate the responses with a loop
+	// See /usr/local/etc/grafana/grafana.ini
 	params := &url.Values{}
 	params.Set("query", l.Config.Query)
 	params.Set("direction", "forward")
-	params.Set("time", time.Time(l.Config.Since).Format(time.RFC3339))
+	params.Set("since", time.Time(l.Config.Since).Format(time.RFC3339))
 	params.Set("limit", "1000") // FIXME
-	url := fmt.Sprintf("%s/loki/api/v1/query?%s",
+	url := fmt.Sprintf("%s/loki/api/v1/query_range?%s",
 		l.Config.URL,
 		params.Encode())
 	logger := l.logger.WithField("url", url)
@@ -253,35 +254,50 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		return fmt.Errorf("Loki query return bad status : %d", resp.StatusCode)
 	}
 	var lq LokiQuery
+	/*
+		fmt.Println(url)
+		msg, _ := io.ReadAll(resp.Body)
+		fmt.Println(string(msg))
+	*/
 	decoder := json.NewDecoder(resp.Body)
 	err = decoder.Decode(&lq)
 	if err != nil {
 		return errors.Wrap(err, "can't parse JSON loki response")
 	}
-
+	for _, result := range lq.Data.Result {
+		logger.WithField("stream", result.Stream).Debug("Results", len(result.Values))
+		for _, entry := range result.Values {
+			l.readOneEntry(entry, result.Stream, out)
+		}
+	}
+	logger.Info("Loki queried")
+	t.Kill(nil)
 	return nil
 }
 
 func (l *LokiSource) readOneTail(resp Tail, out chan types.Event) {
 	for _, stream := range resp.Streams {
 		for _, entry := range stream.Entries {
-
-			ll := types.Line{}
-			ll.Raw = entry.Line
-			ll.Time = entry.Timestamp
-			ll.Src = l.Config.URL
-			ll.Labels = stream.Stream
-			ll.Process = true
-			ll.Module = l.GetName()
-
-			linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
-			out <- types.Event{
-				Line:       ll,
-				Process:    true,
-				Type:       types.LOG,
-				ExpectMode: leaky.TIMEMACHINE,
-			}
+			l.readOneEntry(entry, stream.Stream, out)
 		}
+	}
+}
+
+func (l *LokiSource) readOneEntry(entry Entry, labels map[string]string, out chan types.Event) {
+	ll := types.Line{}
+	ll.Raw = entry.Line
+	ll.Time = entry.Timestamp
+	ll.Src = l.Config.URL
+	ll.Labels = labels
+	ll.Process = true
+	ll.Module = l.GetName()
+
+	linesRead.With(prometheus.Labels{"source": l.Config.URL}).Inc()
+	out <- types.Event{
+		Line:       ll,
+		Process:    true,
+		Type:       types.LOG,
+		ExpectMode: leaky.TIMEMACHINE,
 	}
 }
 
