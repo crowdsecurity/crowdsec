@@ -10,6 +10,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -227,20 +228,37 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 	if err != nil {
 		return errors.Wrap(err, "error while getting OneShotAcquisition")
 	}
-	ctx, cancel := context.WithTimeout(context.TODO(), readyTimeout)
-	defer cancel()
-	c, res, err := l.dialer.DialContext(ctx, l.lokiWebsocket, l.header)
+	// FIXME: Paginate the responses with a loop
+	params := &url.Values{}
+	params.Set("query", l.Config.Query)
+	params.Set("direction", "forward")
+	params.Set("time", time.Time(l.Config.Since).Format(time.RFC3339))
+	params.Set("limit", "1000") // FIXME
+	url := fmt.Sprintf("%s/loki/api/v1/query?%s",
+		l.Config.URL,
+		params.Encode())
+	logger := l.logger.WithField("url", url)
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header = l.header
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		buf, _ := ioutil.ReadAll(res.Body)
-		return fmt.Errorf("loki websocket (%s) error %v : %s", l.lokiWebsocket, err, string(buf))
+		logger.WithError(err).Error("http error")
+		return errors.Wrap(err, "Error while querying loki")
 	}
-	defer c.Close()
-	var resp Tail
-	err = c.ReadJSON(&resp)
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		msg, _ := io.ReadAll(resp.Body)
+		logger.WithField("status", resp.StatusCode).Error(string(msg))
+		return fmt.Errorf("Loki query return bad status : %d", resp.StatusCode)
+	}
+	var lq LokiQuery
+	decoder := json.NewDecoder(resp.Body)
+	err = decoder.Decode(&lq)
 	if err != nil {
-		return errors.Wrap(err, "OneShotAcquisition error while reading JSON websocket")
+		return errors.Wrap(err, "can't parse JSON loki response")
 	}
-	l.readOneTail(resp, out)
+
 	return nil
 }
 

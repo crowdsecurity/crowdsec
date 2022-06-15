@@ -40,3 +40,16 @@ type Tail struct {
 	Streams        []Stream       `json:"streams"`
 	DroppedEntries []DroppedEntry `json:"dropped_entries"`
 }
+
+// LokiQuery GET response.
+// See https://grafana.com/docs/loki/latest/api/#get-lokiapiv1query
+type LokiQuery struct {
+	Status string `json:"status"`
+	Data   Data   `json:"data"`
+}
+
+type Data struct {
+	ResultType string      `json:"resultType"`
+	Result     []Entry     `json:"result"` // Warning, just stream value is handled
+	Stats      interface{} `json:"stats"`  // Stats is boring, just ignore it
+}
