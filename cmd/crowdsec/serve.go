@@ -233,16 +233,16 @@ func Serve(cConfig *csconfig.Config) error {
 	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
 		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
 		if err != nil {
-			errors.Wrap(err, "Failed to get database client")
+			return errors.Wrap(err, "Failed to get database client")
 		}
 		err = exprhelpers.Init(dbClient)
 		if err != nil {
-			errors.Wrap(err, "Failed to init expr helpers")
+			return errors.Wrap(err, "Failed to init expr helpers")
 		}
 	} else {
 		err := exprhelpers.Init(nil)
 		if err != nil {
-			errors.Wrap(err, "Failed to init expr helpers")
+			return errors.Wrap(err, "Failed to init expr helpers")
 		}
 	}
 
