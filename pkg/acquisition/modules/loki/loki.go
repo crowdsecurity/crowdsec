@@ -99,6 +99,9 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 }
 
 func (l *LokiSource) prepareConfig() error {
+	if l.Config.Query == "" {
+		return errors.New("Loki query is mandatory")
+	}
 	l.dialer = &websocket.Dialer{}
 	l.header = http.Header{}
 	if l.Config.TenantID != "" {
