@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,8 +36,10 @@ cscli explain --dsn "file://myfile.log" --type nginx
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-
-			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
+			fileInfo, _ := os.Stdin.Stat()
+			validPipe := fileInfo.Mode()&os.ModeCharDevice == 0
+			log.Println(validPipe)
+			if logType == "" || (logLine == "" && logFile == "" && dsn == "" && !validPipe) {
 				printHelp(cmd)
 				fmt.Println()
 				fmt.Printf("Please provide --type flag\n")
@@ -44,17 +48,28 @@ cscli explain --dsn "file://myfile.log" --type nginx
 			var f *os.File
 
 			// we create a temporary log file if a log line has been provided
-			if logLine != "" {
+			if logLine != "" || validPipe {
 				logFile = "./cscli_test_tmp.log"
 				f, err := os.Create(logFile)
 				if err != nil {
 					log.Fatal(err)
 				}
 				defer f.Close()
-
-				_, err = f.WriteString(logLine)
-				if err != nil {
-					log.Fatal(err)
+				if logLine != "" {
+					_, err = f.WriteString(logLine)
+					if err != nil {
+						log.Fatal(err)
+					}
+				}
+				if validPipe {
+					reader := bufio.NewReader(os.Stdin)
+					for {
+						input, err := reader.ReadBytes('\n')
+						if err != nil && err == io.EOF {
+							break
+						}
+						_, err = f.Write(input)
+					}
 				}
 			}
 
@@ -83,7 +98,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 			}
 
 			// rm the temporary log file if only a log line was provided
-			if logLine != "" {
+			if logLine != "" || validPipe {
 				f.Close()
 				if err := os.Remove(logFile); err != nil {
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
