@@ -115,7 +115,7 @@ case "$1" in
         ;;
     exec_sql)
         shift
-        exec_sql "$@"
+        exec_sql "use crowdsec_test; $@"
         ;;
     *)
         about
