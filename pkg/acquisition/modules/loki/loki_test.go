@@ -233,10 +233,6 @@ query: >
 		if err != nil {
 			t.Fatalf("Unexpected error : %s", err)
 		}
-		err = lokiTomb.Wait()
-		if err != nil {
-			t.Fatalf("Unexpected error : %s", err)
-		}
 	}
 }
 
