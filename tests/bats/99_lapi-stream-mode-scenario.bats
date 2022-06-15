@@ -36,32 +36,25 @@ output_new_decisions() {
 @test "${FILE} adding decisions with different duration, scenario, origin" {
     # origin: test
     run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
-    sleep 0.5
     ./instance-crowdsec stop
     run -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
     ./instance-crowdsec start
 
     run -0 cscli decisions add -i 127.0.0.1 -d 3h -R crowdsecurity/ssh_bf
-    sleep 0.5
     ./instance-crowdsec stop
     run -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
     ./instance-crowdsec start
 
     run -0 cscli decisions add -i 127.0.0.1 -d 5h -R crowdsecurity/longest
-    sleep 0.5
     run -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/test
-    sleep 0.5
     run -0 cscli decisions add -i 127.0.0.2 -d 3h -R crowdsecurity/ssh_bf
-    sleep 0.5
     run -0 cscli decisions add -i 127.0.0.2 -d 1h -R crowdsecurity/ssh_bf
-    sleep 0.5
     ./instance-crowdsec stop
     run -0 ./instance-db exec_sql "update decisions set origin='test' where origin='cscli'"
     ./instance-crowdsec start
 
     # origin: another_origin
     run -0 cscli decisions add -i 127.0.0.2 -d 2h -R crowdsecurity/test
-    sleep 0.5
     ./instance-crowdsec stop
     run -0 ./instance-db exec_sql "update decisions set origin='another_origin' where origin='cscli'"
     ./instance-crowdsec start
