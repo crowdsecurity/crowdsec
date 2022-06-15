@@ -56,9 +56,9 @@ var LapiNonNilDecisions = prometheus.NewCounterVec(
 
 var LapiResponseTime = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
-		Name:    "cs_lapi_request_duration_milliseconds",
+		Name:    "cs_lapi_request_duration_seconds",
 		Help:    "Response time of LAPI",
-		Buckets: []float64{5, 10, 25, 50, 75, 100, 200, 300, 400, 500, 750, 1000},
+		Buckets: []float64{0.005, 0.01, 0.025, 0.05, 0.075, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1},
 	},
 	[]string{"endpoint", "method"})
 
@@ -115,6 +115,6 @@ func PrometheusMiddleware() gin.HandlerFunc {
 			"method": c.Request.Method}).Inc()
 		c.Next()
 		elapsed := time.Since(startTime)
-		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(float64(elapsed.Milliseconds()))
+		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(float64(elapsed.Seconds()))
 	}
 }

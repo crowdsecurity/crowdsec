@@ -79,6 +79,24 @@ var globalAlerts = prometheus.NewGaugeVec(
 	[]string{"scenario"},
 )
 
+var globalParsingHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Help:    "Time spent parsing a line",
+		Name:    "cs_parsing_time_seconds",
+		Buckets: []float64{0.0005, 0.001, 0.0015, 0.002, 0.0025, 0.003, 0.004, 0.005, 0.0075, 0.01},
+	},
+	[]string{"type", "source"},
+)
+
+var globalPourHistogram = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "cs_bucket_pour_seconds",
+		Help:    "Time spent pouring an event to buckets.",
+		Buckets: []float64{0.001, 0.002, 0.005, 0.01, 0.015, 0.02, 0.03, 0.04, 0.05},
+	},
+	[]string{"type", "source"},
+)
+
 func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if dbClient == nil {
@@ -151,7 +169,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.Datab
 	if config.Level == "aggregated" {
 		log.Infof("Loading aggregated prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
-			globalCsInfo,
+			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow,
 			v1.LapiRouteHits,
 			leaky.BucketsCurrentCount)
@@ -159,7 +177,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.Datab
 		log.Infof("Loading prometheus collectors")
 		prometheus.MustRegister(globalParserHits, globalParserHitsOk, globalParserHitsKo,
 			parser.NodesHits, parser.NodesHitsOk, parser.NodesHitsKo,
-			globalCsInfo,
+			globalCsInfo, globalParsingHistogram, globalPourHistogram,
 			v1.LapiRouteHits, v1.LapiMachineHits, v1.LapiBouncerHits, v1.LapiNilDecisions, v1.LapiNonNilDecisions, v1.LapiResponseTime,
 			leaky.BucketsPour, leaky.BucketsUnderflow, leaky.BucketsCanceled, leaky.BucketsInstanciation, leaky.BucketsOverflow, leaky.BucketsCurrentCount,
 			globalActiveDecisions, globalAlerts)

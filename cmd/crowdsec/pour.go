@@ -7,6 +7,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -21,6 +22,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 			log.Infof("Bucket routine exiting")
 			return nil
 		case parsed := <-input:
+			startTime := time.Now()
 			count++
 			if count%5000 == 0 {
 				log.Infof("%d existing buckets", leaky.LeakyRoutineCount)
@@ -45,6 +47,8 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				log.Errorf("bucketify failed for: %v", parsed)
 				return fmt.Errorf("process of event failed : %v", err)
 			}
+			elapsed := time.Since(startTime)
+			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(float64(elapsed.Seconds()))
 			if poured {
 				globalBucketPourOk.Inc()
 			} else {
