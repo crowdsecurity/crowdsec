@@ -164,7 +164,7 @@ func TestConfigureDSN(t *testing.T) {
 	}
 }
 
-func _TestOneShotAcquisition(t *testing.T) {
+func TestOneShotAcquisition(t *testing.T) {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
