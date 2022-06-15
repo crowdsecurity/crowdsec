@@ -168,18 +168,19 @@ func TestOneShotAcquisition(t *testing.T) {
 	log.SetOutput(os.Stdout)
 	log.SetLevel(log.InfoLevel)
 	log.Info("Test 'TestStreamingAcquisition'")
-	title := time.Now().String()
+	title := time.Now().String() // Loki will be messy, with a lot of stuff, lets use a unique key
 	tests := []struct {
 		config string
 	}{
 		{
-			config: `
+			config: fmt.Sprintf(`
 mode: cat
 source: loki
 url: http://127.0.0.1:3100
 query: >
-        {server="demo"}
-`,
+        {server="demo",key="%s"}
+since: 1h
+`, title),
 		},
 	}
 
@@ -201,6 +202,7 @@ query: >
 					Stream: map[string]string{
 						"server": "demo",
 						"domain": "cw.example.com",
+						"key":    title,
 					},
 					Values: make([]LogValue, 20),
 				},
@@ -228,6 +230,11 @@ query: >
 		subLogger.Info("20 Events sent")
 
 		out := make(chan types.Event)
+		go func() {
+			for i := 0; i < 20; i++ {
+				<-out
+			}
+		}()
 		lokiTomb := tomb.Tomb{}
 		err = lokiSource.OneShotAcquisition(out, &lokiTomb)
 		if err != nil {
