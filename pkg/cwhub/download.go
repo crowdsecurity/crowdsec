@@ -161,7 +161,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		return target, errors.Wrap(err, fmt.Sprintf("while reading %s", req.URL.String()))
 	}
 	h := sha256.New()
-	if _, err := h.Write([]byte(body)); err != nil {
+	if _, err := h.Write(body); err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while hashing %s", target.Name))
 	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))

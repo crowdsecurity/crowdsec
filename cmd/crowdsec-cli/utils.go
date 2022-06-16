@@ -550,7 +550,7 @@ func RestoreHub(dirPath string) error {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
 		var upstreamList []string
-		err = json.Unmarshal([]byte(file), &upstreamList)
+		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}

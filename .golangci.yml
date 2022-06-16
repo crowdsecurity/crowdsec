@@ -70,6 +70,7 @@ linters:
     # - tenv                # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
     # - tparallel           # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes
     # - typecheck           # Like the front-end of a Go compiler, parses and type-checks Go code
+    # - unconvert           # Remove unnecessary type conversions
     # - varcheck            # Finds unused global variables and constants
 
     #
@@ -102,7 +103,6 @@ linters:
     - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
     - revive                # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
-    - unconvert             # Remove unnecessary type conversions
     - wastedassign          # wastedassign finds wasted assignment statements.
     - gocritic              # Provides diagnostics that check for bugs, performance and style issues.
     - exhaustive            # check exhaustiveness of enum switch statements
