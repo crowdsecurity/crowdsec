@@ -45,6 +45,12 @@ jobs:
       run: |
         TEST_COVERAGE=true make bats-test
 
+    - name: "Show database dump"
+      run: |
+        ./tests/instance-crowdsec stop
+        sqlite3 ./tests/local/var/lib/crowdsec/data/crowdsec.db '.dump'
+      if: ${{ always() }}
+
     - name: "Show crowdsec logs"
       run:
         for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
