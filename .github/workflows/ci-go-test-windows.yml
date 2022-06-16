@@ -40,7 +40,7 @@ jobs:
     - name: All tests
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
-        go test -coverprofile coverage.out -covermode=atomic ./... | richgo testfilter
+        go test -coverprofile coverage.out -covermode=atomic ./... | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2
