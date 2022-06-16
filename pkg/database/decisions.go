@@ -211,6 +211,36 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
+/*
+
+leftJoinLongestDecision() will add a LEFT JOIN into the query to get non expired
+decisions with the longest "UNTIL".
+It need the a list of predicates if some filters are needed.
+
+For decisions that have the same "UNTIL", we need another discriminant. Here we use scenario as a discriminant.
+The final query will looks like this:
+
+SELECT DISTINCT `decisions`.`id`, `decisions`.`created_at`, `decisions`.`updated_at`, `decisions`.`until`,
+	`decisions`.`scenario`, `decisions`.`type`, `decisions`.`start_ip`, `decisions`.`end_ip`,
+	`decisions`.`start_suffix`, `decisions`.`end_suffix`, `decisions`.`ip_size`, `decisions`.`scope`,
+	`decisions`.`value`, `decisions`.`origin`, `decisions`.`simulated`
+FROM `decisions`
+LEFT JOIN `decisions` AS `t1`
+	ON `t1`.`value` = `decisions`.`value`
+	AND `t1`.`type` = `decisions`.`type`
+	AND `t1`.`scope` = `decisions`.`scope`
+	AND
+		(
+			`t1`.`until` > `decisions`.`until`
+			OR (`t1`.`scenario` > `decisions`.`scenario` AND `t1`.`until` = `decisions`.`until`)
+		)
+WHERE
+	(
+		(`decisions`.`until` > ? AND `decisions`.`simulated` = ?)
+		AND `decisions`.`scope` IN (?, ?)
+	)
+	AND `t1`.`until`
+*/
 func leftJoinLongestDecision(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
 	return query.Where(
 		func(s *sql.Selector) {
@@ -278,6 +308,29 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	return data, nil
 }
 
+/*
+leftJoinExpiredDecisions() is used to get expired decisions only if there is
+no active decision for the same Value/Scope/Type.
+
+The final query will looks like this:
+
+SELECT DISTINCT `decisions`.`id`, `decisions`.`created_at`, `decisions`.`updated_at`, `decisions`.`until`,
+	`decisions`.`scenario`, `decisions`.`type`, `decisions`.`start_ip`, `decisions`.`end_ip`,
+	`decisions`.`start_suffix`, `decisions`.`end_suffix`, `decisions`.`ip_size`, `decisions`.`scope`,
+	`decisions`.`value`, `decisions`.`origin`, `decisions`.`simulated`
+FROM `decisions`
+LEFT JOIN `decisions` AS `t1`
+	ON `t1`.`value` = `decisions`.`value`
+	AND `t1`.`type` = `decisions`.`type`
+	AND `t1`.`scope` = `decisions`.`scope`
+	AND `t1`.`until` > `decisions`.`until`
+WHERE
+	(
+		(`decisions`.`until` < ? AND `decisions`.`simulated` = ?)
+		AND `decisions`.`scope` IN (?, ?)
+	)
+	AND `t1`.`until` IS NULL
+*/
 func leftJoinExpiredDecisions(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
 	return query.Where(
 		func(s *sql.Selector) {
