@@ -203,11 +203,3 @@ issues:
     - linters:
         - staticcheck
       text: "SA1006: printf-style function with dynamic format string and no further arguments should use print-style function instead"
-
-    #
-    # ineffassign
-    #
-
-    - linters:
-        - ineffassign
-      text: "ineffectual assignment to .*"
