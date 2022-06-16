@@ -297,7 +297,7 @@ func ShowMetrics(hubItem *cwhub.Item) {
 			ShowScenarioMetric(item, metrics)
 		}
 		for _, item := range hubItem.Collections {
-			hubItem := cwhub.GetItem(cwhub.COLLECTIONS, item)
+			hubItem = cwhub.GetItem(cwhub.COLLECTIONS, item)
 			if hubItem == nil {
 				log.Fatalf("unable to retrieve item '%s' from collection '%s'", item, hubItem.Name)
 			}
@@ -550,7 +550,7 @@ func RestoreHub(dirPath string) error {
 			return fmt.Errorf("error while opening %s : %s", upstreamListFN, err)
 		}
 		var upstreamList []string
-		err = json.Unmarshal([]byte(file), &upstreamList)
+		err = json.Unmarshal(file, &upstreamList)
 		if err != nil {
 			return fmt.Errorf("error unmarshaling %s : %s", upstreamListFN, err)
 		}

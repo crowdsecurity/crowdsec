@@ -41,12 +41,13 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				fmt.Printf("Please provide --type flag\n")
 				os.Exit(1)
 			}
+
 			var f *os.File
 
 			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
 				logFile = "./cscli_test_tmp.log"
-				f, err := os.Create(logFile)
+				f, err := os.Create(logFile) // nolint: govet
 				if err != nil {
 					log.Fatal(err)
 				}

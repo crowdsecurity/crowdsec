@@ -226,7 +226,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
-				msg := processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -342,7 +342,7 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 		}
 	}
 	if leaky.logger.Level >= log.TraceLevel {
-		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}
 	mt, _ := leaky.Ovflw_ts.MarshalText()
 	leaky.logger.Tracef("overflow time : %s", mt)

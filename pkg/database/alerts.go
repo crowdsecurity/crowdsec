@@ -799,7 +799,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
-		idList = append(idList, int(alert.ID))
+		idList = append(idList, alert.ID)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
