@@ -62,9 +62,9 @@ jobs:
 
     - name: "Run tests"
       run: |
-        go get -u github.com/ory/go-acc
+        go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
-        go run github.com/ory/go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models | richgo testfilter
+        go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2
