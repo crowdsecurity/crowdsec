@@ -64,6 +64,7 @@ linters:
     # - makezero            # Finds slice declarations with non-zero initial length
     # - misspell            # Finds commonly misspelled English words in comments
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
+    # - predeclared         # find code that shadows one of Go's predeclared identifiers
     # - rowserrcheck        # checks whether Err of rows is checked successfully
     # - sqlclosecheck       # Checks that sql.Rows and sql.Stmt are closed.
     # - tenv                # tenv is analyzer that detects using os.Setenv instead of t.Setenv since Go1.17
@@ -98,8 +99,7 @@ linters:
     - nakedret              # Finds naked returns in functions greater than a specified function length
     - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
     - nonamedreturns        # Reports all named returns
-    - nosprintfhostport   # Checks for misuse of Sprintf to construct a host with port in a URL.
-    - predeclared           # find code that shadows one of Go's predeclared identifiers
+    - nosprintfhostport     # Checks for misuse of Sprintf to construct a host with port in a URL.
     - promlinter            # Check Prometheus metrics naming via promlint
     - revive                # Fast, configurable, extensible, flexible, and beautiful linter for Go. Drop-in replacement of golint.
     - unconvert             # Remove unnecessary type conversions

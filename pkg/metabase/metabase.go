@@ -245,10 +245,10 @@ func (m *Metabase) Scan() error {
 	return nil
 }
 
-func (m *Metabase) ResetPassword(current string, new string) error {
+func (m *Metabase) ResetPassword(current string, newPassword string) error {
 	body := map[string]string{
 		"id":           "1",
-		"password":     new,
+		"password":     newPassword,
 		"old_password": current,
 	}
 	_, errormsg, err := m.Client.Do("PUT", routes[resetPasswordEndpoint], body)
