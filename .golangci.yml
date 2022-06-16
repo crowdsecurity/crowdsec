@@ -170,6 +170,8 @@ linters:
 
 
 issues:
+  max-issues-per-linter: 0
+  max-same-issues: 10
   exclude-rules:
     - path: go.mod
       text: "replacement are not allowed: golang.org/x/time/rate"
