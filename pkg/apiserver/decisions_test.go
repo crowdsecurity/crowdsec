@@ -66,7 +66,7 @@ func TestGetDecisionFilters(t *testing.T) {
 	// Get Decision
 
 	w := lapi.RecordResponse("GET", "/v1/decisions", emptyBody, "apikey")
-	assert.Equal(t, 300, w.Code)
+	assert.Equal(t, 200, w.Code)
 	decisions, code, err := readDecisionsGetResp(w)
 	assert.Nil(t, err)
 	assert.Equal(t, 200, code)

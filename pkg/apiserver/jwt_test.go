@@ -17,7 +17,7 @@ func TestLogin(t *testing.T) {
 	}
 
 	body, err := CreateTestMachine(router)
-	if err == nil {
+	if err != nil {
 		log.Fatalln(err.Error())
 	}
 
