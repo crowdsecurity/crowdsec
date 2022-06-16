@@ -38,7 +38,6 @@ cscli explain --dsn "file://myfile.log" --type nginx
 		Run: func(cmd *cobra.Command, args []string) {
 			fileInfo, _ := os.Stdin.Stat()
 			validPipe := fileInfo.Mode()&os.ModeCharDevice == 0
-			log.Println(validPipe)
 			if logType == "" || (logLine == "" && logFile == "" && dsn == "" && !validPipe) {
 				printHelp(cmd)
 				fmt.Println()
@@ -63,12 +62,19 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				}
 				if validPipe {
 					reader := bufio.NewReader(os.Stdin)
+					errCount := 0
 					for {
 						input, err := reader.ReadBytes('\n')
 						if err != nil && err == io.EOF {
 							break
 						}
 						_, err = f.Write(input)
+						if err != nil {
+							errCount++
+						}
+					}
+					if errCount > 0 {
+						log.Warnf("Failed to write %d lines to tmp file", errCount)
 					}
 				}
 			}
