@@ -19,18 +19,28 @@ jobs:
   build:
     name: Build
     runs-on: windows-2022
+
     steps:
-    - name: Set up Go 1.17
-      uses: actions/setup-go@v1
+
+    - name: "Set up Go 1.17"
+      uses: actions/setup-go@v3
       with:
         go-version: 1.17
       id: go
+
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        submodules: false
+
     - name: Build
       run: make build
+
     - name: All tests
-      run: go test -coverprofile coverage.out -covermode=atomic ./...
+      run: |
+        go install github.com/kyoh86/richgo@v0.3.10
+        go test -coverprofile coverage.out -covermode=atomic ./... | richgo testfilter
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2
