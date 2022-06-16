@@ -43,7 +43,9 @@ jobs:
 
     - name: "Run tests"
       run: |
-        TEST_COVERAGE=true make bats-test
+        TEST_COVERAGE=true make bats-test-color
+      env:
+        TERM: xterm-256color
 
     #
     # In case you need to inspect the database status after the failure of a given test

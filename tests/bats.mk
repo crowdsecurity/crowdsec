@@ -97,6 +97,10 @@ bats-clean:
 bats-test: bats-environment bats-check-requirements
 	$(TEST_DIR)/run-tests $(TEST_DIR)/bats
 
+# Run the test suite
+bats-test-color: bats-environment bats-check-requirements
+	$(TEST_DIR)/run-tests --formatter pretty $(TEST_DIR)/bats
+
 # Generate dynamic tests
 bats-test-hub: bats-environment bats-check-requirements
 	@$(TEST_DIR)/generate-hub-tests
