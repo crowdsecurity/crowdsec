@@ -50,7 +50,7 @@ type Node struct {
 	EnrichFunctions EnricherCtx
 
 	/* If the node is actually a leaf, it can have : grok, enrich, statics */
-	//pattern_syntax are named grok patterns that are re-utilised over several grok patterns
+	//pattern_syntax are named grok patterns that are re-utilized over several grok patterns
 	SubGroks yaml.MapSlice `yaml:"pattern_syntax,omitempty"`
 
 	//Holds a grok pattern
@@ -314,7 +314,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		}
 	}
 	/*todo : check if a node made the state change ?*/
-	/* should the childs inherit the on_success behaviour */
+	/* should the childs inherit the on_success behavior */
 
 	clog.Tracef("State after nodes : %v", NodeState)
 

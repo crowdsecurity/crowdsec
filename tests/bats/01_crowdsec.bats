@@ -54,4 +54,3 @@ declare stderr
     run -0 echo "${stderr}"
     assert_line --partial "You must run at least the API Server or crowdsec"
 }
-

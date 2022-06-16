@@ -267,7 +267,7 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 		return nil, err
 	}
 
-	sort.Sort(BucketResults(bucketDump))
+	sort.Sort(bucketDump)
 
 	return &bucketDump, nil
 }

@@ -235,7 +235,7 @@ func (ta *TLSAuth) ValidateCert(c *gin.Context) (bool, string, error) {
 		if revoked {
 			return false, "", fmt.Errorf("client certificate is revoked")
 		}
-		ta.logger.Infof("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
+		ta.logger.Debugf("client OU %v is allowed vs required OU %v", clientCert.Subject.OrganizationalUnit, ta.AllowedOUs)
 		return true, clientCert.Subject.CommonName, nil
 	}
 	return false, "", fmt.Errorf("no verified cert in request")

@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+
+# this should have effect globally, for all tests
+# https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
+bats_require_minimum_version 1.5.0
 
 # this should have effect globally, for all tests
 # https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
@@ -52,28 +57,28 @@ export -f config_yq
 
 # shellcheck disable=SC2154
 stderr() {
-    printf '%s' "$stderr"
+    printf '%s' "${stderr}"
 }
 export -f stderr
 
 # shellcheck disable=SC2154
 output() {
-    printf '%s' "$output"
+    printf '%s' "${output}"
 }
 export -f output
 
 is_db_postgres() {
-    [[ "$DB_BACKEND" =~ ^postgres|pgx$ ]]
+    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]]
 }
 export -f is_db_postgres
 
 is_db_mysql() {
-    [[ "$DB_BACKEND" == "mysql" ]]
+    [[ "${DB_BACKEND}" == "mysql" ]]
 }
 export -f is_db_mysql
 
 is_db_sqlite() {
-    [[ "$DB_BACKEND" == "sqlite" ]]
+    [[ "${DB_BACKEND}" == "sqlite" ]]
 }
 export -f is_db_sqlite
 

@@ -484,7 +484,7 @@ func TestAlertsDeleteAsMachine(t *testing.T) {
 	alerts, resp, err := client.Alerts.Delete(context.Background(), alert)
 	require.NoError(t, err)
 
-	expected := &models.DeleteAlertsResponse{""}
+	expected := &models.DeleteAlertsResponse{NbDeleted: ""}
 	if resp.Response.StatusCode != http.StatusOK {
 		t.Errorf("Alerts.List returned status: %d, want %d", resp.Response.StatusCode, http.StatusOK)
 	}

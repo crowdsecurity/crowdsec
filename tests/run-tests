@@ -15,8 +15,8 @@ TEST_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 "${TEST_DIR}/check-requirements"
 
 echo "Running tests..."
-echo "DB_BACKEND: $DB_BACKEND"
-if [ -z "$TEST_COVERAGE" ]; then
+echo "DB_BACKEND: ${DB_BACKEND}"
+if [[ -z "${TEST_COVERAGE}" ]]; then
     echo "Coverage report: no"
 else
     echo "Coverage report: yes"
@@ -26,15 +26,16 @@ fi
 
 
 dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
-if [ "$DB_BACKEND" != "$dump_backend" ]; then
-    die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
+    die "Can't run with backend '${DB_BACKEND}' because the test data was build with '${dump_backend}'"
 fi
 
-if [ $# -ge 1 ]; then
+if [[ $# -ge 1 ]]; then
     echo "test files: $*"
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \
+        --timing \
         "$@"
 else
     echo "test files: ${TEST_DIR}/bats ${TEST_DIR}/dyn-bats"
@@ -44,7 +45,7 @@ else
         -T "${TEST_DIR}/bats" "${TEST_DIR}/dyn-bats"
 fi
 
-if [ -n "$TEST_COVERAGE" ]; then
+if [[ -n "${TEST_COVERAGE}" ]]; then
     # empty files just to avoid merge errors
     touch "${LOCAL_DIR}"/var/lib/coverage/crowdsec-
     touch "${LOCAL_DIR}"/var/lib/coverage/cscli-

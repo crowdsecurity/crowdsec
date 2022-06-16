@@ -7,6 +7,9 @@ die() {
     exit 1
 }
 
+[[ -n "${DAEMON_PID}" ]] || die "\$DAEMON_PID is required and must be the path of the pid file"
+[[ -n "${OUT_FILE}" ]] || die "\$OUT_FILE is required and must be the path of the resulting stdout"
+
 # Simplified dudeist daemonizer. Don't care about lock files, separate
 # stdout/stderr and fancy stuff. #YOLO
 
@@ -18,7 +21,7 @@ case "${SYSTEM,,}" in
         daemon -p "${DAEMON_PID}" -o "${OUT_FILE}" "$@"
         ;;
     *)
-        die "unsupported system: $SYSTEM"
+        die "unsupported system: ${SYSTEM}"
         ;;
 esac
 

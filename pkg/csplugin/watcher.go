@@ -11,7 +11,7 @@ import (
 
 /*
  PluginWatcher is here to allow grouping and threshold features for notification plugins :
- by frequency : it will signal the plugin to deliver notifications at this frequence (watchPluginTicker)
+ by frequency : it will signal the plugin to deliver notifications at this frequency (watchPluginTicker)
  by threshold : it will signal the plugin to deliver notifications when the number of alerts for this plugin reaches this threshold (watchPluginAlertCounts)
 */
 

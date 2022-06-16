@@ -68,7 +68,7 @@ func NewConfig(configFile string, disableAgent bool, disableAPI bool) (*Config, 
 
 func NewDefaultConfig() *Config {
 	logLevel := log.InfoLevel
-	CommonCfg := CommonCfg{
+	commonCfg := CommonCfg{
 		Daemonize: false,
 		PidDir:    "/tmp/",
 		LogMedia:  "stdout",
@@ -116,7 +116,7 @@ func NewDefaultConfig() *Config {
 	}
 
 	globalCfg := Config{
-		Common:      &CommonCfg,
+		Common:      &commonCfg,
 		Prometheus:  &prometheus,
 		Crowdsec:    &crowdsecCfg,
 		Cscli:       &cscliCfg,
