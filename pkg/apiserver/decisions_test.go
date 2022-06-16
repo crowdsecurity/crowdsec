@@ -626,7 +626,22 @@ func TestStreamDecisionStart(t *testing.T) {
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
-			NewChecks:     []DecisionCheck{},
+			NewChecks: []DecisionCheck{
+				{
+					ID:       int64(2),
+					Origin:   "another_origin",
+					Scenario: "crowdsecurity/ssh_bf",
+					Value:    "127.0.0.1",
+					Duration: "2h59",
+				},
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+				},
+			},
 		},
 		{
 			TestName:      "delete decisions 2 (127.0.0.1)",
@@ -650,7 +665,22 @@ func TestStreamDecisionStart(t *testing.T) {
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
-			NewChecks:     []DecisionCheck{},
+			NewChecks: []DecisionCheck{
+				{
+					ID:       int64(1),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.1",
+					Duration: "59",
+				},
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+				},
+			},
 		},
 		{
 			TestName:      "delete decisions 1 (127.0.0.1)",
@@ -682,7 +712,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Duration: "-", // we check that the time is negative
 				},
 			},
-			NewChecks: []DecisionCheck{},
+			NewChecks: []DecisionCheck{
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+				},
+			},
 		},
 	}
 
