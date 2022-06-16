@@ -45,6 +45,12 @@ jobs:
       run: |
         TEST_COVERAGE=true make bats-test
 
+    #
+    # In case you need to inspect the database status after the failure of a given test
+    #
+    # - name: "Run specified tests"
+    #   run: ./tests/run-tests tests/bats/<filename>.bats -f "<test name>"
+
     - name: "Show database dump"
       run: |
         ./tests/instance-crowdsec stop
