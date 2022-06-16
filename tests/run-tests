@@ -35,6 +35,7 @@ if [[ $# -ge 1 ]]; then
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \
+        --formatter pretty \
         --timing \
         "$@"
 else
@@ -42,6 +43,7 @@ else
     "${TEST_DIR}/lib/bats-core/bin/bats" \
         --jobs 1 \
         --print-output-on-failure \
+        --formatter pretty \
         -T "${TEST_DIR}/bats" "${TEST_DIR}/dyn-bats"
 fi
 
