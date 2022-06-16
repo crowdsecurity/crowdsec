@@ -19,6 +19,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    skip
 }
 
 #----------
