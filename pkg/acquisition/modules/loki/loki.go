@@ -49,7 +49,8 @@ type LokiConfiguration struct {
 	DelayFor                          time.Duration     `yaml:"delay_for"`
 	Since                             timestamp         `yaml:"since"`
 	TenantID                          string            `yaml:"tenant_id"`
-	Headers                           map[string]string `yaml:"headers"` // HTTP headers for talking to Loki
+	Headers                           map[string]string `yaml:"headers"`        // HTTP headers for talking to Loki
+	WaitForReady                      time.Duration     `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
@@ -77,6 +78,9 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	err := yaml.UnmarshalStrict(config, &l.Config)
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse LokiAcquisition configuration")
+	}
+	if l.Config.WaitForReady == 0 {
+		l.Config.WaitForReady = 10 * time.Second
 	}
 	u, err := url.Parse(l.Config.URL)
 	if err != nil {
@@ -186,6 +190,14 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	params := u.Query()
 	if q := params.Get("query"); q != "" {
 		l.Config.Query = q
+	}
+	if w := params.Get("wait_for_ready"); w != "" {
+		l.Config.WaitForReady, err = time.ParseDuration(w)
+		if err != nil {
+			return err
+		}
+	} else {
+		l.Config.WaitForReady = 10 * time.Second
 	}
 	if d := params.Get("delay_for"); d != "" {
 		delayFor, err := time.ParseDuration(d)

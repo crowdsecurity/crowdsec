@@ -22,9 +22,10 @@ func TestConfiguration(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
 
 	tests := []struct {
-		config      string
-		expectedErr string
-		password    string
+		config       string
+		expectedErr  string
+		password     string
+		waitForReady time.Duration
 	}{
 		{
 			config:      `foobar: asd`,
@@ -63,6 +64,17 @@ query: >
 			expectedErr: "",
 		},
 		{
+			config: `
+mode: tail
+source: loki
+url: http://localhost:3100/
+wait_for_ready: 5s
+query: >
+        {server="demo"}
+`,
+			expectedErr: "",
+		},
+		{
 
 			config: `
 mode: tail
@@ -92,17 +104,23 @@ query: >
 				t.Fatalf("Bad password %s != %s", test.password, p)
 			}
 		}
+		if test.waitForReady != 0 {
+			if lokiSource.Config.WaitForReady != test.waitForReady {
+				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
+			}
+		}
 	}
 }
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
 	tests := []struct {
-		name        string
-		dsn         string
-		expectedErr string
-		since       time.Time
-		password    string
+		name         string
+		dsn          string
+		expectedErr  string
+		since        time.Time
+		password     string
+		waitForReady time.Duration
 	}{
 		{
 			name:        "Wrong scheme",
@@ -134,6 +152,12 @@ func TestConfigureDSN(t *testing.T) {
 			dsn:      `loki://login:password@localhost:3100/?query={server="demo"}`,
 			password: "password",
 		},
+		{
+			name:         "Correct DSN",
+			dsn:          `loki://localhost:3100/?query={server="demo"}&wait_for_ready=5s`,
+			expectedErr:  "",
+			waitForReady: 5 * time.Second,
+		},
 	}
 
 	for _, test := range tests {
@@ -159,6 +183,11 @@ func TestConfigureDSN(t *testing.T) {
 			a := lokiSource.header.Get("authorization")
 			if !strings.HasPrefix(a, "Basic ") {
 				t.Fatalf("Bad auth header : %s", a)
+			}
+		}
+		if test.waitForReady != 0 {
+			if lokiSource.Config.WaitForReady != test.waitForReady {
+				t.Fatalf("Wrong WaitForReady %v != %v", lokiSource.Config.WaitForReady, test.waitForReady)
 			}
 		}
 	}
