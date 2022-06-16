@@ -62,6 +62,7 @@ linters:
     # - grouper             # An analyzer to analyze expression groups.
     # - importas            # Enforces consistent import aliases
     # - makezero            # Finds slice declarations with non-zero initial length
+    # - misspell            # Finds commonly misspelled English words in comments
     # - nolintlint          # Reports ill-formed or insufficient nolint directives
     # - rowserrcheck        # checks whether Err of rows is checked successfully
     # - sqlclosecheck       # Checks that sql.Rows and sql.Stmt are closed.
@@ -94,7 +95,6 @@ linters:
     - gofmt                 # Gofmt checks whether code was gofmt-ed. By default this tool runs with -s option to check for code simplification
     - goimports             # In addition to fixing imports, goimports also formats your code in the same style as gofmt.
     - gosec                 # (gas): Inspects source code for security problems
-    - misspell              # Finds commonly misspelled English words in comments
     - nakedret              # Finds naked returns in functions greater than a specified function length
     - nilerr                # Finds the code that returns nil even if it checks that the error is not nil.
     - nonamedreturns        # Reports all named returns
