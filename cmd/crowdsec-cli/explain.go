@@ -38,8 +38,8 @@ tail -n 5 myfile.log | cscli explain --type nginx
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			fileInfo, _ := os.Stdin.Stat()
-			validPipe := fileInfo.Mode()&os.ModeCharDevice == 0
-			if logType == "" || (logLine == "" && logFile == "" && dsn == "" && !validPipe) {
+			validStdin := fileInfo.Mode()&os.ModeCharDevice == 0
+			if logType == "" || (logLine == "" && logFile == "" && dsn == "" && !validStdin) {
 				printHelp(cmd)
 				fmt.Println()
 				fmt.Printf("Please provide --type flag\n")
@@ -48,7 +48,7 @@ tail -n 5 myfile.log | cscli explain --type nginx
 			var f *os.File
 
 			// we create a temporary log file if a log line has been provided
-			if logLine != "" || validPipe {
+			if logLine != "" || validStdin {
 				logFile = "./cscli_test_tmp.log"
 				f, err := os.Create(logFile)
 				if err != nil {
@@ -61,7 +61,7 @@ tail -n 5 myfile.log | cscli explain --type nginx
 						log.Fatal(err)
 					}
 				}
-				if validPipe {
+				if validStdin {
 					reader := bufio.NewReader(os.Stdin)
 					errCount := 0
 					for {
@@ -105,7 +105,7 @@ tail -n 5 myfile.log | cscli explain --type nginx
 			}
 
 			// rm the temporary log file if only a log line was provided
-			if logLine != "" || validPipe {
+			if logLine != "" || validStdin {
 				f.Close()
 				if err := os.Remove(logFile); err != nil {
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
