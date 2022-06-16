@@ -65,6 +65,8 @@ jobs:
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
         go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+      env:
+        RICHGO_FORCE_COLOR: 1
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2

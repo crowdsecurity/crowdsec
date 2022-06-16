@@ -41,6 +41,8 @@ jobs:
       run: |
         go install github.com/kyoh86/richgo@v0.3.10
         go test -coverprofile coverage.out -covermode=atomic ./... | sed 's/ *coverage:.*of statements in.*//' | richgo testfilter
+      env:
+        RICHGO_FORCE_COLOR: 1
 
     - name: Upload unit coverage to Codecov
       uses: codecov/codecov-action@v2
