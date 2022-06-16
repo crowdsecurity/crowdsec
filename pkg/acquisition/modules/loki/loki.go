@@ -372,7 +372,7 @@ func (l *LokiSource) Dump() interface{} {
 
 func (l *LokiSource) ready() error {
 	client := &http.Client{
-		Timeout: readyTimeout,
+		Timeout: l.Config.WaitForReady,
 	}
 
 	req, err := http.NewRequest("GET", l.lokiReady, nil)
@@ -381,7 +381,7 @@ func (l *LokiSource) ready() error {
 	}
 	req.Header = l.header
 
-	for i := 0; i < readyLoop; i++ {
+	for i := 0; i < int(l.Config.WaitForReady/time.Second); i++ {
 		resp, err := client.Do(req)
 		if err != nil {
 			return errors.Wrap(err, "Test Loki services for readiness")
@@ -393,12 +393,9 @@ func (l *LokiSource) ready() error {
 			if err != nil {
 				return errors.Wrap(err, "can't read body while testing Loki readiness")
 			}
-			err = resp.Body.Close()
-			if err != nil {
-				return err
-			}
-			l.logger.Println("Loki is not ready :", string(body))
-			time.Sleep(10 * time.Second)
+			defer resp.Body.Close()
+			l.logger.WithField("status", resp.StatusCode).WithField("bofy", string(body)).Info("Loki is not ready")
+			time.Sleep(time.Second)
 		}
 	}
 
