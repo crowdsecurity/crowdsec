@@ -60,6 +60,7 @@ config_generate() {
     .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
+    .common.force_color_logs=true |
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
