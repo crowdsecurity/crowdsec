@@ -150,27 +150,27 @@ func NewNotificationsCmd() *cobra.Command {
 		Example:           `cscli notifications reinject <alert_id> <plugin_name>`,
 		Args:              cobra.ExactArgs(2),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				pluginBroker csplugin.PluginBroker
 				pluginTomb   tomb.Tomb
 			)
 			if len(args) != 2 {
 				printHelp(cmd)
-				return
+				return errors.New("Wrong number of argument")
 			}
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
-				log.Fatalf("bad alert id %s", args[0])
+				return errors.New(fmt.Sprintf("bad alert id %s", args[0]))
 			}
 			if err := csConfig.LoadAPIClient(); err != nil {
-				log.Fatalf("loading api client: %s", err.Error())
+				return errors.Wrapf(err, "loading api client")
 			}
 			if csConfig.API.Client == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
+				return errors.New("There is no configuration on 'api_client:'")
 			}
 			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
+				return errors.New(fmt.Sprintf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath))
 			}
 			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			Client, err = apiclient.NewClient(&apiclient.Config{
@@ -183,18 +183,17 @@ func NewNotificationsCmd() *cobra.Command {
 
 			alert, _, err := Client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
-				log.Fatalf("can't find alert with id %s: %s", args[0], err)
+				errors.Wrapf(err, "can't find alert with id %s: %s", args[0])
 
 			}
 
 			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
 			if err != nil {
-				log.Fatalf("Can't initialize plugins: %s", err.Error())
+				errors.Wrapf(err, "Can't initialize plugins")
 			}
 
 			pluginTomb.Go(func() error {
 				pluginBroker.Run(&pluginTomb)
-				fmt.Printf("\nreturned\n")
 				return nil
 			})
 
@@ -214,7 +213,7 @@ func NewNotificationsCmd() *cobra.Command {
 			}
 			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
-
+			return nil
 		},
 	}
 	cmdNotifications.AddCommand(cmdNotificationsReinject)
