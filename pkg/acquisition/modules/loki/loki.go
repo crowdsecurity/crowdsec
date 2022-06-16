@@ -263,6 +263,10 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 			params.Encode())
 		logger := l.logger.WithField("url", url)
 		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			logger.WithError(err).Error("Loki NewRequest error")
+			return errors.Wrap(err, "Loki error while build new request")
+		}
 		req.Header = l.header
 
 		resp, err := http.DefaultClient.Do(req)
