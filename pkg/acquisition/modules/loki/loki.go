@@ -258,7 +258,7 @@ func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		defer resp.Body.Close()
 		if resp.StatusCode != 200 {
 			msg, _ := io.ReadAll(resp.Body)
-			logger.WithField("status", resp.StatusCode).Error(string(msg))
+			logger.WithField("status", resp.StatusCode).WithField("body", string(msg)).Error("loki error")
 			return fmt.Errorf("Loki query return bad status : %d", resp.StatusCode)
 		}
 		decoder := json.NewDecoder(resp.Body)
