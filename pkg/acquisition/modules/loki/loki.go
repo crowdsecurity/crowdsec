@@ -82,6 +82,9 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	if l.Config.WaitForReady == 0 {
 		l.Config.WaitForReady = 10 * time.Second
 	}
+	if l.Config.Mode == "" {
+		l.Config.Mode = configuration.TAIL_MODE
+	}
 	u, err := url.Parse(l.Config.URL)
 	if err != nil {
 		return err
