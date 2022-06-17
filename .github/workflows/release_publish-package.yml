@@ -1,7 +1,7 @@
 # .github/workflows/build-docker-image.yml
 name: build
 
-on: 
+on:
   release:
     types: prereleased
 
@@ -86,7 +86,7 @@ jobs:
     - name: "Test post-install macines"
       run: |
           cd scripts/func_tests/
-          ./tests_post-install_3machines.sh   
+          ./tests_post-install_3machines.sh
     - name: "Test post-install ip management"
       run: |
           cd scripts/func_tests/

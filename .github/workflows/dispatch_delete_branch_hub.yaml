@@ -1,6 +1,6 @@
 name: Dispatch to hub when deleting pre-release
 
-on: 
+on:
   release:
     types: deleted
 

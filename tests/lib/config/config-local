@@ -60,6 +60,7 @@ config_generate() {
     .common.daemonize=true |
     del(.common.pid_dir) |
     .common.log_level="info" |
+    .common.force_color_logs=true |
     .common.log_dir=strenv(LOG_DIR) |
     .config_paths.config_dir=strenv(CONFIG_DIR) |
     .config_paths.data_dir=strenv(DATA_DIR) |
@@ -132,7 +133,7 @@ load_init_data() {
 
     dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
     if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
-        die "Can't run with backend '${DB_BACKEND}' because the test data was build with '${dump_backend}'"
+        die "Can't run with backend '${DB_BACKEND}' because the test data was built with '${dump_backend}'"
     fi
 
     remove_init_data
@@ -145,7 +146,6 @@ load_init_data() {
 # ---------------------------
 
 [[ $# -lt 1 ]] && about
-
 
 case "$1" in
     make)
