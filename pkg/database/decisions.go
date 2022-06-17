@@ -5,8 +5,6 @@ import (
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
-
 	"strconv"
 
 	"entgo.io/ent/dialect/sql"
@@ -300,10 +298,8 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
-	//query = leftJoinLongestDecision(query, predicates)
 	//Order is *very* important, the dedup assumes that decisions are sorted per IP and per time left
-	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Asc(decision.FieldID), ent.Desc(decision.FieldUntil)).All(c.CTX)
-	log.Infof("decisions: %+v", data)
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
@@ -421,8 +417,9 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		c.Log.Warningf("BuildDecisionRequestWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-	//query = leftJoinLongestDecision(query, predicates)
-	data, err := query.All(c.CTX)
+
+	//Order is *very* important, the dedup assumes that decisions are sorted per IP and per time left
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrapf(QueryFail, "new decisions since '%s'", since.String())
