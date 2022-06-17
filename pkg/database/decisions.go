@@ -231,30 +231,20 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	return data, nil
 }
 
-// Groups by (decision.scope, decision.type, decision.value)
-func decisionGroupBy(s *sql.Selector) {
-	s.GroupBy(
-		decision.FieldScope,
-		decision.FieldType,
-		decision.FieldValue,
-	)
-}
-
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
+	now := time.Now().UTC()
 
 	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(time.Now().UTC()),
-	).Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.Where(
-				sql.NotIn(
-					s.C(decision.FieldValue),
-					sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), time.Now())),
-				),
-			)
-		},
-	)
+		decision.UntilLT(now),
+	).Where(func(s *sql.Selector) {
+		t := sql.Table(decision.Table)
+		s.Where(
+			sql.NotIn(
+				s.C(decision.FieldValue),
+				sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), now)),
+			),
+		)
+	})
 
 	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
@@ -262,8 +252,6 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
 	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
-
-	//data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
@@ -273,27 +261,26 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 }
 
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
+	now := time.Now().UTC()
+
 	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(time.Now().UTC()),
+		decision.UntilLT(now),
 		decision.UntilGT(since),
-	).Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.Where(
-				sql.NotIn(
-					s.C(decision.FieldValue),
-					sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), time.Now())),
-				),
-			)
-		},
-	)
+	).Where(func(s *sql.Selector) {
+		t := sql.Table(decision.Table)
+		s.Where(
+			sql.NotIn(
+				s.C(decision.FieldValue),
+				sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), now)),
+			),
+		)
+	})
 	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
 	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
-	//data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
