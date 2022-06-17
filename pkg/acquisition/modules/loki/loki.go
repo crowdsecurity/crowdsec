@@ -364,7 +364,6 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 				l.readOneTail(resp, out)
 			}
 		}
-		return nil
 	})
 	return nil
 }
