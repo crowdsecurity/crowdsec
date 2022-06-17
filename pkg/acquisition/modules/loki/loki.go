@@ -340,6 +340,10 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 		for {
 			ctx, cancel := context.WithTimeout(context.TODO(), readyTimeout)
 			defer cancel()
+			go func() {
+				<-t.Dying()
+				cancel() // close the websocket.
+			}()
 			c, res, err := l.dialer.DialContext(ctx, l.lokiWebsocket, l.header)
 			if err != nil {
 				buf, err2 := ioutil.ReadAll(res.Body)
