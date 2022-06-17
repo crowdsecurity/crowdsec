@@ -828,39 +828,39 @@ func TestStreamDecision(t *testing.T) {
 				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
-			},
-			{
-				TestName:      "delete decisions 1 (127.0.0.1)",
-				Method:        "DELETE",
-				Route:         "/v1/decisions/1",
-				CheckCodeOnly: true,
-				Code:          200,
-				LenNew:        0,
-				LenDeleted:    0,
-				AuthType:      PASSWORD,
-				DelChecks:     []DecisionCheck{},
-				NewChecks:     []DecisionCheck{},
-			},
-			{
-				TestName:      "127.0.0.1 should be in deleted now",
-				Method:        "GET",
-				Route:         "/v1/decisions/stream",
-				CheckCodeOnly: false,
-				Code:          200,
-				LenNew:        0,
-				LenDeleted:    1,
-				AuthType:      APIKEY,
-				DelChecks: []DecisionCheck{
-					{
-						ID:       int64(1),
-						Origin:   "test",
-						Scenario: "crowdsecurity/test",
-						Value:    "127.0.0.1",
-						Duration: "-",
-					},
+			}, /*
+				{
+					TestName:      "delete decisions 1 (127.0.0.1)",
+					Method:        "DELETE",
+					Route:         "/v1/decisions/1",
+					CheckCodeOnly: true,
+					Code:          200,
+					LenNew:        0,
+					LenDeleted:    0,
+					AuthType:      PASSWORD,
+					DelChecks:     []DecisionCheck{},
+					NewChecks:     []DecisionCheck{},
 				},
-				NewChecks: []DecisionCheck{},
-			},
+				{
+					TestName:      "127.0.0.1 should be in deleted now",
+					Method:        "GET",
+					Route:         "/v1/decisions/stream",
+					CheckCodeOnly: false,
+					Code:          200,
+					LenNew:        0,
+					LenDeleted:    1,
+					AuthType:      APIKEY,
+					DelChecks: []DecisionCheck{
+						{
+							ID:       int64(1),
+							Origin:   "test",
+							Scenario: "crowdsecurity/test",
+							Value:    "127.0.0.1",
+							Duration: "-",
+						},
+					},
+					NewChecks: []DecisionCheck{},
+				},*/
 		},
 		"test with scenarios containing": {
 			{
@@ -999,7 +999,7 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
-			{
+			/*{
 				TestName:      "delete decisions 2 (127.0.0.1)",
 				Method:        "DELETE",
 				Route:         "/v1/decisions/2",
@@ -1054,7 +1054,7 @@ func TestStreamDecision(t *testing.T) {
 					},
 				},
 				NewChecks: []DecisionCheck{},
-			},
+			},*/
 		},
 		"test with origins": {
 			{

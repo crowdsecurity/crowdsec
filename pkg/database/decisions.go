@@ -211,83 +211,6 @@ func (c *Client) QueryDecisionWithFilter(filter map[string][]string) ([]*ent.Dec
 	return data, nil
 }
 
-/*
-
-leftJoinLongestDecision() will add a LEFT JOIN into the query to get non expired
-decisions with the longest "UNTIL".
-It need the a list of predicates if some filters are needed.
-
-For decisions that have the same "UNTIL", we need another discriminant. Here we use scenario as a discriminant.
-The final query will looks like this:
-
-SELECT DISTINCT `decisions`.`id`, `decisions`.`created_at`, `decisions`.`updated_at`, `decisions`.`until`,
-	`decisions`.`scenario`, `decisions`.`type`, `decisions`.`start_ip`, `decisions`.`end_ip`,
-	`decisions`.`start_suffix`, `decisions`.`end_suffix`, `decisions`.`ip_size`, `decisions`.`scope`,
-	`decisions`.`value`, `decisions`.`origin`, `decisions`.`simulated`
-FROM `decisions`
-LEFT JOIN `decisions` AS `t1`
-	ON `t1`.`value` = `decisions`.`value`
-	AND `t1`.`type` = `decisions`.`type`
-	AND `t1`.`scope` = `decisions`.`scope`
-	AND
-		(
-			`t1`.`until` > `decisions`.`until`
-			OR (`t1`.`scenario` > `decisions`.`scenario` AND `t1`.`until` = `decisions`.`until`)
-		)
-WHERE
-	(
-		(`decisions`.`until` > ? AND `decisions`.`simulated` = ?)
-		AND `decisions`.`scope` IN (?, ?)
-	)
-	AND `t1`.`until`
-*/
-func leftJoinLongestDecision(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
-	return query.Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.LeftJoin(t)
-
-			defaultPredicates := []*sql.Predicate{
-				sql.ColumnsEQ(
-					t.C(decision.FieldValue),
-					s.C(decision.FieldValue),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldType),
-					s.C(decision.FieldType),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldScope),
-					s.C(decision.FieldScope),
-				),
-				sql.Or(
-					sql.ColumnsGT(
-						t.C(decision.FieldUntil),
-						s.C(decision.FieldUntil),
-					),
-					sql.And(
-						sql.ColumnsGT(
-							t.C(decision.FieldScenario),
-							s.C(decision.FieldScenario),
-						),
-						sql.ColumnsEQ(
-							t.C(decision.FieldUntil),
-							s.C(decision.FieldUntil),
-						),
-					),
-				),
-			}
-			defaultPredicates = append(defaultPredicates, predicates...)
-			s.OnP(sql.And(defaultPredicates...))
-			s.Where(
-				sql.IsNull(
-					t.C(decision.FieldUntil),
-				),
-			)
-		},
-	)
-}
-
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
@@ -308,61 +231,12 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	return data, nil
 }
 
-/*
-leftJoinExpiredDecisions() is used to get expired decisions only if there is
-no active decision for the same Value/Scope/Type.
-
-The final query will looks like this:
-
-SELECT DISTINCT `decisions`.`id`, `decisions`.`created_at`, `decisions`.`updated_at`, `decisions`.`until`,
-	`decisions`.`scenario`, `decisions`.`type`, `decisions`.`start_ip`, `decisions`.`end_ip`,
-	`decisions`.`start_suffix`, `decisions`.`end_suffix`, `decisions`.`ip_size`, `decisions`.`scope`,
-	`decisions`.`value`, `decisions`.`origin`, `decisions`.`simulated`
-FROM `decisions`
-LEFT JOIN `decisions` AS `t1`
-	ON `t1`.`value` = `decisions`.`value`
-	AND `t1`.`type` = `decisions`.`type`
-	AND `t1`.`scope` = `decisions`.`scope`
-	AND `t1`.`until` > `decisions`.`until`
-WHERE
-	(
-		(`decisions`.`until` < ? AND `decisions`.`simulated` = ?)
-		AND `decisions`.`scope` IN (?, ?)
-	)
-	AND `t1`.`until` IS NULL
-*/
-func leftJoinExpiredDecisions(query *ent.DecisionQuery, predicates []*sql.Predicate) *ent.DecisionQuery {
-	return query.Where(
-		func(s *sql.Selector) {
-			t := sql.Table(decision.Table)
-			s.LeftJoin(t)
-
-			defaultPredicates := []*sql.Predicate{
-				sql.ColumnsEQ(
-					t.C(decision.FieldValue),
-					s.C(decision.FieldValue),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldType),
-					s.C(decision.FieldType),
-				),
-				sql.ColumnsEQ(
-					t.C(decision.FieldScope),
-					s.C(decision.FieldScope),
-				),
-				sql.ColumnsGT(
-					t.C(decision.FieldUntil),
-					s.C(decision.FieldUntil),
-				),
-			}
-			defaultPredicates = append(defaultPredicates, predicates...)
-			s.OnP(sql.And(defaultPredicates...))
-			s.Where(
-				sql.IsNull(
-					t.C(decision.FieldUntil),
-				),
-			)
-		},
+// Groups by (decision.scope, decision.type, decision.value)
+func decisionGroupBy(s *sql.Selector) {
+	s.GroupBy(
+		decision.FieldScope,
+		decision.FieldType,
+		decision.FieldValue,
 	)
 }
 
@@ -370,14 +244,26 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
+	).Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.Where(
+				sql.NotIn(
+					s.C(decision.FieldValue),
+					sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), time.Now())),
+				),
+			)
+		},
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
-	query = leftJoinExpiredDecisions(query, predicates)
-	data, err := query.All(c.CTX)
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
+
+	//data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
@@ -390,15 +276,24 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 		decision.UntilGT(since),
+	).Where(
+		func(s *sql.Selector) {
+			t := sql.Table(decision.Table)
+			s.Where(
+				sql.NotIn(
+					s.C(decision.FieldValue),
+					sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), time.Now())),
+				),
+			)
+		},
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-
-	query = leftJoinExpiredDecisions(query, predicates)
-	data, err := query.All(c.CTX)
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
+	//data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
