@@ -107,6 +107,7 @@ func TestEvaluateProfile(t *testing.T) {
 		name                  string
 		args                  args
 		expectedDecisionCount int // count of expected decisions
+		expectedDuration      string
 		expectedMatchStatus   bool
 	}{
 		{
@@ -171,6 +172,7 @@ func TestEvaluateProfile(t *testing.T) {
 				Alert: &models.Alert{Remediation: true, Scenario: &scenario, Source: &models.Source{Value: &value}},
 			},
 			expectedDecisionCount: 1,
+			expectedDuration:      "16h",
 			expectedMatchStatus:   true,
 		},
 	}
@@ -189,6 +191,9 @@ func TestEvaluateProfile(t *testing.T) {
 			}
 			if got1 != tt.expectedMatchStatus {
 				t.Errorf("EvaluateProfile() got1 = %v, want %v", got1, tt.expectedMatchStatus)
+			}
+			if tt.expectedDuration != "" {
+				assert.Equal(t, tt.expectedDuration, *got[0].Duration, "The two durations should be the same")
 			}
 		})
 	}

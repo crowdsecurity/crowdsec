@@ -83,17 +83,6 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*models.Decision, error) {
 	var decisions []*models.Decision
 
-	if clog == nil {
-		xlog := log.New()
-		if err := types.ConfigureLogger(xlog); err != nil {
-			log.Fatalf("While creating profiles-specific logger : %s", err)
-		}
-		xlog.SetLevel(log.TraceLevel)
-		clog = xlog.WithFields(log.Fields{
-			"type": "profile",
-		})
-	}
-
 	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
 		/*the reference decision from profile is in sumulated mode */

@@ -244,6 +244,7 @@ func Serve(cConfig *csconfig.Config) error {
 		if err != nil {
 			return errors.Wrap(err, "Failed to init expr helpers")
 		}
+		log.Warningln("Exprhelpers loaded without database client.")
 	}
 
 	if !cConfig.DisableAPI {
