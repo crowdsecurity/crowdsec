@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"strconv"
 
 	"entgo.io/ent/dialect/sql"
@@ -299,7 +301,9 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	}
 
 	//query = leftJoinLongestDecision(query, predicates)
-	data, err := query.All(c.CTX)
+	//Order is *very* important, the dedup assumes that decisions are sorted per IP and per time left
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Asc(decision.FieldID), ent.Desc(decision.FieldUntil)).All(c.CTX)
+	log.Infof("decisions: %+v", data)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")

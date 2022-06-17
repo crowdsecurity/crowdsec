@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"fmt"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -1070,18 +1069,18 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
-						ID:       int64(2),
-						Origin:   "another_origin",
-						Scenario: "crowdsecurity/ssh_bf",
-						Value:    "127.0.0.1",
-						Duration: "2h59",
-					},
-					{
 						ID:       int64(7),
 						Origin:   "another_origin",
 						Scenario: "crowdsecurity/test",
 						Value:    "127.0.0.2",
 						Duration: "1h59",
+					},
+					{
+						ID:       int64(2),
+						Origin:   "another_origin",
+						Scenario: "crowdsecurity/ssh_bf",
+						Value:    "127.0.0.1",
+						Duration: "2h59",
 					},
 				},
 			},
@@ -1163,7 +1162,7 @@ func TestStreamDecision(t *testing.T) {
 		}
 
 		// clean the db after each test
-		os.Remove(lapi.DBConfig.DbPath)
+		//os.Remove(lapi.DBConfig.DbPath)
 	}
 }
 

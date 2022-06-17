@@ -48,6 +48,7 @@ func LoadTestConfig() csconfig.Config {
 		DbPath: filepath.Join(tempDir, "ent"),
 		Flush:  &flushConfig,
 	}
+	fmt.Printf("sqlite path: %s\n", dbconfig.DbPath)
 	apiServerConfig := csconfig.LocalApiServerCfg{
 		ListenURI:    "http://127.0.0.1:8080",
 		DbConfig:     &dbconfig,
