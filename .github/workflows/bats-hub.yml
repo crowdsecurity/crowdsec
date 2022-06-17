@@ -8,6 +8,9 @@ on:
       GIST_BADGES_ID:
         required: true
 
+env:
+  PREFIX_TEST_NAMES_WITH_FILE: true
+
 jobs:
   build:
     name: "Build + tests"
@@ -34,7 +37,7 @@ jobs:
 
     - name: "Install bats dependencies"
       run: |
-        sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
         go install github.com/cloudflare/cfssl/cmd/cfssl@latest
         go install github.com/cloudflare/cfssl/cmd/cfssljson@latest

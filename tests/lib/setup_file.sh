@@ -25,8 +25,10 @@ cd "${TEST_DIR}"
 ./assert-crowdsec-not-running
 
 # we can prepend the filename to the test descriptions (useful to feed a TAP consumer)
-# BATS_TEST_NAME_PREFIX="$(basename "${BATS_TEST_FILENAME}" .bats): "
-# export BATS_TEST_NAME_PREFIX
+if [[ "${PREFIX_TEST_NAMES_WITH_FILE:-false}" == "true" ]]; then
+  BATS_TEST_NAME_PREFIX="$(basename "${BATS_TEST_FILENAME}" .bats): "
+  export BATS_TEST_NAME_PREFIX
+fi
 
 # before bats 1.7, we did that by hand
 FILE=
