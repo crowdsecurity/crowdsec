@@ -125,7 +125,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
 	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
-	cmdExplain.PersistentFlags().BoolVar(&useCWD, "useCWD", false, "Use current directory instead of tmp location")
+	cmdExplain.PersistentFlags().BoolVar(&useCWD, "usecwd", false, "Use current directory instead of tmp location")
 
 	return cmdExplain
 }
