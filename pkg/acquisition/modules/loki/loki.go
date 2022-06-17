@@ -143,7 +143,7 @@ func (l *LokiSource) buildUrl() error {
 	}
 	buff.WriteString("://")
 	buff.WriteString(u.Host)
-	if u.Path == "" {
+	if u.Path == "" || u.Path == "/" {
 		buff.WriteString("/loki/api/v1/tail")
 	} else {
 		buff.WriteString(u.Path)
