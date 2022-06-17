@@ -31,7 +31,7 @@ func getDBClient(t *testing.T) *database.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dbClient, err := database.NewClient(&csconfig.DatabaseCfg{
+	testDbClient, err := database.NewClient(&csconfig.DatabaseCfg{
 		Type:   "sqlite",
 		DbName: "crowdsec",
 		DbPath: dbPath.Name(),
@@ -39,7 +39,7 @@ func getDBClient(t *testing.T) *database.Client {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return dbClient
+	return testDbClient
 }
 
 func TestVisitor(t *testing.T) {
