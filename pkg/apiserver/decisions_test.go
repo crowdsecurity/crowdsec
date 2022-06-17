@@ -357,18 +357,18 @@ func TestStreamDecisionStart(t *testing.T) {
 			DelChecks:     []DecisionCheck{},
 			NewChecks: []DecisionCheck{
 				{
-					ID:       int64(4),
-					Origin:   "test",
-					Scenario: "crowdsecurity/test",
-					Value:    "127.0.0.2",
-					Duration: "2h59",
-				},
-				{
 					ID:       int64(3),
 					Origin:   "test",
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+				},
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
 				},
 			},
 		},
@@ -500,18 +500,18 @@ func TestStreamDecisionStart(t *testing.T) {
 
 			NewChecks: []DecisionCheck{
 				{
-					ID:       int64(4),
-					Origin:   "test",
-					Scenario: "crowdsecurity/test",
-					Value:    "127.0.0.2",
-					Duration: "2h59",
-				},
-				{
 					ID:       int64(3),
 					Origin:   "test",
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+				},
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
 				},
 			},
 		},
@@ -549,18 +549,18 @@ func TestStreamDecisionStart(t *testing.T) {
 
 			NewChecks: []DecisionCheck{
 				{
-					ID:       int64(7),
-					Origin:   "another_origin",
-					Scenario: "crowdsecurity/test",
-					Value:    "127.0.0.2",
-					Duration: "1h59",
-				},
-				{
 					ID:       int64(2),
 					Origin:   "another_origin",
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.1",
 					Duration: "2h59",
+				},
+				{
+					ID:       int64(7),
+					Origin:   "another_origin",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "1h59",
 				},
 			},
 		},
@@ -577,18 +577,18 @@ func TestStreamDecisionStart(t *testing.T) {
 
 			NewChecks: []DecisionCheck{
 				{
-					ID:       int64(4),
-					Origin:   "test",
-					Scenario: "crowdsecurity/test",
-					Value:    "127.0.0.2",
-					Duration: "2h59",
-				},
-				{
 					ID:       int64(3),
 					Origin:   "test",
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+				},
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
 				},
 			},
 		},
@@ -767,18 +767,18 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
-						ID:       int64(4),
-						Origin:   "test",
-						Scenario: "crowdsecurity/test",
-						Value:    "127.0.0.2",
-						Duration: "2h59",
-					},
-					{
 						ID:       int64(3),
 						Origin:   "test",
 						Scenario: "crowdsecurity/longest",
 						Value:    "127.0.0.1",
 						Duration: "4h59",
+					},
+					{
+						ID:       int64(4),
+						Origin:   "test",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
 					},
 				},
 			},
@@ -961,18 +961,18 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
-						ID:       int64(4),
-						Origin:   "test",
-						Scenario: "crowdsecurity/test",
-						Value:    "127.0.0.2",
-						Duration: "2h59",
-					},
-					{
 						ID:       int64(3),
 						Origin:   "test",
 						Scenario: "crowdsecurity/longest",
 						Value:    "127.0.0.1",
 						Duration: "4h59",
+					},
+					{
+						ID:       int64(4),
+						Origin:   "test",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
 					},
 				},
 			},
@@ -1070,18 +1070,18 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks: []DecisionCheck{
 					{
-						ID:       int64(7),
-						Origin:   "another_origin",
-						Scenario: "crowdsecurity/test",
-						Value:    "127.0.0.2",
-						Duration: "1h59",
-					},
-					{
 						ID:       int64(2),
 						Origin:   "another_origin",
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.1",
 						Duration: "2h59",
+					},
+					{
+						ID:       int64(7),
+						Origin:   "another_origin",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.2",
+						Duration: "1h59",
 					},
 				},
 			},

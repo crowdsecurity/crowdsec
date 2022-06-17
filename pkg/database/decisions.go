@@ -292,13 +292,13 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get all decisions with filters")
 	}
 
-	query = leftJoinLongestDecision(query, predicates)
+	//query = leftJoinLongestDecision(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryAllDecisionsWithFilters : %s", err)
@@ -412,12 +412,12 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("BuildDecisionRequestWithFilter : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
-	query = leftJoinLongestDecision(query, predicates)
+	//query = leftJoinLongestDecision(query, predicates)
 	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
