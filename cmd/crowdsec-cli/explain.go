@@ -19,6 +19,7 @@ func NewExplainCmd() *cobra.Command {
 	var logLine string
 	var logType string
 	var opts cstest.DumpOpts
+	var useCWD bool
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -43,11 +44,21 @@ cscli explain --dsn "file://myfile.log" --type nginx
 			}
 
 			var f *os.File
-			tmpDir := os.TempDir()
+			var dir string
+
+			if !useCWD {
+				dir = os.TempDir()
+			} else {
+				var err error
+				dir, err = os.Getwd()
+				if err != nil {
+					dir = "./"
+				}
+			}
 
 			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
-				logFile = filepath.Join(tmpDir, "cscli_test_tmp.log")
+				logFile = filepath.Join(dir, "cscli_test_tmp.log")
 				f, err := os.Create(logFile) // nolint: govet
 				if err != nil {
 					log.Fatal(err)
@@ -78,7 +89,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 
 			cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
 			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
-			crowdsecCmd.Dir = tmpDir
+			crowdsecCmd.Dir = dir
 			output, err := crowdsecCmd.CombinedOutput()
 			if err != nil {
 				fmt.Println(string(output))
@@ -92,8 +103,8 @@ cscli explain --dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
 				}
 			}
-			parserDumpFile := filepath.Join(tmpDir, cstest.ParserResultFileName)
-			bucketStateDumpFile := filepath.Join(tmpDir, cstest.BucketPourResultFileName)
+			parserDumpFile := filepath.Join(dir, cstest.ParserResultFileName)
+			bucketStateDumpFile := filepath.Join(dir, cstest.BucketPourResultFileName)
 
 			parserDump, err := cstest.LoadParserDump(parserDumpFile)
 			if err != nil {
@@ -114,6 +125,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
 	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
+	cmdExplain.PersistentFlags().BoolVarP(&useCWD, "useCWD", "cwd", false, "Use current directory instead of tmp location")
 
 	return cmdExplain
 }
