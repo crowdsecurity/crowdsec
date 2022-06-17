@@ -351,6 +351,9 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 			defer c.Close()
 			var resp Tail
 			for { // draining the websocket
+				if !t.Alive() { // someone want to close this loop
+					return nil
+				}
 				t, msg, err := c.ReadMessage()
 				if len(msg) == 0 {
 					time.Sleep(100 * time.Millisecond)
