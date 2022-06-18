@@ -9,7 +9,6 @@ import (
 	//"log"
 	"github.com/crowdsecurity/crowdsec/pkg/time/rate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/goombaio/namegenerator"
 	"gopkg.in/tomb.v2"
 
 	//rate "time/rate"
@@ -35,7 +34,7 @@ type Leaky struct {
 	//Queue is used to held the cache of objects in the bucket, it is used to know 'how many' objects we have in buffer.
 	Queue *Queue
 	//Leaky buckets are receiving message through a chan
-	In chan types.Event `json:"-"`
+	In chan *types.Event `json:"-"`
 	//Leaky buckets are pushing their overflows through a chan
 	Out chan *Queue `json:"-"`
 	// shared for all buckets (the idea is to kill this afterwards)
@@ -158,7 +157,7 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 	l := &Leaky{
 		Name:            bucketFactory.Name,
 		Limiter:         limiter,
-		Uuid:            namegenerator.NewNameGenerator(time.Now().UTC().UnixNano()).Generate(),
+		Uuid:            seed.Generate(),
 		Queue:           NewQueue(Qsize),
 		CacheSize:       bucketFactory.CacheSize,
 		Out:             make(chan *Queue, 1),
@@ -227,7 +226,7 @@ func LeakRoutine(leaky *Leaky) error {
 		case msg := <-leaky.In:
 			/*the msg var use is confusing and is redeclared in a different type :/*/
 			for _, processor := range leaky.BucketConfig.processors {
-				msg := processor.OnBucketPour(leaky.BucketConfig)(msg, leaky)
+				msg = processor.OnBucketPour(leaky.BucketConfig)(*msg, leaky)
 				// if &msg == nil we stop processing
 				if msg == nil {
 					goto End
@@ -238,7 +237,7 @@ func LeakRoutine(leaky *Leaky) error {
 			}
 			BucketsPour.With(prometheus.Labels{"name": leaky.Name, "source": msg.Line.Src, "type": msg.Line.Module}).Inc()
 
-			leaky.Pour(leaky, msg) // glue for now
+			leaky.Pour(leaky, *msg) // glue for now
 			//Clear cache on behalf of pour
 			tmp := time.NewTicker(leaky.Duration)
 			durationTicker = tmp.C
@@ -343,7 +342,7 @@ func (leaky *Leaky) overflow(ofw *Queue) {
 		}
 	}
 	if leaky.logger.Level >= log.TraceLevel {
-		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(types.RuntimeAlert(alert)))
+		leaky.logger.Tracef("Overflow event: %s", spew.Sdump(alert))
 	}
 	mt, _ := leaky.Ovflw_ts.MarshalText()
 	leaky.logger.Tracef("overflow time : %s", mt)

@@ -51,7 +51,8 @@ MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
 GO_VERSION_VALIDATION_ERR_MSG = Golang version ($(BUILD_GOVERSION)) is not supported, please use at least $(MINIMUM_SUPPORTED_GO_MAJOR_VERSION).$(MINIMUM_SUPPORTED_GO_MINOR_VERSION)
 
 LD_OPTS_VARS= \
--X github.com/crowdsecurity/crowdsec/cmd/crowdsec/main.bincoverTesting=$(BINCOVER_TESTING) \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec.bincoverTesting=$(BINCOVER_TESTING) \
+-X github.com/crowdsecurity/crowdsec/cmd/crowdsec-cli.bincoverTesting=$(BINCOVER_TESTING) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Version=$(BUILD_VERSION) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.BuildDate=$(BUILD_TIMESTAMP) \
 -X github.com/crowdsecurity/crowdsec/pkg/cwversion.Codename=$(BUILD_CODENAME) \
@@ -172,12 +173,16 @@ testclean: bats-clean
 .PHONY: test
 test: export AWS_ENDPOINT_FORCE=http://localhost:4566
 test: goversion
-	@echo NOTE: You need Docker, docker-compose and run \"make localstack\" in a separate shell
+	@echo 'NOTE: You need Docker, docker-compose and run "make localstack" in a separate shell ("make localstack-stop" to terminate it)'
 	$(GOTEST) $(LD_OPTS) ./...
 
 .PHONY: localstack
 localstack:
 	docker-compose -f tests/localstack/docker-compose.yml up
+
+.PHONY: localstack-stop
+localstack-stop:
+	docker-compose -f tests/localstack/docker-compose.yml down
 
 package-common:
 	@echo "Building Release to dir $(RELDIR)"

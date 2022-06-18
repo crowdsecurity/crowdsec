@@ -1,4 +1,4 @@
-name: build-msi
+name: build-msi (windows)
 
 on:
   pull_request:

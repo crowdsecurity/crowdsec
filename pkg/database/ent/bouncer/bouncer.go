@@ -31,6 +31,8 @@ const (
 	FieldUntil = "until"
 	// FieldLastPull holds the string denoting the last_pull field in the database.
 	FieldLastPull = "last_pull"
+	// FieldAuthType holds the string denoting the auth_type field in the database.
+	FieldAuthType = "auth_type"
 	// Table holds the table name of the bouncer in the database.
 	Table = "bouncers"
 )
@@ -48,6 +50,7 @@ var Columns = []string{
 	FieldVersion,
 	FieldUntil,
 	FieldLastPull,
+	FieldAuthType,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -75,4 +78,6 @@ var (
 	DefaultUntil func() time.Time
 	// DefaultLastPull holds the default value on creation for the "last_pull" field.
 	DefaultLastPull func() time.Time
+	// DefaultAuthType holds the default value on creation for the "auth_type" field.
+	DefaultAuthType string
 )

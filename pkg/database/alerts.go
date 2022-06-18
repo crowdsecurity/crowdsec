@@ -7,10 +7,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -763,9 +766,9 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		}
 
 		if sort == "ASC" {
-			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt), ent.Asc(alert.FieldID))
 		} else {
-			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt), ent.Desc(alert.FieldID))
 		}
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
@@ -796,7 +799,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
-		idList = append(idList, int(alert.ID))
+		idList = append(idList, alert.ID)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
@@ -888,6 +891,77 @@ func (c *Client) FlushOrphans() {
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
+}
+
+func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
+	log.Debug("starting FlushAgentsAndBouncers")
+	if bouncersCfg != nil {
+		if bouncersCfg.ApiDuration != nil {
+			log.Debug("trying to delete old bouncers from api")
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.ApiDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+		if bouncersCfg.CertDuration != nil {
+			log.Debug("trying to delete old bouncers from cert")
+
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.CertDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+	}
+
+	if agentsCfg != nil {
+		if agentsCfg.CertDuration != nil {
+			log.Debug("trying to delete old agents from cert")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.CertDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
+			}
+		}
+		if agentsCfg.LoginPasswordDuration != nil {
+			log.Debug("trying to delete old agents from password")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.LoginPasswordDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.PasswordAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {

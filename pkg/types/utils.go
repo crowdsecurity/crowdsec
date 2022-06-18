@@ -23,7 +23,7 @@ var logFormatter log.Formatter
 var LogOutput *lumberjack.Logger //io.Writer
 var logLevel log.Level
 
-func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool) error {
+func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level, maxSize int, maxFiles int, maxAge int, compress *bool, forceColors bool) error {
 
 	/*Configure logs*/
 	if cfgMode == "file" {
@@ -67,7 +67,7 @@ func SetDefaultLoggerConfig(cfgMode string, cfgFolder string, cfgLevel log.Level
 	}
 	logLevel = cfgLevel
 	log.SetLevel(logLevel)
-	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true}
+	logFormatter = &log.TextFormatter{TimestampFormat: "02-01-2006 15:04:05", FullTimestamp: true, ForceColors: forceColors}
 	log.SetFormatter(logFormatter)
 	return nil
 }

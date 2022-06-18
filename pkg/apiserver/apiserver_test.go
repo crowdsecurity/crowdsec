@@ -275,7 +275,7 @@ func CreateTestBouncer(config *csconfig.DatabaseCfg) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to generate api key: %s", err)
 	}
-	err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey))
+	_, err = dbClient.CreateBouncer("test", "127.0.0.1", middlewares.HashSHA512(apiKey), types.ApiKeyAuthType)
 	if err != nil {
 		return "", fmt.Errorf("unable to create blocker: %s", err)
 	}
@@ -357,7 +357,7 @@ func TestLoggingDebugToFileConfig(t *testing.T) {
 	cfg.LogLevel = &lvl
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)
@@ -414,7 +414,7 @@ func TestLoggingErrorToFileConfig(t *testing.T) {
 	cfg.LogLevel = &lvl
 
 	// Configure logging
-	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs); err != nil {
+	if err := types.SetDefaultLoggerConfig(cfg.LogMedia, cfg.LogDir, *cfg.LogLevel, cfg.LogMaxSize, cfg.LogMaxFiles, cfg.LogMaxAge, cfg.CompressLogs, false); err != nil {
 		t.Fatal(err.Error())
 	}
 	api, err := NewServer(&cfg)

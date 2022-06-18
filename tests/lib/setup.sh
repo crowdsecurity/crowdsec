@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # these plugins are always available
 

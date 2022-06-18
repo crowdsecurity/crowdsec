@@ -9,7 +9,7 @@ die() {
 }
 
 about() {
-    die "usage: $script_name [make | load | clean]"
+    die "usage: ${script_name} [make | load | clean]"
 }
 
 #shellcheck disable=SC1007
@@ -20,14 +20,14 @@ cd "${THIS_DIR}"/../../
 
 # you have not removed set -u above, have you?
 
-[ -z "${TEST_DIR-}" ] && die "\$TEST_DIR must be defined."
-[ -z "${LOCAL_DIR-}" ] && die "\$LOCAL_DIR must be defined."
-[ -z "${CSCLI-}" ] && die "\$CSCLI must be defined."
-[ -z "${LOCAL_INIT_DIR-}" ] && die "\$LOCAL_INIT_DIR must be defined."
-[ -z "${PLUGIN_DIR-}" ] && die "\$PLUGIN_DIR must be defined."
-[ -z "${DB_BACKEND-}" ] && die "\$DB_BACKEND must be defined."
+[[ -z "${TEST_DIR-}" ]] && die "\$TEST_DIR must be defined."
+[[ -z "${LOCAL_DIR-}" ]] && die "\$LOCAL_DIR must be defined."
+[[ -z "${CSCLI-}" ]] && die "\$CSCLI must be defined."
+[[ -z "${LOCAL_INIT_DIR-}" ]] && die "\$LOCAL_INIT_DIR must be defined."
+[[ -z "${PLUGIN_DIR-}" ]] && die "\$PLUGIN_DIR must be defined."
+[[ -z "${DB_BACKEND-}" ]] && die "\$DB_BACKEND must be defined."
 
-if [ ! -f "${CSCLI}" ]; then
+if [[ ! -f "${CSCLI}" ]]; then
     die "${CSCLI} is missing. Please build (with 'make bats-build') or install it."
 fi
 
@@ -53,14 +53,13 @@ make_init_data() {
 
     # when installed packages are always using sqlite, so no need to regenerate
     # local credz for sqlite
-   
-    [ "${DB_BACKEND}" == "sqlite" ] || ${CSCLI} machines add --auto
+
+    [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
     "${TEST_DIR}/instance-crowdsec" start
     "${CSCLI}" lapi status
-    [ -z "{PACKAGE_TESTING}" ] && "${CSCLI}" decisions delete --all
+    [[ -z "${PACKAGE_TESTING}" ]] && "${CSCLI}" decisions delete --all
     "${TEST_DIR}/instance-crowdsec" stop
-    
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
@@ -68,22 +67,21 @@ make_init_data() {
 
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
     tar -C "${LOCAL_DIR}" --create \
-        --exclude "$REL_DATA_DIR"/crowdsec.db \
-        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "$REL_CONFIG_DIR" "$REL_DATA_DIR"
+        --exclude "${REL_DATA_DIR}"/crowdsec.db \
+        --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
 
     ./instance-db setup
     remove_init_data
 }
 
-
 load_init_data() {
-    if [ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]; then
-        die "Initial data not found; did you run '$script_name make' ?"
+    if [[ ! -f "${LOCAL_INIT_DIR}/init-config-data.tar" ]]; then
+        die "Initial data not found; did you run '${script_name} make' ?"
     fi
 
     dump_backend="$(cat "${LOCAL_INIT_DIR}/.backend")"
-    if [ "$DB_BACKEND" != "$dump_backend" ]; then
-        die "Can't run with backend '$DB_BACKEND' because the test data was build with '$dump_backend'"
+    if [[ "${DB_BACKEND}" != "${dump_backend}" ]]; then
+        die "Can't run with backend '${DB_BACKEND}' because the test data was built with '${dump_backend}'"
     fi
 
     remove_init_data
@@ -97,8 +95,7 @@ load_init_data() {
 
 # ---------------------------
 
-[ $# -lt 1 ] && about
-
+[[ $# -lt 1 ]] && about
 
 case "$1" in
     make)

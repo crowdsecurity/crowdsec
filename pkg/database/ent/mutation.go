@@ -2338,6 +2338,7 @@ type BouncerMutation struct {
 	version       *string
 	until         *time.Time
 	last_pull     *time.Time
+	auth_type     *string
 	clearedFields map[string]struct{}
 	done          bool
 	oldValue      func(context.Context) (*Bouncer, error)
@@ -2880,6 +2881,42 @@ func (m *BouncerMutation) ResetLastPull() {
 	m.last_pull = nil
 }
 
+// SetAuthType sets the "auth_type" field.
+func (m *BouncerMutation) SetAuthType(s string) {
+	m.auth_type = &s
+}
+
+// AuthType returns the value of the "auth_type" field in the mutation.
+func (m *BouncerMutation) AuthType() (r string, exists bool) {
+	v := m.auth_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAuthType returns the old "auth_type" field's value of the Bouncer entity.
+// If the Bouncer object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *BouncerMutation) OldAuthType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAuthType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAuthType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAuthType: %w", err)
+	}
+	return oldValue.AuthType, nil
+}
+
+// ResetAuthType resets all changes to the "auth_type" field.
+func (m *BouncerMutation) ResetAuthType() {
+	m.auth_type = nil
+}
+
 // Where appends a list predicates to the BouncerMutation builder.
 func (m *BouncerMutation) Where(ps ...predicate.Bouncer) {
 	m.predicates = append(m.predicates, ps...)
@@ -2899,7 +2936,7 @@ func (m *BouncerMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *BouncerMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.created_at != nil {
 		fields = append(fields, bouncer.FieldCreatedAt)
 	}
@@ -2930,6 +2967,9 @@ func (m *BouncerMutation) Fields() []string {
 	if m.last_pull != nil {
 		fields = append(fields, bouncer.FieldLastPull)
 	}
+	if m.auth_type != nil {
+		fields = append(fields, bouncer.FieldAuthType)
+	}
 	return fields
 }
 
@@ -2958,6 +2998,8 @@ func (m *BouncerMutation) Field(name string) (ent.Value, bool) {
 		return m.Until()
 	case bouncer.FieldLastPull:
 		return m.LastPull()
+	case bouncer.FieldAuthType:
+		return m.AuthType()
 	}
 	return nil, false
 }
@@ -2987,6 +3029,8 @@ func (m *BouncerMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldUntil(ctx)
 	case bouncer.FieldLastPull:
 		return m.OldLastPull(ctx)
+	case bouncer.FieldAuthType:
+		return m.OldAuthType(ctx)
 	}
 	return nil, fmt.Errorf("unknown Bouncer field %s", name)
 }
@@ -3065,6 +3109,13 @@ func (m *BouncerMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLastPull(v)
+		return nil
+	case bouncer.FieldAuthType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAuthType(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)
@@ -3183,6 +3234,9 @@ func (m *BouncerMutation) ResetField(name string) error {
 		return nil
 	case bouncer.FieldLastPull:
 		m.ResetLastPull()
+		return nil
+	case bouncer.FieldAuthType:
+		m.ResetAuthType()
 		return nil
 	}
 	return fmt.Errorf("unknown Bouncer field %s", name)
@@ -5246,6 +5300,7 @@ type MachineMutation struct {
 	version        *string
 	isValidated    *bool
 	status         *string
+	auth_type      *string
 	clearedFields  map[string]struct{}
 	alerts         map[int]struct{}
 	removedalerts  map[int]struct{}
@@ -5840,6 +5895,42 @@ func (m *MachineMutation) ResetStatus() {
 	delete(m.clearedFields, machine.FieldStatus)
 }
 
+// SetAuthType sets the "auth_type" field.
+func (m *MachineMutation) SetAuthType(s string) {
+	m.auth_type = &s
+}
+
+// AuthType returns the value of the "auth_type" field in the mutation.
+func (m *MachineMutation) AuthType() (r string, exists bool) {
+	v := m.auth_type
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAuthType returns the old "auth_type" field's value of the Machine entity.
+// If the Machine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *MachineMutation) OldAuthType(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAuthType is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAuthType requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAuthType: %w", err)
+	}
+	return oldValue.AuthType, nil
+}
+
+// ResetAuthType resets all changes to the "auth_type" field.
+func (m *MachineMutation) ResetAuthType() {
+	m.auth_type = nil
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by ids.
 func (m *MachineMutation) AddAlertIDs(ids ...int) {
 	if m.alerts == nil {
@@ -5913,7 +6004,7 @@ func (m *MachineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *MachineMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.created_at != nil {
 		fields = append(fields, machine.FieldCreatedAt)
 	}
@@ -5947,6 +6038,9 @@ func (m *MachineMutation) Fields() []string {
 	if m.status != nil {
 		fields = append(fields, machine.FieldStatus)
 	}
+	if m.auth_type != nil {
+		fields = append(fields, machine.FieldAuthType)
+	}
 	return fields
 }
 
@@ -5977,6 +6071,8 @@ func (m *MachineMutation) Field(name string) (ent.Value, bool) {
 		return m.IsValidated()
 	case machine.FieldStatus:
 		return m.Status()
+	case machine.FieldAuthType:
+		return m.AuthType()
 	}
 	return nil, false
 }
@@ -6008,6 +6104,8 @@ func (m *MachineMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldIsValidated(ctx)
 	case machine.FieldStatus:
 		return m.OldStatus(ctx)
+	case machine.FieldAuthType:
+		return m.OldAuthType(ctx)
 	}
 	return nil, fmt.Errorf("unknown Machine field %s", name)
 }
@@ -6093,6 +6191,13 @@ func (m *MachineMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetStatus(v)
+		return nil
+	case machine.FieldAuthType:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAuthType(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Machine field %s", name)
@@ -6220,6 +6325,9 @@ func (m *MachineMutation) ResetField(name string) error {
 		return nil
 	case machine.FieldStatus:
 		m.ResetStatus()
+		return nil
+	case machine.FieldAuthType:
+		m.ResetAuthType()
 		return nil
 	}
 	return fmt.Errorf("unknown Machine field %s", name)

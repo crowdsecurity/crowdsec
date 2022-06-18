@@ -89,7 +89,7 @@ func (d *Database) Update() error {
 		return errors.Wrap(err, "update sqlite db response (unmarshal)")
 	}
 	model.Details = d.Details
-	success, errormsg, err = d.Client.Do("PUT", routes[databaseEndpoint], model)
+	_, errormsg, err = d.Client.Do("PUT", routes[databaseEndpoint], model)
 	if err != nil {
 		return err
 	}

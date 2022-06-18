@@ -169,6 +169,20 @@ func (mu *MachineUpdate) ClearStatus() *MachineUpdate {
 	return mu
 }
 
+// SetAuthType sets the "auth_type" field.
+func (mu *MachineUpdate) SetAuthType(s string) *MachineUpdate {
+	mu.mutation.SetAuthType(s)
+	return mu
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (mu *MachineUpdate) SetNillableAuthType(s *string) *MachineUpdate {
+	if s != nil {
+		mu.SetAuthType(*s)
+	}
+	return mu
+}
+
 // AddAlertIDs adds the "alerts" edge to the Alert entity by IDs.
 func (mu *MachineUpdate) AddAlertIDs(ids ...int) *MachineUpdate {
 	mu.mutation.AddAlertIDs(ids...)
@@ -438,6 +452,13 @@ func (mu *MachineUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: machine.FieldStatus,
 		})
 	}
+	if value, ok := mu.mutation.AuthType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldAuthType,
+		})
+	}
 	if mu.mutation.AlertsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -648,6 +669,20 @@ func (muo *MachineUpdateOne) SetNillableStatus(s *string) *MachineUpdateOne {
 // ClearStatus clears the value of the "status" field.
 func (muo *MachineUpdateOne) ClearStatus() *MachineUpdateOne {
 	muo.mutation.ClearStatus()
+	return muo
+}
+
+// SetAuthType sets the "auth_type" field.
+func (muo *MachineUpdateOne) SetAuthType(s string) *MachineUpdateOne {
+	muo.mutation.SetAuthType(s)
+	return muo
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (muo *MachineUpdateOne) SetNillableAuthType(s *string) *MachineUpdateOne {
+	if s != nil {
+		muo.SetAuthType(*s)
+	}
 	return muo
 }
 
@@ -942,6 +977,13 @@ func (muo *MachineUpdateOne) sqlSave(ctx context.Context) (_node *Machine, err e
 		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
 			Type:   field.TypeString,
 			Column: machine.FieldStatus,
+		})
+	}
+	if value, ok := muo.mutation.AuthType(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldAuthType,
 		})
 	}
 	if muo.mutation.AlertsCleared() {

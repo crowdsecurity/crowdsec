@@ -75,6 +75,9 @@ type BucketFactory struct {
 	wgDumpState      *sync.WaitGroup           `yaml:"-"`
 }
 
+//we use one NameGenerator for all the future buckets
+var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
+
 func ValidateFactory(bucketFactory *BucketFactory) error {
 	if bucketFactory.Name == "" {
 		return fmt.Errorf("bucket must have name")
@@ -147,8 +150,6 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 		ret      []BucketFactory = []BucketFactory{}
 		response chan types.Event
 	)
-
-	var seed namegenerator.Generator = namegenerator.NewNameGenerator(time.Now().UTC().UnixNano())
 
 	response = make(chan types.Event, 1)
 	for _, f := range files {
@@ -396,7 +397,7 @@ func LoadBucketsState(file string, buckets *Buckets, bucketFactories []BucketFac
 				tbucket.Queue = v.Queue
 				/*Trying to set the limiter to the saved values*/
 				tbucket.Limiter.Load(v.SerializedState)
-				tbucket.In = make(chan types.Event)
+				tbucket.In = make(chan *types.Event)
 				tbucket.Mapkey = k
 				tbucket.Signal = make(chan bool, 1)
 				tbucket.First_ts = v.First_ts

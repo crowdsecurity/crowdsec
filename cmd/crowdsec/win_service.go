@@ -12,6 +12,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sys/windows/svc"
 )
@@ -61,27 +62,29 @@ loop:
 	return
 }
 
-func runService(name string) {
+func runService(name string) error {
 	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
 	if err != nil {
-		log.Fatalf(err.Error())
+		return err
 	}
-	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
-		log.Fatal(err.Error())
-	}
-	log.Infof("starting %s service", name)
 
+	if err := LoadConfig(cConfig); err != nil {
+		return err
+	}
+
+	// Configure logging
+	if err := types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
+		return err
+	}
+
+	log.Infof("starting %s service", name)
 	winsvc := crowdsec_winservice{config: cConfig}
 
-	err = svc.Run(name, &winsvc)
-	if err != nil {
-		log.Errorf("%s service failed: %s", name, err)
-		return
+	if err := svc.Run(name, &winsvc); err != nil {
+		return errors.Wrapf(err, "%s service failed", name)
 	}
+
 	log.Infof("%s service stopped", name)
+	return nil
 }

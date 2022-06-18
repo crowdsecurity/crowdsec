@@ -28,15 +28,16 @@ PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 DB_BACKEND ?= sqlite
 
 ifdef TEST_COVERAGE
-  CROWDSEC = "$(TEST_DIR)/crowdsec-wrapper"
-  CSCLI = "$(TEST_DIR)/cscli-wrapper"
+  CROWDSEC = $(TEST_DIR)/crowdsec-wrapper
+  CSCLI = $(TEST_DIR)/cscli-wrapper
   BINCOVER_TESTING = true
 else
   # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
   # overriding the path to the binaries
   CROWDSEC ?= "$(BIN_DIR)/crowdsec"
   CSCLI ?= "$(BIN_DIR)/cscli"
-  BINCOVER_TESTING = false
+  # any value is considered true
+  BINCOVER_TESTING =
 endif
 
 # If you change the name of the crowdsec executable, make sure the pgrep

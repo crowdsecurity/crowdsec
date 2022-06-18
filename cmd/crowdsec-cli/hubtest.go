@@ -29,11 +29,9 @@ func NewHubTestCmd() *cobra.Command {
 	var cscliPath string
 
 	var cmdHubTest = &cobra.Command{
-		Use:   "hubtest",
-		Short: "Run functional tests on hub configurations",
-		Long: `
-		Run functional tests on hub configurations (parsers, scenarios, collections...)
-		`,
+		Use:               "hubtest",
+		Short:             "Run functional tests on hub configurations",
+		Long:              "Run functional tests on hub configurations (parsers, scenarios, collections...)",
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
@@ -535,7 +533,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				if err != nil {
 					log.Fatalf(err.Error())
 				}
-				fmt.Printf(output)
+				fmt.Print(output)
 			}
 		},
 	}

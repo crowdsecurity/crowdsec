@@ -1,4 +1,5 @@
-name: golangci-lint-windows
+name: golangci-lint (windows)
+
 on:
   push:
     tags:
@@ -16,17 +17,15 @@ on:
       - 'README.md'
 jobs:
   golangci:
-    name: lint-windows
+    name: lint
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.45.2
+          version: v1.46
           # Optional: golangci-lint command line arguments.
-          args: --issues-exit-code=0 --timeout 5m
+          args: --issues-exit-code=0 --timeout 10m
           only-new-issues: true
-
-

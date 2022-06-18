@@ -14,11 +14,11 @@ import (
 
 const CapiMachineID = "CAPI"
 
-func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool) (int, error) {
+func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipAddress string, isValidated bool, force bool, authType string) (*ent.Machine, error) {
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
-		return 0, errors.Wrap(HashError, "")
+		return nil, errors.Wrap(HashError, "")
 	}
 
 	machineExist, err := c.Ent.Machine.
@@ -26,34 +26,39 @@ func (c *Client) CreateMachine(machineID *string, password *strfmt.Password, ipA
 		Where(machine.MachineIdEQ(*machineID)).
 		Select(machine.FieldMachineId).Strings(c.CTX)
 	if err != nil {
-		return 0, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
+		return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
 	}
 	if len(machineExist) > 0 {
 		if force {
 			_, err := c.Ent.Machine.Update().Where(machine.MachineIdEQ(*machineID)).SetPassword(string(hashPassword)).Save(c.CTX)
 			if err != nil {
 				c.Log.Warningf("CreateMachine : %s", err)
-				return 0, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
+				return nil, errors.Wrapf(UpdateFail, "machine '%s'", *machineID)
 			}
-			return 1, nil
+			machine, err := c.QueryMachineByID(*machineID)
+			if err != nil {
+				return nil, errors.Wrapf(QueryFail, "machine '%s': %s", *machineID, err)
+			}
+			return machine, nil
 		}
-		return 0, errors.Wrapf(UserExists, "user '%s'", *machineID)
+		return nil, errors.Wrapf(UserExists, "user '%s'", *machineID)
 	}
 
-	_, err = c.Ent.Machine.
+	machine, err := c.Ent.Machine.
 		Create().
 		SetMachineId(*machineID).
 		SetPassword(string(hashPassword)).
 		SetIpAddress(ipAddress).
 		SetIsValidated(isValidated).
+		SetAuthType(authType).
 		Save(c.CTX)
 
 	if err != nil {
 		c.Log.Warningf("CreateMachine : %s", err)
-		return 0, errors.Wrapf(InsertFail, "creating machine '%s'", *machineID)
+		return nil, errors.Wrapf(InsertFail, "creating machine '%s'", *machineID)
 	}
 
-	return 1, nil
+	return machine, nil
 }
 
 func (c *Client) QueryMachineByID(machineID string) (*ent.Machine, error) {

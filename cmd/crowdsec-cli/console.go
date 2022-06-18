@@ -78,12 +78,12 @@ After running this command your will need to validate the enrollment in the weba
 			}
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			scenarios, err := cwhub.GetInstalledScenariosAsString()

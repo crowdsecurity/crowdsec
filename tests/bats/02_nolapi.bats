@@ -25,18 +25,16 @@ declare stderr
 
 #----------
 
-@test "$FILE test without -no-api flag" {
+@test "test without -no-api flag" {
     run -124 --separate-stderr timeout 2s "${CROWDSEC}"
     # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
 }
 
-@test "$FILE crowdsec should not run without LAPI (-no-api flag)" {
-    skip
+@test "crowdsec should not run without LAPI (-no-api flag)" {
     run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
 }
 
-@test "$FILE crowdsec should not run without LAPI (no api.server in configuration file)" {
-    skip
+@test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr timeout 2s "${CROWDSEC}"
 
@@ -44,15 +42,16 @@ declare stderr
     assert_output --partial "crowdsec local API is disabled"
 }
 
-@test "$FILE capi status shouldn't be ok without api.server" {
+@test "capi status shouldn't be ok without api.server" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     run -1 --separate-stderr cscli capi status
 
     run -0 echo "$stderr"
-    assert_output --partial "Local API is disabled, please run this command on the local API machine"
+    assert_output --partial "crowdsec local API is disabled"
+    assert_output --partial "There is no configuration on 'api.server:'"
 }
 
-@test "$FILE cscli config show -o human" {
+@test "cscli config show -o human" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     run -0 cscli config show -o human
     assert_output --partial "Global:"
@@ -61,7 +60,7 @@ declare stderr
     refute_output --partial "Local API Server:"
 }
 
-@test "$FILE cscli config backup" {
+@test "cscli config backup" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
     run -0 cscli config backup "${backupdir}"
@@ -74,15 +73,15 @@ declare stderr
     assert_output --partial "file exists"
 }
 
-@test "$FILE lapi status shouldn't be ok without api.server" {
+@test "lapi status shouldn't be ok without api.server" {
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
-    ./instance-crowdsec start || true 
+    ./instance-crowdsec start || true
     run -1 --separate-stderr cscli machines list
     run -0 echo "$stderr"
     assert_output --partial "Local API is disabled, please run this command on the local API machine"
 }
 
-@test "$FILE cscli metrics" {
+@test "cscli metrics" {
     skip 'need to trigger metrics with a live parse'
     yq e 'del(.api.server)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start

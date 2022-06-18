@@ -3,22 +3,18 @@ package cwhub
 import (
 	"bytes"
 	"crypto/sha256"
-	"path"
-	"path/filepath"
-
-	//"errors"
-	"github.com/pkg/errors"
-
-	//"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
@@ -80,61 +76,61 @@ func DownloadLatest(hub *csconfig.Hub, target Item, overwrite bool, updateOnly b
 	var err error
 
 	log.Debugf("Downloading %s %s", target.Type, target.Name)
-	if target.Type == COLLECTIONS {
-		var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
-		for idx, ptr := range tmp {
-			ptrtype := ItemTypes[idx]
-			for _, p := range ptr {
-				val, ok := hubIdx[ptrtype][p]
-				if !ok {
-					return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
-				}
-
-				if !val.Installed && updateOnly && val.Downloaded {
-					log.Debugf("skipping upgrade of %s : not installed", target.Name)
-					continue
-				}
-
-				log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
-				//recurse as it's a collection
-				if ptrtype == COLLECTIONS {
-					log.Tracef("collection, recurse")
-					hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
-					if err != nil {
-						return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-					}
-				}
-				item, err := DownloadItem(hub, val, overwrite)
-				if err != nil {
-					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
-				}
-
-				// We need to enable an item when it has been added to a collection since latest release of the collection.
-				// We check if val.Downloaded is false because maybe the item has been disabled by the user.
-				if !item.Installed && !val.Downloaded {
-					if item, err = EnableItem(hub, item); err != nil {
-						return target, errors.Wrapf(err, "enabling '%s'", item.Name)
-					}
-				}
-				hubIdx[ptrtype][p] = item
-			}
-		}
-		target, err = DownloadItem(hub, target, overwrite)
-		if err != nil {
-			return target, fmt.Errorf("failed to download item : %s", err)
-		}
-	} else {
+	if target.Type != COLLECTIONS {
 		if !target.Installed && updateOnly && target.Downloaded {
 			log.Debugf("skipping upgrade of %s : not installed", target.Name)
 			return target, nil
 		}
 		return DownloadItem(hub, target, overwrite)
 	}
+
+	// collection
+	var tmp = [][]string{target.Parsers, target.PostOverflows, target.Scenarios, target.Collections}
+	for idx, ptr := range tmp {
+		ptrtype := ItemTypes[idx]
+		for _, p := range ptr {
+			val, ok := hubIdx[ptrtype][p]
+			if !ok {
+				return target, fmt.Errorf("required %s %s of %s doesn't exist, abort", ptrtype, p, target.Name)
+			}
+
+			if !val.Installed && updateOnly && val.Downloaded {
+				log.Debugf("skipping upgrade of %s : not installed", target.Name)
+				continue
+			}
+
+			log.Debugf("Download %s sub-item : %s %s (%t -> %t)", target.Name, ptrtype, p, target.Installed, updateOnly)
+			//recurse as it's a collection
+			if ptrtype == COLLECTIONS {
+				log.Tracef("collection, recurse")
+				hubIdx[ptrtype][p], err = DownloadLatest(hub, val, overwrite, updateOnly)
+				if err != nil {
+					return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+				}
+			}
+			item, err := DownloadItem(hub, val, overwrite)
+			if err != nil {
+				return target, errors.Wrap(err, fmt.Sprintf("while downloading %s", val.Name))
+			}
+
+			// We need to enable an item when it has been added to a collection since latest release of the collection.
+			// We check if val.Downloaded is false because maybe the item has been disabled by the user.
+			if !item.Installed && !val.Downloaded {
+				if item, err = EnableItem(hub, item); err != nil {
+					return target, errors.Wrapf(err, "enabling '%s'", item.Name)
+				}
+			}
+			hubIdx[ptrtype][p] = item
+		}
+	}
+	target, err = DownloadItem(hub, target, overwrite)
+	if err != nil {
+		return target, fmt.Errorf("failed to download item : %s", err)
+	}
 	return target, nil
 }
 
 func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) {
-
 	var tdir = hub.HubDir
 	var dataFolder = hub.DataDir
 	/*if user didn't --force, don't overwrite local, tainted, up-to-date files*/
@@ -165,7 +161,7 @@ func DownloadItem(hub *csconfig.Hub, target Item, overwrite bool) (Item, error) 
 		return target, errors.Wrap(err, fmt.Sprintf("while reading %s", req.URL.String()))
 	}
 	h := sha256.New()
-	if _, err := h.Write([]byte(body)); err != nil {
+	if _, err := h.Write(body); err != nil {
 		return target, errors.Wrap(err, fmt.Sprintf("while hashing %s", target.Name))
 	}
 	meow := fmt.Sprintf("%x", h.Sum(nil))
