@@ -1174,6 +1174,9 @@ func runTest(lapi LAPI, test DecisionTest, t *testing.T) {
 	}
 	decisions, _, err := readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
+	if err != nil {
+		fmt.Printf("%s\n", err.Error())
+	}
 	assert.Equal(t, test.LenDeleted, len(decisions["deleted"]), fmt.Sprintf("'%s': len(deleted)", test.TestName))
 	assert.Equal(t, test.LenNew, len(decisions["new"]), fmt.Sprintf("'%s': len(new)", test.TestName))
 
