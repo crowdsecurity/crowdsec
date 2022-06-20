@@ -19,7 +19,6 @@ func NewExplainCmd() *cobra.Command {
 	var logLine string
 	var logType string
 	var opts cstest.DumpOpts
-	var useCWD bool
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -44,17 +43,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 			}
 
 			var f *os.File
-			var dir string
-
-			if !useCWD {
-				dir = os.TempDir()
-			} else {
-				var err error
-				dir, err = os.Getwd()
-				if err != nil {
-					dir = "./"
-				}
-			}
+			dir := os.TempDir()
 
 			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
@@ -125,7 +114,6 @@ cscli explain --dsn "file://myfile.log" --type nginx
 	cmdExplain.PersistentFlags().StringVarP(&logType, "type", "t", "", "Type of the acquisition to test")
 	cmdExplain.PersistentFlags().BoolVarP(&opts.Details, "verbose", "v", false, "Display individual changes")
 	cmdExplain.PersistentFlags().BoolVar(&opts.SkipOk, "failures", false, "Only show failed lines")
-	cmdExplain.PersistentFlags().BoolVar(&useCWD, "useCWD", false, "Use current directory instead of tmp location")
 
 	return cmdExplain
 }
