@@ -1,6 +1,6 @@
 name: Dispatch to hub when creating pre-release
 
-on: 
+on:
   release:
     types: prereleased
 

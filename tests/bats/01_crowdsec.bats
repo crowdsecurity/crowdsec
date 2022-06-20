@@ -25,7 +25,7 @@ declare stderr
 
 #----------
 
-@test "${FILE} crowdsec (usage)" {
+@test "crowdsec (usage)" {
     run -0 --separate-stderr timeout 2s "${CROWDSEC}" -h
     run -0 echo "${stderr}"
     assert_line --regexp "Usage of .*:"
@@ -35,21 +35,21 @@ declare stderr
     assert_line --regexp "Usage of .*:"
 }
 
-@test "${FILE} crowdsec (unknown flag)" {
+@test "crowdsec (unknown flag)" {
     run -2 --separate-stderr timeout 2s "${CROWDSEC}" --foobar
     run -0 echo "${stderr}"
     assert_line "flag provided but not defined: -foobar"
     assert_line --regexp "Usage of .*"
 }
 
-@test "${FILE} crowdsec (unknown argument)" {
+@test "crowdsec (unknown argument)" {
     run -2 --separate-stderr timeout 2s "${CROWDSEC}" trololo
     run -0 echo "${stderr}"
     assert_line "argument provided but not defined: trololo"
     assert_line --regexp "Usage of .*"
 }
 
-@test "${FILE} crowdsec (no api and no agent)" {
+@test "crowdsec (no api and no agent)" {
     run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api -no-cs
     run -0 echo "${stderr}"
     assert_line --partial "You must run at least the API Server or crowdsec"
