@@ -150,7 +150,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 			config.AgentsGC.LoginPasswordDuration = &duration
 		}
 		if config.AgentsGC.Api != nil {
-			log.Warningf("agents auto-delete for API auth is not supported (use cert or login_password)")
+			log.Warning("agents auto-delete for API auth is not supported (use cert or login_password)")
 		}
 	}
 	if config.BouncersGC != nil {
@@ -169,7 +169,7 @@ func (c *Client) StartFlushScheduler(config *csconfig.FlushDBCfg) (*gocron.Sched
 			config.BouncersGC.ApiDuration = &duration
 		}
 		if config.BouncersGC.LoginPassword != nil {
-			log.Warningf("bouncers auto-delete for login/password auth is not supported (use cert or api)")
+			log.Warning("bouncers auto-delete for login/password auth is not supported (use cert or api)")
 		}
 	}
 	baJob, err := scheduler.Every(1).Minute().Do(c.FlushAgentsAndBouncers, config.AgentsGC, config.BouncersGC)

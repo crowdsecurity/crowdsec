@@ -198,7 +198,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 				*ovflwEvent.Timestamp = string(raw)
 			}
 		} else {
-			log.Warningf("Event has no parsed time, no runtime timestamp")
+			log.Warning("Event has no parsed time, no runtime timestamp")
 		}
 
 		events = append(events, &ovflwEvent)

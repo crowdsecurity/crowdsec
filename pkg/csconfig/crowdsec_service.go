@@ -39,7 +39,7 @@ func (c *Config) LoadCrowdsec() error {
 	}
 
 	if c.Crowdsec == nil {
-		log.Warningf("crowdsec agent is disabled")
+		log.Warning("crowdsec agent is disabled")
 		c.DisableAgent = true
 		return nil
 	}
@@ -68,7 +68,7 @@ func (c *Config) LoadCrowdsec() error {
 		c.Crowdsec.AcquisitionFiles = append(c.Crowdsec.AcquisitionFiles, files...)
 	}
 	if c.Crowdsec.AcquisitionDirPath == "" && c.Crowdsec.AcquisitionFilePath == "" {
-		log.Warningf("no acquisition_path nor acquisition_dir")
+		log.Warning("no acquisition_path nor acquisition_dir")
 	}
 	if err := c.LoadSimulation(); err != nil {
 		return errors.Wrap(err, "load error (simulation)")

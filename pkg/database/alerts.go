@@ -182,7 +182,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
 			if decisionItem.Duration == nil {
-				log.Warningf("nil duration in community decision")
+				log.Warning("nil duration in community decision")
 				continue
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
@@ -190,7 +190,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
-				log.Warningf("nil scope in community decision")
+				log.Warning("nil scope in community decision")
 				continue
 			}
 			/*if the scope is IP or Range, convert the value to integers */
@@ -218,7 +218,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 
 			/*for bulk delete of duplicate decisions*/
 			if decisionItem.Value == nil {
-				log.Warningf("nil value in community decision")
+				log.Warning("nil value in community decision")
 				continue
 			}
 			valueList = append(valueList, *decisionItem.Value)

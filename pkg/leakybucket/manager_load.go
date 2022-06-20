@@ -266,7 +266,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Filter == "" {
-		bucketFactory.logger.Warningf("Bucket without filter, abort.")
+		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))

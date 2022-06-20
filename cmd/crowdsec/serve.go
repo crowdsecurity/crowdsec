@@ -191,7 +191,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
-				log.Warningf("SIGHUP received, reloading")
+				log.Warning("SIGHUP received, reloading")
 				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- errors.Wrap(err, "failed shutdown")
 					break Loop
@@ -202,7 +202,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 				}
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
-				log.Warningf("SIGTERM received, shutting down")
+				log.Warning("SIGTERM received, shutting down")
 				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- errors.Wrap(err, "failed shutdown")
 					break Loop
@@ -214,7 +214,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	err := <-exitChan
 	if err == nil {
-		log.Warningf("Crowdsec service shutting down")
+		log.Warning("Crowdsec service shutting down")
 	}
 	return err
 }
