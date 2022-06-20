@@ -374,6 +374,9 @@ func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) er
 				}
 				err = decoder.Decode(&resp)
 				if err != nil {
+					if err == io.EOF { // the websocket is closed
+						break
+					}
 					return errors.Wrap(err, "OneShotAcquisition error while parsing JSON websocket")
 				}
 				l.logger.WithField("type", t).WithField("message", resp).Debug("Message receveid")
