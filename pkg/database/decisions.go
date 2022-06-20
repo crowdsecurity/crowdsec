@@ -84,7 +84,7 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 
 	query, err = applyStartIpEndIpFilter(query, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Fail to apply StartIpEndIpFilter")
+		return nil, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
 	return query, nil
 }
@@ -483,12 +483,12 @@ func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
 	decisions := c.Ent.Decision.Query()
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Fail to apply StartIpEndIpFilter")
+		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
 
 	count, err = decisions.Count(c.CTX)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Fail to count decisions")
+		return 0, errors.Wrapf(err, "fail to count decisions")
 	}
 
 	return count, nil
@@ -511,11 +511,11 @@ func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Tim
 	)
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Fail to apply StartIpEndIpFilter")
+		return 0, errors.Wrapf(err, "fail to apply StartIpEndIpFilter")
 	}
 	count, err = decisions.Count(c.CTX)
 	if err != nil {
-		return 0, errors.Wrapf(err, "Fail to count decisions")
+		return 0, errors.Wrapf(err, "fail to count decisions")
 	}
 
 	return count, nil
@@ -591,7 +591,7 @@ func applyStartIpEndIpFilter(decisions *ent.DecisionQuery, contains bool, ip_sz 
 			))
 		}
 	} else if ip_sz != 0 {
-		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+		return nil, errors.Wrapf(InvalidFilter, "unknown ip size %d", ip_sz)
 	}
 	return decisions, nil
 }

@@ -48,7 +48,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		for fIdx, filter := range profile.Filters {
 			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
-				return []*Runtime{}, errors.Wrapf(err, "Error compiling filter of '%s'", profile.Name)
+				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
 			}
 			runtime.RuntimeFilters[fIdx] = runtimeFilter
 			if profile.Debug != nil && *profile.Debug {
@@ -64,7 +64,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 
 		if profile.DurationExpr != "" {
 			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
-				return []*Runtime{}, errors.Wrapf(err, "Error compiling duration_expr of %s", profile.Name)
+				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
 			}
 
 			runtime.RuntimeDurationExpr = runtimeDurationExpr
@@ -79,7 +79,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		for _, decision := range profile.Decisions {
 			if runtime.RuntimeDurationExpr == nil {
 				if _, err := time.ParseDuration(*decision.Duration); err != nil {
-					return []*Runtime{}, errors.Wrapf(err, "Error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", *decision.Duration, profile.Name)
 				}
 			}
 		}
@@ -116,7 +116,7 @@ func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*mod
 		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
 			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 			if err != nil {
-				Profile.Logger.Warningf("failed to run duration_expr : %v", err)
+				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
 				*decision.Duration = *refDecision.Duration
 			} else {
 				durationStr := fmt.Sprint(duration)

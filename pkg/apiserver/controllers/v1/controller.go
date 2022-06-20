@@ -42,7 +42,7 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 
 	profiles, err := csprofiles.NewProfile(cfg.ProfilesCfg)
 	if err != nil {
-		return &Controller{}, errors.Wrapf(err, "Failed to compile profiles")
+		return &Controller{}, errors.Wrapf(err, "failed to compile profiles")
 	}
 
 	v1 := &Controller{
