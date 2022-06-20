@@ -25,6 +25,7 @@ import (
 	kafkaacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kafka"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
 	k8sauditacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kubernetesaudit"
+	lokiacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	s3acquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/s3"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
@@ -74,6 +75,7 @@ var AcquisitionSources = map[string]func() DataSource{
 	"wineventlog": func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
 	"kafka":       func() DataSource { return &kafkaacquisition.KafkaSource{} },
 	"k8s-audit":   func() DataSource { return &k8sauditacquisition.KubernetesAuditSource{} },
+	"loki": 	   func() DataSource { return &lokiacquisition.LokiSource{} },
 	"s3":          func() DataSource { return &s3acquisition.S3Source{} },
 }
 
