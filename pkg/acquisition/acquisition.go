@@ -12,6 +12,7 @@ import (
 	fileacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/file"
 	journalctlacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/journalctl"
 	kinesisacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/kinesis"
+	lokiacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki"
 	syslogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog"
 	wineventlogacquisition "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/wineventlog"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -69,6 +70,10 @@ var AcquisitionSources = []struct {
 	{
 		name:  "wineventlog",
 		iface: func() DataSource { return &wineventlogacquisition.WinEventLogSource{} },
+	},
+	{
+		name:  "loki",
+		iface: func() DataSource { return &lokiacquisition.LokiSource{} },
 	},
 }
 
