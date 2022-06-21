@@ -45,7 +45,7 @@ cscli() {
 export -f cscli
 
 config_yq() {
-    yq e "$@" - <"${CONFIG_YAML}"
+    yq e "$@" "${CONFIG_YAML}"
 }
 export -f config_yq
 

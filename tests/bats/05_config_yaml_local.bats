@@ -71,7 +71,7 @@ teardown() {
     run -0 ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
 
-    run -0 yq e '.api.client.credentials_path' <"${CONFIG_YAML}"
+    run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
     LOCAL_API_CREDENTIALS="${output}"
 
     run -1 cscli decisions list
@@ -80,7 +80,7 @@ teardown() {
 }
 
 @test "${FILE} simulation.yaml.local" {
-    run -0 yq e '.config_paths.simulation_path' <"${CONFIG_YAML}"
+    run -0 yq e '.config_paths.simulation_path' "${CONFIG_YAML}"
     refute_output null
     SIMULATION="${output}"
 
@@ -102,7 +102,7 @@ teardown() {
 }
 
 @test "${FILE} profiles.yaml.local" {
-    run -0 yq e '.api.server.profiles_path' <"${CONFIG_YAML}"
+    run -0 yq e '.api.server.profiles_path' "${CONFIG_YAML}"
     refute_output null
     PROFILES="${output}"
 
