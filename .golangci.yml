@@ -182,6 +182,9 @@ linters:
 
 
 issues:
+  # “Look, that’s why there’s rules, understand? So that you think before you
+  # break ‘em.” ― Terry Pratchett
+
   max-issues-per-linter: 0
   max-same-issues: 10
   exclude-rules:

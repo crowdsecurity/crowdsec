@@ -1,0 +1,5 @@
+#!/bin/sh
+unset IFS
+set -euf
+
+sudo dnf -y update
