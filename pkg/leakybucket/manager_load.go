@@ -339,7 +339,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			}
 			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
-				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
+				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
 		}
 	}

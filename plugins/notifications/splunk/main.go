@@ -73,13 +73,13 @@ func (s *Splunk) Notify(ctx context.Context, notification *protobufs.Notificatio
 	if resp.StatusCode != 200 {
 		content, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", string(err.Error()))
+			return &protobufs.Empty{}, fmt.Errorf("got non 200 response and failed to read error %s", err)
 		}
 		return &protobufs.Empty{}, fmt.Errorf("got non 200 response %s", string(content))
 	}
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return &protobufs.Empty{}, fmt.Errorf("failed to read response body got error %s", err)
 	}
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
 	return &protobufs.Empty{}, nil

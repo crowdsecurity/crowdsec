@@ -102,9 +102,9 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			err = node.compile(pctx, ectx)
 			if err != nil {
 				if node.Name != "" {
-					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err.Error())
+					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err)
 				}
-				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err.Error())
+				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err)
 			}
 			/* if the stage is empty, the node is empty, it's a trailing entry in users yaml file */
 			if node.Stage == "" {

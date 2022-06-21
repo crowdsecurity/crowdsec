@@ -128,7 +128,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := doc.GenMarkdownTreeCustom(rootCmd, "./doc/", prepender, linkHandler); err != nil {
-				log.Fatalf("Failed to generate cobra doc: %s", err.Error())
+				log.Fatalf("Failed to generate cobra doc: %s", err)
 			}
 		},
 	}

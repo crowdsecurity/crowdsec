@@ -126,7 +126,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	if s.NbAssert == 0 {
 		assertData, err := s.AutoGenFromFile(testFile)
 		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+			return fmt.Errorf("couldn't generate assertion: %s", err)
 		}
 		s.AutoGenAssertData = assertData
 		s.AutoGenAssert = true

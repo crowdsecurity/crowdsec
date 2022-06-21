@@ -431,7 +431,7 @@ stream_name: test_stream`),
 		err = cw.Configure(test.config, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -458,7 +458,7 @@ stream_name: test_stream`),
 			dbgLogger.Infof("acquis done")
 
 			if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 			} else if err != nil && test.expectedStartErr == "" {
 				t.Fatalf("%s unexpected error '%s'", test.name, err)
 			} else if err == nil && test.expectedStartErr != "" {
@@ -577,7 +577,7 @@ stream_name: test_stream`),
 		err = cw.Configure(test.config, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -598,7 +598,7 @@ stream_name: test_stream`),
 			err = cw.OneShotAcquisition(out, &tmb)
 		}
 		if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-			t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+			t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 		} else if err != nil && test.expectedStartErr == "" {
 			t.Fatalf("%s unexpected error '%s'", test.name, err)
 		} else if err == nil && test.expectedStartErr != "" {
@@ -655,7 +655,7 @@ func TestConfigureByDSN(t *testing.T) {
 		err = cw.ConfigureByDSN(test.dsn, test.labels, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -787,7 +787,7 @@ func TestOneShotAcquisition(t *testing.T) {
 		err = cw.ConfigureByDSN(test.dsn, map[string]string{"type": "test"}, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -814,7 +814,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			dbgLogger.Infof("acquis done")
 
 			if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 			} else if err != nil && test.expectedStartErr == "" {
 				t.Fatalf("%s unexpected error '%s'", test.name, err)
 			} else if err == nil && test.expectedStartErr != "" {

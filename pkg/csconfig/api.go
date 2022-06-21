@@ -171,7 +171,7 @@ type TLSCfg struct {
 func (c *Config) LoadAPIServer() error {
 	if c.API.Server != nil && !c.DisableAPI {
 		if err := c.LoadCommon(); err != nil {
-			return fmt.Errorf("loading common configuration: %s", err.Error())
+			return fmt.Errorf("loading common configuration: %s", err)
 		}
 		c.API.Server.LogDir = c.Common.LogDir
 		c.API.Server.LogMedia = c.Common.LogMedia

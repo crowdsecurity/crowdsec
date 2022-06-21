@@ -515,7 +515,7 @@ func (t *HubTestItem) Run() error {
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
-		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err.Error())
+		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
 	if logFileStat.Size() == 0 {
 		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
@@ -569,7 +569,7 @@ func (t *HubTestItem) Run() error {
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ParserAssert.AutoGenFromFile(t.ParserResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
 			t.ParserAssert.AutoGenAssertData = assertData
 			t.ParserAssert.AutoGenAssert = true
@@ -605,7 +605,7 @@ func (t *HubTestItem) Run() error {
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ScenarioAssert.AutoGenFromFile(t.ScenarioResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
 			t.ScenarioAssert.AutoGenAssertData = assertData
 			t.ScenarioAssert.AutoGenAssert = true

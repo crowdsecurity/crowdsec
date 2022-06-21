@@ -29,10 +29,10 @@ func TestPri(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err.Error())
+						t.Errorf("expected error %s, got %s", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: %s", err.Error())
+					t.Errorf("unexpected error: %s", err)
 				}
 			} else {
 				if test.expectedErr != "" {
@@ -75,10 +75,10 @@ func TestTimestamp(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err.Error())
+						t.Errorf("expected error %s, got %s", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: %s", err.Error())
+					t.Errorf("unexpected error: %s", err)
 				}
 			} else {
 				if test.expectedErr != "" {
@@ -130,10 +130,10 @@ func TestHostname(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err.Error())
+						t.Errorf("expected error %s, got %s", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: %s", err.Error())
+					t.Errorf("unexpected error: %s", err)
 				}
 			} else {
 				if test.expectedErr != "" {
@@ -172,10 +172,10 @@ func TestTag(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err.Error())
+						t.Errorf("expected error %s, got %s", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: %s", err.Error())
+					t.Errorf("unexpected error: %s", err)
 				}
 			} else {
 				if test.expectedErr != "" {
@@ -215,10 +215,10 @@ func TestMessage(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error %s, got %s", test.expectedErr, err.Error())
+						t.Errorf("expected error %s, got %s", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: %s", err.Error())
+					t.Errorf("unexpected error: %s", err)
 				}
 			} else {
 				if test.expectedErr != "" {
@@ -336,10 +336,10 @@ func TestParse(t *testing.T) {
 			if err != nil {
 				if test.expectedErr != "" {
 					if err.Error() != test.expectedErr {
-						t.Errorf("expected error '%s', got '%s'", test.expectedErr, err.Error())
+						t.Errorf("expected error '%s', got '%s'", test.expectedErr, err)
 					}
 				} else {
-					t.Errorf("unexpected error: '%s'", err.Error())
+					t.Errorf("unexpected error: '%s'", err)
 				}
 			} else {
 				if test.expectedErr != "" {

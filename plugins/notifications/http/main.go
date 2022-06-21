@@ -73,7 +73,7 @@ func (s *HTTPPlugin) Notify(ctx context.Context, notification *protobufs.Notific
 
 	respData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body got error %s", string(err.Error()))
+		return nil, fmt.Errorf("failed to read response body got error %s", err)
 	}
 
 	logger.Debug(fmt.Sprintf("got response %s", string(respData)))
