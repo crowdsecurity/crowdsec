@@ -68,7 +68,7 @@ var globalActiveDecisions = prometheus.NewGaugeVec(
 		Name: "cs_active_decisions",
 		Help: "Number of active decisions.",
 	},
-	[]string{"scenario", "origin", "action"},
+	[]string{"reason", "origin", "action"},
 )
 
 var globalAlerts = prometheus.NewGaugeVec(
@@ -76,7 +76,7 @@ var globalAlerts = prometheus.NewGaugeVec(
 		Name: "cs_alerts",
 		Help: "Number of alerts (excluding CAPI).",
 	},
-	[]string{"scenario"},
+	[]string{"reason"},
 )
 
 var globalParsingHistogram = prometheus.NewHistogramVec(
@@ -105,7 +105,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		}
 
 		decisionsFilters := make(map[string][]string, 0)
-		decisions, err := dbClient.QueryAllDecisionsWithFilters(decisionsFilters)
+		decisions, err := dbClient.QueryDecisionCountByScenario(decisionsFilters)
 		if err != nil {
 			log.Errorf("Error querying decisions for metrics: %v", err)
 			next.ServeHTTP(w, r)
@@ -113,16 +113,16 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 		}
 		globalActiveDecisions.Reset()
 		for _, d := range decisions {
-			globalActiveDecisions.With(prometheus.Labels{"scenario": d.Scenario, "origin": d.Origin, "action": d.Type}).Inc()
+			globalActiveDecisions.With(prometheus.Labels{"reason": d.Scenario, "origin": d.Origin, "action": d.Type}).Set(float64(d.Count))
 		}
+
+		globalAlerts.Reset()
 
 		alertsFilter := map[string][]string{
 			"include_capi": {"false"},
 		}
 
-		globalAlerts.Reset()
-
-		alerts, err := dbClient.QueryAlertWithFilter(alertsFilter)
+		alerts, err := dbClient.AlertsCountPerScenario(alertsFilter)
 
 		if err != nil {
 			log.Errorf("Error querying alerts for metrics: %v", err)
@@ -130,8 +130,8 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 			return
 		}
 
-		for _, a := range alerts {
-			globalAlerts.With(prometheus.Labels{"scenario": a.Scenario}).Inc()
+		for k, v := range alerts {
+			globalAlerts.With(prometheus.Labels{"reason": k}).Set(float64(v))
 		}
 
 		next.ServeHTTP(w, r)

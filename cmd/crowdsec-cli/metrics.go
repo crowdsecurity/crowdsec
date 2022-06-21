@@ -158,7 +158,7 @@ func ShowPrometheus(url string) {
 			route := metric.Labels["route"]
 			method := metric.Labels["method"]
 
-			scenario := metric.Labels["scenario"]
+			reason := metric.Labels["reason"]
 			origin := metric.Labels["origin"]
 			action := metric.Labels["action"]
 
@@ -265,18 +265,18 @@ func ShowPrometheus(url string) {
 				}
 				lapi_decisions_stats[bouncer] = x
 			case "cs_active_decisions":
-				if _, ok := decisions_stats[scenario]; !ok {
-					decisions_stats[scenario] = make(map[string]map[string]int)
+				if _, ok := decisions_stats[reason]; !ok {
+					decisions_stats[reason] = make(map[string]map[string]int)
 				}
-				if _, ok := decisions_stats[scenario][origin]; !ok {
-					decisions_stats[scenario][origin] = make(map[string]int)
+				if _, ok := decisions_stats[reason][origin]; !ok {
+					decisions_stats[reason][origin] = make(map[string]int)
 				}
-				decisions_stats[scenario][origin][action] += ival
+				decisions_stats[reason][origin][action] += ival
 			case "cs_alerts":
 				/*if _, ok := alerts_stats[scenario]; !ok {
 					alerts_stats[scenario] = make(map[string]int)
 				}*/
-				alerts_stats[scenario] += ival
+				alerts_stats[reason] += ival
 			default:
 				continue
 			}
@@ -353,12 +353,12 @@ func ShowPrometheus(url string) {
 		}
 
 		decisionsTable := tablewriter.NewWriter(os.Stdout)
-		decisionsTable.SetHeader([]string{"Scenario", "Origin", "Action", "Hits"})
-		for scenario, origins := range decisions_stats {
+		decisionsTable.SetHeader([]string{"Reason", "Origin", "Action", "Count"})
+		for reason, origins := range decisions_stats {
 			for origin, actions := range origins {
 				for action, hits := range actions {
 					row := []string{}
-					row = append(row, scenario)
+					row = append(row, reason)
 					row = append(row, origin)
 					row = append(row, action)
 					row = append(row, fmt.Sprintf("%d", hits))
@@ -368,7 +368,7 @@ func ShowPrometheus(url string) {
 		}
 
 		alertsTable := tablewriter.NewWriter(os.Stdout)
-		alertsTable.SetHeader([]string{"Scenario", "Hits"})
+		alertsTable.SetHeader([]string{"Reason", "Count"})
 		for scenario, hits := range alerts_stats {
 			row := []string{}
 			row = append(row, scenario)
