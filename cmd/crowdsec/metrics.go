@@ -138,7 +138,7 @@ func computeDynamicMetrics(next http.Handler, dbClient *database.Client) http.Ha
 	})
 }
 
-func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.DatabaseCfg) {
+func registerPrometheus(config *csconfig.PrometheusCfg) {
 	if !config.Enabled {
 		return
 	}
@@ -151,19 +151,6 @@ func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.Datab
 		config.ListenPort = 6060
 	}
 
-	var dbClient *database.Client
-	var err error
-
-	if dbConfig != nil {
-		dbClient, err = database.NewClient(dbConfig)
-
-		if err != nil {
-			log.Errorf("unable to create database client: %v", err)
-			return
-		}
-	}
-
-	defer types.CatchPanic("crowdsec/registerPrometheus")
 	/*Registering prometheus*/
 	/*If in aggregated mode, do not register events associated to a source, keeps cardinality low*/
 	if config.Level == "aggregated" {
@@ -183,6 +170,15 @@ func registerPrometheus(config *csconfig.PrometheusCfg, dbConfig *csconfig.Datab
 			globalActiveDecisions, globalAlerts)
 
 	}
+}
+
+func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client) {
+	if !config.Enabled {
+		return
+	}
+
+	defer types.CatchPanic("crowdsec/servePrometheus")
+
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		log.Warningf("prometheus: %s", err)
