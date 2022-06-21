@@ -4,7 +4,7 @@
 set -u
 
 config_disable_agent() {
-    yq 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
+    yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
 }
 
 setup_file() {
@@ -35,7 +35,7 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
-    yq '
+    yq e '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
         .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
