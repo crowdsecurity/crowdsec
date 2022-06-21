@@ -53,7 +53,8 @@ config_generate() {
        "${CONFIG_DIR}/"
 
     # the default acquis file contains files that are not readable by everyone
-    truncate -s0 "${CONFIG_DIR}/acquis.yaml"
+    # We use a noop configuration that forces nevertheless crowdsec to keep watching
+    echo '{"filenames":["/tmp/should-not-exist.log"],"labels":{"type":"syslog"},"force_inotify":true}' > "${CONFIG_DIR}/acquis.yaml"
 
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
