@@ -19,10 +19,11 @@ func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision,
 
 	for _, dbDecision := range decisions {
 		if dedup {
-			if _, ok := seen[dbDecision.Value]; ok {
+			key := dbDecision.Value + dbDecision.Scope + dbDecision.Type
+			if _, ok := seen[key]; ok {
 				continue
 			}
-			seen[dbDecision.Value] = struct{}{}
+			seen[key] = struct{}{}
 		}
 		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
 		decision := models.Decision{
