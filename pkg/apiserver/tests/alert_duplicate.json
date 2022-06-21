@@ -229,5 +229,38 @@
         "scenario": "crowdsecurity/test",
         "start_at": "2020-10-09T10:00:01Z",
         "stop_at": "2020-10-09T10:00:05Z"
+    },
+    {
+        "id": 50,
+        "machine_id": "test",
+        "created_at": "2020-10-09T10:00:10Z",
+        "decisions": [
+            {
+                "duration": "3h",
+                "origin": "test",
+                "scenario": "crowdsecurity/test",
+                "scope": "Ip",
+                "value": "127.0.0.2",
+                "type": "captcha"
+            }
+        ],
+        "source": {
+            "ip": "127.0.0.2",
+            "range": "127.0.0.2/32",
+            "scope": "ip",
+            "value": "127.0.0.2"
+        },
+        "Events": [
+        ],
+        "events_count": 1,
+        "leakspeed": "0.5s",
+        "message": "test",
+        "scenario_hash": "hashtest",
+        "scenario_version": "v1",
+        "simulated": false,
+        "capacity": 1,
+        "scenario": "crowdsecurity/test",
+        "start_at": "2020-10-09T10:00:01Z",
+        "stop_at": "2020-10-09T10:00:05Z"
     }
 ]

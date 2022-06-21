@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -318,6 +319,7 @@ type DecisionCheck struct {
 	Scenario string
 	Value    string
 	Duration string
+	Type     string
 }
 
 type DecisionTest struct {
@@ -350,7 +352,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -361,6 +363,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -368,6 +371,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -388,6 +400,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.1",
 					Duration: "2h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(5),
@@ -395,6 +408,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
 				},
 			},
 		},
@@ -404,7 +418,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf,test",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -416,6 +430,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.1",
 					Duration: "2h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -423,6 +438,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -445,7 +469,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true&scenarios_containing=test&scenarios_not_containing=ssh_bf",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -456,6 +480,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.1",
 					Duration: "59m",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -463,6 +488,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -483,6 +517,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+					Type:     "ban",
 				},
 			},
 		},
@@ -492,7 +527,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -504,6 +539,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -511,6 +547,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -532,6 +577,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+					Type:     "ban",
 				},
 			},
 		},
@@ -553,6 +599,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.1",
 					Duration: "2h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(7),
@@ -560,6 +607,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "1h59",
+					Type:     "ban",
 				},
 			},
 		},
@@ -569,7 +617,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true&origins=another_origin,test",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -581,6 +629,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/longest",
 					Value:    "127.0.0.1",
 					Duration: "4h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -588,6 +637,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -621,7 +679,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -632,6 +690,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/ssh_bf",
 					Value:    "127.0.0.1",
 					Duration: "2h59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -639,6 +698,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -660,7 +728,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        2,
+			LenNew:        3,
 			LenDeleted:    0,
 			AuthType:      APIKEY,
 			DelChecks:     []DecisionCheck{},
@@ -671,6 +739,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.1",
 					Duration: "59",
+					Type:     "ban",
 				},
 				{
 					ID:       int64(4),
@@ -678,6 +747,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -699,7 +777,7 @@ func TestStreamDecisionStart(t *testing.T) {
 			Route:         "/v1/decisions/stream?startup=true",
 			CheckCodeOnly: false,
 			Code:          200,
-			LenNew:        1,
+			LenNew:        2,
 			LenDeleted:    1,
 			AuthType:      APIKEY,
 			DelChecks: []DecisionCheck{
@@ -709,6 +787,7 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.1",
 					Duration: "-", // we check that the time is negative
+					Type:     "ban",
 				},
 			},
 			NewChecks: []DecisionCheck{
@@ -718,6 +797,15 @@ func TestStreamDecisionStart(t *testing.T) {
 					Scenario: "crowdsecurity/test",
 					Value:    "127.0.0.2",
 					Duration: "2h59",
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "captcha",
 				},
 			},
 		},
@@ -760,7 +848,7 @@ func TestStreamDecision(t *testing.T) {
 				Route:         "/v1/decisions/stream",
 				CheckCodeOnly: false,
 				Code:          200,
-				LenNew:        2,
+				LenNew:        3,
 				LenDeleted:    0,
 				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
@@ -771,6 +859,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/longest",
 						Value:    "127.0.0.1",
 						Duration: "4h59",
+						Type:     "ban",
 					},
 					{
 						ID:       int64(4),
@@ -778,6 +867,15 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/test",
 						Value:    "127.0.0.2",
 						Duration: "2h59",
+						Type:     "ban",
+					},
+					{
+						ID:       int64(8),
+						Origin:   "test",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
+						Type:     "captcha",
 					},
 				},
 			},
@@ -828,39 +926,41 @@ func TestStreamDecision(t *testing.T) {
 				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
-			}, /*
-				{
-					TestName:      "delete decisions 1 (127.0.0.1)",
-					Method:        "DELETE",
-					Route:         "/v1/decisions/1",
-					CheckCodeOnly: true,
-					Code:          200,
-					LenNew:        0,
-					LenDeleted:    0,
-					AuthType:      PASSWORD,
-					DelChecks:     []DecisionCheck{},
-					NewChecks:     []DecisionCheck{},
-				},
-				{
-					TestName:      "127.0.0.1 should be in deleted now",
-					Method:        "GET",
-					Route:         "/v1/decisions/stream",
-					CheckCodeOnly: false,
-					Code:          200,
-					LenNew:        0,
-					LenDeleted:    1,
-					AuthType:      APIKEY,
-					DelChecks: []DecisionCheck{
-						{
-							ID:       int64(1),
-							Origin:   "test",
-							Scenario: "crowdsecurity/test",
-							Value:    "127.0.0.1",
-							Duration: "-",
-						},
+			},
+			{
+				TestName:      "delete decisions 1 (127.0.0.1)",
+				Method:        "DELETE",
+				Route:         "/v1/decisions/1",
+				CheckCodeOnly: true,
+				Code:          200,
+				LenNew:        0,
+				LenDeleted:    0,
+				AuthType:      PASSWORD,
+				DelChecks:     []DecisionCheck{},
+				NewChecks:     []DecisionCheck{},
+			},
+			{
+				TestName:      "127.0.0.1 should be in deleted now",
+				Method:        "GET",
+				Route:         "/v1/decisions/stream",
+				CheckCodeOnly: false,
+				Code:          200,
+				LenNew:        0,
+				LenDeleted:    1,
+				AuthType:      APIKEY,
+				DelChecks: []DecisionCheck{
+					{
+						ID:       int64(1),
+						Origin:   "test",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.1",
+						Duration: "-",
+
+						Type: "ban",
 					},
-					NewChecks: []DecisionCheck{},
-				},*/
+				},
+				NewChecks: []DecisionCheck{},
+			},
 		},
 		"test with scenarios containing": {
 			{
@@ -880,6 +980,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.1",
 						Duration: "2h59",
+						Type:     "ban",
 					},
 					{
 						ID:       int64(5),
@@ -887,6 +988,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.2",
 						Duration: "2h59",
+						Type:     "ban",
 					},
 				},
 			},
@@ -942,6 +1044,8 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.1",
 						Duration: "-",
+
+						Type: "ban",
 					},
 				},
 				NewChecks: []DecisionCheck{},
@@ -954,7 +1058,7 @@ func TestStreamDecision(t *testing.T) {
 				Route:         "/v1/decisions/stream?scenarios_not_containing=ssh_bf",
 				CheckCodeOnly: false,
 				Code:          200,
-				LenNew:        2,
+				LenNew:        3,
 				LenDeleted:    0,
 				AuthType:      APIKEY,
 				DelChecks:     []DecisionCheck{},
@@ -965,6 +1069,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/longest",
 						Value:    "127.0.0.1",
 						Duration: "4h59",
+						Type:     "ban",
 					},
 					{
 						ID:       int64(4),
@@ -972,6 +1077,15 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/test",
 						Value:    "127.0.0.2",
 						Duration: "2h59",
+						Type:     "ban",
+					},
+					{
+						ID:       int64(8),
+						Origin:   "test",
+						Scenario: "crowdsecurity/test",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
+						Type:     "captcha",
 					},
 				},
 			},
@@ -999,7 +1113,7 @@ func TestStreamDecision(t *testing.T) {
 				DelChecks:     []DecisionCheck{},
 				NewChecks:     []DecisionCheck{},
 			},
-			/*{
+			{
 				TestName:      "delete decisions 2 (127.0.0.1)",
 				Method:        "DELETE",
 				Route:         "/v1/decisions/2",
@@ -1051,10 +1165,12 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/test",
 						Value:    "127.0.0.1",
 						Duration: "-",
+
+						Type: "ban",
 					},
 				},
 				NewChecks: []DecisionCheck{},
-			},*/
+			},
 		},
 		"test with origins": {
 			{
@@ -1074,6 +1190,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.1",
 						Duration: "2h59",
+						Type:     "ban",
 					},
 					{
 						ID:       int64(7),
@@ -1081,6 +1198,7 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/test",
 						Value:    "127.0.0.2",
 						Duration: "1h59",
+						Type:     "ban",
 					},
 				},
 			},
@@ -1136,6 +1254,8 @@ func TestStreamDecision(t *testing.T) {
 						Scenario: "crowdsecurity/ssh_bf",
 						Value:    "127.0.0.1",
 						Duration: "-",
+
+						Type: "ban",
 					},
 				},
 				NewChecks: []DecisionCheck{},
@@ -1162,7 +1282,7 @@ func TestStreamDecision(t *testing.T) {
 		}
 
 		// clean the db after each test
-		//os.Remove(lapi.DBConfig.DbPath)
+		os.Remove(lapi.DBConfig.DbPath)
 	}
 }
 
@@ -1182,6 +1302,7 @@ func runTest(lapi LAPI, test DecisionTest, t *testing.T) {
 		assert.Equal(t, check.Origin, *decisions["new"][i].Origin, fmt.Sprintf("'%s' (idx: %d): field: Origin", test.TestName, i))
 		assert.Equal(t, check.Scenario, *decisions["new"][i].Scenario, fmt.Sprintf("'%s' (idx: %d): field: Scenario", test.TestName, i))
 		assert.Equal(t, check.Value, *decisions["new"][i].Value, fmt.Sprintf("'%s' (idx: %d): field: Value", test.TestName, i))
+		assert.Equal(t, check.Type, *decisions["new"][i].Type, fmt.Sprintf("'%s' (idx: %d): field: Type", test.TestName, i))
 		assert.Contains(t, *decisions["new"][i].Duration, check.Duration, fmt.Sprintf("'%s' (idx: %d): field: Duration", test.TestName, i))
 	}
 
@@ -1190,6 +1311,7 @@ func runTest(lapi LAPI, test DecisionTest, t *testing.T) {
 		assert.Equal(t, check.Origin, *decisions["deleted"][i].Origin, fmt.Sprintf("'%s' (idx: %d): field: Origin", test.TestName, i))
 		assert.Equal(t, check.Scenario, *decisions["deleted"][i].Scenario, fmt.Sprintf("'%s' (idx: %d): field: Scenario", test.TestName, i))
 		assert.Equal(t, check.Value, *decisions["deleted"][i].Value, fmt.Sprintf("'%s' (idx: %d): field: Value", test.TestName, i))
+		assert.Equal(t, check.Type, *decisions["deleted"][i].Type, fmt.Sprintf("'%s' (idx: %d): field: Type", test.TestName, i))
 		assert.Contains(t, *decisions["deleted"][i].Duration, check.Duration, fmt.Sprintf("'%s' (idx: %d): field: Duration", test.TestName, i))
 	}
 }
