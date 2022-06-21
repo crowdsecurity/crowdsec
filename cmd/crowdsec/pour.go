@@ -48,7 +48,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 				return fmt.Errorf("process of event failed : %v", err)
 			}
 			elapsed := time.Since(startTime)
-			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(float64(elapsed.Seconds()))
+			globalPourHistogram.With(prometheus.Labels{"type": parsed.Line.Module, "source": parsed.Line.Src}).Observe(elapsed.Seconds())
 			if poured {
 				globalBucketPourOk.Inc()
 			} else {

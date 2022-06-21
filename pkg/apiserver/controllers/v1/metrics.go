@@ -115,6 +115,6 @@ func PrometheusMiddleware() gin.HandlerFunc {
 			"method": c.Request.Method}).Inc()
 		c.Next()
 		elapsed := time.Since(startTime)
-		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(float64(elapsed.Seconds()))
+		LapiResponseTime.With(prometheus.Labels{"method": c.Request.Method, "endpoint": c.Request.URL.Path}).Observe(elapsed.Seconds())
 	}
 }

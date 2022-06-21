@@ -35,7 +35,7 @@ LOOP:
 				log.Errorf("failed parsing : %v\n", err)
 			}
 			elapsed := time.Since(startParsing)
-			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(float64(elapsed.Seconds()))
+			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
 			if !parsed.Process {
 				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 				log.Debugf("Discarding line %+v", parsed)
