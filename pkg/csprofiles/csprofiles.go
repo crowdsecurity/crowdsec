@@ -40,6 +40,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 		xlog.SetLevel(log.InfoLevel)
 		runtime.Logger = xlog.WithFields(log.Fields{
 			"type": "profile",
+			"name": profile.Name,
 		})
 
 		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
@@ -58,7 +59,7 @@ func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
 					//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
 				}
 				runtime.DebugFilters[fIdx] = debugFilter
-				runtime.Logger.Logger.SetLevel(log.TraceLevel)
+				runtime.Logger.Logger.SetLevel(log.DebugLevel)
 			}
 		}
 
