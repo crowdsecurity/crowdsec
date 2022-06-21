@@ -182,9 +182,9 @@ func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
-	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
-	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
-	flag.BoolVar(&f.DebugLevel, "warning", false, "print warning-level on stdout")
+	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
+	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
+	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
