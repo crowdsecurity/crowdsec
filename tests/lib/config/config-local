@@ -46,12 +46,14 @@ remove_init_data() {
 config_generate() {
     mkdir -p "${CONFIG_DIR}"
 
-    cp ../config/acquis.yaml \
-       ../config/profiles.yaml \
+    cp ../config/profiles.yaml \
        ../config/simulation.yaml \
        ../config/local_api_credentials.yaml \
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
+
+    # the default acquis file contains files that are not readable by everyone
+    truncate -s0 "${CONFIG_DIR}/acquis.yaml"
 
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
