@@ -67,7 +67,7 @@ Run `make clean bats-all` to perform a test build + run.
 To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
 
-## Troubleshooting tests
+## Debugging tests
 
 See `./tests/run-tests --help` to run/debug specific tests.
 
@@ -386,9 +386,28 @@ $ sudo docker run --cap-add=sys_nice --detach --name=mariadb -p 3306:3306  --env
 
 A mysql-client package is required as well.
 
+## troubleshooting
+
+
+ - My tests are hanging forever, why?
+See if you have a jq/yq or similar process waiting for standard input. Hint:
+you can pass a file from the result of the previous `run` command with
+`<(output)`. This substitutes the expression with a file name, but if you
+really want it in standard input, you have to use `< <(output)`. Bash is
+awesome but the syntax is often weird.
+
+ - I can't do X with jq.
+If you prefer you can use yq. It can parse and generate json, and it has a
+different syntax.
+
+ - I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
+Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
+followed by spaces. You are probably missing some tabs.
+
 ## gotchas
 
  - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
    tests in the GitHub workflows, so we had to disable them by default. We do
-   run these in a separate environment before doing releases.
+   run these in a separate environment before doing releases. They should always
+   pass if you run them in a development machine.
 
