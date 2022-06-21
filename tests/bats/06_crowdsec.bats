@@ -31,7 +31,7 @@ declare stderr
     run -1 --separate-stderr "${BIN_DIR}/crowdsec"
     refute_output
     run -0 echo "${stderr}"
-    assert_output --partial "Failed to get database client: unknown database type 'meh'"
+    assert_output --partial "failed to get database client: unknown database type 'meh'"
 }
 
 @test "${FILE} CS_LAPI_SECRET not strong enough" {
