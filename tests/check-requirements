@@ -38,6 +38,12 @@ check_nc() {
     fi
 }
 
+check_base64() {
+    if ! command -v base64 >/dev/null; then
+        die "missing required program 'base64'"
+    fi
+}
+
 check_yq() {
     # shellcheck disable=SC2016
     howto_install='You can install it with your favorite package manager (including snap) or with "go install github.com/mikefarah/yq/v4@latest" and add ~/go/bin to $PATH.'
@@ -96,6 +102,7 @@ check_cfssl
 check_cfssljson
 check_jq
 check_nc
+check_base64
 check_python3
 check_yq
 if [[ -n "${TEST_COVERAGE}" ]]; then
