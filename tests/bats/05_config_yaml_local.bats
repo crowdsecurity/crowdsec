@@ -50,25 +50,25 @@ teardown() {
 }
 
 @test "${FILE} config.yaml.local - crowdsec (listen_url)" {
-    run -0 ./instance-crowdsec start
+    ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8080
-    run -0 ./instance-crowdsec stop
+    ./instance-crowdsec stop
 
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
-    run -0 ./instance-crowdsec start
+    ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
     run -1 ./lib/util/wait-for-port -q 8080
-    run -0 ./instance-crowdsec stop
+    ./instance-crowdsec stop
 
     rm -f "${CONFIG_YAML}.local"
-    run -0 ./instance-crowdsec start
+    ./instance-crowdsec start
     run -1 ./lib/util/wait-for-port -q 8083
     run -0 ./lib/util/wait-for-port -q 8080
 }
 
 @test "${FILE} local_api_credentials.yaml.local" {
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
-    run -0 ./instance-crowdsec start
+    ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
 
     run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
