@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 
@@ -26,11 +28,14 @@ LOOP:
 			}
 			globalParserHits.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 
+			startParsing := time.Now()
 			/* parse the log using magic */
 			parsed, err := parser.Parse(parserCTX, event, nodes)
 			if err != nil {
 				log.Errorf("failed parsing : %v\n", err)
 			}
+			elapsed := time.Since(startParsing)
+			globalParsingHistogram.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Observe(elapsed.Seconds())
 			if !parsed.Process {
 				globalParserHitsKo.With(prometheus.Labels{"source": event.Line.Src, "type": event.Line.Module}).Inc()
 				log.Debugf("Discarding line %+v", parsed)

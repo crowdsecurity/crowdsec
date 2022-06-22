@@ -15,6 +15,13 @@ import (
 	"github.com/pkg/errors"
 )
 
+type DecisionsByScenario struct {
+	Scenario string
+	Count    int
+	Origin   string
+	Type     string
+}
+
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, []*sql.Predicate, error) {
 
 	var err error
@@ -164,6 +171,29 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	}
 
 	return data, nil
+}
+
+func (c *Client) QueryDecisionCountByScenario(filters map[string][]string) ([]*DecisionsByScenario, error) {
+	query := c.Ent.Decision.Query().Where(
+		decision.UntilGT(time.Now().UTC()),
+	)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
+
+	if err != nil {
+		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
+		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
+	}
+
+	var r []*DecisionsByScenario
+
+	err = query.GroupBy(decision.FieldScenario, decision.FieldOrigin, decision.FieldType).Aggregate(ent.Count()).Scan(c.CTX, &r)
+
+	if err != nil {
+		c.Log.Warningf("QueryDecisionCountByScenario : %s", err)
+		return nil, errors.Wrap(QueryFail, "count all decisions with filters")
+	}
+
+	return r, nil
 }
 
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {

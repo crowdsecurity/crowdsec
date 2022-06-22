@@ -6,6 +6,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -88,7 +89,18 @@ func WindowsRun() error {
 
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
+		var dbClient *database.Client
+		var err error
+
+		if cConfig.DbConfig != nil {
+			dbClient, err = database.NewClient(cConfig.DbConfig)
+
+			if err != nil {
+				log.Fatalf("unable to create database client: %s", err)
+			}
+		}
+		registerPrometheus(cConfig.Prometheus)
+		go servePrometheus(cConfig.Prometheus, dbClient)
 	}
 	return Serve(cConfig)
 }
