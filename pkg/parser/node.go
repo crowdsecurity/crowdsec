@@ -193,7 +193,7 @@ func (n *Node) process(p *types.Event, ctx UnixParserCtx, expressionEnv map[stri
 		output, err := expr.Run(e.Filter, cachedExprEnv)
 		if err != nil {
 			clog.Warningf("failed to run whitelist expr : %v", err)
-			clog.Debugf("Event leaving node : ko")
+			clog.Debug("Event leaving node : ko")
 			return false, nil
 		}
 		switch out := output.(type) {

@@ -31,7 +31,7 @@ func chooseHubBranch() (string, error) {
 	}
 
 	if csVersion == "" {
-		log.Warningf("Crowdsec version is not set, using master branch for the hub")
+		log.Warning("Crowdsec version is not set, using master branch for the hub")
 		return "master", nil
 	}
 

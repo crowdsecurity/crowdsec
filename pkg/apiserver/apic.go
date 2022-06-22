@@ -475,7 +475,7 @@ func (a *apic) Pull() error {
 			break
 		}
 		if !toldOnce {
-			log.Warningf("scenario list is empty, will not pull yet")
+			log.Warning("scenario list is empty, will not pull yet")
 			toldOnce = true
 		}
 		time.Sleep(1 * time.Second)
