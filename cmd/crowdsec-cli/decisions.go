@@ -269,12 +269,12 @@ cscli decisions list -t ban
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list decisions : %v", err.Error())
+				log.Fatalf("Unable to list decisions : %v", err)
 			}
 
 			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list decisions : %v", err.Error())
+				log.Fatalf("unable to list decisions : %v", err)
 			}
 		},
 	}
@@ -284,7 +284,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli)")
+	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli,cscli-import,crowdsec)")
 	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
@@ -419,7 +419,6 @@ cscli decisions add --scope username --value foobar
 		Aliases:           []string{"remove"},
 		Example: `cscli decisions delete -r 1.2.3.0/24
 cscli decisions delete -i 1.2.3.4
-cscli decisions delete -s crowdsecurity/ssh-bf
 cscli decisions delete --id 42
 cscli decisions delete --type captcha
 `,
@@ -468,12 +467,12 @@ cscli decisions delete --type captcha
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete decisions : %v", err.Error())
+					log.Fatalf("Unable to delete decisions : %v", err)
 				}
 			} else {
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
-					log.Fatalf("Unable to delete decision : %v", err.Error())
+					log.Fatalf("Unable to delete decision : %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)

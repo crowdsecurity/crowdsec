@@ -153,7 +153,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 	response = make(chan types.Event, 1)
 	for _, f := range files {
 		log.Debugf("Loading '%s'", f)
-		if !strings.HasSuffix(f, ".yaml") {
+		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
 			log.Debugf("Skipping %s : not a yaml file", f)
 			continue
 		}
@@ -266,7 +266,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 	}
 
 	if bucketFactory.Filter == "" {
-		bucketFactory.logger.Warningf("Bucket without filter, abort.")
+		bucketFactory.logger.Warning("Bucket without filter, abort.")
 		return fmt.Errorf("bucket without filter directive")
 	}
 	bucketFactory.RunTimeFilter, err = expr.Compile(bucketFactory.Filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"evt": &types.Event{}})))
@@ -339,7 +339,7 @@ func LoadBucket(bucketFactory *BucketFactory, tomb *tomb.Tomb) error {
 			}
 			err = exprhelpers.FileInit(bucketFactory.DataDir, data.DestPath, data.Type)
 			if err != nil {
-				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err.Error())
+				bucketFactory.logger.Errorf("unable to init data for file '%s': %s", data.DestPath, err)
 			}
 		}
 	}

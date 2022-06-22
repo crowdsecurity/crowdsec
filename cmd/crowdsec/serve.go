@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -60,7 +62,7 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
 		return err
 	}
 
@@ -163,12 +165,12 @@ func shutdownCrowdsec() error {
 func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
-			return errors.Wrap(err, "Failed to shut down crowdsec")
+			return errors.Wrap(err, "failed to shut down crowdsec")
 		}
 	}
 	if !cConfig.DisableAPI {
 		if err := shutdownAPI(); err != nil {
-			return errors.Wrap(err, "Failed to shut down api routines")
+			return errors.Wrap(err, "failed to shut down api routines")
 		}
 	}
 	return nil
@@ -191,7 +193,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 			switch s {
 			// kill -SIGHUP XXXX
 			case syscall.SIGHUP:
-				log.Warningf("SIGHUP received, reloading")
+				log.Warning("SIGHUP received, reloading")
 				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- errors.Wrap(err, "failed shutdown")
 					break Loop
@@ -202,7 +204,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 				}
 			// ctrl+C, kill -SIGINT XXXX, kill -SIGTERM XXXX
 			case os.Interrupt, syscall.SIGTERM:
-				log.Warningf("SIGTERM received, shutting down")
+				log.Warning("SIGTERM received, shutting down")
 				if err := shutdown(s, cConfig); err != nil {
 					exitChan <- errors.Wrap(err, "failed shutdown")
 					break Loop
@@ -214,7 +216,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 
 	err := <-exitChan
 	if err == nil {
-		log.Warningf("Crowdsec service shutting down")
+		log.Warning("Crowdsec service shutting down")
 	}
 	return err
 }
@@ -227,6 +229,24 @@ func Serve(cConfig *csconfig.Config) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+
+	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
+		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
+		if err != nil {
+			return errors.Wrap(err, "failed to get database client")
+		}
+		err = exprhelpers.Init(dbClient)
+		if err != nil {
+			return errors.Wrap(err, "failed to init expr helpers")
+		}
+	} else {
+		err := exprhelpers.Init(nil)
+		if err != nil {
+			return errors.Wrap(err, "failed to init expr helpers")
+		}
+		log.Warningln("Exprhelpers loaded without database client.")
+	}
+
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {

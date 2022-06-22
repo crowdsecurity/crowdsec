@@ -125,8 +125,6 @@ LOOP:
 			if len(cache) > 0 {
 				cacheMutex.Lock()
 				cachecopy := cache
-				newcache := make([]types.RuntimeAlert, 0)
-				cache = newcache
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing leftovers to api : %s", err)

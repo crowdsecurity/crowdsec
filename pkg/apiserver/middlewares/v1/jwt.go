@@ -53,7 +53,6 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 	var scenariosInput []string
 	var clientMachine *ent.Machine
 	var machineID string
-	var password strfmt.Password
 
 	if c.Request.TLS != nil && len(c.Request.TLS.PeerCertificates) > 0 {
 		if j.TlsAuth == nil {
@@ -124,7 +123,7 @@ func (j *JWT) Authenticator(c *gin.Context) (interface{}, error) {
 			return "", errors.New("input format error")
 		}
 		machineID = *loginInput.MachineID
-		password = *loginInput.Password
+		password := *loginInput.Password
 		scenariosInput = loginInput.Scenarios
 
 		clientMachine, err = j.DbClient.Ent.Machine.Query().

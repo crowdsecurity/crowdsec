@@ -6,6 +6,7 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -76,7 +77,7 @@ func WindowsRun() error {
 	}
 	// Configure logging
 	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
+		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs, cConfig.Common.ForceColorLogs); err != nil {
 		return err
 	}
 
@@ -88,7 +89,18 @@ func WindowsRun() error {
 
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
+		var dbClient *database.Client
+		var err error
+
+		if cConfig.DbConfig != nil {
+			dbClient, err = database.NewClient(cConfig.DbConfig)
+
+			if err != nil {
+				log.Fatalf("unable to create database client: %s", err)
+			}
+		}
+		registerPrometheus(cConfig.Prometheus)
+		go servePrometheus(cConfig.Prometheus, dbClient)
 	}
 	return Serve(cConfig)
 }

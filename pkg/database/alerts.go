@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -182,15 +183,15 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
 			if decisionItem.Duration == nil {
-				log.Warningf("nil duration in community decision")
+				log.Warning("nil duration in community decision")
 				continue
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
-				log.Warningf("nil scope in community decision")
+				log.Warning("nil scope in community decision")
 				continue
 			}
 			/*if the scope is IP or Range, convert the value to integers */
@@ -218,7 +219,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 
 			/*for bulk delete of duplicate decisions*/
 			if decisionItem.Value == nil {
-				log.Warningf("nil value in community decision")
+				log.Warning("nil value in community decision")
 				continue
 			}
 			valueList = append(valueList, *decisionItem.Value)
@@ -424,7 +425,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */
@@ -513,7 +514,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
-						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 					}
 				}
 			}
@@ -539,7 +540,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
-				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 			}
 		}
 	}
@@ -722,6 +723,38 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	return alerts, nil
 }
 
+func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
+
+	var res []struct {
+		Scenario string
+		Count    int
+	}
+
+	ctx := context.Background()
+
+	query := c.Ent.Alert.Query()
+
+	query, err := BuildAlertRequestFromFilter(query, filters)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build alert request")
+	}
+
+	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to count alerts per scenario")
+	}
+
+	counts := make(map[string]int)
+
+	for _, r := range res {
+		counts[r.Scenario] = r.Count
+	}
+
+	return counts, nil
+}
+
 func (c *Client) TotalAlerts() (int, error) {
 	return c.Ent.Alert.Query().Count(c.CTX)
 }
@@ -799,7 +832,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
-		idList = append(idList, int(alert.ID))
+		idList = append(idList, alert.ID)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().

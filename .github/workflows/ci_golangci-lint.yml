@@ -1,4 +1,5 @@
-name: golangci-lint
+name: golangci-lint (linux)
+
 on:
   push:
     tags:
@@ -36,4 +37,3 @@ jobs:
           skip-pkg-cache: false
           # Optional: if set to true then the action don't cache or restore ~/.cache/go-build.
           skip-build-cache: false
-

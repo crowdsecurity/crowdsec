@@ -43,7 +43,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 	pctx.Stages = []string{}
 
 	for _, stageFile := range stageFiles {
-		if !strings.HasSuffix(stageFile.Filename, ".yaml") {
+		if !strings.HasSuffix(stageFile.Filename, ".yaml") && !strings.HasSuffix(stageFile.Filename, ".yml") {
 			log.Warningf("skip non yaml : %s", stageFile.Filename)
 			continue
 		}
@@ -65,7 +65,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 		nodesCount := 0
 		for {
 			node := Node{}
-			node.OnSuccess = "continue" //default behaviour is to continue
+			node.OnSuccess = "continue" //default behavior is to continue
 			err = dec.Decode(&node)
 			if err != nil {
 				if err == io.EOF {
@@ -102,9 +102,9 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			err = node.compile(pctx, ectx)
 			if err != nil {
 				if node.Name != "" {
-					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err.Error())
+					return nil, fmt.Errorf("failed to compile node '%s' in '%s' : %s", node.Name, stageFile.Filename, err)
 				}
-				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err.Error())
+				return nil, fmt.Errorf("failed to compile node in '%s' : %s", stageFile.Filename, err)
 			}
 			/* if the stage is empty, the node is empty, it's a trailing entry in users yaml file */
 			if node.Stage == "" {

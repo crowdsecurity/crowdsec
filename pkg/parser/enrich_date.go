@@ -47,7 +47,7 @@ func GenDateParse(date string) (string, time.Time) {
 	now := time.Now().UTC()
 	retstr, err := now.MarshalText()
 	if err != nil {
-		log.Warningf("Failed marshaling current time")
+		log.Warning("Failed marshaling current time")
 		return "", time.Time{}
 	}
 	return string(retstr), now
@@ -58,7 +58,7 @@ func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, err
 	var ret map[string]string = make(map[string]string)
 	tstr, tbin := GenDateParse(in)
 	if !tbin.IsZero() {
-		ret["MarshaledTime"] = string(tstr)
+		ret["MarshaledTime"] = tstr
 		return ret, nil
 	}
 

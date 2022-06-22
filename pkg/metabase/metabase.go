@@ -222,7 +222,7 @@ func (m *Metabase) Login(username string, password string) error {
 	if !ok {
 		return fmt.Errorf("login: bad response type: %+v", successmsg)
 	}
-	if _, ok := resp["id"]; !ok {
+	if _, ok = resp["id"]; !ok {
 		return fmt.Errorf("login: can't update session id, no id in response: %v", successmsg)
 	}
 	id, ok := resp["id"].(string)
@@ -245,10 +245,10 @@ func (m *Metabase) Scan() error {
 	return nil
 }
 
-func (m *Metabase) ResetPassword(current string, new string) error {
+func (m *Metabase) ResetPassword(current string, newPassword string) error {
 	body := map[string]string{
 		"id":           "1",
-		"password":     new,
+		"password":     newPassword,
 		"old_password": current,
 	}
 	_, errormsg, err := m.Client.Do("PUT", routes[resetPasswordEndpoint], body)

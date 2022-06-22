@@ -98,7 +98,7 @@ func NewCapiCmd() *cobra.Command {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
 
-			log.Warningf(ReloadMessage())
+			log.Warning(ReloadMessage())
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")
@@ -142,7 +142,7 @@ func NewCapiCmd() *cobra.Command {
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 			if len(scenarios) == 0 {
 				log.Fatalf("no scenarios installed, abort")

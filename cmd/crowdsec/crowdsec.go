@@ -10,7 +10,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
-	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -20,10 +19,7 @@ import (
 )
 
 func initCrowdsec(cConfig *csconfig.Config) (*parser.Parsers, error) {
-	err := exprhelpers.Init()
-	if err != nil {
-		return &parser.Parsers{}, fmt.Errorf("Failed to init expr helpers : %s", err)
-	}
+	var err error
 
 	// Populate cwhub package tools
 	if err := cwhub.GetHubIdx(cConfig.Hub); err != nil {
@@ -123,7 +119,7 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 		}
 
 	}
-	log.Warningf("Starting processing data")
+	log.Info("Starting processing data")
 
 	if err := acquisition.StartAcquisition(dataSources, inputLineChan, &acquisTomb); err != nil {
 		log.Fatalf("starting acquisition error : %s", err)
@@ -228,7 +224,7 @@ func waitOnTomb() {
 		case <-acquisTomb.Dead():
 			/*if it's acquisition dying it means that we were in "cat" mode.
 			while shutting down, we need to give time for all buckets to process in flight data*/
-			log.Warningf("Acquisition is finished, shutting down")
+			log.Warning("Acquisition is finished, shutting down")
 			/*
 				While it might make sense to want to shut-down parser/buckets/etc. as soon as acquisition is finished,
 				we might have some pending buckets: buckets that overflowed, but whose LeakRoutine are still alive because they

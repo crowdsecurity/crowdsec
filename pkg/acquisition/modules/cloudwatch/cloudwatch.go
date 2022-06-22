@@ -337,7 +337,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 	for {
 		select {
-		case newStream := <-in:
+		case newStream := <-in: //nolint:govet // copylocks won't matter if the tomb is not initialized
 			shouldCreate := true
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 

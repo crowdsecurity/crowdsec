@@ -124,6 +124,8 @@ func ShowPrometheus(url string) {
 	lapi_stats := map[string]map[string]int{}
 	lapi_machine_stats := map[string]map[string]map[string]int{}
 	lapi_bouncer_stats := map[string]map[string]map[string]int{}
+	decisions_stats := map[string]map[string]map[string]int{}
+	alerts_stats := map[string]int{}
 
 	for idx, fam := range result {
 		if !strings.HasPrefix(fam.Name, "cs_") {
@@ -131,7 +133,11 @@ func ShowPrometheus(url string) {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -151,6 +157,10 @@ func ShowPrometheus(url string) {
 
 			route := metric.Labels["route"]
 			method := metric.Labels["method"]
+
+			reason := metric.Labels["reason"]
+			origin := metric.Labels["origin"]
+			action := metric.Labels["action"]
 
 			fval, err := strconv.ParseFloat(value, 32)
 			if err != nil {
@@ -254,6 +264,19 @@ func ShowPrometheus(url string) {
 					x.NonEmpty += ival
 				}
 				lapi_decisions_stats[bouncer] = x
+			case "cs_active_decisions":
+				if _, ok := decisions_stats[reason]; !ok {
+					decisions_stats[reason] = make(map[string]map[string]int)
+				}
+				if _, ok := decisions_stats[reason][origin]; !ok {
+					decisions_stats[reason][origin] = make(map[string]int)
+				}
+				decisions_stats[reason][origin][action] += ival
+			case "cs_alerts":
+				/*if _, ok := alerts_stats[scenario]; !ok {
+					alerts_stats[scenario] = make(map[string]int)
+				}*/
+				alerts_stats[reason] += ival
 			default:
 				continue
 			}
@@ -329,6 +352,30 @@ func ShowPrometheus(url string) {
 			}
 		}
 
+		decisionsTable := tablewriter.NewWriter(os.Stdout)
+		decisionsTable.SetHeader([]string{"Reason", "Origin", "Action", "Count"})
+		for reason, origins := range decisions_stats {
+			for origin, actions := range origins {
+				for action, hits := range actions {
+					row := []string{}
+					row = append(row, reason)
+					row = append(row, origin)
+					row = append(row, action)
+					row = append(row, fmt.Sprintf("%d", hits))
+					decisionsTable.Append(row)
+				}
+			}
+		}
+
+		alertsTable := tablewriter.NewWriter(os.Stdout)
+		alertsTable.SetHeader([]string{"Reason", "Count"})
+		for scenario, hits := range alerts_stats {
+			row := []string{}
+			row = append(row, scenario)
+			row = append(row, fmt.Sprintf("%d", hits))
+			alertsTable.Append(row)
+		}
+
 		if bucketsTable.NumLines() > 0 {
 			log.Printf("Buckets Metrics:")
 			bucketsTable.SetAlignment(tablewriter.ALIGN_LEFT)
@@ -366,8 +413,20 @@ func ShowPrometheus(url string) {
 			lapiDecisionsTable.Render()
 		}
 
+		if decisionsTable.NumLines() > 0 {
+			log.Printf("Local Api Decisions:")
+			decisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
+			decisionsTable.Render()
+		}
+
+		if alertsTable.NumLines() > 0 {
+			log.Printf("Local Api Alerts:")
+			alertsTable.SetAlignment(tablewriter.ALIGN_LEFT)
+			alertsTable.Render()
+		}
+
 	} else if csConfig.Cscli.Output == "json" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -375,7 +434,7 @@ func ShowPrometheus(url string) {
 			fmt.Printf("%s\n", string(x))
 		}
 	} else if csConfig.Cscli.Output == "raw" {
-		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats} {
+		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
 				log.Fatalf("failed to unmarshal metrics : %v", err)
@@ -400,7 +459,7 @@ func NewMetricsCmd() *cobra.Command {
 				log.Fatalf(err.Error())
 			}
 			if !csConfig.Prometheus.Enabled {
-				log.Warningf("Prometheus is not enabled, can't show metrics")
+				log.Warning("Prometheus is not enabled, can't show metrics")
 				os.Exit(1)
 			}
 

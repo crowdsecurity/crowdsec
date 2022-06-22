@@ -55,7 +55,7 @@ if [ "$DISABLE_LOCAL_API" == "" ] && [ "$AGENT_USERNAME" != "" ] && [ "$AGENT_PA
 fi
 
 # registration to online API for signal push
-if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
+if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$CONFIG_FILE" == "" ] ; then
     CONFIG_EXIST=$(yq eval '.api.server.online_client | has("credentials_path")' "$CS_CONFIG_FILE")
     if [ "$CONFIG_EXIST" != "true" ]; then
         yq eval '.api.server.online_client = {"credentials_path": "/etc/crowdsec/online_api_credentials.yaml"}' "$CS_CONFIG_FILE" > /etc/crowdsec/config2.yaml
@@ -66,7 +66,7 @@ if [ "$DISABLE_ONLINE_API" == "" ] && [ "$CONFIG_FILE" == "" ] ; then
 fi
 
 ## Enroll instance if enroll key is provided
-if [ "$DISABLE_ONLINE_API" == "" ] && [ "$ENROLL_KEY" != "" ] ; then
+if [ "${DISABLE_ONLINE_API,,}" != "true" ] && [ "$ENROLL_KEY" != "" ] ; then
     enroll_args=""
     if [ "$ENROLL_INSTANCE_NAME"  != "" ] ; then
         enroll_args="--name $ENROLL_INSTANCE_NAME"
@@ -173,22 +173,22 @@ fi
 if [ "$TYPE" != "" ]; then
     ARGS="$ARGS -type $TYPE"
 fi
-if [ "$TEST_MODE" == "true" ] || [ "$TEST_MODE" == "TRUE" ]; then
+if [ "${TEST_MODE,,}" == "true" ]; then
     ARGS="$ARGS -t"
 fi
-if [ "$DISABLE_AGENT" == "true" ] || [ "$DISABLE_AGENT" == "TRUE" ]; then
+if [ "${DISABLE_AGENT,,}" == "true" ]; then
     ARGS="$ARGS -no-cs"
 fi
-if [ "$DISABLE_LOCAL_API" == "true" ] || [ "$DISABLE_LOCAL_API" == "TRUE" ]; then
+if [ "${DISABLE_LOCAL_API,,}" == "true" ]; then
     ARGS="$ARGS -no-api"
 fi
-if [ "$LEVEL_TRACE" == "true" ] || [ "$LEVEL_TRACE" == "TRUE" ]; then
+if [ "${LEVEL_TRACE,,}" == "true" ]; then
     ARGS="$ARGS -trace"
 fi
-if [ "$LEVEL_DEBUG" == "true" ] || [ "$LEVEL_DEBUG" == "TRUE"  ]; then
+if [ "${LEVEL_DEBUG,,}" == "true" ]; then
     ARGS="$ARGS -debug"
 fi
-if [ "$LEVEL_INFO" == "true" ] || [ "$LEVEL_INFO" == "TRUE" ]; then
+if [ "${LEVEL_INFO,,}" == "true" ]; then
     ARGS="$ARGS -info"
 fi
 

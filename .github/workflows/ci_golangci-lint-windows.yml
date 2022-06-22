@@ -1,4 +1,5 @@
-name: golangci-lint-windows
+name: golangci-lint (windows)
+
 on:
   push:
     tags:
@@ -16,7 +17,7 @@ on:
       - 'README.md'
 jobs:
   golangci:
-    name: lint-windows
+    name: lint
     runs-on: windows-2022
     steps:
       - uses: actions/checkout@v3
@@ -28,5 +29,3 @@ jobs:
           # Optional: golangci-lint command line arguments.
           args: --issues-exit-code=0 --timeout 10m
           only-new-issues: true
-
-

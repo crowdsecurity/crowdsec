@@ -413,7 +413,7 @@ func (d *DockerSource) WatchContainer(monitChan chan *ContainerConfig, deleteCha
 						delete(d.runningContainerState, idx)
 					}
 				} else {
-					log.Errorf("container list err: %s", err.Error())
+					log.Errorf("container list err: %s", err)
 				}
 				continue
 			}

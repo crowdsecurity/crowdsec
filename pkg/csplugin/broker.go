@@ -311,7 +311,7 @@ func (pb *PluginBroker) pushNotificationsToPlugin(pluginName string, alerts []*m
 		if err == nil {
 			return err
 		}
-		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err.Error(), i)
+		log.WithField("plugin", pluginName).Errorf("%s error, retry num %d", err, i)
 		time.Sleep(backoffDuration)
 		backoffDuration *= 2
 	}
@@ -334,7 +334,7 @@ func ParsePluginConfigFile(path string) ([]PluginConfig, error) {
 			if err == io.EOF {
 				break
 			}
-			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err.Error())
+			return []PluginConfig{}, fmt.Errorf("while decoding %s got error %s", path, err)
 		}
 		parsedConfigs = append(parsedConfigs, pc)
 	}

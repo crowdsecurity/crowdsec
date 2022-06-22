@@ -11,6 +11,13 @@ func (a *Alert) GetScope() string {
 	return *a.Source.Scope
 }
 
+func (a *Alert) GetValue() string {
+	if a.Source.Value == nil {
+		return ""
+	}
+	return *a.Source.Value
+}
+
 func (a *Alert) GetScenario() string {
 	if a.Scenario == nil {
 		return ""

@@ -4,6 +4,10 @@
 # https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
 bats_require_minimum_version 1.5.0
 
+# this should have effect globally, for all tests
+# https://github.com/bats-core/bats-core/blob/master/docs/source/warnings/BW02.rst
+bats_require_minimum_version 1.5.0
+
 debug() {
     echo 'exec 1<&-; exec 2<&-; exec 1>&3; exec 2>&1'
 }
@@ -24,8 +28,14 @@ cd "${TEST_DIR}"
 # complain if there's a crowdsec running system-wide or leftover from a previous test
 ./assert-crowdsec-not-running
 
-# we can use the filename in test descriptions
-FILE="$(basename "${BATS_TEST_FILENAME}" .bats):"
+# we can prepend the filename to the test descriptions (useful to feed a TAP consumer)
+if [[ "${PREFIX_TEST_NAMES_WITH_FILE:-false}" == "true" ]]; then
+  BATS_TEST_NAME_PREFIX="$(basename "${BATS_TEST_FILENAME}" .bats): "
+  export BATS_TEST_NAME_PREFIX
+fi
+
+# before bats 1.7, we did that by hand
+FILE=
 export FILE
 
 # the variables exported here can be seen in other setup/teardown/test functions
@@ -39,7 +49,7 @@ cscli() {
 export -f cscli
 
 config_yq() {
-    yq e "$@" - <"${CONFIG_YAML}"
+    yq e "$@" "${CONFIG_YAML}"
 }
 export -f config_yq
 
