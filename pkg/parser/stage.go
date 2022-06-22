@@ -65,7 +65,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 		nodesCount := 0
 		for {
 			node := Node{}
-			node.OnSuccess = "continue" //default behaviour is to continue
+			node.OnSuccess = "continue" //default behavior is to continue
 			err = dec.Decode(&node)
 			if err != nil {
 				if err == io.EOF {

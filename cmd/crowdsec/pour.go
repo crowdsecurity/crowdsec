@@ -33,7 +33,7 @@ func runPour(input chan types.Event, holders []leaky.BucketFactory, buckets *lea
 						if err := z.UnmarshalText([]byte(parsed.MarshaledTime)); err != nil {
 							log.Warningf("Failed to unmarshal time from event '%s' : %s", parsed.MarshaledTime, err)
 						} else {
-							log.Warningf("Starting buckets garbage collection ...")
+							log.Warning("Starting buckets garbage collection ...")
 							if err = leaky.GarbageCollectBuckets(*z, buckets); err != nil {
 								return fmt.Errorf("failed to start bucket GC : %s", err)
 							}

@@ -32,7 +32,7 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
-    yq '
+    yq e '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
         .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
@@ -60,15 +60,15 @@ teardown() {
 @test "${FILE} invalid OU for agent" {
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
 
-    yq '
+    yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_bad_ou-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_bad_ou.pem" |
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
-    yq 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
     #let the agent start
     sleep 2
@@ -79,15 +79,15 @@ teardown() {
 @test "${FILE} we have exactly one machine registered with TLS" {
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
 
-    yq '
+    yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent.pem" |
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
-    yq 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
     #let the agent start
     sleep 2
@@ -103,15 +103,15 @@ teardown() {
 @test "${FILE} invalid cert for agent" {
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
 
-    yq '
+    yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_invalid-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_invalid.pem" |
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
-    yq 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
     #let the agent start
     sleep 2
@@ -122,15 +122,15 @@ teardown() {
 @test "${FILE} revoked cert for agent" {
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
 
-    yq '
+    yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_revoked-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_revoked.pem" |
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
-    yq 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
     #let the agent start
     sleep 2

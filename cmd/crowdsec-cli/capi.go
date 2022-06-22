@@ -98,7 +98,7 @@ func NewCapiCmd() *cobra.Command {
 				fmt.Printf("%s\n", string(apiConfigDump))
 			}
 
-			log.Warningf(ReloadMessage())
+			log.Warning(ReloadMessage())
 		},
 	}
 	cmdCapiRegister.Flags().StringVarP(&outputFile, "file", "f", "", "output file destination")

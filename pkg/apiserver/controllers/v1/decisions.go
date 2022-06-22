@@ -11,9 +11,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
+//Format decisions for the bouncers, and deduplicate them by keeping only the longest one
+func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision, error) {
 	var results []*models.Decision
+
+	seen := make(map[string]struct{}, 0)
+
 	for _, dbDecision := range decisions {
+		if dedup {
+			key := dbDecision.Value + dbDecision.Scope + dbDecision.Type
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
 		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
@@ -46,7 +57,7 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		return
 	}
 
-	results, err = FormatDecisions(data)
+	results, err = FormatDecisions(data, false)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -82,14 +93,14 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
 		return
 	}
-	err = c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
-		NbDeleted: "1",
+		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
@@ -132,13 +143,14 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			ret["new"], err = FormatDecisions(data)
+			//data = KeepLongestDecision(data)
+			ret["new"], err = FormatDecisions(data, true)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -152,7 +164,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			ret["deleted"], err = FormatDecisions(data)
+			ret["deleted"], err = FormatDecisions(data, true)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -180,7 +192,8 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ret["new"], err = FormatDecisions(data)
+	//data = KeepLongestDecision(data)
+	ret["new"], err = FormatDecisions(data, true)
 	if err != nil {
 		log.Errorf("unable to format new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -194,7 +207,7 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ret["deleted"], err = FormatDecisions(data)
+	ret["deleted"], err = FormatDecisions(data, true)
 	if err != nil {
 		log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

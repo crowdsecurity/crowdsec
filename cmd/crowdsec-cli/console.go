@@ -108,7 +108,7 @@ After running this command your will need to validate the enrollment in the weba
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
 			if resp.Response.StatusCode == 200 && !overwrite {
-				log.Warningf("Instance already enrolled. You can use '--overwrite' to force enroll")
+				log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
 				return
 			}
 

@@ -334,7 +334,7 @@ reCheck:
 }
 
 func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
-	log.Warningf("Going to process one test set")
+	log.Warning("Going to process one test set")
 	for _, tf := range testSet {
 		//func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
 		testOk, err := testSubSet(tf, pctx, nodes)

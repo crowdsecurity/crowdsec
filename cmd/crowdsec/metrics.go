@@ -143,11 +143,11 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 		return
 	}
 	if config.ListenAddr == "" {
-		log.Warningf("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
+		log.Warning("prometheus is enabled, but the listen address is empty, using '127.0.0.1'")
 		config.ListenAddr = "127.0.0.1"
 	}
 	if config.ListenPort == 0 {
-		log.Warningf("prometheus is enabled, but the listen port is empty, using '6060'")
+		log.Warning("prometheus is enabled, but the listen port is empty, using '6060'")
 		config.ListenPort = 6060
 	}
 
