@@ -269,12 +269,12 @@ cscli decisions list -t ban
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list decisions : %v", err.Error())
+				log.Fatalf("Unable to list decisions : %v", err)
 			}
 
 			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list decisions : %v", err.Error())
+				log.Fatalf("unable to list decisions : %v", err)
 			}
 		},
 	}
@@ -467,12 +467,12 @@ cscli decisions delete --type captcha
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete decisions : %v", err.Error())
+					log.Fatalf("Unable to delete decisions : %v", err)
 				}
 			} else {
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
-					log.Fatalf("Unable to delete decision : %v", err.Error())
+					log.Fatalf("Unable to delete decision : %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)

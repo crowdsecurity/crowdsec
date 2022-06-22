@@ -306,12 +306,12 @@ cscli alerts list --type ban`,
 			}
 			alerts, _, err := Client.Alerts.List(context.Background(), alertListFilter)
 			if err != nil {
-				log.Fatalf("Unable to list alerts : %v", err.Error())
+				log.Fatalf("Unable to list alerts : %v", err)
 			}
 
 			err = AlertsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list alerts : %v", err.Error())
+				log.Fatalf("unable to list alerts : %v", err)
 			}
 		},
 	}
@@ -396,7 +396,7 @@ cscli alerts delete -s crowdsecurity/ssh-bf"`,
 			}
 			alerts, _, err := Client.Alerts.Delete(context.Background(), alertDeleteFilter)
 			if err != nil {
-				log.Fatalf("Unable to delete alerts : %v", err.Error())
+				log.Fatalf("Unable to delete alerts : %v", err)
 			}
 			log.Infof("%s alert(s) deleted", alerts.NbDeleted)
 

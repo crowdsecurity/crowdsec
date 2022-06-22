@@ -143,7 +143,7 @@ Keep in mind the machine needs to be validated by an administrator on LAPI side 
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 
 			Client, err = apiclient.NewDefaultClient(apiurl,

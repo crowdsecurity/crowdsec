@@ -301,7 +301,7 @@ cscli hubtest create my-scenario-test --parsers crowdsecurity/nginx --scenarios 
 				}
 				jsonStr, err := json.Marshal(jsonResult)
 				if err != nil {
-					log.Fatalf("unable to json test result: %s", err.Error())
+					log.Fatalf("unable to json test result: %s", err)
 				}
 				fmt.Println(string(jsonStr))
 			}

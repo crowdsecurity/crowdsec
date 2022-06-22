@@ -142,7 +142,7 @@ func NewCapiCmd() *cobra.Command {
 			}
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 			if len(scenarios) == 0 {
 				log.Fatalf("no scenarios installed, abort")

@@ -106,17 +106,17 @@ func TestVisitor(t *testing.T) {
 	for _, test := range tests {
 		compiledFilter, err := expr.Compile(test.filter, expr.Env(GetExprEnv(test.env)))
 		if err != nil && test.err == nil {
-			log.Fatalf("compile: %s", err.Error())
+			log.Fatalf("compile: %s", err)
 		}
 		debugFilter, err := NewDebugger(test.filter, expr.Env(GetExprEnv(test.env)))
 		if err != nil && test.err == nil {
-			log.Fatalf("debug: %s", err.Error())
+			log.Fatalf("debug: %s", err)
 		}
 
 		if compiledFilter != nil {
 			result, err := expr.Run(compiledFilter, GetExprEnv(test.env))
 			if err != nil && test.err == nil {
-				log.Fatalf("run : %s", err.Error())
+				log.Fatalf("run : %s", err)
 			}
 			if isOk := assert.Equal(t, test.result, result); !isOk {
 				t.Fatalf("test '%s' : NOK", test.filter)

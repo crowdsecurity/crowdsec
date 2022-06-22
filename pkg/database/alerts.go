@@ -514,7 +514,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
-						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 					}
 				}
 			}
@@ -540,7 +540,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
-				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 			}
 		}
 	}

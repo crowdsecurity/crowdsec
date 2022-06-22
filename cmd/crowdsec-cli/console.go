@@ -88,7 +88,7 @@ After running this command your will need to validate the enrollment in the weba
 
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 
 			if len(scenarios) == 0 {

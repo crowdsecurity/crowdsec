@@ -32,7 +32,7 @@ func enableGlobalSimulation() error {
 	csConfig.Cscli.SimulationConfig.Exclusions = []string{}
 
 	if err := dumpSimulationFile(); err != nil {
-		log.Fatalf("unable to dump simulation file: %s", err.Error())
+		log.Fatalf("unable to dump simulation file: %s", err)
 	}
 
 	log.Printf("global simulation: enabled")
@@ -173,11 +173,11 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Printf("simulation mode for '%s' enabled", scenario)
 				}
 				if err := dumpSimulationFile(); err != nil {
-					log.Fatalf("simulation enable: %s", err.Error())
+					log.Fatalf("simulation enable: %s", err)
 				}
 			} else if forceGlobalSimulation {
 				if err := enableGlobalSimulation(); err != nil {
-					log.Fatalf("unable to enable global simulation mode : %s", err.Error())
+					log.Fatalf("unable to enable global simulation mode : %s", err)
 				}
 			} else {
 				printHelp(cmd)
@@ -217,11 +217,11 @@ cscli simulation disable crowdsecurity/ssh-bf`,
 					log.Printf("simulation mode for '%s' disabled", scenario)
 				}
 				if err := dumpSimulationFile(); err != nil {
-					log.Fatalf("simulation disable: %s", err.Error())
+					log.Fatalf("simulation disable: %s", err)
 				}
 			} else if forceGlobalSimulation {
 				if err := disableGlobalSimulation(); err != nil {
-					log.Fatalf("unable to disable global simulation mode : %s", err.Error())
+					log.Fatalf("unable to disable global simulation mode : %s", err)
 				}
 			} else {
 				printHelp(cmd)
