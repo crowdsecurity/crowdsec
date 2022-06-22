@@ -43,7 +43,7 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 	pctx.Stages = []string{}
 
 	for _, stageFile := range stageFiles {
-		if !strings.HasSuffix(stageFile.Filename, ".yaml") {
+		if !strings.HasSuffix(stageFile.Filename, ".yaml") && !strings.HasSuffix(stageFile.Filename, ".yml") {
 			log.Warningf("skip non yaml : %s", stageFile.Filename)
 			continue
 		}

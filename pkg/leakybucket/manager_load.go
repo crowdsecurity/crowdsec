@@ -153,7 +153,7 @@ func LoadBuckets(cscfg *csconfig.CrowdsecServiceCfg, files []string, tomb *tomb.
 	response = make(chan types.Event, 1)
 	for _, f := range files {
 		log.Debugf("Loading '%s'", f)
-		if !strings.HasSuffix(f, ".yaml") {
+		if !strings.HasSuffix(f, ".yaml") && !strings.HasSuffix(f, ".yml") {
 			log.Debugf("Skipping %s : not a yaml file", f)
 			continue
 		}
