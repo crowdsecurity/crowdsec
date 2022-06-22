@@ -21,6 +21,7 @@ func NewExplainCmd() *cobra.Command {
 	var logLine string
 	var logType string
 	var opts cstest.DumpOpts
+	var err error
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -57,7 +58,7 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 			// we create a  temporary log file if a log line/stdin has been provided
 			if logLine != "" || logFile == "-" {
 				tmpFile = filepath.Join(dir, "cscli_test_tmp.log")
-				f, err := os.Create(tmpFile)
+				f, err = os.Create(tmpFile)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -117,8 +118,8 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 			// rm the temporary log file if only a log line/stdin was provided
 			if tmpFile != "" {
 				f.Close()
-				if err := os.Remove(logFile); err != nil {
-					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
+				if err := os.Remove(tmpFile); err != nil {
+					log.Fatalf("unable to remove tmp log file '%s': %+v", tmpFile, err)
 				}
 			}
 			parserDumpFile := filepath.Join(dir, cstest.ParserResultFileName)
