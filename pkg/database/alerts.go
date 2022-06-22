@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -720,6 +721,38 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 		return nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 	return alerts, nil
+}
+
+func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
+
+	var res []struct {
+		Scenario string
+		Count    int
+	}
+
+	ctx := context.Background()
+
+	query := c.Ent.Alert.Query()
+
+	query, err := BuildAlertRequestFromFilter(query, filters)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build alert request")
+	}
+
+	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to count alerts per scenario")
+	}
+
+	counts := make(map[string]int)
+
+	for _, r := range res {
+		counts[r.Scenario] = r.Count
+	}
+
+	return counts, nil
 }
 
 func (c *Client) TotalAlerts() (int, error) {
