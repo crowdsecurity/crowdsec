@@ -33,7 +33,7 @@ func TestBucket(t *testing.T) {
 		envSetting            = os.Getenv("TEST_ONLY")
 		tomb       *tomb.Tomb = &tomb.Tomb{}
 	)
-	err := exprhelpers.Init()
+	err := exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}

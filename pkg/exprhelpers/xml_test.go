@@ -8,7 +8,7 @@ import (
 )
 
 func TestXMLGetAttributeValue(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -67,7 +67,7 @@ func TestXMLGetAttributeValue(t *testing.T) {
 
 }
 func TestXMLGetNodeValue(t *testing.T) {
-	if err := Init(); err != nil {
+	if err := Init(nil); err != nil {
 		log.Fatalf(err.Error())
 	}
 

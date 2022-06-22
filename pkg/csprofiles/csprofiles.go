@@ -2,8 +2,10 @@ package csprofiles
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
@@ -12,10 +14,86 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, error) {
+type Runtime struct {
+	RuntimeFilters      []*vm.Program               `json:"-" yaml:"-"`
+	DebugFilters        []*exprhelpers.ExprDebugger `json:"-" yaml:"-"`
+	RuntimeDurationExpr *vm.Program                 `json:"-" yaml:"-"`
+	DebugDurationExpr   *exprhelpers.ExprDebugger   `json:"-" yaml:"-"`
+	Cfg                 *csconfig.ProfileCfg        `json:"-" yaml:"-"`
+	Logger              *log.Entry                  `json:"-" yaml:"-"`
+}
+
+var defaultDuration = "4h"
+
+func NewProfile(profilesCfg []*csconfig.ProfileCfg) ([]*Runtime, error) {
+	var err error
+	profilesRuntime := make([]*Runtime, 0)
+
+	for _, profile := range profilesCfg {
+		var runtimeFilter, runtimeDurationExpr *vm.Program
+		var debugFilter, debugDurationExpr *exprhelpers.ExprDebugger
+		runtime := &Runtime{}
+		xlog := log.New()
+		if err := types.ConfigureLogger(xlog); err != nil {
+			log.Fatalf("While creating profiles-specific logger : %s", err)
+		}
+		xlog.SetLevel(log.InfoLevel)
+		runtime.Logger = xlog.WithFields(log.Fields{
+			"type": "profile",
+			"name": profile.Name,
+		})
+
+		runtime.RuntimeFilters = make([]*vm.Program, len(profile.Filters))
+		runtime.DebugFilters = make([]*exprhelpers.ExprDebugger, len(profile.Filters))
+		runtime.Cfg = profile
+
+		for fIdx, filter := range profile.Filters {
+			if runtimeFilter, err = expr.Compile(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				return []*Runtime{}, errors.Wrapf(err, "error compiling filter of '%s'", profile.Name)
+			}
+			runtime.RuntimeFilters[fIdx] = runtimeFilter
+			if profile.Debug != nil && *profile.Debug {
+				if debugFilter, err = exprhelpers.NewDebugger(filter, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+					log.Debugf("Error compiling debug filter of %s : %s", profile.Name, err)
+					// Don't fail if we can't compile the filter - for now
+					//	return errors.Wrapf(err, "Error compiling debug filter of %s", profile.Name)
+				}
+				runtime.DebugFilters[fIdx] = debugFilter
+				runtime.Logger.Logger.SetLevel(log.DebugLevel)
+			}
+		}
+
+		if profile.DurationExpr != "" {
+			if runtimeDurationExpr, err = expr.Compile(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+				return []*Runtime{}, errors.Wrapf(err, "error compiling duration_expr of %s", profile.Name)
+			}
+
+			runtime.RuntimeDurationExpr = runtimeDurationExpr
+			if profile.Debug != nil && *profile.Debug {
+				if debugDurationExpr, err = exprhelpers.NewDebugger(profile.DurationExpr, expr.Env(exprhelpers.GetExprEnv(map[string]interface{}{"Alert": &models.Alert{}}))); err != nil {
+					log.Debugf("Error compiling debug duration_expr of %s : %s", profile.Name, err)
+				}
+				runtime.DebugDurationExpr = debugDurationExpr
+			}
+		}
+
+		for _, decision := range profile.Decisions {
+			if runtime.RuntimeDurationExpr == nil {
+				if _, err := time.ParseDuration(*decision.Duration); err != nil {
+					return []*Runtime{}, errors.Wrapf(err, "error parsing duration '%s' of %s", *decision.Duration, profile.Name)
+				}
+			}
+		}
+
+		profilesRuntime = append(profilesRuntime, runtime)
+	}
+	return profilesRuntime, nil
+}
+
+func (Profile *Runtime) GenerateDecisionFromProfile(Alert *models.Alert) ([]*models.Decision, error) {
 	var decisions []*models.Decision
 
-	for _, refDecision := range Profile.Decisions {
+	for _, refDecision := range Profile.Cfg.Decisions {
 		decision := models.Decision{}
 		/*the reference decision from profile is in sumulated mode */
 		if refDecision.Simulated != nil && *refDecision.Simulated {
@@ -36,7 +114,27 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 		}
 		/*some fields are populated from the reference object : duration, scope, type*/
 		decision.Duration = new(string)
-		*decision.Duration = *refDecision.Duration
+		if Profile.Cfg.DurationExpr != "" && Profile.RuntimeDurationExpr != nil {
+			duration, err := expr.Run(Profile.RuntimeDurationExpr, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			if err != nil {
+				Profile.Logger.Warningf("Failed to run duration_expr : %v", err)
+				*decision.Duration = *refDecision.Duration
+			} else {
+				durationStr := fmt.Sprint(duration)
+				if _, err := time.ParseDuration(durationStr); err != nil {
+					Profile.Logger.Warningf("Failed to parse expr duration result '%s'", duration)
+					*decision.Duration = *refDecision.Duration
+				} else {
+					*decision.Duration = durationStr
+				}
+			}
+		} else {
+			if refDecision.Duration == nil {
+				*decision.Duration = defaultDuration
+			}
+			*decision.Duration = *refDecision.Duration
+		}
+
 		decision.Type = new(string)
 		*decision.Type = *refDecision.Type
 
@@ -55,54 +153,44 @@ func GenerateDecisionFromProfile(Profile *csconfig.ProfileCfg, Alert *models.Ale
 	return decisions, nil
 }
 
-var clog *log.Entry
-
 //EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
-func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, bool, error) {
+func (Profile *Runtime) EvaluateProfile(Alert *models.Alert) ([]*models.Decision, bool, error) {
 	var decisions []*models.Decision
-	if clog == nil {
-		xlog := log.New()
-		if err := types.ConfigureLogger(xlog); err != nil {
-			log.Fatalf("While creating profiles-specific logger : %s", err)
-		}
-		xlog.SetLevel(log.TraceLevel)
-		clog = xlog.WithFields(log.Fields{
-			"type": "profile",
-		})
-	}
+
 	matched := false
-	for eIdx, expression := range profile.RuntimeFilters {
+	for eIdx, expression := range Profile.RuntimeFilters {
 		output, err := expr.Run(expression, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 		if err != nil {
-			log.Warningf("failed to run whitelist expr : %v", err)
-			return nil, matched, errors.Wrapf(err, "while running expression %s", profile.Filters[eIdx])
+			Profile.Logger.Warningf("failed to run whitelist expr : %v", err)
+			return nil, matched, errors.Wrapf(err, "while running expression %s", Profile.Cfg.Filters[eIdx])
 		}
 		switch out := output.(type) {
 		case bool:
-			if profile.Debug != nil && *profile.Debug {
-				profile.DebugFilters[eIdx].Run(clog, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
+			if Profile.Cfg.Debug != nil && *Profile.Cfg.Debug {
+				Profile.DebugFilters[eIdx].Run(Profile.Logger, out, exprhelpers.GetExprEnv(map[string]interface{}{"Alert": Alert}))
 			}
 			if out {
 				matched = true
 				/*the expression matched, create the associated decision*/
-				subdecisions, err := GenerateDecisionFromProfile(profile, Alert)
+				subdecisions, err := Profile.GenerateDecisionFromProfile(Alert)
 				if err != nil {
-					return nil, matched, errors.Wrapf(err, "while generating decision from profile %s", profile.Name)
+					return nil, matched, errors.Wrapf(err, "while generating decision from profile %s", Profile.Cfg.Name)
 				}
 
 				decisions = append(decisions, subdecisions...)
 			} else {
-				log.Debugf("Profile %s filter is unsuccessful", profile.Name)
-				if profile.OnFailure == "break" {
+				Profile.Logger.Debugf("Profile %s filter is unsuccessful", Profile.Cfg.Name)
+				if Profile.Cfg.OnFailure == "break" {
 					break
 				}
 			}
 
 		default:
-			return nil, matched, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, profile.Filters[eIdx])
+			return nil, matched, fmt.Errorf("unexpected type %t (%v) while running '%s'", output, output, Profile.Cfg.Filters[eIdx])
 
 		}
 
 	}
+
 	return decisions, matched, nil
 }

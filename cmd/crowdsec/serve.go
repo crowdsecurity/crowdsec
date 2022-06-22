@@ -10,6 +10,8 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
+	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/exprhelpers"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
@@ -163,12 +165,12 @@ func shutdownCrowdsec() error {
 func shutdown(sig os.Signal, cConfig *csconfig.Config) error {
 	if !cConfig.DisableAgent {
 		if err := shutdownCrowdsec(); err != nil {
-			return errors.Wrap(err, "Failed to shut down crowdsec")
+			return errors.Wrap(err, "failed to shut down crowdsec")
 		}
 	}
 	if !cConfig.DisableAPI {
 		if err := shutdownAPI(); err != nil {
-			return errors.Wrap(err, "Failed to shut down api routines")
+			return errors.Wrap(err, "failed to shut down api routines")
 		}
 	}
 	return nil
@@ -227,6 +229,24 @@ func Serve(cConfig *csconfig.Config) error {
 	apiTomb = tomb.Tomb{}
 	crowdsecTomb = tomb.Tomb{}
 	pluginTomb = tomb.Tomb{}
+
+	if cConfig.API.Server != nil && cConfig.API.Server.DbConfig != nil {
+		dbClient, err := database.NewClient(cConfig.API.Server.DbConfig)
+		if err != nil {
+			return errors.Wrap(err, "failed to get database client")
+		}
+		err = exprhelpers.Init(dbClient)
+		if err != nil {
+			return errors.Wrap(err, "failed to init expr helpers")
+		}
+	} else {
+		err := exprhelpers.Init(nil)
+		if err != nil {
+			return errors.Wrap(err, "failed to init expr helpers")
+		}
+		log.Warningln("Exprhelpers loaded without database client.")
+	}
+
 	if !cConfig.DisableAPI {
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {

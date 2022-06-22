@@ -9,8 +9,10 @@ import (
 	middlewares "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
+	"github.com/pkg/errors"
 )
 
 type Controller struct {
@@ -18,7 +20,7 @@ type Controller struct {
 	DBClient      *database.Client
 	APIKeyHeader  string
 	Middlewares   *middlewares.Middlewares
-	Profiles      []*csconfig.ProfileCfg
+	Profiles      []*csprofiles.Runtime
 	CAPIChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
@@ -28,7 +30,7 @@ type Controller struct {
 type ControllerV1Config struct {
 	DbClient      *database.Client
 	Ctx           context.Context
-	Profiles      []*csconfig.ProfileCfg
+	ProfilesCfg   []*csconfig.ProfileCfg
 	CapiChan      chan []*models.Alert
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
@@ -37,11 +39,17 @@ type ControllerV1Config struct {
 
 func New(cfg *ControllerV1Config) (*Controller, error) {
 	var err error
+
+	profiles, err := csprofiles.NewProfile(cfg.ProfilesCfg)
+	if err != nil {
+		return &Controller{}, errors.Wrapf(err, "failed to compile profiles")
+	}
+
 	v1 := &Controller{
 		Ectx:          cfg.Ctx,
 		DBClient:      cfg.DbClient,
 		APIKeyHeader:  middlewares.APIKeyHeader,
-		Profiles:      cfg.Profiles,
+		Profiles:      profiles,
 		CAPIChan:      cfg.CapiChan,
 		PluginChannel: cfg.PluginChannel,
 		ConsoleConfig: cfg.ConsoleConfig,

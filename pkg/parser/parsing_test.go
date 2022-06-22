@@ -146,7 +146,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 		ectx EnricherCtx
 	)
 
-	err = exprhelpers.Init()
+	err = exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}

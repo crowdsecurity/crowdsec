@@ -61,7 +61,7 @@ func (c *Controller) NewV1() error {
 	v1Config := v1.ControllerV1Config{
 		DbClient:      c.DBClient,
 		Ctx:           c.Ectx,
-		Profiles:      c.Profiles,
+		ProfilesCfg:   c.Profiles,
 		CapiChan:      c.CAPIChan,
 		PluginChannel: c.PluginChannel,
 		ConsoleConfig: *c.ConsoleConfig,
