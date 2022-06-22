@@ -41,12 +41,14 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				fmt.Printf("Please provide --type flag\n")
 				os.Exit(1)
 			}
+
 			var f *os.File
+			dir := os.TempDir()
 
 			// we create a temporary log file if a log line has been provided
 			if logLine != "" {
-				logFile = "./cscli_test_tmp.log"
-				f, err := os.Create(logFile)
+				logFile = filepath.Join(dir, "cscli_test_tmp.log")
+				f, err := os.Create(logFile) // nolint: govet
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -76,6 +78,7 @@ cscli explain --dsn "file://myfile.log" --type nginx
 
 			cmdArgs := []string{"-c", ConfigFilePath, "-type", logType, "-dsn", dsn, "-dump-data", "./", "-no-api"}
 			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+			crowdsecCmd.Dir = dir
 			output, err := crowdsecCmd.CombinedOutput()
 			if err != nil {
 				fmt.Println(string(output))
@@ -89,8 +92,8 @@ cscli explain --dsn "file://myfile.log" --type nginx
 					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
 				}
 			}
-			parserDumpFile := filepath.Join("./", cstest.ParserResultFileName)
-			bucketStateDumpFile := filepath.Join("./", cstest.BucketPourResultFileName)
+			parserDumpFile := filepath.Join(dir, cstest.ParserResultFileName)
+			bucketStateDumpFile := filepath.Join(dir, cstest.BucketPourResultFileName)
 
 			parserDump, err := cstest.LoadParserDump(parserDumpFile)
 			if err != nil {

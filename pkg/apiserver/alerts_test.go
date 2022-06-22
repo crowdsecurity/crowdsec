@@ -23,6 +23,7 @@ type LAPI struct {
 	loginResp  models.WatcherAuthResponse
 	bouncerKey string
 	t          *testing.T
+	DBConfig   *csconfig.DatabaseCfg
 }
 
 func SetupLAPITest(t *testing.T) LAPI {
@@ -36,10 +37,12 @@ func SetupLAPITest(t *testing.T) LAPI {
 	if err != nil {
 		t.Fatalf("%s", err.Error())
 	}
+
 	return LAPI{
 		router:     router,
 		loginResp:  loginResp,
 		bouncerKey: APIKey,
+		DBConfig:   config.API.Server.DbConfig,
 	}
 }
 

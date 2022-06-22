@@ -400,7 +400,7 @@ func NewMetricsCmd() *cobra.Command {
 				log.Fatalf(err.Error())
 			}
 			if !csConfig.Prometheus.Enabled {
-				log.Warningf("Prometheus is not enabled, can't show metrics")
+				log.Warning("Prometheus is not enabled, can't show metrics")
 				os.Exit(1)
 			}
 

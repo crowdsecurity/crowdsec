@@ -47,8 +47,7 @@ func JsonExtractUnescape(jsblob string, target ...string) string {
 		return ""
 	}
 	log.Tracef("extract path %+v", target)
-	strvalue := string(value)
-	return strvalue
+	return value
 }
 
 func JsonExtract(jsblob string, target string) string {

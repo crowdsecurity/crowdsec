@@ -207,7 +207,7 @@ func (c *Config) LoadAPIServer() error {
 			return err
 		}
 	} else {
-		log.Warningf("crowdsec local API is disabled")
+		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 	}
 

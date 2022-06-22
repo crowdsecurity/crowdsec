@@ -69,7 +69,7 @@ func TestBucket(t *testing.T) {
 func watchTomb(tomb *tomb.Tomb) {
 	for {
 		if tomb.Alive() == false {
-			log.Warningf("Tomb is dead")
+			log.Warning("Tomb is dead")
 			break
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -158,7 +158,7 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 			t.Errorf("Failed to load testfile '%s' yaml error : %v", file, err)
 			return false
 		}
-		log.Warningf("end of test file")
+		log.Warning("end of test file")
 	}
 	var latest_ts time.Time
 	for _, in := range tf.Lines {
@@ -181,10 +181,10 @@ func testFile(t *testing.T, file string, bs string, holders []BucketFactory, res
 			t.Fatalf("Failed to pour : %s", err)
 		}
 		if !ok {
-			log.Warningf("Event wasn't poured")
+			log.Warning("Event wasn't poured")
 		}
 	}
-	log.Warningf("Done pouring !")
+	log.Warning("Done pouring !")
 
 	time.Sleep(1 * time.Second)
 
@@ -194,7 +194,7 @@ POLL_AGAIN:
 	for fails < 2 {
 		select {
 		case ret := <-response:
-			log.Warningf("got one result")
+			log.Warning("got one result")
 			results = append(results, ret)
 			if ret.Overflow.Reprocess {
 				log.Errorf("Overflow being reprocessed.")
@@ -203,13 +203,13 @@ POLL_AGAIN:
 					t.Fatalf("Failed to pour : %s", err)
 				}
 				if !ok {
-					log.Warningf("Event wasn't poured")
+					log.Warning("Event wasn't poured")
 				}
 				goto POLL_AGAIN
 			}
 			fails = 0
 		default:
-			log.Warningf("no more results")
+			log.Warning("no more results")
 			time.Sleep(1 * time.Second)
 			fails += 1
 		}
@@ -223,7 +223,7 @@ POLL_AGAIN:
 
 	for {
 		if len(tf.Results) == 0 && len(results) == 0 {
-			log.Warningf("Test is successful")
+			log.Warning("Test is successful")
 			if dump {
 				if tmpFile, err = DumpBucketsStateAt(latest_ts, ".", buckets); err != nil {
 					t.Fatalf("Failed dumping bucket state : %s", err)
@@ -305,6 +305,6 @@ POLL_AGAIN:
 			log.Errorf("we expected: %s", spew.Sdump(tf.Results))
 			return false
 		}
-		log.Warningf("entry valid at end of loop")
+		log.Warning("entry valid at end of loop")
 	}
 }

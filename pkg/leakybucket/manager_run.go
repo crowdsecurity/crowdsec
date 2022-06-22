@@ -289,7 +289,7 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 		if BucketPourCache == nil {
 			BucketPourCache = make(map[string][]types.Event)
 		}
-		if _, ok := BucketPourCache["OK"]; !ok {
+		if _, ok = BucketPourCache["OK"]; !ok {
 			BucketPourCache["OK"] = make([]types.Event, 0)
 		}
 		evt := deepcopy.Copy(parsed)

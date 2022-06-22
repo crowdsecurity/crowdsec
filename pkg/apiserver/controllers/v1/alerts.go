@@ -101,7 +101,7 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 	RETRY:
 		for try := 0; try < 3; try++ {
 			select {
-			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
+			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
 				log.Debugf("alert sent to Plugin channel")
 				break RETRY
 			default:
