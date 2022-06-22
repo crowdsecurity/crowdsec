@@ -46,12 +46,15 @@ remove_init_data() {
 config_generate() {
     mkdir -p "${CONFIG_DIR}"
 
-    cp ../config/acquis.yaml \
-       ../config/profiles.yaml \
+    cp ../config/profiles.yaml \
        ../config/simulation.yaml \
        ../config/local_api_credentials.yaml \
        ../config/online_api_credentials.yaml \
        "${CONFIG_DIR}/"
+
+    # the default acquis file contains files that are not readable by everyone
+    # We use a noop configuration that forces nevertheless crowdsec to keep watching
+    echo '{"filenames":["/tmp/should-not-exist.log"],"labels":{"type":"syslog"},"force_inotify":true}' > "${CONFIG_DIR}/acquis.yaml"
 
     cp ../plugins/notifications/*/{http,email,slack,splunk,dummy}.yaml \
        "${CONFIG_DIR}/notifications/"
@@ -75,7 +78,7 @@ config_generate() {
     .api.server.profiles_path=strenv(CONFIG_DIR)+"/profiles.yaml" |
     .api.server.console_path=strenv(CONFIG_DIR)+"/console.yaml" |
     .api.server.online_client.credentials_path=strenv(CONFIG_DIR)+"/online_api_credentials.yaml"
-    ' - <../config/config.yaml >"${CONFIG_DIR}/config.yaml"
+    ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
 make_init_data() {
