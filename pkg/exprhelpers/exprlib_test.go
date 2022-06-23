@@ -877,7 +877,7 @@ func TestGetDecisionsSinceCount(t *testing.T) {
 	}
 	decision2 := dbClient.Ent.Decision.Create().
 		SetCreatedAt(time.Now().AddDate(0, 0, -1)).
-		SetUntil(time.Now().Add(time.Hour)).
+		SetUntil(time.Now().AddDate(0, 0, -1)).
 		SetScenario("crowdsec/test").
 		SetStartIP(start_ip).
 		SetStartSuffix(start_sfx).
