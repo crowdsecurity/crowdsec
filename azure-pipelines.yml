@@ -57,6 +57,10 @@ stages:
 
           - pwsh: |
               $build_version=(git describe --tags (git rev-list --tags --max-count=1)).Substring(1)
+              if ($build_version.Contains("-")) 
+              {
+                $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
+              }
               .\make_installer.ps1 -version $build_version
               Write-Host  "##vso[task.setvariable variable=BuildVersion;isOutput=true]$build_version"
             displayName: "Build Crowdsec MSI"
