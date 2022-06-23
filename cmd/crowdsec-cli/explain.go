@@ -117,7 +117,6 @@ tail -n 5 myfile.log | cscli explain --type nginx -f -
 
 			// rm the temporary log file if only a log line/stdin was provided
 			if tmpFile != "" {
-				f.Close()
 				if err := os.Remove(tmpFile); err != nil {
 					log.Fatalf("unable to remove tmp log file '%s': %+v", tmpFile, err)
 				}
