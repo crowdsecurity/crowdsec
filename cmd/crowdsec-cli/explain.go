@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +21,7 @@ func NewExplainCmd() *cobra.Command {
 	var logLine string
 	var logType string
 	var opts cstest.DumpOpts
+	var err error
 
 	var cmdExplain = &cobra.Command{
 		Use:   "explain",
@@ -30,10 +33,12 @@ Explain log pipeline
 cscli explain --file ./myfile.log --type nginx 
 cscli explain --log "Sep 19 18:33:22 scw-d95986 sshd[24347]: pam_unix(sshd:auth): authentication failure; logname= uid=0 euid=0 tty=ssh ruser= rhost=1.2.3.4" --type syslog
 cscli explain --dsn "file://myfile.log" --type nginx
+tail -n 5 myfile.log | cscli explain --type nginx -f -
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
+			fileInfo, _ := os.Stdin.Stat()
 
 			if logType == "" || (logLine == "" && logFile == "" && dsn == "") {
 				printHelp(cmd)
@@ -42,22 +47,47 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				os.Exit(1)
 			}
 
+			if logFile == "-" && ((fileInfo.Mode() & os.ModeCharDevice) == os.ModeCharDevice) {
+				log.Fatal("-f - is intended to work with pipes.")
+			}
+
 			var f *os.File
 			dir := os.TempDir()
 
-			// we create a temporary log file if a log line has been provided
-			if logLine != "" {
-				logFile = filepath.Join(dir, "cscli_test_tmp.log")
-				f, err := os.Create(logFile) // nolint: govet
+			tmpFile := ""
+			// we create a  temporary log file if a log line/stdin has been provided
+			if logLine != "" || logFile == "-" {
+				tmpFile = filepath.Join(dir, "cscli_test_tmp.log")
+				f, err = os.Create(tmpFile)
 				if err != nil {
 					log.Fatal(err)
 				}
-				defer f.Close()
 
-				_, err = f.WriteString(logLine)
-				if err != nil {
-					log.Fatal(err)
+				if logLine != "" {
+					_, err = f.WriteString(logLine)
+					if err != nil {
+						log.Fatal(err)
+					}
+				} else if logFile == "-" {
+					reader := bufio.NewReader(os.Stdin)
+					errCount := 0
+					for {
+						input, err := reader.ReadBytes('\n')
+						if err != nil && err == io.EOF {
+							break
+						}
+						_, err = f.Write(input)
+						if err != nil {
+							errCount++
+						}
+					}
+					if errCount > 0 {
+						log.Warnf("Failed to write %d lines to tmp file", errCount)
+					}
 				}
+				f.Close()
+				//this is the file that was going to be read by crowdsec anyway
+				logFile = tmpFile
 			}
 
 			if logFile != "" {
@@ -85,11 +115,10 @@ cscli explain --dsn "file://myfile.log" --type nginx
 				log.Fatalf("fail to run crowdsec for test: %v", err)
 			}
 
-			// rm the temporary log file if only a log line was provided
-			if logLine != "" {
-				f.Close()
-				if err := os.Remove(logFile); err != nil {
-					log.Fatalf("unable to remove tmp log file '%s': %+v", logFile, err)
+			// rm the temporary log file if only a log line/stdin was provided
+			if tmpFile != "" {
+				if err := os.Remove(tmpFile); err != nil {
+					log.Fatalf("unable to remove tmp log file '%s': %+v", tmpFile, err)
 				}
 			}
 			parserDumpFile := filepath.Join(dir, cstest.ParserResultFileName)
