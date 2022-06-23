@@ -42,7 +42,6 @@ jobs:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   postgres:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-postgres.yml
     secrets:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
