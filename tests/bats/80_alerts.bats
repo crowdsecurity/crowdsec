@@ -47,6 +47,7 @@ declare stderr
 }
 
 @test "$FILE cscli alerts list, human/json/raw" {
+    sleep 1
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
     run -0 cscli alerts list -o human
@@ -67,6 +68,7 @@ declare stderr
 }
 
 @test "$FILE cscli alerts inspect" {
+    sleep 1
     run -0 cscli decisions add -i 10.20.30.40 -t ban
     run -0 cscli alerts list -o raw <(output)
     run -0 grep 10.20.30.40 <(output)
@@ -112,6 +114,7 @@ declare stderr
 }
 
 @test "$FILE no active alerts" {
+    sleep 1
     run -0 cscli alerts list --until 200d -o human
     assert_output "No active alerts"
     run -0 cscli alerts list --until 200d -o json
@@ -123,6 +126,7 @@ declare stderr
 }
 
 @test "$FILE cscli alerts delete" {
+    sleep 1
     run -0 --separate-stderr cscli alerts delete --all
     run echo "$stderr"
     assert_output --partial 'alert(s) deleted'

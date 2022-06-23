@@ -71,6 +71,7 @@ config_disable_capi() {
 @test "$FILE without capi: cscli lapi status -> success" {
     config_disable_capi
     ./instance-crowdsec start
+    sleep 1
     run -0 --separate-stderr cscli lapi status
 
     run -0 echo "$stderr"
@@ -80,6 +81,7 @@ config_disable_capi() {
 @test "$FILE cscli metrics" {
     config_disable_capi
     ./instance-crowdsec start
+    sleep 1
     run -0 cscli lapi status
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"

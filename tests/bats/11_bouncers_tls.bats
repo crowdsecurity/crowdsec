@@ -68,6 +68,7 @@ teardown() {
 }
 
 @test "${FILE} simulate one bouncer request with a valid cert" {
+    sleep 1
     run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
     run -0 cscli bouncers list -o json
@@ -92,6 +93,7 @@ teardown() {
 }
 
 @test "${FILE} simulate one bouncer request with a revoked certificate" {
+    sleep 1
     run -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output --partial "access forbidden"
     run -0 cscli bouncers list -o json

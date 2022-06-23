@@ -59,6 +59,7 @@ declare stderr
 }
 
 @test "$FILE cscli decisions list, incorrect parameters" {
+    sleep 1
     run -1 --separate-stderr cscli decisions list --until toto
     run echo "$stderr"
     assert_output --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'

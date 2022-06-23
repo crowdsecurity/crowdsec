@@ -48,6 +48,7 @@ config_disable_agent() {
 @test "$FILE no agent: capi status should be ok" {
     config_disable_agent
     ./instance-crowdsec start
+    sleep 1
     run -0 --separate-stderr cscli capi status
 
     run -0 echo "$stderr"
@@ -80,6 +81,7 @@ config_disable_agent() {
 @test "$FILE no agent: lapi status should be ok" {
     config_disable_agent
     ./instance-crowdsec start
+    sleep 1
     run -0 --separate-stderr cscli lapi status
 
     run -0 echo "$stderr"
@@ -89,6 +91,7 @@ config_disable_agent() {
 @test "$FILE cscli metrics" {
     config_disable_agent
     ./instance-crowdsec start
+    sleep 1
     run -0 cscli lapi status
     run -0 cscli metrics
 }

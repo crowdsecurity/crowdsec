@@ -261,6 +261,7 @@ declare stderr
 }
 
 @test "cscli metrics" {
+    sleep 1
     run -0 cscli lapi status
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"
