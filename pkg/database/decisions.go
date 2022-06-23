@@ -567,7 +567,6 @@ func (c *Client) CountDecisionsSinceByValue(decisionValue string, since time.Tim
 	contains := true
 	decisions := c.Ent.Decision.Query().Where(
 		decision.CreatedAtGT(since),
-		decision.UntilGT(time.Now().UTC()),
 	)
 	decisions, err = applyStartIpEndIpFilter(decisions, contains, ip_sz, start_ip, start_sfx, end_ip, end_sfx)
 	if err != nil {
