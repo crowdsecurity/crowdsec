@@ -3,18 +3,11 @@
 
 set -u
 
-config_disable_agent() {
-    yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
 
-    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
-    export CONFIG_DIR
-
-    tmpdir="${BATS_FILE_TMPDIR}"
+    tmpdir=$(mktemp -d)
     export tmpdir
 
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
@@ -47,8 +40,6 @@ setup_file() {
         .api.server.tls.agents_allowed_ou=["agent-ou"]
     ' -i "${CONFIG_YAML}"
 
-    run -0 cscli machines delete githubciXXXXXXXXXXXXXXXXXXXXXXXX
-    config_disable_agent
 }
 
 teardown_file() {
@@ -57,6 +48,7 @@ teardown_file() {
 
 setup() {
     load "../lib/setup.sh"
+    cscli machines delete githubciXXXXXXXXXXXXXXXXXXXXXXXX
 }
 
 teardown() {
@@ -65,7 +57,9 @@ teardown() {
 
 #----------
 
-@test "invalid OU for agent" {
+@test "${FILE} invalid OU for agent" {
+    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
+
     yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_bad_ou-key.pem" |
@@ -73,13 +67,18 @@ teardown() {
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
+    #let the agent start
+    sleep 2
     run -0 cscli machines list -o json
     assert_output '[]'
 }
 
-@test "we have exactly one machine registered with TLS" {
+@test "${FILE} we have exactly one machine registered with TLS" {
+    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
+
     yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent-key.pem" |
@@ -87,17 +86,23 @@ teardown() {
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
-    run -0 cscli lapi status
+    #let the agent start
+    sleep 2
     run -0 cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress, .[0].auth_type]' <(output)
 
     assert_output '[1,"localhost@127.0.0.1",true,"127.0.0.1","tls"]'
     cscli machines delete localhost@127.0.0.1
+
+    ./instance-crowdsec stop
 }
 
-@test "invalid cert for agent" {
+@test "${FILE} invalid cert for agent" {
+    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
+
     yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_invalid-key.pem" |
@@ -105,13 +110,18 @@ teardown() {
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
+    #let the agent start
+    sleep 2
     run -0 cscli machines list -o json
     assert_output '[]'
 }
 
-@test "revoked cert for agent" {
+@test "${FILE} revoked cert for agent" {
+    CONFIG_DIR=$(dirname "${CONFIG_YAML}")
+
     yq e '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_revoked-key.pem" |
@@ -119,8 +129,11 @@ teardown() {
         .url="https://127.0.0.1:8080"
     ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.login)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    yq e 'del(.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
     ./instance-crowdsec start
+    #let the agent start
+    sleep 2
     run -0 cscli machines list -o json
     assert_output '[]'
 }
