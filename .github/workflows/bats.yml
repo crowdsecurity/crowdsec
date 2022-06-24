@@ -26,7 +26,6 @@ jobs:
   # disable them here by default. Remove the if..false to enable them.
 
   mariadb:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mariadb:latest
@@ -34,7 +33,6 @@ jobs:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   mysql:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-mysql.yml
     with:
       database_image: mysql:latest
@@ -42,7 +40,6 @@ jobs:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}
 
   postgres:
-    if: ${{ false }}
     uses: ./.github/workflows/bats-postgres.yml
     secrets:
       DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD}}

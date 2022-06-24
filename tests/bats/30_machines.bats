@@ -60,7 +60,6 @@ teardown() {
 }
 
 @test "$FILE register, validate and then remove a machine" {
-    if is_db_postgres; then sleep 4; fi
     run -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_output --partial "Successfully registered to Local API (LAPI)"
     assert_output --partial "Local API credentials dumped to '/dev/null'"

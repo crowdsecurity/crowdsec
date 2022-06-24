@@ -20,7 +20,9 @@ func StartRunSvc() error {
 		err     error
 	)
 
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
+	// Set a default logger with level=fatal on stderr,
+	// in addition to the one we configure afterwards
+	log.AddHook(&writer.Hook{
 		Writer: os.Stderr,
 		LogLevels: []log.Level{
 			log.PanicLevel,
@@ -47,6 +49,9 @@ func StartRunSvc() error {
 		log.Debug("coverage report is enabled")
 	}
 
+	apiReady := make(chan bool, 1)
+	agentReady := make(chan bool, 1)
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
@@ -60,7 +65,7 @@ func StartRunSvc() error {
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient)
+		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
 	}
-	return Serve(cConfig)
+	return Serve(cConfig, apiReady, agentReady)
 }

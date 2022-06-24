@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"path/filepath"
 
@@ -129,11 +130,14 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	return nil
 }
 
-func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config) {
+func serveCrowdsec(parsers *parser.Parsers, cConfig *csconfig.Config, agentReady chan bool) {
 	crowdsecTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveCrowdsec")
 		go func() {
 			defer types.CatchPanic("crowdsec/runCrowdsec")
+			// this logs every time, even at config reload
+			log.Debugf("running agent after %s ms", time.Since(crowdsecT0))
+			agentReady <- true
 			if err := runCrowdsec(cConfig, parsers); err != nil {
 				log.Fatalf("unable to start crowdsec routines: %s", err)
 			}
