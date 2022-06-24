@@ -72,7 +72,8 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 			return errors.Wrap(err, "unable to init api server")
 		}
 
-		serveAPIServer(apiServer)
+		apiReady := make(chan bool, 1)
+		serveAPIServer(apiServer, apiReady)
 	}
 
 	if !cConfig.DisableAgent {
@@ -89,7 +90,8 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 		if err := cConfig.LoadSimulation(); err != nil {
 			log.Errorf("reload error (simulation) : %s", err)
 		}
-		serveCrowdsec(csParsers, cConfig)
+		agentReady := make(chan bool, 1)
+		serveCrowdsec(csParsers, cConfig, agentReady)
 	}
 
 	log.Printf("Reload is finished")
@@ -221,7 +223,7 @@ func HandleSignals(cConfig *csconfig.Config) error {
 	return err
 }
 
-func Serve(cConfig *csconfig.Config) error {
+func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) error {
 	acquisTomb = tomb.Tomb{}
 	parsersTomb = tomb.Tomb{}
 	bucketsTomb = tomb.Tomb{}
@@ -253,8 +255,10 @@ func Serve(cConfig *csconfig.Config) error {
 			return errors.Wrap(err, "api server init")
 		}
 		if !flags.TestMode {
-			serveAPIServer(apiServer)
+			serveAPIServer(apiServer, apiReady)
 		}
+	} else {
+		apiReady <- true
 	}
 
 	if !cConfig.DisableAgent {
@@ -264,9 +268,12 @@ func Serve(cConfig *csconfig.Config) error {
 		}
 		/* if it's just linting, we're done */
 		if !flags.TestMode {
-			serveCrowdsec(csParsers, cConfig)
+			serveCrowdsec(csParsers, cConfig, agentReady)
 		}
+	} else {
+		agentReady <- true
 	}
+
 	if flags.TestMode {
 		log.Infof("test done")
 		pluginBroker.Kill()

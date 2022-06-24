@@ -284,7 +284,7 @@ func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
 	}, nil
 }
 
-func (s *APIServer) Run() error {
+func (s *APIServer) Run(apiReady chan bool) error {
 	defer types.CatchPanic("lapi/runServer")
 	tlsCfg, err := s.GetTLSConfig()
 	if err != nil {
@@ -322,6 +322,7 @@ func (s *APIServer) Run() error {
 
 	s.httpServerTomb.Go(func() error {
 		go func() {
+			apiReady <- true
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
 					log.Fatal(err)

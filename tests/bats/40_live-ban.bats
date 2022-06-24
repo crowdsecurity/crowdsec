@@ -36,9 +36,8 @@ teardown() {
     echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
-    sleep 2
     fake_log >>"${tmpfile}"
-    sleep 2
+    sleep 1
     rm -f -- "${tmpfile}"
     run -0 cscli decisions list -o json
     run -0 jq -r '.[].decisions[0].value' <(output)

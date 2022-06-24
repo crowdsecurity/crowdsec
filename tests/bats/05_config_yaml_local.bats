@@ -20,6 +20,9 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
+    run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
+    LOCAL_API_CREDENTIALS="${output}"
+    export LOCAL_API_CREDENTIALS
 }
 
 teardown() {
@@ -50,11 +53,15 @@ teardown() {
 }
 
 @test "${FILE} config.yaml.local - crowdsec (listen_url)" {
+    # disable the agent or we'll need to patch api client credentials too
+    run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8080
     ./instance-crowdsec stop
+    run -1 ./lib/util/wait-for-port -q 8080
 
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
+
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
     run -1 ./lib/util/wait-for-port -q 8080
@@ -67,15 +74,14 @@ teardown() {
 }
 
 @test "${FILE} local_api_credentials.yaml.local" {
+    run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
 
-    run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
-    LOCAL_API_CREDENTIALS="${output}"
-
     run -1 cscli decisions list
     echo "{'url':'http://127.0.0.1:8083'}" >"${LOCAL_API_CREDENTIALS}.local"
+
     run -0 cscli decisions list
 }
 
@@ -122,7 +128,6 @@ teardown() {
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
-    sleep 1
     fake_log >>"${tmpfile}"
     sleep 1
     rm -f -- "${tmpfile}"
