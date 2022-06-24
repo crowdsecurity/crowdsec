@@ -59,6 +59,7 @@ setup() {
 #----------
 
 @test "${FILE} add two bans" {
+    sleep 1
     run -0 cscli decisions add --ip 1.2.3.4 --duration 30s
     assert_output --partial 'Decision successfully added'
 
