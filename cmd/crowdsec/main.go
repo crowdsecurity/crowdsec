@@ -266,8 +266,8 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	return nil
 }
 
-// This must be called right before the program termination, to allow
-// measuring functional test coverage in case of abnormal exit.
+// exitWithCode must be called right before the program termination,
+// to allow measuring functional test coverage in case of abnormal exit.
 //
 // without bincover: log error and exit with code
 // with bincover: log error and tell bincover the exit code, then return
@@ -285,7 +285,13 @@ func exitWithCode(exitCode int, err error) {
 	bincover.ExitCode = exitCode
 }
 
+// crowdsecT0 can be used to measure start time of services,
+// or uptime of the application
+var crowdsecT0 time.Time
+
 func main() {
+	crowdsecT0 = time.Now()
+
 	defer types.CatchPanic("crowdsec/main")
 
 	log.Debugf("os.Args: %v", os.Args)

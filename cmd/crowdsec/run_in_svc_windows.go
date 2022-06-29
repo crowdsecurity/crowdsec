@@ -87,6 +87,9 @@ func WindowsRun() error {
 		log.Debug("coverage report is enabled")
 	}
 
+	apiReady := make(chan bool, 1)
+	agentReady := make(chan bool, 1)
+
 	// Enable profiling early
 	if cConfig.Prometheus != nil {
 		var dbClient *database.Client
@@ -100,7 +103,7 @@ func WindowsRun() error {
 			}
 		}
 		registerPrometheus(cConfig.Prometheus)
-		go servePrometheus(cConfig.Prometheus, dbClient)
+		go servePrometheus(cConfig.Prometheus, dbClient, apiReady, agentReady)
 	}
-	return Serve(cConfig)
+	return Serve(cConfig, apiReady, agentReady)
 }

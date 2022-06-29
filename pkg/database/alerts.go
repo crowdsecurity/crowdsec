@@ -932,7 +932,7 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 		if bouncersCfg.ApiDuration != nil {
 			log.Debug("trying to delete old bouncers from api")
 			deletionCount, err := c.Ent.Bouncer.Delete().Where(
-				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.ApiDuration)),
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.ApiDuration)),
 			).Where(
 				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
 			).Exec(c.CTX)
@@ -946,7 +946,7 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 			log.Debug("trying to delete old bouncers from cert")
 
 			deletionCount, err := c.Ent.Bouncer.Delete().Where(
-				bouncer.LastPullLTE(time.Now().UTC().Add(*bouncersCfg.CertDuration)),
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.CertDuration)),
 			).Where(
 				bouncer.AuthTypeEQ(types.TlsAuthType),
 			).Exec(c.CTX)
@@ -963,7 +963,7 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 			log.Debug("trying to delete old agents from cert")
 
 			deletionCount, err := c.Ent.Machine.Delete().Where(
-				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.CertDuration)),
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.CertDuration)),
 			).Where(
 				machine.Not(machine.HasAlerts()),
 			).Where(
@@ -980,7 +980,7 @@ func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersC
 			log.Debug("trying to delete old agents from password")
 
 			deletionCount, err := c.Ent.Machine.Delete().Where(
-				machine.LastPushLTE(time.Now().UTC().Add(*agentsCfg.LoginPasswordDuration)),
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.LoginPasswordDuration)),
 			).Where(
 				machine.Not(machine.HasAlerts()),
 			).Where(

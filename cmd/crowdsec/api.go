@@ -2,6 +2,7 @@ package main
 
 import (
 	"runtime"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -44,12 +45,13 @@ func initAPIServer(cConfig *csconfig.Config) (*apiserver.APIServer, error) {
 	return apiServer, nil
 }
 
-func serveAPIServer(apiServer *apiserver.APIServer) {
+func serveAPIServer(apiServer *apiserver.APIServer, apiReady chan bool) {
 	apiTomb.Go(func() error {
 		defer types.CatchPanic("crowdsec/serveAPIServer")
 		go func() {
 			defer types.CatchPanic("crowdsec/runAPIServer")
-			if err := apiServer.Run(); err != nil {
+			log.Debugf("serving API after %s ms", time.Since(crowdsecT0))
+			if err := apiServer.Run(apiReady); err != nil {
 				log.Fatalf(err.Error())
 			}
 		}()

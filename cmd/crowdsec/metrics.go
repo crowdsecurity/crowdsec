@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
@@ -172,7 +173,7 @@ func registerPrometheus(config *csconfig.PrometheusCfg) {
 	}
 }
 
-func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client) {
+func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client, apiReady chan bool, agentReady chan bool) {
 	if !config.Enabled {
 		return
 	}
@@ -180,6 +181,9 @@ func servePrometheus(config *csconfig.PrometheusCfg, dbClient *database.Client) 
 	defer types.CatchPanic("crowdsec/servePrometheus")
 
 	http.Handle("/metrics", computeDynamicMetrics(promhttp.Handler(), dbClient))
+	<-apiReady
+	<-agentReady
+	log.Debugf("serving metrics after %s ms", time.Since(crowdsecT0))
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", config.ListenAddr, config.ListenPort), nil); err != nil {
 		log.Warningf("prometheus: %s", err)
 	}

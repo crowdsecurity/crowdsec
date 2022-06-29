@@ -207,12 +207,16 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
 	query = query.Where(func(s *sql.Selector) {
-		t := sql.Table(decision.Table)
+		t := sql.Table(decision.Table).As("t1")
 
 		subQuery := sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), now))
 		for _, predicate := range predicates {
 			subQuery.Where(predicate)
 		}
+		subQuery.Where(sql.And(
+			sql.ColumnsEQ(t.C(decision.FieldType), s.C(decision.FieldType)),
+			sql.ColumnsEQ(t.C(decision.FieldScope), s.C(decision.FieldScope)),
+		))
 		s.Where(
 			sql.NotIn(
 				s.C(decision.FieldValue),
@@ -230,41 +234,45 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	return data, nil
 }
 
+//The "dedup" is not performed in SQL here because we suck at it, we do it in Go:
+// - Get all decisions (expired or not) with an end time after the last pull from the bouncer
+// - Sort them by increasing expiration date
+// - Iterate over them, keeping only decisions that have expired but only if we don't have an active decision with the same scope/value/type
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	now := time.Now().UTC()
 
 	query := c.Ent.Decision.Query().Where(
-		decision.UntilLT(now),
 		decision.UntilGT(since),
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
 
-	query = query.Where(func(s *sql.Selector) {
-		t := sql.Table(decision.Table)
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Asc(decision.FieldUntil)).All(c.CTX)
+	if err != nil {
+		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
+		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
+	}
 
-		subQuery := sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), now))
-		for _, predicate := range predicates {
-			subQuery.Where(predicate)
+	ret := make([]*ent.Decision, 0)
+	deletedDecisions := make(map[string]*ent.Decision)
+	for _, d := range data {
+		key := fmt.Sprintf("%s:%s:%s", d.Scope, d.Type, d.Value)
+		if d.Until.Before(now) {
+			deletedDecisions[key] = d
 		}
-		s.Where(
-			sql.NotIn(
-				s.C(decision.FieldValue),
-				subQuery,
-			),
-		)
-	})
-
-	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
-	if err != nil {
-		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
-		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
+		if d.Until.After(now) {
+			delete(deletedDecisions, key)
+		}
 	}
 
-	return data, nil
+	for _, d := range deletedDecisions {
+		ret = append(ret, d)
+	}
+
+	return ret, nil
 }
 
 func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {

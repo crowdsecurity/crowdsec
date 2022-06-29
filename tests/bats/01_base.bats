@@ -183,7 +183,6 @@ declare stderr
 }
 
 @test "cscli lapi status" {
-    if is_db_postgres; then sleep 4; fi
     run -0 --separate-stderr cscli lapi status
 
     run -0 echo "${stderr}"

@@ -809,6 +809,56 @@ func TestStreamDecisionStart(t *testing.T) {
 				},
 			},
 		},
+		{
+			TestName:      "delete decisions 8 (127.0.0.2) with captcha",
+			Method:        "DELETE",
+			Route:         "/v1/decisions/8",
+			CheckCodeOnly: true,
+			Code:          200,
+			LenNew:        0,
+			LenDeleted:    0,
+			AuthType:      PASSWORD,
+			DelChecks:     []DecisionCheck{},
+			NewChecks:     []DecisionCheck{},
+		},
+		{
+			TestName:      "127.0.0.2 with captcha should be in deleted now",
+			Method:        "GET",
+			Route:         "/v1/decisions/stream?startup=true",
+			CheckCodeOnly: false,
+			Code:          200,
+			LenNew:        1,
+			LenDeleted:    2,
+			AuthType:      APIKEY,
+			DelChecks: []DecisionCheck{
+				{
+					ID:       int64(1),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.1",
+					Duration: "-", // we check that the time is negative
+					Type:     "ban",
+				},
+				{
+					ID:       int64(8),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "-",
+					Type:     "captcha",
+				},
+			},
+			NewChecks: []DecisionCheck{
+				{
+					ID:       int64(4),
+					Origin:   "test",
+					Scenario: "crowdsecurity/test",
+					Value:    "127.0.0.2",
+					Duration: "2h59",
+					Type:     "ban",
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {

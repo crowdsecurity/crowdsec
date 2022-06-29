@@ -10,7 +10,8 @@ config_disable_agent() {
 setup_file() {
     load "../lib/setup_file.sh"
     ./instance-data load
-    tmpdir=$(mktemp -d)
+
+    tmpdir="${BATS_FILE_TMPDIR}"
     export tmpdir
 
     CFDIR="${BATS_TEST_DIRNAME}/testdata/cfssl"
@@ -48,7 +49,6 @@ setup_file() {
 
 teardown_file() {
     load "../lib/teardown_file.sh"
-    rm -rf "${tmpdir}"
 }
 
 setup() {
@@ -62,12 +62,12 @@ teardown() {
 
 #----------
 
-@test "${FILE} there are 0 bouncers" {
+@test "there are 0 bouncers" {
     run -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "${FILE} simulate one bouncer request with a valid cert" {
+@test "simulate one bouncer request with a valid cert" {
     run -0 curl -s --cert "${tmpdir}/bouncer.pem" --key "${tmpdir}/bouncer-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output "null"
     run -0 cscli bouncers list -o json
@@ -79,19 +79,19 @@ teardown() {
     run cscli bouncers delete localhost@127.0.0.1
 }
 
-@test "${FILE} simulate one bouncer request with an invalid cert" {
+@test "simulate one bouncer request with an invalid cert" {
     run curl -s --cert "${tmpdir}/bouncer_invalid.pem" --key "${tmpdir}/bouncer_invalid-key.pem" --cacert "${tmpdir}/ca-key.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     run -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "${FILE} simulate one bouncer request with an invalid OU" {
+@test "simulate one bouncer request with an invalid OU" {
     run curl -s --cert "${tmpdir}/bouncer_bad_ou.pem" --key "${tmpdir}/bouncer_bad_ou-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     run -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "${FILE} simulate one bouncer request with a revoked certificate" {
+@test "simulate one bouncer request with a revoked certificate" {
     run -0 curl -i -s --cert "${tmpdir}/bouncer_revoked.pem" --key "${tmpdir}/bouncer_revoked-key.pem" --cacert "${tmpdir}/inter.pem" https://localhost:8080/v1/decisions\?ip=42.42.42.42
     assert_output --partial "access forbidden"
     run -0 cscli bouncers list -o json
