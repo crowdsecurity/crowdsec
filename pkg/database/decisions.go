@@ -234,6 +234,10 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	return data, nil
 }
 
+//The "dedup" is not performed in SQL here because we suck at it, we do it in Go:
+// - Get all decisions (expired or not) with an end time after the last pull from the bouncer
+// - Sort them by increasing expiration date
+// - Iterate over them, keeping only decisions that have expired but only if we don't have an active decision with the same scope/value/type
 func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters map[string][]string) ([]*ent.Decision, error) {
 	now := time.Now().UTC()
 
