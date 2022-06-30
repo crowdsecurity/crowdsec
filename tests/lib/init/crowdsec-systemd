@@ -33,8 +33,6 @@ fi
 start() {
     systemctl start crowdsec
     ./lib/util/wait-for-port 6060
-    sleep 30s
-    "${CSCLI}" decisions delete --all
 }
 
 stop() {
