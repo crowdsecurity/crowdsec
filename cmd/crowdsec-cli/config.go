@@ -517,7 +517,8 @@ func NewConfigCmd() *cobra.Command {
 			output, err := crowdsecCmd.CombinedOutput()
 			fmt.Println(string(output))
 			if err != nil {
-				log.Fatalf("fail to run crowdsec:", err)
+				log.Fatalf("fail to run crowdsec: %v", err)
+				log.Fatalf("Please check %s/crowdsec.log for more details", csconfig.CommonCfg.LogDir)
 			}
 		},
 	}
