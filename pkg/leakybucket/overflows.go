@@ -188,7 +188,8 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 		}
 		//either MarshaledTime is present and is extracted from log
 		if evt.MarshaledTime != "" {
-			ovflwEvent.Timestamp = &evt.MarshaledTime
+			tmpTimeStamp := evt.MarshaledTime
+			ovflwEvent.Timestamp = &tmpTimeStamp
 		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 			raw, err := evt.Time.MarshalText()

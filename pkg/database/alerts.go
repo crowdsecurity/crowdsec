@@ -321,12 +321,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
+			startAtTime = time.Now().UTC()
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
+			stopAtTime = time.Now().UTC()
 		}
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
@@ -342,7 +344,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseTimeFail, "event timestamp '%s' : %s", *eventItem.Timestamp, err)
+					c.Log.Errorf("CreateAlertBulk: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
+					ts = time.Now().UTC()
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
@@ -410,12 +413,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 
-		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
-		if err != nil {
-			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
-			ts = time.Now().UTC()
-		}
-
 		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
@@ -437,7 +434,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				}
 
 				decisionCreate := c.Ent.Decision.Create().
-					SetUntil(ts.Add(duration)).
+					SetUntil(stopAtTime.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
 					SetStartIP(start_ip).
