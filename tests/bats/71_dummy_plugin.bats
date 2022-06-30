@@ -5,7 +5,7 @@ set -u
 
 setup_file() {
     load "../lib/setup_file.sh"
-    [ -n "${PACKAGE_TESTING}" ] && return
+    [[ -n "${PACKAGE_TESTING}" ]] && return
 
     ./instance-data load
 
@@ -48,17 +48,16 @@ setup_file() {
 
 teardown_file() {
     load "../lib/teardown_file.sh"
-    rm -f "${tempfile}" "${tempfile2}"
 }
 
 setup() {
-    [ -n "${PACKAGE_TESTING}" ] && skip
+    [[ -n "${PACKAGE_TESTING}" ]] && skip
     load "../lib/setup.sh"
 }
 
 #----------
 
-@test "${FILE} add two bans" {
+@test "add two bans" {
     run -0 cscli decisions add --ip 1.2.3.4 --duration 30s
     assert_output --partial 'Decision successfully added'
 
@@ -67,13 +66,13 @@ setup() {
     sleep 2
 }
 
-@test "${FILE} expected 1 notification" {
+@test "expected 1 notification" {
     run -0 cat "${tempfile}"
     assert_output --partial 1.2.3.4
     assert_output --partial 1.2.3.5
 }
 
-@test "${FILE} second notification works too" {
+@test "second notification works too" {
     run -0 cat "${tempfile2}"
     assert_output --partial secondfile
 }
