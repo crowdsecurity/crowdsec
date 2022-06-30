@@ -195,7 +195,8 @@ func FromFactory(bucketFactory BucketFactory) *Leaky {
 func LeakRoutine(leaky *Leaky) error {
 
 	var (
-		durationTicker <-chan time.Time = make(<-chan time.Time)
+		durationTicker  <-chan time.Time = make(<-chan time.Time)
+		underflowTicker *time.Ticker
 	)
 
 	defer types.CatchPanic(fmt.Sprintf("crowdsec/LeakRoutine/%s", leaky.Name))
@@ -239,9 +240,12 @@ func LeakRoutine(leaky *Leaky) error {
 
 			leaky.Pour(leaky, *msg) // glue for now
 			//Clear cache on behalf of pour
-			tmp := time.NewTicker(leaky.Duration)
-			durationTicker = tmp.C
-			defer tmp.Stop()
+			if underflowTicker != nil {
+				underflowTicker.Stop()
+			}
+			underflowTicker = time.NewTicker(leaky.Duration)
+			durationTicker = underflowTicker.C
+			defer underflowTicker.Stop()
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
