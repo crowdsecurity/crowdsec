@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/antonmedv/expr"
@@ -502,6 +503,25 @@ func NewConfigCmd() *cobra.Command {
 	}
 	cmdConfigRestore.PersistentFlags().BoolVar(&restoreOldBackup, "old-backup", false, "To use when you are upgrading crowdsec v0.X to v1.X and you need to restore backup from v0.X")
 	cmdConfig.AddCommand(cmdConfigRestore)
+
+	var cmdConfigTest = &cobra.Command{
+		Use:   `test`,
+		Short: `Test config file"`,
+		Long: `Testing configuration file loaded by cscli command
+		`,
+		Args:              cobra.ExactArgs(0),
+		DisableAutoGenTag: true,
+		Run: func(cmd *cobra.Command, args []string) {
+			cmdArgs := []string{"-c", ConfigFilePath, "-t"}
+			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
+			output, err := crowdsecCmd.CombinedOutput()
+			fmt.Println(string(output))
+			if err != nil {
+				log.Fatalf("fail to run crowdsec:", err)
+			}
+		},
+	}
+	cmdConfig.AddCommand(cmdConfigTest)
 
 	return cmdConfig
 }
