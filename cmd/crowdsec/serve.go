@@ -67,6 +67,10 @@ func reloadHandler(sig os.Signal, cConfig *csconfig.Config) error {
 	}
 
 	if !cConfig.DisableAPI {
+		if flags.DisableCAPI {
+			log.Warningf("Communication with CrowdSec Central API disabled from args")
+			cConfig.API.Server.OnlineClient = nil
+		}
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "unable to init api server")
@@ -250,6 +254,13 @@ func Serve(cConfig *csconfig.Config, apiReady chan bool, agentReady chan bool) e
 	}
 
 	if !cConfig.DisableAPI {
+		if cConfig.API.Server.OnlineClient == nil || cConfig.API.Server.OnlineClient.Credentials == nil {
+			log.Warningf("Communication with CrowdSec Central API disabled from configuration file")
+		}
+		if flags.DisableCAPI {
+			log.Warningf("Communication with CrowdSec Central API disabled from args")
+			cConfig.API.Server.OnlineClient = nil
+		}
 		apiServer, err := initAPIServer(cConfig)
 		if err != nil {
 			return errors.Wrap(err, "api server init")
