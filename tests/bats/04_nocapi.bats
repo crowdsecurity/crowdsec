@@ -29,7 +29,7 @@ config_disable_capi() {
 }
 
 @test "without capi: crowdsec LAPI should run without capi (-no-capi flag)" {
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-capi
+    run -124 --separate-stderr timeout 1s "${CROWDSEC}" -no-capi
     assert_output --partial "Communication with CrowdSec Central API disabled from args"
 }
 
