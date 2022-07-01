@@ -14,6 +14,8 @@ setup_file() {
     MOCK_URL="http://localhost:${MOCK_PORT}"
     export MOCK_URL
     PLUGIN_DIR=$(config_yq '.config_paths.plugin_dir')
+    # could have a trailing slash
+    PLUGIN_DIR=$(realpath -s "${PLUGIN_DIR}")
     export PLUGIN_DIR
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
@@ -41,8 +43,6 @@ setup_file() {
 
 teardown_file() {
     load "../lib/teardown_file.sh"
-    rm -f "${PLUGIN_DIR}"/badname
-    chmod go-w "${PLUGIN_DIR}"/notification-http
     ./instance-crowdsec stop
     ./instance-mock-http stop
 }

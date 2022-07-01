@@ -34,8 +34,8 @@ ifdef TEST_COVERAGE
 else
   # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
   # overriding the path to the binaries
-  CROWDSEC ?= "$(BIN_DIR)/crowdsec"
-  CSCLI ?= "$(BIN_DIR)/cscli"
+  CROWDSEC ?= $(BIN_DIR)/crowdsec
+  CSCLI ?= $(BIN_DIR)/cscli
   # any value is considered true
   BINCOVER_TESTING =
 endif

@@ -7,6 +7,8 @@ setup_file() {
     load "../lib/setup_file.sh"
 
     PLUGIN_DIR=$(config_yq '.config_paths.plugin_dir')
+    # could have a trailing slash
+    PLUGIN_DIR=$(realpath -s "${PLUGIN_DIR}")
     export PLUGIN_DIR
 
     PROFILES_PATH=$(config_yq '.api.server.profiles_path')
