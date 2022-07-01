@@ -28,6 +28,11 @@ config_disable_capi() {
     yq e 'del(.api.server.online_client)' -i "${CONFIG_YAML}"
 }
 
+@test "without capi: crowdsec LAPI should run without capi (-no-capi flag)" {
+    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-capi
+    assert_output --partial "Communication with CrowdSec Central API disabled from args"
+}
+
 @test "without capi: crowdsec LAPI should still work" {
     config_disable_capi
     run -124 --separate-stderr timeout 1s "${CROWDSEC}"
