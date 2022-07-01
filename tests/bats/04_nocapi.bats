@@ -29,6 +29,8 @@ config_disable_capi() {
 }
 
 @test "without capi: crowdsec LAPI should run without capi (-no-capi flag)" {
+    yq e '.common.log_media="stdout"' -i "${CONFIG_YAML}"
+
     run -124 --separate-stderr timeout 1s "${CROWDSEC}" -no-capi
 
     run -0 echo "${stderr}"
