@@ -57,7 +57,7 @@ declare stderr
 
 @test "crowdsec - print error on exit" {
     # errors that cause program termination are printed to stderr, not only logs
-    yq e '.db_config.type="meh"' -i "${CONFIG_YAML}"
+    config_set '.db_config.type="meh"'
     run -1 --separate-stderr "${BIN_DIR}/crowdsec"
     refute_output
     run -0 echo "${stderr}"
