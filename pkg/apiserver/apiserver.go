@@ -323,6 +323,7 @@ func (s *APIServer) Run(apiReady chan bool) error {
 	s.httpServerTomb.Go(func() error {
 		go func() {
 			apiReady <- true
+			log.Infof("CrowdSec Local API listening on %s", s.URL)
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
 					log.Fatal(err)

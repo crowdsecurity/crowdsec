@@ -131,7 +131,7 @@ func (a *apic) Push() error {
 
 	var cache models.AddSignalsRequest
 	ticker := time.NewTicker(a.pushInterval)
-	log.Infof("start crowdsec api push (interval: %s)", PushInterval)
+	log.Infof("Start push to CrowdSec Central API (interval: %s)", PushInterval)
 
 	for {
 		select {
@@ -463,7 +463,7 @@ func setAlertScenario(add_counters map[string]map[string]int, delete_counters ma
 
 func (a *apic) Pull() error {
 	defer types.CatchPanic("lapi/pullFromAPIC")
-	log.Infof("start crowdsec api pull (interval: %s)", PullInterval)
+	log.Infof("Start pull from CrowdSec Central API (interval: %s)", PullInterval)
 
 	toldOnce := false
 	for {
@@ -553,7 +553,7 @@ func (a *apic) SendMetrics() error {
 		log.Errorf("unable to send metrics (%s), will retry", err)
 	}
 	log.Infof("capi metrics: metrics sent successfully")
-	log.Infof("start crowdsec api send metrics (interval: %s)", MetricsInterval)
+	log.Infof("Start send metrics to CrowdSec Central API (interval: %s)", MetricsInterval)
 	ticker := time.NewTicker(a.metricsInterval)
 	for {
 		select {

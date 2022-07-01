@@ -122,14 +122,14 @@ func LoadStages(stageFiles []Stagefile, pctx *UnixParserCtx, ectx EnricherCtx) (
 			nodes = append(nodes, node)
 			nodesCount++
 		}
-		log.WithFields(log.Fields{"file": stageFile.Filename}).Infof("Loaded %d parser nodes", nodesCount)
+		log.WithFields(log.Fields{"file": stageFile.Filename, "stage": stageFile.Stage}).Infof("Loaded %d parser nodes", nodesCount)
 	}
 
 	for k := range tmpstages {
 		pctx.Stages = append(pctx.Stages, k)
 	}
 	sort.Strings(pctx.Stages)
-	log.Infof("Loaded %d nodes, %d stages", len(nodes), len(pctx.Stages))
+	log.Infof("Loaded %d nodes from %d stages", len(nodes), len(pctx.Stages))
 
 	return nodes, nil
 }
