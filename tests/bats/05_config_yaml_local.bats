@@ -31,7 +31,7 @@ teardown() {
 
 #----------
 
-@test "${FILE} config.yaml.local - cscli (log_level)" {
+@test "config.yaml.local - cscli (log_level)" {
     yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
@@ -41,7 +41,7 @@ teardown() {
     assert_output "debug"
 }
 
-@test "${FILE} config.yaml.local - cscli (log_level - with envvar)" {
+@test "config.yaml.local - cscli (log_level - with envvar)" {
     yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
@@ -52,7 +52,7 @@ teardown() {
     assert_output "debug"
 }
 
-@test "${FILE} config.yaml.local - crowdsec (listen_url)" {
+@test "config.yaml.local - crowdsec (listen_url)" {
     # disable the agent or we'll need to patch api client credentials too
     run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
     ./instance-crowdsec start
@@ -73,7 +73,7 @@ teardown() {
     run -0 ./lib/util/wait-for-port -q 8080
 }
 
-@test "${FILE} local_api_credentials.yaml.local" {
+@test "local_api_credentials.yaml.local" {
     run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
     ./instance-crowdsec start
@@ -85,7 +85,7 @@ teardown() {
     run -0 cscli decisions list
 }
 
-@test "${FILE} simulation.yaml.local" {
+@test "simulation.yaml.local" {
     run -0 yq e '.config_paths.simulation_path' "${CONFIG_YAML}"
     refute_output null
     SIMULATION="${output}"
@@ -107,7 +107,7 @@ teardown() {
     assert_output --partial "global simulation: enabled"
 }
 
-@test "${FILE} profiles.yaml.local" {
+@test "profiles.yaml.local" {
     run -0 yq e '.api.server.profiles_path' "${CONFIG_YAML}"
     refute_output null
     PROFILES="${output}"
