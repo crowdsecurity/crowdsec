@@ -13,27 +13,27 @@ setup_file() {
     MOCK_PORT="9999"
     MOCK_URL="http://localhost:${MOCK_PORT}"
     export MOCK_URL
-    PLUGIN_DIR=$(config_yq '.config_paths.plugin_dir')
+    PLUGIN_DIR=$(config_get '.config_paths.plugin_dir')
     # could have a trailing slash
     PLUGIN_DIR=$(realpath -s "${PLUGIN_DIR}")
     export PLUGIN_DIR
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators
-    yq e '
+    config_set "$(config_get '.config_paths.notification_dir')/http.yaml" '
         .url=strenv(MOCK_URL) |
         .group_wait="5s" |
         .group_threshold=2
-    ' -i "$(config_yq '.config_paths.notification_dir')/http.yaml"
+    '
 
-    yq e '
+    config_set "$(config_get '.api.server.profiles_path')" '
         .notifications=["http_default"] |
         .filters=["Alert.GetScope() == \"Ip\""]
-    ' -i "$(config_yq '.api.server.profiles_path')"
+    '
 
-    yq e '
+    config_set '
         .plugin_config.user="" |
         .plugin_config.group=""
-    ' -i "${CONFIG_YAML}"
+    '
 
     rm -f -- "${MOCK_OUT}"
 

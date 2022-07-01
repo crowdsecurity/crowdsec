@@ -15,14 +15,14 @@ setup_file() {
     tempfile2=$(TMPDIR="${BATS_FILE_TMPDIR}" mktemp)
     export tempfile2
 
-    DUMMY_YAML="$(config_yq '.config_paths.notification_dir')/dummy.yaml"
+    DUMMY_YAML="$(config_get '.config_paths.notification_dir')/dummy.yaml"
 
-    yq e '
+    config_set "${DUMMY_YAML}" '
        .group_wait="5s" |
        .group_threshold=2 |
        .output_file=strenv(tempfile) |
        .format="{{.|toJson}}"
-       ' -i "${DUMMY_YAML}"
+    '
 
     cat <<-EOT >>"${DUMMY_YAML}"
 	---
@@ -33,15 +33,15 @@ setup_file() {
 	output_file: ${tempfile2}
 	EOT
 
-    yq e '
+    config_set "$(config_get '.api.server.profiles_path')" '
        .notifications=["dummy_default","dummy_2"] |
        .filters=["Alert.GetScope() == \"Ip\""]
-       ' -i "$(config_yq '.api.server.profiles_path')"
+    '
 
-    yq e '
+    config_set '
        .plugin_config.user="" |
        .plugin_config.group=""
-       ' -i "${CONFIG_YAML}"
+    '
 
     ./instance-crowdsec start
 }

@@ -25,7 +25,7 @@ declare stderr
 #----------
 
 config_disable_capi() {
-    yq e 'del(.api.server.online_client)' -i "${CONFIG_YAML}"
+    config_set 'del(.api.server.online_client)'
 }
 
 @test "without capi: crowdsec LAPI should still work" {

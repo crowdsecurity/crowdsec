@@ -20,7 +20,7 @@ teardown_file() {
 setup() {
     load "../lib/setup.sh"
     ./instance-data load
-    run -0 yq e '.api.client.credentials_path' "${CONFIG_YAML}"
+    run -0 config_get '.api.client.credentials_path'
     LOCAL_API_CREDENTIALS="${output}"
     export LOCAL_API_CREDENTIALS
 }
@@ -32,7 +32,7 @@ teardown() {
 #----------
 
 @test "config.yaml.local - cscli (log_level)" {
-    yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
+    config_set '.common.log_level="warning"'
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
 
@@ -42,7 +42,7 @@ teardown() {
 }
 
 @test "config.yaml.local - cscli (log_level - with envvar)" {
-    yq e '.common.log_level="warning"' -i "${CONFIG_YAML}"
+    config_set '.common.log_level="warning"'
     run -0 cscli config show --key Config.Common.LogLevel
     assert_output "warning"
 
@@ -54,7 +54,7 @@ teardown() {
 
 @test "config.yaml.local - crowdsec (listen_url)" {
     # disable the agent or we'll need to patch api client credentials too
-    run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
+    run -0 config_set 'del(.crowdsec_service)'
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8080
     ./instance-crowdsec stop
@@ -74,7 +74,7 @@ teardown() {
 }
 
 @test "local_api_credentials.yaml.local" {
-    run -0 yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
+    run -0 config_set 'del(.crowdsec_service)'
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083
@@ -86,7 +86,7 @@ teardown() {
 }
 
 @test "simulation.yaml.local" {
-    run -0 yq e '.config_paths.simulation_path' "${CONFIG_YAML}"
+    run -0 config_get '.config_paths.simulation_path'
     refute_output null
     SIMULATION="${output}"
 
@@ -108,7 +108,7 @@ teardown() {
 }
 
 @test "profiles.yaml.local" {
-    run -0 yq e '.api.server.profiles_path' "${CONFIG_YAML}"
+    run -0 config_get '.api.server.profiles_path'
     refute_output null
     PROFILES="${output}"
 
@@ -124,7 +124,7 @@ teardown() {
 
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
-    ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
