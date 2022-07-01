@@ -1,4 +1,9 @@
-name: Bats
+---
+# This workflow is actually running
+# only functional tests, but the
+# name is used for the badge in README.md
+
+name: Tests
 
 # Main workflow for functional tests, it calls all the others through parallel jobs.
 #
