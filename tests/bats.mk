@@ -87,8 +87,9 @@ bats-fixture:
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data
+# Don't remove LOCAL_DIR directly because it could be / or anything else outside the repo
 bats-clean:
-	@$(RM) $(LOCAL_DIR) $(WIN_IGNORE_ERR)
+	@$(RM) $(TEST_DIR)/local $(WIN_IGNORE_ERR)
 	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
 	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
 	@$(RM) tests/.environment.sh $(WIN_IGNORE_ERR)
