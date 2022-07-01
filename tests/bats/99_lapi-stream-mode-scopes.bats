@@ -28,35 +28,35 @@ api() {
     curl -s -H "X-Api-Key: ${API_KEY}" "${CROWDSEC_API_URL}${URI}"
 }
 
-@test "$FILE adding decisions for multiple scopes" {
+@test "adding decisions for multiple scopes" {
     run -0 cscli decisions add -i '1.2.3.6'
     assert_output --partial 'Decision successfully added'
     run -0 cscli decisions add --scope user --value toto
     assert_output --partial 'Decision successfully added'
 }
 
-@test "$FILE stream start (implicit ip scope)" {
+@test "stream start (implicit ip scope)" {
     run -0 api "/v1/decisions/stream?startup=true"
     run -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'
     refute_output --partial 'toto'
 }
 
-@test "$FILE stream start (explicit ip scope)" {
+@test "stream start (explicit ip scope)" {
     run -0 api "/v1/decisions/stream?startup=true&scopes=ip"
     run -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'
     refute_output --partial 'toto'
 }
 
-@test "$FILE stream start (user scope)" {
+@test "stream start (user scope)" {
     run -0 api "/v1/decisions/stream?startup=true&scopes=user"
     run -0 jq -r '.new' <(output)
     refute_output --partial '1.2.3.6'
     assert_output --partial 'toto'
 }
 
-@test "$FILE stream start (user+ip scope)" {
+@test "stream start (user+ip scope)" {
     run -0 api "/v1/decisions/stream?startup=true&scopes=user,ip"
     run -0 jq -r '.new' <(output)
     assert_output --partial '1.2.3.6'

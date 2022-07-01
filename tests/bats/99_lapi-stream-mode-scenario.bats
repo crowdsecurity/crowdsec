@@ -34,7 +34,7 @@ output_new_decisions() {
 }
 
 
-@test "${FILE} adding decisions with different duration, scenario, origin" {
+@test "adding decisions with different duration, scenario, origin" {
     # origin: test
     run -0 cscli decisions add -i 127.0.0.1 -d 1h -R crowdsecurity/test
     ./instance-crowdsec stop
@@ -61,7 +61,7 @@ output_new_decisions() {
     ./instance-crowdsec start
 }
 
-@test "${FILE} test startup" {
+@test "test startup" {
     run -0 api "/v1/decisions/stream?startup=true"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -70,7 +70,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with scenarios containing" {
+@test "test startup with scenarios containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -79,7 +79,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with multiple scenarios containing" {
+@test "test startup with multiple scenarios containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf,test"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -88,12 +88,12 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with unknown scenarios containing" {
+@test "test startup with unknown scenarios containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=unknown"
     assert_output '{"deleted":null,"new":null}'
 }
 
-@test "${FILE} test startup with scenarios containing and not containing" {
+@test "test startup with scenarios containing and not containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=test&scenarios_not_containing=ssh_bf"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -102,7 +102,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with scenarios containing and not containing 2" {
+@test "test startup with scenarios containing and not containing 2" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_containing=longest&scenarios_not_containing=ssh_bf,test"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -110,7 +110,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with scenarios not containing" {
+@test "test startup with scenarios not containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -119,7 +119,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with multiple scenarios not containing" {
+@test "test startup with multiple scenarios not containing" {
     run -0 api "/v1/decisions/stream?startup=true&scenarios_not_containing=ssh_bf,test"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -127,7 +127,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with origins parameter" {
+@test "test startup with origins parameter" {
     run -0 api "/v1/decisions/stream?startup=true&origins=another_origin"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -136,7 +136,7 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with multiple origins parameter" {
+@test "test startup with multiple origins parameter" {
     run -0 api "/v1/decisions/stream?startup=true&origins=another_origin,test"
     run -0 output_new_decisions
     assert_output - <<-EOT
@@ -145,12 +145,12 @@ output_new_decisions() {
 	EOT
 }
 
-@test "${FILE} test startup with unknown origins" {
+@test "test startup with unknown origins" {
     run -0 api "/v1/decisions/stream?startup=true&origins=unknown"
     assert_output '{"deleted":null,"new":null}'
 }
 
-#@test "${FILE} delete decision 3 (127.0.0.1)" {
+#@test "delete decision 3 (127.0.0.1)" {
 #
 #        {
 #            TestName:      "delete decisions 3 (127.0.0.1)",

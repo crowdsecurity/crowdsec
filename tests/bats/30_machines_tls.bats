@@ -9,6 +9,7 @@ config_disable_agent() {
 
 setup_file() {
     load "../lib/setup_file.sh"
+    [[ "${PACKAGE_TESTING}" == "true" ]] && return
     ./instance-data load
 
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
@@ -56,6 +57,7 @@ teardown_file() {
 }
 
 setup() {
+    [[ "${PACKAGE_TESTING}" == "true" ]] && skip
     load "../lib/setup.sh"
 }
 
