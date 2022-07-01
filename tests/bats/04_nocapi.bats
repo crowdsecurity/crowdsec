@@ -24,12 +24,8 @@ declare stderr
 
 #----------
 
-config_disable_capi() {
-    config_set 'del(.api.server.online_client)'
-}
-
 @test "without capi: crowdsec LAPI should run without capi (-no-capi flag)" {
-    yq e '.common.log_media="stdout"' -i "${CONFIG_YAML}"
+    config_set '.common.log_media="stdout"'
 
     run -124 --separate-stderr timeout 1s "${CROWDSEC}" -no-capi
 

@@ -81,6 +81,7 @@ config_generate() {
     ' ../config/config.yaml >"${CONFIG_DIR}/config.yaml"
 }
 
+
 make_init_data() {
     remove_init_data
 
@@ -121,6 +122,9 @@ make_init_data() {
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"
     echo "${DB_BACKEND}" > "${LOCAL_INIT_DIR}/.backend"
+
+    # disable CAPI by default
+    yq e 'del(.api.server.online_client)' -i "${CONFIG_DIR}/config.yaml"
 
     tar -C "${LOCAL_DIR}" --create \
         --exclude "${REL_DATA_DIR}"/crowdsec.db \

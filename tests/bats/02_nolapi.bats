@@ -35,7 +35,7 @@ declare stderr
 }
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
-    config_set 'del(.api.server)'
+    config_disable_lapi
     run -1 --separate-stderr timeout 2s "${CROWDSEC}"
 
     run -0 echo "${stderr}"
@@ -43,7 +43,7 @@ declare stderr
 }
 
 @test "capi status shouldn't be ok without api.server" {
-    config_set 'del(.api.server)'
+    config_disable_lapi
     run -1 --separate-stderr cscli capi status
 
     run -0 echo "${stderr}"
@@ -52,7 +52,7 @@ declare stderr
 }
 
 @test "cscli config show -o human" {
-    config_set 'del(.api.server)'
+    config_disable_lapi
     run -0 cscli config show -o human
     assert_output --partial "Global:"
     assert_output --partial "Crowdsec:"
@@ -61,7 +61,7 @@ declare stderr
 }
 
 @test "cscli config backup" {
-    config_set 'del(.api.server)'
+    config_disable_lapi
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
     run -0 cscli config backup "${backupdir}"
     assert_output --partial "Starting configuration backup"
@@ -74,7 +74,7 @@ declare stderr
 }
 
 @test "lapi status shouldn't be ok without api.server" {
-    config_set 'del(.api.server)'
+    config_disable_lapi
     ./instance-crowdsec start || true
     run -1 --separate-stderr cscli machines list
     run -0 echo "${stderr}"
@@ -83,7 +83,7 @@ declare stderr
 
 @test "cscli metrics" {
     skip 'need to trigger metrics with a live parse'
-    config_set 'del(.api.server)'
+    config_disable_lapi
     ./instance-crowdsec start
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"

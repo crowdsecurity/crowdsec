@@ -54,7 +54,7 @@ teardown() {
 
 @test "config.yaml.local - crowdsec (listen_url)" {
     # disable the agent or we'll need to patch api client credentials too
-    run -0 config_set 'del(.crowdsec_service)'
+    run -0 config_disable_agent
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8080
     ./instance-crowdsec stop
@@ -74,7 +74,7 @@ teardown() {
 }
 
 @test "local_api_credentials.yaml.local" {
-    run -0 config_set 'del(.crowdsec_service)'
+    run -0 config_disable_agent
     echo "{'api':{'server':{'listen_uri':127.0.0.1:8083}}}" >"${CONFIG_YAML}.local"
     ./instance-crowdsec start
     run -0 ./lib/util/wait-for-port -q 8083

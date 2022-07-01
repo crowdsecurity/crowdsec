@@ -24,10 +24,6 @@ declare stderr
 
 #----------
 
-config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
-}
-
 @test "with agent: test without -no-cs flag" {
     run -124 timeout 2s "${CROWDSEC}"
     # from `man timeout`: If  the  command  times  out,  and --preserve-status is not set, then exit with status 124.
@@ -47,6 +43,7 @@ config_disable_agent() {
 
 @test "no agent: capi status should be ok" {
     config_disable_agent
+    config_enable_capi
     ./instance-crowdsec start
     run -0 --separate-stderr cscli capi status
 
