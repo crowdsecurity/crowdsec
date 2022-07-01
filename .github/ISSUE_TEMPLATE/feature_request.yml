@@ -1,0 +1,19 @@
+name: Feature request
+about: Suggest an improvement or a new feature
+labels: enhancement
+body:
+  - type: textarea
+    id: feature
+    attributes:
+      label: What would you like to be added?
+      description: |
+        Significant feature requests are unlikely to make progress as issues. Please consider engaging on discord (discord.gg/crowdsec) and forums (https://discourse.crowdsec.net), instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why is this needed?
+    validations:
+      required: true
