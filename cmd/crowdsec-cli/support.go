@@ -35,7 +35,6 @@ const (
 	SUPPORT_BOUNCERS_PATH                = "lapi/bouncers.txt"
 	SUPPORT_AGENTS_PATH                  = "lapi/agents.txt"
 	SUPPORT_CROWDSEC_CONFIG_PATH         = "config/crowdsec.yaml"
-	SUPPORT_CROWDSEC_ACQUIS_PATH         = "config/acquis/acquis.yaml"
 	SUPPORT_LAPI_STATUS_PATH             = "lapi_status.txt"
 	SUPPORT_CAPI_STATUS_PATH             = "capi_status.txt"
 	SUPPORT_ACQUISITION_CONFIG_BASE_PATH = "config/acquis/"
