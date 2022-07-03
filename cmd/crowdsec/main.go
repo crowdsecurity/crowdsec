@@ -66,6 +66,7 @@ type Flags struct {
 	DisableAgent   bool
 	DisableAPI     bool
 	WinSvc         string
+	LogMedia       string
 }
 
 type labelsMap map[string]string
@@ -194,6 +195,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
 	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
+	flag.StringVar(&f.LogMedia, "log-media", "", "log media output")
 	flag.Parse()
 }
 
@@ -257,6 +259,10 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		}
 		cConfig.Common.LogMedia = "stdout"
 		log.Infof("single file mode : log_media=%s daemonize=%t", cConfig.Common.LogMedia, cConfig.Common.Daemonize)
+	}
+
+	if flags.LogMedia != "" {
+		cConfig.Common.LogMedia = strings.ToLower(flags.LogMedia)
 	}
 
 	if cConfig.Common.PidDir != "" {
