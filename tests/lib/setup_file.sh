@@ -48,10 +48,27 @@ cscli() {
 }
 export -f cscli
 
-config_yq() {
-    yq e "$@" "${CONFIG_YAML}"
+config_get() {
+    cfg="${CONFIG_YAML}"
+    if [[ $# -ge 2 ]]; then
+        cfg="$1"
+        shift
+    fi
+
+    yq e "$1" "${cfg}"
 }
-export -f config_yq
+export -f config_get
+
+config_set() {
+    cfg="${CONFIG_YAML}"
+    if [[ $# -ge 2 ]]; then
+        cfg="$1"
+        shift
+    fi
+
+    yq e "$1" -i "${cfg}"
+}
+export -f config_set
 
 # We use these functions like this:
 #    somecommand <(stderr)

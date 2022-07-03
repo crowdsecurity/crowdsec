@@ -29,25 +29,25 @@ api() {
 
 #----------
 
-@test "$FILE cli - first decisions list: must be empty" {
+@test "cli - first decisions list: must be empty" {
     # delete community pull
     run -0 cscli decisions delete --all
     run -0 cscli decisions list -o json
     assert_output 'null'
 }
 
-@test "$FILE adding decision for range 4.4.4.0/24" {
+@test "adding decision for range 4.4.4.0/24" {
     run -0 cscli decisions add -r '4.4.4.0/24'
     assert_output --partial 'Decision successfully added'
 }
 
-@test "$FILE CLI - all decisions" {
+@test "CLI - all decisions" {
     run -0 cscli decisions list -o json
     run -0 jq -r '.[0].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE API - all decisions" {
+@test "API - all decisions" {
     run -0 api '/v1/decisions'
     run -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
@@ -55,55 +55,55 @@ api() {
 
 # check ip within/outside of range
 
-@test "$FILE CLI - decisions for ip 4.4.4." {
+@test "CLI - decisions for ip 4.4.4." {
     run -0 cscli decisions list -i '4.4.4.3' -o json
     run -0 jq -r '.[0].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE API - decisions for ip 4.4.4." {
+@test "API - decisions for ip 4.4.4." {
     run -0 api '/v1/decisions?ip=4.4.4.3'
     run -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE CLI - decisions for ip contained in 4.4.4." {
+@test "CLI - decisions for ip contained in 4.4.4." {
     run -0 cscli decisions list -i '4.4.4.4' -o json --contained
     assert_output 'null'
 }
 
-@test "$FILE API - decisions for ip contained in 4.4.4." {
+@test "API - decisions for ip contained in 4.4.4." {
     run -0 api '/v1/decisions?ip=4.4.4.4&contains=false'
     assert_output 'null'
 }
 
-@test "$FILE CLI - decisions for ip 5.4.4." {
+@test "CLI - decisions for ip 5.4.4." {
     run -0 cscli decisions list -i '5.4.4.3' -o json
     assert_output 'null'
 }
 
-@test "$FILE API - decisions for ip 5.4.4." {
+@test "API - decisions for ip 5.4.4." {
     run -0 api '/v1/decisions?ip=5.4.4.3'
     assert_output 'null'
 }
 
-@test "$FILE CLI - decisions for range 4.4.0.0/1" {
+@test "CLI - decisions for range 4.4.0.0/1" {
     run -0 cscli decisions list -r '4.4.0.0/16' -o json
     assert_output 'null'
 }
 
-@test "$FILE API - decisions for range 4.4.0.0/1" {
+@test "API - decisions for range 4.4.0.0/1" {
     run -0 api '/v1/decisions?range=4.4.0.0/16'
     assert_output 'null'
 }
 
-@test "$FILE CLI - decisions for ip/range in 4.4.0.0/1" {
+@test "CLI - decisions for ip/range in 4.4.0.0/1" {
     run -0 cscli decisions list -r '4.4.0.0/16' -o json --contained
     run -0 jq -r '.[0].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE API - decisions for ip/range in 4.4.0.0/1" {
+@test "API - decisions for ip/range in 4.4.0.0/1" {
     run -0 api '/v1/decisions?range=4.4.0.0/16&contains=false'
     run -0 jq -r '.[0].value' <(output)
     assert_output '4.4.4.0/24'
@@ -111,24 +111,24 @@ api() {
 
 # check subrange
 
-@test "$FILE CLI - decisions for range 4.4.4.2/2" {
+@test "CLI - decisions for range 4.4.4.2/2" {
     run -0 cscli decisions list -r '4.4.4.2/28' -o json
     run -0 jq -r '.[].decisions[0].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE API - decisions for range 4.4.4.2/2" {
+@test "API - decisions for range 4.4.4.2/2" {
     run -0 api '/v1/decisions?range=4.4.4.2/28'
     run -0 jq -r '.[].value' <(output)
     assert_output '4.4.4.0/24'
 }
 
-@test "$FILE CLI - decisions for range 4.4.3.2/2" {
+@test "CLI - decisions for range 4.4.3.2/2" {
     run -0 cscli decisions list -r '4.4.3.2/28' -o json
     assert_output 'null'
 }
 
-@test "$FILE API - decisions for range 4.4.3.2/2" {
+@test "API - decisions for range 4.4.3.2/2" {
     run -0 api '/v1/decisions?range=4.4.3.2/28'
     assert_output 'null'
 }

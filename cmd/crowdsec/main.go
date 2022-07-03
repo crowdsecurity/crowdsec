@@ -66,7 +66,8 @@ type Flags struct {
 	DisableAgent   bool
 	DisableAPI     bool
 	WinSvc         string
-	LogMedia       string
+	DisableCAPI    bool
+  LogMedia       string
 }
 
 type labelsMap map[string]string
@@ -193,6 +194,7 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
 	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
 	flag.StringVar(&f.LogMedia, "log-media", "", "log media output")

@@ -95,7 +95,7 @@ declare stderr
     assert_output --partial " on https://api.crowdsec.net/"
     assert_output --partial "You can successfully interact with Central API (CAPI)"
 
-    ONLINE_API_CREDENTIALS_YAML="$(config_yq '.api.server.online_client.credentials_path')"
+    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
     rm "${ONLINE_API_CREDENTIALS_YAML}"
     run -1 --separate-stderr cscli capi status
     run -0 echo "${stderr}"
@@ -164,7 +164,7 @@ declare stderr
     assert_output --partial "Failed to backup configurations"
     assert_output --partial "file exists"
 
-    SIMULATION_YAML="$(config_yq '.config_paths.simulation_path')"
+    SIMULATION_YAML="$(config_get '.config_paths.simulation_path')"
 
     # restore
     rm "${SIMULATION_YAML}"
@@ -193,7 +193,7 @@ declare stderr
 }
 
 @test "cscli - missing LAPI credentials file" {
-    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     rm -f "${LOCAL_API_CREDENTIALS}"
     run -1 --separate-stderr cscli lapi status
     run -0 echo "${stderr}"
@@ -209,7 +209,7 @@ declare stderr
 }
 
 @test "cscli - empty LAPI credentials file" {
-    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     truncate -s 0 "${LOCAL_API_CREDENTIALS}"
     run -1 --separate-stderr cscli lapi status
     run -0 echo "${stderr}"
@@ -225,7 +225,7 @@ declare stderr
 }
 
 @test "cscli - missing LAPI client settings" {
-    yq e 'del(.api.client)' -i "${CONFIG_YAML}"
+    config_set 'del(.api.client)'
     run -1 --separate-stderr cscli lapi status
     run -0 echo "${stderr}"
     assert_output --partial "loading api client: no API client section in configuration"
@@ -240,8 +240,8 @@ declare stderr
 }
 
 @test "cscli - malformed LAPI url" {
-    LOCAL_API_CREDENTIALS=$(config_yq '.api.client.credentials_path')
-    yq e '.url="https://127.0.0.1:-80"' -i "${LOCAL_API_CREDENTIALS}"
+    LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
+    config_set "${LOCAL_API_CREDENTIALS}" '.url="https://127.0.0.1:-80"'
 
     run -1 --separate-stderr cscli lapi status
     run -0 echo "${stderr}"

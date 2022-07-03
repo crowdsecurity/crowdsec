@@ -54,3 +54,18 @@ declare stderr
     run -0 echo "${stderr}"
     assert_line --partial "You must run at least the API Server or crowdsec"
 }
+
+@test "crowdsec - print error on exit" {
+    # errors that cause program termination are printed to stderr, not only logs
+    config_set '.db_config.type="meh"'
+    run -1 --separate-stderr "${BIN_DIR}/crowdsec"
+    refute_output
+    run -0 echo "${stderr}"
+    assert_output --partial "unable to create database client: unknown database type 'meh'"
+}
+
+@test "CS_LAPI_SECRET not strong enough" {
+    CS_LAPI_SECRET=foo run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    run -0 echo "${stderr}"
+    assert_output --partial "api server init: unable to run local API: controller init: CS_LAPI_SECRET not strong enough"
+}

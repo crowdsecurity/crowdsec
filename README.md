@@ -6,8 +6,8 @@
 </br>
 </br>
 <p align="center">
-<img src="https://github.com/crowdsecurity/crowdsec/workflows/tests/badge.svg">
-<img src="https://github.com/crowdsecurity/crowdsec/workflows/build/badge.svg">
+<img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/go-tests.yml/badge.svg">
+<img src="https://github.com/crowdsecurity/crowdsec/actions/workflows/bats.yml/badge.svg">
 <a href="https://codecov.io/gh/crowdsecurity/crowdsec">
   <img src="https://codecov.io/gh/crowdsecurity/crowdsec/branch/master/graph/badge.svg?token=CQGSPNY3PT"/>
 </a>
