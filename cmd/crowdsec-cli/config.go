@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/antonmedv/expr"
 
@@ -513,22 +512,22 @@ func NewConfigCmd() *cobra.Command {
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			LogLevel := "-error"
+			LogLevel := "-info"
 			if trace_lvl {
 				LogLevel = "-trace"
 			} else if dbg_lvl {
 				LogLevel = "-debug"
-			} else if nfo_lvl {
-				LogLevel = "-info"
 			} else if wrn_lvl {
 				LogLevel = "-warning"
 			}
-			cmdArgs := []string{"-c", ConfigFilePath, "-t", LogLevel, "-no-api"}
+			cmdArgs := []string{"-c", ConfigFilePath, "-t", LogLevel, "-no-api", "-log-media", "stdout"}
 			crowdsecCmd := exec.Command("crowdsec", cmdArgs...)
 			output, err := crowdsecCmd.CombinedOutput()
 			fmt.Println(string(output))
-			if err != nil && strings.ToLower(csConfig.Common.LogMedia) == "file" {
-				log.Fatalf("fail to run crowdsec: %v. Please check %s/crowdsec.log for more details", err, csConfig.Common.LogDir)
+			if err != nil {
+				log.Fatalf("configuration failed: %v", err)
+			} else {
+				log.Info("configuration passed!")
 			}
 		},
 	}
