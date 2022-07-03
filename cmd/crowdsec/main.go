@@ -67,7 +67,7 @@ type Flags struct {
 	DisableAPI     bool
 	WinSvc         string
 	DisableCAPI    bool
-  LogMedia       string
+	LogMedia       string
 }
 
 type labelsMap map[string]string
