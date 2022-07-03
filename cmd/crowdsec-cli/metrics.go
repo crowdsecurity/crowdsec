@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -89,7 +89,7 @@ func metricsToTable(table *tablewriter.Table, stats map[string]map[string]int, k
 }
 
 /*This is a complete rip from prom2json*/
-func ShowPrometheus(url string) {
+func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 	mfChan := make(chan *dto.MetricFamily, 1024)
 
 	// Start with the DefaultTransport for sane defaults.
@@ -100,13 +100,10 @@ func ShowPrometheus(url string) {
 	// Timeout early if the server doesn't even return the headers.
 	transport.ResponseHeaderTimeout = time.Minute
 
-	go func() {
-		defer types.CatchPanic("crowdsec/ShowPrometheus")
-		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
-		if err != nil {
-			log.Fatalf("failed to fetch prometheus metrics : %v", err)
-		}
-	}()
+	err := prom2json.FetchMetricFamilies(url, mfChan, transport)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch prometheus metrics : %v", err)
+	}
 
 	result := []*prom2json.Family{}
 	for mf := range mfChan {
@@ -283,42 +280,45 @@ func ShowPrometheus(url string) {
 
 		}
 	}
-	if csConfig.Cscli.Output == "human" {
 
-		acquisTable := tablewriter.NewWriter(os.Stdout)
+	ret := bytes.NewBuffer(nil)
+
+	if formatType == "human" {
+
+		acquisTable := tablewriter.NewWriter(ret)
 		acquisTable.SetHeader([]string{"Source", "Lines read", "Lines parsed", "Lines unparsed", "Lines poured to bucket"})
 		keys := []string{"reads", "parsed", "unparsed", "pour"}
 		if err := metricsToTable(acquisTable, acquis_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
-		bucketsTable := tablewriter.NewWriter(os.Stdout)
+		bucketsTable := tablewriter.NewWriter(ret)
 		bucketsTable.SetHeader([]string{"Bucket", "Current Count", "Overflows", "Instantiated", "Poured", "Expired"})
 		keys = []string{"curr_count", "overflow", "instanciation", "pour", "underflow"}
 		if err := metricsToTable(bucketsTable, buckets_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 
-		parsersTable := tablewriter.NewWriter(os.Stdout)
+		parsersTable := tablewriter.NewWriter(ret)
 		parsersTable.SetHeader([]string{"Parsers", "Hits", "Parsed", "Unparsed"})
 		keys = []string{"hits", "parsed", "unparsed"}
 		if err := metricsToTable(parsersTable, parsers_stats, keys); err != nil {
 			log.Warningf("while collecting acquis stats : %s", err)
 		}
 
-		lapiMachinesTable := tablewriter.NewWriter(os.Stdout)
+		lapiMachinesTable := tablewriter.NewWriter(ret)
 		lapiMachinesTable.SetHeader([]string{"Machine", "Route", "Method", "Hits"})
 		if err := lapiMetricsToTable(lapiMachinesTable, lapi_machine_stats); err != nil {
 			log.Warningf("while collecting machine lapi stats : %s", err)
 		}
 
 		//lapiMetricsToTable
-		lapiBouncersTable := tablewriter.NewWriter(os.Stdout)
+		lapiBouncersTable := tablewriter.NewWriter(ret)
 		lapiBouncersTable.SetHeader([]string{"Bouncer", "Route", "Method", "Hits"})
 		if err := lapiMetricsToTable(lapiBouncersTable, lapi_bouncer_stats); err != nil {
 			log.Warningf("while collecting bouncer lapi stats : %s", err)
 		}
 
-		lapiDecisionsTable := tablewriter.NewWriter(os.Stdout)
+		lapiDecisionsTable := tablewriter.NewWriter(ret)
 		lapiDecisionsTable.SetHeader([]string{"Bouncer", "Empty answers", "Non-empty answers"})
 		for bouncer, hits := range lapi_decisions_stats {
 			row := []string{}
@@ -329,7 +329,7 @@ func ShowPrometheus(url string) {
 		}
 
 		/*unfortunately, we can't reuse metricsToTable as the structure is too different :/*/
-		lapiTable := tablewriter.NewWriter(os.Stdout)
+		lapiTable := tablewriter.NewWriter(ret)
 		lapiTable.SetHeader([]string{"Route", "Method", "Hits"})
 		sortedKeys := []string{}
 		for akey := range lapi_stats {
@@ -352,7 +352,7 @@ func ShowPrometheus(url string) {
 			}
 		}
 
-		decisionsTable := tablewriter.NewWriter(os.Stdout)
+		decisionsTable := tablewriter.NewWriter(ret)
 		decisionsTable.SetHeader([]string{"Reason", "Origin", "Action", "Count"})
 		for reason, origins := range decisions_stats {
 			for origin, actions := range origins {
@@ -367,7 +367,7 @@ func ShowPrometheus(url string) {
 			}
 		}
 
-		alertsTable := tablewriter.NewWriter(os.Stdout)
+		alertsTable := tablewriter.NewWriter(ret)
 		alertsTable.SetHeader([]string{"Reason", "Count"})
 		for scenario, hits := range alerts_stats {
 			row := []string{}
@@ -377,71 +377,75 @@ func ShowPrometheus(url string) {
 		}
 
 		if bucketsTable.NumLines() > 0 {
-			log.Printf("Buckets Metrics:")
+			fmt.Fprintf(ret, "Buckets Metrics:\n")
 			bucketsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			bucketsTable.Render()
 		}
 		if acquisTable.NumLines() > 0 {
-			log.Printf("Acquisition Metrics:")
+			fmt.Fprintf(ret, "Acquisition Metrics:\n")
 			acquisTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			acquisTable.Render()
 		}
 		if parsersTable.NumLines() > 0 {
-			log.Printf("Parser Metrics:")
+			fmt.Fprintf(ret, "Parser Metrics:\n")
 			parsersTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			parsersTable.Render()
 		}
 		if lapiTable.NumLines() > 0 {
-			log.Printf("Local Api Metrics:")
+			fmt.Fprintf(ret, "Local Api Metrics:\n")
 			lapiTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiTable.Render()
 		}
 		if lapiMachinesTable.NumLines() > 0 {
-			log.Printf("Local Api Machines Metrics:")
+			fmt.Fprintf(ret, "Local Api Machines Metrics:\n")
 			lapiMachinesTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiMachinesTable.Render()
 		}
 		if lapiBouncersTable.NumLines() > 0 {
-			log.Printf("Local Api Bouncers Metrics:")
+			fmt.Fprintf(ret, "Local Api Bouncers Metrics:\n")
 			lapiBouncersTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiBouncersTable.Render()
 		}
 
 		if lapiDecisionsTable.NumLines() > 0 {
-			log.Printf("Local Api Bouncers Decisions:")
+			fmt.Fprintf(ret, "Local Api Bouncers Decisions:\n")
 			lapiDecisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			lapiDecisionsTable.Render()
 		}
 
 		if decisionsTable.NumLines() > 0 {
-			log.Printf("Local Api Decisions:")
+			fmt.Fprintf(ret, "Local Api Decisions:\n")
 			decisionsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			decisionsTable.Render()
 		}
 
 		if alertsTable.NumLines() > 0 {
-			log.Printf("Local Api Alerts:")
+			fmt.Fprintf(ret, "Local Api Alerts:\n")
 			alertsTable.SetAlignment(tablewriter.ALIGN_LEFT)
 			alertsTable.Render()
 		}
 
-	} else if csConfig.Cscli.Output == "json" {
+	} else if formatType == "json" {
 		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
 			x, err := json.MarshalIndent(val, "", " ")
 			if err != nil {
-				log.Fatalf("failed to unmarshal metrics : %v", err)
+				return nil, fmt.Errorf("failed to unmarshal metrics : %v", err)
 			}
-			fmt.Printf("%s\n", string(x))
+			ret.Write(x)
 		}
-	} else if csConfig.Cscli.Output == "raw" {
+		return ret.Bytes(), nil
+
+	} else if formatType == "raw" {
 		for _, val := range []interface{}{acquis_stats, parsers_stats, buckets_stats, lapi_stats, lapi_bouncer_stats, lapi_machine_stats, lapi_decisions_stats, decisions_stats, alerts_stats} {
 			x, err := yaml.Marshal(val)
 			if err != nil {
-				log.Fatalf("failed to unmarshal metrics : %v", err)
+				return nil, fmt.Errorf("failed to unmarshal metrics : %v", err)
 			}
-			fmt.Printf("%s\n", string(x))
+			ret.Write(x)
 		}
+		return ret.Bytes(), nil
 	}
+	return ret.Bytes(), nil
 }
 
 var noUnit bool
@@ -472,7 +476,11 @@ func NewMetricsCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			ShowPrometheus(prometheusURL + "/metrics")
+			metrics, err := FormatPrometheusMetric(prometheusURL+"/metrics", csConfig.Cscli.Output)
+			if err != nil {
+				log.Fatalf("could not fetch prometheus metrics: %s", err)
+			}
+			fmt.Printf("%s", metrics)
 		},
 	}
 	cmdMetrics.PersistentFlags().StringVarP(&prometheusURL, "url", "u", "", "Prometheus url (http://<ip>:<port>/metrics)")

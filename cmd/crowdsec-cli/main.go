@@ -89,7 +89,7 @@ func initConfig() {
 var validArgs = []string{
 	"scenarios", "parsers", "collections", "capi", "lapi", "postoverflows", "machines",
 	"metrics", "bouncers", "alerts", "decisions", "simulation", "hub", "dashboard",
-	"config", "completion", "version", "console", "notifications",
+	"config", "completion", "version", "console", "notifications", "support",
 }
 
 func prepender(filename string) string {
@@ -187,6 +187,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 	rootCmd.AddCommand(NewExplainCmd())
 	rootCmd.AddCommand(NewHubTestCmd())
 	rootCmd.AddCommand(NewNotificationsCmd())
+	rootCmd.AddCommand(NewSupportCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		if bincoverTesting != "" {
