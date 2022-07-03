@@ -508,6 +508,8 @@ func NewConfigCmd() *cobra.Command {
 		Use:   `test`,
 		Short: `Test config file"`,
 		Long: `Testing configuration file loaded by cscli command
+		cscli config test
+		cscli -c /tmp/otherconfig.yaml config test
 		`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
