@@ -126,7 +126,7 @@ func initHub() error {
 func collectHubItems(itemType string) []byte {
 	log.Infof("Collecting %s list", itemType)
 	items := ListItems([]string{itemType}, []string{}, false, true, all)
-	return []byte(items)
+	return items
 }
 
 func collectBouncers(dbClient *database.Client) ([]byte, error) {
