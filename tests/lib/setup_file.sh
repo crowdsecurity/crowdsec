@@ -70,6 +70,27 @@ config_set() {
 }
 export -f config_set
 
+config_disable_agent() {
+    config_set 'del(.crowdsec_service)'
+}
+export -f config_disable_agent
+
+config_disable_lapi() {
+    config_set 'del(.api.server)'
+}
+export -f config_disable_lapi
+
+config_disable_capi() {
+    config_set 'del(.api.server.online_client)'
+}
+export -f config_disable_capi
+
+config_enable_capi() {
+    online_api_credentials="$(dirname "${CONFIG_YAML}")/online_api_credentials.yaml" \
+        config_set '.api.server.online_client.credentials_path=strenv(online_api_credentials)'
+}
+export -f config_enable_capi
+
 # We use these functions like this:
 #    somecommand <(stderr)
 # to provide a standard input to "somecommand".

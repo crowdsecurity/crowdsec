@@ -3,10 +3,6 @@
 
 set -u
 
-config_disable_agent() {
-    config_set 'del(.crowdsec_service)'
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
     [[ "${PACKAGE_TESTING}" == "true" ]] && return

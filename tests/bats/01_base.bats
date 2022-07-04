@@ -89,6 +89,8 @@ declare stderr
 }
 
 @test "cscli capi status" {
+    config_enable_capi
+
     run -0 cscli capi status
     assert_output --partial "Loaded credentials from"
     assert_output --partial "Trying to authenticate with username"
