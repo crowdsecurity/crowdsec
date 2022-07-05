@@ -374,7 +374,7 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 }
 
 func (s *APIServer) InitController() error {
-	err := s.controller.Init()
+	err := s.Controller.Init()
 	if err != nil {
 		return errors.Wrap(err, "controller init")
 	}
@@ -385,7 +385,7 @@ func (s *APIServer) InitController() error {
 		} else {
 			cacheExpiration = time.Hour
 		}
-		s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
+		s.Controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
 			cacheExpiration,
 			log.WithFields(log.Fields{
 				"component": "tls-auth",
@@ -394,7 +394,7 @@ func (s *APIServer) InitController() error {
 		if err != nil {
 			return errors.Wrap(err, "while creating TLS auth for agents")
 		}
-		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
+		s.Controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
 			cacheExpiration,
 			log.WithFields(log.Fields{
 				"component": "tls-auth",
