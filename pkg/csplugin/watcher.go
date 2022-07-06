@@ -139,7 +139,11 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
-			return
+			select {
+			case pw.PluginEvents <- pluginName:
+			default:
+				return
+			}
 		}
 	}
 }

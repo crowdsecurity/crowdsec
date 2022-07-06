@@ -1,20 +1,28 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
+	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"gopkg.in/tomb.v2"
 )
 
 type NotificationsCfg struct {
@@ -135,6 +143,86 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 	cmdNotifications.AddCommand(cmdNotificationsInspect)
+
+	var cmdNotificationsReinject = &cobra.Command{
+		Use:               "reinject",
+		Short:             "reinject alerts into notifications system",
+		Long:              `Reinject alerts into notifications system`,
+		Example:           `cscli notifications reinject <alert_id> <plugin_name>`,
+		Args:              cobra.ExactArgs(2),
+		DisableAutoGenTag: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var (
+				pluginBroker csplugin.PluginBroker
+				pluginTomb   tomb.Tomb
+			)
+			if len(args) != 2 {
+				printHelp(cmd)
+				return errors.New("Wrong number of argument")
+			}
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return errors.New(fmt.Sprintf("bad alert id %s", args[0]))
+			}
+			if err := csConfig.LoadAPIClient(); err != nil {
+				return errors.Wrapf(err, "loading api client")
+			}
+			if csConfig.API.Client == nil {
+				return errors.New("There is no configuration on 'api_client:'")
+			}
+			if csConfig.API.Client.Credentials == nil {
+				return errors.New(fmt.Sprintf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath))
+			}
+			apiURL, err := url.Parse(csConfig.API.Client.Credentials.URL)
+			if err != nil {
+				return errors.Wrapf(err, "error parsing the URL of the API")
+			}
+			Client, err := apiclient.NewClient(&apiclient.Config{
+				MachineID:     csConfig.API.Client.Credentials.Login,
+				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
+				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+				URL:           apiURL,
+				VersionPrefix: "v1",
+			})
+			if err != nil {
+				return errors.Wrapf(err, "error creating the client for the API")
+			}
+			alert, _, err := Client.Alerts.GetByID(context.Background(), id)
+			if err != nil {
+				return errors.Wrapf(err, fmt.Sprintf("can't find alert with id %s", args[0]))
+
+			}
+
+			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
+			if err != nil {
+				return errors.Wrapf(err, "Can't initialize plugins")
+			}
+
+			pluginTomb.Go(func() error {
+				pluginBroker.Run(&pluginTomb)
+				return nil
+			})
+
+		loop:
+			for {
+				select {
+				case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+					ProfileID: 1,
+					Alert:     alert,
+				}:
+					break loop
+				default:
+					time.Sleep(50 * time.Millisecond)
+					log.Info("sleeping\n")
+
+				}
+			}
+			pluginTomb.Kill(errors.New("terminating"))
+			pluginTomb.Wait()
+			return nil
+		},
+	}
+	cmdNotifications.AddCommand(cmdNotificationsReinject)
 	return cmdNotifications
 }
 
