@@ -99,7 +99,7 @@ body:
         </details>
 
   - type: textarea
-    id: collections
+    id: config
     attributes:
       label: Config show
       value: |
@@ -113,7 +113,7 @@ body:
         </details>
 
   - type: textarea
-    id: collections
+    id: metrics
     attributes:
       label: Prometheus metrics
       value: |
