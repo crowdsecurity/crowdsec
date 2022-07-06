@@ -7,13 +7,13 @@ This security policy applies to :
  - Crowdsec Local API
  - Crowdsec bouncers **developped and maintained** by Crowdsec's team [1]
 
-Reports regarding developpements of community members that are not part of the crowdsecurity organization will be thoroughly investigated nontheless.
+Reports regarding developements of community members that are not part of the crowdsecurity organization will be thoroughly investigated nonetheless.
 
-[1] Projects developped and maintained by the Crowdsec team are under the **crowdsecurity** github organization. Bouncers developped by community members that are not part of the Crowdsec organization are explictely excluded.
+[1] Projects developed and maintained by the Crowdsec team are under the **crowdsecurity** github organization. Bouncers developed by community members that are not part of the Crowdsec organization are explictely excluded.
 
 ## Reporting a Vulnerability
 
-We're extremely grateful for security researchers and users that report vulnerabilities regarding the Crowdsec project. All reports are thoroughly investigated by members of the Crowdsec organization.
+We are extremely grateful to security researchers and users that report vulnerabilities regarding the Crowdsec project. All reports are thoroughly investigated by members of the Crowdsec organization.
 
 You can email the private [security@crowdsec.net](mailto:security@crowdsec.net) list with the security details and the details expected for [all Crowdsec bug reports](https://github.com/crowdsecurity/crowdsec/blob/master/.github/ISSUE_TEMPLATE/bug_report.md).
 
