@@ -99,6 +99,34 @@ body:
         </details>
 
   - type: textarea
+    id: collections
+    attributes:
+      label: Config show
+      value: |
+        <details>
+
+        ```console
+        $ cscli config show
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
+    id: collections
+    attributes:
+      label: Prometheus metrics
+      value: |
+        <details>
+
+        ```console
+        $ cscli metrics
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
     id: customizations
     attributes:
       label: Related custom configs versions (if applicable) : notification plugins, custom scenarios, parsers etc.
