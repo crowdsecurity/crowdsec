@@ -43,6 +43,7 @@ func (h *HeartBeatService) StartHeartBeat(ctx context.Context, t *tomb.Tomb) {
 					log.Errorf("heartbeat error : %s", err)
 					continue
 				}
+				resp.Response.Body.Close()
 				if resp.Response.StatusCode != http.StatusOK {
 					log.Errorf("heartbeat unexpected return code : %d", resp.Response.StatusCode)
 					continue
