@@ -1,0 +1,136 @@
+name: Bug report
+about: Report a bug encountered while operating crowdsec
+labels: bug
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: |
+        Please provide as much info as possible. Not doing so may result in your bug not being addressed in a timely manner.
+        If this matter is security related, please disclose it privately to security@crowdsec.net
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How can we reproduce it (as minimally and precisely as possible)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Anything else we need to know?
+
+  - type: textarea
+    id: Version
+    attributes:
+      label: Crowdsec version
+      value: |
+        <details>
+
+        ```console
+        $ cscli version
+        # paste output here
+        ```
+
+        </details>
+    validations:
+      required: true
+
+  - type: textarea
+    id: osVersion
+    attributes:
+      label: OS version
+      value: |
+        <details>
+
+        ```console
+        # On Linux:
+        $ cat /etc/os-release
+        # paste output here
+        $ uname -a
+        # paste output here
+
+        # On Windows:
+        C:\> wmic os get Caption, Version, BuildNumber, OSArchitecture
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
+    id: collections
+    attributes:
+      label: Enabled collections and parsers
+      value: |
+        <details>
+
+        ```console
+        $ cscli hub list -o raw
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
+    id: acquis
+    attributes:
+      label: Acquisition config
+      value: |
+        <details>
+        ```console
+        # On Linux:
+        $ cat /etc/crowdsec/acquis.yaml /etc/crowdsec/acquis.d/*
+        # paste output here
+
+        # On Windows:
+        C:\> Get-Content C:\ProgramData\CrowdSec\config\acquis.yaml
+        # paste output here
+        </details>
+
+  - type: textarea
+    id: collections
+    attributes:
+      label: Config show
+      value: |
+        <details>
+
+        ```console
+        $ cscli config show
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
+    id: collections
+    attributes:
+      label: Prometheus metrics
+      value: |
+        <details>
+
+        ```console
+        $ cscli metrics
+        # paste output here
+        ```
+
+        </details>
+
+  - type: textarea
+    id: customizations
+    attributes:
+      label: Related custom configs versions (if applicable) : notification plugins, custom scenarios, parsers etc.
+      value: |
+        <details>
+
+        </details>
