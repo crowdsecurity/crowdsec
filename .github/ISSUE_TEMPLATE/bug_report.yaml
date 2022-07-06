@@ -1,5 +1,5 @@
 name: Bug report
-about: Report a bug encountered while operating crowdsec
+description: Report a bug encountered while operating crowdsec
 labels: bug
 body:
   - type: textarea
@@ -129,7 +129,7 @@ body:
   - type: textarea
     id: customizations
     attributes:
-      label: Related custom configs versions (if applicable) : notification plugins, custom scenarios, parsers etc.
+      label: "Related custom configs versions (if applicable) : notification plugins, custom scenarios, parsers etc."
       value: |
         <details>
 
