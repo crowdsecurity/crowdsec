@@ -181,9 +181,9 @@ func collectCrowdsecConfig() []byte {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
 	}
 
-	r := regexp.MustCompile(`(\s+password:)\s+.*`)
+	r := regexp.MustCompile(`(\s+password:|\s+user:|\s+host:)\s+.*`)
 
-	return r.ReplaceAll(config, []byte("$1: ****REDACTED****"))
+	return r.ReplaceAll(config, []byte("$1 ****REDACTED****"))
 }
 
 func collectCrowdsecProfile() []byte {
