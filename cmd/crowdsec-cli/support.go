@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/blackfireio/osinfo"
@@ -179,7 +180,10 @@ func collectCrowdsecConfig() []byte {
 	if err != nil {
 		return []byte(fmt.Sprintf("could not read config file: %s", err))
 	}
-	return config
+
+	r := regexp.MustCompile(`(\s+password:)\s+.*`)
+
+	return r.ReplaceAll(config, []byte("$1: ****REDACTED****"))
 }
 
 func collectCrowdsecProfile() []byte {
@@ -194,6 +198,7 @@ func collectCrowdsecProfile() []byte {
 func collectAcquisitionConfig() map[string][]byte {
 	log.Info("Collecting acquisition config")
 	ret := make(map[string][]byte)
+
 	for _, filename := range csConfig.Crowdsec.AcquisitionFiles {
 		fileContent, err := ioutil.ReadFile(filename)
 		if err != nil {
@@ -202,6 +207,7 @@ func collectAcquisitionConfig() map[string][]byte {
 			ret[filename] = fileContent
 		}
 	}
+
 	return ret
 }
 
