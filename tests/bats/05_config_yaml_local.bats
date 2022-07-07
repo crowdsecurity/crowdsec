@@ -91,19 +91,19 @@ teardown() {
     SIMULATION="${output}"
 
     echo "simulation: off" >"${SIMULATION}"
-    run -0 --separate-stderr cscli simulation status -o human
+    run -0 cscli simulation status -o human
     assert_output --partial "global simulation: disabled"
 
     echo "simulation: on" >"${SIMULATION}"
-    run -0 --separate-stderr cscli simulation status -o human
+    run -0 cscli simulation status -o human
     assert_output --partial "global simulation: enabled"
 
     echo "simulation: off" >"${SIMULATION}.local"
-    run -0 --separate-stderr cscli simulation status -o human
+    run -0 cscli simulation status -o human
     assert_output --partial "global simulation: disabled"
 
     rm -f "${SIMULATION}.local"
-    run -0 --separate-stderr cscli simulation status -o human
+    run -0 cscli simulation status -o human
     assert_output --partial "global simulation: enabled"
 }
 
