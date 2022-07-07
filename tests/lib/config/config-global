@@ -99,7 +99,6 @@ load_init_data() {
 
     tar -C "${LOCAL_DIR}" --extract --file "${LOCAL_INIT_DIR}/init-config-data.tar"
 
-    ./instance-db setup
     ./instance-db restore "${LOCAL_INIT_DIR}/database"
 }
 
