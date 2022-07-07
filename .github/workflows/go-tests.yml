@@ -1,4 +1,9 @@
-name: Go tests (linux w/ localstack)
+---
+# This workflow is actually running
+# tests (with localstack) but the
+# name is used for the badge in README.md
+
+name: Build
 
 on:
   push:

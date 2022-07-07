@@ -3,12 +3,9 @@
 
 set -u
 
-config_disable_agent() {
-    yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
+    [[ "${PACKAGE_TESTING}" == "true" ]] && return
     ./instance-data load
 
     CONFIG_DIR=$(dirname "${CONFIG_YAML}")
@@ -39,13 +36,13 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
-    yq e '
+    config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
         .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" | 
         .api.server.tls.agents_allowed_ou=["agent-ou"]
-    ' -i "${CONFIG_YAML}"
+    '
 
     run -0 cscli machines delete githubciXXXXXXXXXXXXXXXXXXXXXXXX
     config_disable_agent
@@ -56,6 +53,7 @@ teardown_file() {
 }
 
 setup() {
+    [[ "${PACKAGE_TESTING}" == "true" ]] && skip
     load "../lib/setup.sh"
 }
 
@@ -66,28 +64,28 @@ teardown() {
 #----------
 
 @test "invalid OU for agent" {
-    yq e '
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_bad_ou-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_bad_ou.pem" |
         .url="https://127.0.0.1:8080"
-    ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    '
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli machines list -o json
     assert_output '[]'
 }
 
 @test "we have exactly one machine registered with TLS" {
-    yq e '
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent.pem" |
         .url="https://127.0.0.1:8080"
-    ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    '
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli lapi status
     run -0 cscli machines list -o json
@@ -98,28 +96,27 @@ teardown() {
 }
 
 @test "invalid cert for agent" {
-    yq e '
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_invalid-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_invalid.pem" |
         .url="https://127.0.0.1:8080"
-    ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
-
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    '
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli machines list -o json
     assert_output '[]'
 }
 
 @test "revoked cert for agent" {
-    yq e '
-        .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" '
+         .ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .key_path=strenv(tmpdir) + "/agent_revoked-key.pem" |
         .cert_path=strenv(tmpdir) + "/agent_revoked.pem" |
         .url="https://127.0.0.1:8080"
-    ' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    '
 
-    yq e 'del(.login,.password)' -i "${CONFIG_DIR}/local_api_credentials.yaml"
+    config_set "${CONFIG_DIR}/local_api_credentials.yaml" 'del(.login,.password)'
     ./instance-crowdsec start
     run -0 cscli machines list -o json
     assert_output '[]'

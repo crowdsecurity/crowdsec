@@ -23,17 +23,17 @@ teardown() {
 
 #----------
 
-@test "$FILE we can list collections" {
+@test "we can list collections" {
     run -0 cscli collections list
 }
 
-@test "$FILE there are 2 collections (linux and sshd)" {
+@test "there are 2 collections (linux and sshd)" {
     run -0 cscli collections list -o json
     run -0 jq '.collections | length' <(output)
     assert_output 2
 }
 
-@test "$FILE can install a collection (as a regular user) and remove it" {
+@test "can install a collection (as a regular user) and remove it" {
     run -0 cscli collections install crowdsecurity/mysql -o human
     assert_output --partial "Enabled crowdsecurity/mysql"
     run -0 cscli collections list -o json
@@ -43,7 +43,7 @@ teardown() {
     assert_output --partial "Removed symlink [crowdsecurity/mysql]"
 }
 
-@test "$FILE cannot remove a collection twice" {
+@test "cannot remove a collection twice" {
     run -0 cscli collections install crowdsecurity/mysql -o human
     run -0 --separate-stderr cscli collections remove crowdsecurity/mysql
     run -1 --separate-stderr cscli collections remove crowdsecurity/mysql -o json

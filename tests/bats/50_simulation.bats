@@ -26,7 +26,7 @@ setup() {
 
 #----------
 
-@test "$FILE we have one decision" {
+@test "we have one decision" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     run -0 cscli decisions list -o json
@@ -34,7 +34,7 @@ setup() {
     assert_output 1
 }
 
-@test "$FILE 1.1.1.174 has been banned (exact)" {
+@test "1.1.1.174 has been banned (exact)" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     run -0 cscli decisions list -o json
@@ -42,7 +42,7 @@ setup() {
     assert_output '1.1.1.174'
 }
 
-@test "$FILE decision has simulated == false (exact)" {
+@test "decision has simulated == false (exact)" {
     run -0 cscli simulation disable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     run -0 cscli decisions list -o json
@@ -50,14 +50,14 @@ setup() {
     assert_output 'false'
 }
 
-@test "$FILE simulated scenario, listing non-simulated: expect no decision" {
+@test "simulated scenario, listing non-simulated: expect no decision" {
     run -0 cscli simulation enable crowdsecurity/ssh-bf
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api
     run -0 cscli decisions list --no-simu -o json
     assert_output 'null'
 }
 
-@test "$FILE global simulation, listing non-simulated: expect no decision" {
+@test "global simulation, listing non-simulated: expect no decision" {
     run -0 cscli simulation disable crowdsecurity/ssh-bf
     run -0 cscli simulation enable --global
     fake_log | "${CROWDSEC}" -dsn file:///dev/fd/0 -type syslog -no-api

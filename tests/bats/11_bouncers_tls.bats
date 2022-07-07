@@ -3,12 +3,9 @@
 
 set -u
 
-config_disable_agent() {
-    yq e 'del(.crowdsec_service)' -i "${CONFIG_YAML}"
-}
-
 setup_file() {
     load "../lib/setup_file.sh"
+    [[ "${PACKAGE_TESTING}" == "true" ]] && return
     ./instance-data load
 
     tmpdir="${BATS_FILE_TMPDIR}"
@@ -36,13 +33,13 @@ setup_file() {
     echo "ibase=16; ${serial}" | bc >"${tmpdir}/serials.txt"
     cfssl gencrl "${tmpdir}/serials.txt" "${tmpdir}/ca.pem" "${tmpdir}/ca-key.pem" | base64 -d | openssl crl -inform DER -out "${tmpdir}/crl.pem"
 
-    yq e '
+    config_set '
         .api.server.tls.cert_file=strenv(tmpdir) + "/server.pem" |
         .api.server.tls.key_file=strenv(tmpdir) + "/server-key.pem" |
         .api.server.tls.ca_cert_path=strenv(tmpdir) + "/inter.pem" |
         .api.server.tls.crl_path=strenv(tmpdir) + "/crl.pem" | 
         .api.server.tls.bouncers_allowed_ou=["bouncer-ou"]
-    ' -i "${CONFIG_YAML}"
+    '
 
     config_disable_agent
 }
@@ -52,6 +49,7 @@ teardown_file() {
 }
 
 setup() {
+    [[ "${PACKAGE_TESTING}" == "true" ]] && skip
     load "../lib/setup.sh"
     ./instance-crowdsec start
 }

@@ -59,7 +59,14 @@ repositories).
 
  - `git submodule init; git submodule update`
  - `daemonize (linux) or daemon (freebsd), bash, python3, openbsd-netcat`
- - `yq` from https://github.com/mikefarah/yq
+ - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
+ - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
+ - `go install github.com/mikefarah/yq/v4@latest`
+ - `base64`
+ - `curl`
+ - `jq`
+ - `nc`
+ - `python3`
 
 ## Running all tests
 
