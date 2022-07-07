@@ -19,6 +19,12 @@ check_bats_core() {
     fi
 }
 
+check_curl() {
+    if ! command -v curl >/dev/null; then
+        die "missing required program 'curl'"
+    fi
+}
+
 check_python3() {
     if ! command -v python3 >/dev/null; then
         die "missing required program 'python3'"
@@ -97,6 +103,7 @@ check_gocovmerge() {
 }
 
 check_bats_core
+check_curl
 check_daemonizer
 check_cfssl
 check_cfssljson
