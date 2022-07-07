@@ -14,6 +14,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
@@ -90,6 +91,24 @@ func generateID(prefix string) (string, error) {
 	return prefix + suffix, nil
 }
 
+func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
+	var hbDisplay string
+
+	if m.LastHeartbeat != nil {
+		lastHeartBeat := time.Now().UTC().Sub(*m.LastHeartbeat)
+		hbDisplay = lastHeartBeat.Truncate(time.Second).String()
+		if fancy && lastHeartBeat > 2*time.Minute {
+			hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
+		}
+	} else {
+		hbDisplay = "-"
+		if fancy {
+			hbDisplay = emoji.Warning.String() + " -"
+		}
+	}
+	return hbDisplay
+}
+
 func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdMachines = &cobra.Command{
@@ -149,12 +168,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = emoji.Prohibited.String()
 					}
-					lastHeartBeat := time.Now().UTC().Sub(*w.LastHeartbeat)
-					hbDisplay := lastHeartBeat.Truncate(time.Second).String()
-					if lastHeartBeat > 2*time.Minute {
-						hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
-					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, hbDisplay})
+					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -176,7 +190,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, time.Now().UTC().Sub(*w.LastHeartbeat).Truncate(time.Second).String()})
+					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
 					if err != nil {
 						log.Fatalf("failed to write raw output : %s", err)
 					}
