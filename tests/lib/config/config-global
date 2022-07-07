@@ -57,8 +57,16 @@ make_init_data() {
     [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
     "${TEST_DIR}/instance-crowdsec" start
-    "${CSCLI}" lapi status
-    [[ -z "${PACKAGE_TESTING}" ]] && "${CSCLI}" decisions delete --all
+
+    "${CSCLI}" decisions delete --all
+
+    loop_max=15
+    for ((i = 0; i <= loop_max; i++)); do
+        sleep 2
+        [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
+    done
+    [[ $("${CSCLI}" alerts list -o json) != "null" ]] || die "could not get community data"
+
     "${TEST_DIR}/instance-crowdsec" stop
 
     mkdir -p "${LOCAL_INIT_DIR}"
@@ -75,7 +83,6 @@ make_init_data() {
         --file "${LOCAL_INIT_DIR}/init-config-data.tar" "${REL_CONFIG_DIR}" "${REL_DATA_DIR}"
 
     ./instance-db setup
-    remove_init_data
 }
 
 load_init_data() {
