@@ -33,22 +33,22 @@ teardown() {
 
 @test "config.yaml.local - cscli (log_level)" {
     config_set '.common.log_level="warning"'
-    run -0 cscli config show --key Config.Common.LogLevel
+    run -0 --separate-stderr cscli config show --key Config.Common.LogLevel
     assert_output "warning"
 
     echo "{'common':{'log_level':'debug'}}" >"${CONFIG_YAML}.local"
-    run -0 cscli config show --key Config.Common.LogLevel
+    run -0 --separate-stderr cscli config show --key Config.Common.LogLevel
     assert_output "debug"
 }
 
 @test "config.yaml.local - cscli (log_level - with envvar)" {
     config_set '.common.log_level="warning"'
-    run -0 cscli config show --key Config.Common.LogLevel
+    run -0 --separate-stderr cscli config show --key Config.Common.LogLevel
     assert_output "warning"
 
     export CROWDSEC_LOG_LEVEL=debug
     echo "{'common':{'log_level':'${CROWDSEC_LOG_LEVEL}'}}" >"${CONFIG_YAML}.local"
-    run -0 cscli config show --key Config.Common.LogLevel
+    run -0 --separate-stderr cscli config show --key Config.Common.LogLevel
     assert_output "debug"
 }
 
@@ -108,7 +108,7 @@ teardown() {
 }
 
 @test "profiles.yaml.local" {
-    run -0 config_get '.api.server.profiles_path'
+    run -0 --separate-stderr config_get '.api.server.profiles_path'
     refute_output null
     PROFILES="${output}"
 
@@ -131,7 +131,7 @@ teardown() {
     fake_log >>"${tmpfile}"
     sleep 1
     rm -f -- "${tmpfile}"
-    run -0 cscli decisions list -o json
+    run -0 --separate-stderr cscli decisions list -o json
     run -0 jq -c '.[].decisions[0] | [.value,.type]' <(output)
     assert_output '["1.1.1.172","captcha"]'
 }
