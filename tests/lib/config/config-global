@@ -58,7 +58,15 @@ make_init_data() {
 
     "${TEST_DIR}/instance-crowdsec" start
 
+    # make sure we have a clean slate
+
     "${CSCLI}" decisions delete --all
+
+    for bouncer_name in $("${CSCLI}" bouncers list  -o json | jq -r '.[].name'); do
+        "${CSCLI}" bouncer delete "${bouncer_name}"
+    done
+
+    # receive community data, once
 
     loop_max=15
     for ((i = 0; i <= loop_max; i++)); do
