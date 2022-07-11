@@ -15,7 +15,7 @@ setup_file() {
     export MOCK_URL
     PLUGIN_DIR=$(config_get '.config_paths.plugin_dir')
     # could have a trailing slash
-    PLUGIN_DIR=$(realpath -s "${PLUGIN_DIR}")
+    PLUGIN_DIR=$(realpath "${PLUGIN_DIR}")
     export PLUGIN_DIR
 
     # https://mikefarah.gitbook.io/yq/operators/env-variable-operators

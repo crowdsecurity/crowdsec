@@ -8,7 +8,7 @@ setup_file() {
 
     PLUGIN_DIR=$(config_get '.config_paths.plugin_dir')
     # could have a trailing slash
-    PLUGIN_DIR=$(realpath -s "${PLUGIN_DIR}")
+    PLUGIN_DIR=$(realpath "${PLUGIN_DIR}")
     export PLUGIN_DIR
 
     PROFILES_PATH=$(config_get '.api.server.profiles_path')
