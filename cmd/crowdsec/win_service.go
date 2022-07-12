@@ -22,43 +22,41 @@ type crowdsec_winservice struct {
 }
 
 func (m *crowdsec_winservice) Execute(args []string, r <-chan svc.ChangeRequest, changes chan<- svc.Status) (ssec bool, errno uint32) {
-	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown | svc.AcceptPauseAndContinue
+	const cmdsAccepted = svc.AcceptStop | svc.AcceptShutdown
 	changes <- svc.Status{State: svc.StartPending}
-	fasttick := time.Tick(500 * time.Millisecond)
-	slowtick := time.Tick(2 * time.Second)
-	tick := fasttick
+	tick := time.Tick(500 * time.Millisecond)
 	changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-	go WindowsRun()
 
-loop:
-	for {
-		select {
-		case <-tick:
+	go func() {
+	loop:
+		for {
+			select {
+			case <-tick:
 
-		case c := <-r:
-			switch c.Cmd {
-			case svc.Interrogate:
-				changes <- c.CurrentStatus
-			case svc.Stop, svc.Shutdown:
-				changes <- svc.Status{State: svc.StopPending}
-				err := shutdown(nil, m.config)
-				if err != nil {
-					log.Errorf("Error while shutting down: %s", err)
-					//don't return, we still want to notify windows that we are stopped ?
+			case c := <-r:
+				switch c.Cmd {
+				case svc.Interrogate:
+					changes <- c.CurrentStatus
+				case svc.Stop, svc.Shutdown:
+					changes <- svc.Status{State: svc.StopPending}
+					err := shutdown(nil, m.config)
+					if err != nil {
+						log.Errorf("Error while shutting down: %s", err)
+						//don't return, we still want to notify windows that we are stopped ?
+					}
+					break loop
+				default:
+					log.Errorf("unexpected control request #%d", c)
 				}
-				break loop
-			case svc.Pause:
-				changes <- svc.Status{State: svc.Paused, Accepts: cmdsAccepted}
-				tick = slowtick
-			case svc.Continue:
-				changes <- svc.Status{State: svc.Running, Accepts: cmdsAccepted}
-				tick = fasttick
-			default:
-				log.Errorf("unexpected control request #%d", c)
 			}
 		}
-	}
+	}()
+
+	err := WindowsRun()
 	changes <- svc.Status{State: svc.Stopped}
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 	return
 }
 

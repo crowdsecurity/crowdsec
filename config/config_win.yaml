@@ -1,5 +1,5 @@
 common:
-  daemonize: true
+  daemonize: false
   log_media: file
   log_level: info
   log_dir:  C:\ProgramData\CrowdSec\log\
