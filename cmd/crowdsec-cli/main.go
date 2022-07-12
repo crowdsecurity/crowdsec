@@ -36,22 +36,6 @@ var restoreOldBackup bool
 
 var prometheusURL string
 
-func initNoConfig() {
-	csConfig = csconfig.NewDefaultConfig()
-	if csConfig.Cscli.Output == "json" {
-		log.SetFormatter(&log.JSONFormatter{})
-		log.SetLevel(log.ErrorLevel)
-	} else if csConfig.Cscli.Output == "raw" {
-		log.SetLevel(log.ErrorLevel)
-	}
-	if OutputFormat != "" {
-		csConfig.Cscli.Output = OutputFormat
-		if OutputFormat != "json" && OutputFormat != "raw" && OutputFormat != "human" {
-			log.Fatalf("output format %s unknown", OutputFormat)
-		}
-	}
-}
-
 func initConfig() {
 	var err error
 	if trace_lvl {
