@@ -77,8 +77,20 @@ func GeoIpCity(field string, p *types.Event, ctx interface{}) (map[string]string
 		log.Debugf("Unable to enrich ip '%s'", ip)
 		return nil, nil
 	}
-	ret["IsoCode"] = record.Country.IsoCode
-	ret["IsInEU"] = strconv.FormatBool(record.Country.IsInEuropeanUnion)
+	if record.Country.IsoCode != "" {
+		ret["IsoCode"] = record.Country.IsoCode
+		ret["IsInEU"] = strconv.FormatBool(record.Country.IsInEuropeanUnion)
+	} else if record.RegisteredCountry.IsoCode != "" {
+		ret["IsoCode"] = record.RegisteredCountry.IsoCode
+		ret["IsInEU"] = strconv.FormatBool(record.RegisteredCountry.IsInEuropeanUnion)
+	} else if record.RepresentedCountry.IsoCode != "" {
+		ret["IsoCode"] = record.RepresentedCountry.IsoCode
+		ret["IsInEU"] = strconv.FormatBool(record.RepresentedCountry.IsInEuropeanUnion)
+	} else {
+		ret["IsoCode"] = ""
+		ret["IsInEU"] = strconv.FormatBool(false)
+	}
+
 	ret["Latitude"] = fmt.Sprintf("%f", record.Location.Latitude)
 	ret["Longitude"] = fmt.Sprintf("%f", record.Location.Longitude)
 
