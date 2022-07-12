@@ -138,6 +138,7 @@ func (p *Patcher) PrependedPatchContent() ([]byte, error) {
 		if err = decodeDocuments(patchFile, &result, true); err != nil {
 			return nil, err
 		}
+		log.Infof("Prepending yaml: '%s' with '%s'", p.BaseFilePath, p.PatchFilePath)
 	}
 
 	baseFile, err = os.Open(p.BaseFilePath)
