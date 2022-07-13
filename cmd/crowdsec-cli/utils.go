@@ -319,7 +319,11 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -402,7 +406,11 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
