@@ -5,6 +5,9 @@ MAKE=make
 GOOS=windows
 PREFIX=$(shell $$env:TEMP)
 
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
+
 GO_MAJOR_VERSION ?= $(shell (go env GOVERSION).replace("go","").split(".")[0])
 GO_MINOR_VERSION ?= $(shell (go env GOVERSION).replace("go","").split(".")[1])
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
