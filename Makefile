@@ -43,8 +43,9 @@ CROWDSEC_BIN = crowdsec$(EXT)
 CSCLI_BIN = cscli$(EXT)
 BUILD_CMD = build
 
-GOOS ?= $(shell go env GOOS)
-GOARCH ?= $(shell go env GOARCH)
+# Go should not be required to run functional tests
+GOOS ?= $(shell command -v go >/dev/null && go env GOOS)
+GOARCH ?= $(shell command -v go >/dev/null && go env GOARCH)
 
 MINIMUM_SUPPORTED_GO_MAJOR_VERSION = 1
 MINIMUM_SUPPORTED_GO_MINOR_VERSION = 17
