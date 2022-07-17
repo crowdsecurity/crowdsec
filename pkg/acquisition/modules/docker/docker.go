@@ -321,7 +321,7 @@ func (d *DockerSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) er
 	t.Kill(nil)
 
 	if !foundOne {
-		return fmt.Errorf("no docker found, can't run one shot acquisition")
+		return fmt.Errorf("no container found named: %s, can't run one shot acquisition", d.Config.ContainerName[0])
 	}
 
 	return nil
