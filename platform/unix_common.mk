@@ -4,10 +4,14 @@ CP=cp
 CPR=cp -r
 MKDIR=mkdir -p
 
-GO_MAJOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
-GO_MINOR_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
+# Go should not be required to run functional tests
+GOOS ?= $(shell command -v go >/dev/null && go env GOOS)
+GOARCH ?= $(shell command -v go >/dev/null && go env GOARCH)
 
-BUILD_GOVERSION="$(shell go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
+GO_MAJOR_VERSION = $(shell command -v go >/dev/null && go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f1)
+GO_MINOR_VERSION = $(shell command -v go >/dev/null && go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f2)
+
+BUILD_GOVERSION="$(shell command -v go >/dev/null && go version | cut -d " " -f3 | sed -E 's/[go]+//g')"
 
 #Current versioning information from env
 BUILD_VERSION?="$(shell git describe --tags $$(git rev-list --tags --max-count=1))"
