@@ -70,12 +70,12 @@ func runService(name string) error {
 	if err != nil {
 		if errno, ok := err.(syscall.Errno); ok {
 			if errno == windows.ERROR_ACCESS_DENIED {
-				log.Warn("Access denied when installing event source, running as non-admin ?")
+				log.Warnf("Access denied when installing event source, running as non-admin ?")
 			} else {
-				log.Warn("Failed to install event log: %s (%d)", err, errno)
+				log.Warnf("Failed to install event log: %s (%d)", err, errno)
 			}
 		} else {
-			log.Warn("Failed to install event log: %s", err)
+			log.Warnf("Failed to install event log: %s", err)
 		}
 	}
 
@@ -95,7 +95,7 @@ func runService(name string) error {
 			evtlog: evtlog,
 		})
 	} else {
-		log.Warn("Failed to open event log: %s", err)
+		log.Warnf("Failed to open event log: %s", err)
 	}
 
 	cConfig, err := csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
