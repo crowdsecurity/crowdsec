@@ -223,7 +223,6 @@ func NewNotificationsCmd() *cobra.Command {
 				return errors.Wrap(err, "Cannot extract profiles from configuration")
 			}
 
-		loop:
 			for id, profile := range profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
@@ -234,18 +233,22 @@ func NewNotificationsCmd() *cobra.Command {
 					continue
 				}
 				log.Infof("The profile %s matched, sending to its configured notification plugins", profile.Cfg.Name)
-				select {
-				case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
-					ProfileID: uint(id),
-					Alert:     alert,
-				}:
-					break loop
-				default:
-					time.Sleep(50 * time.Millisecond)
-					log.Info("sleeping\n")
+			loop:
+				for {
+					select {
+					case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+						ProfileID: uint(id),
+						Alert:     alert,
+					}:
+						break loop
+					default:
+						time.Sleep(50 * time.Millisecond)
+						log.Info("sleeping\n")
 
+					}
 				}
 				if profile.Cfg.OnSuccess == "break" {
+					log.Infof("The profile %s contains a 'on_success: break' so bailing out", profile.Cfg.Name)
 					break
 				}
 			}
