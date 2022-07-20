@@ -159,17 +159,17 @@ func NewNotificationsCmd() *cobra.Command {
 		Use:               "reinject",
 		Short:             "reinject alerts into notifications system",
 		Long:              `Reinject alerts into notifications system`,
-		Example:           `cscli notifications reinject <alert_id> [<profile_name]`,
-		Args:              cobra.RangeArgs(1, 2),
+		Example:           `cscli notifications reinject <alert_id>`,
+		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				pluginBroker csplugin.PluginBroker
 				pluginTomb   tomb.Tomb
 			)
-			if len(args) < 1 || len(args) > 2 {
+			if len(args) != 1 {
 				printHelp(cmd)
-				return errors.New("Wrong number of argument: there should be one or two argument")
+				return errors.New("Wrong number of argument: there should be one argument")
 			}
 
 			//first: get the alert
@@ -203,40 +203,10 @@ func NewNotificationsCmd() *cobra.Command {
 			alert, _, err := Client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
 				return errors.Wrapf(err, fmt.Sprintf("can't find alert with id %s", args[0]))
-
 			}
 
-			//second: get the profile(s), and fire the plugins accordingly
-			var (
-				configProfiles []*csconfig.ProfileCfg
-				ids            []uint
-			)
-			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
-			if err != nil {
-				return errors.Wrap(err, "Cannot extract profiles from configuration")
-			}
-			if len(args) > 1 {
-				profileName := args[1]
-				matched := false
-				for _, configProfile := range profiles {
-					if configProfile.Cfg.Name == profileName {
-						matched = true
-						configProfiles = []*csconfig.ProfileCfg{configProfile.Cfg}
-						ids = []uint{uint(0)} //there's only one profile, so it's always first
-					}
-				}
-				if !matched {
-					return errors.New(fmt.Sprintf("couldn't find profile %s", profileName))
-				}
-			} else {
-				for id, configProfile := range profiles {
-					configProfiles = append(configProfiles, configProfile.Cfg)
-					ids = append(ids, uint(id))
-				}
-			}
-
-			// we start only the needed plugins by selecting the right profiles(s)
-			err = pluginBroker.Init(csConfig.PluginConfig, configProfiles, csConfig.ConfigPaths)
+			// second we start plugins
+			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
 			if err != nil {
 				return errors.Wrapf(err, "Can't initialize plugins")
 			}
@@ -246,23 +216,40 @@ func NewNotificationsCmd() *cobra.Command {
 				return nil
 			})
 
-			for _, id := range ids {
-			loop:
-				for {
-					select {
-					case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
-						ProfileID: id,
-						Alert:     alert,
-					}:
-						log.Infof("Test") // to be deleted
-						break loop
-					default:
-						time.Sleep(50 * time.Millisecond)
-						log.Info("sleeping\n")
+			//third: get the profile(s), and process the whole stuff
 
-					}
+			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
+			if err != nil {
+				return errors.Wrap(err, "Cannot extract profiles from configuration")
+			}
+
+		loop:
+			for id, profile := range profiles {
+				_, matched, err := profile.EvaluateProfile(alert)
+				if err != nil {
+					return errors.Wrapf(err, "can't evaluate profile %s", profile.Cfg.Name)
+				}
+				if !matched {
+					log.Infof("The profile %s didn't match", profile.Cfg.Name)
+					continue
+				}
+				log.Infof("The profile %s matched, sending to its configured notification plugins", profile.Cfg.Name)
+				select {
+				case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+					ProfileID: uint(id),
+					Alert:     alert,
+				}:
+					break loop
+				default:
+					time.Sleep(50 * time.Millisecond)
+					log.Info("sleeping\n")
+
+				}
+				if profile.Cfg.OnSuccess == "break" {
+					break
 				}
 			}
+
 			//			time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
