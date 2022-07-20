@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
+	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	"github.com/go-openapi/strfmt"
 	"github.com/olekukonko/tablewriter"
@@ -28,6 +29,7 @@ import (
 type NotificationsCfg struct {
 	Config   csplugin.PluginConfig  `json:"plugin_config"`
 	Profiles []*csconfig.ProfileCfg `json:"associated_profiles"`
+	ids      []uint
 }
 
 func NewNotificationsCmd() *cobra.Command {
@@ -55,8 +57,12 @@ func NewNotificationsCmd() *cobra.Command {
 		Example:           `cscli notifications list`,
 		Args:              cobra.ExactArgs(0),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, arg []string) {
-			ncfgs := getNotificationsConfiguration()
+		RunE: func(cmd *cobra.Command, arg []string) error {
+			ncfgs, err := getNotificationsConfiguration()
+			if err != nil {
+				return errors.Wrap(err, "Can't build profiles configuration")
+			}
+
 			if csConfig.Cscli.Output == "human" {
 				table := tablewriter.NewWriter(os.Stdout)
 				table.SetCenterSeparator("")
@@ -77,14 +83,14 @@ func NewNotificationsCmd() *cobra.Command {
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(ncfgs, "", " ")
 				if err != nil {
-					log.Fatalf("failed to marshal notification configuration")
+					return errors.New("failed to marshal notification configuration")
 				}
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
 				err := csvwriter.Write([]string{"Name", "Type", "Profile name"})
 				if err != nil {
-					log.Fatalf("failed to write raw header: %s", err)
+					return errors.Wrap(err, "failed to write raw header")
 				}
 				for _, b := range ncfgs {
 					profilesList := []string{}
@@ -93,11 +99,12 @@ func NewNotificationsCmd() *cobra.Command {
 					}
 					err := csvwriter.Write([]string{b.Config.Name, b.Config.Type, strings.Join(profilesList, ", ")})
 					if err != nil {
-						log.Fatalf("failed to write raw content: %s", err)
+						return errors.Wrap(err, "failed to write raw content")
 					}
 				}
 				csvwriter.Flush()
 			}
+			return nil
 		},
 	}
 	cmdNotifications.AddCommand(cmdNotificationsList)
@@ -109,7 +116,7 @@ func NewNotificationsCmd() *cobra.Command {
 		Example:           `cscli notifications inspect <plugin_name>`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
-		Run: func(cmd *cobra.Command, arg []string) {
+		RunE: func(cmd *cobra.Command, arg []string) error {
 			var (
 				cfg NotificationsCfg
 				ok  bool
@@ -118,11 +125,14 @@ func NewNotificationsCmd() *cobra.Command {
 			pluginName := arg[0]
 
 			if pluginName == "" {
-				log.Fatalf("Please provide a plugin name to inspect")
+				errors.New("Please provide a plugin name to inspect")
 			}
-			ncfgs := getNotificationsConfiguration()
+			ncfgs, err := getNotificationsConfiguration()
+			if err != nil {
+				return errors.Wrap(err, "Can't build profiles configuration")
+			}
 			if cfg, ok = ncfgs[pluginName]; !ok {
-				log.Fatalf("The provided plugin name doesn't exist or isn't active")
+				return errors.New("The provided plugin name doesn't exist or isn't active")
 			}
 
 			if csConfig.Cscli.Output == "human" || csConfig.Cscli.Output == "raw" {
@@ -136,10 +146,11 @@ func NewNotificationsCmd() *cobra.Command {
 			} else if csConfig.Cscli.Output == "json" {
 				x, err := json.MarshalIndent(cfg, "", " ")
 				if err != nil {
-					log.Fatalf("failed to marshal notification configuration")
+					return errors.New("failed to marshal notification configuration")
 				}
 				fmt.Printf("%s", string(x))
 			}
+			return nil
 		},
 	}
 	cmdNotifications.AddCommand(cmdNotificationsInspect)
@@ -148,18 +159,20 @@ func NewNotificationsCmd() *cobra.Command {
 		Use:               "reinject",
 		Short:             "reinject alerts into notifications system",
 		Long:              `Reinject alerts into notifications system`,
-		Example:           `cscli notifications reinject <alert_id> <plugin_name>`,
-		Args:              cobra.ExactArgs(2),
+		Example:           `cscli notifications reinject <alert_id> [<profile_name]`,
+		Args:              cobra.RangeArgs(1, 2),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var (
 				pluginBroker csplugin.PluginBroker
 				pluginTomb   tomb.Tomb
 			)
-			if len(args) != 2 {
+			if len(args) < 1 || len(args) > 2 {
 				printHelp(cmd)
-				return errors.New("Wrong number of argument")
+				return errors.New("Wrong number of argument: there should be one or two argument")
 			}
+
+			//first: get the alert
 			id, err := strconv.Atoi(args[0])
 			if err != nil {
 				return errors.New(fmt.Sprintf("bad alert id %s", args[0]))
@@ -193,7 +206,37 @@ func NewNotificationsCmd() *cobra.Command {
 
 			}
 
-			err = pluginBroker.Init(csConfig.PluginConfig, csConfig.API.Server.Profiles, csConfig.ConfigPaths)
+			//second: get the profile(s), and fire the plugins accordingly
+			var (
+				configProfiles []*csconfig.ProfileCfg
+				ids            []uint
+			)
+			profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
+			if err != nil {
+				return errors.Wrap(err, "Cannot extract profiles from configuration")
+			}
+			if len(args) > 1 {
+				profileName := args[1]
+				matched := false
+				for _, configProfile := range profiles {
+					if configProfile.Cfg.Name == profileName {
+						matched = true
+						configProfiles = []*csconfig.ProfileCfg{configProfile.Cfg}
+						ids = []uint{uint(0)} //there's only one profile, so it's always first
+					}
+				}
+				if !matched {
+					return errors.New(fmt.Sprintf("couldn't find profile %s", profileName))
+				}
+			} else {
+				for id, configProfile := range profiles {
+					configProfiles = append(configProfiles, configProfile.Cfg)
+					ids = append(ids, uint(id))
+				}
+			}
+
+			// we start only the needed plugins by selecting the right profiles(s)
+			err = pluginBroker.Init(csConfig.PluginConfig, configProfiles, csConfig.ConfigPaths)
 			if err != nil {
 				return errors.Wrapf(err, "Can't initialize plugins")
 			}
@@ -203,20 +246,24 @@ func NewNotificationsCmd() *cobra.Command {
 				return nil
 			})
 
-		loop:
-			for {
-				select {
-				case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
-					ProfileID: 1,
-					Alert:     alert,
-				}:
-					break loop
-				default:
-					time.Sleep(50 * time.Millisecond)
-					log.Info("sleeping\n")
+			for _, id := range ids {
+			loop:
+				for {
+					select {
+					case pluginBroker.PluginChannel <- csplugin.ProfileAlert{
+						ProfileID: id,
+						Alert:     alert,
+					}:
+						log.Infof("Test") // to be deleted
+						break loop
+					default:
+						time.Sleep(50 * time.Millisecond)
+						log.Info("sleeping\n")
 
+					}
 				}
 			}
+			//			time.Sleep(2 * time.Second) // There's no mechanism to ensure notification has been sent
 			pluginTomb.Kill(errors.New("terminating"))
 			pluginTomb.Wait()
 			return nil
@@ -226,7 +273,7 @@ func NewNotificationsCmd() *cobra.Command {
 	return cmdNotifications
 }
 
-func getNotificationsConfiguration() map[string]NotificationsCfg {
+func getNotificationsConfiguration() (map[string]NotificationsCfg, error) {
 	pcfgs := map[string]csplugin.PluginConfig{}
 	wf := func(path string, info fs.FileInfo, err error) error {
 		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
@@ -242,38 +289,45 @@ func getNotificationsConfiguration() map[string]NotificationsCfg {
 		return nil
 	}
 	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
-		log.Fatalf("Loading notifification plugin configuration: %s", err)
+		return nil, errors.Wrap(err, "Loading notifification plugin configuration")
 	}
 
 	// A bit of a tricky stuf now: reconcile profiles and notification plugins
 	ncfgs := map[string]NotificationsCfg{}
-	for _, profile := range csConfig.API.Server.Profiles {
+	profiles, err := csprofiles.NewProfile(csConfig.API.Server.Profiles)
+	if err != nil {
+		return nil, errors.Wrap(err, "Cannot extract profiles from configuration")
+	}
+	for profileID, profile := range profiles {
 	loop:
-		for _, notif := range profile.Notifications {
+		for _, notif := range profile.Cfg.Notifications {
 			for name, pc := range pcfgs {
 				if notif == name {
 					if _, ok := ncfgs[pc.Name]; !ok {
 						ncfgs[pc.Name] = NotificationsCfg{
 							Config:   pc,
-							Profiles: []*csconfig.ProfileCfg{profile},
+							Profiles: []*csconfig.ProfileCfg{profile.Cfg},
+							ids:      []uint{uint(profileID)},
 						}
 						continue loop
 					}
 					tmp := ncfgs[pc.Name]
 					for _, pr := range tmp.Profiles {
 						var profiles []*csconfig.ProfileCfg
-						if pr.Name == profile.Name {
+						if pr.Name == profile.Cfg.Name {
 							continue
 						}
-						profiles = append(tmp.Profiles, profile)
+						profiles = append(tmp.Profiles, profile.Cfg)
+						ids := append(tmp.ids, uint(profileID))
 						ncfgs[pc.Name] = NotificationsCfg{
 							Config:   tmp.Config,
 							Profiles: profiles,
+							ids:      ids,
 						}
 					}
 				}
 			}
 		}
 	}
-	return ncfgs
+	return ncfgs, nil
 }

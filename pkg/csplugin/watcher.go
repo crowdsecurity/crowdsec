@@ -139,11 +139,10 @@ func (pw *PluginWatcher) watchPluginTicker(pluginName string) {
 			}
 		case <-pw.tomb.Dying():
 			ticker.Stop()
-			select {
-			case pw.PluginEvents <- pluginName:
-			default:
-				return
-			}
+			// emptying
+			// no lock here because we have the broker still listening even in dying state before killing us
+			pw.PluginEvents <- pluginName
+			return
 		}
 	}
 }

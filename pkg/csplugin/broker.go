@@ -99,6 +99,7 @@ func (pb *PluginBroker) Kill() {
 func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 	//we get signaled via the channel when notifications need to be delivered to plugin (via the watcher)
 	pb.watcher.Start(&tomb.Tomb{})
+loop:
 	for {
 		select {
 		case profileAlert := <-pb.PluginChannel:
@@ -118,11 +119,14 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 			}()
 
 		case <-pluginTomb.Dying():
+			log.Infof("plugingTomb dying")
 			pb.watcher.tomb.Kill(errors.New("Terminating"))
-		loop:
-			//we want to empty the chans before leaving
 			for {
 				select {
+				case <-pb.watcher.tomb.Dead():
+					log.Info("killing all plugins")
+					pb.Kill()
+					break loop
 				case pluginName := <-pb.watcher.PluginEvents:
 					// this can be ran in goroutine, but then locks will be needed
 					pluginMutex.Lock()
@@ -130,19 +134,17 @@ func (pb *PluginBroker) Run(pluginTomb *tomb.Tomb) {
 					tmpAlerts := pb.alertsByPluginName[pluginName]
 					pb.alertsByPluginName[pluginName] = make([]*models.Alert, 0)
 					pluginMutex.Unlock()
+
 					if err := pb.pushNotificationsToPlugin(pluginName, tmpAlerts); err != nil {
 						log.WithField("plugin:", pluginName).Error(err)
 					}
-				case <-pb.watcher.tomb.Dead():
-					break loop
 				}
 			}
-			log.Info("killing all plugins")
-			pb.Kill()
-			return
 		}
 	}
+	return
 }
+
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
 	for _, pluginName := range pb.profileConfigs[profileAlert.ProfileID].Notifications {
 		if _, ok := pb.pluginConfigByName[pluginName]; !ok {
