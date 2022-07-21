@@ -142,7 +142,6 @@ loop:
 			}
 		}
 	}
-	return
 }
 
 func (pb *PluginBroker) addProfileAlert(profileAlert ProfileAlert) {
