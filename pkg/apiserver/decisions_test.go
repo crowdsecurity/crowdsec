@@ -224,7 +224,7 @@ func TestDeleteDecisionByID(t *testing.T) {
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, err, nil)
 	assert.Equal(t, 200, code)
-	//assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 0, len(decisions["deleted"]))
 	assert.Equal(t, 1, len(decisions["new"]))
 }
 
@@ -276,12 +276,11 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
-	//assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 0, len(decisions["deleted"]))
 	assert.Equal(t, 1, len(decisions["new"]))
 	assert.Equal(t, int64(2), decisions["new"][0].ID)
 	assert.Equal(t, "test", *decisions["new"][0].Origin)
 	assert.Equal(t, "127.0.0.1", *decisions["new"][0].Value)
-
 	// We delete another decision, yet don't receive it in stream, since there's another decision on same IP
 	w = lapi.RecordResponse("DELETE", "/v1/decisions/2", emptyBody, PASSWORD)
 	assert.Equal(t, 200, w.Code)
@@ -291,7 +290,7 @@ func TestStreamStartDecisionDedup(t *testing.T) {
 	decisions, code, err = readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 200, code)
-	//assert.Equal(t, 0, len(decisions["deleted"]))
+	assert.Equal(t, 0, len(decisions["deleted"]))
 	assert.Equal(t, 1, len(decisions["new"]))
 	assert.Equal(t, int64(1), decisions["new"][0].ID)
 	assert.Equal(t, "test", *decisions["new"][0].Origin)
@@ -1012,6 +1011,104 @@ func TestStreamDecision(t *testing.T) {
 				NewChecks: []DecisionCheck{},
 			},
 		},
+		"test startup with scenarios containing": {
+			{
+				TestName:      "get stream",
+				Method:        "GET",
+				Route:         "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf",
+				CheckCodeOnly: false,
+				Code:          200,
+				LenNew:        2,
+				LenDeleted:    0,
+				AuthType:      APIKEY,
+				DelChecks:     []DecisionCheck{},
+				NewChecks: []DecisionCheck{
+					{
+						ID:       int64(2),
+						Origin:   "another_origin",
+						Scenario: "crowdsecurity/ssh_bf",
+						Value:    "127.0.0.1",
+						Duration: "2h59",
+						Type:     "ban",
+					},
+					{
+						ID:       int64(5),
+						Origin:   "test",
+						Scenario: "crowdsecurity/ssh_bf",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
+						Type:     "ban",
+					},
+				},
+			},
+			{
+				TestName:      "delete decisions 3 (127.0.0.1)",
+				Method:        "DELETE",
+				Route:         "/v1/decisions/3",
+				CheckCodeOnly: true,
+				Code:          200,
+				LenNew:        0,
+				LenDeleted:    0,
+				AuthType:      PASSWORD,
+				DelChecks:     []DecisionCheck{},
+				NewChecks:     []DecisionCheck{},
+			},
+			{
+				TestName:      "check that 127.0.0.1 is not in deleted IP",
+				Method:        "GET",
+				Route:         "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf",
+				CheckCodeOnly: false,
+				Code:          200,
+				LenNew:        2,
+				LenDeleted:    0,
+				AuthType:      APIKEY,
+				DelChecks:     []DecisionCheck{},
+				NewChecks:     []DecisionCheck{},
+			},
+			{
+				TestName:      "delete decisions 2 (127.0.0.1)",
+				Method:        "DELETE",
+				Route:         "/v1/decisions/2",
+				CheckCodeOnly: true,
+				Code:          200,
+				LenNew:        0,
+				LenDeleted:    0,
+				AuthType:      PASSWORD,
+				DelChecks:     []DecisionCheck{},
+				NewChecks:     []DecisionCheck{},
+			},
+			{
+				TestName:      "check that 127.0.0.1 is deleted (decision for ssh_bf was with ID 2)",
+				Method:        "GET",
+				Route:         "/v1/decisions/stream?startup=true&scenarios_containing=ssh_bf",
+				CheckCodeOnly: false,
+				Code:          200,
+				LenNew:        1,
+				LenDeleted:    1,
+				AuthType:      APIKEY,
+				DelChecks: []DecisionCheck{
+					{
+						ID:       int64(2),
+						Origin:   "another_origin",
+						Scenario: "crowdsecurity/ssh_bf",
+						Value:    "127.0.0.1",
+						Duration: "-",
+
+						Type: "ban",
+					},
+				},
+				NewChecks: []DecisionCheck{
+					{
+						ID:       int64(5),
+						Origin:   "test",
+						Scenario: "crowdsecurity/ssh_bf",
+						Value:    "127.0.0.2",
+						Duration: "2h59",
+						Type:     "ban",
+					},
+				},
+			},
+		},
 		"test with scenarios containing": {
 			{
 				TestName:      "get stream",
@@ -1344,7 +1441,7 @@ func runTest(lapi LAPI, test DecisionTest, t *testing.T) {
 	}
 	decisions, _, err := readDecisionsStreamResp(w)
 	assert.Equal(t, nil, err)
-	//assert.Equal(t, test.LenDeleted, len(decisions["deleted"]), fmt.Sprintf("'%s': len(deleted)", test.TestName))
+	assert.Equal(t, test.LenDeleted, len(decisions["deleted"]), fmt.Sprintf("'%s': len(deleted)", test.TestName))
 	assert.Equal(t, test.LenNew, len(decisions["new"]), fmt.Sprintf("'%s': len(new)", test.TestName))
 
 	for i, check := range test.NewChecks {
