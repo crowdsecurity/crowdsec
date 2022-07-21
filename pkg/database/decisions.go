@@ -201,28 +201,24 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 	)
-	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
+	query, _, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
+
 	query = query.Where(func(s *sql.Selector) {
 		t := sql.Table(decision.Table).As("t1")
 
-		subQuery := sql.Select(t.C(decision.FieldValue)).From(t).Where(sql.GT(t.C(decision.FieldUntil), now))
-		for _, predicate := range predicates {
-			subQuery.Where(predicate)
-		}
-		subQuery.Where(sql.And(
-			sql.ColumnsEQ(t.C(decision.FieldType), s.C(decision.FieldType)),
-			sql.ColumnsEQ(t.C(decision.FieldScope), s.C(decision.FieldScope)),
-		))
-		s.Where(
-			sql.NotIn(
-				s.C(decision.FieldValue),
-				subQuery,
+		subquery := sql.Select().From(t).Where(
+			sql.And(
+				sql.EQ(s.C(decision.FieldScope), t.C(decision.FieldScope)),
+				sql.EQ(s.C(decision.FieldType), t.C(decision.FieldType)),
+				sql.EQ(s.C(decision.FieldValue), t.C(decision.FieldValue)),
+				sql.GT(s.C(decision.FieldUntil), now),
 			),
 		)
+		s.Where(sql.NotExists(subquery))
 	})
 
 	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
@@ -249,6 +245,20 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
+
+	query = query.Where(func(s *sql.Selector) {
+		t := sql.Table(decision.Table).As("t1")
+
+		subquery := sql.Select().From(t).Where(
+			sql.And(
+				sql.EQ(s.C(decision.FieldScope), t.C(decision.FieldScope)),
+				sql.EQ(s.C(decision.FieldType), t.C(decision.FieldType)),
+				sql.EQ(s.C(decision.FieldValue), t.C(decision.FieldValue)),
+				sql.GT(s.C(decision.FieldUntil), now),
+			),
+		)
+		s.Where(sql.NotExists(subquery))
+	})
 
 	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Asc(decision.FieldUntil)).All(c.CTX)
 	if err != nil {
