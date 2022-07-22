@@ -28,6 +28,7 @@ type DecisionQuery struct {
 	// eager-loading edges.
 	withOwner *AlertQuery
 	withFKs   bool
+	modifiers []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -375,6 +376,9 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context) ([]*Decision, error) {
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(dq.modifiers) > 0 {
+		_spec.Modifiers = dq.modifiers
+	}
 	if err := sqlgraph.QueryNodes(ctx, dq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -416,6 +420,9 @@ func (dq *DecisionQuery) sqlAll(ctx context.Context) ([]*Decision, error) {
 
 func (dq *DecisionQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := dq.querySpec()
+	if len(dq.modifiers) > 0 {
+		_spec.Modifiers = dq.modifiers
+	}
 	_spec.Node.Columns = dq.fields
 	if len(dq.fields) > 0 {
 		_spec.Unique = dq.unique != nil && *dq.unique
@@ -494,6 +501,9 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if dq.unique != nil && *dq.unique {
 		selector.Distinct()
 	}
+	for _, m := range dq.modifiers {
+		m(selector)
+	}
 	for _, p := range dq.predicates {
 		p(selector)
 	}
@@ -509,6 +519,12 @@ func (dq *DecisionQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (dq *DecisionQuery) Modify(modifiers ...func(s *sql.Selector)) *DecisionSelect {
+	dq.modifiers = append(dq.modifiers, modifiers...)
+	return dq.Select()
 }
 
 // DecisionGroupBy is the group-by builder for Decision entities.
@@ -997,4 +1013,10 @@ func (ds *DecisionSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (ds *DecisionSelect) Modify(modifiers ...func(s *sql.Selector)) *DecisionSelect {
+	ds.modifiers = append(ds.modifiers, modifiers...)
+	return ds
 }

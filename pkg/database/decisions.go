@@ -207,7 +207,7 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "get expired decisions with filters")
 	}
 
-	query = query.Where(func(s *sql.Selector) {
+	/*query = query.Where(func(s *sql.Selector) {
 		t := sql.Table(decision.Table).As("t1")
 
 		subquery := sql.Select(s.C(decision.FieldValue)).From(t)
@@ -226,7 +226,28 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 		s.Where(sql.NotExists(subquery))
 	})
 
-	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
+	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)*/
+
+	query.Modify(func(s *sql.Selector) {
+		t := sql.Table(decision.Table).As("t1")
+		p := []*sql.Predicate{
+			sql.ColumnsEQ(s.C(decision.FieldScope), t.C(decision.FieldScope)),
+			sql.ColumnsEQ(s.C(decision.FieldType), t.C(decision.FieldType)),
+			sql.ColumnsEQ(s.C(decision.FieldValue), t.C(decision.FieldValue)),
+			sql.GTE(t.C(decision.FieldUntil), now),
+		}
+		p = append(p, predicates...)
+		s.LeftJoin(t).
+			OnP(
+				sql.And(
+					p...,
+				)).
+			GroupBy(s.C(decision.FieldValue)).
+			Where(sql.IsNull(t.C(decision.FieldValue)))
+	})
+
+	data, err := query.All(c.CTX)
+
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions")
@@ -244,6 +265,7 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGTE(since),
+		decision.UntilLTE(now),
 	)
 	query, predicates, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
@@ -251,26 +273,25 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")
 	}
 
-	query = query.Where(func(s *sql.Selector) {
+	query.Modify(func(s *sql.Selector) {
 		t := sql.Table(decision.Table).As("t1")
-
-		subquery := sql.Select(s.C(decision.FieldValue)).From(t)
-		for _, pred := range predicates {
-			subquery.Where(pred)
+		p := []*sql.Predicate{
+			sql.ColumnsEQ(s.C(decision.FieldScope), t.C(decision.FieldScope)),
+			sql.ColumnsEQ(s.C(decision.FieldType), t.C(decision.FieldType)),
+			sql.ColumnsEQ(s.C(decision.FieldValue), t.C(decision.FieldValue)),
+			sql.GTE(t.C(decision.FieldUntil), now),
 		}
-
-		subquery = subquery.Where(
-			sql.And(
-				sql.ColumnsEQ(s.C(decision.FieldScope), t.C(decision.FieldScope)),
-				sql.ColumnsEQ(s.C(decision.FieldType), t.C(decision.FieldType)),
-				sql.ColumnsEQ(s.C(decision.FieldValue), t.C(decision.FieldValue)),
-				sql.GT(t.C(decision.FieldUntil), now),
-			),
-		)
-		s.Where(sql.NotExists(subquery))
+		p = append(p, predicates...)
+		s.LeftJoin(t).
+			OnP(
+				sql.And(
+					p...,
+				)).
+			GroupBy(s.C(decision.FieldValue)).
+			Where(sql.IsNull(t.C(decision.FieldValue)))
 	})
 
-	data, err := query.Order(ent.Asc(decision.FieldValue), ent.Desc(decision.FieldUntil)).All(c.CTX)
+	data, err := query.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
 		return []*ent.Decision{}, errors.Wrap(QueryFail, "expired decisions with filters")

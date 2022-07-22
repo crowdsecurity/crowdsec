@@ -28,6 +28,7 @@ type EventQuery struct {
 	// eager-loading edges.
 	withOwner *AlertQuery
 	withFKs   bool
+	modifiers []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -375,6 +376,9 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(eq.modifiers) > 0 {
+		_spec.Modifiers = eq.modifiers
+	}
 	if err := sqlgraph.QueryNodes(ctx, eq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -416,6 +420,9 @@ func (eq *EventQuery) sqlAll(ctx context.Context) ([]*Event, error) {
 
 func (eq *EventQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := eq.querySpec()
+	if len(eq.modifiers) > 0 {
+		_spec.Modifiers = eq.modifiers
+	}
 	_spec.Node.Columns = eq.fields
 	if len(eq.fields) > 0 {
 		_spec.Unique = eq.unique != nil && *eq.unique
@@ -494,6 +501,9 @@ func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if eq.unique != nil && *eq.unique {
 		selector.Distinct()
 	}
+	for _, m := range eq.modifiers {
+		m(selector)
+	}
 	for _, p := range eq.predicates {
 		p(selector)
 	}
@@ -509,6 +519,12 @@ func (eq *EventQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (eq *EventQuery) Modify(modifiers ...func(s *sql.Selector)) *EventSelect {
+	eq.modifiers = append(eq.modifiers, modifiers...)
+	return eq.Select()
 }
 
 // EventGroupBy is the group-by builder for Event entities.
@@ -997,4 +1013,10 @@ func (es *EventSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (es *EventSelect) Modify(modifiers ...func(s *sql.Selector)) *EventSelect {
+	es.modifiers = append(es.modifiers, modifiers...)
+	return es
 }

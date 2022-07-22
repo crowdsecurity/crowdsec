@@ -28,6 +28,7 @@ type MachineQuery struct {
 	predicates []predicate.Machine
 	// eager-loading edges.
 	withAlerts *AlertQuery
+	modifiers  []func(s *sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -368,6 +369,9 @@ func (mq *MachineQuery) sqlAll(ctx context.Context) ([]*Machine, error) {
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(mq.modifiers) > 0 {
+		_spec.Modifiers = mq.modifiers
+	}
 	if err := sqlgraph.QueryNodes(ctx, mq.driver, _spec); err != nil {
 		return nil, err
 	}
@@ -409,6 +413,9 @@ func (mq *MachineQuery) sqlAll(ctx context.Context) ([]*Machine, error) {
 
 func (mq *MachineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := mq.querySpec()
+	if len(mq.modifiers) > 0 {
+		_spec.Modifiers = mq.modifiers
+	}
 	_spec.Node.Columns = mq.fields
 	if len(mq.fields) > 0 {
 		_spec.Unique = mq.unique != nil && *mq.unique
@@ -487,6 +494,9 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if mq.unique != nil && *mq.unique {
 		selector.Distinct()
 	}
+	for _, m := range mq.modifiers {
+		m(selector)
+	}
 	for _, p := range mq.predicates {
 		p(selector)
 	}
@@ -502,6 +512,12 @@ func (mq *MachineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (mq *MachineQuery) Modify(modifiers ...func(s *sql.Selector)) *MachineSelect {
+	mq.modifiers = append(mq.modifiers, modifiers...)
+	return mq.Select()
 }
 
 // MachineGroupBy is the group-by builder for Machine entities.
@@ -990,4 +1006,10 @@ func (ms *MachineSelect) sqlScan(ctx context.Context, v interface{}) error {
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (ms *MachineSelect) Modify(modifiers ...func(s *sql.Selector)) *MachineSelect {
+	ms.modifiers = append(ms.modifiers, modifiers...)
+	return ms
 }
