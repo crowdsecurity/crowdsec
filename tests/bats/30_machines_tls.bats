@@ -45,7 +45,14 @@ setup_file() {
         .api.server.tls.agents_allowed_ou=["agent-ou"]
     '
 
-    run -0 cscli machines delete githubciXXXXXXXXXXXXXXXXXXXXXXXX
+    # remove all machines
+
+    run -0 cscli machines list -o json
+    run -0 jq -r '.[].machineId' <(output)
+    for machine in $(output); do
+        run -0 cscli machines delete "${machine}"
+    done
+
     config_disable_agent
 }
 
