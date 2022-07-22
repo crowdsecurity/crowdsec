@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -332,40 +331,4 @@ type DecisionTest struct {
 	NewChecks     []DecisionCheck
 	DelChecks     []DecisionCheck
 	AuthType      string
-}
-
-func runTest(lapi LAPI, test DecisionTest, t *testing.T) {
-	w := lapi.RecordResponse(test.Method, test.Route, emptyBody, test.AuthType)
-	assert.Equal(t, test.Code, w.Code)
-	if test.CheckCodeOnly {
-		return
-	}
-	decisions, _, err := readDecisionsStreamResp(w)
-	assert.Equal(t, nil, err)
-	assert.Equal(t, test.LenDeleted, len(decisions["deleted"]), fmt.Sprintf("'%s': len(deleted)", test.TestName))
-	for idx, new := range decisions["new"] {
-		fmt.Printf("new %d: id:%d orig:%s scenario:%s value:%s until:%s\n", idx, new.ID, *new.Origin,
-			*new.Scenario, *new.Value, *new.Duration)
-	}
-	//fmt.Printf("NEW: %+v", decisions["new"])
-	//fmt.Printf("NEW: %+v", decisions["deleted"])
-	assert.Equal(t, test.LenNew, len(decisions["new"]), fmt.Sprintf("'%s': len(new)", test.TestName))
-
-	for i, check := range test.NewChecks {
-		assert.Equal(t, check.ID, decisions["new"][i].ID, fmt.Sprintf("'%s' (idx: %d): field: ID", test.TestName, i))
-		assert.Equal(t, check.Origin, *decisions["new"][i].Origin, fmt.Sprintf("'%s' (idx: %d): field: Origin", test.TestName, i))
-		assert.Equal(t, check.Scenario, *decisions["new"][i].Scenario, fmt.Sprintf("'%s' (idx: %d): field: Scenario", test.TestName, i))
-		assert.Equal(t, check.Value, *decisions["new"][i].Value, fmt.Sprintf("'%s' (idx: %d): field: Value", test.TestName, i))
-		assert.Equal(t, check.Type, *decisions["new"][i].Type, fmt.Sprintf("'%s' (idx: %d): field: Type", test.TestName, i))
-		assert.Contains(t, *decisions["new"][i].Duration, check.Duration, fmt.Sprintf("'%s' (idx: %d): field: Duration", test.TestName, i))
-	}
-
-	for i, check := range test.DelChecks {
-		assert.Equal(t, check.ID, decisions["deleted"][i].ID, fmt.Sprintf("'%s' (idx: %d): field: ID", test.TestName, i))
-		assert.Equal(t, check.Origin, *decisions["deleted"][i].Origin, fmt.Sprintf("'%s' (idx: %d): field: Origin", test.TestName, i))
-		assert.Equal(t, check.Scenario, *decisions["deleted"][i].Scenario, fmt.Sprintf("'%s' (idx: %d): field: Scenario", test.TestName, i))
-		assert.Equal(t, check.Value, *decisions["deleted"][i].Value, fmt.Sprintf("'%s' (idx: %d): field: Value", test.TestName, i))
-		assert.Equal(t, check.Type, *decisions["deleted"][i].Type, fmt.Sprintf("'%s' (idx: %d): field: Type", test.TestName, i))
-		assert.Contains(t, *decisions["deleted"][i].Duration, check.Duration, fmt.Sprintf("'%s' (idx: %d): field: Duration", test.TestName, i))
-	}
 }
