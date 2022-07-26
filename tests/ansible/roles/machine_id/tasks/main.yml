@@ -6,6 +6,11 @@
     content: "{{ machine_id }}"
     mode: 0o444
 
+- name: "see if /var/lib/dbus exists"
+  ansible.builtin.stat:
+    path: "/var/lib/dbus"
+  register: dbus
+
 # some distributions use var/lib/dbus,
 # but the directory doesn't exists on fedora
 - name: "set /var/lib/dbus/machine-id"
@@ -15,4 +20,4 @@
     content: "{{ machine_id }}"
     mode: 0o444
   when:
-    - ansible_os_family != 'FreeBSD' and ansible_distribution != "Fedora"
+    - dbus.stat.exists

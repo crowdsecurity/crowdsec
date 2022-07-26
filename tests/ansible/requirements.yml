@@ -1,4 +1,6 @@
 ---
-- src: geerlingguy.postgresql
 - src: geerlingguy.mysql
+- src: geerlingguy.postgresql
+- src: geerlingguy.repo-epel
 - src: gantsign.golang
+

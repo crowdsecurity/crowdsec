@@ -26,6 +26,11 @@
   vars_files:
     - vars/go.yml
   roles:
+    # required for jq and basic tools on centos and rhel
+    - role: geerlingguy.repo-epel
+      vars:
+        epel_repo_disable: false
+      become: true
     - common
     - machine_id
     - bats_requirements

@@ -1,12 +1,4 @@
 ---
-# required for (at least) jq
-- name: "enable EPEL"
-  become: true
-  ansible.builtin.package:
-    name: epel-release
-  when:
-    - ansible_distribution == 'CentOS'
-
 - name: "update package cache (Debian)"
   become: true
   ansible.builtin.apt:
