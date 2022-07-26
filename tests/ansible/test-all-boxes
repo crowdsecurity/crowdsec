@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+# This loops over all the available boxes, running the test suite on each one.
+# The results are collected in a file. If the file already exists, tests are not run again.
+
+env=$1
+
+if [ -z "$env" ]; then
+  echo "Usage: $0 <env>"
+  exit 1
+fi
+
+#shellcheck disable=SC1090
+. "${env}"
+
+VAGRANT_FORCE_COLOR=true
+export VAGRANT_FORCE_COLOR
+
+for vm in $(find vagrant -mindepth 1 -maxdepth 1 -type d | sort); do
+    outfile="$(basename "$env").out"
+    pushd "${vm}" >/dev/null || exit
+    if [ ! -f "${outfile}" ]; then
+        vagrant up --no-provision
+        vagrant provision 2>&1 | tee "${outfile}"
+        vagrant destroy -f
+    else
+        echo "Skipping: ${vm}, file ${outfile} already exists." >&2
+    fi
+    popd >/dev/null 
+done
+

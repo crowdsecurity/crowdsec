@@ -1,0 +1,33 @@
+---
+- name: "install stuff"
+  become: true
+  ansible.builtin.package:
+    name:
+      - apt-transport-https
+      - gnupg
+
+- name: "install crowdsec repo [1/2] (*.deb)"
+  become: true
+  ansible.builtin.apt_key:
+    url: https://packagecloud.io/crowdsec/crowdsec/gpgkey
+
+- name: "add crowdsec repo [2/2] (*.deb)"
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+
+- name: "install crowdsec testing repo [1/2] (*.deb)"
+  become: true
+  ansible.builtin.apt_key:
+    url: https://packagecloud.io/crowdsec/crowdsec-testing/gpgkey
+
+- name: "add crowdsec testing repo [1/2] (*.deb)"
+  become: true
+  ansible.builtin.apt_repository:
+    repo: deb https://packagecloud.io/crowdsec/crowdsec-testing/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+
+- name: "install crowdsec"
+  become: true
+  ansible.builtin.package:
+    name:
+      - crowdsec={{ package_version_deb }}

@@ -1,0 +1,30 @@
+---
+- name: "download the rpm script"
+  ansible.builtin.get_url:
+    url: https://packagecloud.io/install/repositories/crowdsec/crowdsec/script.rpm.sh
+    dest: "{{ ansible_env.HOME }}/rpm.sh"
+    mode: 0o775
+
+- name: "install crowdsec rpm repo"
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ ansible_env.HOME }}/rpm.sh"
+  changed_when: false
+
+- name: "download the (testing) rpm script"
+  ansible.builtin.get_url:
+    url: https://packagecloud.io/install/repositories/crowdsec/crowdsec-testing/script.rpm.sh
+    dest: "{{ ansible_env.HOME }}/rpm-testing.sh"
+    mode: 0o775
+
+- name: "install crowdsec (testing) rpm repo"
+  become: true
+  ansible.builtin.command:
+    cmd: "{{ ansible_env.HOME }}/rpm-testing.sh"
+  changed_when: false
+
+- name: "install crowdsec"
+  become: true
+  ansible.builtin.package:
+    name:
+      - crowdsec-{{ package_version_rpm }}.{{ releasever.replace('amzn2', 'el7').replace('ol7', 'el7').replace('ol8', 'el8') }}

@@ -1,0 +1,3 @@
+---
+suite_git: "https://github.com/crowdsecurity/crowdsec"
+suite_version: "master"

@@ -1,0 +1,53 @@
+---
+- name: "install Go (!freebsd)"
+  hosts: all
+  gather_facts: true
+  vars_files:
+    - vars/go.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: gantsign.golang
+      when:
+        - ansible_os_family != "FreeBSD"
+
+- name: "install Go (freebsd)"
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - ansible.builtin.package:
+        name: go
+        state: present
+      when:
+        - ansible_os_family == "FreeBSD"
+
+- name: "apply common configuration to all nodes"
+  hosts: all
+  vars_files:
+    - vars/go.yml
+  roles:
+    - common
+    - machine_id
+    - bats_requirements
+
+- name: "install Postgres"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/postgres.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.postgresql
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') in ['pgx', 'postgres']
+
+- name: "install MySQL"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/mysql.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.mysql
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') == 'mysql'

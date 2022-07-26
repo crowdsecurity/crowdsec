@@ -1,0 +1,20 @@
+---
+- name: "set package_file from package_dir"
+  ansible.builtin.set_fact:
+    package_file: "{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_architecture }}/crowdsec-{{ testing_file_version }}*.{{ releasever }}.{{ ansible_architecture }}.rpm"
+  when:
+    - (package_dir is defined) and (package_dir | length > 0)
+
+- name: "copy built file for rpm-like"
+  become: false
+  ansible.builtin.copy:
+    src: "{{ package_file }}"
+    dest: "{{ ansible_env.HOME }}/crowdsec.rpm"
+    mode: 0o644
+
+- name: "install crowdsec on rpm-like"
+  become: true
+  ansible.builtin.yum:
+    name: "{{ ansible_env.HOME }}/crowdsec.rpm"
+    disable_gpg_check: true
+    allow_downgrade: true

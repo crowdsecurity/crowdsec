@@ -1,0 +1,19 @@
+---
+- name: "set package_file from package_dir"
+  ansible.builtin.set_fact:
+    package_file: "{{ package_dir }}/{{ ansible_distribution_release }}_{{ ansible_architecture.replace('x86_64', 'amd64) }}/{{ ansible_distribution_release }}/{{ ansible_architecture.replace('x86_64', 'amd64' }}/crowdsec_*.deb"
+  when:
+    - (package_dir is defined) and (package_dir | length > 0)
+
+- name: "copy built file for deb-like"
+  become: false
+  ansible.builtin.copy:
+    src: "{{ package_file }}"
+    dest: "{{ ansible_env.HOME }}/crowdsec.deb"
+    mode: 0o644
+
+- name: "install crowdsec on deb-like"
+  become: true
+  ansible.builtin.apt:
+    name: "{{ ansible_env.HOME }}/crowdsec.deb"
+    allow_downgrade: true
