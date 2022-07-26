@@ -72,7 +72,7 @@ ansible won't be able to see them.
 - `TEST_SKIP`: optional, comma-separated list of scripts that won't be executed.
   Example: `TEST_SKIP=02_nolapi.bats,03_noagent.bats`
 
-# Running tests with Vagrant + Ansible
+## Running tests with Vagrant + Ansible
 
 You don't need Vagrant to run the ansible tests, if you can manage your own
 vm creation and inventory.
@@ -114,7 +114,7 @@ around for the next time.
 
 You can give more memory or CPU juice to the VMs by editing [Vagrantfile.common](vagrant/Vagrantfile.common).
 
-# Test Matrix
+## Test Matrix
 
 Tests fail with unsupported configurations or when the environment is not prepared correctly
 due to missing setup/teardown parts in Ansible or functional tests. False positives
