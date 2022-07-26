@@ -17,7 +17,7 @@
 // Linux users can generate a new id with `dbus-uuidgen` and put the id into
 // `/var/lib/dbus/machine-id` and `/etc/machine-id`.
 // Windows users can use the `sysprep` toolchain to create images, which produce valid images ready for distribution.
-package machineid // import "github.com/denisbrodbeck/machineid"
+package machineid
 
 import (
 	"fmt"

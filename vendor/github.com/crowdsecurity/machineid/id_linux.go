@@ -2,6 +2,8 @@
 
 package machineid
 
+import "errors"
+
 const (
 	// dbusPath is the default path for dbus machine id.
 	dbusPath = "/var/lib/dbus/machine-id"
@@ -16,12 +18,16 @@ const (
 // See https://unix.stackexchange.com/questions/144812/generate-consistent-machine-unique-id
 func machineID() (string, error) {
 	id, err := readFile(dbusPath)
-	if err != nil {
+	if err != nil || trim(string(id)) == "" {
 		// try fallback path
 		id, err = readFile(dbusPathEtc)
 	}
 	if err != nil {
 		return "", err
+	}
+
+	if trim(string(id)) == "" {
+		return "", errors.New("All known machineid file are empty")
 	}
 	return trim(string(id)), nil
 }

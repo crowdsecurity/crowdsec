@@ -178,7 +178,7 @@ func (i *inspect) addColumn(s *schema.Schema, rows *sql.Rows) error {
 		typtype:       typtype.String,
 		typid:         typid.Int64,
 	})
-	if defaults.Valid {
+	if sqlx.ValidString(defaults) {
 		c.Default = defaultExpr(c, defaults.String)
 	}
 	if identity.String == "YES" {

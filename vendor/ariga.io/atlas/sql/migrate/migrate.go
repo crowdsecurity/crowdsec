@@ -5,11 +5,8 @@
 package migrate
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -159,7 +156,6 @@ type (
 		dir Dir         // where migration files are stored and read from
 		fmt Formatter   // how to format a plan to migration files
 		dsr StateReader // how to read a state from the migration directory
-		sum bool        // whether to create a sum file for the migration directory
 	}
 
 	// PlannerOption allows managing a Planner using functional arguments.
@@ -168,7 +164,7 @@ type (
 
 // NewPlanner creates a new Planner.
 func NewPlanner(drv Driver, dir Dir, opts ...PlannerOption) *Planner {
-	p := &Planner{drv: drv, dir: dir, sum: true}
+	p := &Planner{drv: drv, dir: dir}
 	for _, opt := range opts {
 		opt(p)
 	}
@@ -192,43 +188,6 @@ func WithFormatter(fmt Formatter) PlannerOption {
 func WithStateReader(dsr StateReader) PlannerOption {
 	return func(p *Planner) {
 		p.dsr = dsr
-	}
-}
-
-// DisableChecksum disables the hash-sum functionality for the migration directory.
-func DisableChecksum() PlannerOption {
-	return func(p *Planner) {
-		p.sum = false
-	}
-}
-
-// GlobStateReader creates a StateReader that loads all files from Dir matching
-// glob in lexicographic order and uses the Driver to create a migration state.
-func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
-	return func(ctx context.Context) (*schema.Realm, error) {
-		names, err := fs.Glob(dir, glob)
-		if err != nil {
-			return nil, err
-		}
-		// Sort files lexicographically.
-		sort.Slice(names, func(i, j int) bool {
-			return names[i] < names[j]
-		})
-		for _, n := range names {
-			f, err := dir.Open(n)
-			if err != nil {
-				return nil, err
-			}
-			b, err := io.ReadAll(f)
-			f.Close()
-			if err != nil {
-				return nil, err
-			}
-			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
-				return nil, err
-			}
-		}
-		return drv.InspectRealm(ctx, nil)
 	}
 }
 
@@ -268,17 +227,6 @@ func (p *Planner) WritePlan(plan *Plan) error {
 			return err
 		}
 	}
-	if p.sum {
-		sum, err := HashSum(p.dir)
-		if err != nil {
-			return err
-		}
-		b, err := sum.MarshalText()
-		if err != nil {
-			return err
-		}
-		return p.dir.WriteFile(hashFile, b)
-	}
 	return nil
 }
 
@@ -290,11 +238,10 @@ type LocalDir struct {
 // NewLocalDir returns a new the Dir used by a Planner to work on the given local path.
 func NewLocalDir(path string) (*LocalDir, error) {
 	fi, err := os.Stat(path)
-	if os.IsNotExist(err) {
+	if err == os.ErrNotExist {
 		if err := os.MkdirAll(path, 0755); err != nil {
 			return nil, err
 		}
-		return &LocalDir{dir: path}, nil
 	} else if err != nil {
 		return nil, err
 	}
@@ -302,6 +249,36 @@ func NewLocalDir(path string) (*LocalDir, error) {
 		return nil, fmt.Errorf("sql/migrate: %q is not a dir", path)
 	}
 	return &LocalDir{dir: path}, nil
+}
+
+// GlobStateReader creates a StateReader that loads all files from Dir matching
+// glob in lexicographic order and uses the Driver to create a migration state.
+func GlobStateReader(dir Dir, drv Driver, glob string) StateReaderFunc {
+	return func(ctx context.Context) (*schema.Realm, error) {
+		names, err := fs.Glob(dir, glob)
+		if err != nil {
+			return nil, err
+		}
+		// Sort files lexicographically.
+		sort.Slice(names, func(i, j int) bool {
+			return names[i] < names[j]
+		})
+		for _, n := range names {
+			f, err := dir.Open(n)
+			if err != nil {
+				return nil, err
+			}
+			b, err := io.ReadAll(f)
+			f.Close()
+			if err != nil {
+				return nil, err
+			}
+			if _, err := drv.ExecContext(ctx, string(b)); err != nil {
+				return nil, err
+			}
+		}
+		return drv.InspectRealm(ctx, nil)
+	}
 }
 
 // Open implements fs.FS.
@@ -371,7 +348,7 @@ func NewTemplateFormatter(templates ...*template.Template) (*TemplateFormatter, 
 
 // Format implements the Formatter interface.
 func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
-	files := make([]File, 0, len(t.templates))
+	fs := make([]File, 0, len(t.templates))
 	for _, tpl := range t.templates {
 		var n, c bytes.Buffer
 		if err := tpl.N.Execute(&n, plan); err != nil {
@@ -380,12 +357,12 @@ func (t *TemplateFormatter) Format(plan *Plan) ([]File, error) {
 		if err := tpl.C.Execute(&c, plan); err != nil {
 			return nil, err
 		}
-		files = append(files, &templateFile{
+		fs = append(fs, &templateFile{
 			Buffer: &c,
 			n:      n.String(),
 		})
 	}
-	return files, nil
+	return fs, nil
 }
 
 type templateFile struct {
@@ -395,106 +372,6 @@ type templateFile struct {
 
 // Name implements the File interface.
 func (f *templateFile) Name() string { return f.n }
-
-// Filename of the migration directory integrity sum file.
-const hashFile = "atlas.sum"
-
-// HashFile represents the integrity sum file of the migration dir.
-type HashFile []struct{ N, H string }
-
-// HashSum reads the whole dir, sorts the files by name and creates a HashSum from its contents.
-func HashSum(dir Dir) (HashFile, error) {
-	var (
-		hs HashFile
-		h  = sha256.New()
-	)
-	err := fs.WalkDir(dir, "", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		// If this is the integrity sum file do not include it into the sum.
-		if filepath.Base(path) == hashFile {
-			return nil
-		}
-		if !d.IsDir() {
-			f, err := dir.Open(path)
-			if err != nil {
-				return err
-			}
-			defer f.Close()
-			if _, err = io.Copy(h, f); err != nil {
-				return err
-			}
-			hs = append(hs, struct{ N, H string }{path, base64.StdEncoding.EncodeToString(h.Sum(nil))})
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	return hs, nil
-}
-
-// ErrChecksumMismatch is returned from Validate if the hash sums don't match.
-var ErrChecksumMismatch = errors.New("checksum mismatch")
-
-// Validate checks if the migration dir is in sync with its sum file.
-// If they don't match ErrChecksumMismatch is returned.
-func Validate(dir Dir) error {
-	f, err := dir.Open(hashFile)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	b, err := io.ReadAll(f)
-	if err != nil {
-		return err
-	}
-	var fh HashFile
-	if err := fh.UnmarshalText(b); err != nil {
-		return nil
-	}
-	mh, err := HashSum(dir)
-	if err != nil {
-		return err
-	}
-	if fh.Sum() != mh.Sum() {
-		return ErrChecksumMismatch
-	}
-	return nil
-}
-
-// Sum returns the checksum of the represented hash file.
-func (s HashFile) Sum() string {
-	sha := sha256.New()
-	for _, f := range s {
-		sha.Write([]byte(f.H))
-	}
-	return base64.StdEncoding.EncodeToString(sha.Sum(nil))
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s HashFile) MarshalText() ([]byte, error) {
-	buf := new(bytes.Buffer)
-	for _, f := range s {
-		fmt.Fprintf(buf, "%s h1:%s\n", f.N, f.H)
-	}
-	return []byte(fmt.Sprintf("sum h1:%s\n%s", s.Sum(), buf)), nil
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *HashFile) UnmarshalText(b []byte) error {
-	sc := bufio.NewScanner(bytes.NewReader(b))
-	sc.Scan() // skip sum
-	for sc.Scan() {
-		li := strings.SplitN(sc.Text(), "h1:", 2)
-		if len(li) != 2 {
-			return errors.New("invalid sum file")
-		}
-		*s = append(*s, struct{ N, H string }{strings.TrimSpace(li[0]), li[1]})
-	}
-	return sc.Err()
-}
 
 // reverse changes for the down migration.
 func reverse(changes []*Change) []*Change {

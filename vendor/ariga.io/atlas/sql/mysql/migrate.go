@@ -515,7 +515,7 @@ func indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
-				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
+				b.WriteString(withParens(part.X.(*schema.RawExpr).X))
 			}
 			if s := (&SubPart{}); sqlx.Has(parts[i].Attrs, s) {
 				b.WriteString(fmt.Sprintf("(%d)", s.Len))
@@ -688,7 +688,7 @@ func (s *state) check(b *sqlx.Builder, c *schema.Check) {
 	if c.Name != "" {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
-	b.P("CHECK", sqlx.MayWrap(c.Expr))
+	b.P("CHECK", withParens(c.Expr))
 	if s.supportsEnforceCheck() && sqlx.Has(c.Attrs, &Enforced{}) {
 		b.P("ENFORCED")
 	}
@@ -710,4 +710,12 @@ func quote(s string) string {
 		return s
 	}
 	return strconv.Quote(s)
+}
+
+// withParens ensures expressions wrapped with parens.
+func withParens(x string) string {
+	if t := strings.TrimSpace(x); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		x = "(" + t + ")"
+	}
+	return x
 }

@@ -2,7 +2,6 @@ package sqlite
 
 import (
 	"reflect"
-	"strconv"
 
 	"ariga.io/atlas/schema/schemaspec"
 	"ariga.io/atlas/schema/schemaspec/schemahcl"
@@ -26,23 +25,7 @@ func MarshalSpec(v interface{}, marshaler schemaspec.Marshaler) ([]byte, error) 
 // ForeignKeySpecs into ForeignKeys, as the target tables do not necessarily exist in the schema
 // at this point. Instead, the linking is done by the convertSchema function.
 func convertTable(spec *sqlspec.Table, parent *schema.Schema) (*schema.Table, error) {
-	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, convertIndex, specutil.Check)
-}
-
-// convertIndex converts a sqlspec.Index into a schema.Index.
-func convertIndex(spec *sqlspec.Index, t *schema.Table) (*schema.Index, error) {
-	idx, err := specutil.Index(spec, t)
-	if err != nil {
-		return nil, err
-	}
-	if attr, ok := spec.Attr("where"); ok {
-		p, err := attr.String()
-		if err != nil {
-			return nil, err
-		}
-		idx.Attrs = append(idx.Attrs, &IndexPredicate{P: p})
-	}
-	return idx, nil
+	return specutil.Table(spec, parent, convertColumn, specutil.PrimaryKey, specutil.Index, specutil.Check)
 }
 
 // convertColumn converts a sqlspec.Column into a schema.Column.
@@ -79,21 +62,10 @@ func tableSpec(tab *schema.Table) (*sqlspec.Table, error) {
 		tab,
 		columnSpec,
 		specutil.FromPrimaryKey,
-		indexSpec,
+		specutil.FromIndex,
 		specutil.FromForeignKey,
 		specutil.FromCheck,
 	)
-}
-
-func indexSpec(idx *schema.Index) (*sqlspec.Index, error) {
-	spec, err := specutil.FromIndex(idx)
-	if err != nil {
-		return nil, err
-	}
-	if i := (IndexPredicate{}); sqlx.Has(idx.Attrs, &i) && i.P != "" {
-		spec.Extra.Attrs = append(spec.Extra.Attrs, specutil.VarAttr("where", strconv.Quote(i.P)))
-	}
-	return spec, nil
 }
 
 // columnSpec converts from a concrete SQLite schema.Column into a sqlspec.Column.

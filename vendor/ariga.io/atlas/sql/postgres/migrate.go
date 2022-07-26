@@ -613,7 +613,7 @@ func (s *state) indexParts(b *sqlx.Builder, parts []*schema.IndexPart) {
 			case part.C != nil:
 				b.Ident(part.C.Name)
 			case part.X != nil:
-				b.WriteString(sqlx.MayWrap(part.X.(*schema.RawExpr).X))
+				b.WriteString(part.X.(*schema.RawExpr).X)
 			}
 			s.partAttrs(b, parts[i])
 		})
@@ -764,10 +764,15 @@ func commentChange(c schema.Change) (from, to string, err error) {
 
 // checks writes the CHECK constraint to the builder.
 func check(b *sqlx.Builder, c *schema.Check) {
+	expr := c.Expr
+	// Expressions should be wrapped with parens.
+	if t := strings.TrimSpace(expr); !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		expr = "(" + t + ")"
+	}
 	if c.Name != "" {
 		b.P("CONSTRAINT").Ident(c.Name)
 	}
-	b.P("CHECK", sqlx.MayWrap(c.Expr))
+	b.P("CHECK", expr)
 	if sqlx.Has(c.Attrs, &NoInherit{}) {
 		b.P("NO INHERIT")
 	}
