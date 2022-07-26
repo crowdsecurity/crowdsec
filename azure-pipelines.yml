@@ -2,6 +2,8 @@ trigger:
   tags:
     include:
       - "v*"
+    exclude:
+      - "v*freebsd"
   branches:
     exclude:
       - "*"
