@@ -31,12 +31,14 @@ declare stderr
 }
 
 @test "crowdsec should not run without LAPI (-no-api flag)" {
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}" -no-api
+    # really needs 4 secs on slow boxes
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}" -no-api
 }
 
 @test "crowdsec should not run without LAPI (no api.server in configuration file)" {
     config_disable_lapi
-    run -1 --separate-stderr timeout 2s "${CROWDSEC}"
+    # really needs 4 secs on slow boxes
+    run -1 --separate-stderr timeout 4s "${CROWDSEC}"
 
     run -0 echo "${stderr}"
     assert_output --partial "crowdsec local API is disabled"
