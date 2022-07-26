@@ -1,0 +1,80 @@
+---
+- name: "install bash"
+  ansible.builtin.import_tasks: bash.yml
+
+- name: "Install daemonize"
+  ansible.builtin.import_tasks: daemonize.yml
+  when:
+    - ansible_os_family != 'FreeBSD'
+
+- name: "install netcat"
+  ansible.builtin.import_tasks: netcat.yml
+
+- name: "Install curl, jq, openssl, python3"
+  become: true
+  ansible.builtin.package:
+    name:
+      - curl
+      - jq
+      - openssl
+      - python3
+
+- name: "install bc (!freebsd)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - bc
+  when:
+    - ansible_os_family != 'FreeBSD'
+
+- name: "install base64(freebsd)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - base64
+  when:
+    - ansible_os_family == 'FreeBSD'
+
+- name: "install pidof (Amazon)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - procps-ng
+  when:
+    - ansible_distribution == 'Amazon'
+
+- name: "install gcc (for go-sqlite, needs cgo)"
+  become: true
+  ansible.builtin.package:
+    name:
+      - gcc
+
+- name: "install cfssl"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/cloudflare/cfssl/cmd/cfssl@latest"
+    creates: /usr/bin/cfssl
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"
+
+- name: "install cfssljson"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/cloudflare/cfssl/cmd/cfssljson@latest"
+    creates: /usr/bin/cfssljson
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"
+
+- name: "install yq"
+  become: true
+  ansible.builtin.command:
+    cmd: "go install github.com/mikefarah/yq/v4@latest"
+    creates: /usr/bin/yq
+  environment:
+    GOBIN: /usr/bin
+    # make sure we use the built version of go, if there is one
+    PATH: "{{ golang_install_dir }}/bin:{{ ansible_env.PATH }}"

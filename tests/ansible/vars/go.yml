@@ -1,0 +1,2 @@
+golang_version: "1.18.2"
+golang_install_dir: "/opt/go/{{ golang_version }}"
