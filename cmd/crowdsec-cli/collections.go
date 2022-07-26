@@ -59,6 +59,21 @@ func NewCollectionsCmd() *cobra.Command {
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.COLLECTIONS, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
+					errMsg := ""
+					if score < 10 {
+						errMsg = fmt.Sprintf("unable to find collections '%s', did you mean %s ?", name, nearestItem.Name)
+					} else {
+						errMsg = fmt.Sprintf("unable to find collections '%s'", name)
+					}
+					if ignoreError {
+						log.Error(errMsg)
+					} else {
+						log.Fatalf(errMsg)
+					}
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {
 						log.Fatalf("Error while installing '%s': %s", name, err)

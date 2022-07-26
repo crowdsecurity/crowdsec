@@ -65,12 +65,17 @@ cscli parsers remove crowdsecurity/sshd-logs
 				t := cwhub.GetItem(cwhub.PARSERS, name)
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.PARSERS, name)
+					errMsg := ""
 					if score < 10 {
-						log.Errorf("%s doesn't exist, did you mean %s ?", name, nearestItem.Name)
+						errMsg = fmt.Sprintf("unable to find parser '%s', did you mean %s ?", name, nearestItem.Name)
 					} else {
-						log.Errorf("%s doesn't exist", name)
+						errMsg = fmt.Sprintf("unable to find parser '%s'", name)
 					}
-					return
+					if ignoreError {
+						log.Error(errMsg)
+					} else {
+						log.Fatalf(errMsg)
+					}
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
