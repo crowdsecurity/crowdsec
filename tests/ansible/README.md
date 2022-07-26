@@ -103,11 +103,10 @@ To test with Vagrant, you need to:
   space taken by the base VM images, they are in
   `/var/lib/libvirt/images/*VAGRANT*`
 
-The above steps are automated in the script `./prepare-run` (requires bash
->=4.4). It takes an enviroment file, and optionally a list of directories with
-vagrant configurations. With a single parameter, it loops over all the
-directories in alphabetical order. Watch out for leftover VMs if you break the
-loop by hand.
+The above steps are automated in the script `./prepare-run` (requires bash >=4.4).
+It takes an enviroment file, and optionally a list of directories with vagrant
+configurations. With a single parameter, it loops over all the directories in
+alphabetical order. Watch out for leftover VMs if you break the loop by hand.
 
 After this, you will find up to 30GB of base images in `/var/lib/libvirt/images`,
 which you need to remove by hand when you have finished testing or leave them
