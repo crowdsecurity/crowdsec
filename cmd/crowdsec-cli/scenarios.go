@@ -87,7 +87,6 @@ cscli scenarios remove crowdsecurity/ssh-bf
 					}
 				}
 			}
-			return
 		},
 	}
 
