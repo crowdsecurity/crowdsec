@@ -5,9 +5,16 @@
 
 env=$1
 
-if [ -z "$env" ]; then
-  echo "Usage: $0 <env>"
+if [[ -z "${env}" ]]; then
+  echo "Usage: $0 <env> [vagrant-dir]..."
   exit 1
+fi
+
+shift
+
+vagrant_dirs=("$@")
+if [[ $# -eq 0 ]]; then
+    readarray -d '' vagrant_dirs < <(find vagrant -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
 fi
 
 #shellcheck disable=SC1090
@@ -16,16 +23,15 @@ fi
 VAGRANT_FORCE_COLOR=true
 export VAGRANT_FORCE_COLOR
 
-for vm in $(find vagrant -mindepth 1 -maxdepth 1 -type d | sort); do
-    outfile="$(basename "$env").out"
+for vm in "${vagrant_dirs[@]}"; do
+    outfile="$(basename "${env}").out"
     pushd "${vm}" >/dev/null || exit
-    if [ ! -f "${outfile}" ]; then
+    if [[ ! -f "${outfile}" ]]; then
         vagrant up --no-provision
         vagrant provision 2>&1 | tee "${outfile}"
         vagrant destroy -f
     else
         echo "Skipping: ${vm}, file ${outfile} already exists." >&2
     fi
-    popd >/dev/null 
+    popd >/dev/null || exit
 done
-

@@ -1,2 +1,4 @@
 ---
+
+# The password is insecure since the db is ephemeral and only listen to localhost.
 mysql_root_password: password

@@ -84,8 +84,9 @@ To test with Vagrant, you need to:
 
 - have a working libvirt environment (if you can use virt-manager to create VMs, you're golden)
 
-- install the vagrant-libvirt plugin (`vagrant plugin install vagrant-libvirt`. If it complains about gem versions, blame Ruby and see if
-  you can remove some other conflicting plugin).
+- install the vagrant-libvirt plugin (`vagrant plugin install vagrant-libvirt`.
+  If it complains about gem versions, blame Ruby and see if you can remove some
+  other conflicting plugin).
 
 - copy one of the `./env/*.sh` scripts to `environment.sh`, edit to your
   needs, and execute it with "source environment.sh"
@@ -102,10 +103,15 @@ To test with Vagrant, you need to:
   space taken by the base VM images, they are in
   `/var/lib/libvirt/images/*VAGRANT*`
 
-If you want to test all boxes in a given environment, run `./test-all-boxes ./env/<environment>`.
-This loop over them in alphabetical order. Watch out for leftover VMs if you break the loop by hand.
-You will find about 30GB of base images in `/var/lib/libvirt/images`, which you need to remove by hand
-when you have finished testing or leave them around for the next time.
+The above steps are automated in the script `./prepare-run` (requires bash
+>=4.4). It takes an enviroment file, and optionally a list of directories with
+vagrant configurations. With a single parameter, it loops over all the
+directories in alphabetical order. Watch out for leftover VMs if you break the
+loop by hand.
+
+After this, you will find up to 30GB of base images in `/var/lib/libvirt/images`,
+which you need to remove by hand when you have finished testing or leave them
+around for the next time.
 
 # Test Matrix
 
