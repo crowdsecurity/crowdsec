@@ -21,6 +21,7 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
 )
 
@@ -66,6 +67,25 @@ func LoadHub() error {
 	}
 
 	return nil
+}
+
+func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
+	allItems := make([]string, 0)
+	nearestScore := 100
+	nearestItem := &cwhub.Item{}
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		allItems = append(allItems, item.Name)
+	}
+
+	for _, s := range allItems {
+		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		if d < nearestScore {
+			nearestScore = d
+			nearestItem = cwhub.GetItem(itemType, s)
+		}
+	}
+	return nearestItem, nearestScore
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

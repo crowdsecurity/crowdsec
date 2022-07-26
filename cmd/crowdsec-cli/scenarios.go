@@ -5,7 +5,6 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
 	"github.com/pkg/errors"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/spf13/cobra"
@@ -65,6 +64,16 @@ cscli scenarios remove crowdsecurity/ssh-bf
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.SCENARIOS, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.SCENARIOS, name)
+					if score < 10 {
+						log.Errorf("%s doesn't exist, did you mean %s ?", name, nearestItem.Name)
+					} else {
+						log.Errorf("%s doesn't exist", name)
+					}
+					return
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
@@ -73,8 +82,10 @@ cscli scenarios remove crowdsecurity/ssh-bf
 					}
 				}
 			}
+			return
 		},
 	}
+
 	cmdScenariosInstall.PersistentFlags().BoolVarP(&downloadOnly, "download-only", "d", false, "Only download packages, don't enable")
 	cmdScenariosInstall.PersistentFlags().BoolVar(&forceAction, "force", false, "Force install : Overwrite tainted and outdated files")
 	cmdScenariosInstall.PersistentFlags().BoolVar(&ignoreError, "ignore", false, "Ignore errors when installing multiple scenarios")

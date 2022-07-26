@@ -62,6 +62,16 @@ cscli parsers remove crowdsecurity/sshd-logs
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.PARSERS, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.PARSERS, name)
+					if score < 10 {
+						log.Errorf("%s doesn't exist, did you mean %s ?", name, nearestItem.Name)
+					} else {
+						log.Errorf("%s doesn't exist", name)
+					}
+					return
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
