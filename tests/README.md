@@ -5,10 +5,9 @@ This directory contains scripts for functional testing. The tests are run with
 the [bats-core](https://github.com/bats-core/bats-core) framework, which is an
 active fork of the older BATS (Bash Automated Testing System).
 
-The goal is to be cross-platform but not explicitly test the packaging system
-or service management. Those parts are specific to each distribution and are
-tested separately (triggered by crowdsec releases, but they run in other
-repositories).
+With the addition of [the ansible playbooks](ansible/README.md) it is possible
+to use VMs to test the binary packages, service management and other CPU
+architectures.
 
 ### cscli
 
@@ -52,13 +51,12 @@ repositories).
 | stream mode        | `99_lapi-stream-mode |          |
 
 
-
 # How to use it
 
 ## pre-requisites
 
  - `git submodule init; git submodule update`
- - `daemonize (linux) or daemon (freebsd), bash, python3, openbsd-netcat`
+ - `daemonize (linux) or daemon (freebsd), bash>=4.4, python3, openbsd-netcat`
  - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
  - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
  - `go install github.com/mikefarah/yq/v4@latest`

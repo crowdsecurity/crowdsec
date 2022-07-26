@@ -1,8 +1,7 @@
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
-    # libvirt.default_prefix = "crowdsec_test-"
-    libvirt.cpus = 4
-    libvirt.memory = 2048
+    libvirt.cpus = 1
+    libvirt.memory = 1024
   end
 
   config.vm.synced_folder '.', '/vagrant', disabled: true
@@ -13,20 +12,23 @@ Vagrant.configure("2") do |config|
     ansible.playbook = "../../run_all.yml"
   end
 
-#  config.vm.provision "ansible" do |provdep|
-#    provdep.config_file = "../../ansible-common.cfg"
-#    provdep.playbook = "../../provision_dependencies.yml"
-#  end
-#  config.vm.provision "ansible" do |provtest|
-#    provtest.config_file = "../../ansible-common.cfg"
-#    provtest.playbook = "../../provision_test_suite.yml"
-#  end
-#  config.vm.provision "ansible" do |preptest|
-#    preptest.config_file = "../../ansible-common.cfg"
-#    preptest.playbook = "../../prepare_tests.yml"
-#  end
-#  config.vm.provision "ansible" do |runtests|
-#    runtests.config_file = "../../ansible-common.cfg"
-#    runtests.playbook = "../../run_tests.yml"
-#  end
+  # same as above, to run the steps separately
+
+  # config.vm.provision "ansible" do |provdep|
+  #   provdep.config_file = "../../ansible-common.cfg"
+  #   provdep.playbook = "../../provision_dependencies.yml"
+  # end
+  # config.vm.provision "ansible" do |provtest|
+  #   provtest.config_file = "../../ansible-common.cfg"
+  #   provtest.playbook = "../../provision_test_suite.yml"
+  # end
+  # config.vm.provision "ansible" do |preptest|
+  #   preptest.config_file = "../../ansible-common.cfg"
+  #   preptest.playbook = "../../prepare_tests.yml"
+  # end
+  # config.vm.provision "ansible" do |runtests|
+  #   runtests.config_file = "../../ansible-common.cfg"
+  #   runtests.playbook = "../../run_tests.yml"
+  # end
+
 end

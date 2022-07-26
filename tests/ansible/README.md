@@ -112,6 +112,8 @@ After this, you will find up to 30GB of base images in `/var/lib/libvirt/images`
 which you need to remove by hand when you have finished testing or leave them
 around for the next time.
 
+You can give more memory or CPU juice to the VMs by editing [Vagrantfile.common](vagrant/Vagrantfile.common).
+
 # Test Matrix
 
 Tests fail with unsupported configurations or when the environment is not prepared correctly
