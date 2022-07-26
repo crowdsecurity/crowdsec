@@ -29,6 +29,7 @@ func (Bouncer) Fields() []ent.Field {
 		field.Time("until").Default(types.UtcNow).Optional().StructTag(`json:"until"`),
 		field.Time("last_pull").
 			Default(types.UtcNow).StructTag(`json:"last_pull"`),
+		field.String("auth_type").StructTag(`json:"auth_type"`).Default(types.ApiKeyAuthType),
 	}
 }
 

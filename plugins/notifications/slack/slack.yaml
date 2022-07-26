@@ -28,3 +28,9 @@ format: |
 
 webhook: <WEBHOOK_URL>
 
+---
+
+# type: slack
+# name: slack_second_notification
+# ...
+

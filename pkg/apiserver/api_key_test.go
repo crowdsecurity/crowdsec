@@ -11,14 +11,14 @@ import (
 )
 
 func TestAPIKey(t *testing.T) {
-	router, err := NewAPITest()
+	router, config, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
 
-	APIKey, err := CreateTestBouncer()
+	APIKey, err := CreateTestBouncer(config.API.Server.DbConfig)
 	if err != nil {
-		log.Fatalf("%s", err.Error())
+		log.Fatal(err)
 	}
 	// Login with empty token
 	w := httptest.NewRecorder()

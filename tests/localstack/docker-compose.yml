@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: localstack_main
+    image: localstack/localstack
+    network_mode: bridge
+    ports:
+      - "127.0.0.1:53:53" # only required for Pro (DNS)
+      - "127.0.0.1:53:53/udp" # only required for Pro (DNS)
+      - "127.0.0.1:443:443" # only required for Pro (LocalStack HTTPS Edge Proxy)
+      - "127.0.0.1:4510-4559:4510-4559" # external service port range
+      - "127.0.0.1:4566:4566" # LocalStack Edge Proxy
+    environment:
+      AWS_HOST: localstack
+      SERVICES: "cloudwatch,logs,kinesis"
+      DEBUG: ""
+      DATA_DIR: ""
+      LAMBDA_EXECUTOR: ""
+      KINESYS_ERROR_PROBABILITY: ""
+      DOCKER_HOST: "unix://var/run/docker.sock"
+      HOST_TMP_FOLDER: "/tmp"
+      KINESIS_INITIALIZE_STREAMS: "stream-1-shard:1,stream-2-shards:2"
+      HOSTNAME_EXTERNAL: "localstack"
+      AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE"
+      AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+      AWS_REGION: "us-east-1"
+      AWS_ENDPOINT_FORCE: "http://localhost:4566"
+
+    volumes:
+      - "${TMPDIR:-/tmp}/localstack:/tmp/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"

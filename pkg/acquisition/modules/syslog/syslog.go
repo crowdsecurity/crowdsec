@@ -3,15 +3,15 @@ package syslogacquisition
 import (
 	"fmt"
 	"net"
-	"strconv"
+	"strings"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
-	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc3164"
+	"github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/parser/rfc5424"
+	syslogserver "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/syslog/internal/server"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/influxdata/go-syslog/v3/rfc3164"
-	"github.com/influxdata/go-syslog/v3/rfc5424"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -133,49 +133,33 @@ func (s *SyslogSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) 
 	return nil
 }
 
-func (s *SyslogSource) buildLogFromSyslog(ts *time.Time, hostname *string,
-	appname *string, pid *string, msg *string) (string, error) {
+func (s *SyslogSource) buildLogFromSyslog(ts time.Time, hostname string,
+	appname string, pid string, msg string) string {
 	ret := ""
-	if msg == nil {
-		return "", errors.Errorf("missing message field in syslog message")
-	}
-	if ts != nil {
+	if !ts.IsZero() {
 		ret += ts.Format("Jan 2 15:04:05")
 	} else {
-		s.logger.Tracef("%s - missing TS", *msg)
+		s.logger.Tracef("%s - missing TS", msg)
 		ret += time.Now().UTC().Format("Jan 2 15:04:05")
 	}
-	if hostname != nil {
-		ret += " " + *hostname
+	if hostname != "" {
+		ret += " " + hostname
 	} else {
-		s.logger.Tracef("%s - missing host", *msg)
+		s.logger.Tracef("%s - missing host", msg)
 		ret += " unknownhost"
 	}
-	if appname != nil {
-		ret += " " + *appname
-	} else {
-		return "", errors.Errorf("missing appname field in syslog message")
+	if appname != "" {
+		ret += " " + appname
 	}
-	if pid != nil {
-		/*
-			!!! ugly hack !!!
-			Due to a bug in the syslog parser we use (https://github.com/influxdata/go-syslog/issues/31),
-			the ProcID field will contain garbage if the message as a ] anywhere in it.
-			Assume that a correctly formatted ProcID only contains number, and if this is not the case, set it to an arbitrary value
-		*/
-		_, err := strconv.Atoi(*pid)
-		if err != nil {
-			ret += "[1]: "
-		} else {
-			ret += "[" + *pid + "]: "
-		}
+	if pid != "" {
+		ret += "[" + pid + "]: "
 	} else {
 		ret += ": "
 	}
-	if msg != nil {
-		ret += *msg
+	if msg != "" {
+		ret += msg
 	}
-	return ret, nil
+	return ret
 
 }
 
@@ -199,38 +183,24 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			logger := s.logger.WithField("client", syslogLine.Client)
 			logger.Tracef("raw: %s", syslogLine)
 			linesReceived.With(prometheus.Labels{"source": syslogLine.Client}).Inc()
-			p := rfc5424.NewParser()
-			m, err := p.Parse(syslogLine.Message)
+			p := rfc3164.NewRFC3164Parser(rfc3164.WithCurrentYear())
+			err := p.Parse(syslogLine.Message)
 			if err != nil {
-				logger.Debugf("could not parse as RFC5424 (%s)", err)
-				p = rfc3164.NewParser(rfc3164.WithYear(rfc3164.CurrentYear{}))
-				m, err = p.Parse(syslogLine.Message)
+				logger.Debugf("could not parse as RFC3164 (%s)", err)
+				p2 := rfc5424.NewRFC5424Parser()
+				err = p2.Parse(syslogLine.Message)
 				if err != nil {
 					logger.Errorf("could not parse message: %s", err)
-					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
+					logger.Debugf("could not parse as RFC5424 (%s) : %s", err, syslogLine.Message)
 					continue
 				}
-				msg := m.(*rfc3164.SyslogMessage)
-				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
-				if err != nil {
-					logger.Debugf("could not parse as RFC3164 (%s) : %s", err, syslogLine.Message)
-					logger.Error(err)
-					continue
-				}
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client,
-					"type": "RFC3164"}).Inc()
+				line = s.buildLogFromSyslog(p2.Timestamp, p2.Hostname, p2.Tag, p2.PID, p2.Message)
 			} else {
-				msg := m.(*rfc5424.SyslogMessage)
-				line, err = s.buildLogFromSyslog(msg.Timestamp, msg.Hostname, msg.Appname, msg.ProcID, msg.Message)
-				if err != nil {
-					log.Debugf("could not parse message as RFC5424 (%s) : %s", err, syslogLine.Message)
-					logger.Error(err)
-					continue
-				}
-				linesParsed.With(prometheus.Labels{"source": syslogLine.Client,
-					"type": "RFC5424"}).Inc()
-
+				line = s.buildLogFromSyslog(p.Timestamp, p.Hostname, p.Tag, p.PID, p.Message)
 			}
+
+			line = strings.TrimSuffix(line, "\n")
+
 			l := types.Line{}
 			l.Raw = line
 			l.Module = s.GetName()
@@ -238,7 +208,11 @@ func (s *SyslogSource) handleSyslogMsg(out chan types.Event, t *tomb.Tomb, c cha
 			l.Time = ts
 			l.Src = syslogLine.Client
 			l.Process = true
-			out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			if !s.config.UseTimeMachine {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			} else {
+				out <- types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+			}
 		}
 	}
 }

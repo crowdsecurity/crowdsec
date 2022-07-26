@@ -36,6 +36,8 @@ type Bouncer struct {
 	Until time.Time `json:"until"`
 	// LastPull holds the value of the "last_pull" field.
 	LastPull time.Time `json:"last_pull"`
+	// AuthType holds the value of the "auth_type" field.
+	AuthType string `json:"auth_type"`
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -47,7 +49,7 @@ func (*Bouncer) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case bouncer.FieldID:
 			values[i] = new(sql.NullInt64)
-		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion:
+		case bouncer.FieldName, bouncer.FieldAPIKey, bouncer.FieldIPAddress, bouncer.FieldType, bouncer.FieldVersion, bouncer.FieldAuthType:
 			values[i] = new(sql.NullString)
 		case bouncer.FieldCreatedAt, bouncer.FieldUpdatedAt, bouncer.FieldUntil, bouncer.FieldLastPull:
 			values[i] = new(sql.NullTime)
@@ -134,6 +136,12 @@ func (b *Bouncer) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				b.LastPull = value.Time
 			}
+		case bouncer.FieldAuthType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
+			} else if value.Valid {
+				b.AuthType = value.String
+			}
 		}
 	}
 	return nil
@@ -186,6 +194,8 @@ func (b *Bouncer) String() string {
 	builder.WriteString(b.Until.Format(time.ANSIC))
 	builder.WriteString(", last_pull=")
 	builder.WriteString(b.LastPull.Format(time.ANSIC))
+	builder.WriteString(", auth_type=")
+	builder.WriteString(b.AuthType)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -14,9 +14,12 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/crowdsecurity/machineid"
 	"github.com/enescakir/emoji"
 	"github.com/go-openapi/strfmt"
+	"github.com/google/uuid"
 	"github.com/olekukonko/tablewriter"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -37,10 +40,6 @@ var (
 	upper          = "ABCDEFGHIJKLMNOPQRSTUVWXY"
 	lower          = "abcdefghijklmnopqrstuvwxyz"
 	digits         = "0123456789"
-)
-
-const (
-	uuid = "/proc/sys/kernel/random/uuid"
 )
 
 func generatePassword(length int) string {
@@ -70,9 +69,9 @@ func generateIDPrefix() (string, error) {
 	}
 	log.Debugf("failed to get machine-id with usual files: %s", err)
 
-	bID, err := ioutil.ReadFile(uuid)
+	bId, err := uuid.NewRandom()
 	if err == nil {
-		return string(bID), nil
+		return bId.String(), nil
 	}
 	return "", errors.Wrap(err, "generating machine id")
 }
@@ -90,6 +89,24 @@ func generateID(prefix string) (string, error) {
 	prefix = strings.ReplaceAll(prefix, "-", "")[:32]
 	suffix := generatePassword(16)
 	return prefix + suffix, nil
+}
+
+func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
+	var hbDisplay string
+
+	if m.LastHeartbeat != nil {
+		lastHeartBeat := time.Now().UTC().Sub(*m.LastHeartbeat)
+		hbDisplay = lastHeartBeat.Truncate(time.Second).String()
+		if fancy && lastHeartBeat > 2*time.Minute {
+			hbDisplay = fmt.Sprintf("%s %s", emoji.Warning.String(), lastHeartBeat.Truncate(time.Second).String())
+		}
+	} else {
+		hbDisplay = "-"
+		if fancy {
+			hbDisplay = emoji.Warning.String() + " -"
+		}
+	}
+	return hbDisplay
 }
 
 func NewMachinesCmd() *cobra.Command {
@@ -134,7 +151,7 @@ Note: This command requires database direct access, so is intended to be run on 
 		Run: func(cmd *cobra.Command, args []string) {
 			machines, err := dbClient.ListMachines()
 			if err != nil {
-				log.Errorf("unable to list blockers: %s", err)
+				log.Errorf("unable to list machines: %s", err)
 			}
 			if csConfig.Cscli.Output == "human" {
 				table := tablewriter.NewWriter(os.Stdout)
@@ -143,7 +160,7 @@ Note: This command requires database direct access, so is intended to be run on 
 
 				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
 				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version"})
+				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
 				for _, w := range machines {
 					var validated string
 					if w.IsValidated {
@@ -151,7 +168,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = emoji.Prohibited.String()
 					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
+					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
 				}
 				table.Render()
 			} else if csConfig.Cscli.Output == "json" {
@@ -162,7 +179,7 @@ Note: This command requires database direct access, so is intended to be run on 
 				fmt.Printf("%s", string(x))
 			} else if csConfig.Cscli.Output == "raw" {
 				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version"})
+				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
 				if err != nil {
 					log.Fatalf("failed to write header: %s", err)
 				}
@@ -173,7 +190,7 @@ Note: This command requires database direct access, so is intended to be run on 
 					} else {
 						validated = "false"
 					}
-					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version})
+					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
 					if err != nil {
 						log.Fatalf("failed to write raw output : %s", err)
 					}
@@ -242,7 +259,7 @@ cscli machines add MyTestMachine --password MyPassword
 				survey.AskOne(qs, &machinePassword)
 			}
 			password := strfmt.Password(machinePassword)
-			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd)
+			_, err = dbClient.CreateMachine(&machineID, &password, "", true, forceAdd, types.PasswordAuthType)
 			if err != nil {
 				log.Fatalf("unable to create machine: %s", err)
 			}

@@ -29,17 +29,15 @@ teardown() {
 
 #----------
 
-@test "$FILE 1.1.1.172 has been banned" {
-    skip
+@test "1.1.1.172 has been banned" {
     tmpfile=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp)
     touch "${tmpfile}"
-    ACQUIS_YAML=$(config_yq '.crowdsec_service.acquisition_path')
-    echo -e "---\nfilename: $tmpfile\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
+    ACQUIS_YAML=$(config_get '.crowdsec_service.acquisition_path')
+    echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
-    sleep 2
     fake_log >>"${tmpfile}"
-    sleep 2
+    sleep 1
     rm -f -- "${tmpfile}"
     run -0 cscli decisions list -o json
     run -0 jq -r '.[].decisions[0].value' <(output)

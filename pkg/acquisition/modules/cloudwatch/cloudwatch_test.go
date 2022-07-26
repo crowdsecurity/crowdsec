@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -37,6 +38,9 @@ func checkForLocalStackAvailability() error {
 }
 
 func TestMain(m *testing.M) {
+	if runtime.GOOS == "windows" {
+		os.Exit(0)
+	}
 	if err := checkForLocalStackAvailability(); err != nil {
 		log.Fatalf("local stack error : %s", err)
 	}
@@ -49,6 +53,9 @@ func TestMain(m *testing.M) {
 }
 
 func TestWatchLogGroupForStreams(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -424,7 +431,7 @@ stream_name: test_stream`),
 		err = cw.Configure(test.config, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -451,7 +458,7 @@ stream_name: test_stream`),
 			dbgLogger.Infof("acquis done")
 
 			if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 			} else if err != nil && test.expectedStartErr == "" {
 				t.Fatalf("%s unexpected error '%s'", test.name, err)
 			} else if err == nil && test.expectedStartErr != "" {
@@ -519,6 +526,9 @@ stream_name: test_stream`),
 }
 
 func TestConfiguration(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -567,7 +577,7 @@ stream_name: test_stream`),
 		err = cw.Configure(test.config, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -588,7 +598,7 @@ stream_name: test_stream`),
 			err = cw.OneShotAcquisition(out, &tmb)
 		}
 		if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-			t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+			t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 		} else if err != nil && test.expectedStartErr == "" {
 			t.Fatalf("%s unexpected error '%s'", test.name, err)
 		} else if err == nil && test.expectedStartErr != "" {
@@ -604,6 +614,9 @@ stream_name: test_stream`),
 }
 
 func TestConfigureByDSN(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -642,7 +655,7 @@ func TestConfigureByDSN(t *testing.T) {
 		err = cw.ConfigureByDSN(test.dsn, test.labels, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -657,6 +670,9 @@ func TestConfigureByDSN(t *testing.T) {
 }
 
 func TestOneShotAcquisition(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows")
+	}
 	var err error
 	log.SetLevel(log.DebugLevel)
 	tests := []struct {
@@ -771,7 +787,7 @@ func TestOneShotAcquisition(t *testing.T) {
 		err = cw.ConfigureByDSN(test.dsn, map[string]string{"type": "test"}, dbgLogger)
 		if err != nil && test.expectedCfgErr != "" {
 			if !strings.Contains(err.Error(), test.expectedCfgErr) {
-				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err.Error())
+				t.Fatalf("%s expected error '%s' got error '%s'", test.name, test.expectedCfgErr, err)
 			}
 			log.Debugf("got expected error : %s", err)
 			continue
@@ -798,7 +814,7 @@ func TestOneShotAcquisition(t *testing.T) {
 			dbgLogger.Infof("acquis done")
 
 			if err != nil && test.expectedStartErr != "" && !strings.Contains(err.Error(), test.expectedStartErr) {
-				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err.Error())
+				t.Fatalf("%s expected error '%s' got '%s'", test.name, test.expectedStartErr, err)
 			} else if err != nil && test.expectedStartErr == "" {
 				t.Fatalf("%s unexpected error '%s'", test.name, err)
 			} else if err == nil && test.expectedStartErr != "" {

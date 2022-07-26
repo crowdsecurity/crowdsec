@@ -19,6 +19,7 @@ import (
 	"github.com/go-openapi/strfmt"
 	"github.com/jszwec/csvutil"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -147,20 +148,14 @@ func NewDecisionsCmd() *cobra.Command {
 		/*TBD example*/
 		Args:              cobra.MinimumNArgs(1),
 		DisableAutoGenTag: true,
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			if err := csConfig.LoadAPIClient(); err != nil {
-				log.Fatalf(err.Error())
-			}
-			if csConfig.API.Client == nil {
-				log.Fatalln("There is no configuration on 'api_client:'")
-			}
-			if csConfig.API.Client.Credentials == nil {
-				log.Fatalf("Please provide credentials for the API in '%s'", csConfig.API.Client.CredentialsFilePath)
+				return errors.Wrap(err, "loading api client")
 			}
 			password := strfmt.Password(csConfig.API.Client.Credentials.Password)
 			apiurl, err := url.Parse(csConfig.API.Client.Credentials.URL)
 			if err != nil {
-				log.Fatalf("parsing api url ('%s'): %s", csConfig.API.Client.Credentials.URL, err)
+				return errors.Wrapf(err, "parsing api url %s", csConfig.API.Client.Credentials.URL)
 			}
 			Client, err = apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
@@ -170,8 +165,9 @@ func NewDecisionsCmd() *cobra.Command {
 				VersionPrefix: "v1",
 			})
 			if err != nil {
-				log.Fatalf("creating api client : %s", err)
+				return errors.Wrap(err, "creating api client")
 			}
+			return nil
 		},
 	}
 
@@ -273,12 +269,12 @@ cscli decisions list -t ban
 
 			alerts, _, err := Client.Alerts.List(context.Background(), filter)
 			if err != nil {
-				log.Fatalf("Unable to list decisions : %v", err.Error())
+				log.Fatalf("Unable to list decisions : %v", err)
 			}
 
 			err = DecisionsToTable(alerts, printMachine)
 			if err != nil {
-				log.Fatalf("unable to list decisions : %v", err.Error())
+				log.Fatalf("unable to list decisions : %v", err)
 			}
 		},
 	}
@@ -288,7 +284,7 @@ cscli decisions list -t ban
 	cmdDecisionsList.Flags().StringVar(filter.Until, "until", "", "restrict to alerts older than until (ie. 4h, 30d)")
 	cmdDecisionsList.Flags().StringVarP(filter.TypeEquals, "type", "t", "", "restrict to this decision type (ie. ban,captcha)")
 	cmdDecisionsList.Flags().StringVar(filter.ScopeEquals, "scope", "", "restrict to this scope (ie. ip,range,session)")
-	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli)")
+	cmdDecisionsList.Flags().StringVar(filter.OriginEquals, "origin", "", "restrict to this origin (ie. lists,CAPI,cscli,cscli-import,crowdsec)")
 	cmdDecisionsList.Flags().StringVarP(filter.ValueEquals, "value", "v", "", "restrict to this value (ie. 1.2.3.4,userName)")
 	cmdDecisionsList.Flags().StringVarP(filter.ScenarioEquals, "scenario", "s", "", "restrict to this scenario (ie. crowdsecurity/ssh-bf)")
 	cmdDecisionsList.Flags().StringVarP(filter.IPEquals, "ip", "i", "", "restrict to alerts from this source ip (shorthand for --scope ip --value <IP>)")
@@ -423,7 +419,6 @@ cscli decisions add --scope username --value foobar
 		Aliases:           []string{"remove"},
 		Example: `cscli decisions delete -r 1.2.3.0/24
 cscli decisions delete -i 1.2.3.4
-cscli decisions delete -s crowdsecurity/ssh-bf
 cscli decisions delete --id 42
 cscli decisions delete --type captcha
 `,
@@ -472,12 +467,12 @@ cscli decisions delete --type captcha
 			if delDecisionId == "" {
 				decisions, _, err = Client.Decisions.Delete(context.Background(), delFilter)
 				if err != nil {
-					log.Fatalf("Unable to delete decisions : %v", err.Error())
+					log.Fatalf("Unable to delete decisions : %v", err)
 				}
 			} else {
 				decisions, _, err = Client.Decisions.DeleteOne(context.Background(), delDecisionId)
 				if err != nil {
-					log.Fatalf("Unable to delete decision : %v", err.Error())
+					log.Fatalf("Unable to delete decision : %v", err)
 				}
 			}
 			log.Infof("%s decision(s) deleted", decisions.NbDeleted)

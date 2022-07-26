@@ -20,3 +20,9 @@ format: |
 #
 # output_file:        # notifications will be appended here. optional
 
+---
+
+# type: dummy
+# name: dummy_second_notification
+# ...
+

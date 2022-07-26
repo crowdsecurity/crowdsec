@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -23,7 +24,6 @@ import (
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/sirupsen/logrus/hooks/writer"
 
 	"gopkg.in/tomb.v2"
 )
@@ -51,13 +51,14 @@ var (
 	pluginBroker      csplugin.PluginBroker
 )
 
-const bincoverTesting = false
+var bincoverTesting = ""
 
 type Flags struct {
 	ConfigFile     string
 	TraceLevel     bool
 	DebugLevel     bool
 	InfoLevel      bool
+	WarnLevel      bool
 	PrintVersion   bool
 	SingleFileType string
 	Labels         map[string]string
@@ -65,6 +66,8 @@ type Flags struct {
 	TestMode       bool
 	DisableAgent   bool
 	DisableAPI     bool
+	WinSvc         string
+	DisableCAPI    bool
 }
 
 type labelsMap map[string]string
@@ -181,8 +184,9 @@ func (f *Flags) Parse() {
 
 	flag.StringVar(&f.ConfigFile, "c", csconfig.DefaultConfigPath("config.yaml"), "configuration file")
 	flag.BoolVar(&f.TraceLevel, "trace", false, "VERY verbose")
-	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stdout")
-	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stdout")
+	flag.BoolVar(&f.DebugLevel, "debug", false, "print debug-level on stderr")
+	flag.BoolVar(&f.InfoLevel, "info", false, "print info-level on stderr")
+	flag.BoolVar(&f.WarnLevel, "warning", false, "print warning-level on stderr")
 	flag.BoolVar(&f.PrintVersion, "version", false, "display version")
 	flag.StringVar(&f.OneShotDSN, "dsn", "", "Process a single data source in time-machine")
 	flag.StringVar(&f.SingleFileType, "type", "", "Labels.type for file in time-machine")
@@ -190,14 +194,14 @@ func (f *Flags) Parse() {
 	flag.BoolVar(&f.TestMode, "t", false, "only test configs")
 	flag.BoolVar(&f.DisableAgent, "no-cs", false, "disable crowdsec agent")
 	flag.BoolVar(&f.DisableAPI, "no-api", false, "disable local API")
+	flag.BoolVar(&f.DisableCAPI, "no-capi", false, "disable communication with Central API")
+	flag.StringVar(&f.WinSvc, "winsvc", "", "Windows service Action : Install, Remove etc..")
 	flag.StringVar(&dumpFolder, "dump-data", "", "dump parsers/buckets raw outputs")
-
 	flag.Parse()
 }
 
 // LoadConfig returns a configuration parsed from configuration file
 func LoadConfig(cConfig *csconfig.Config) error {
-
 	if dumpFolder != "" {
 		parser.ParseDump = true
 		parser.DumpFolder = dumpFolder
@@ -218,19 +222,23 @@ func LoadConfig(cConfig *csconfig.Config) error {
 	}
 
 	if !cConfig.DisableAgent && (cConfig.API == nil || cConfig.API.Client == nil || cConfig.API.Client.Credentials == nil) {
-		log.Fatalf("missing local API credentials for crowdsec agent, abort")
+		return errors.New("missing local API credentials for crowdsec agent, abort")
 	}
 
 	if cConfig.DisableAPI && cConfig.DisableAgent {
-		log.Fatalf("You must run at least the API Server or crowdsec")
+		return errors.New("You must run at least the API Server or crowdsec")
 	}
 
-	if flags.DebugLevel {
-		logLevel := log.DebugLevel
+	if flags.WarnLevel {
+		logLevel := log.WarnLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.InfoLevel || cConfig.Common.LogLevel == nil {
 		logLevel := log.InfoLevel
+		cConfig.Common.LogLevel = &logLevel
+	}
+	if flags.DebugLevel {
+		logLevel := log.DebugLevel
 		cConfig.Common.LogLevel = &logLevel
 	}
 	if flags.TraceLevel {
@@ -258,14 +266,39 @@ func LoadConfig(cConfig *csconfig.Config) error {
 		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
 	}
 
+	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
+		log.Debug("Daemonization is not supported on Windows, disabling")
+		cConfig.Common.Daemonize = false
+	}
+
 	return nil
 }
 
+// exitWithCode must be called right before the program termination,
+// to allow measuring functional test coverage in case of abnormal exit.
+//
+// without bincover: log error and exit with code
+// with bincover: log error and tell bincover the exit code, then return
+func exitWithCode(exitCode int, err error) {
+	if err != nil {
+		// this method of logging a fatal error does not
+		// trigger a program exit (as stated by the authors, it
+		// is not going to change in logrus to keep backward
+		// compatibility), and allows us to report coverage.
+		log.NewEntry(log.StandardLogger()).Log(log.FatalLevel, err)
+	}
+	if bincoverTesting == "" {
+		os.Exit(exitCode)
+	}
+	bincover.ExitCode = exitCode
+}
+
+// crowdsecT0 can be used to measure start time of services,
+// or uptime of the application
+var crowdsecT0 time.Time
+
 func main() {
-	var (
-		cConfig *csconfig.Config
-		err     error
-	)
+	crowdsecT0 = time.Now()
 
 	defer types.CatchPanic("crowdsec/main")
 
@@ -274,45 +307,25 @@ func main() {
 	// Handle command line arguments
 	flags = &Flags{}
 	flags.Parse()
+
+	if len(flag.Args()) > 0 {
+		fmt.Fprintf(os.Stderr, "argument provided but not defined: %s\n", flag.Args()[0])
+		flag.Usage()
+		// the flag package exits with 2 in case of unknown flag
+		exitWithCode(2, nil)
+		return
+	}
+
 	if flags.PrintVersion {
 		cwversion.Show()
-		os.Exit(0)
+		exitWithCode(0, nil)
+		return
 	}
-	log.AddHook(&writer.Hook{ // Send logs with level higher than warning to stderr
-		Writer: os.Stderr,
-		LogLevels: []log.Level{
-			log.PanicLevel,
-			log.FatalLevel,
-		},
-	})
 
-	cConfig, err = csconfig.NewConfig(flags.ConfigFile, flags.DisableAgent, flags.DisableAPI)
+	exitCode := 0
+	err := StartRunSvc()
 	if err != nil {
-		log.Fatalf(err.Error())
+		exitCode = 1
 	}
-	if err := LoadConfig(cConfig); err != nil {
-		log.Fatalf(err.Error())
-	}
-	// Configure logging
-	if err = types.SetDefaultLoggerConfig(cConfig.Common.LogMedia, cConfig.Common.LogDir, *cConfig.Common.LogLevel,
-		cConfig.Common.LogMaxSize, cConfig.Common.LogMaxFiles, cConfig.Common.LogMaxAge, cConfig.Common.CompressLogs); err != nil {
-		log.Fatal(err.Error())
-	}
-
-	log.Infof("Crowdsec %s", cwversion.VersionStr())
-
-	// Enable profiling early
-	if cConfig.Prometheus != nil {
-		go registerPrometheus(cConfig.Prometheus)
-	}
-
-	if exitCode, err := Serve(cConfig); err != nil {
-		if err != nil {
-			log.Errorf(err.Error())
-			if !bincoverTesting {
-				os.Exit(exitCode)
-			}
-			bincover.ExitCode = exitCode
-		}
-	}
+	exitWithCode(exitCode, err)
 }

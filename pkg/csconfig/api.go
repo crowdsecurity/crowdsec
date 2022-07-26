@@ -1,12 +1,16 @@
 package csconfig
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiclient"
+	"github.com/crowdsecurity/crowdsec/pkg/yamlpatch"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
@@ -18,9 +22,12 @@ type APICfg struct {
 }
 
 type ApiCredentialsCfg struct {
-	URL      string `yaml:"url,omitempty" json:"url,omitempty"`
-	Login    string `yaml:"login,omitempty" json:"login,omitempty"`
-	Password string `yaml:"password,omitempty" json:"-"`
+	URL        string `yaml:"url,omitempty" json:"url,omitempty"`
+	Login      string `yaml:"login,omitempty" json:"login,omitempty"`
+	Password   string `yaml:"password,omitempty" json:"-"`
+	CACertPath string `yaml:"ca_cert_path,omitempty"`
+	KeyPath    string `yaml:"key_path,omitempty"`
+	CertPath   string `yaml:"cert_path,omitempty"`
 }
 
 /*global api config (for lapi->oapi)*/
@@ -54,25 +61,51 @@ func (o *OnlineApiClientCfg) Load() error {
 }
 
 func (l *LocalApiClientCfg) Load() error {
-	fcontent, err := ioutil.ReadFile(l.CredentialsFilePath)
+	patcher := yamlpatch.NewPatcher(l.CredentialsFilePath, ".local")
+	fcontent, err := patcher.MergedPatchContent()
 	if err != nil {
-		return errors.Wrapf(err, "failed to read api client credential configuration file '%s'", l.CredentialsFilePath)
+		return err
 	}
 	err = yaml.UnmarshalStrict(fcontent, &l.Credentials)
 	if err != nil {
 		return errors.Wrapf(err, "failed unmarshaling api client credential configuration file '%s'", l.CredentialsFilePath)
 	}
+	if l.Credentials == nil || l.Credentials.URL == "" {
+		return fmt.Errorf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
+	}
+
 	if l.Credentials != nil && l.Credentials.URL != "" {
 		if !strings.HasSuffix(l.Credentials.URL, "/") {
 			l.Credentials.URL = l.Credentials.URL + "/"
 		}
-	} else {
-		log.Warningf("no credentials or URL found in api client configuration '%s'", l.CredentialsFilePath)
 	}
+
+	if l.Credentials.Login != "" && (l.Credentials.CACertPath != "" || l.Credentials.CertPath != "" || l.Credentials.KeyPath != "") {
+		return fmt.Errorf("user/password authentication and TLS authentication are mutually exclusive")
+	}
+
 	if l.InsecureSkipVerify == nil {
 		apiclient.InsecureSkipVerify = false
 	} else {
 		apiclient.InsecureSkipVerify = *l.InsecureSkipVerify
+	}
+
+	if l.Credentials.CACertPath != "" && l.Credentials.CertPath != "" && l.Credentials.KeyPath != "" {
+		cert, err := tls.LoadX509KeyPair(l.Credentials.CertPath, l.Credentials.KeyPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load api client certificate")
+		}
+
+		caCert, err := ioutil.ReadFile(l.Credentials.CACertPath)
+		if err != nil {
+			return errors.Wrapf(err, "failed to load cacert")
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		apiclient.Cert = &cert
+		apiclient.CaCertPool = caCertPool
 	}
 	return nil
 }
@@ -124,14 +157,21 @@ type LocalApiServerCfg struct {
 }
 
 type TLSCfg struct {
-	CertFilePath string `yaml:"cert_file"`
-	KeyFilePath  string `yaml:"key_file"`
+	CertFilePath       string         `yaml:"cert_file"`
+	KeyFilePath        string         `yaml:"key_file"`
+	ClientVerification string         `yaml:"client_verification,omitempty"`
+	ServerName         string         `yaml:"server_name"`
+	CACertPath         string         `yaml:"ca_cert_path"`
+	AllowedAgentsOU    []string       `yaml:"agents_allowed_ou"`
+	AllowedBouncersOU  []string       `yaml:"bouncers_allowed_ou"`
+	CRLPath            string         `yaml:"crl_path"`
+	CacheExpiration    *time.Duration `yaml:"cache_expiration,omitempty"`
 }
 
 func (c *Config) LoadAPIServer() error {
 	if c.API.Server != nil && !c.DisableAPI {
 		if err := c.LoadCommon(); err != nil {
-			return fmt.Errorf("loading common configuration: %s", err.Error())
+			return fmt.Errorf("loading common configuration: %s", err)
 		}
 		c.API.Server.LogDir = c.Common.LogDir
 		c.API.Server.LogMedia = c.Common.LogMedia
@@ -167,7 +207,7 @@ func (c *Config) LoadAPIServer() error {
 			return err
 		}
 	} else {
-		log.Warningf("crowdsec local API is disabled")
+		log.Warning("crowdsec local API is disabled")
 		c.DisableAPI = true
 	}
 
@@ -175,12 +215,12 @@ func (c *Config) LoadAPIServer() error {
 }
 
 func (c *Config) LoadAPIClient() error {
-	if c.API != nil && c.API.Client != nil && c.API.Client.CredentialsFilePath != "" && !c.DisableAgent {
-		if err := c.API.Client.Load(); err != nil {
-			return err
-		}
-	} else {
+	if c.API == nil || c.API.Client == nil || c.API.Client.CredentialsFilePath == "" || c.DisableAgent {
 		return fmt.Errorf("no API client section in configuration")
+	}
+
+	if err := c.API.Client.Load(); err != nil {
+		return err
 	}
 
 	return nil

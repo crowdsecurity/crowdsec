@@ -1,4 +1,4 @@
-name: Functional tests with MySQL
+name: Functional tests (MySQL)
 
 on:
   workflow_call:
@@ -9,6 +9,9 @@ on:
     secrets:
       DATABASE_PASSWORD:
         required: true
+
+env:
+  PREFIX_TEST_NAMES_WITH_FILE: true
 
 jobs:
 
@@ -37,7 +40,7 @@ jobs:
         go-version: 1.17
       id: go
 
-    - name: "Clone CrowdSec"
+    - name: "Check out CrowdSec repository"
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
@@ -45,12 +48,15 @@ jobs:
 
     - name: "Install bats dependencies"
       run: |
-        sudo apt install -y -qq build-essential daemonize jq netcat-openbsd
-        GO111MODULE=on go get github.com/mikefarah/yq/v4
-        sudo cp -u ~/go/bin/yq /usr/local/bin/
+        sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
+        go install github.com/mikefarah/yq/v4@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
+        sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture"
-      run: make bats-clean bats-build bats-fixture
+      run: |
+        make clean bats-build bats-fixture
       env:
         DB_BACKEND: mysql
         MYSQL_HOST: 127.0.0.1
@@ -67,6 +73,22 @@ jobs:
         MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
         MYSQL_USER: root
 
+    #
+    # In case you need to inspect the database status after the failure of a given test
+    #
+    # - name: "Run specified tests"
+    #   run: ./tests/run-tests tests/bats/<filename>.bats -f "<test name>"
+
+    - name: Show database dump
+      run: ./tests/instance-db dump /dev/fd/1
+      env:
+        DB_BACKEND: mysql
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_PORT: 3306
+        MYSQL_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+        MYSQL_USER: root
+      if: ${{ always() }}
+
     - name: "Show crowdsec logs"
       run:
         for file in $(find ./tests/local/var/log -type f); do echo ">>>>> $file"; cat $file; echo; done
@@ -75,4 +97,3 @@ jobs:
     - name: "Show database logs"
       run: docker logs "${{ job.services.database.id }}"
       if: ${{ always() }}
-

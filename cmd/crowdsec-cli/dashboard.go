@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"os/user"
@@ -13,6 +15,7 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/crowdsecurity/crowdsec/pkg/metabase"
 
+	"github.com/pbnjay/memory"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -109,6 +112,22 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 				}
 			}
 			var answer bool
+			if valid, err := checkSystemMemory(); err == nil && !valid {
+				if !forceYes {
+					prompt := &survey.Confirm{
+						Message: "Metabase requires 1-2GB of RAM, your system is below this requirement continue ?",
+						Default: true,
+					}
+					if err := survey.AskOne(prompt, &answer); err != nil {
+						log.Warnf("unable to ask about RAM check: %s", err)
+					}
+					if !answer {
+						log.Fatal("Unable to continue due to RAM requirement")
+					}
+				} else {
+					log.Warnf("Metabase requires 1-2GB of RAM, your system is below this requirement")
+				}
+			}
 			groupExist := false
 			dockerGroup, err := user.LookupGroup(crowdsecGroup)
 			if err == nil {
@@ -218,7 +237,7 @@ cscli dashboard setup -l 0.0.0.0 -p 443 --password <password>
 			if err := m.LoadConfig(metabaseConfigPath); err != nil {
 				log.Fatal(err)
 			}
-			log.Printf("%s", m.Config.Password)
+			log.Printf("'%s'", m.Config.Password)
 		},
 	}
 	cmdDashboard.AddCommand(cmdDashShowPassword)
@@ -303,4 +322,15 @@ func passwordIsValid(password string) bool {
 	}
 	return true
 
+}
+
+func checkSystemMemory() (bool, error) {
+	totMem := memory.TotalMemory()
+	if totMem == 0 {
+		return true, errors.New("Unable to get system total memory")
+	}
+	if uint64(math.Pow(2, 30)) >= totMem {
+		return false, nil
+	}
+	return true, nil
 }

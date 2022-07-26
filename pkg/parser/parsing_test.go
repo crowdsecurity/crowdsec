@@ -146,7 +146,7 @@ func prepTests() (*UnixParserCtx, EnricherCtx, error) {
 		ectx EnricherCtx
 	)
 
-	err = exprhelpers.Init()
+	err = exprhelpers.Init(nil)
 	if err != nil {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
@@ -295,7 +295,7 @@ func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error
 		only the keys of the expected part are checked against result
 	*/
 	if len(testSet.Results) == 0 && len(results) == 0 {
-		log.Fatalf("No results, no tests, abort.")
+		log.Fatal("No results, no tests, abort.")
 		return false, fmt.Errorf("no tests, no results")
 	}
 
@@ -334,7 +334,7 @@ reCheck:
 }
 
 func testFile(testSet []TestFile, pctx UnixParserCtx, nodes []Node) bool {
-	log.Warningf("Going to process one test set")
+	log.Warning("Going to process one test set")
 	for _, tf := range testSet {
 		//func testSubSet(testSet TestFile, pctx UnixParserCtx, nodes []Node) (bool, error) {
 		testOk, err := testSubSet(tf, pctx, nodes)

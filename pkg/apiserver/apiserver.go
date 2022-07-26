@@ -2,8 +2,11 @@ package apiserver
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -11,6 +14,7 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/apiserver/controllers"
+	v1 "github.com/crowdsecurity/crowdsec/pkg/apiserver/middlewares/v1"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database"
@@ -94,7 +98,7 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 	var flushScheduler *gocron.Scheduler
 	dbClient, err := database.NewClient(config.DbConfig)
 	if err != nil {
-		return &APIServer{}, fmt.Errorf("unable to init database client: %s", err)
+		return &APIServer{}, errors.Wrap(err, "unable to init database client")
 	}
 
 	if config.DbConfig.Flush != nil {
@@ -190,7 +194,6 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 
 	router.NoRoute(func(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "Page or Method not found"})
-		return
 	})
 	router.Use(CustomRecoveryWithWriter())
 
@@ -241,12 +244,56 @@ func (s *APIServer) Router() (*gin.Engine, error) {
 	return s.router, nil
 }
 
-func (s *APIServer) Run() error {
-	defer types.CatchPanic("lapi/runServer")
+func (s *APIServer) GetTLSConfig() (*tls.Config, error) {
+	var caCert []byte
+	var err error
+	var caCertPool *x509.CertPool
+	var clientAuthType tls.ClientAuthType
 
+	if s.TLS == nil {
+		return &tls.Config{}, nil
+	}
+
+	if s.TLS.ClientVerification == "" {
+		//sounds like a sane default : verify client cert if given, but don't make it mandatory
+		clientAuthType = tls.VerifyClientCertIfGiven
+	} else {
+		clientAuthType, err = getTLSAuthType(s.TLS.ClientVerification)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if s.TLS.CACertPath != "" {
+		if clientAuthType > tls.RequestClientCert {
+			log.Infof("(tls) Client Auth Type set to %s", clientAuthType.String())
+			caCert, err = ioutil.ReadFile(s.TLS.CACertPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "Error opening cert file")
+			}
+			caCertPool = x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+		}
+	}
+
+	return &tls.Config{
+		ServerName: s.TLS.ServerName, //should it be removed ?
+		ClientAuth: clientAuthType,
+		ClientCAs:  caCertPool,
+		MinVersion: tls.VersionTLS12, // TLS versions below 1.2 are considered insecure - see https://www.rfc-editor.org/rfc/rfc7525.txt for details
+	}, nil
+}
+
+func (s *APIServer) Run(apiReady chan bool) error {
+	defer types.CatchPanic("lapi/runServer")
+	tlsCfg, err := s.GetTLSConfig()
+	if err != nil {
+		return errors.Wrap(err, "while creating TLS config")
+	}
 	s.httpServer = &http.Server{
-		Addr:    s.URL,
-		Handler: s.router,
+		Addr:      s.URL,
+		Handler:   s.router,
+		TLSConfig: tlsCfg,
 	}
 
 	if s.apic != nil {
@@ -275,13 +322,15 @@ func (s *APIServer) Run() error {
 
 	s.httpServerTomb.Go(func() error {
 		go func() {
+			apiReady <- true
+			log.Infof("CrowdSec Local API listening on %s", s.URL)
 			if s.TLS != nil && s.TLS.CertFilePath != "" && s.TLS.KeyFilePath != "" {
 				if err := s.httpServer.ListenAndServeTLS(s.TLS.CertFilePath, s.TLS.KeyFilePath); err != nil {
-					log.Fatalf(err.Error())
+					log.Fatal(err)
 				}
 			} else {
 				if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
-					log.Fatalf(err.Error())
+					log.Fatal(err)
 				}
 			}
 		}()
@@ -327,6 +376,36 @@ func (s *APIServer) AttachPluginBroker(broker *csplugin.PluginBroker) {
 }
 
 func (s *APIServer) InitController() error {
+
 	err := s.controller.Init()
+	if err != nil {
+		return errors.Wrap(err, "controller init")
+	}
+	if s.TLS != nil {
+		var cacheExpiration time.Duration
+		if s.TLS.CacheExpiration != nil {
+			cacheExpiration = *s.TLS.CacheExpiration
+		} else {
+			cacheExpiration = time.Hour
+		}
+		s.controller.HandlerV1.Middlewares.JWT.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedAgentsOU, s.TLS.CRLPath,
+			cacheExpiration,
+			log.WithFields(log.Fields{
+				"component": "tls-auth",
+				"type":      "agent",
+			}))
+		if err != nil {
+			return errors.Wrap(err, "while creating TLS auth for agents")
+		}
+		s.controller.HandlerV1.Middlewares.APIKey.TlsAuth, err = v1.NewTLSAuth(s.TLS.AllowedBouncersOU, s.TLS.CRLPath,
+			cacheExpiration,
+			log.WithFields(log.Fields{
+				"component": "tls-auth",
+				"type":      "bouncer",
+			}))
+		if err != nil {
+			return errors.Wrap(err, "while creating TLS auth for bouncers")
+		}
+	}
 	return err
 }

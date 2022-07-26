@@ -23,12 +23,12 @@ teardown() {
 
 #----------
 
-@test "$FILE there are 0 bouncers" {
+@test "there are 0 bouncers" {
     run -0 cscli bouncers list -o json
     assert_output "[]"
 }
 
-@test "$FILE we can add one bouncer, and delete it" {
+@test "we can add one bouncer, and delete it" {
     run -0 cscli bouncers add ciTestBouncer
     assert_output --partial "Api key for 'ciTestBouncer':"
     run -0 cscli bouncers delete ciTestBouncer
@@ -36,7 +36,7 @@ teardown() {
     assert_output '[]'
 }
 
-@test "$FILE we can't add the same bouncer twice" {
+@test "we can't add the same bouncer twice" {
     run -0 cscli bouncers add ciTestBouncer
     run -1 --separate-stderr cscli bouncers add ciTestBouncer -o json
 
@@ -50,7 +50,7 @@ teardown() {
     assert_output 1
 }
 
-@test "$FILE delete the bouncer multiple times, even if it does not exist" {
+@test "delete the bouncer multiple times, even if it does not exist" {
     run -0 cscli bouncers add ciTestBouncer
     run -0 cscli bouncers delete ciTestBouncer
     run -0 cscli bouncers delete ciTestBouncer

@@ -41,9 +41,12 @@ override_dh_auto_install:
 	cp cmd/crowdsec/crowdsec debian/crowdsec/usr/bin
 	cp cmd/crowdsec-cli/cscli debian/crowdsec/usr/bin
 	cp wizard.sh debian/crowdsec/usr/share/crowdsec
-	cp config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
+	install -m 600 config/config.yaml debian/crowdsec/etc/crowdsec/config.yaml
 	cp config/simulation.yaml debian/crowdsec/etc/crowdsec/simulation.yaml
 	cp config/profiles.yaml debian/crowdsec/etc/crowdsec/profiles.yaml
 	cp config/console.yaml debian/crowdsec/etc/crowdsec/console.yaml
 	cp -a config/patterns debian/crowdsec/etc/crowdsec
 
+override_dh_fixperms:
+	dh_fixperms
+	chmod 600 debian/crowdsec/etc/crowdsec/config.yaml

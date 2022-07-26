@@ -59,7 +59,14 @@ repositories).
 
  - `git submodule init; git submodule update`
  - `daemonize (linux) or daemon (freebsd), bash, python3, openbsd-netcat`
- - `yq` from https://github.com/mikefarah/yq
+ - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
+ - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
+ - `go install github.com/mikefarah/yq/v4@latest`
+ - `base64`
+ - `curl`
+ - `jq`
+ - `nc`
+ - `python3`
 
 ## Running all tests
 
@@ -67,11 +74,12 @@ Run `make clean bats-all` to perform a test build + run.
 To repeat test runs without rebuilding crowdsec, use `make bats-test`.
 
 
-## Troubleshooting tests
+## Debugging tests
 
-See `./tests/run-tests` usage to run/debug single test.
+See `./tests/run-tests --help` to run/debug specific tests.
 
-
+Example: `./tests/run-tests tests/bats/02_nolapi.bats -f "cscli config backup"` (the string is a regexp).
+You need to provide a path for a test file or directory (even if it's the full 'tests/bats') to use the `-f` option.
 
 
 # How does it work?
@@ -108,6 +116,7 @@ You can find here the documentation for the main framework and the plugins we us
  - [bats-assert](https://github.com/bats-core/bats-assert)
  - [bats-support](https://github.com/bats-core/bats-support)
  - [bats-file](https://github.com/bats-core/bats-file)
+ - [bats-mock](https://github.com/grayhemp/bats-mock)
 
 > As it often happens with open source, the first results from search engines refer to the old, unmaintained forks.
 > Be sure to use the links above to find the good versions.
@@ -310,6 +319,12 @@ We included the [bats-file](https://github.com/bats-core/bats-file) plugin to
 check the result of file system operations: existence, type/size/ownership checks
 on files, symlinks, directories, sockets.
 
+## mocking external commands
+
+The [bats-mock](https://github.com/grayhemp/bats-mock) plugin allows you to define
+a "fake" behavior for the external commands called by a package under test, and
+to record and assert which parameters are passed to it.
+
 ## gotchas
 
  - pay attention to tests that are not run - for example "bats warning: Executed 143
@@ -378,9 +393,28 @@ $ sudo docker run --cap-add=sys_nice --detach --name=mariadb -p 3306:3306  --env
 
 A mysql-client package is required as well.
 
+## troubleshooting
+
+
+ - My tests are hanging forever, why?
+See if you have a jq/yq or similar process waiting for standard input. Hint:
+you can pass a file from the result of the previous `run` command with
+`<(output)`. This substitutes the expression with a file name, but if you
+really want it in standard input, you have to use `< <(output)`. Bash is
+awesome but the syntax is often weird.
+
+ - I can't do X with jq.
+If you prefer you can use yq. It can parse and generate json, and it has a
+different syntax.
+
+ - I get "while parsing /tmp/....: yaml: line 5: mapping values are not allowed in this context"
+Check the heredocs (the <<EOT blocks). Each line must start with a hard TAB
+followed by spaces. You are probably missing some tabs.
+
 ## gotchas
 
  - Testing with Postgres or MySQL/MariaDB leads to (unpredictably) failing
    tests in the GitHub workflows, so we had to disable them by default. We do
-   run these in a separate environment before doing releases.
+   run these in a separate environment before doing releases. They should always
+   pass if you run them in a development machine.
 

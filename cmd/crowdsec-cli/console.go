@@ -78,17 +78,17 @@ After running this command your will need to validate the enrollment in the weba
 			}
 
 			if err := csConfig.LoadHub(); err != nil {
-				log.Fatalf(err.Error())
+				log.Fatal(err)
 			}
 
 			if err := cwhub.GetHubIdx(csConfig.Hub); err != nil {
 				log.Fatalf("Failed to load hub index : %s", err)
-				log.Infoln("Run 'sudo cscli hub update' to get the hub index")
+				log.Info("Run 'sudo cscli hub update' to get the hub index")
 			}
 
 			scenarios, err := cwhub.GetInstalledScenariosAsString()
 			if err != nil {
-				log.Fatalf("failed to get scenarios : %s", err.Error())
+				log.Fatalf("failed to get scenarios : %s", err)
 			}
 
 			if len(scenarios) == 0 {
@@ -108,7 +108,7 @@ After running this command your will need to validate the enrollment in the weba
 				log.Fatalf("Could not enroll instance: %s", err)
 			}
 			if resp.Response.StatusCode == 200 && !overwrite {
-				log.Warningf("Instance already enrolled. You can use '--overwrite' to force enroll")
+				log.Warning("Instance already enrolled. You can use '--overwrite' to force enroll")
 				return
 			}
 
@@ -131,7 +131,7 @@ After running this command your will need to validate the enrollment in the weba
 	cmdEnable := &cobra.Command{
 		Use:     "enable [feature-flag]",
 		Short:   "Enable a feature flag",
-		Example: "enable alerts-tainted",
+		Example: "enable tainted",
 		Long: `
 Enable given information push to the central API. Allows to empower the console`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -159,7 +159,7 @@ Enable given information push to the central API. Allows to empower the console`
 	cmdDisable := &cobra.Command{
 		Use:     "disable [feature-flag]",
 		Short:   "Disable a feature flag",
-		Example: "disable alerts-tainted",
+		Example: "disable tainted",
 		Long: `
 Disable given information push to the central API.`,
 		ValidArgs:         csconfig.CONSOLE_CONFIGS,
@@ -189,7 +189,7 @@ Disable given information push to the central API.`,
 	cmdConsoleStatus := &cobra.Command{
 		Use:               "status [feature-flag]",
 		Short:             "Shows status of one or all feature flags",
-		Example:           "status alerts-tainted",
+		Example:           "status tainted",
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			switch csConfig.Cscli.Output {

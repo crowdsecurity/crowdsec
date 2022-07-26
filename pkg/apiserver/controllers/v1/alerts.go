@@ -11,7 +11,6 @@ import (
 	jwt "github.com/appleboy/gin-jwt/v2"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
-	"github.com/crowdsecurity/crowdsec/pkg/csprofiles"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/gin-gonic/gin"
@@ -99,11 +98,16 @@ func FormatAlerts(result []*ent.Alert) models.AddAlertsRequest {
 
 func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uint) {
 	if c.PluginChannel != nil {
-		select {
-		case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: uint(profileID), Alert: alert}:
-			log.Debugf("alert sent to Plugin channel")
-		default:
-			log.Warningf("Cannot send alert to Plugin channel")
+	RETRY:
+		for try := 0; try < 3; try++ {
+			select {
+			case c.PluginChannel <- csplugin.ProfileAlert{ProfileID: profileID, Alert: alert}:
+				log.Debugf("alert sent to Plugin channel")
+				break RETRY
+			default:
+				log.Warningf("Cannot send alert to Plugin channel (try: %d)", try)
+				time.Sleep(time.Millisecond * 50)
+			}
 		}
 	}
 }
@@ -130,7 +134,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
-				_, matched, err := csprofiles.EvaluateProfile(profile, alert)
+				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
 					gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 					return
@@ -139,7 +143,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 					continue
 				}
 				c.sendAlertToPluginChannel(alert, uint(pIdx))
-				if profile.OnSuccess == "break" {
+				if profile.Cfg.OnSuccess == "break" {
 					break
 				}
 			}
@@ -151,7 +155,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		}
 
 		for pIdx, profile := range c.Profiles {
-			profileDecisions, matched, err := csprofiles.EvaluateProfile(profile, alert)
+			profileDecisions, matched, err := profile.EvaluateProfile(alert)
 			if err != nil {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
@@ -166,7 +170,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 			profileAlert := *alert
 			c.sendAlertToPluginChannel(&profileAlert, uint(pIdx))
-			if profile.OnSuccess == "break" {
+			if profile.Cfg.OnSuccess == "break" {
 				break
 			}
 		}

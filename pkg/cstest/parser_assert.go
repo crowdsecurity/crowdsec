@@ -131,7 +131,7 @@ func (p *ParserAssert) AssertFile(testFile string) error {
 	if p.NbAssert == 0 {
 		assertData, err := p.AutoGenFromFile(testFile)
 		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+			return fmt.Errorf("couldn't generate assertion: %s", err)
 		}
 		p.AutoGenAssertData = assertData
 		p.AutoGenAssert = true

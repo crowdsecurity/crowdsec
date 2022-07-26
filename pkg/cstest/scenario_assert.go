@@ -126,7 +126,7 @@ func (s *ScenarioAssert) AssertFile(testFile string) error {
 	if s.NbAssert == 0 {
 		assertData, err := s.AutoGenFromFile(testFile)
 		if err != nil {
-			return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+			return fmt.Errorf("couldn't generate assertion: %s", err)
 		}
 		s.AutoGenAssertData = assertData
 		s.AutoGenAssert = true
@@ -267,7 +267,7 @@ func LoadScenarioDump(filepath string) (*BucketResults, error) {
 		return nil, err
 	}
 
-	sort.Sort(BucketResults(bucketDump))
+	sort.Sort(bucketDump)
 
 	return &bucketDump, nil
 }

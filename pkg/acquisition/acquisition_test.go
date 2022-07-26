@@ -182,7 +182,7 @@ wowo: ajsajasjas
 				t.Fatalf("expected error %s, got none", test.ExpectedError)
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
+				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err)
 			}
 			continue
 		}
@@ -287,7 +287,7 @@ func TestLoadAcquisitionFromFile(t *testing.T) {
 				t.Fatalf("expected error %s, got none", test.ExpectedError)
 			}
 			if !strings.Contains(err.Error(), test.ExpectedError) {
-				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err.Error())
+				t.Fatalf("%s : expected error '%s' in '%s'", test.TestName, test.ExpectedError, err)
 			}
 			continue
 		}
@@ -371,10 +371,8 @@ func (f *MockTail) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) erro
 		evt.Line.Src = "test"
 		out <- evt
 	}
-	select {
-	case <-t.Dying():
-		return nil
-	}
+	<-t.Dying()
+	return nil
 }
 func (f *MockTail) CanRun() error                            { return nil }
 func (f *MockTail) GetMetrics() []prometheus.Collector       { return nil }
@@ -471,7 +469,7 @@ func TestStartAcquisitionTailError(t *testing.T) {
 
 	go func() {
 		if err := StartAcquisition(sources, out, &acquisTomb); err != nil && err.Error() != "got error (tomb)" {
-			t.Errorf("expected error, got '%s'", err.Error())
+			t.Errorf("expected error, got '%s'", err)
 		}
 	}()
 
@@ -495,6 +493,7 @@ READLOOP:
 	}
 }
 
+//nolint: structcheck,unused
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string `yaml:"toto"`

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -eu
+
 script_name=$0
 
 die() {
@@ -9,23 +10,31 @@ die() {
 }
 
 about() {
-    die "usage: $script_name <port_number>"
+    die "usage: ${script_name} [-q] <port_number>"
 }
 
-[ $# -lt 1 ] && about
+[[ $# -lt 1 ]] && about
+
+QUIET=
+if [[ "$1" == "-q" ]]; then
+    QUIET=quiet
+    shift
+fi
+
+[[ $# -lt 1 ]] && about
 
 port_number=$1
 
 for _ in $(seq 40); do
-    nc -z localhost "$port_number" >/dev/null 2>&1 && exit 0
-    sleep .05
+    nc -z localhost "${port_number}" >/dev/null 2>&1 && exit 0
+    sleep .03
 done
 
 # send to &3 if open
 if { true >&3; } 2>/dev/null; then
-    echo "Can't connect to port $port_number" >&3
+    [[ -z "${QUIET}" ]] && echo "Can't connect to port ${port_number}" >&3
 else
-    echo "Can't connect to port $port_number" >&2
+    [[ -z "${QUIET}" ]] && echo "Can't connect to port ${port_number}" >&2
 fi
 
 exit 1

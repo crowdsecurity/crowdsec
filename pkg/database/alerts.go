@@ -1,16 +1,20 @@
 package database
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/bouncer"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
+	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -179,15 +183,15 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 			var start_ip, start_sfx, end_ip, end_sfx int64
 			var sz int
 			if decisionItem.Duration == nil {
-				log.Warningf("nil duration in community decision")
+				log.Warning("nil duration in community decision")
 				continue
 			}
 			duration, err := time.ParseDuration(*decisionItem.Duration)
 			if err != nil {
-				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+				return 0, 0, 0, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 			}
 			if decisionItem.Scope == nil {
-				log.Warningf("nil scope in community decision")
+				log.Warning("nil scope in community decision")
 				continue
 			}
 			/*if the scope is IP or Range, convert the value to integers */
@@ -215,7 +219,7 @@ func (c *Client) UpdateCommunityBlocklist(alertItem *models.Alert) (int, int, in
 
 			/*for bulk delete of duplicate decisions*/
 			if decisionItem.Value == nil {
-				log.Warningf("nil value in community decision")
+				log.Warning("nil value in community decision")
 				continue
 			}
 			valueList = append(valueList, *decisionItem.Value)
@@ -317,12 +321,14 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		}
 		startAtTime, err := time.Parse(time.RFC3339, *alertItem.StartAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "start_at field time '%s': %s", *alertItem.StartAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse startAtTime '%s', defaulting to now: %s", *alertItem.StartAt, err)
+			startAtTime = time.Now().UTC()
 		}
 
 		stopAtTime, err := time.Parse(time.RFC3339, *alertItem.StopAt)
 		if err != nil {
-			return []string{}, errors.Wrapf(ParseTimeFail, "stop_at field time '%s': %s", *alertItem.StopAt, err)
+			c.Log.Errorf("CreateAlertBulk: Failed to parse stopAtTime '%s', defaulting to now: %s", *alertItem.StopAt, err)
+			stopAtTime = time.Now().UTC()
 		}
 		/*display proper alert in logs*/
 		for _, disp := range formatAlertAsString(machineId, alertItem) {
@@ -338,7 +344,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			for i, eventItem := range alertItem.Events {
 				ts, err := time.Parse(time.RFC3339, *eventItem.Timestamp)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseTimeFail, "event timestamp '%s' : %s", *eventItem.Timestamp, err)
+					c.Log.Errorf("CreateAlertBulk: Failed to parse event timestamp '%s', defaulting to now: %s", *eventItem.Timestamp, err)
+					ts = time.Now().UTC()
 				}
 				marshallMetas, err := json.Marshal(eventItem.Meta)
 				if err != nil {
@@ -406,12 +413,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 
-		ts, err := time.Parse(time.RFC3339, *alertItem.StopAt)
-		if err != nil {
-			c.Log.Errorf("While parsing StartAt of item %s : %s", *alertItem.StopAt, err)
-			ts = time.Now().UTC()
-		}
-
 		decisions = make([]*ent.Decision, 0)
 		if len(alertItem.Decisions) > 0 {
 			decisionBulk := make([]*ent.DecisionCreate, 0, decisionBulkSize)
@@ -421,7 +422,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 
 				duration, err := time.ParseDuration(*decisionItem.Duration)
 				if err != nil {
-					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%v' : %s", decisionItem.Duration, err)
+					return []string{}, errors.Wrapf(ParseDurationFail, "decision duration '%+v' : %s", *decisionItem.Duration, err)
 				}
 
 				/*if the scope is IP or Range, convert the value to integers */
@@ -433,7 +434,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				}
 
 				decisionCreate := c.Ent.Decision.Create().
-					SetUntil(ts.Add(duration)).
+					SetUntil(stopAtTime.Add(duration)).
 					SetScenario(*decisionItem.Scenario).
 					SetType(*decisionItem.Type).
 					SetStartIP(start_ip).
@@ -510,7 +511,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 				for _, d2 := range decisionsChunk {
 					_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 					if err != nil {
-						return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+						return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 					}
 				}
 			}
@@ -536,7 +537,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 		for _, d2 := range decisionsChunk {
 			_, err := c.Ent.Alert.Update().Where(alert.IDEQ(a.ID)).AddDecisions(d2...).Save(c.CTX)
 			if err != nil {
-				return []string{}, fmt.Errorf("error while updating decisions: %s", err.Error())
+				return []string{}, fmt.Errorf("error while updating decisions: %s", err)
 			}
 		}
 	}
@@ -719,6 +720,38 @@ func BuildAlertRequestFromFilter(alerts *ent.AlertQuery, filter map[string][]str
 	return alerts, nil
 }
 
+func (c *Client) AlertsCountPerScenario(filters map[string][]string) (map[string]int, error) {
+
+	var res []struct {
+		Scenario string
+		Count    int
+	}
+
+	ctx := context.Background()
+
+	query := c.Ent.Alert.Query()
+
+	query, err := BuildAlertRequestFromFilter(query, filters)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to build alert request")
+	}
+
+	err = query.GroupBy(alert.FieldScenario).Aggregate(ent.Count()).Scan(ctx, &res)
+
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to count alerts per scenario")
+	}
+
+	counts := make(map[string]int)
+
+	for _, r := range res {
+		counts[r.Scenario] = r.Count
+	}
+
+	return counts, nil
+}
+
 func (c *Client) TotalAlerts() (int, error) {
 	return c.Ent.Alert.Query().Count(c.CTX)
 }
@@ -763,9 +796,9 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 		}
 
 		if sort == "ASC" {
-			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Asc(alert.FieldCreatedAt), ent.Asc(alert.FieldID))
 		} else {
-			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt))
+			alerts = alerts.Order(ent.Desc(alert.FieldCreatedAt), ent.Desc(alert.FieldID))
 		}
 
 		result, err := alerts.Limit(paginationSize).Offset(offset).All(c.CTX)
@@ -796,7 +829,7 @@ func (c *Client) QueryAlertWithFilter(filter map[string][]string) ([]*ent.Alert,
 func (c *Client) DeleteAlertGraphBatch(alertItems []*ent.Alert) (int, error) {
 	idList := make([]int, 0)
 	for _, alert := range alertItems {
-		idList = append(idList, int(alert.ID))
+		idList = append(idList, alert.ID)
 	}
 
 	deleted, err := c.Ent.Alert.Delete().
@@ -888,6 +921,77 @@ func (c *Client) FlushOrphans() {
 	if events_count > 0 {
 		c.Log.Infof("%d deleted orphan decisions", events_count)
 	}
+}
+
+func (c *Client) FlushAgentsAndBouncers(agentsCfg *csconfig.AuthGCCfg, bouncersCfg *csconfig.AuthGCCfg) error {
+	log.Debug("starting FlushAgentsAndBouncers")
+	if bouncersCfg != nil {
+		if bouncersCfg.ApiDuration != nil {
+			log.Debug("trying to delete old bouncers from api")
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.ApiDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.ApiKeyAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+		if bouncersCfg.CertDuration != nil {
+			log.Debug("trying to delete old bouncers from cert")
+
+			deletionCount, err := c.Ent.Bouncer.Delete().Where(
+				bouncer.LastPullLTE(time.Now().UTC().Add(-*bouncersCfg.CertDuration)),
+			).Where(
+				bouncer.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired bouncers (api key) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired bouncers (api auth)", deletionCount)
+			}
+		}
+	}
+
+	if agentsCfg != nil {
+		if agentsCfg.CertDuration != nil {
+			log.Debug("trying to delete old agents from cert")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.CertDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.TlsAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (cert) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (cert auth)", deletionCount)
+			}
+		}
+		if agentsCfg.LoginPasswordDuration != nil {
+			log.Debug("trying to delete old agents from password")
+
+			deletionCount, err := c.Ent.Machine.Delete().Where(
+				machine.LastHeartbeatLTE(time.Now().UTC().Add(-*agentsCfg.LoginPasswordDuration)),
+			).Where(
+				machine.Not(machine.HasAlerts()),
+			).Where(
+				machine.AuthTypeEQ(types.PasswordAuthType),
+			).Exec(c.CTX)
+			log.Debugf("deleted %d entries", deletionCount)
+			if err != nil {
+				c.Log.Errorf("while auto-deleting expired machine (password) : %s", err)
+			} else if deletionCount > 0 {
+				c.Log.Infof("deleted %d expired machine (password auth)", deletionCount)
+			}
+		}
+	}
+	return nil
 }
 
 func (c *Client) FlushAlerts(MaxAge string, MaxItems int) error {

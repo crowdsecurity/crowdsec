@@ -3,6 +3,7 @@ package csconfig
 import (
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -40,17 +41,6 @@ func TestSimulationLoading(t *testing.T) {
 			expectedResult: &SimulationConfig{Simulation: new(bool)},
 		},
 		{
-			name: "basic bad file name",
-			Input: &Config{
-				ConfigPaths: &ConfigurationPaths{
-					SimulationFilePath: "./tests/xxx.yaml",
-					DataDir:            "./data",
-				},
-				Crowdsec: &CrowdsecServiceCfg{},
-			},
-			err: fmt.Sprintf("while reading '%s': open %s: no such file or directory", testXXFullPath, testXXFullPath),
-		},
-		{
 			name: "basic nil config",
 			Input: &Config{
 				ConfigPaths: &ConfigurationPaths{
@@ -84,12 +74,49 @@ func TestSimulationLoading(t *testing.T) {
 		},
 	}
 
+	if runtime.GOOS == "windows" {
+		tests = append(tests, struct {
+			name           string
+			Input          *Config
+			expectedResult *SimulationConfig
+			err            string
+		}{
+			name: "basic bad file name",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					SimulationFilePath: "./tests/xxx.yaml",
+					DataDir:            "./data",
+				},
+				Crowdsec: &CrowdsecServiceCfg{},
+			},
+			err: fmt.Sprintf("while reading yaml file: open %s: The system cannot find the file specified.", testXXFullPath),
+		})
+	} else {
+		tests = append(tests, struct {
+			name           string
+			Input          *Config
+			expectedResult *SimulationConfig
+			err            string
+		}{
+			name: "basic bad file name",
+			Input: &Config{
+				ConfigPaths: &ConfigurationPaths{
+					SimulationFilePath: "./tests/xxx.yaml",
+					DataDir:            "./data",
+				},
+				Crowdsec: &CrowdsecServiceCfg{},
+			},
+			err: fmt.Sprintf("while reading yaml file: open %s: no such file or directory", testXXFullPath),
+		})
+	}
+
 	for idx, test := range tests {
 		err := test.Input.LoadSimulation()
 		if err == nil && test.err != "" {
 			fmt.Printf("TEST '%s': NOK\n", test.name)
 			t.Fatalf("%d/%d expected error, didn't get it", idx, len(tests))
-		} else if test.err != "" {
+		}
+		if test.err != "" {
 			if !strings.HasPrefix(fmt.Sprintf("%s", err), test.err) {
 				fmt.Printf("TEST '%s': NOK\n", test.name)
 				t.Fatalf("%d/%d expected '%s' got '%s'", idx, len(tests),

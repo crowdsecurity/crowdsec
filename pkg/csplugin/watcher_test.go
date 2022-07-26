@@ -3,6 +3,7 @@ package csplugin
 import (
 	"context"
 	"log"
+	"runtime"
 	"testing"
 	"time"
 
@@ -45,6 +46,9 @@ func listenChannelWithTimeout(ctx context.Context, channel chan string) error {
 }
 
 func TestPluginWatcherInterval(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows because timing is not reliable")
+	}
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
 	testTomb := tomb.Tomb{}
@@ -74,6 +78,9 @@ func TestPluginWatcherInterval(t *testing.T) {
 }
 
 func TestPluginAlertCountWatcher(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping test on windows because timing is not reliable")
+	}
 	pw := PluginWatcher{}
 	alertsByPluginName := make(map[string][]*models.Alert)
 	configs := map[string]PluginConfig{

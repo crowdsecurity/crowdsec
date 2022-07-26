@@ -28,15 +28,16 @@ PLUGIN_DIR = $(LOCAL_DIR)/lib/crowdsec/plugins
 DB_BACKEND ?= sqlite
 
 ifdef TEST_COVERAGE
-  CROWDSEC = "$(TEST_DIR)/crowdsec-wrapper"
-  CSCLI = "$(TEST_DIR)/cscli-wrapper"
+  CROWDSEC = $(TEST_DIR)/crowdsec-wrapper
+  CSCLI = $(TEST_DIR)/cscli-wrapper
   BINCOVER_TESTING = true
 else
   # the wrappers should work here too - it detects TEST_COVERAGE - but we allow
   # overriding the path to the binaries
-  CROWDSEC ?= "$(BIN_DIR)/crowdsec"
-  CSCLI ?= "$(BIN_DIR)/cscli"
-  BINCOVER_TESTING = false
+  CROWDSEC ?= $(BIN_DIR)/crowdsec
+  CSCLI ?= $(BIN_DIR)/cscli
+  # any value is considered true
+  BINCOVER_TESTING =
 endif
 
 # If you change the name of the crowdsec executable, make sure the pgrep
@@ -86,8 +87,12 @@ bats-fixture:
 	@$(TEST_DIR)/instance-data make
 
 # Remove the local crowdsec installation and the fixture config + data
+# Don't remove LOCAL_DIR directly because it could be / or anything else outside the repo
 bats-clean:
-	@$(RM) -r $(LOCAL_DIR) $(LOCAL_INIT_DIR) $(TEST_DIR)/dyn-bats/*.bats tests/.environment.sh
+	@$(RM) $(TEST_DIR)/local $(WIN_IGNORE_ERR)
+	@$(RM) $(LOCAL_INIT_DIR) $(WIN_IGNORE_ERR)
+	@$(RM) $(TEST_DIR)/dyn-bats/*.bats $(WIN_IGNORE_ERR)
+	@$(RM) tests/.environment.sh $(WIN_IGNORE_ERR)
 
 # Run the test suite
 bats-test: bats-environment bats-check-requirements

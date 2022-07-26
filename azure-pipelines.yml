@@ -1,0 +1,107 @@
+trigger:
+  tags:
+    include:
+      - "v*"
+  branches:
+    exclude:
+      - "*"
+pr: none
+
+pool:
+  vmImage: windows-latest
+
+stages:
+  - stage: Build
+    jobs:
+      - job:
+        displayName: "Build"
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: "Install SignClient"
+            inputs:
+              command: 'custom'
+              custom: 'tool'
+              arguments: 'install --global SignClient --version 1.3.155'
+          - task: GoTool@0
+            displayName: "Install Go 1.17"
+            inputs:
+                version: '1.17.9'
+
+          - pwsh: |
+              choco install -y jq
+              choco install -y make
+            displayName: "Install builds deps"
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              pwsh: true
+              #we are not calling make windows_installer because we want to sign the binaries before they are added to the MSI
+              script: |
+                make build
+          - task: AzureKeyVault@2
+            inputs:
+              azureSubscription: 'Azure subscription 1(8a93ab40-7e99-445e-ad47-0f6a3e2ef546)'
+              KeyVaultName: 'CodeSigningSecrets'
+              SecretsFilter: 'CodeSigningUser,CodeSigningPassword'
+              RunAsPreJob: false
+
+          - task: DownloadSEcureFile@1
+            inputs:
+              secureFile: appsettings.json
+
+          - pwsh: |
+              SignClient.exe Sign --name "crowdsec-binaries" `
+              --input "**/*.exe" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
+              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
+            displayName: "Sign Crowdsec binaries + plugins"
+
+          - pwsh: |
+              $build_version=(git describe --tags (git rev-list --tags --max-count=1)).Substring(1)
+              if ($build_version.Contains("-")) 
+              {
+                $build_version = $build_version.Substring(0, $build_version.IndexOf("-"))
+              }
+              .\make_installer.ps1 -version $build_version
+              Write-Host  "##vso[task.setvariable variable=BuildVersion;isOutput=true]$build_version"
+            displayName: "Build Crowdsec MSI"
+            name: BuildMSI
+
+          - pwsh: |
+              SignClient.exe Sign --name "crowdsec-msi" `
+              --input "*.msi" --config (Join-Path -Path $(Agent.TempDirectory) -ChildPath "appsettings.json") `
+              --user $(CodeSigningUser) --secret '$(CodeSigningPassword)'
+            displayName: "Sign Crowdsec MSI"
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.Repository.LocalPath)\\crowdsec_$(BuildMSI.BuildVersion).msi'
+              ArtifactName: 'crowdsec.msi'
+              publishLocation: 'Container'
+            displayName: "Upload MSI artifact"
+  - stage: Publish
+    dependsOn: Build
+    jobs:
+      - deployment: "Publish"
+        displayName: "Publish to GitHub"
+        environment: github
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - bash: |
+                    tag=$(curl -H "Accept: application/vnd.github.v3+json"   https://api.github.com/repos/crowdsecurity/crowdsec/releases | jq -r '. | map(select(.prerelease==true)) | sort_by(.created_at) | reverse | .[0].tag_name')
+                    echo "##vso[task.setvariable variable=LatestPreRelease;isOutput=true]$tag"
+                  name: GetLatestPrelease
+                - task: GitHubRelease@1
+                  inputs:
+                    gitHubConnection: "github.com_blotus"
+                    repositoryName: '$(Build.Repository.Name)'
+                    action: 'edit'
+                    tag: '$(GetLatestPrelease.LatestPreRelease)'
+                    assetUploadMode: 'replace'
+                    addChangeLog: false
+                    isPreRelease: true #we force prerelease because the pipeline is invoked on tag creation, which happens when we do a prerelease
+                    #the .. is an ugly hack, but I can't find the var that gives D:\a\1 ...
+                    assets: |
+                      $(Build.ArtifactStagingDirectory)\..\crowdsec.msi/*.msi
+                  condition: ne(variables['GetLatestPrelease.LatestPreRelease'], '')

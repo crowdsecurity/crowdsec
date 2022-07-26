@@ -22,6 +22,8 @@ type Machine struct {
 	UpdatedAt *time.Time `json:"updated_at,omitempty"`
 	// LastPush holds the value of the "last_push" field.
 	LastPush *time.Time `json:"last_push,omitempty"`
+	// LastHeartbeat holds the value of the "last_heartbeat" field.
+	LastHeartbeat *time.Time `json:"last_heartbeat,omitempty"`
 	// MachineId holds the value of the "machineId" field.
 	MachineId string `json:"machineId,omitempty"`
 	// Password holds the value of the "password" field.
@@ -36,6 +38,8 @@ type Machine struct {
 	IsValidated bool `json:"isValidated,omitempty"`
 	// Status holds the value of the "status" field.
 	Status string `json:"status,omitempty"`
+	// AuthType holds the value of the "auth_type" field.
+	AuthType string `json:"auth_type"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the MachineQuery when eager-loading is set.
 	Edges MachineEdges `json:"edges"`
@@ -68,9 +72,9 @@ func (*Machine) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case machine.FieldID:
 			values[i] = new(sql.NullInt64)
-		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus:
+		case machine.FieldMachineId, machine.FieldPassword, machine.FieldIpAddress, machine.FieldScenarios, machine.FieldVersion, machine.FieldStatus, machine.FieldAuthType:
 			values[i] = new(sql.NullString)
-		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush:
+		case machine.FieldCreatedAt, machine.FieldUpdatedAt, machine.FieldLastPush, machine.FieldLastHeartbeat:
 			values[i] = new(sql.NullTime)
 		default:
 			return nil, fmt.Errorf("unexpected column %q for type Machine", columns[i])
@@ -114,6 +118,13 @@ func (m *Machine) assignValues(columns []string, values []interface{}) error {
 				m.LastPush = new(time.Time)
 				*m.LastPush = value.Time
 			}
+		case machine.FieldLastHeartbeat:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_heartbeat", values[i])
+			} else if value.Valid {
+				m.LastHeartbeat = new(time.Time)
+				*m.LastHeartbeat = value.Time
+			}
 		case machine.FieldMachineId:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field machineId", values[i])
@@ -155,6 +166,12 @@ func (m *Machine) assignValues(columns []string, values []interface{}) error {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
 				m.Status = value.String
+			}
+		case machine.FieldAuthType:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field auth_type", values[i])
+			} else if value.Valid {
+				m.AuthType = value.String
 			}
 		}
 	}
@@ -201,6 +218,10 @@ func (m *Machine) String() string {
 		builder.WriteString(", last_push=")
 		builder.WriteString(v.Format(time.ANSIC))
 	}
+	if v := m.LastHeartbeat; v != nil {
+		builder.WriteString(", last_heartbeat=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", machineId=")
 	builder.WriteString(m.MachineId)
 	builder.WriteString(", password=<sensitive>")
@@ -214,6 +235,8 @@ func (m *Machine) String() string {
 	builder.WriteString(fmt.Sprintf("%v", m.IsValidated))
 	builder.WriteString(", status=")
 	builder.WriteString(m.Status)
+	builder.WriteString(", auth_type=")
+	builder.WriteString(m.AuthType)
 	builder.WriteByte(')')
 	return builder.String()
 }

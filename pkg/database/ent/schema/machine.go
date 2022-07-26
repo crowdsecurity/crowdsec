@@ -24,6 +24,9 @@ func (Machine) Fields() []ent.Field {
 		field.Time("last_push").
 			Default(types.UtcNow).
 			UpdateDefault(types.UtcNow).Nillable().Optional(),
+		field.Time("last_heartbeat").
+			Default(types.UtcNow).
+			UpdateDefault(types.UtcNow).Nillable().Optional(),
 		field.String("machineId").Unique(),
 		field.String("password").Sensitive(),
 		field.String("ipAddress"),
@@ -32,6 +35,7 @@ func (Machine) Fields() []ent.Field {
 		field.Bool("isValidated").
 			Default(false),
 		field.String("status").Optional(),
+		field.String("auth_type").Default(types.PasswordAuthType).StructTag(`json:"auth_type"`),
 	}
 }
 

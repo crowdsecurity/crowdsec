@@ -11,7 +11,7 @@ import (
 )
 
 func TestLogin(t *testing.T) {
-	router, err := NewAPITest()
+	router, config, err := NewAPITest()
 	if err != nil {
 		log.Fatalf("unable to run local API: %s", err)
 	}
@@ -46,7 +46,7 @@ func TestLogin(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 401, w.Code)
-	assert.Equal(t, "{\"code\":401,\"message\":\"missing : invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
+	assert.Equal(t, "{\"code\":401,\"message\":\"missing: invalid character 'e' in literal true (expecting 'r')\"}", w.Body.String())
 
 	// Login with invalid format
 	w = httptest.NewRecorder()
@@ -58,7 +58,7 @@ func TestLogin(t *testing.T) {
 	assert.Equal(t, "{\"code\":401,\"message\":\"input format error\"}", w.Body.String())
 
 	//Validate machine
-	err = ValidateMachine("test")
+	err = ValidateMachine("test", config.API.Server.DbConfig)
 	if err != nil {
 		log.Fatalln(err.Error())
 	}

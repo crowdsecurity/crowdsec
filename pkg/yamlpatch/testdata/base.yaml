@@ -1,0 +1,13 @@
+fun:
+  - maserati
+  - porsche
+
+practical:
+  toyota: camry
+  honda: accord
+
+occupants:
+  honda:
+    driver: jane
+    backseat:
+      - nate

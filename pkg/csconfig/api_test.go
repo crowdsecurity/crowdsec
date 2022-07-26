@@ -231,7 +231,7 @@ func TestLoadAPIServer(t *testing.T) {
 			err: "",
 		},
 		{
-			name: "basic valid configuration",
+			name: "basic invalid configuration",
 			Input: &Config{
 				Self: []byte(configData),
 				API: &APICfg{

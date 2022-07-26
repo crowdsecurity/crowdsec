@@ -2,9 +2,11 @@ package dockeracquisition
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -21,6 +23,8 @@ import (
 )
 
 const testContainerName = "docker_test"
+
+var readLogs = false
 
 func TestConfigure(t *testing.T) {
 	log.Infof("Test 'TestConfigure'")
@@ -61,7 +65,12 @@ container_name:
 
 func TestConfigureDSN(t *testing.T) {
 	log.Infof("Test 'TestConfigureDSN'")
-
+	var dockerHost string
+	if runtime.GOOS == "windows" {
+		dockerHost = "npipe:////./pipe/docker_engine"
+	} else {
+		dockerHost = "unix:///var/run/podman/podman.sock"
+	}
 	tests := []struct {
 		name        string
 		dsn         string
@@ -89,7 +98,7 @@ func TestConfigureDSN(t *testing.T) {
 		},
 		{
 			name:        "DSN ok with multiple parameters",
-			dsn:         "docker://test_docker?since=42min&docker_host=unix:///var/run/podman/podman.sock",
+			dsn:         fmt.Sprintf("docker://test_docker?since=42min&docker_host=%s", dockerHost),
 			expectedErr: "",
 		},
 	}
@@ -159,6 +168,7 @@ container_name_regexp:
 			})
 		}
 
+		readLogs = false
 		dockerTomb := tomb.Tomb{}
 		out := make(chan types.Event)
 		dockerSource := DockerSource{}
@@ -188,13 +198,11 @@ container_name_regexp:
 				}
 			}
 		})
-		time.Sleep(10 * time.Second)
 		cstest.AssertErrorContains(t, err, ts.expectedErr)
 
 		if err := readerTomb.Wait(); err != nil {
 			t.Fatal(err)
 		}
-		//time.Sleep(4 * time.Second)
 		if ts.expectedLines != 0 {
 			assert.Equal(t, ts.expectedLines, actualLines)
 		}
@@ -207,6 +215,9 @@ container_name_regexp:
 }
 
 func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes.ContainerListOptions) ([]dockerTypes.Container, error) {
+	if readLogs == true {
+		return []dockerTypes.Container{}, nil
+	}
 	containers := make([]dockerTypes.Container, 0)
 	container := &dockerTypes.Container{
 		ID:    "12456",
@@ -218,11 +229,17 @@ func (cli *mockDockerCli) ContainerList(ctx context.Context, options dockerTypes
 }
 
 func (cli *mockDockerCli) ContainerLogs(ctx context.Context, container string, options dockerTypes.ContainerLogsOptions) (io.ReadCloser, error) {
-	startLineByte := "\x01\x00\x00\x00\x00\x00\x00\x1f"
-	data := []string{"docker", "test", "1234"}
+	if readLogs == true {
+		return io.NopCloser(strings.NewReader("")), nil
+	}
+	readLogs = true
+	data := []string{"docker\n", "test\n", "1234\n"}
 	ret := ""
 	for _, line := range data {
-		ret += fmt.Sprintf("%s%s\n", startLineByte, line)
+		startLineByte := make([]byte, 8)
+		binary.LittleEndian.PutUint32(startLineByte, 1) //stdout stream
+		binary.BigEndian.PutUint32(startLineByte[4:], uint32(len(line)))
+		ret += fmt.Sprintf("%s%s", startLineByte, line)
 	}
 	r := io.NopCloser(strings.NewReader(ret)) // r type is io.ReadCloser
 	return r, nil
@@ -281,6 +298,7 @@ func TestOneShot(t *testing.T) {
 			})
 		}
 
+		readLogs = false
 		dockerClient := &DockerSource{}
 		labels := make(map[string]string)
 		labels["type"] = ts.logType

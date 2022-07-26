@@ -63,6 +63,20 @@ func (mc *MachineCreate) SetNillableLastPush(t *time.Time) *MachineCreate {
 	return mc
 }
 
+// SetLastHeartbeat sets the "last_heartbeat" field.
+func (mc *MachineCreate) SetLastHeartbeat(t time.Time) *MachineCreate {
+	mc.mutation.SetLastHeartbeat(t)
+	return mc
+}
+
+// SetNillableLastHeartbeat sets the "last_heartbeat" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableLastHeartbeat(t *time.Time) *MachineCreate {
+	if t != nil {
+		mc.SetLastHeartbeat(*t)
+	}
+	return mc
+}
+
 // SetMachineId sets the "machineId" field.
 func (mc *MachineCreate) SetMachineId(s string) *MachineCreate {
 	mc.mutation.SetMachineId(s)
@@ -133,6 +147,20 @@ func (mc *MachineCreate) SetStatus(s string) *MachineCreate {
 func (mc *MachineCreate) SetNillableStatus(s *string) *MachineCreate {
 	if s != nil {
 		mc.SetStatus(*s)
+	}
+	return mc
+}
+
+// SetAuthType sets the "auth_type" field.
+func (mc *MachineCreate) SetAuthType(s string) *MachineCreate {
+	mc.mutation.SetAuthType(s)
+	return mc
+}
+
+// SetNillableAuthType sets the "auth_type" field if the given value is not nil.
+func (mc *MachineCreate) SetNillableAuthType(s *string) *MachineCreate {
+	if s != nil {
+		mc.SetAuthType(*s)
 	}
 	return mc
 }
@@ -235,9 +263,17 @@ func (mc *MachineCreate) defaults() {
 		v := machine.DefaultLastPush()
 		mc.mutation.SetLastPush(v)
 	}
+	if _, ok := mc.mutation.LastHeartbeat(); !ok {
+		v := machine.DefaultLastHeartbeat()
+		mc.mutation.SetLastHeartbeat(v)
+	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		v := machine.DefaultIsValidated
 		mc.mutation.SetIsValidated(v)
+	}
+	if _, ok := mc.mutation.AuthType(); !ok {
+		v := machine.DefaultAuthType
+		mc.mutation.SetAuthType(v)
 	}
 }
 
@@ -259,6 +295,9 @@ func (mc *MachineCreate) check() error {
 	}
 	if _, ok := mc.mutation.IsValidated(); !ok {
 		return &ValidationError{Name: "isValidated", err: errors.New(`ent: missing required field "Machine.isValidated"`)}
+	}
+	if _, ok := mc.mutation.AuthType(); !ok {
+		return &ValidationError{Name: "auth_type", err: errors.New(`ent: missing required field "Machine.auth_type"`)}
 	}
 	return nil
 }
@@ -310,6 +349,14 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Column: machine.FieldLastPush,
 		})
 		_node.LastPush = &value
+	}
+	if value, ok := mc.mutation.LastHeartbeat(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeTime,
+			Value:  value,
+			Column: machine.FieldLastHeartbeat,
+		})
+		_node.LastHeartbeat = &value
 	}
 	if value, ok := mc.mutation.MachineId(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
@@ -366,6 +413,14 @@ func (mc *MachineCreate) createSpec() (*Machine, *sqlgraph.CreateSpec) {
 			Column: machine.FieldStatus,
 		})
 		_node.Status = value
+	}
+	if value, ok := mc.mutation.AuthType(); ok {
+		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
+			Value:  value,
+			Column: machine.FieldAuthType,
+		})
+		_node.AuthType = value
 	}
 	if nodes := mc.mutation.AlertsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

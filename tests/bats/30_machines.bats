@@ -23,11 +23,11 @@ teardown() {
 
 #----------
 
-@test "$FILE can list machines as regular user" {
+@test "can list machines as regular user" {
     run -0 cscli machines list
 }
 
-@test "$FILE we have exactly one machine, localhost" {
+@test "we have exactly one machine, localhost" {
     run -0 cscli machines list -o json
     run -0 jq -c '[. | length, .[0].machineId[0:32], .[0].isValidated, .[0].ipAddress]' <(output)
     assert_output '[1,"githubciXXXXXXXXXXXXXXXXXXXXXXXX",true,"127.0.0.1"]'
@@ -39,7 +39,7 @@ teardown() {
     #assert_output '127.0.0.1'
 }
 
-@test "$FILE add a new machine and delete it" {
+@test "add a new machine and delete it" {
     run -0 cscli machines add -a -f /dev/null CiTestMachine -o human
     assert_output --partial "Machine 'CiTestMachine' successfully added to the local API"
     assert_output --partial "API credentials dumped to '/dev/null'"
@@ -59,8 +59,7 @@ teardown() {
     assert_output 1
 }
 
-@test "$FILE register, validate and then remove a machine" {
-    if is_db_postgres; then sleep 4; fi
+@test "register, validate and then remove a machine" {
     run -0 cscli lapi register --machine CiTestMachineRegister -f /dev/null -o human
     assert_output --partial "Successfully registered to Local API (LAPI)"
     assert_output --partial "Local API credentials dumped to '/dev/null'"

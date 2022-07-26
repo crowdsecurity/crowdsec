@@ -77,15 +77,20 @@ func LoadParsers(cConfig *csconfig.Config, parsers *Parsers) (*Parsers, error) {
 	 Load the actual parsers
 	*/
 
-	log.Infof("Loading parsers %d stages", len(parsers.StageFiles))
+	log.Infof("Loading parsers from %d files", len(parsers.StageFiles))
 
 	parsers.Nodes, err = LoadStages(parsers.StageFiles, parsers.Ctx, parsers.EnricherCtx)
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load parser config : %v", err)
 	}
 
-	log.Infof("Loading postoverflow Parsers")
-	parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
+	if len(parsers.PovfwStageFiles) > 0 {
+		log.Infof("Loading postoverflow parsers")
+		parsers.Povfwnodes, err = LoadStages(parsers.PovfwStageFiles, parsers.Povfwctx, parsers.EnricherCtx)
+	} else {
+		parsers.Povfwnodes = []Node{}
+		log.Infof("No postoverflow parsers to load")
+	}
 
 	if err != nil {
 		return parsers, fmt.Errorf("failed to load postoverflow config : %v", err)

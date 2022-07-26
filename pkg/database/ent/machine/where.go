@@ -114,6 +114,13 @@ func LastPush(v time.Time) predicate.Machine {
 	})
 }
 
+// LastHeartbeat applies equality check predicate on the "last_heartbeat" field. It's identical to LastHeartbeatEQ.
+func LastHeartbeat(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldLastHeartbeat), v))
+	})
+}
+
 // MachineId applies equality check predicate on the "machineId" field. It's identical to MachineIdEQ.
 func MachineId(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
@@ -160,6 +167,13 @@ func IsValidated(v bool) predicate.Machine {
 func Status(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldStatus), v))
+	})
+}
+
+// AuthType applies equality check predicate on the "auth_type" field. It's identical to AuthTypeEQ.
+func AuthType(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAuthType), v))
 	})
 }
 
@@ -430,6 +444,96 @@ func LastPushIsNil() predicate.Machine {
 func LastPushNotNil() predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.NotNull(s.C(FieldLastPush)))
+	})
+}
+
+// LastHeartbeatEQ applies the EQ predicate on the "last_heartbeat" field.
+func LastHeartbeatEQ(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatNEQ applies the NEQ predicate on the "last_heartbeat" field.
+func LastHeartbeatNEQ(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatIn applies the In predicate on the "last_heartbeat" field.
+func LastHeartbeatIn(vs ...time.Time) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldLastHeartbeat), v...))
+	})
+}
+
+// LastHeartbeatNotIn applies the NotIn predicate on the "last_heartbeat" field.
+func LastHeartbeatNotIn(vs ...time.Time) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldLastHeartbeat), v...))
+	})
+}
+
+// LastHeartbeatGT applies the GT predicate on the "last_heartbeat" field.
+func LastHeartbeatGT(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatGTE applies the GTE predicate on the "last_heartbeat" field.
+func LastHeartbeatGTE(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatLT applies the LT predicate on the "last_heartbeat" field.
+func LastHeartbeatLT(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatLTE applies the LTE predicate on the "last_heartbeat" field.
+func LastHeartbeatLTE(v time.Time) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldLastHeartbeat), v))
+	})
+}
+
+// LastHeartbeatIsNil applies the IsNil predicate on the "last_heartbeat" field.
+func LastHeartbeatIsNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldLastHeartbeat)))
+	})
+}
+
+// LastHeartbeatNotNil applies the NotNil predicate on the "last_heartbeat" field.
+func LastHeartbeatNotNil() predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldLastHeartbeat)))
 	})
 }
 
@@ -1152,6 +1256,117 @@ func StatusEqualFold(v string) predicate.Machine {
 func StatusContainsFold(v string) predicate.Machine {
 	return predicate.Machine(func(s *sql.Selector) {
 		s.Where(sql.ContainsFold(s.C(FieldStatus), v))
+	})
+}
+
+// AuthTypeEQ applies the EQ predicate on the "auth_type" field.
+func AuthTypeEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EQ(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeNEQ applies the NEQ predicate on the "auth_type" field.
+func AuthTypeNEQ(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.NEQ(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeIn applies the In predicate on the "auth_type" field.
+func AuthTypeIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.In(s.C(FieldAuthType), v...))
+	})
+}
+
+// AuthTypeNotIn applies the NotIn predicate on the "auth_type" field.
+func AuthTypeNotIn(vs ...string) predicate.Machine {
+	v := make([]interface{}, len(vs))
+	for i := range v {
+		v[i] = vs[i]
+	}
+	return predicate.Machine(func(s *sql.Selector) {
+		// if not arguments were provided, append the FALSE constants,
+		// since we can't apply "IN ()". This will make this predicate falsy.
+		if len(v) == 0 {
+			s.Where(sql.False())
+			return
+		}
+		s.Where(sql.NotIn(s.C(FieldAuthType), v...))
+	})
+}
+
+// AuthTypeGT applies the GT predicate on the "auth_type" field.
+func AuthTypeGT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GT(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeGTE applies the GTE predicate on the "auth_type" field.
+func AuthTypeGTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.GTE(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeLT applies the LT predicate on the "auth_type" field.
+func AuthTypeLT(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LT(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeLTE applies the LTE predicate on the "auth_type" field.
+func AuthTypeLTE(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.LTE(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeContains applies the Contains predicate on the "auth_type" field.
+func AuthTypeContains(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeHasPrefix applies the HasPrefix predicate on the "auth_type" field.
+func AuthTypeHasPrefix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeHasSuffix applies the HasSuffix predicate on the "auth_type" field.
+func AuthTypeHasSuffix(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeEqualFold applies the EqualFold predicate on the "auth_type" field.
+func AuthTypeEqualFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldAuthType), v))
+	})
+}
+
+// AuthTypeContainsFold applies the ContainsFold predicate on the "auth_type" field.
+func AuthTypeContainsFold(v string) predicate.Machine {
+	return predicate.Machine(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldAuthType), v))
 	})
 }
 

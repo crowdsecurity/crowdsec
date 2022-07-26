@@ -19,3 +19,10 @@ format: |
 
 url: <SPLUNK_HTTP_URL>
 token: <SPLUNK_TOKEN>
+
+---
+
+# type: splunk
+# name: splunk_second_notification
+# ...
+

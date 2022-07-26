@@ -10,18 +10,21 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/parser"
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 )
 
 type HubTestItemConfig struct {
-	Parsers       []string          `yaml:"parsers"`
-	Scenarios     []string          `yaml:"scenarios"`
-	PostOVerflows []string          `yaml:"postoverflows"`
-	LogFile       string            `yaml:"log_file"`
-	LogType       string            `yaml:"log_type"`
-	Labels        map[string]string `yaml:"labels"`
-	IgnoreParsers bool              `yaml:"ignore_parsers"` // if we test a scenario, we don't want to assert on Parser
+	Parsers         []string           `yaml:"parsers"`
+	Scenarios       []string           `yaml:"scenarios"`
+	PostOVerflows   []string           `yaml:"postoverflows"`
+	LogFile         string             `yaml:"log_file"`
+	LogType         string             `yaml:"log_type"`
+	Labels          map[string]string  `yaml:"labels"`
+	IgnoreParsers   bool               `yaml:"ignore_parsers"`   // if we test a scenario, we don't want to assert on Parser
+	OverrideStatics []types.ExtraField `yaml:"override_statics"` //Allow to override statics. Executed before s00
 }
 
 type HubIndex struct {
@@ -190,10 +193,10 @@ func (t *HubTestItem) InstallHub() error {
 					//return fmt.Errorf("parser '%s' doesn't exist in the hub and doesn't appear to be a custom one.", parser)
 				}
 
-				customParserPathSplit := strings.Split(customParserPath, "/")
-				customParserName := customParserPathSplit[len(customParserPathSplit)-1]
+				customParserPathSplit, customParserName := filepath.Split(customParserPath)
 				// because path is parsers/<stage>/<author>/parser.yaml and we wan't the stage
-				customParserStage := customParserPathSplit[len(customParserPathSplit)-3]
+				splittedPath := strings.Split(customParserPathSplit, string(os.PathSeparator))
+				customParserStage := splittedPath[len(splittedPath)-3]
 
 				// check if stage exist
 				hubStagePath := filepath.Join(t.HubPath, fmt.Sprintf("parsers/%s", customParserStage))
@@ -377,6 +380,22 @@ func (t *HubTestItem) InstallHub() error {
 		}
 	}
 
+	if len(t.Config.OverrideStatics) > 0 {
+		n := parser.Node{
+			Name:    "overrides",
+			Filter:  "1==1",
+			Statics: t.Config.OverrideStatics,
+		}
+		b, err := yaml.Marshal(n)
+		if err != nil {
+			return fmt.Errorf("unable to marshal overrides: %s", err)
+		}
+		tgtFilename := fmt.Sprintf("%s/parsers/s00-raw/00_overrides.yaml", t.RuntimePath)
+		if err := os.WriteFile(tgtFilename, b, os.ModePerm); err != nil {
+			return fmt.Errorf("unable to write overrides to '%s': %s", tgtFilename, err)
+		}
+	}
+
 	// load installed hub
 	err := cwhub.GetHubIdx(t.RuntimeHubConfig)
 	if err != nil {
@@ -496,7 +515,7 @@ func (t *HubTestItem) Run() error {
 
 	logFileStat, err := os.Stat(logFile)
 	if err != nil {
-		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err.Error())
+		return fmt.Errorf("unable to stat log file '%s': %s", logFile, err)
 	}
 	if logFileStat.Size() == 0 {
 		return fmt.Errorf("Log file '%s' is empty, please fill it with log", logFile)
@@ -550,7 +569,7 @@ func (t *HubTestItem) Run() error {
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ParserAssert.AutoGenFromFile(t.ParserResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
 			t.ParserAssert.AutoGenAssertData = assertData
 			t.ParserAssert.AutoGenAssert = true
@@ -586,7 +605,7 @@ func (t *HubTestItem) Run() error {
 		if assertFileStat.Size() == 0 {
 			assertData, err := t.ScenarioAssert.AutoGenFromFile(t.ScenarioResultFile)
 			if err != nil {
-				return fmt.Errorf("couldn't generate assertion: %s", err.Error())
+				return fmt.Errorf("couldn't generate assertion: %s", err)
 			}
 			t.ScenarioAssert.AutoGenAssertData = assertData
 			t.ScenarioAssert.AutoGenAssert = true

@@ -5,21 +5,19 @@ import (
 	"runtime"
 )
 
-const (
-	ReloadMessageFormat = `Run '%s' for the new configuration to be effective.`
-	ReloadCmdLinux      = `sudo systemctl reload crowdsec`
-	ReloadCmdFreebsd    = `sudo service crowdsec reload`
-)
-
+// ReloadMessage returns a description of the task required to reload
+// the crowdsec configuration, according to the operating system.
 func ReloadMessage() string {
+	var msg string
 
-	var reloadCmd string
-
-	if runtime.GOOS == "freebsd" {
-		reloadCmd = ReloadCmdFreebsd
-	} else {
-		reloadCmd = ReloadCmdLinux
+	switch runtime.GOOS {
+	case "windows":
+		msg = "Please restart the crowdsec service"
+	case "freebsd":
+		msg = `Run 'sudo service crowdsec reload'`
+	default:
+		msg = `Run 'sudo systemctl reload crowdsec'`
 	}
 
-	return fmt.Sprintf(ReloadMessageFormat, reloadCmd)
+	return fmt.Sprintf("%s for the new configuration to be effective.", msg)
 }

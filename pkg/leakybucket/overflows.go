@@ -188,7 +188,8 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 		}
 		//either MarshaledTime is present and is extracted from log
 		if evt.MarshaledTime != "" {
-			ovflwEvent.Timestamp = &evt.MarshaledTime
+			tmpTimeStamp := evt.MarshaledTime
+			ovflwEvent.Timestamp = &tmpTimeStamp
 		} else if !evt.Time.IsZero() { //or .Time has been set during parse as time.Now().UTC()
 			ovflwEvent.Timestamp = new(string)
 			raw, err := evt.Time.MarshalText()
@@ -198,7 +199,7 @@ func EventsFromQueue(queue *Queue) []*models.Event {
 				*ovflwEvent.Timestamp = string(raw)
 			}
 		} else {
-			log.Warningf("Event has no parsed time, no runtime timestamp")
+			log.Warning("Event has no parsed time, no runtime timestamp")
 		}
 
 		events = append(events, &ovflwEvent)

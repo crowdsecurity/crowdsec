@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 
 # from https://github.com/bats-core/bats-core/issues/192#issuecomment-528315083
 # thanks Sean Leather
@@ -7,10 +8,10 @@ perl -pi -e 's/^(\@test.*) \{$/$1\n{/' ./*.bats
 
 tmpfile=$(mktemp)
 for file in *bats; do
-   shfmt -i 4 -ln bash -s $file >$tmpfile
-   mv $tmpfile $file
+   shfmt -i 4 -ln bash -s "${file}" > "${tmpfile}"
+   mv "${tmpfile}" "${file}"
 done
-rm -f $tmpfile
+rm -f "${tmpfile}"
 
 # Undo the changes to the Bats scripts in-place so that they work with Bats
 perl -pi -e 's/^\{\R//; s/(\@test.*$)/$1 {/' ./*.bats

@@ -1,8 +1,6 @@
 package v1
 
 import (
-	"crypto/sha512"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -13,9 +11,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func FormatDecisions(decisions []*ent.Decision) ([]*models.Decision, error) {
+//Format decisions for the bouncers, and deduplicate them by keeping only the longest one
+func FormatDecisions(decisions []*ent.Decision, dedup bool) ([]*models.Decision, error) {
 	var results []*models.Decision
+
+	seen := make(map[string]struct{}, 0)
+
 	for _, dbDecision := range decisions {
+		if dedup {
+			key := dbDecision.Value + dbDecision.Scope + dbDecision.Type
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+		}
 		duration := dbDecision.Until.Sub(time.Now().UTC()).String()
 		decision := models.Decision{
 			ID:       int64(dbDecision.ID),
@@ -36,13 +45,19 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 	var results []*models.Decision
 	var data []*ent.Decision
 
+	bouncerInfo, err := getBouncerFromContext(gctx)
+	if err != nil {
+		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
+		return
+	}
+
 	data, err = c.DBClient.QueryDecisionWithFilter(gctx.Request.URL.Query())
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
-	results, err = FormatDecisions(data)
+	results, err = FormatDecisions(data, false)
 	if err != nil {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -59,6 +74,13 @@ func (c *Controller) GetDecision(gctx *gin.Context) {
 		gctx.String(http.StatusOK, "")
 		return
 	}
+
+	if time.Now().UTC().Sub(bouncerInfo.LastPull) >= time.Minute {
+		if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+			log.Errorf("failed to update bouncer last pull: %v", err)
+		}
+	}
+
 	gctx.JSON(http.StatusOK, results)
 }
 
@@ -71,18 +93,17 @@ func (c *Controller) DeleteDecisionById(gctx *gin.Context) {
 		gctx.JSON(http.StatusBadRequest, gin.H{"message": "decision_id must be valid integer"})
 		return
 	}
-	err = c.DBClient.SoftDeleteDecisionByID(decisionID)
+	nbDeleted, err := c.DBClient.SoftDeleteDecisionByID(decisionID)
 	if err != nil {
 		c.HandleDBErrors(gctx, err)
 		return
 	}
 
 	deleteDecisionResp := models.DeleteDecisionResponse{
-		NbDeleted: "1",
+		NbDeleted: strconv.Itoa(nbDeleted),
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
-	return
 }
 
 func (c *Controller) DeleteDecisions(gctx *gin.Context) {
@@ -98,30 +119,18 @@ func (c *Controller) DeleteDecisions(gctx *gin.Context) {
 	}
 
 	gctx.JSON(http.StatusOK, deleteDecisionResp)
-	return
 }
 
 func (c *Controller) StreamDecision(gctx *gin.Context) {
 	var data []*ent.Decision
+	var err error
 	ret := make(map[string][]*models.Decision, 0)
 	ret["new"] = []*models.Decision{}
 	ret["deleted"] = []*models.Decision{}
+	streamStartTime := time.Now().UTC()
 
-	val := gctx.Request.Header.Get(c.APIKeyHeader)
-	hashedKey := sha512.New()
-	hashedKey.Write([]byte(val))
-	hashStr := fmt.Sprintf("%x", hashedKey.Sum(nil))
-	bouncerInfo, err := c.DBClient.SelectBouncer(hashStr)
+	bouncerInfo, err := getBouncerFromContext(gctx)
 	if err != nil {
-		if _, ok := err.(*ent.NotFoundError); ok {
-			gctx.JSON(http.StatusForbidden, gin.H{"message": err.Error()})
-		} else {
-			gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
-		}
-		return
-	}
-
-	if bouncerInfo == nil {
 		gctx.JSON(http.StatusUnauthorized, gin.H{"message": "not allowed"})
 		return
 	}
@@ -134,13 +143,14 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 	// if the blocker just start, return all decisions
 	if val, ok := gctx.Request.URL.Query()["startup"]; ok {
 		if val[0] == "true" {
-			data, err := c.DBClient.QueryAllDecisionsWithFilters(filters)
+			data, err = c.DBClient.QueryAllDecisionsWithFilters(filters)
 			if err != nil {
 				log.Errorf("failed querying decisions: %v", err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			ret["new"], err = FormatDecisions(data)
+			//data = KeepLongestDecision(data)
+			ret["new"], err = FormatDecisions(data, true)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -154,14 +164,14 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-			ret["deleted"], err = FormatDecisions(data)
+			ret["deleted"], err = FormatDecisions(data, true)
 			if err != nil {
 				log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
 
-			if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+			if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
 				log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
@@ -182,7 +192,8 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ret["new"], err = FormatDecisions(data)
+	//data = KeepLongestDecision(data)
+	ret["new"], err = FormatDecisions(data, true)
 	if err != nil {
 		log.Errorf("unable to format new decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -196,19 +207,18 @@ func (c *Controller) StreamDecision(gctx *gin.Context) {
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ret["deleted"], err = FormatDecisions(data)
+	ret["deleted"], err = FormatDecisions(data, true)
 	if err != nil {
 		log.Errorf("unable to format expired decision for '%s' : %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
-	if err := c.DBClient.UpdateBouncerLastPull(time.Now().UTC(), bouncerInfo.ID); err != nil {
+	if err := c.DBClient.UpdateBouncerLastPull(streamStartTime, bouncerInfo.ID); err != nil {
 		log.Errorf("unable to update bouncer '%s' pull: %v", bouncerInfo.Name, err)
 		gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 
 	gctx.JSON(http.StatusOK, ret)
-	return
 }

@@ -131,7 +131,12 @@ func (j *JournalCtlSource) runJournalCtl(out chan types.Event, t *tomb.Tomb) err
 			l.Process = true
 			l.Module = j.GetName()
 			linesRead.With(prometheus.Labels{"source": j.src}).Inc()
-			evt := types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			var evt types.Event
+			if !j.config.UseTimeMachine {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.LIVE}
+			} else {
+				evt = types.Event{Line: l, Process: true, Type: types.LOG, ExpectMode: leaky.TIMEMACHINE}
+			}
 			out <- evt
 		case stderrLine := <-stderrChan:
 			logger.Warnf("Got stderr message : %s", stderrLine)

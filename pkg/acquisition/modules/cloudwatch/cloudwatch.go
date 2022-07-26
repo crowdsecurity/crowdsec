@@ -293,6 +293,12 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 								}
 								cw.logger.Tracef("stream %s is elligible for monitoring", *event.LogStreamName)
 								//the stream has been update recently, check if we should monitor it
+								var expectMode int
+								if !cw.Config.UseTimeMachine {
+									expectMode = leaky.LIVE
+								} else {
+									expectMode = leaky.TIMEMACHINE
+								}
 								monitorStream := LogStreamTailConfig{
 									GroupName:                  cw.Config.GroupName,
 									StreamName:                 *event.LogStreamName,
@@ -300,7 +306,7 @@ func (cw *CloudwatchSource) WatchLogGroupForStreams(out chan LogStreamTailConfig
 									PollStreamInterval:         *cw.Config.PollStreamInterval,
 									StreamReadTimeout:          *cw.Config.StreamReadTimeout,
 									PrependCloudwatchTimestamp: cw.Config.PrependCloudwatchTimestamp,
-									ExpectMode:                 leaky.LIVE,
+									ExpectMode:                 expectMode,
 									Labels:                     cw.Config.Labels,
 								}
 								out <- monitorStream
@@ -331,7 +337,7 @@ func (cw *CloudwatchSource) LogStreamManager(in chan LogStreamTailConfig, outCha
 
 	for {
 		select {
-		case newStream := <-in:
+		case newStream := <-in: //nolint:govet // copylocks won't matter if the tomb is not initialized
 			shouldCreate := true
 			cw.logger.Tracef("received new streams to monitor : %s/%s", newStream.GroupName, newStream.StreamName)
 

@@ -82,6 +82,10 @@ func init() {
 	bouncerDescLastPull := bouncerFields[9].Descriptor()
 	// bouncer.DefaultLastPull holds the default value on creation for the last_pull field.
 	bouncer.DefaultLastPull = bouncerDescLastPull.Default.(func() time.Time)
+	// bouncerDescAuthType is the schema descriptor for auth_type field.
+	bouncerDescAuthType := bouncerFields[10].Descriptor()
+	// bouncer.DefaultAuthType holds the default value on creation for the auth_type field.
+	bouncer.DefaultAuthType = bouncerDescAuthType.Default.(string)
 	decisionFields := schema.Decision{}.Fields()
 	_ = decisionFields
 	// decisionDescCreatedAt is the schema descriptor for created_at field.
@@ -138,14 +142,24 @@ func init() {
 	machine.DefaultLastPush = machineDescLastPush.Default.(func() time.Time)
 	// machine.UpdateDefaultLastPush holds the default value on update for the last_push field.
 	machine.UpdateDefaultLastPush = machineDescLastPush.UpdateDefault.(func() time.Time)
+	// machineDescLastHeartbeat is the schema descriptor for last_heartbeat field.
+	machineDescLastHeartbeat := machineFields[3].Descriptor()
+	// machine.DefaultLastHeartbeat holds the default value on creation for the last_heartbeat field.
+	machine.DefaultLastHeartbeat = machineDescLastHeartbeat.Default.(func() time.Time)
+	// machine.UpdateDefaultLastHeartbeat holds the default value on update for the last_heartbeat field.
+	machine.UpdateDefaultLastHeartbeat = machineDescLastHeartbeat.UpdateDefault.(func() time.Time)
 	// machineDescScenarios is the schema descriptor for scenarios field.
-	machineDescScenarios := machineFields[6].Descriptor()
+	machineDescScenarios := machineFields[7].Descriptor()
 	// machine.ScenariosValidator is a validator for the "scenarios" field. It is called by the builders before save.
 	machine.ScenariosValidator = machineDescScenarios.Validators[0].(func(string) error)
 	// machineDescIsValidated is the schema descriptor for isValidated field.
-	machineDescIsValidated := machineFields[8].Descriptor()
+	machineDescIsValidated := machineFields[9].Descriptor()
 	// machine.DefaultIsValidated holds the default value on creation for the isValidated field.
 	machine.DefaultIsValidated = machineDescIsValidated.Default.(bool)
+	// machineDescAuthType is the schema descriptor for auth_type field.
+	machineDescAuthType := machineFields[11].Descriptor()
+	// machine.DefaultAuthType holds the default value on creation for the auth_type field.
+	machine.DefaultAuthType = machineDescAuthType.Default.(string)
 	metaFields := schema.Meta{}.Fields()
 	_ = metaFields
 	// metaDescCreatedAt is the schema descriptor for created_at field.

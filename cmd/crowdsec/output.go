@@ -100,6 +100,9 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	}); err != nil {
 		return errors.Wrapf(err, "authenticate watcher (%s)", apiConfig.Login)
 	}
+	//start the heartbeat service
+	log.Debugf("Starting HeartBeat service")
+	Client.HeartBeat.StartHeartBeat(context.Background(), &outputsTomb)
 LOOP:
 	for {
 		select {
@@ -122,8 +125,6 @@ LOOP:
 			if len(cache) > 0 {
 				cacheMutex.Lock()
 				cachecopy := cache
-				newcache := make([]types.RuntimeAlert, 0)
-				cache = newcache
 				cacheMutex.Unlock()
 				if err := PushAlerts(cachecopy, Client); err != nil {
 					log.Errorf("while pushing leftovers to api : %s", err)

@@ -25,19 +25,19 @@ declare stderr
 
 #----------
 
-@test "$FILE 'decisions add' requires parameters" {
+@test "'decisions add' requires parameters" {
     run -1 --separate-stderr cscli decisions add
     assert_line "Usage:"
-    run echo "$stderr"
+    run echo "${stderr}"
     assert_output --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     run -1 --separate-stderr cscli decisions add -o json
-    run echo "$stderr"
+    run echo "${stderr}"
     run -0 jq -c '[ .level, .msg]' <(output)
     assert_output '["fatal","Missing arguments, a value is required (--ip, --range or --scope and --value)"]'
 }
 
-@test "$FILE cscli decisions list, with and without --machine" {
+@test "cscli decisions list, with and without --machine" {
     is_db_postgres && skip
     run -0 cscli decisions add -i 10.20.30.40 -t ban
 
@@ -58,12 +58,12 @@ declare stderr
     assert_output --regexp "\| githubciXXXXXXXXXXXXXXXXXXXXXXXX([a-zA-Z0-9]{16})? \|"
 }
 
-@test "$FILE cscli decisions list, incorrect parameters" {
+@test "cscli decisions list, incorrect parameters" {
     run -1 --separate-stderr cscli decisions list --until toto
-    run echo "$stderr"
+    run echo "${stderr}"
     assert_output --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
     run -1 --separate-stderr cscli decisions list --until toto -o json
-    run echo "$stderr"
+    run echo "${stderr}"
     run -0 jq -c '[.level, .msg]' <(output)
     assert_output '["fatal","Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\""]'
 }
