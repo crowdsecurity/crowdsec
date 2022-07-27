@@ -1,7 +1,7 @@
 ---
 - name: "set package_file from package_dir"
   ansible.builtin.set_fact:
-    package_file: "{{ package_dir }}/{{ ansible_distribution_release }}_{{ ansible_architecture.replace('x86_64', 'amd64) }}/{{ ansible_distribution_release }}/{{ ansible_architecture.replace('x86_64', 'amd64' }}/crowdsec_*.deb"
+    package_file: "{{ package_dir }}/{{ ansible_facts.distribution_release }}_{{ ansible_facts['ansible_architecture'].replace('x86_64', 'amd64) }}/{{ ansible_facts.distribution_release }}/{{ ansible_facts['ansible_architecture'].replace('x86_64', 'amd64' }}/crowdsec_*.deb"
   when:
     - (package_dir is defined) and (package_dir | length > 0)
 

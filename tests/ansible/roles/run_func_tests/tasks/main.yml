@@ -9,7 +9,7 @@
     state: directory
   when:
     - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
-    - ansible_os_family in ["RedHat", "Debian"]
+    - ansible_facts.os_family in ["RedHat", "Debian"]
 
 - name: "override StartLimitBurst"
   become: true
@@ -23,7 +23,7 @@
     value: 100
   when:
     - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
-    - ansible_os_family in ["RedHat", "Debian"]
+    - ansible_facts.os_family in ["RedHat", "Debian"]
 
 - name: "systemctl daemon-reload"
   become: true
@@ -31,7 +31,7 @@
     daemon_reload: true
   when:
     - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
-    - ansible_os_family in ["RedHat", "Debian"]
+    - ansible_facts.os_family in ["RedHat", "Debian"]
 
 - name: "search for test scripts"
   become: false

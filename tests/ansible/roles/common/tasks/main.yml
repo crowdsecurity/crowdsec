@@ -5,7 +5,7 @@
     upgrade: false
     update_cache: true
   when:
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"
 
 - name: "install gcc, git"
   become: true
@@ -20,7 +20,7 @@
     name:
       - make
   when:
-    - ansible_os_family != "FreeBSD"
+    - ansible_facts.os_family != "FreeBSD"
 
 - name: "install gmake (FreeBSD)"
   become: true
@@ -28,4 +28,4 @@
     name:
       - gmake
   when:
-    - ansible_os_family == "FreeBSD"
+    - ansible_facts.os_family == "FreeBSD"
