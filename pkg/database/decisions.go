@@ -13,6 +13,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type DecisionsByScenario struct {
@@ -97,8 +98,13 @@ func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string]
 func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		log.Warningf("adding dedup")
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -117,8 +123,13 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) ([]*ent.Decision, error) {
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		log.Warningf("adding dedup")
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
+
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 
 	if err != nil {
@@ -219,8 +230,12 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	query := c.Ent.Decision.Query().Where(
 		decision.UntilLT(time.Now().UTC()),
 		decision.UntilGT(since),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		log.Warningf("adding dedup")
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryExpiredDecisionsSinceWithFilters : %s", err)
@@ -240,8 +255,12 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	query := c.Ent.Decision.Query().Where(
 		decision.CreatedAtGT(since),
 		decision.UntilGT(time.Now().UTC()),
-		longestDecisionForScopeTypeValue,
 	)
+	//Allow a bouncer to ask for non-deduplicated results
+	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
+		log.Warningf("adding dedup")
+		query = query.Where(longestDecisionForScopeTypeValue)
+	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
 	if err != nil {
 		c.Log.Warningf("QueryNewDecisionsSinceWithFilters : %s", err)
