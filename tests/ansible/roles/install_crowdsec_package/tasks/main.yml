@@ -23,11 +23,9 @@
 - name: "install from *.rpm package file"
   ansible.builtin.import_tasks: install_from_rpm.yml
   when:
-    - (package_file is defined) and (package_file|length > 0)
     - ansible_facts.os_family == "RedHat"
 
 - name: "install from *.deb package file"
   ansible.builtin.import_tasks: install_from_deb.yml
   when:
-    - (package_file is defined) and (package_file|length > 0)
     - ansible_facts.os_family == "Debian"
