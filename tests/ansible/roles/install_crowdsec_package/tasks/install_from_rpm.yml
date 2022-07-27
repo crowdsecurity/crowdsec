@@ -1,7 +1,7 @@
 ---
 - name: "set package_file from package_dir"
   ansible.builtin.set_fact:
-    package_file: "{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_architecture }}/crowdsec-{{ testing_file_version }}*.{{ releasever }}.{{ ansible_architecture }}.rpm"
+    package_file: "{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_facts.architecture }}/crowdsec-*.{{ releasever }}.{{ ansible_facts.architecture }}.rpm"
   when:
     - (package_dir is defined) and (package_dir | length > 0)
 
