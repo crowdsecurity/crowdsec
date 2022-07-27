@@ -66,6 +66,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.PARSERS, name)
 					Suggest(cwhub.PARSERS, name, nearestItem.Name, score, ignoreError)
+					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS, forceAction, downloadOnly); err != nil {
 					if ignoreError {

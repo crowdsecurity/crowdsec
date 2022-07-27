@@ -65,6 +65,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
 					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
+					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
 					if ignoreError {

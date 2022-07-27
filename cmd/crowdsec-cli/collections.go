@@ -63,6 +63,7 @@ func NewCollectionsCmd() *cobra.Command {
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
 					Suggest(cwhub.COLLECTIONS, name, nearestItem.Name, score, ignoreError)
+					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {

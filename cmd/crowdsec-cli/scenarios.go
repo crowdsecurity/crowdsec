@@ -68,6 +68,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.SCENARIOS, name)
 					Suggest(cwhub.SCENARIOS, name, nearestItem.Name, score, ignoreError)
+					continue
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					if ignoreError {
