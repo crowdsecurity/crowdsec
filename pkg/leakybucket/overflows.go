@@ -298,6 +298,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		newApiAlert := apiAlert
 		srcCopy := srcValue
 		newApiAlert.Source = &srcCopy
+		leaky.logger.Debugf("source (%p): %s", newApiAlert.Source, *srcCopy.Value)
 		if v, ok := leaky.BucketConfig.Labels["remediation"]; ok && v == "true" {
 			newApiAlert.Remediation = true
 		}
@@ -308,8 +309,13 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 			log.Fatalf("error : %s", err)
 		}
 		runtimeAlert.APIAlerts = append(runtimeAlert.APIAlerts, newApiAlert)
+		leaky.logger.Debugf("APIAlerts -> %s", *newApiAlert.Source.Value)
 	}
 
+	for _, apiAlert := range runtimeAlert.APIAlerts {
+		leaky.logger.Debugf("gen APIAlerts -> %s", *apiAlert.Source.Value)
+
+	}
 	if len(runtimeAlert.APIAlerts) > 0 {
 		runtimeAlert.Alert = &runtimeAlert.APIAlerts[0]
 	}

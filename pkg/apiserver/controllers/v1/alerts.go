@@ -133,6 +133,7 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	stopFlush := false
 	for _, alert := range input {
 		alert.MachineID = machineID
+		log.Infof("processing alert : %s", *alert.Source.Value)
 		if len(alert.Decisions) != 0 {
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := csprofiles.EvaluateProfile(profile, alert)

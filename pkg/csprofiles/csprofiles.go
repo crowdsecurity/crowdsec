@@ -60,6 +60,7 @@ var clog *log.Entry
 //EvaluateProfile is going to evaluate an Alert against a profile to generate Decisions
 func EvaluateProfile(profile *csconfig.ProfileCfg, Alert *models.Alert) ([]*models.Decision, bool, error) {
 	var decisions []*models.Decision
+
 	if clog == nil {
 		xlog := log.New()
 		if err := types.ConfigureLogger(xlog); err != nil {
