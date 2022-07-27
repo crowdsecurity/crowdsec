@@ -62,17 +62,7 @@ func NewCollectionsCmd() *cobra.Command {
 				t := cwhub.GetItem(cwhub.COLLECTIONS, name)
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
-					errMsg := ""
-					if score < MaxDistance {
-						errMsg = fmt.Sprintf("unable to find collections '%s', did you mean %s ?", name, nearestItem.Name)
-					} else {
-						errMsg = fmt.Sprintf("unable to find collections '%s'", name)
-					}
-					if ignoreError {
-						log.Error(errMsg)
-					} else {
-						log.Fatalf(errMsg)
-					}
+					Suggest(cwhub.COLLECTIONS, name, nearestItem.Name, score, ignoreError)
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.COLLECTIONS, forceAction, downloadOnly); err != nil {
 					if !ignoreError {

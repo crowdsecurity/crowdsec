@@ -25,7 +25,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var MaxDistance = 7
+const MaxDistance = 7
 
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
@@ -69,6 +69,20 @@ func LoadHub() error {
 	}
 
 	return nil
+}
+
+func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
+	errMsg := ""
+	if score < MaxDistance {
+		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+	} else {
+		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+	}
+	if ignoreErr {
+		log.Error(errMsg)
+	} else {
+		log.Fatalf(errMsg)
+	}
 }
 
 func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {

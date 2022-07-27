@@ -67,17 +67,7 @@ cscli scenarios remove crowdsecurity/ssh-bf
 				t := cwhub.GetItem(cwhub.SCENARIOS, name)
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.SCENARIOS, name)
-					errMsg := ""
-					if score < MaxDistance {
-						errMsg = fmt.Sprintf("unable to find scenario '%s', did you mean %s ?", name, nearestItem.Name)
-					} else {
-						errMsg = fmt.Sprintf("unable to find scenario '%s'", name)
-					}
-					if ignoreError {
-						log.Error(errMsg)
-					} else {
-						log.Fatalf(errMsg)
-					}
+					Suggest(cwhub.SCENARIOS, name, nearestItem.Name, score, ignoreError)
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.SCENARIOS, forceAction, downloadOnly); err != nil {
 					if ignoreError {

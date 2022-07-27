@@ -64,17 +64,7 @@ func NewPostOverflowsCmd() *cobra.Command {
 				t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
-					errMsg := ""
-					if score < MaxDistance {
-						errMsg = fmt.Sprintf("unable to find postoverflows '%s', did you mean %s ?", name, nearestItem.Name)
-					} else {
-						errMsg = fmt.Sprintf("unable to find postoverflows '%s'", name)
-					}
-					if ignoreError {
-						log.Error(errMsg)
-					} else {
-						log.Fatalf(errMsg)
-					}
+					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
 				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
 					if ignoreError {
