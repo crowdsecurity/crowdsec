@@ -13,7 +13,7 @@
     name:
       - netcat
   when:
-    - ansible_facts.distribution == 'RedHat'
+    - (ansible_facts.distribution == 'RedHat') or  (ansible_facts.distribution == 'AlmaLinux')
 
 # "netcat" does not exist in some versions (only -traditional or -openbsd)
 - name: "install netcat (Debian)"

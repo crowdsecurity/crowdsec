@@ -8,6 +8,7 @@ release:
   FreeBSD: freebsd
   OracleLinux: el
   Rocky: el
+  AlmaLinux: el
   openSUSE Leap: opensuse
 
 releasever: "{{ release[ansible_facts.distribution] + ansible_facts.distribution_major_version }}"
