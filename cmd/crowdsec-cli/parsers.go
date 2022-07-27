@@ -66,7 +66,7 @@ cscli parsers remove crowdsecurity/sshd-logs
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.PARSERS, name)
 					errMsg := ""
-					if score < 10 {
+					if score < MaxDistance {
 						errMsg = fmt.Sprintf("unable to find parser '%s', did you mean %s ?", name, nearestItem.Name)
 					} else {
 						errMsg = fmt.Sprintf("unable to find parser '%s'", name)

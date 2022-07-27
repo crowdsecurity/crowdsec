@@ -25,6 +25,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var MaxDistance = 7
+
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
 	if err != nil {

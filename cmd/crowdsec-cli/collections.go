@@ -63,7 +63,7 @@ func NewCollectionsCmd() *cobra.Command {
 				if t == nil {
 					nearestItem, score := GetDistance(cwhub.COLLECTIONS, name)
 					errMsg := ""
-					if score < 10 {
+					if score < MaxDistance {
 						errMsg = fmt.Sprintf("unable to find collections '%s', did you mean %s ?", name, nearestItem.Name)
 					} else {
 						errMsg = fmt.Sprintf("unable to find collections '%s'", name)
