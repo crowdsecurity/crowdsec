@@ -249,7 +249,11 @@ func LeakRoutine(leaky *Leaky) error {
 		/*we overflowed*/
 		case ofw := <-leaky.Out:
 			leaky.overflow(ofw)
-			return nil
+			if leaky.BucketConfig.OverflowBehavior == "keep-alive" {
+				leaky.logger.Debugf("Overflow, keep-alive")
+			} else {
+				return nil
+			}
 		/*suiciiiide*/
 		case <-leaky.Suicide:
 			close(leaky.Signal)
@@ -332,7 +336,12 @@ func Pour(leaky *Leaky, msg types.Event) {
 }
 
 func (leaky *Leaky) overflow(ofw *Queue) {
-	close(leaky.Signal)
+
+	if leaky.BucketConfig.OverflowBehavior == "keep-alive" {
+		leaky.logger.Debugf("BucketConfig.OverflowBehavior will keep bucket alive.")
+	} else {
+		close(leaky.Signal)
+	}
 	alert, err := NewAlert(leaky, ofw)
 	if err != nil {
 		log.Errorf("%s", err)

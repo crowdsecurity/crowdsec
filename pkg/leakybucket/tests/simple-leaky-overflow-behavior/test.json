@@ -1,0 +1,84 @@
+{
+  "lines": [
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE1 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:00+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.4"
+      },
+      "Enriched": {
+        "ASNumber": "1234"
+      }
+  },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE2 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:05+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.5"
+      },
+      "Enriched": {
+        "ASNumber": "1234"
+      }
+    },
+    {
+      "Line": {
+        "Labels": {
+          "type": "testlog"
+        },
+        "Raw": "xxheader VALUE3 trailing stuff"
+      },
+      "MarshaledTime": "2020-01-01T10:00:06+00:00",
+      "Meta": {
+        "source_ip": "1.2.3.6"
+      },
+      "Enriched": {
+        "ASNumber": "1234"
+      }
+    }
+  ],
+  "results": [
+    {
+      "Alert": {
+        "sources": {
+          "12345": {
+            "as_number": "12345",
+            "scope": "Ip",
+            "value": "1.2.3.5",
+            "ip": "1.2.3.5"
+          }
+        },
+        "Alert" : {
+          "scenario": "test/simple-leaky-by-asn",
+          "events_count": 2
+        }
+      }
+    },
+    {
+      "Alert": {
+        "sources": {
+          "12345": {
+            "as_number": "12345",
+            "scope": "Ip",
+            "value": "1.2.3.6",
+            "ip": "1.2.3.6"
+          }
+        },
+        "Alert" : {
+          "scenario": "test/simple-leaky-by-asn",
+          "events_count": 3
+        }
+      }
+    }
+  ]
+}
+
