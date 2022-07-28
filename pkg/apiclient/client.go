@@ -12,6 +12,8 @@ import (
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/pkg/errors"
+
+	longpollClient "github.com/jcuga/golongpoll/client"
 )
 
 var (
@@ -68,6 +70,37 @@ func NewClient(config *Config) (*ApiClient, error) {
 	c.HeartBeat = (*HeartBeatService)(&c.common)
 
 	return c, nil
+}
+
+func NewLongpollClient(config *Config) (*longpollClient.Client, error) {
+	t := &JWTTransport{
+		MachineID:      &config.MachineID,
+		Password:       &config.Password,
+		Scenarios:      config.Scenarios,
+		URL:            config.URL,
+		UserAgent:      config.UserAgent,
+		VersionPrefix:  config.VersionPrefix,
+		UpdateScenario: config.UpdateScenario,
+	}
+	tlsconfig := tls.Config{InsecureSkipVerify: InsecureSkipVerify}
+	if Cert != nil {
+		tlsconfig.RootCAs = CaCertPool
+		tlsconfig.Certificates = []tls.Certificate{*Cert}
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
+
+	// TODO manage OnFailure
+	//	subUrl, _ := url.Parse(config.URL.String() + "decisions/stream/poll")
+	// hardcode server as long as we're in test mode
+	subUrl, _ := url.Parse("http://127.0.0.1:8101/" + "decisions/stream/poll")
+	c, err := longpollClient.NewClient(longpollClient.ClientOptions{
+		SubscribeUrl:       *subUrl,
+		Category:           config.MachineID,
+		HttpClient:         t.Client(),
+		PollTimeoutSeconds: 110,
+	})
+
+	return c, err
 }
 
 func NewDefaultClient(URL *url.URL, prefix string, userAgent string, client *http.Client) (*ApiClient, error) {

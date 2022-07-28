@@ -311,6 +311,13 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			}
 			return nil
 		})
+		s.apic.longpollTomb.Go(func() error {
+			if err := s.apic.LongPoll(); err != nil {
+				log.Errorf("capi longpoll: %s", err)
+				return err
+			}
+			return nil
+		})
 		s.apic.metricsTomb.Go(func() error {
 			if err := s.apic.SendMetrics(); err != nil {
 				log.Errorf("capi metrics: %s", err)

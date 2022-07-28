@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	longpollClient "github.com/jcuga/golongpoll/client"
 	"gopkg.in/tomb.v2"
 )
 
@@ -28,6 +30,7 @@ var (
 	PullInterval    = time.Hour * 2
 	PushInterval    = time.Second * 30
 	MetricsInterval = time.Minute * 30
+	PollTimeout     = time.Second * 110
 )
 
 var SCOPE_CAPI string = "CAPI"
@@ -40,10 +43,12 @@ type apic struct {
 	metricsInterval time.Duration
 	dbClient        *database.Client
 	apiClient       *apiclient.ApiClient
+	longpollClient  *longpollClient.Client
 	alertToPush     chan []*models.Alert
 	mu              sync.Mutex
 	pushTomb        tomb.Tomb
 	pullTomb        tomb.Tomb
+	longpollTomb    tomb.Tomb
 	metricsTomb     tomb.Tomb
 	startup         bool
 	credentials     *csconfig.ApiCredentialsCfg
@@ -95,6 +100,7 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		startup:         true,
 		credentials:     config.Credentials,
 		pullTomb:        tomb.Tomb{},
+		longpollTomb:    tomb.Tomb{},
 		pushTomb:        tomb.Tomb{},
 		metricsTomb:     tomb.Tomb{},
 		scenarioList:    make([]string, 0),
@@ -122,7 +128,23 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
-	return ret, err
+	if err != nil {
+		return nil, errors.Wrap(err, "creating api client")
+	}
+	// TODO configure polling url
+	ret.longpollClient, err = apiclient.NewLongpollClient(&apiclient.Config{
+		MachineID:      config.Credentials.Login,
+		Password:       password,
+		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
+		URL:            apiURL,
+		VersionPrefix:  "v2",
+		Scenarios:      ret.scenarioList,
+		UpdateScenario: ret.FetchScenariosListFromDB,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "creating polling client")
+	}
+	return ret, nil
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -137,6 +159,7 @@ func (a *apic) Push() error {
 		select {
 		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
+			a.longpollTomb.Kill(nil)
 			a.metricsTomb.Kill(nil)
 			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
 			if len(cache) == 0 {
@@ -400,25 +423,7 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 	return alerts
 }
 
-//we receive only one list of decisions, that we need to break-up :
-// one alert for "community blocklist"
-// one alert per list we're subscribed to
-func (a *apic) PullTop() error {
-	var err error
-
-	if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
-		return err
-	} else if !lastPullIsOld {
-		return nil
-	}
-
-	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
-	if err != nil {
-		return errors.Wrap(err, "get stream")
-	}
-	a.startup = false
-	/*to count additions/deletions across lists*/
-
+func (a *apic) HandleDecisionsStream(data *models.DecisionsStreamResponse) error {
 	add_counters, delete_counters := makeAddAndDeleteCounters()
 	// process deleted decisions
 	if nbDeleted, err := a.HandleDeletedDecisions(data.Deleted, delete_counters); err != nil {
@@ -448,6 +453,28 @@ func (a *apic) PullTop() error {
 		log.Printf("%s : added %d entries, deleted %d entries (alert:%d)", *alertsFromCapi[idx].Source.Scope, inserted, deleted, alertID)
 	}
 	return nil
+}
+
+//we receive only one list of decisions, that we need to break-up :
+// one alert for "community blocklist"
+// one alert per list we're subscribed to
+func (a *apic) PullTop() error {
+	var err error
+
+	if lastPullIsOld, err := a.CAPIPullIsOld(); err != nil {
+		return err
+	} else if !lastPullIsOld {
+		return nil
+	}
+
+	data, _, err := a.apiClient.Decisions.GetStream(context.Background(), apiclient.DecisionsStreamOpts{Startup: a.startup})
+	if err != nil {
+		return errors.Wrap(err, "get stream")
+	}
+	a.startup = false
+	/*to count additions/deletions across lists*/
+
+	return a.HandleDecisionsStream(data)
 }
 
 func setAlertScenario(add_counters map[string]map[string]int, delete_counters map[string]map[string]int, alert *models.Alert) *models.Alert {
@@ -494,6 +521,61 @@ func (a *apic) Pull() error {
 		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.metricsTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
+			a.longpollTomb.Kill(nil)
+			return nil
+		}
+	}
+}
+
+func (a *apic) LongPoll() error {
+	defer types.CatchPanic("lapi/longpollFromAPIC")
+	log.Infof("Start longpoll from CrowdSec Central API (timeout: %s)", PollTimeout)
+
+	toldOnce := false
+	for {
+		scenario, err := a.FetchScenariosListFromDB()
+		if err != nil {
+			log.Errorf("unable to fetch scenarios from db: %s", err)
+		}
+		if len(scenario) > 0 {
+			break
+		}
+		if !toldOnce {
+			log.Warning("scenario list is empty, will not pull yet")
+			toldOnce = true
+		}
+		time.Sleep(1 * time.Second)
+	}
+	// TODO start since the last event timestamp
+	pollChannel := a.longpollClient.Start(time.Now())
+	for {
+		select {
+		case event := <-pollChannel:
+			// get the decision
+			decision := models.Decision{}
+			stringData, err := json.Marshal(event.Data)
+			if err != nil {
+				log.Errorf("marshal error: %s", err)
+				continue
+			}
+			json.Unmarshal(stringData, &decision)
+
+			// do something with the decision
+			// TODO decision should have a type new/deleted
+			data := models.DecisionsStreamResponse{Deleted: make([]*models.Decision, 0, 1), New: make([]*models.Decision, 0, 1)}
+			data.New = append(data.New, &decision)
+
+			err = a.HandleDecisionsStream(&data)
+			if err != nil {
+				log.Errorf("handle stream error: %s", err)
+				continue
+			}
+
+			// TODO store last event timestamp
+		case <-a.pullTomb.Dying(): // if one apic routine is dying, do we kill the others?
+			a.metricsTomb.Kill(nil)
+			a.pushTomb.Kill(nil)
+			a.pullTomb.Kill(nil)
 			return nil
 		}
 	}
@@ -570,6 +652,7 @@ func (a *apic) SendMetrics() error {
 			}
 		case <-a.metricsTomb.Dying(): // if one apic routine is dying, do we kill the others?
 			a.pullTomb.Kill(nil)
+			a.longpollTomb.Kill(nil)
 			a.pushTomb.Kill(nil)
 			return nil
 		}
@@ -579,6 +662,7 @@ func (a *apic) SendMetrics() error {
 func (a *apic) Shutdown() {
 	a.pushTomb.Kill(nil)
 	a.pullTomb.Kill(nil)
+	a.longpollTomb.Kill(nil)
 	a.metricsTomb.Kill(nil)
 }
 
