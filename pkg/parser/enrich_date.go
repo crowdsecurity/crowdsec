@@ -60,9 +60,8 @@ func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, err
 	var strDate string
 	var parsedDate time.Time
 
-	//log.Printf("received events : %+v", p.Parsed)
-	if v, ok := p.Parsed["DateFormat"]; ok && v != "" {
-		strDate, parsedDate = parseDateWithFormat(in, v)
+	if p.StrTimeFormat != "" {
+		strDate, parsedDate = parseDateWithFormat(in, p.StrTimeFormat)
 		if !parsedDate.IsZero() {
 			ret["MarshaledTime"] = strDate
 			return ret, nil
