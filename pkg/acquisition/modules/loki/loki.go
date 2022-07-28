@@ -5,24 +5,18 @@ https://grafana.com/docs/loki/latest/api/#get-lokiapiv1tail
 */
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"net"
-	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/crowdsecurity/crowdsec/pkg/cwversion"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
+	lokiclient "github.com/crowdsecurity/crowdsec/pkg/acquisition/modules/loki/internal/lokiclient"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -45,24 +39,26 @@ var linesRead = prometheus.NewCounterVec(
 	[]string{"source"})
 
 type LokiConfiguration struct {
-	URL                               string            `yaml:"url"`   // Loki url
-	Query                             string            `yaml:"query"` // LogQL query
+	URL                               string            `yaml:"url"`    // Loki url
+	Prefix                            string            `yaml:"prefix"` // Loki prefix
+	Query                             string            `yaml:"query"`  // LogQL query
+	Limit                             int               `yaml:"limit"`  // Limit of logs to read
 	DelayFor                          time.Duration     `yaml:"delay_for"`
-	Since                             timestamp         `yaml:"since"`
-	TenantID                          string            `yaml:"tenant_id"`
+	Since                             time.Duration     `yaml:"since"`
 	Headers                           map[string]string `yaml:"headers"`        // HTTP headers for talking to Loki
 	WaitForReady                      time.Duration     `yaml:"wait_for_ready"` // Retry interval, default is 10 seconds
+	Username                          string            `yaml:"username"`
+	Password                          string            `yaml:"password"`
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 }
 
 type LokiSource struct {
-	Config        LokiConfiguration
+	Config LokiConfiguration
+
+	client *lokiclient.LokiClient
+
 	logger        *log.Entry
 	lokiWebsocket string
-	lokiReady     string
-	dialer        *websocket.Dialer
-	header        http.Header
-	auth          *url.Userinfo
 }
 
 func (l *LokiSource) GetMetrics() []prometheus.Collector {
@@ -80,89 +76,46 @@ func (l *LokiSource) Configure(config []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrap(err, "Cannot parse LokiAcquisition configuration")
 	}
+
+	if l.Config.Query == "" {
+		return errors.New("Loki query is mandatory")
+	}
+
 	if l.Config.WaitForReady == 0 {
 		l.Config.WaitForReady = 10 * time.Second
 	}
 	if l.Config.Mode == "" {
 		l.Config.Mode = configuration.TAIL_MODE
 	}
-	u, err := url.Parse(l.Config.URL)
-	if err != nil {
-		return err
+	if l.Config.Prefix == "" {
+		l.Config.Prefix = "/"
 	}
-	if l.Config.Since.IsZero() {
-		l.Config.Since = timestamp(time.Now())
-	}
-	if u.User != nil {
-		l.auth = u.User
-	}
-	err = l.buildUrl()
-	if err != nil {
-		return errors.Wrap(err, "Cannot build Loki url")
-	}
-	err = l.prepareConfig()
-	if err != nil {
-		return errors.Wrap(err, "Cannot prepare Loki config")
-	}
-	return nil
-}
 
-func (l *LokiSource) prepareConfig() error {
-	if l.Config.Query == "" {
-		return errors.New("Loki query is mandatory")
+	if !strings.HasSuffix(l.Config.Prefix, "/") {
+		l.Config.Prefix = l.Config.Prefix + "/"
 	}
-	l.dialer = &websocket.Dialer{}
-	l.header = http.Header{}
-	if l.Config.TenantID != "" {
-		l.header.Set("X-Scope-OrgID", l.Config.TenantID)
-	}
-	l.header.Set("User-Agent", "Crowdsec "+cwversion.Version)
-	for k, v := range l.Config.Headers {
-		l.header.Set(k, v)
-	}
-	if l.auth != nil {
-		l.header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(l.auth.String())))
-	}
-	return nil
-}
 
-func (l *LokiSource) buildUrl() error {
-	u, err := url.Parse(l.Config.URL)
-	if err != nil {
-		return errors.Wrap(err, "Cannot parse Loki URL : "+l.Config.URL)
+	if l.Config.Limit == 0 {
+		l.Config.Limit = lokiLimit
 	}
-	l.lokiReady = fmt.Sprintf("%s://%s/ready", u.Scheme, u.Host)
 
-	buff := bytes.Buffer{}
-	switch u.Scheme {
-	case "http":
-		buff.WriteString("ws")
-	case "https":
-		buff.WriteString("wss")
-	default:
-		return fmt.Errorf("unknown scheme : %s", u.Scheme)
+	if l.Config.Mode == configuration.TAIL_MODE {
+		l.logger.Infof("Resetting since")
+		l.Config.Since = 0
 	}
-	buff.WriteString("://")
-	buff.WriteString(u.Host)
-	if u.Path == "" || u.Path == "/" {
-		buff.WriteString("/loki/api/v1/tail")
-	} else {
-		buff.WriteString(u.Path)
+
+	l.logger.Infof("Since value: %s", l.Config.Since.String())
+
+	clientConfig := lokiclient.Config{
+		LokiURL: l.Config.URL,
+		Headers: l.Config.Headers,
+		Limit:   l.Config.Limit,
+		Query:   l.Config.Query,
+		Since:   l.Config.Since,
 	}
-	buff.WriteByte('?')
-	params := url.Values{}
-	if l.Config.Query != "" {
-		params.Add("query", l.Config.Query)
-	}
-	params.Add("limit", fmt.Sprintf("%d", lokiLimit))
-	if l.Config.DelayFor != 0 {
-		params.Add("delay_for", fmt.Sprintf("%d", int64(l.Config.DelayFor.Seconds())))
-	}
-	start := time.Time(l.Config.Since)
-	params.Add("start", fmt.Sprintf("%d", start.UnixNano()))
-	buff.WriteString(params.Encode())
-	l.lokiWebsocket = buff.String()
-	l.logger.Info("Websocket url : ", l.lokiWebsocket)
+
+	l.client = lokiclient.NewLokiClient(clientConfig)
+	l.client.Logger = logger.WithField("component", "lokiclient")
 	return nil
 }
 
@@ -182,14 +135,12 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 	if u.Host == "" {
 		return errors.New("Empty loki host")
 	}
-	scheme := "https"
+	scheme := "http"
 	// FIXME how can use http with container, in a private network?
 	if u.Host == "localhost" || u.Host == "127.0.0.1" || u.Host == "[::1]" {
 		scheme = "http"
 	}
-	if u.User != nil {
-		l.auth = u.User
-	}
+
 	l.Config.URL = fmt.Sprintf("%s://%s", scheme, u.Host)
 	params := u.Query()
 	if q := params.Get("query"); q != "" {
@@ -211,21 +162,43 @@ func (l *LokiSource) ConfigureByDSN(dsn string, labels map[string]string, logger
 		l.Config.DelayFor = delayFor
 	}
 	if s := params.Get("since"); s != "" {
-		err = yaml.Unmarshal([]byte(s), &l.Config.Since)
+		l.Config.Since, err = time.ParseDuration(s)
 		if err != nil {
-			return errors.Wrap(err, "can't parse since in DSB configuration")
+			return errors.Wrap(err, "can't parse since in DSN configuration")
 		}
 	}
-	l.Config.TenantID = params.Get("tenantID")
 
-	err = l.buildUrl()
-	if err != nil {
-		return errors.Wrap(err, "Cannot build Loki url from DSN")
+	if limit := params.Get("limit"); limit != "" {
+		limit, err := strconv.Atoi(limit)
+		if err != nil {
+			return errors.Wrap(err, "can't parse limit in DSN configuration")
+		}
+		l.Config.Limit = limit
+	} else {
+		l.Config.Limit = 5000 // max limit allowed by loki
 	}
-	err = l.prepareConfig()
-	if err != nil {
-		return errors.Wrap(err, "Cannot prepare Loki from DSN")
+
+	if logLevel := params.Get("log_level"); logLevel != "" {
+		level, err := log.ParseLevel(logLevel)
+		if err != nil {
+			return errors.Wrap(err, "can't parse log_level in DSN configuration")
+		}
+		l.Config.LogLevel = &level
+		l.logger.Logger.SetLevel(level)
 	}
+
+	clientConfig := lokiclient.Config{
+		LokiURL:  l.Config.URL,
+		Headers:  l.Config.Headers,
+		Limit:    l.Config.Limit,
+		Query:    l.Config.Query,
+		Since:    l.Config.Since,
+		Username: l.Config.Username,
+		Password: l.Config.Password,
+	}
+
+	l.client = lokiclient.NewLokiClient(clientConfig)
+	l.client.Logger = logger.WithField("component", "lokiclient")
 
 	return nil
 }
@@ -240,81 +213,39 @@ func (l *LokiSource) GetName() string {
 
 // OneShotAcquisition reads a set of file and returns when done
 func (l *LokiSource) OneShotAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	err := l.ready()
+	l.logger.Debug("Loki one shot acquisition")
+	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
+	defer cancel()
+	err := l.client.Ready(readyCtx)
 	if err != nil {
-		return errors.Wrap(err, "error while getting OneShotAcquisition")
+		return errors.Wrap(err, "loki is not ready")
 	}
 
-	// See https://grafana.com/docs/loki/latest/api/#get-lokiapiv1query_range
-	params := &url.Values{}
-	params.Set("query", l.Config.Query)
-	params.Set("direction", "forward") // FIXME
-	params.Set("limit", fmt.Sprintf("%d", lokiLimit))
-	params.Set("end", time.Now().Format(time.RFC3339))
-	start := time.Time(l.Config.Since)
-
-	var lq LokiQuery
-	defer t.Kill(nil)
-	defer l.logger.Info("Loki queried")
+	ctx, cancel := context.WithCancel(context.Background())
+	c := l.client.QueryRange(ctx)
 
 	for {
-		params.Set("start", start.Format(time.RFC3339))
-		url := fmt.Sprintf("%s/loki/api/v1/query_range?%s",
-			l.Config.URL,
-			params.Encode())
-		logger := l.logger.WithField("url", url)
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			logger.WithError(err).Error("Loki NewRequest error")
-			return errors.Wrap(err, "Loki error while build new request")
-		}
-		req.Header = l.header
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			logger.WithError(err).Error("http error")
-			return errors.Wrap(err, "Error while querying loki")
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			msg, _ := io.ReadAll(resp.Body)
-			logger.WithField("status", resp.StatusCode).WithField("body", string(msg)).Error("loki error")
-			return fmt.Errorf("Loki query return bad status : %d", resp.StatusCode)
-		}
-		decoder := json.NewDecoder(resp.Body)
-		err = decoder.Decode(&lq)
-		if err != nil {
-			return errors.Wrap(err, "can't parse JSON loki response")
-		}
-		if len(lq.Data.Result) == 0 {
+		select {
+		case <-t.Dying():
+			l.logger.Debug("Loki one shot acquisition stopped")
+			cancel()
 			return nil
-		}
-		for _, result := range lq.Data.Result {
-			if len(result.Values) == 0 {
+		case resp, ok := <-c:
+			if !ok {
+				l.logger.Info("Loki acuiqisition done, chan closed")
+				cancel()
 				return nil
 			}
-			start = result.Values[0].Timestamp
-			logger.WithField("stream", result.Stream).Debug("Results", len(result.Values))
-			for _, entry := range result.Values {
-				l.readOneEntry(entry, result.Stream, out)
+			for _, stream := range resp.Data.Result {
+				for _, entry := range stream.Entries {
+					l.readOneEntry(entry, l.Config.Labels, out)
+				}
 			}
-			if len(result.Values) <= lokiLimit {
-				return nil
-			}
-		}
-	}
-	return nil
-}
-
-func (l *LokiSource) readOneTail(resp Tail, out chan types.Event) {
-	for _, stream := range resp.Streams {
-		for _, entry := range stream.Entries {
-			l.readOneEntry(entry, stream.Stream, out)
 		}
 	}
 }
 
-func (l *LokiSource) readOneEntry(entry Entry, labels map[string]string, out chan types.Event) {
+func (l *LokiSource) readOneEntry(entry lokiclient.Entry, labels map[string]string, out chan types.Event) {
 	ll := types.Line{}
 	ll.Raw = entry.Line
 	ll.Time = entry.Timestamp
@@ -333,58 +264,34 @@ func (l *LokiSource) readOneEntry(entry Entry, labels map[string]string, out cha
 }
 
 func (l *LokiSource) StreamingAcquisition(out chan types.Event, t *tomb.Tomb) error {
-	err := l.ready()
+	readyCtx, cancel := context.WithTimeout(context.Background(), l.Config.WaitForReady)
+	defer cancel()
+	err := l.client.Ready(readyCtx)
 	if err != nil {
-		return errors.Wrap(err, "error while getting StreamingAcquisition")
+		return errors.Wrap(err, "loki is not ready")
 	}
 	ll := l.logger.WithField("websocket url", l.lokiWebsocket)
 	t.Go(func() error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		respChan, err := l.client.Tail(ctx)
+		if err != nil {
+			ll.Errorf("could not start loki tail: %s", err)
+			return errors.Wrap(err, "could not start loki tail")
+		}
 		for {
-			ctx, cancel := context.WithTimeout(context.TODO(), readyTimeout)
-			defer cancel()
-			go func() {
-				<-t.Dying()
-				cancel() // close the websocket.
-			}()
-			c, res, err := l.dialer.DialContext(ctx, l.lokiWebsocket, l.header)
-			if err != nil {
-				if oerr, ok := err.(*net.OpError); ok && oerr.Err.Error() == "operation was canceled" {
-					// it's ok, the websocket connection is closed by the client, triggered by the tomb, lets stop
-					return nil
+			select {
+			case resp := <-respChan:
+				if len(resp.DroppedEntries) > 0 {
+					ll.Warnf("%d entries dropped from loki response", len(resp.DroppedEntries))
 				}
-				if res == nil { // no body, it's a network error, not a HTTP error
-					ll.WithError(err).Error("loki StreamingAcquisition error before HTTP stack")
-					break
-				}
-				buf, err2 := ioutil.ReadAll(res.Body)
-				if err2 == nil {
-					ll.WithField("body", string(buf)).WithField("status", res.StatusCode).Error("loki http error")
-					break
-				}
-				ll.WithError(err2).Error("can't read loki http body")
-				break
-			}
-			defer c.Close()
-			_, reader, err := c.NextReader()
-			if err != nil {
-				ll.WithError(err).Error("loki StreamingAcquisition error while reading JSON websocket")
-				break
-			}
-			var resp Tail
-			decoder := json.NewDecoder(reader)
-			for { // draining the websocket
-				if !t.Alive() { // someone want to close this loop
-					return nil
-				}
-				err = decoder.Decode(&resp)
-				if err != nil {
-					if err == io.EOF { // the websocket is closed
-						break
+				for _, stream := range resp.Streams {
+					for _, entry := range stream.Entries {
+						l.readOneEntry(entry, l.Config.Labels, out)
 					}
-					ll.WithError(err).Error("loki StreamingAcquisition error while parsing JSON websocket")
 				}
-				l.logger.WithField("type", t).WithField("message", resp).Debug("Message receveid")
-				l.readOneTail(resp, out)
+			case <-t.Dying():
+				return nil
 			}
 		}
 	})
@@ -397,38 +304,6 @@ func (l *LokiSource) CanRun() error {
 
 func (l *LokiSource) Dump() interface{} {
 	return l
-}
-
-func (l *LokiSource) ready() error {
-	client := &http.Client{
-		Timeout: l.Config.WaitForReady,
-	}
-
-	req, err := http.NewRequest("GET", l.lokiReady, nil)
-	if err != nil {
-		return err
-	}
-	req.Header = l.header
-
-	for i := 0; i < int(l.Config.WaitForReady/time.Second); i++ {
-		resp, err := client.Do(req)
-		if err != nil {
-			return errors.Wrap(err, "Test Loki services for readiness")
-		}
-		if resp.StatusCode == 200 {
-			return nil
-		} else {
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return errors.Wrap(err, "can't read body while testing Loki readiness")
-			}
-			defer resp.Body.Close()
-			l.logger.WithField("status", resp.StatusCode).WithField("bofy", string(body)).Info("Loki is not ready")
-			time.Sleep(time.Second)
-		}
-	}
-
-	return fmt.Errorf("Loki service %s is not ready", l.lokiReady)
 }
 
 //SupportedModes returns the supported modes by the acquisition module
