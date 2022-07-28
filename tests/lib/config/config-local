@@ -114,7 +114,7 @@ make_init_data() {
         sleep 2
         [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
     done
-    [[ $("${CSCLI}" alerts list -o json) != "null" ]] || die "could not get community data"
+    [[ $("${CSCLI}" alerts list -a -o json) != "null" ]] || die "could not get community data"
 
     "${TEST_DIR}/instance-crowdsec" stop
 
