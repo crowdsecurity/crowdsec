@@ -53,6 +53,6 @@ teardown() {
 @test "delete the bouncer multiple times, even if it does not exist" {
     run -0 cscli bouncers add ciTestBouncer
     run -0 cscli bouncers delete ciTestBouncer
-    run -0 cscli bouncers delete ciTestBouncer
+    run -1 cscli bouncers delete ciTestBouncer
     run -0 cscli bouncers delete foobarbaz
 }
