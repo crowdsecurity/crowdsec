@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestDateParse(t *testing.T) {
@@ -40,9 +41,12 @@ func TestDateParse(t *testing.T) {
 		},
 	}
 
+	logger := log.WithFields(log.Fields{
+		"test": "test",
+	})
 	for idx, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, nil)
+			strTime, err := ParseDate(tt.evt.StrTime, &tt.evt, nil, logger)
 			if tt.expected_err != nil {
 				if err != *tt.expected_err {
 					t.Errorf("%s: expected error %v, got %v", tt.name, tt.expected_err, err)
