@@ -152,7 +152,7 @@ func (c *Client) UpdateMachineIP(ipAddr string, ID int) error {
 		SetIpAddress(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine IP in database: %s", err)
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func (c *Client) UpdateMachineVersion(ipAddr string, ID int) error {
 		SetVersion(ipAddr).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine version in database: %s", err)
 	}
 	return nil
 }
