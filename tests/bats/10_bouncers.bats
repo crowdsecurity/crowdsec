@@ -54,5 +54,5 @@ teardown() {
     run -0 cscli bouncers add ciTestBouncer
     run -0 cscli bouncers delete ciTestBouncer
     run -1 cscli bouncers delete ciTestBouncer
-    run -0 cscli bouncers delete foobarbaz
+    run -1 cscli bouncers delete foobarbaz
 }
