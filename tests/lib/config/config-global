@@ -58,6 +58,8 @@ make_init_data() {
 
     "${TEST_DIR}/instance-crowdsec" start
 
+    sleep 2
+
     "${CSCLI}" decisions delete --all
 
     loop_max=15

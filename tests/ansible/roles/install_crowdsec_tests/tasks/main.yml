@@ -60,6 +60,15 @@
   when:
     - (suite_zip is not defined) or (suite_zip|length == 0)
 
+- name: set safe.directory on crowdsec dir"
+  become: false
+  ansible.builtin.git_config:
+    scope: global
+    name: safe.directory
+    value: "{{ ansible_env.HOME }}/crowdsec"
+  when:
+    - (suite_zip is not defined) or (suite_zip|length == 0)
+
 - name: "install tests: create crowdsec tests/local dir"
   become: false
   ansible.builtin.file:
