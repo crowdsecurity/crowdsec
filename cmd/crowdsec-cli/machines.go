@@ -322,7 +322,7 @@ cscli machines add MyTestMachine --password MyPassword
 			for _, machineID := range args {
 				err := dbClient.DeleteWatcher(machineID)
 				if err != nil {
-					log.Errorf("unable to delete machine: %s", err)
+					log.Errorf("unable to delete machine '%s': %s", machineID, err)
 					return
 				}
 				log.Infof("machine '%s' deleted successfully", machineID)
