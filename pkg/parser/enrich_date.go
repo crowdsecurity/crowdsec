@@ -54,7 +54,7 @@ func GenDateParse(date string) (string, time.Time) {
 	return "", time.Time{}
 }
 
-func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
+func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
 
 	var ret map[string]string = make(map[string]string)
 	var strDate string
@@ -65,6 +65,8 @@ func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, err
 		if !parsedDate.IsZero() {
 			ret["MarshaledTime"] = strDate
 			return ret, nil
+		} else {
+			plog.Debugf("unable to parse '%s' with layout '%s'", in, p.StrTimeFormat)
 		}
 	}
 	strDate, parsedDate = GenDateParse(in)
@@ -72,11 +74,11 @@ func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, err
 		ret["MarshaledTime"] = strDate
 		return ret, nil
 	}
-
+	plog.Debugf("no suitable date format found for '%s', falling back to now", in)
 	now := time.Now().UTC()
 	retstr, err := now.MarshalText()
 	if err != nil {
-		log.Warning("Failed marshaling current time")
+		plog.Warning("Failed marshaling current time")
 		return ret, err
 	}
 	ret["MarshaledTime"] = string(retstr)
