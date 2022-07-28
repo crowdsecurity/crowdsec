@@ -15,7 +15,7 @@
 
 - name: "check found_file"
   ansible.builtin.fail:
-    msg: "No .rpm files found in {{ package_file }}"
+    msg: "No file found matching {{ package_file }}"
   when:
     - found_file is not defined
     - (package_file is defined) and (package_file | length > 0)
