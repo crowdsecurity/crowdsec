@@ -7,30 +7,23 @@
 
 - name: "look for .rpm file matching package_file"
   ansible.builtin.set_fact:
-    found_files: "{{ item }}"
+    found_file: "{{ item }}"
   with_fileglob:
     - "{{ package_file }}"
   when:
     - (package_file is defined) and (package_file | length > 0)
 
-- name: "check found_files"
+- name: "check found_file"
   ansible.builtin.fail:
     msg: "No .rpm files found in {{ package_file }}"
   when:
-    - found_files is not defined
-    - (package_file is defined) and (package_file | length > 0)
-
-- name: "check found_files"
-  ansible.builtin.fail:
-    msg: "{{ found_files | length }} files found in {{ package_file }}"
-  when:
-    - (found_files | length > 1)
+    - found_file is not defined
     - (package_file is defined) and (package_file | length > 0)
 
 - name: "copy built file for rpm-like"
   become: false
   ansible.builtin.copy:
-    src: "{{ found_files[0] }}"
+    src: "{{ found_file }}"
     dest: "{{ ansible_env.HOME }}/crowdsec.rpm"
     mode: 0o644
   when:
