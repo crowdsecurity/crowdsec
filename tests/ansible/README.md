@@ -58,9 +58,10 @@ ansible won't be able to see them.
   variables for Debian and RedHat-based distributions, because stable releases
   require a package version suffix in the RPM file names.
 
-- `TEST_PACKAGE_FILE`: optional, file pointing to the package under test
-  (.deb, .rpm, .pkg...). If both `TEST_PACKAGE_VERSION_*` and
-  `TEST_PACKAGE_FILE` are provided, both are be installed (to test upgrades
+- `TEST_PACKAGE_FILE`: optional, file pointing to the package under test (.deb,
+  .rpm, .pkg...). It can be a glob expression but it must match a single file,
+  and the pattern works only on the filename. If both `TEST_PACKAGE_VERSION_*`
+  and `TEST_PACKAGE_FILE` are provided, both are be installed (to test upgrades
   for example). Requires `PACKAGE_TESTING=true`
 
 - `TEST_PACKAGE_DIR`: optional (but conflicts with `TEST_PACKAGE_FILE`), the path
