@@ -1,7 +1,7 @@
-common = '../Vagrantfile.common'
-load common if File.exists?(common)
-
 Vagrant.configure("2") do |config|
   # the official boxes only supports virtualbox
   config.vm.box = "generic/ubuntu1604"
 end
+
+common = '../Vagrantfile.common'
+load common if File.exists?(common)

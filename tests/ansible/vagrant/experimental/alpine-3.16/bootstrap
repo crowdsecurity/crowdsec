@@ -1,0 +1,5 @@
+#!/bin/sh
+unset IFS
+set -euf
+
+sudo apk add python3 go tar procps netcat-openbsd

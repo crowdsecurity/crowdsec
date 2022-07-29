@@ -56,14 +56,17 @@ architectures.
 ## pre-requisites
 
  - `git submodule init; git submodule update`
- - `daemonize (linux) or daemon (freebsd), bash>=4.4, python3, openbsd-netcat`
  - `go install github.com/cloudflare/cfssl/cmd/cfssl@latest`
  - `go install github.com/cloudflare/cfssl/cmd/cfssljson@latest`
  - `go install github.com/mikefarah/yq/v4@latest`
  - `base64`
+ - `bash>=4.4`
  - `curl`
+ - `daemonize`
  - `jq`
  - `nc`
+ - `openssl`
+ - `openbsd-netcat`
  - `python3`
 
 ## Running all tests

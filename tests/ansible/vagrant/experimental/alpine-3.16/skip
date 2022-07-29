@@ -1,0 +1,9 @@
+#!/bin/sh
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+[ "${PACKAGE_TESTING}" = "true" ] && die "no package available for this distribution"
+exit 0

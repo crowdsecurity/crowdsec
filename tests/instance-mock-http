@@ -31,9 +31,11 @@ DAEMON_PID=${PID_DIR}/mock-http.pid
 
 start_instance() {
     [ $# -lt 1 ] && about
-    OUT_FILE="${LOG_DIR}/mock-http.out" \
-        DAEMON_PID="${DAEMON_PID}" \
-        "${TEST_DIR}/run-as-daemon" /usr/bin/env python3 -u "${THIS_DIR}/mock-http.py" "$1"
+    daemonize \
+        -p "${DAEMON_PID}" \
+        -e "${LOG_DIR}/mock-http.err" \
+        -o "${LOG_DIR}/mock-http.out" \
+        /usr/bin/env python3 -u "${THIS_DIR}/mock-http.py" "$1"
     ./lib/util/wait-for-port "$1"
 #    echo "mock http started on port $1"
 }

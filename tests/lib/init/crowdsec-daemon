@@ -31,9 +31,11 @@ fi
 DAEMON_PID=${PID_DIR}/crowdsec.pid
 
 start() {
-    OUT_FILE="${LOG_DIR}/crowdsec.out" \
-            DAEMON_PID="${DAEMON_PID}" \
-            "${TEST_DIR}/run-as-daemon" "${CROWDSEC}"
+    daemonize \
+        -p "${DAEMON_PID}" \
+        -e "${LOG_DIR}/crowdsec.err" \
+        -o "${LOG_DIR}/crowdsec.out" \
+        "${CROWDSEC}"
     ./lib/util/wait-for-port 6060
 }
 

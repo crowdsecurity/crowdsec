@@ -1,5 +1,5 @@
 ---
-- name: "install netcat (Amazon, Fedora, CentOS)"
+- name: "install netcat (Amazon, Fedora, CentOS, Oracle)"
   become: true
   ansible.builtin.package:
     name:
@@ -13,22 +13,13 @@
     name:
       - netcat
   when:
-    - (ansible_facts.distribution == 'RedHat') or  (ansible_facts.distribution == 'AlmaLinux')
+    - (ansible_facts.distribution == 'RedHat') or (ansible_facts.distribution == 'AlmaLinux') or (ansible_facts.distribution == 'Rocky')
 
-# "netcat" does not exist in some versions (only -traditional or -openbsd)
-- name: "install netcat (Debian)"
-  become: true
-  ansible.builtin.package:
-    name:
-      - netcat-traditional
-  when:
-    - ansible_facts.os_family == "Debian"
-
-# "netcat" does not exist in some versions (only -traditional or -openbsd)
+# "netcat" does not exist in some Debian versions (only -traditional or -openbsd)
 - name: "install netcat (Suse)"
   become: true
   ansible.builtin.package:
     name:
       - netcat-openbsd
   when:
-    - ansible_facts.os_family == "Suse"
+    - ansible_facts.os_family in ["Debian", "Suse"]

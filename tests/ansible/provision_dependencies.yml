@@ -9,8 +9,9 @@
         name: gantsign.golang
       when:
         - ansible_facts.system == 'Linux'
+        - ansible_facts.distribution != 'Alpine'
 
-- name: "install Go (bsd)"
+- name: "install Go (bsd, alpine)"
   hosts: all
   gather_facts: true
   become: true
@@ -19,7 +20,7 @@
         name: go
         state: present
       when:
-        - ansible_facts.system == 'FreeBSD'
+        - ansible_facts.system in ['FreeBSD', 'OpenBSD'] or ansible_facts.distribution == 'Alpine'
 
 # required for jq and basic tools on centos and rhel
 - name: "enable EPEL repository (RedHat)"
@@ -32,7 +33,7 @@
         epel_repo_disable: false
       when:
         - ansible_facts.os_family == 'RedHat'
-        - ansible_facts.distribution != 'Fedora'
+        - (ansible_facts.distribution != 'Fedora') and (ansible_facts.distribution != 'Amazon')
 
 - name: "apply common configuration to all nodes"
   hosts: all
@@ -51,6 +52,9 @@
   tasks:
     - ansible.builtin.include_role:
         name: geerlingguy.postgresql
+      # enable this for debugging
+      #vars:
+      #  postgres_users_no_log: false
       when:
         - lookup('ansible.builtin.env', 'DB_BACKEND') in ['pgx', 'postgres']
 

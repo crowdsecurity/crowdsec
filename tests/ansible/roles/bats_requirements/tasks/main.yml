@@ -1,11 +1,12 @@
 ---
 - name: "install bash"
   ansible.builtin.import_tasks: bash.yml
+  when:
+    # openbsd is not supported by the package_facts module, let's assume bash is ok
+    - ansible_facts.system != 'OpenBSD'
 
 - name: "Install daemonize"
   ansible.builtin.import_tasks: daemonize.yml
-  when:
-    - ansible_facts.system == 'Linux'
 
 - name: "install netcat"
   ansible.builtin.import_tasks: netcat.yml
@@ -18,6 +19,8 @@
       - jq
       - openssl
       - python3
+  when:
+    - ansible_facts.distribution != 'Gentoo'
 
 - name: "install bc (!freebsd)"
   become: true
@@ -28,13 +31,13 @@
     - ansible_facts.system == 'Linux'
 
 # base64 for linux is in coreutils
-- name: "install base64 (freebsd)"
+- name: "install base64 (bsd)"
   become: true
   ansible.builtin.package:
     name:
       - base64
   when:
-    - ansible_facts.system == 'FreeBSD'
+    - ansible_facts.system in ['FreeBSD', 'OpenBSD']
 
 - name: "install pidof (Amazon)"
   become: true
@@ -43,12 +46,6 @@
       - procps-ng
   when:
     - ansible_facts.distribution == 'Amazon'
-
-- name: "install gcc (for go-sqlite, needs cgo)"
-  become: true
-  ansible.builtin.package:
-    name:
-      - gcc
 
 - name: "install cfssl"
   become: true
