@@ -58,16 +58,17 @@ ansible won't be able to see them.
   variables for Debian and RedHat-based distributions, because stable releases
   require a package version suffix in the RPM file names.
 
-- `TEST_PACKAGE_FILE`: optional, file pointing to the package under test
-  (.deb, .rpm, .pkg...). If both `TEST_PACKAGE_VERSION_*` and
-  `TEST_PACKAGE_FILE` are provided, both are be installed (to test upgrades
+- `TEST_PACKAGE_FILE`: optional, file pointing to the package under test (.deb,
+  .rpm, .pkg...). It can be a glob expression but it must match a single file,
+  and the pattern works only on the filename. If both `TEST_PACKAGE_VERSION_*`
+  and `TEST_PACKAGE_FILE` are provided, both are be installed (to test upgrades
   for example). Requires `PACKAGE_TESTING=true`
 
 - `TEST_PACKAGE_DIR`: optional (but conflicts with `TEST_PACKAGE_FILE`), the path
   to a directory containing packages with the following layout:
 
-  For DEB: `{{ package_dir }}/{{ ansible_distribution_release }}_{{ ansible_architecture.replace('x86_64', 'amd64) }}/{{ ansible_distribution_release }}/{{ ansible_architecture.replace('x86_64', 'amd64' }}/crowdsec_*.deb`
-  For RPM: `{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_architecture }}/crowdsec-{{ testing_file_version }}*.{{ releasever }}.{{ ansible_architecture }}.rpm`
+  For DEB: `{{ package_dir }}/{{ ansible_distribution_release }}/{{ ansible_architecture.replace('x86_64', 'amd64' }}/crowdsec_*.deb`
+  For RPM: `{{ package_dir }}/{{ releasever }}/RPMS/{{ ansible_architecture }}/crowdsec-*.{{ releasever }}.{{ ansible_architecture }}.rpm`
 
 - `TEST_SKIP`: optional, comma-separated list of scripts that won't be executed.
   Example: `TEST_SKIP=02_nolapi.bats,03_noagent.bats`

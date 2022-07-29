@@ -1,5 +1,5 @@
 ---
-- name: "install Go (!freebsd)"
+- name: "install Go (!bsd)"
   hosts: all
   gather_facts: true
   vars_files:
@@ -8,9 +8,9 @@
     - ansible.builtin.include_role:
         name: gantsign.golang
       when:
-        - ansible_os_family != "FreeBSD"
+        - ansible_facts.system == 'Linux'
 
-- name: "install Go (freebsd)"
+- name: "install Go (bsd)"
   hosts: all
   gather_facts: true
   become: true
@@ -19,7 +19,20 @@
         name: go
         state: present
       when:
-        - ansible_os_family == "FreeBSD"
+        - ansible_facts.system == 'FreeBSD'
+
+# required for jq and basic tools on centos and rhel
+- name: "enable EPEL repository (RedHat)"
+  hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.repo-epel
+      vars:
+        epel_repo_disable: false
+      when:
+        - ansible_facts.os_family == 'RedHat'
+        - ansible_facts.distribution != 'Fedora'
 
 - name: "apply common configuration to all nodes"
   hosts: all

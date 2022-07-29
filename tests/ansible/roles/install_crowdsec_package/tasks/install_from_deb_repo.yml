@@ -14,7 +14,7 @@
 - name: "add crowdsec repo [2/2] (*.deb)"
   become: true
   ansible.builtin.apt_repository:
-    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+    repo: deb https://packagecloud.io/crowdsec/crowdsec/{{ ansible_facts.distribution | lower }}/ {{ ansible_facts.distribution_release }} main
 
 - name: "install crowdsec testing repo [1/2] (*.deb)"
   become: true
@@ -24,7 +24,7 @@
 - name: "add crowdsec testing repo [1/2] (*.deb)"
   become: true
   ansible.builtin.apt_repository:
-    repo: deb https://packagecloud.io/crowdsec/crowdsec-testing/{{ ansible_distribution | lower }}/ {{ ansible_distribution_release }} main
+    repo: deb https://packagecloud.io/crowdsec/crowdsec-testing/{{ ansible_facts.distribution | lower }}/ {{ ansible_facts.distribution_release }} main
 
 - name: "install crowdsec"
   become: true

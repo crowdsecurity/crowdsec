@@ -2,32 +2,30 @@
 - name: "system details"
   ansible.builtin.debug:
     msg: |
-      Distribution: {{ ansible_distribution }}
-      Version: {{ ansible_distribution_version }}
-      Major: {{ ansible_distribution_major_version }}
-      Release: {{ ansible_distribution_release }}
+      Distribution: {{ ansible_facts.distribution }}
+      Version: {{ ansible_facts.distribution_version }}
+      Major: {{ ansible_facts.distribution_major_version }}
+      Release: {{ ansible_facts.distribution_release }}
       Releasever: {{ releasever }}
 
 - name: "install from binary repository (RedHat)"
   ansible.builtin.import_tasks: install_from_rpm_repo.yml
   when:
     - (package_version_rpm is defined) and (package_version_rpm|length > 0)
-    - ansible_os_family == "RedHat"
+    - ansible_facts.os_family == "RedHat"
 
 - name: "install from binary repository (Debian)"
   ansible.builtin.import_tasks: install_from_deb_repo.yml
   when:
     - (package_version_deb is defined) and (package_version_deb|length > 0)
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"
 
 - name: "install from *.rpm package file"
   ansible.builtin.import_tasks: install_from_rpm.yml
   when:
-    - (package_file is defined) and (package_file|length > 0)
-    - ansible_os_family == "RedHat"
+    - ansible_facts.os_family == "RedHat"
 
 - name: "install from *.deb package file"
   ansible.builtin.import_tasks: install_from_deb.yml
   when:
-    - (package_file is defined) and (package_file|length > 0)
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"

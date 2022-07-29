@@ -1,4 +1,4 @@
 ---
 build_bash: false
 
-build_daemonize: (ansible_distribution == "Ubuntu" and ansible_distribution_version == '16.04') or ansible_distribution == 'Amazon'
+build_daemonize: (ansible_facts.distribution == "Ubuntu" and ansible_facts.distribution == '16.04') or ansible_facts.distribution == 'Amazon'

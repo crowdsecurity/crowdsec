@@ -5,7 +5,7 @@
 - name: "Install daemonize"
   ansible.builtin.import_tasks: daemonize.yml
   when:
-    - ansible_os_family != 'FreeBSD'
+    - ansible_facts.system == 'Linux'
 
 - name: "install netcat"
   ansible.builtin.import_tasks: netcat.yml
@@ -25,15 +25,16 @@
     name:
       - bc
   when:
-    - ansible_os_family != 'FreeBSD'
+    - ansible_facts.system == 'Linux'
 
-- name: "install base64(freebsd)"
+# base64 for linux is in coreutils
+- name: "install base64 (freebsd)"
   become: true
   ansible.builtin.package:
     name:
       - base64
   when:
-    - ansible_os_family == 'FreeBSD'
+    - ansible_facts.system == 'FreeBSD'
 
 - name: "install pidof (Amazon)"
   become: true
@@ -41,7 +42,7 @@
     name:
       - procps-ng
   when:
-    - ansible_distribution == 'Amazon'
+    - ansible_facts.distribution == 'Amazon'
 
 - name: "install gcc (for go-sqlite, needs cgo)"
   become: true

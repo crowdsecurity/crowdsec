@@ -1,19 +1,11 @@
 ---
-# required for (at least) jq
-- name: "enable EPEL"
-  become: true
-  ansible.builtin.package:
-    name: epel-release
-  when:
-    - ansible_distribution == 'CentOS'
-
 - name: "update package cache (Debian)"
   become: true
   ansible.builtin.apt:
     upgrade: false
     update_cache: true
   when:
-    - ansible_os_family == "Debian"
+    - ansible_facts.os_family == "Debian"
 
 - name: "install gcc, git"
   become: true
@@ -28,7 +20,7 @@
     name:
       - make
   when:
-    - ansible_os_family != "FreeBSD"
+    - ansible_facts.system == "Linux"
 
 - name: "install gmake (FreeBSD)"
   become: true
@@ -36,4 +28,4 @@
     name:
       - gmake
   when:
-    - ansible_os_family == "FreeBSD"
+    - ansible_facts.system == "FreeBSD"

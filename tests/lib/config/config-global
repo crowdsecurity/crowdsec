@@ -58,14 +58,17 @@ make_init_data() {
 
     "${TEST_DIR}/instance-crowdsec" start
 
-    "${CSCLI}" decisions delete --all
-
-    loop_max=15
-    for ((i = 0; i <= loop_max; i++)); do
-        sleep 2
-        [[ $("${CSCLI}" alerts list -o json) != "null" ]] && break
+    for ((i=0; i<10; i++)); do
+        sleep .5
+        "${CSCLI}" decisions delete --all && break
     done
-    [[ $("${CSCLI}" alerts list -a -o json) != "null" ]] || die "could not get community data"
+
+    for ((i=0; i<15; i++)); do
+        sleep 2
+        [[ $("${CSCLI}" alerts list -a -o json) != "null" ]] && break
+    done
+    # shellcheck disable=SC2181
+    [[ "$?" -ne "0" ]] && die "could not get community data"
 
     "${TEST_DIR}/instance-crowdsec" stop
 

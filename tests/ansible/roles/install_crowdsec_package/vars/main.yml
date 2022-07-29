@@ -7,8 +7,11 @@ release:
   Ubuntu: ubuntu
   FreeBSD: freebsd
   OracleLinux: ol
+  Rocky: el
+  AlmaLinux: el
+  openSUSE Leap: opensuse
 
-releasever: "{{ release[ansible_distribution] + ansible_distribution_major_version }}"
+releasever: "{{ release[ansible_facts.distribution] + ansible_facts.distribution_major_version }}"
 
 package_version_deb: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_DEB') }}"
 package_version_rpm: "{{ lookup('ansible.builtin.env', 'TEST_PACKAGE_VERSION_RPM') }}"

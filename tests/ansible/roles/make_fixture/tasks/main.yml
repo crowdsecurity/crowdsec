@@ -3,13 +3,13 @@
   ansible.builtin.set_fact:
     make_cmd: make
   when:
-    - ansible_os_family != 'FreeBSD'
+    - ansible_facts.system != 'FreeBSD'
 
 - name: "set make_cmd = gmake (freebsd)"
   ansible.builtin.set_fact:
     make_cmd: gmake
   when:
-    - ansible_os_family == 'FreeBSD'
+    - ansible_facts.system == 'FreeBSD'
 
 - name: "build crowdsec from sources, prepare test environment and fixture"
   become: false
