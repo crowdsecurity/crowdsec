@@ -20,7 +20,7 @@
     name:
       - make
   when:
-    - ansible_facts.os_family != "FreeBSD"
+    - ansible_facts.system == "Linux"
 
 - name: "install gmake (FreeBSD)"
   become: true
@@ -28,4 +28,4 @@
     name:
       - gmake
   when:
-    - ansible_facts.os_family == "FreeBSD"
+    - ansible_facts.system == "FreeBSD"
