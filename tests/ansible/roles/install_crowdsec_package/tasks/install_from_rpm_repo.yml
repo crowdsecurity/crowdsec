@@ -27,4 +27,4 @@
   become: true
   ansible.builtin.package:
     name:
-      - crowdsec-{{ package_version_rpm }}.{{ releasever.replace('amzn2', 'el7') }}
+      - crowdsec-{{ package_version_rpm }}.{{ releasever.replace('amzn2', 'el7').replace('ol7', 'el7').replace('ol8', 'el8') }}

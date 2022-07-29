@@ -6,7 +6,7 @@ release:
   Debian: debian
   Ubuntu: ubuntu
   FreeBSD: freebsd
-  OracleLinux: el
+  OracleLinux: ol
   Rocky: el
   AlmaLinux: el
   openSUSE Leap: opensuse
