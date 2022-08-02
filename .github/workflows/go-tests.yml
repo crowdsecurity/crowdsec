@@ -57,19 +57,17 @@ jobs:
           --health-retries=3
       zoo1:
         image: confluentinc/cp-zookeeper:7.1.1
-        hostname: zoo1
-        container_name: zoo1
         ports:
           - "2181:2181"
         env:
           ZOOKEEPER_CLIENT_PORT: 2181
           ZOOKEEPER_SERVER_ID: 1
           ZOOKEEPER_SERVERS: zoo1:2888:3888
+        options: >-
+          --name=zoo1
       
       kafka1:
         image: confluentinc/cp-kafka:7.1.1
-        hostname: kafka1
-        container_name: kafka1
         ports:
           - "9093:9093"
           - "9092:9092"
@@ -101,6 +99,8 @@ jobs:
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
         depends_on:
           - zoo1
+        options: >-
+          --name=zoo1
 
     steps:
 
