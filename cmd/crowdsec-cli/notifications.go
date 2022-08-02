@@ -37,6 +37,15 @@ func NewNotificationsCmd() *cobra.Command {
 			if err = csConfig.API.Server.LoadProfiles(); err != nil {
 				log.Fatalf(err.Error())
 			}
+			if csConfig.ConfigPaths.NotificationDir == "" {
+				log.Fatalf("config_paths.notification_dir is not set in crowdsec config")
+			}
+
+			_, err = os.Stat(csConfig.ConfigPaths.NotificationDir)
+			if err != nil {
+				log.Fatalf("Error while loading notification_dir: %s", err)
+			}
+
 		},
 	}
 
@@ -141,6 +150,9 @@ func NewNotificationsCmd() *cobra.Command {
 func getNotificationsConfiguration() map[string]NotificationsCfg {
 	pcfgs := map[string]csplugin.PluginConfig{}
 	wf := func(path string, info fs.FileInfo, err error) error {
+		if info == nil {
+			return fmt.Errorf("unknown error while traversing directory %s", path)
+		}
 		name := filepath.Join(csConfig.ConfigPaths.NotificationDir, info.Name()) //Avoid calling info.Name() twice
 		if (strings.HasSuffix(name, "yaml") || strings.HasSuffix(name, "yml")) && !(info.IsDir()) {
 			ts, err := csplugin.ParsePluginConfigFile(name)
@@ -153,6 +165,7 @@ func getNotificationsConfiguration() map[string]NotificationsCfg {
 		}
 		return nil
 	}
+
 	if err := filepath.Walk(csConfig.ConfigPaths.NotificationDir, wf); err != nil {
 		log.Fatalf("Loading notifification plugin configuration: %s", err)
 	}
