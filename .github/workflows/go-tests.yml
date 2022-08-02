@@ -97,8 +97,8 @@ jobs:
           KAFKA_SSL_PROTOCOL: TLSv1.2
           KAFKA_SSL_CLIENT_AUTH: none
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-        depends_on:
-          - zoo1
+        #depends_on:
+        #  - zoo1
         options: >-
           --name=zoo1
 
