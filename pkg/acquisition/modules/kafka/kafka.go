@@ -79,7 +79,6 @@ func (k *KafkaSource) Configure(Config []byte, logger *log.Entry) error {
 		return errors.Wrapf(err, "cannot create %s dialer", dataSourceName)
 	}
 	k.Reader = k.Config.NewReader(dialer)
-	fmt.Printf("READER : %+v", k.Reader)
 	if k.Reader == nil {
 		return fmt.Errorf("cannot create %s reader", dataSourceName)
 	}
@@ -119,6 +118,8 @@ func (k *KafkaSource) Dump() interface{} {
 }
 
 func (k *KafkaSource) ReadMessage(out chan types.Event) error {
+	// Start processing from latest Offset
+	k.Reader.SetOffsetAt(context.Background(), time.Now())
 	for {
 		m, err := k.Reader.ReadMessage(context.Background())
 		if err != nil {
