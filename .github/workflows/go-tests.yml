@@ -101,7 +101,7 @@ jobs:
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
         options: >-
           --name=kafka1
-          --health-cmd "kafka-broker-api-versions.sh --version"
+          --health-cmd "kafka-broker-api-versions --version"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
