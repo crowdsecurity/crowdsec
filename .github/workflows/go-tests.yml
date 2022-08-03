@@ -65,6 +65,10 @@ jobs:
           ZOOKEEPER_SERVERS: zoo1:2888:3888
         options: >-
           --name=zoo1
+          --health-cmd "jps -l | grep zookeeper"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       
       kafka1:
         image: crowdsecurity/kafka-ssl
@@ -97,6 +101,10 @@ jobs:
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
         options: >-
           --name=kafka1
+          --health-cmd "kafka-broker-api-versions.sh --version"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
 
