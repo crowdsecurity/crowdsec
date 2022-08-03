@@ -67,13 +67,11 @@ jobs:
           --name=zoo1
       
       kafka1:
-        image: confluentinc/cp-kafka:7.1.1
+        image: crowdsecurity/kafka-ssl
         ports:
           - "9093:9093"
           - "9092:9092"
           - "9999:9999"
-        volumes:
-          - /crowdsec/crowdsec/pkg/acquisition/modules/kafka/testdata:/etc/kafka/secrets
         env:
           KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://kafka1:19092,LISTENER_DOCKER_EXTERNAL://${DOCKER_HOST_IP:-127.0.0.1}:9092,LISTENER_DOCKER_EXTERNAL_SSL://${DOCKER_HOST_IP:-127.0.0.1}:9093
           KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL_SSL:SSL
@@ -97,8 +95,6 @@ jobs:
           KAFKA_SSL_PROTOCOL: TLSv1.2
           KAFKA_SSL_CLIENT_AUTH: none
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-        #depends_on:
-        #  - zoo1
         options: >-
           --name=kafka1
 
