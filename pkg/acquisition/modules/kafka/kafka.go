@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition/configuration"
@@ -23,8 +22,7 @@ import (
 )
 
 var (
-	dataSourceName   = "kafka"
-	streamIndexMutex = sync.Mutex{}
+	dataSourceName = "kafka"
 )
 
 var linesRead = prometheus.NewCounterVec(
