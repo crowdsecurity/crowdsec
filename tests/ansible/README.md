@@ -104,10 +104,11 @@ To test with Vagrant, you need to:
   space taken by the base VM images, they are in
   `/var/lib/libvirt/images/*VAGRANT*`
 
-The above steps are automated in the script `./prepare-run` (requires bash >=4.4).
-It takes an enviroment file, and optionally a list of directories with vagrant
-configurations. With a single parameter, it loops over all the directories in
-alphabetical order. Watch out for leftover VMs if you break the loop by hand.
+The above steps are automated in the script `./prepare-run` (requires bash
+>=4.4). It takes an enviroment file, and optionally a list of directories with
+vagrant configurations. With a single parameter, it loops over all the
+directories in alphabetical order, excluding those in the `experimental`
+directory. Watch out for running VMs if you break the loop by hand.
 
 After this, you will find up to 30GB of base images in `/var/lib/libvirt/images`,
 which you need to remove by hand when you have finished testing or leave them
@@ -132,16 +133,16 @@ The data was created with crowdsec v1.4.1.
 | Debian 9 (stretch)        | ✓             | ✓          | old-db          | old-db     | wip              |
 | Debian 10 (buster)        | ✓             | ✓          | ✓               | ✓          | ✓                |
 | Debian 11 (bullseye)      | ✓             | ✓          | ✓               | ✓          | ✓                |
-| Debian (testing/bookworm) | ✓             | ✓          | wip             | wip        | wip              |
+| Debian (testing/bookworm) | ✓             | ✓          | ✓               | ✓          | wip              |
 | Fedora 33                 | ✓             | ✓          | wip             | wip        | wip              |
 | Fedora 34                 | ✓             | ✓          | ✓               | ✓          | wip              |
 | Fedora 35                 | ✓             | ✓          | ✓               | ✓          | wip              |
 | Fedora 36                 | ✓             | ✓          | ✓               | ✓          | wip              |
 | FreeBSD 12                | ✓             | wip        | wip             | wip        | wip              |
 | FreeBSD 13                | ✓             | wip        | wip             | wip        | wip              |
-| Oracle 7                  | ✓             | ✓          | wip             | wip        | ✓                |
+| Oracle 7                  | ✓             | ✓          | old-db          | old-db     | ✓                |
 | Oracle 8                  | ✓             | ✓          | ✓               | ✓          | ✓                |
-| Ubuntu 16.04 (xenial)     | ✓             | ✓          | wip             | wip        | ✓                |
+| Ubuntu 16.04 (xenial)     | ✓             | ✓          | old-db          | old-db     | ✓                |
 | Ubuntu 18.04 (bionic)     | ✓             | ✓          | ✓               | ✓          | ✓                |
 | Ubuntu 20.04 (focal)      | ✓             | ✓          | ✓               | ✓          | ✓                |
 | Ubuntu 22.04 (jammy)      | ✓             | ✓          | ✓               | ✓          | ✓                |

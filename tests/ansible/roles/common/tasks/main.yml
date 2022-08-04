@@ -22,10 +22,10 @@
   when:
     - ansible_facts.system == "Linux"
 
-- name: "install gmake (FreeBSD)"
+- name: "install gmake (bsd)"
   become: true
   ansible.builtin.package:
     name:
       - gmake
   when:
-    - ansible_facts.system == "FreeBSD"
+    - ansible_facts.system in ['FreeBSD', 'OpenBSD']

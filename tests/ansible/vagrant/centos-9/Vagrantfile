@@ -1,6 +1,6 @@
-common = '../Vagrantfile.common'
-load common if File.exists?(common)
-
 Vagrant.configure("2") do |config|
   config.vm.box = "generic/centos9s"
 end
+
+common = '../Vagrantfile.common'
+load common if File.exists?(common)

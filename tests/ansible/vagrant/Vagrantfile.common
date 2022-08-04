@@ -1,7 +1,7 @@
 Vagrant.configure("2") do |config|
   config.vm.provider :libvirt do |libvirt|
     libvirt.cpus = 1
-    libvirt.memory = 1024
+    libvirt.memory = 1536
   end
 
   config.vm.synced_folder '.', '/vagrant', disabled: true

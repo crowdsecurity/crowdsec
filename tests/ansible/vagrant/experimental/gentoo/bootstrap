@@ -1,0 +1,3 @@
+#!/bin/sh
+
+sudo emerge --quiet app-portage/gentoolkit dev-vcs/git net-misc/curl app-misc/jq net-analyzer/openbsd-netcat

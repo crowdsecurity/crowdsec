@@ -5,34 +5,30 @@
   when:
     - (package_dir is defined) and (package_dir | length > 0)
 
-- name: "look for .deb file matching package_file"
-  ansible.builtin.set_fact:
-    found_file: "{{ item }}"
-  with_fileglob:
-    - "{{ package_file }}"
-  when:
-    - (package_file is defined) and (package_file | length > 0)
-
-- name: "check found_file"
-  ansible.builtin.fail:
-    msg: "No file found matching {{ package_file }}"
-  when:
-    - found_file is not defined
-    - (package_file is defined) and (package_file | length > 0)
-
-- name: "copy built file for deb-like"
-  become: false
-  ansible.builtin.copy:
-    src: "{{ found_file }}"
-    dest: "{{ ansible_env.HOME }}/crowdsec.deb"
-    mode: 0o644
-  when:
-    - (package_file is defined) and (package_file | length > 0)
-
-- name: "install crowdsec on deb-like"
+- name: "install crowdsec from package_file"
   become: true
-  ansible.builtin.apt:
-    deb: "{{ ansible_env.HOME }}/crowdsec.deb"
-    allow_downgrade: true
+  block:
+    - name: "look for file matching package_file"
+      ansible.builtin.set_fact:
+        found_file: "{{ item }}"
+      with_fileglob:
+        - "{{ package_file }}"
+
+    - name: "check found_file"
+      ansible.builtin.fail:
+        msg: "No file found matching {{ package_file }}"
+      when:
+        - found_file is not defined
+
+    - name: "copy {{ found_file }}"
+      ansible.builtin.copy:
+        src: "{{ found_file }}"
+        dest: "/root/crowdsec.deb"
+        mode: 0o644
+
+    - name: "install crowdsec"
+      ansible.builtin.apt:
+        deb: "/root/crowdsec.deb"
+        allow_downgrade: true
   when:
     - (package_file is defined) and (package_file | length > 0)

@@ -128,11 +128,12 @@ teardown() {
     echo -e "---\nfilename: ${tmpfile}\nlabels:\n  type: syslog\n" >>"${ACQUIS_YAML}"
 
     ./instance-crowdsec start
+    sleep .5
     fake_log >>"${tmpfile}"
 
     # this could be simplified, but some systems are slow and we don't want to
     # wait more than required
-    for ((idx = 0; idx < 20; idx++)); do
+    for ((i=0;i<30;i++)); do
         sleep .5
         run -0 --separate-stderr cscli decisions list -o json
         run -0 jq --exit-status '.[].decisions[0] | [.value,.type] == ["1.1.1.172","captcha"]' <(output) && break
