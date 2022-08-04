@@ -61,6 +61,12 @@ func NewPostOverflowsCmd() *cobra.Command {
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			for _, name := range args {
+				t := cwhub.GetItem(cwhub.PARSERS_OVFLW, name)
+				if t == nil {
+					nearestItem, score := GetDistance(cwhub.PARSERS_OVFLW, name)
+					Suggest(cwhub.PARSERS_OVFLW, name, nearestItem.Name, score, ignoreError)
+					continue
+				}
 				if err := cwhub.InstallItem(csConfig, name, cwhub.PARSERS_OVFLW, forceAction, downloadOnly); err != nil {
 					if ignoreError {
 						log.Errorf("Error while installing '%s': %s", name, err)
