@@ -34,13 +34,28 @@ teardown() {
 }
 
 @test "can install a collection (as a regular user) and remove it" {
+    # collection is not installed
+    run -0 cscli collections list -o json
+    run -0 jq -r '.collections[].name' <(output)
+    refute_line "crowdsecurity/mysql"
+
+    # we install it
     run -0 cscli collections install crowdsecurity/mysql -o human
     assert_output --partial "Enabled crowdsecurity/mysql"
+
+    # it has been installed
     run -0 cscli collections list -o json
-    run -0 jq '.collections | length' <(output)
-    assert_output 3
+    run -0 jq -r '.collections[].name' <(output)
+    assert_line "crowdsecurity/mysql"
+
+    # we install it
     run -0 cscli collections remove crowdsecurity/mysql -o human
     assert_output --partial "Removed symlink [crowdsecurity/mysql]"
+
+    # it has been removed
+    run -0 cscli collections list -o json
+    run -0 jq -r '.collections[].name' <(output)
+    refute_line "crowdsecurity/mysql"
 }
 
 @test "cannot remove a collection twice" {
@@ -53,3 +68,5 @@ teardown() {
     assert_output --partial "unable to disable crowdsecurity/mysql"
     assert_output --partial "doesn't exist"
 }
+
+# TODO test download-only
