@@ -28,8 +28,7 @@ declare stderr
 @test "'decisions add' requires parameters" {
     run -1 --separate-stderr cscli decisions add
     assert_line "Usage:"
-    run echo "${stderr}"
-    assert_output --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
+    assert_stderr --partial "Missing arguments, a value is required (--ip, --range or --scope and --value)"
 
     run -1 --separate-stderr cscli decisions add -o json
     run echo "${stderr}"
@@ -60,8 +59,7 @@ declare stderr
 
 @test "cscli decisions list, incorrect parameters" {
     run -1 --separate-stderr cscli decisions list --until toto
-    run echo "${stderr}"
-    assert_output --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
+    assert_stderr --partial 'Unable to list decisions : performing request: API error: while parsing duration: time: invalid duration \"toto\"'
     run -1 --separate-stderr cscli decisions list --until toto -o json
     run echo "${stderr}"
     run -0 jq -c '[.level, .msg]' <(output)
