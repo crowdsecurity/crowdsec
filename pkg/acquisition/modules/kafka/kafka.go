@@ -76,7 +76,10 @@ func (k *KafkaSource) Configure(Config []byte, logger *log.Entry) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot create %s dialer", dataSourceName)
 	}
-	k.Reader = k.Config.NewReader(dialer)
+	k.Reader, err = k.Config.NewReader(dialer)
+	if err != nil {
+		return errors.Wrapf(err, "cannote create %s reader", dataSourceName)
+	}
 	if k.Reader == nil {
 		return fmt.Errorf("cannot create %s reader", dataSourceName)
 	}
@@ -124,7 +127,7 @@ func (k *KafkaSource) ReadMessage(out chan types.Event) error {
 			if err == io.EOF {
 				return nil
 			}
-			return errors.Wrapf(err, "while reading %s message", dataSourceName)
+			k.logger.Errorln(errors.Wrapf(err, "while reading %s message", dataSourceName))
 		}
 		l := types.Line{
 			Raw:     string(m.Value),
@@ -156,7 +159,7 @@ func (k *KafkaSource) RunReader(out chan types.Event, t *tomb.Tomb) error {
 		case <-t.Dying():
 			k.logger.Infof("%s datasource topic %s stopping", dataSourceName, k.Config.Topic)
 			if err := k.Reader.Close(); err != nil {
-				return errors.Wrapf(err, "while closing  %s reader on topic", dataSourceName)
+				return errors.Wrapf(err, "while closing  %s reader on topic '%s'", dataSourceName, k.Config.Topic)
 			}
 			return nil
 		}
@@ -223,14 +226,17 @@ func (kc *KafkaConfiguration) NewDialer() (*kafka.Dialer, error) {
 	return dialer, nil
 }
 
-func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) *kafka.Reader {
-	rConf := kafka.ReaderConfig{}
-	if kc.GroupID != "" {
-		rConf.GroupID = kc.GroupID
-	}
-	return kafka.NewReader(kafka.ReaderConfig{
+func (kc *KafkaConfiguration) NewReader(dialer *kafka.Dialer) (*kafka.Reader, error) {
+	rConf := kafka.ReaderConfig{
 		Brokers: kc.Brokers,
 		Topic:   kc.Topic,
 		Dialer:  dialer,
-	})
+	}
+	if kc.GroupID != "" {
+		rConf.GroupID = kc.GroupID
+	}
+	if err := rConf.Validate(); err != nil {
+		return &kafka.Reader{}, errors.Wrapf(err, "while validating reader configuration")
+	}
+	return kafka.NewReader(rConf), nil
 }
