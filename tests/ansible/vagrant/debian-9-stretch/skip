@@ -1,0 +1,11 @@
+#!/bin/sh
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+# postgres is too old on this distribution
+[ "${DB_BACKEND}" = "postgres" ] && die "skipping: postgres too old"
+[ "${DB_BACKEND}" = "pgx" ] && die "skipping: postgres too old"
+exit 0

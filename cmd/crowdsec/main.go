@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -263,6 +264,11 @@ func LoadConfig(cConfig *csconfig.Config) error {
 
 	if cConfig.Common.PidDir != "" {
 		log.Warn("Deprecation warning: the pid_dir config can be safely removed and is not required")
+	}
+
+	if cConfig.Common.Daemonize && runtime.GOOS == "windows" {
+		log.Debug("Daemonization is not supported on Windows, disabling")
+		cConfig.Common.Daemonize = false
 	}
 
 	return nil

@@ -1,0 +1,3 @@
+---
+package_testing: "{{ lookup('ansible.builtin.env', 'PACKAGE_TESTING') }}"
+skip_tests: "{{ lookup('ansible.builtin.env', 'TEST_SKIP') }}"

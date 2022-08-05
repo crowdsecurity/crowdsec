@@ -39,10 +39,7 @@ func (s *SyslogServer) Listen(listenAddr string, port int) error {
 	}
 	s.Logger.Debugf("listening on %s:%d", s.listenAddr, s.port)
 	s.udpConn = udpConn
-	err = s.udpConn.SetReadBuffer(s.MaxMessageLen) // FIXME probably
-	if err != nil {
-		return errors.Wrap(err, "could not set readbuffer on UDP socket")
-	}
+
 	err = s.udpConn.SetReadDeadline(time.Now().UTC().Add(100 * time.Millisecond))
 	if err != nil {
 		return errors.Wrap(err, "could not set read deadline on UDP socket")

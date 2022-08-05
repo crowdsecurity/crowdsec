@@ -21,8 +21,11 @@ import (
 	"github.com/prometheus/prom2json"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/texttheater/golang-levenshtein/levenshtein"
 	"gopkg.in/yaml.v2"
 )
+
+const MaxDistance = 7
 
 func printHelp(cmd *cobra.Command) {
 	err := cmd.Help()
@@ -66,6 +69,39 @@ func LoadHub() error {
 	}
 
 	return nil
+}
+
+func Suggest(itemType string, baseItem string, suggestItem string, score int, ignoreErr bool) {
+	errMsg := ""
+	if score < MaxDistance {
+		errMsg = fmt.Sprintf("unable to find %s '%s', did you mean %s ?", itemType, baseItem, suggestItem)
+	} else {
+		errMsg = fmt.Sprintf("unable to find %s '%s'", itemType, baseItem)
+	}
+	if ignoreErr {
+		log.Error(errMsg)
+	} else {
+		log.Fatalf(errMsg)
+	}
+}
+
+func GetDistance(itemType string, itemName string) (*cwhub.Item, int) {
+	allItems := make([]string, 0)
+	nearestScore := 100
+	nearestItem := &cwhub.Item{}
+	hubItems := cwhub.GetHubStatusForItemType(itemType, "", true)
+	for _, item := range hubItems {
+		allItems = append(allItems, item.Name)
+	}
+
+	for _, s := range allItems {
+		d := levenshtein.DistanceForStrings([]rune(itemName), []rune(s), levenshtein.DefaultOptions)
+		if d < nearestScore {
+			nearestScore = d
+			nearestItem = cwhub.GetItem(itemType, s)
+		}
+	}
+	return nearestItem, nearestScore
 }
 
 func compAllItems(itemType string, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -319,7 +355,11 @@ func GetParserMetric(url string, itemName string) map[string]map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)
@@ -402,7 +442,11 @@ func GetScenarioMetric(url string, itemName string) map[string]int {
 		}
 		log.Tracef("round %d", idx)
 		for _, m := range fam.Metrics {
-			metric := m.(prom2json.Metric)
+			metric, ok := m.(prom2json.Metric)
+			if !ok {
+				log.Debugf("failed to convert metric to prom2json.Metric")
+				continue
+			}
 			name, ok := metric.Labels["name"]
 			if !ok {
 				log.Debugf("no name in Metric %v", metric.Labels)

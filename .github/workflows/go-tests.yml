@@ -126,6 +126,7 @@ jobs:
 
     - name: Run tests
       run: |
+        set -o pipefail
         go install github.com/ory/go-acc@v0.2.8
         go install github.com/kyoh86/richgo@v0.3.10
         go-acc ./... -o coverage.out --ignore database,notifications,protobufs,cwversion,cstest,models \

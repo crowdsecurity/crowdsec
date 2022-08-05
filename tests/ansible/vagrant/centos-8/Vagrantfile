@@ -1,0 +1,6 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/stream8"
+end
+
+common = '../Vagrantfile.common'
+load common if File.exists?(common)

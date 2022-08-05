@@ -1,0 +1,112 @@
+---
+- name: "set releasever for RedHat family"
+  ansible.builtin.set_fact:
+    releasever: "{{ release[ansible_facts.distribution] + ansible_facts.distribution_major_version }}"
+  vars:
+    release:
+      AlmaLinux: el
+      Amazon: amzn
+      CentOS: el
+      Fedora: fc
+      OracleLinux: ol
+      Rocky: el
+  when:
+    - ansible_facts.os_family == "RedHat"
+
+- name: "system details"
+  ansible.builtin.debug:
+    msg: |
+      Distribution: {{ ansible_facts.distribution }}
+      Version: {{ ansible_facts.distribution_version }}
+      Major: {{ ansible_facts.distribution_major_version | default('n/a') }}
+      Release: {{ ansible_facts.distribution_release }}
+      Releasever: {{ releasever | default('n/a') }}
+
+- name: "hardcode master branch for the hub, temporary override before install (config.yaml.local)"
+  become: true
+  block:
+    - name: "create /etc/crowdsec"
+      ansible.builtin.file:
+        path: "/etc/crowdsec"
+        state: directory
+        mode: 0o0755
+    - name: "create /etc/crowdsec/config.yaml.local"
+      ansible.builtin.copy:
+        dest: "/etc/crowdsec/config.yaml.local"
+        content: "{{ config_yaml_local | to_nice_yaml }}"
+        mode: 0o600
+      vars:
+        config_yaml_local:
+          cscli:
+            hub_branch: master
+  when:
+    - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
+
+- name: "install from binary repository (RedHat)"
+  ansible.builtin.import_tasks: install_from_rpm_repo.yml
+  when:
+    - (package_version_rpm is defined) and (package_version_rpm|length > 0)
+    - ansible_facts.os_family == "RedHat"
+
+- name: "install from binary repository (Debian)"
+  ansible.builtin.import_tasks: install_from_deb_repo.yml
+  when:
+    - (package_version_deb is defined) and (package_version_deb|length > 0)
+    - ansible_facts.os_family == "Debian"
+
+- name: "install from *.rpm package file"
+  ansible.builtin.import_tasks: install_from_rpm.yml
+  when:
+    - ansible_facts.os_family == "RedHat"
+
+- name: "install from *.deb package file"
+  ansible.builtin.import_tasks: install_from_deb.yml
+  when:
+    - ansible_facts.os_family == "Debian"
+
+- name: "hardcode master branch for the hub, for real this time"
+  become: true
+  block:
+    - name: "read config.yaml"
+      ansible.builtin.slurp:
+        path: "/etc/crowdsec/config.yaml"
+      register: config_yaml
+    - name: "create fact from config.yaml"
+      ansible.builtin.set_fact:
+        config_data: "{{ config_yaml['content'] | b64decode | from_yaml }}"
+    - name: "patch dictionary"
+      ansible.builtin.set_fact:
+        config_data: "{{ config_data | combine(config_patch, recursive=True) }}"
+      vars: 
+        config_patch:
+          cscli:
+            hub_branch: master
+    - name: "write patched config.yaml"
+      ansible.builtin.copy:
+        content: '{{ config_data | to_nice_yaml }}'
+        dest: "/etc/crowdsec/config.yaml"
+        # preserve mode to be able to test permissions from package
+        mode: preserve
+    - name: "remove config.yaml.local"
+      ansible.builtin.file:
+        path: "/etc/crowdsec/config.yaml.local"
+        state: absent
+  when:
+    - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
+
+# this is required to avoid fatal errors in case systemctl is not working (which happens on some aws instances)
+- name: "override acquis.yaml for package testing"
+  become: true
+  ansible.builtin.copy:
+    dest: "/etc/crowdsec/acquis.yaml"
+    content: "{{ acquis_yaml | to_nice_yaml }}"
+    mode: preserve
+  vars:
+    acquis_yaml:
+      filenames:
+        - /tmp/should-not-exist.log
+      labels:
+        type: syslog
+        force_inotify: true
+  when:
+    - (package_testing is defined) and (package_testing not in ['', 'false', 'False'])

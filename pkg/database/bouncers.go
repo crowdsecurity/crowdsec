@@ -47,19 +47,24 @@ func (c *Client) CreateBouncer(name string, ipAddr string, apiKey string, authTy
 		if ent.IsConstraintError(err) {
 			return nil, fmt.Errorf("bouncer %s already exists", name)
 		}
-		return nil, fmt.Errorf("unable to save api key in database: %s", err)
+		return nil, fmt.Errorf("unable to create bouncer: %s", err)
 	}
 	return bouncer, nil
 }
 
 func (c *Client) DeleteBouncer(name string) error {
-	_, err := c.Ent.Bouncer.
+	nbDeleted, err := c.Ent.Bouncer.
 		Delete().
 		Where(bouncer.NameEQ(name)).
 		Exec(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to save api key in database: %s", err)
+		return err
 	}
+
+	if nbDeleted == 0 {
+		return fmt.Errorf("bouncer doesn't exist")
+	}
+
 	return nil
 }
 
@@ -68,7 +73,7 @@ func (c *Client) UpdateBouncerLastPull(lastPull time.Time, ID int) error {
 		SetLastPull(lastPull).
 		Save(c.CTX)
 	if err != nil {
-		return fmt.Errorf("unable to update machine in database: %s", err)
+		return fmt.Errorf("unable to update machine last pull in database: %s", err)
 	}
 	return nil
 }

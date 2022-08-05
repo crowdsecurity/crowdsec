@@ -7,6 +7,23 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func parseDateWithFormat(date, format string) (string, time.Time) {
+	t, err := time.Parse(format, date)
+	if err == nil && !t.IsZero() {
+		//if the year isn't set, set it to current date :)
+		if t.Year() == 0 {
+			t = t.AddDate(time.Now().UTC().Year(), 0, 0)
+		}
+		retstr, err := t.MarshalText()
+		if err != nil {
+			log.Warningf("Failed marshaling '%v'", t)
+			return "", time.Time{}
+		}
+		return string(retstr), t
+	}
+	return "", time.Time{}
+}
+
 func GenDateParse(date string) (string, time.Time) {
 	var (
 		layouts = [...]string{
@@ -29,40 +46,44 @@ func GenDateParse(date string) (string, time.Time) {
 	)
 
 	for _, dateFormat := range layouts {
-		t, err := time.Parse(dateFormat, date)
-		if err == nil && !t.IsZero() {
-			//if the year isn't set, set it to current date :)
-			if t.Year() == 0 {
-				t = t.AddDate(time.Now().UTC().Year(), 0, 0)
-			}
-			retstr, err := t.MarshalText()
-			if err != nil {
-				log.Warningf("Failed marshaling '%v'", t)
-				continue
-			}
-			return string(retstr), t
+		retstr, parsedDate := parseDateWithFormat(date, dateFormat)
+		if !parsedDate.IsZero() {
+			return retstr, parsedDate
 		}
 	}
+	return "", time.Time{}
+}
 
+func ParseDate(in string, p *types.Event, x interface{}, plog *log.Entry) (map[string]string, error) {
+
+	var ret map[string]string = make(map[string]string)
+	var strDate string
+	var parsedDate time.Time
+
+	if p.StrTimeFormat != "" {
+		strDate, parsedDate = parseDateWithFormat(in, p.StrTimeFormat)
+		if !parsedDate.IsZero() {
+			ret["MarshaledTime"] = strDate
+			return ret, nil
+		} else {
+			plog.Debugf("unable to parse '%s' with layout '%s'", in, p.StrTimeFormat)
+		}
+	}
+	strDate, parsedDate = GenDateParse(in)
+	if !parsedDate.IsZero() {
+		ret["MarshaledTime"] = strDate
+		return ret, nil
+	}
+	plog.Debugf("no suitable date format found for '%s', falling back to now", in)
 	now := time.Now().UTC()
 	retstr, err := now.MarshalText()
 	if err != nil {
-		log.Warning("Failed marshaling current time")
-		return "", time.Time{}
+		plog.Warning("Failed marshaling current time")
+		return ret, err
 	}
-	return string(retstr), now
-}
+	ret["MarshaledTime"] = string(retstr)
 
-func ParseDate(in string, p *types.Event, x interface{}) (map[string]string, error) {
-
-	var ret map[string]string = make(map[string]string)
-	tstr, tbin := GenDateParse(in)
-	if !tbin.IsZero() {
-		ret["MarshaledTime"] = tstr
-		return ret, nil
-	}
-
-	return nil, nil
+	return ret, nil
 }
 
 func parseDateInit(cfg map[string]string) (interface{}, error) {

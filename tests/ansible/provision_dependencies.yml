@@ -1,0 +1,70 @@
+---
+- name: "install Go (!bsd)"
+  hosts: all
+  gather_facts: true
+  vars_files:
+    - vars/go.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: gantsign.golang
+      when:
+        - ansible_facts.system == 'Linux'
+        - ansible_facts.distribution != 'Alpine'
+
+- name: "install Go (bsd, alpine)"
+  hosts: all
+  gather_facts: true
+  become: true
+  tasks:
+    - ansible.builtin.package:
+        name: go
+        state: present
+      when:
+        - ansible_facts.system in ['FreeBSD', 'OpenBSD'] or ansible_facts.distribution == 'Alpine'
+
+# required for jq and basic tools on centos and rhel
+- name: "enable EPEL repository (RedHat)"
+  hosts: all
+  become: true
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.repo-epel
+      vars:
+        epel_repo_disable: false
+      when:
+        - ansible_facts.os_family == 'RedHat'
+        - (ansible_facts.distribution != 'Fedora') and (ansible_facts.distribution != 'Amazon')
+
+- name: "apply common configuration to all nodes"
+  hosts: all
+  vars_files:
+    - vars/go.yml
+  roles:
+    - common
+    - machine_id
+    - bats_requirements
+
+- name: "install Postgres"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/postgres.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.postgresql
+      # enable this for debugging
+      #vars:
+      #  postgres_users_no_log: false
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') in ['pgx', 'postgres']
+
+- name: "install MySQL"
+  hosts: all
+  become: true
+  vars_files:
+    - vars/mysql.yml
+  tasks:
+    - ansible.builtin.include_role:
+        name: geerlingguy.mysql
+      when:
+        - lookup('ansible.builtin.env', 'DB_BACKEND') == 'mysql'

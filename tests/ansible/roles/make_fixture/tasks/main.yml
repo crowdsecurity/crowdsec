@@ -1,0 +1,74 @@
+---
+- name: "set make_cmd = make (!bsd)"
+  ansible.builtin.set_fact:
+    make_cmd: make
+  when:
+    - ansible_facts.system not in ['FreeBSD', 'OpenBSD']
+
+- name: "set make_cmd = gmake (bsd)"
+  ansible.builtin.set_fact:
+    make_cmd: gmake
+  when:
+    - ansible_facts.system in ['FreeBSD', 'OpenBSD']
+
+- name: "build crowdsec from sources, prepare test environment and fixture"
+  become: false
+  block:
+    - ansible.builtin.command:
+        cmd: "{{ make_cmd }} bats-build bats-fixture"
+        chdir: "{{ ansible_env.HOME }}/crowdsec"
+        creates: "{{ ansible_env.HOME }}/crowdsec/tests/local-init/init-config-data.tar"
+      environment:
+        DB_BACKEND: "{{ lookup('ansible.builtin.env', 'DB_BACKEND') }}"
+        # daemonize -> /usr/bin or /usr/local/sbin
+        # pidof -> /usr/sbin
+        # bash -> /opt/bash/bin
+        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:{{ golang_install_dir }}/bin/:/usr/sbin:/usr/local/sbin"
+  rescue:
+    - name: "read crowdsec.log"
+      ansible.builtin.slurp:
+        path: "{{ ansible_env.HOME }}/crowdsec/tests/local/var/log/crowdsec.log"
+      register: crowdsec_log
+    - name: "show crowdsec.log"
+      ansible.builtin.fail:
+        msg: "{{ crowdsec_log['content'] | b64decode }}"
+  when: (package_testing is not defined) or (package_testing in ['', 'false', 'False'])
+
+- name: "prepare test environment and fixture for binary package"
+  become: true
+  block:
+    - ansible.builtin.command:
+        cmd: "{{ make_cmd }} bats-environment bats-check-requirements bats-fixture"
+        chdir: "{{ ansible_env.HOME }}/crowdsec"
+        creates: "{{ ansible_env.HOME }}/crowdsec/tests/local-init/init-config-data.tar"
+      environment:
+        PACKAGE_TESTING: "{{ package_testing }}"
+        DB_BACKEND: "{{ lookup('ansible.builtin.env', 'DB_BACKEND') }}"
+        # daemonize -> /usr/bin or /usr/local/sbin
+        # pidof -> /usr/sbin
+        # bash -> /opt/bash/bin
+        PATH: "/opt/bash/bin:{{ ansible_env.PATH }}:/usr/sbin:/usr/local/sbin"
+  rescue:
+    - name: "read crowdsec.log"
+      ansible.builtin.slurp:
+        path: "/var/log/crowdsec.log"
+      register: crowdsec_log
+    - name: "show crowdsec.log"
+      ansible.builtin.fail:
+        msg: "{{ crowdsec_log['content'] | b64decode }}"
+  when: (package_testing is defined) and (package_testing not in ['', 'false', 'False'])
+
+- name: "debug - show environment"
+  become: false
+  block:
+    - name: "look for .environment.sh"
+      ansible.builtin.slurp:
+        src: "{{ ansible_env.HOME }}/crowdsec/tests/.environment.sh"
+      changed_when: false
+      register: envfile
+    - name: "cat .environment.sh"
+      ansible.builtin.debug:
+        msg: "{{ envfile['content'] | b64decode }}"
+    - name: "show environment variables"
+      ansible.builtin.debug:
+        msg: "{{ ansible_env | to_nice_yaml }}"

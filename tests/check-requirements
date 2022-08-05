@@ -19,6 +19,12 @@ check_bats_core() {
     fi
 }
 
+check_curl() {
+    if ! command -v curl >/dev/null; then
+        die "missing required program 'curl'"
+    fi
+}
+
 check_python3() {
     if ! command -v python3 >/dev/null; then
         die "missing required program 'python3'"
@@ -26,7 +32,6 @@ check_python3() {
 }
 
 check_jq() {
-    # shellcheck disable=SC2016
     if ! command -v jq >/dev/null; then
         die "Missing required program 'jq'"
     fi
@@ -56,22 +61,9 @@ check_yq() {
 }
 
 check_daemonizer() {
-    SYSTEM=$(uname -s)
-    case "${SYSTEM,,}" in
-        linux)
-            if ! command -v daemonize >/dev/null; then
-                die "missing required program 'daemonize' (package 'daemonize')"
-            fi
-            ;;
-        freebsd)
-            if ! command -v daemon >/dev/null; then
-                die "missing required program 'daemon'"
-            fi
-            ;;
-        *)
-            die "unsupported system: ${SYSTEM}"
-            ;;
-    esac
+    if ! command -v daemonize >/dev/null; then
+        die "missing required program 'daemonize' (package 'daemonize' or 'https://github.com/bmc/daemonize')"
+    fi
 }
 
 check_cfssl() {
@@ -97,6 +89,7 @@ check_gocovmerge() {
 }
 
 check_bats_core
+check_curl
 check_daemonizer
 check_cfssl
 check_cfssljson
