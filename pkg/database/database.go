@@ -76,7 +76,16 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 				return &Client{}, fmt.Errorf("unable to set perms on %s: %v", config.DbPath, err)
 			}
 		}
-		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?_busy_timeout=100000&_fk=1", config.DbPath), config)
+		if config.UseWal == nil {
+			clog.Warn("you are using sqlite without WAL, this can have an impact of performance. If you do store the database in a network share, set db_config.use_wal to true. Set to false to disable this warning")
+		}
+		var sqliteConnectionStringParameters string
+		if config.UseWal != nil && *config.UseWal {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1&_journal_mode=WAL"
+		} else {
+			sqliteConnectionStringParameters = "_busy_timeout=100000&_fk=1"
+		}
+		drv, err := getEntDriver("sqlite3", dialect.SQLite, fmt.Sprintf("file:%s?%s", config.DbPath, sqliteConnectionStringParameters), config)
 		if err != nil {
 			return &Client{}, errors.Wrapf(err, "failed opening connection to sqlite: %v", config.DbPath)
 		}
