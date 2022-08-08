@@ -220,7 +220,6 @@ func LeakRoutine(leaky *Leaky) error {
 		}
 	}
 
-	leaky.logger.Debugf("Leaky routine starting, lifetime : %s", leaky.Duration)
 	for {
 		select {
 		/*receiving an event*/

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -23,9 +24,13 @@ var serialized map[string]Leaky
 var BucketPourCache map[string][]types.Event
 var BucketPourTrack bool
 
-/*The leaky routines lifecycle are based on "real" time.
+var BlackholeTracking *sync.Map
+
+/*
+The leaky routines lifecycle are based on "real" time.
 But when we are running in time-machine mode, the reference time is in logs and not "real" time.
-Thus we need to garbage collect them to avoid a skyrocketing memory usage.*/
+Thus we need to garbage collect them to avoid a skyrocketing memory usage.
+*/
 func GarbageCollectBuckets(deadline time.Time, buckets *Buckets) error {
 	buckets.wgPour.Wait()
 	buckets.wgDumpState.Add(1)
@@ -340,7 +345,10 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 		}
 		buckey := GetKey(holders[idx], groupby)
-
+		if _, ok := BlackholeTracking.Load(buckey); ok {
+			holders[idx].logger.Tracef("Event is blackholed: %s", buckey)
+			continue
+		}
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
 		if err != nil {

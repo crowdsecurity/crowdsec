@@ -11,6 +11,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/acquisition"
 	"github.com/crowdsecurity/crowdsec/pkg/csconfig"
 	"github.com/crowdsecurity/crowdsec/pkg/cwhub"
+	"github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	leaky "github.com/crowdsecurity/crowdsec/pkg/leakybucket"
 	"github.com/crowdsecurity/crowdsec/pkg/parser"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
@@ -47,6 +48,8 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	inputLineChan := make(chan types.Event)
 	inputEventChan := make(chan types.Event)
 
+	leaky.BlackholeTracking = &sync.Map{}
+
 	//start go-routines for parsing, buckets pour and outputs.
 	parserWg := &sync.WaitGroup{}
 	parsersTomb.Go(func() error {
@@ -67,6 +70,12 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	parserWg.Wait()
 
 	bucketWg := &sync.WaitGroup{}
+	bucketsTomb.Go(func() error {
+		bucketWg.Add(1)
+		leakybucket.CleanupBlackhole(&bucketsTomb)
+		bucketWg.Done()
+		return nil
+	})
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
 		/*restore previous state as well if present*/

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	log "github.com/sirupsen/logrus"
+	"gopkg.in/tomb.v2"
 )
 
 type HiddenKey struct {
@@ -31,38 +33,48 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
+func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
+	ticker := time.NewTicker(10 * time.Second)
+	for {
+		select {
+		case <-bucketsTomb.Dying():
+			ticker.Stop()
+			BlackholeTracking.Range(func(key, value interface{}) bool {
+				BlackholeTracking.Delete(key)
+				return true
+			})
+			return nil
+		case <-ticker.C:
+			BlackholeTracking.Range(func(key, value interface{}) bool {
+				expirationDate := value.(time.Time)
+				if expirationDate.Before(time.Now().UTC()) {
+					log.Debugf("Expiring blackhole for %s", key)
+					BlackholeTracking.Delete(key)
+				}
+				return true
+			})
+		}
+	}
+}
+
 func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
-		var blackholed bool = false
-		var tmp []HiddenKey
-		// search if we are blackholed and refresh the slice
-		for _, element := range bl.hiddenKeys {
-
-			if element.key == leaky.Mapkey {
-				if element.expiration.After(leaky.Ovflw_ts) {
-					leaky.logger.Debugf("Overflow discarded, still blackholed for %s", element.expiration.Sub(leaky.Ovflw_ts))
-					blackholed = true
-				}
-			}
-
-			if element.expiration.After(leaky.Ovflw_ts) {
-				tmp = append(tmp, element)
+		if expirationDate, ok := BlackholeTracking.Load(leaky.Mapkey); ok {
+			if expirationDate.(time.Time).After(time.Now().UTC()) {
+				leaky.logger.Debugf("Blackhole already triggered for %s", leaky.Mapkey)
+				return types.RuntimeAlert{
+					Mapkey: leaky.Mapkey,
+				}, nil
 			} else {
-				leaky.logger.Debugf("%s left blackhole %s ago", element.key, leaky.Ovflw_ts.Sub(element.expiration))
-
+				leaky.logger.Debugf("Blackhole expired for %s", leaky.Mapkey)
+				BlackholeTracking.Delete(leaky.Mapkey)
 			}
 		}
-		bl.hiddenKeys = tmp
 
-		if blackholed {
-			leaky.logger.Tracef("Event is blackholed (%s)", leaky.First_ts)
-			return types.RuntimeAlert{
-				Mapkey: leaky.Mapkey,
-			}, nil
-		}
-		bl.hiddenKeys = append(bl.hiddenKeys, HiddenKey{leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration)})
-		leaky.logger.Debugf("Adding overflow to blackhole (%s)", leaky.First_ts)
+		BlackholeTracking.Store(leaky.Mapkey, time.Now().UTC().Add(bl.duration))
+
+		leaky.logger.Debugf("Blackhole triggered for %s", leaky.Mapkey)
+
 		return alert, queue
 	}
-
 }

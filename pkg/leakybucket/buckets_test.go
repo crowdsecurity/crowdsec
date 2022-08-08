@@ -38,6 +38,8 @@ func TestBucket(t *testing.T) {
 		log.Fatalf("exprhelpers init failed: %s", err)
 	}
 
+	BlackholeTracking = &sync.Map{}
+
 	if envSetting != "" {
 		if err := testOneBucket(t, envSetting, tomb); err != nil {
 			t.Fatalf("Test '%s' failed : %s", envSetting, err)
@@ -64,8 +66,8 @@ func TestBucket(t *testing.T) {
 	}
 }
 
-//during tests, we're likely to have only one scenario, and thus only one holder.
-//we want to avoid the death of the tomb because all existing buckets have been destroyed.
+// during tests, we're likely to have only one scenario, and thus only one holder.
+// we want to avoid the death of the tomb because all existing buckets have been destroyed.
 func watchTomb(tomb *tomb.Tomb) {
 	for {
 		if tomb.Alive() == false {

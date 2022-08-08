@@ -48,6 +48,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	ctx := context.Background()
 	alertsToPush, err := dedupAlerts(alerts)
 
+	start := time.Now()
 	if err != nil {
 		return errors.Wrap(err, "failed to transform alerts for api")
 	}
@@ -55,6 +56,7 @@ func PushAlerts(alerts []types.RuntimeAlert, client *apiclient.ApiClient) error 
 	if err != nil {
 		return errors.Wrap(err, "failed sending alert to LAPI")
 	}
+	log.Tracef("sent %d alerts in %s", len(alertsToPush), time.Since(start))
 	return nil
 }
 
