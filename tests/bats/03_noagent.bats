@@ -38,14 +38,6 @@ teardown() {
     assert_stderr --partial "crowdsec agent is disabled"
 }
 
-@test "no agent: capi status should be ok" {
-    config_disable_agent
-    config_enable_capi
-    ./instance-crowdsec start
-    run -0 --separate-stderr cscli capi status
-    assert_stderr --partial "You can successfully interact with Central API (CAPI)"
-}
-
 @test "no agent: cscli config show" {
     config_disable_agent
     run -0 --separate-stderr cscli config show -o human

@@ -14,7 +14,8 @@
 - name: "build crowdsec from sources, prepare test environment and fixture"
   become: false
   block:
-    - ansible.builtin.command:
+    - name: "make bats-build bats-fixture"
+      ansible.builtin.command:
         cmd: "{{ make_cmd }} bats-build bats-fixture"
         chdir: "{{ ansible_env.HOME }}/crowdsec"
         creates: "{{ ansible_env.HOME }}/crowdsec/tests/local-init/init-config-data.tar"
@@ -37,7 +38,8 @@
 - name: "prepare test environment and fixture for binary package"
   become: true
   block:
-    - ansible.builtin.command:
+    - name: "make bats-environment bats-check-requirements bats-fixture"
+      ansible.builtin.command:
         cmd: "{{ make_cmd }} bats-environment bats-check-requirements bats-fixture"
         chdir: "{{ ansible_env.HOME }}/crowdsec"
         creates: "{{ ansible_env.HOME }}/crowdsec/tests/local-init/init-config-data.tar"
