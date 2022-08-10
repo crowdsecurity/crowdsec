@@ -36,7 +36,7 @@
           }
         },
         "Alert" : {
-        "scenario": "test/simple-leaky",
+        "scenario": "test/simple-leaky-ovfl",
         "events_count": 2
         }
       }

@@ -52,7 +52,7 @@
           }
         },
         "Alert" : {
-        "scenario": "test/simple-leaky",
+        "scenario": "test/simple-leaky-uniq",
         "events_count": 2
         }
        

@@ -1,6 +1,6 @@
 {
- "cdf58e6ae48e79ac3ae0f006e1a2e627eccd8b63": {
-  "Name": "test/simple-leaky",
+ "4fccb3db1e4c2e1c94bdb747336c8749bbc470ef": {
+  "Name": "test/simple-leaky-state",
   "Mode": 1,
   "SerializedState": {
    "Limit": 0.1,
@@ -74,7 +74,7 @@
   },
   "Capacity": 3,
   "CacheSize": 0,
-  "Mapkey": "cdf58e6ae48e79ac3ae0f006e1a2e627eccd8b63",
+  "Mapkey": "4fccb3db1e4c2e1c94bdb747336c8749bbc470ef",
   "Reprocess": false,
   "Uuid": "dark-bush",
   "First_ts": "2020-01-01T10:00:04Z",

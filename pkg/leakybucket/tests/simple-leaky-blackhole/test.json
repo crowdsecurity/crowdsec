@@ -91,7 +91,7 @@
           }
         },
         "Alert" : {
-          "scenario": "test/simple-leaky",
+          "scenario": "test/simple-leaky-blackhole",
           "events_count": 2
           
         }
@@ -108,7 +108,7 @@
           }
         },
         "Alert" : {
-          "scenario": "test/simple-leaky",
+          "scenario": "test/simple-leaky-blackhole",
           "events_count": 2
           
         }

@@ -52,7 +52,7 @@
           }
         },
         "Alert" : {
-        "scenario": "test/simple-leaky",
+        "scenario": "test/simple-leaky-state",
         "events_count": 4
         }
        
