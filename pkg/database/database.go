@@ -77,7 +77,7 @@ func NewClient(config *csconfig.DatabaseCfg) (*Client, error) {
 			}
 		}
 		if config.UseWal == nil {
-			clog.Warn("you are using sqlite without WAL, this can have an impact of performance. If you do store the database in a network share, set db_config.use_wal to true. Set to false to disable this warning")
+			entLogger.Warn("you are using sqlite without WAL, this can have an impact of performance. If you do not store the database in a network share, set db_config.use_wal to true. Set to false to disable this warning")
 		}
 		var sqliteConnectionStringParameters string
 		if config.UseWal != nil && *config.UseWal {
