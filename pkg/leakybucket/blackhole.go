@@ -9,15 +9,14 @@ import (
 	"gopkg.in/tomb.v2"
 )
 
-type HiddenKey struct {
-	key        string
-	expiration time.Time
+type Blackhole struct {
+	duration time.Duration
+	DumbProcessor
 }
 
-type Blackhole struct {
-	duration   time.Duration
-	hiddenKeys []HiddenKey
-	DumbProcessor
+type BlackholeExpiration struct {
+	blExpiration      time.Time
+	cleanupExpiration time.Time //we need a separate expiration for the cleanup to properly handle timemachine buckets
 }
 
 func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
@@ -28,7 +27,6 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	}
 	return &Blackhole{
 		duration:      duration,
-		hiddenKeys:    []HiddenKey{},
 		DumbProcessor: DumbProcessor{},
 	}, nil
 }
@@ -46,8 +44,8 @@ func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
 			return nil
 		case <-ticker.C:
 			BlackholeTracking.Range(func(key, value interface{}) bool {
-				expirationDate := value.(time.Time)
-				if expirationDate.Before(time.Now().UTC()) {
+				cleanupDate := value.(BlackholeExpiration).cleanupExpiration
+				if cleanupDate.Before(time.Now().UTC()) {
 					log.Debugf("Expiring blackhole for %s", key)
 					BlackholeTracking.Delete(key)
 				}
@@ -59,9 +57,11 @@ func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
 
 func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky, types.RuntimeAlert, *Queue) (types.RuntimeAlert, *Queue) {
 	return func(leaky *Leaky, alert types.RuntimeAlert, queue *Queue) (types.RuntimeAlert, *Queue) {
-		if expirationDate, ok := BlackholeTracking.Load(leaky.Mapkey); ok {
-			if expirationDate.(time.Time).After(time.Now().UTC()) {
-				leaky.logger.Debugf("Blackhole already triggered for %s", leaky.Mapkey)
+
+		if expiration, ok := BlackholeTracking.Load(leaky.Mapkey); ok {
+			x := expiration.(BlackholeExpiration)
+			if x.blExpiration.After(leaky.Ovflw_ts) {
+				leaky.logger.Debugf("Blackhole already triggered for %s (remaining : %s", leaky.Mapkey, x.blExpiration.Sub(time.Now().UTC()))
 				return types.RuntimeAlert{
 					Mapkey: leaky.Mapkey,
 				}, nil
@@ -71,10 +71,12 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 			}
 		}
 
-		BlackholeTracking.Store(leaky.Mapkey, time.Now().UTC().Add(bl.duration))
+		BlackholeTracking.Store(leaky.Mapkey, BlackholeExpiration{
+			blExpiration:      leaky.Ovflw_ts.Add(bl.duration),
+			cleanupExpiration: time.Now().UTC().Add(bl.duration),
+		})
 
-		leaky.logger.Debugf("Blackhole triggered for %s", leaky.Mapkey)
-
+		leaky.logger.Debugf("Blackhole triggered for %s (expiration : %s)", leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration))
 		return alert, queue
 	}
 }

@@ -277,7 +277,7 @@ func LoadOrStoreBucketFromHolder(partitionKey string, buckets *Buckets, holder B
 			//once the created goroutine is ready to process event, we can return it
 			<-fresh_bucket.Signal
 		} else {
-			holder.logger.Debugf("Unexpectedly found exisint bucket for %s", partitionKey)
+			holder.logger.Debugf("Unexpectedly found existing bucket for %s", partitionKey)
 			biface = actual
 		}
 		holder.logger.Debugf("Created new bucket %s", partitionKey)
@@ -345,9 +345,24 @@ func PourItemToHolders(parsed types.Event, holders []BucketFactory, buckets *Buc
 			}
 		}
 		buckey := GetKey(holders[idx], groupby)
-		if _, ok := BlackholeTracking.Load(buckey); ok {
-			holders[idx].logger.Tracef("Event is blackholed: %s", buckey)
-			continue
+		if x, ok := BlackholeTracking.Load(buckey); ok {
+			holders[idx].logger.Debugf("Checking if blackhole has expired for %s", buckey)
+			blackholeExp := x.(BlackholeExpiration)
+			t := time.Now().UTC()
+			if parsed.ExpectMode == TIMEMACHINE {
+				//This is not optimal at all, date enrichment should also set parsed.Time to avoid parsing the date twice
+				err := t.UnmarshalText([]byte(parsed.MarshaledTime))
+				if err != nil {
+					holders[idx].logger.Errorf("failed parsing time : %v", err)
+				}
+				holders[idx].logger.Debugf("Found TIMEMACHINE bucket, using %s as time, comparing against %s ", t, blackholeExp.blExpiration)
+			}
+			if blackholeExp.blExpiration.After(t) {
+				holders[idx].logger.Debugf("Event is blackholed: %s (remaining: %s)", buckey, blackholeExp.blExpiration.Sub(t))
+				continue
+			}
+			holders[idx].logger.Debugf("Event is no longer blackholed: %s", buckey)
+			BlackholeTracking.Delete(buckey)
 		}
 		//we need to either find the existing bucket, or create a new one (if it's the first event to hit it for this partition key)
 		bucket, err := LoadOrStoreBucketFromHolder(buckey, buckets, holders[idx], parsed.ExpectMode)
