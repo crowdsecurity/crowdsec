@@ -47,6 +47,7 @@ linters:
     #
     # Enabled
     #
+    # - asasalint           # check for pass []any as any in variadic func(...any)
     # - asciicheck          # Simple linter to check that your code does not contain non-ASCII identifiers
     # - bidichk             # Checks for dangerous unicode character sequences
     # - decorder            # check declaration order and count of types, constants, variables and functions
@@ -71,6 +72,7 @@ linters:
     # - tparallel           # tparallel detects inappropriate usage of t.Parallel() method in your Go test codes
     # - typecheck           # Like the front-end of a Go compiler, parses and type-checks Go code
     # - unconvert           # Remove unnecessary type conversions
+    # - usestdlibvars       # A linter that detect the possibility to use variables/constants from the Go standard library.
     # - varcheck            # Finds unused global variables and constants
 
     #
@@ -161,13 +163,13 @@ linters:
     - exhaustruct           # Checks if all structure fields are initialized
     - goconst               # Finds repeated strings that could be replaced by a constant
     - stylecheck            # Stylecheck is a replacement for golint
+    - nosnakecase           # nosnakecase is a linter that detects snake case of variable naming and function name.
 
     #
     # Under evaluation
     #
 
     - prealloc              # Finds slice declarations that could potentially be preallocated
-
 
 issues:
   max-issues-per-linter: 0

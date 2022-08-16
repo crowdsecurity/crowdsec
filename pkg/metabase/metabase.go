@@ -319,7 +319,7 @@ func (m *Metabase) DownloadDatabase(force bool) error {
 		return fmt.Errorf("failed to create %s : %s", metabaseDBSubpath, err)
 	}
 
-	req, err := http.NewRequest("GET", m.InternalDBURL, nil)
+	req, err := http.NewRequest(http.MethodGet, m.InternalDBURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to build request to fetch metabase db : %s", err)
 	}

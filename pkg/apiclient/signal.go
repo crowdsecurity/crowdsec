@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	log "github.com/sirupsen/logrus"
 
@@ -16,7 +17,7 @@ func (s *SignalService) Add(ctx context.Context, signals *models.AddSignalsReque
 	var response interface{}
 
 	u := fmt.Sprintf("%s/signals", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &signals)
+	req, err := s.client.NewRequest(http.MethodPost, u, &signals)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "while building request")
 	}
