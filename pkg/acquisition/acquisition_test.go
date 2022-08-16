@@ -494,8 +494,8 @@ READLOOP:
 
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
-	Toto                              string `yaml:"toto"`
-	logger                            *log.Entry
+	Toto                              string     `yaml:"toto"`
+	logger                            *log.Entry //nolint: unused
 }
 
 func (f *MockSourceByDSN) Configure(cfg []byte, logger *log.Entry) error           { return nil }
