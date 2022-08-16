@@ -15,7 +15,8 @@ setup_file() {
 
     #gen the CA
     echo "Gen CA" >&3
-    cfssl gencert --initca "${CFDIR}/ca.json" 2>/dev/null | cfssljson --bare "${tmpdir}/ca"
+    cfssl gencert --initca "${CFDIR}/ca.json" >&3
+
     #gen an intermediate
     echo "Gen Intermediate" >&3
     cfssl gencert --initca "${CFDIR}/intermediate.json" 2>/dev/null | cfssljson --bare "${tmpdir}/inter"
