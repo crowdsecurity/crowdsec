@@ -30,6 +30,7 @@ setup() {
 
 @test "we have one decision" {
     run -0 cscli decisions list -o json
+    echo $(output) >&3
     run -0 jq '. | length' <(output)
     assert_output 1
 }
