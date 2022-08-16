@@ -13,7 +13,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type DecisionsByScenario struct {
@@ -101,7 +100,6 @@ func (c *Client) QueryAllDecisionsWithFilters(filters map[string][]string) ([]*e
 	)
 	//Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
-		log.Warningf("adding dedup")
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
@@ -126,7 +124,6 @@ func (c *Client) QueryExpiredDecisionsWithFilters(filters map[string][]string) (
 	)
 	//Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
-		log.Warningf("adding dedup")
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 
@@ -233,7 +230,6 @@ func (c *Client) QueryExpiredDecisionsSinceWithFilters(since time.Time, filters 
 	)
 	//Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
-		log.Warningf("adding dedup")
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
@@ -258,7 +254,6 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	)
 	//Allow a bouncer to ask for non-deduplicated results
 	if v, ok := filters["dedup"]; !ok || v[0] != "false" {
-		log.Warningf("adding dedup")
 		query = query.Where(longestDecisionForScopeTypeValue)
 	}
 	query, err := BuildDecisionRequestWithFilter(query, filters)
