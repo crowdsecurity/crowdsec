@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-var logger hclog.Logger = hclog.New(&hclog.LoggerOptions{
+var baseLogger hclog.Logger = hclog.New(&hclog.LoggerOptions{
 	Name:       "email-plugin",
 	Level:      hclog.LevelFromString("INFO"),
 	Output:     os.Stderr,
@@ -87,11 +87,12 @@ func (n *EmailPlugin) Notify(ctx context.Context, notification *protobufs.Notifi
 	}
 	cfg := n.ConfigByName[notification.Name]
 
+	logger := baseLogger.Named(cfg.Name)
+
 	if cfg.LogLevel != nil && *cfg.LogLevel != "" {
 		logger.SetLevel(hclog.LevelFromString(*cfg.LogLevel))
 	}
 
-	logger = logger.Named(cfg.Name)
 	logger.Debug("got notification")
 
 	server := mail.NewSMTPClient()
@@ -138,6 +139,6 @@ func main() {
 			},
 		},
 		GRPCServer: plugin.DefaultGRPCServer,
-		Logger:     logger,
+		Logger:     baseLogger,
 	})
 }
