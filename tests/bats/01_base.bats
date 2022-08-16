@@ -69,40 +69,6 @@ declare stderr
     assert_line "Available Commands:"
 }
 
-@test "cscli alerts list: at startup returns at least one entry: community pull" {
-    run cscli alerts list -a -o json
-    if [[ "${status}" -ne 0 ]]; then
-        run cscli alerts list -o json
-    fi
-    run -0 jq -r '. | length' <(output)
-    refute_output 0
-
-    # if we want to trigger it here, we'll have to remove decisions, restart crowdsec and wait like this:
-    # loop_max=15
-    # for ((i = 0; i <= loop_max; i++)); do
-    #     sleep 2
-    #     run -0 cscli alerts list -o json
-    #     [ "$output" != "null" ] && break
-    # done
-    # run -0 jq -r '. | length' <(output)
-    # refute_output 0
-}
-
-@test "cscli capi status" {
-    config_enable_capi
-
-    run -0 cscli capi status
-    assert_output --partial "Loaded credentials from"
-    assert_output --partial "Trying to authenticate with username"
-    assert_output --partial " on https://api.crowdsec.net/"
-    assert_output --partial "You can successfully interact with Central API (CAPI)"
-
-    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
-    rm "${ONLINE_API_CREDENTIALS_YAML}"
-    run -1 --separate-stderr cscli capi status
-    assert_stderr --partial "Local API is disabled, please run this command on the local API machine: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
-}
-
 @test "cscli config show -o human" {
     run -0 cscli config show -o human
     assert_output --partial "Global:"
