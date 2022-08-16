@@ -12,6 +12,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/types"
 	"github.com/enescakir/emoji"
 	"github.com/olekukonko/tablewriter"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -48,14 +49,14 @@ func getBouncers(dbClient *database.Client) ([]byte, error) {
 	} else if csConfig.Cscli.Output == "json" {
 		x, err := json.MarshalIndent(bouncers, "", " ")
 		if err != nil {
-			log.Fatalf("failed to unmarshal")
+			return nil, errors.Wrap(err, "failed to unmarshal")
 		}
 		return x, nil
 	} else if csConfig.Cscli.Output == "raw" {
 		csvwriter := csv.NewWriter(w)
 		err := csvwriter.Write([]string{"name", "ip", "revoked", "last_pull", "type", "version", "auth_type"})
 		if err != nil {
-			log.Fatalf("failed to write raw header: %s", err)
+			return nil, errors.Wrap(err, "failed to write raw header")
 		}
 		for _, b := range bouncers {
 			var revoked string
@@ -66,7 +67,7 @@ func getBouncers(dbClient *database.Client) ([]byte, error) {
 			}
 			err := csvwriter.Write([]string{b.Name, b.IPAddress, revoked, b.LastPull.Format(time.RFC3339), b.Type, b.Version, b.AuthType})
 			if err != nil {
-				log.Fatalf("failed to write raw: %s", err)
+				return nil, errors.Wrap(err, "failed to write raw")
 			}
 		}
 		csvwriter.Flush()

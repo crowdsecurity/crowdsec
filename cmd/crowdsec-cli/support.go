@@ -241,7 +241,7 @@ func NewSupportCmd() *cobra.Command {
 - Crowdsec config (sensitive information like username and password are redacted)
 - Crowdsec metrics`,
 		Example: `cscli support dump
-cscli support dump --out /tmp/crowdsec-support.zip
+cscli support dump -f /tmp/crowdsec-support.zip
 `,
 		Args:              cobra.NoArgs,
 		DisableAutoGenTag: true,
