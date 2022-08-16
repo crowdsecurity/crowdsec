@@ -70,12 +70,15 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	parserWg.Wait()
 
 	bucketWg := &sync.WaitGroup{}
-	bucketsTomb.Go(func() error {
-		bucketWg.Add(1)
-		leakybucket.CleanupBlackhole(&bucketsTomb)
-		bucketWg.Done()
-		return nil
-	})
+	log.Infof("BucketsGCEnabled: %v", cConfig.Crowdsec.BucketsGCEnabled)
+	if !cConfig.Crowdsec.BucketsGCEnabled {
+		bucketsTomb.Go(func() error {
+			bucketWg.Add(1)
+			leakybucket.CleanupBlackhole(&bucketsTomb)
+			bucketWg.Done()
+			return nil
+		})
+	}
 	bucketsTomb.Go(func() error {
 		bucketWg.Add(1)
 		/*restore previous state as well if present*/

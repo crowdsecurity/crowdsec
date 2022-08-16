@@ -15,8 +15,7 @@ type Blackhole struct {
 }
 
 type BlackholeExpiration struct {
-	blExpiration      time.Time
-	cleanupExpiration time.Time //we need a separate expiration for the cleanup to properly handle timemachine buckets
+	blExpiration time.Time
 }
 
 func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
@@ -44,7 +43,7 @@ func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
 			return nil
 		case <-ticker.C:
 			BlackholeTracking.Range(func(key, value interface{}) bool {
-				cleanupDate := value.(BlackholeExpiration).cleanupExpiration
+				cleanupDate := value.(BlackholeExpiration).blExpiration
 				if cleanupDate.Before(time.Now().UTC()) {
 					log.Debugf("Expiring blackhole for %s", key)
 					BlackholeTracking.Delete(key)
@@ -72,8 +71,7 @@ func (bl *Blackhole) OnBucketOverflow(bucketFactory *BucketFactory) func(*Leaky,
 		}
 
 		BlackholeTracking.Store(leaky.Mapkey, BlackholeExpiration{
-			blExpiration:      leaky.Ovflw_ts.Add(bl.duration),
-			cleanupExpiration: time.Now().UTC().Add(bl.duration),
+			blExpiration: leaky.Ovflw_ts.Add(bl.duration),
 		})
 
 		leaky.logger.Debugf("Blackhole triggered for %s (expiration : %s)", leaky.Mapkey, leaky.Ovflw_ts.Add(bl.duration))

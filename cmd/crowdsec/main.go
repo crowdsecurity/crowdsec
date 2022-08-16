@@ -149,6 +149,8 @@ func LoadAcquisition(cConfig *csconfig.Config) error {
 		flags.Labels = labels
 		flags.Labels["type"] = flags.SingleFileType
 
+		cConfig.Crowdsec.BucketsGCEnabled = true
+
 		dataSources, err = acquisition.LoadAcquisitionFromDSN(flags.OneShotDSN, flags.Labels)
 		if err != nil {
 			return errors.Wrapf(err, "failed to configure datasource for %s", flags.OneShotDSN)
