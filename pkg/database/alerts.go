@@ -306,7 +306,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 	c.Log.Debugf("writing %d items", len(alertList))
 	bulk := make([]*ent.AlertCreate, 0, bulkSize)
 	alertDecisions := make([][]*ent.Decision, 0, bulkSize)
-	alertLoopStart := time.Now()
 	for i, alertItem := range alertList {
 		var decisions []*ent.Decision
 		var metas []*ent.Meta
@@ -525,16 +524,12 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 	}
-	c.Log.Tracef("alert loop took %s for %d elements", time.Since(alertLoopStart), len(alertList))
 
-	createBulkStart := time.Now()
 	alerts, err := c.Ent.Alert.CreateBulk(bulk...).Save(c.CTX)
 	if err != nil {
 		return []string{}, errors.Wrapf(BulkError, "leftovers creating alert : %s", err)
 	}
-	c.Log.Infof("createBulk took %s for %d elements", time.Since(createBulkStart), len(bulk))
 
-	decisionsUpdateTime := time.Now()
 	for alertIndex, a := range alerts {
 		ret = append(ret, strconv.Itoa(a.ID))
 		d := alertDecisions[alertIndex]
@@ -546,8 +541,6 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			}
 		}
 	}
-
-	c.Log.Infof("decisions update took %s for %d elements", time.Since(decisionsUpdateTime), len(alerts))
 
 	return ret, nil
 }

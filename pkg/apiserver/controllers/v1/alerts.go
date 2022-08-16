@@ -114,8 +114,6 @@ func (c *Controller) sendAlertToPluginChannel(alert *models.Alert, profileID uin
 
 // CreateAlert : write received alerts in body to the database
 func (c *Controller) CreateAlert(gctx *gin.Context) {
-
-	startCreateAlert := time.Now()
 	var input models.AddAlertsRequest
 
 	claims := jwt.ExtractClaims(gctx)
@@ -131,7 +129,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 	stopFlush := false
-	startAlertLoop := time.Now()
 	for _, alert := range input {
 		alert.MachineID = machineID
 		if len(alert.Decisions) != 0 {
@@ -177,15 +174,12 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			}
 		}
 	}
-	log.Tracef("alert loop in controller took %s", time.Since(startAlertLoop))
 
 	if stopFlush {
 		c.DBClient.CanFlush = false
 	}
 
-	startDbCall := time.Now()
 	alerts, err := c.DBClient.CreateAlert(machineID, input)
-	log.Tracef("CreateAlert : %s", time.Since(startDbCall))
 	c.DBClient.CanFlush = true
 
 	if err != nil {
@@ -201,8 +195,6 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 			log.Warning("Cannot send alert to Central API channel")
 		}
 	}
-
-	log.Tracef("%d alerts created in %s", len(input), time.Since(startCreateAlert))
 
 	gctx.JSON(http.StatusCreated, alerts)
 }
