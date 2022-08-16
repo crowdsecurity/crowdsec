@@ -17,8 +17,11 @@ on:
       - 'README.md'
 jobs:
   golangci:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-2022]
     name: lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - name: golangci-lint
