@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/crowdsecurity/crowdsec/pkg/types"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 
@@ -99,11 +100,13 @@ func FormatPrometheusMetric(url string, formatType string) ([]byte, error) {
 	transport.DisableKeepAlives = true
 	// Timeout early if the server doesn't even return the headers.
 	transport.ResponseHeaderTimeout = time.Minute
-
-	err := prom2json.FetchMetricFamilies(url, mfChan, transport)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch prometheus metrics : %v", err)
-	}
+	go func() {
+		defer types.CatchPanic("crowdsec/ShowPrometheus")
+		err := prom2json.FetchMetricFamilies(url, mfChan, transport)
+		if err != nil {
+			log.Fatalf("failed to fetch prometheus metrics : %v", err)
+		}
+	}()
 
 	result := []*prom2json.Family{}
 	for mf := range mfChan {
