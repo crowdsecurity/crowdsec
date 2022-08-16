@@ -63,24 +63,6 @@ make_init_data() {
 
     [[ "${DB_BACKEND}" == "sqlite" ]] || ${CSCLI} machines add --auto
 
-    "${TEST_DIR}/instance-crowdsec" start
-    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]] && sleep 4
-    "${CSCLI}" lapi status
-
-    # a restart is required to receive community pull
-    "${TEST_DIR}/instance-crowdsec" stop
-    sleep 2
-    "${TEST_DIR}/instance-crowdsec" start
-
-    for ((i=0; i<15; i++)); do
-        sleep 2
-        [[ $("${CSCLI}" alerts list -a -o json 2>/dev/null || "${CSCLI}" alerts list -o json) != "null" ]] && break
-    done
-    # shellcheck disable=SC2181
-    [[ "$?" -ne "0" ]] && die "could not get community data"
-
-    "${TEST_DIR}/instance-crowdsec" stop
-
     mkdir -p "${LOCAL_INIT_DIR}"
 
     ./instance-db dump "${LOCAL_INIT_DIR}/database"

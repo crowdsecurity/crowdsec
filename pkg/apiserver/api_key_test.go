@@ -22,7 +22,7 @@ func TestAPIKey(t *testing.T) {
 	}
 	// Login with empty token
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req, _ := http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	router.ServeHTTP(w, req)
 
@@ -31,7 +31,7 @@ func TestAPIKey(t *testing.T) {
 
 	// Login with invalid token
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", "a1b2c3d4e5f6")
 	router.ServeHTTP(w, req)
@@ -41,7 +41,7 @@ func TestAPIKey(t *testing.T) {
 
 	// Login with valid token
 	w = httptest.NewRecorder()
-	req, _ = http.NewRequest("GET", "/v1/decisions", strings.NewReader(""))
+	req, _ = http.NewRequest(http.MethodGet, "/v1/decisions", strings.NewReader(""))
 	req.Header.Add("User-Agent", UserAgent)
 	req.Header.Add("X-Api-Key", APIKey)
 	router.ServeHTTP(w, req)

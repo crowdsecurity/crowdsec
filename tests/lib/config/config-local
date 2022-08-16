@@ -104,27 +104,8 @@ make_init_data() {
     ./instance-db setup
 
     "${CSCLI}" machines add githubciXXXXXXXXXXXXXXXXXXXXXXXX --auto
-    "${CSCLI}" capi register --schmilblick githubciXXXXXXXXXXXXXXXXXXXXXXXX
     "${CSCLI}" hub update
     "${CSCLI}" collections install crowdsecurity/linux
-
-    "${TEST_DIR}/instance-crowdsec" start
-    [[ "${DB_BACKEND}" =~ ^postgres|pgx$ ]] && sleep 4
-    "${CSCLI}" lapi status
-
-    # a restart is required to receive community pull
-    "${TEST_DIR}/instance-crowdsec" stop
-    sleep 2
-    "${TEST_DIR}/instance-crowdsec" start
-
-    for ((i=0; i<15; i++)); do
-        sleep 2
-        [[ $("${CSCLI}" alerts list -a -o json 2>/dev/null || "${CSCLI}" alerts list -o json) != "null" ]] && break
-    done
-    # shellcheck disable=SC2181
-    [[ "$?" -ne "0" ]] && die "could not get community data"
-
-    "${TEST_DIR}/instance-crowdsec" stop
 
     mkdir -p "${LOCAL_INIT_DIR}"
 
