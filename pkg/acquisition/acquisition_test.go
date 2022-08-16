@@ -52,7 +52,7 @@ func (f *MockSource) ConfigureByDSN(string, map[string]string, *log.Entry) error
 	return fmt.Errorf("not supported")
 }
 
-//copy the mocksource, but this one can't run
+// copy the mocksource, but this one can't run
 type MockSourceCantRun struct {
 	MockSource
 }
@@ -60,7 +60,7 @@ type MockSourceCantRun struct {
 func (f *MockSourceCantRun) CanRun() error   { return fmt.Errorf("can't run bro") }
 func (f *MockSourceCantRun) GetName() string { return "mock_cant_run" }
 
-//appendMockSource is only used to add mock source for tests
+// appendMockSource is only used to add mock source for tests
 func appendMockSource() {
 	if GetDataSourceIface("mock") == nil {
 		mock := struct {
@@ -445,7 +445,6 @@ READLOOP:
 	}
 }
 
-//
 type MockTailError struct {
 	MockTail
 }
@@ -493,7 +492,6 @@ READLOOP:
 	}
 }
 
-//nolint: structcheck,unused
 type MockSourceByDSN struct {
 	configuration.DataSourceCommonCfg `yaml:",inline"`
 	Toto                              string `yaml:"toto"`
