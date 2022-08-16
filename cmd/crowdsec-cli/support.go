@@ -60,7 +60,7 @@ func collectMetrics() ([]byte, []byte, error) {
 		return nil, nil, fmt.Errorf("could not fetch promtheus metrics: %s", err)
 	}
 
-	req, err := http.NewRequest("GET", csConfig.Cscli.PrometheusUrl+"/metrics", nil)
+	req, err := http.NewRequest(http.MethodGet, csConfig.Cscli.PrometheusUrl+"/metrics", nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create requests to prometheus endpoint: %s", err)
 	}
