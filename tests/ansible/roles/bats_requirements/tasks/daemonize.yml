@@ -1,0 +1,42 @@
+---
+- name: "install daemonize package"
+  become: true
+  ansible.builtin.package:
+    name:
+      - daemonize
+  when:
+    - not build_daemonize
+
+- name: "build daemonize"
+  block:
+    - name: "build daemonize: git checkout"
+      become: false
+      ansible.builtin.git:
+        repo: https://github.com/bmc/daemonize
+        dest: "{{ ansible_env.HOME }}/daemonize"
+        version: release-1.7.8
+    - name: "build daemonize: configure"
+      become: false
+      ansible.builtin.command:
+        cmd: "./configure --prefix=/usr/local"
+        creates: ./Makefile
+        chdir: "{{ ansible_env.HOME }}/daemonize"
+    - name: "build daemonize: make install (linux)"
+      become: true
+      ansible.builtin.command:
+        cmd: "make all install"
+        creates: /usr/local/sbin/daemonize
+        chdir: "{{ ansible_env.HOME }}/daemonize"
+      when:
+        - ansible_facts.system == 'Linux'
+    - name: "build daemonize: make install (bsd)"
+      become: true
+      ansible.builtin.command:
+        cmd: "gmake all install"
+        creates: /usr/local/sbin/daemonize
+        chdir: "{{ ansible_env.HOME }}/daemonize"
+      when:
+        - ansible_facts.system in ['FreeBSD', 'OpenBSD']
+  when:
+    - build_daemonize
+

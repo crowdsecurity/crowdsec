@@ -1,0 +1,18 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "peru/ubuntu-14.04-server-amd64"
+  config.vm.box_version = "20190901.01"
+
+  config.vm.provider :libvirt do |libvirt|
+    libvirt.cpus = 1
+    libvirt.memory = 1536
+  end
+
+  config.vm.synced_folder '.', '/vagrant', disabled: true
+
+  config.vm.provision "ansible" do |ansible|
+    # ansible.verbose = "vvvv"
+    ansible.config_file = "../../../ansible.cfg"
+    ansible.playbook = "../../../run_all.yml"
+  end
+
+end

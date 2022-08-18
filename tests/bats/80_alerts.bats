@@ -21,8 +21,6 @@ teardown() {
     ./instance-crowdsec stop
 }
 
-declare stderr
-
 #----------
 
 @test "cscli alerts list, with and without --machine" {
@@ -108,7 +106,7 @@ declare stderr
     run jq -c '.decisions[] | [.origin,.scenario,.scope,.simulated,.type,.value]' <<<"${alert}"
     assert_output --regexp "\[\"cscli\",\"manual 'ban' from 'githubciXXXXXXXXXXXXXXXXXXXXXXXX.*'\",\"Ip\",false,\"ban\",\"10.20.30.40\"\]"
     run jq -c '.source' <<<"${alert}"
-    assert_output '{"ip":"10.20.30.40","scope":"Ip","value":"10.20.30.40"}'
+    assert_json '{ip:"10.20.30.40",scope:"Ip",value:"10.20.30.40"}'
 }
 
 @test "no active alerts" {
@@ -124,8 +122,7 @@ declare stderr
 
 @test "cscli alerts delete" {
     run -0 --separate-stderr cscli alerts delete --all
-    run echo "${stderr}"
-    assert_output --partial 'alert(s) deleted'
+    assert_stderr --partial 'alert(s) deleted'
 
     # XXX TODO: delete by scope, id, value, scenario, range..
 }

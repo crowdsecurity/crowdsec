@@ -1,0 +1,9 @@
+#!/bin/sh
+
+die() {
+    echo "$@" >&2
+    exit 1
+}
+
+[ "${DB_BACKEND}" = "mysql" ] && die "mysql role does not support this distribution"
+exit 0

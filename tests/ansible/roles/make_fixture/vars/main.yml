@@ -1,0 +1,2 @@
+---
+package_testing: "{{ lookup('ansible.builtin.env', 'PACKAGE_TESTING') }}"

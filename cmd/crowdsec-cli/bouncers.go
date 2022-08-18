@@ -175,7 +175,7 @@ cscli bouncers add MyBouncerName -k %s`, generatePassword(32)),
 			for _, bouncerID := range args {
 				err := dbClient.DeleteBouncer(bouncerID)
 				if err != nil {
-					log.Fatalf("unable to delete bouncer: %s", err)
+					log.Fatalf("unable to delete bouncer '%s': %s", bouncerID, err)
 				}
 				log.Infof("bouncer '%s' deleted successfully", bouncerID)
 			}

@@ -37,7 +37,7 @@ teardown() {
 
     ./instance-crowdsec start
     fake_log >>"${tmpfile}"
-    sleep 1
+    sleep 2
     rm -f -- "${tmpfile}"
     run -0 cscli decisions list -o json
     run -0 jq -r '.[].decisions[0].value' <(output)

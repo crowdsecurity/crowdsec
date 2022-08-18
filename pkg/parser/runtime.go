@@ -157,7 +157,7 @@ func (n *Node) ProcessStatics(statics []types.ExtraField, event *types.Event) er
 			/*still way too hackish, but : inject all the results in enriched, and */
 			if enricherPlugin, ok := n.EnrichFunctions.Registered[static.Method]; ok {
 				clog.Tracef("Found method '%s'", static.Method)
-				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx)
+				ret, err := enricherPlugin.EnrichFunc(value, event, enricherPlugin.Ctx, n.Logger)
 				if err != nil {
 					clog.Errorf("method '%s' returned an error : %v", static.Method, err)
 				}

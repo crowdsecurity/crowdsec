@@ -32,7 +32,6 @@ check_python3() {
 }
 
 check_jq() {
-    # shellcheck disable=SC2016
     if ! command -v jq >/dev/null; then
         die "Missing required program 'jq'"
     fi
@@ -62,22 +61,9 @@ check_yq() {
 }
 
 check_daemonizer() {
-    SYSTEM=$(uname -s)
-    case "${SYSTEM,,}" in
-        linux)
-            if ! command -v daemonize >/dev/null; then
-                die "missing required program 'daemonize' (package 'daemonize')"
-            fi
-            ;;
-        freebsd)
-            if ! command -v daemon >/dev/null; then
-                die "missing required program 'daemon'"
-            fi
-            ;;
-        *)
-            die "unsupported system: ${SYSTEM}"
-            ;;
-    esac
+    if ! command -v daemonize >/dev/null; then
+        die "missing required program 'daemonize' (package 'daemonize' or 'https://github.com/bmc/daemonize')"
+    fi
 }
 
 check_cfssl() {

@@ -51,13 +51,18 @@ func initConfig() {
 	}
 	logFormatter := &log.TextFormatter{TimestampFormat: "02-01-2006 03:04:05 PM", FullTimestamp: true}
 	log.SetFormatter(logFormatter)
-	csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
-	log.Debugf("Using %s as configuration file", ConfigFilePath)
-	if err := csConfig.LoadCSCLI(); err != nil {
-		log.Fatalf(err.Error())
+
+	if !inSlice(os.Args[1], NoNeedConfig) {
+		csConfig, err = csconfig.NewConfig(ConfigFilePath, false, false)
+		if err != nil {
+			log.Fatalf(err.Error())
+		}
+		log.Debugf("Using %s as configuration file", ConfigFilePath)
+		if err := csConfig.LoadCSCLI(); err != nil {
+			log.Fatalf(err.Error())
+		}
+	} else {
+		csConfig = csconfig.NewDefaultConfig()
 	}
 
 	if csConfig.Cscli == nil {
@@ -76,7 +81,6 @@ func initConfig() {
 	if csConfig.Cscli.Output == "" {
 		csConfig.Cscli.Output = "human"
 	}
-
 	if csConfig.Cscli.Output == "json" {
 		log.SetFormatter(&log.JSONFormatter{})
 		log.SetLevel(log.ErrorLevel)
@@ -106,6 +110,15 @@ title: %s
 func linkHandler(name string) string {
 	return fmt.Sprintf("/cscli/%s", name)
 }
+
+var (
+	NoNeedConfig = []string{
+		"help",
+		"completion",
+		"version",
+		"hubtest",
+	}
+)
 
 func main() {
 
@@ -158,7 +171,7 @@ It is meant to allow you to manage bans, parsers/scenarios/etc, api and generall
 		log.Fatalf("failed to hide flag: %s", err)
 	}
 
-	if len(os.Args) > 1 && os.Args[1] != "completion" && os.Args[1] != "version" && os.Args[1] != "help" {
+	if len(os.Args) > 1 {
 		cobra.OnInitialize(initConfig)
 	}
 

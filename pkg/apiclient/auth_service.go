@@ -3,6 +3,7 @@ package apiclient
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 )
@@ -22,7 +23,7 @@ type enrollRequest struct {
 func (s *AuthService) UnregisterWatcher(ctx context.Context) (*Response, error) {
 
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
-	req, err := s.client.NewRequest("DELETE", u, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, u, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 
 	u := fmt.Sprintf("%s/watchers", s.client.URLPrefix)
 
-	req, err := s.client.NewRequest("POST", u, &registration)
+	req, err := s.client.NewRequest(http.MethodPost, u, &registration)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +53,7 @@ func (s *AuthService) RegisterWatcher(ctx context.Context, registration models.W
 
 func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.WatcherAuthRequest) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers/login", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &auth)
+	req, err := s.client.NewRequest(http.MethodPost, u, &auth)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,7 @@ func (s *AuthService) AuthenticateWatcher(ctx context.Context, auth models.Watch
 
 func (s *AuthService) EnrollWatcher(ctx context.Context, enrollKey string, name string, tags []string, overwrite bool) (*Response, error) {
 	u := fmt.Sprintf("%s/watchers/enroll", s.client.URLPrefix)
-	req, err := s.client.NewRequest("POST", u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite})
+	req, err := s.client.NewRequest(http.MethodPost, u, &enrollRequest{EnrollKey: enrollKey, Name: name, Tags: tags, Overwrite: overwrite})
 	if err != nil {
 		return nil, err
 	}

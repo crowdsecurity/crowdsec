@@ -35,10 +35,9 @@ declare stderr
 
     # no "usage" output after every error
     run -1 --separate-stderr cscli blahblah
-    run -0 echo "${stderr}"
     # error is displayed as log entry, not with print
-    assert_output --partial 'level=fatal msg="unknown command \"blahblah\" for \"cscli\""'
-    refute_output --partial 'unknown command "blahblah" for "cscli"'
+    assert_stderr --partial 'level=fatal msg="unknown command \"blahblah\" for \"cscli\""'
+    refute_stderr --partial 'unknown command "blahblah" for "cscli"'
 }
 
 @test "cscli version" {
@@ -68,40 +67,6 @@ declare stderr
     rm "${CONFIG_YAML}"
     run -0 cscli help
     assert_line "Available Commands:"
-}
-
-@test "cscli alerts list: at startup returns at least one entry: community pull" {
-    is_db_postgres && skip
-    # it should have been received while preparing the fixture
-    run -0 cscli alerts list -o json
-    run -0 jq -r '. | length' <(output)
-    refute_output 0
-
-    # if we want to trigger it here, we'll have to remove decisions, restart crowdsec and wait like this:
-    # loop_max=15
-    # for ((i = 0; i <= loop_max; i++)); do
-    #     sleep 2
-    #     run -0 cscli alerts list -o json
-    #     [ "$output" != "null" ] && break
-    # done
-    # run -0 jq -r '. | length' <(output)
-    # refute_output 0
-}
-
-@test "cscli capi status" {
-    config_enable_capi
-
-    run -0 cscli capi status
-    assert_output --partial "Loaded credentials from"
-    assert_output --partial "Trying to authenticate with username"
-    assert_output --partial " on https://api.crowdsec.net/"
-    assert_output --partial "You can successfully interact with Central API (CAPI)"
-
-    ONLINE_API_CREDENTIALS_YAML="$(config_get '.api.server.online_client.credentials_path')"
-    rm "${ONLINE_API_CREDENTIALS_YAML}"
-    run -1 --separate-stderr cscli capi status
-    run -0 echo "${stderr}"
-    assert_output --partial "Local API is disabled, please run this command on the local API machine: loading online client credentials: failed to read api server credentials configuration file '${ONLINE_API_CREDENTIALS_YAML}': open ${ONLINE_API_CREDENTIALS_YAML}: no such file or directory"
 }
 
 @test "cscli config show -o human" {
@@ -146,12 +111,10 @@ declare stderr
     # test that we need a valid path
     # disabled because in CI, the empty string is not passed as a parameter
     ## run -1 --separate-stderr cscli config backup ""
-    ## run -0 echo "${stderr}"
-    ## assert_output --partial "Failed to backup configurations: directory path can't be empty"
+    ## assert_stderr --partial "Failed to backup configurations: directory path can't be empty"
 
     run -1 --separate-stderr cscli config backup "/dev/null/blah"
-    run -0 echo "${stderr}"
-    assert_output --partial "Failed to backup configurations: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
+    assert_stderr --partial "Failed to backup configurations: while creating /dev/null/blah: mkdir /dev/null/blah: not a directory"
 
     # pick a dirpath
     backupdir=$(TMPDIR="${BATS_TEST_TMPDIR}" mktemp -u)
@@ -162,9 +125,8 @@ declare stderr
 
     # don't overwrite an existing backup
     run -1 --separate-stderr cscli config backup "${backupdir}"
-    run -0 echo "${stderr}"
-    assert_output --partial "Failed to backup configurations"
-    assert_output --partial "file exists"
+    assert_stderr --partial "Failed to backup configurations"
+    assert_stderr --partial "file exists"
 
     SIMULATION_YAML="$(config_get '.config_paths.simulation_path')"
 
@@ -179,8 +141,7 @@ declare stderr
     # backup: detect missing files
     rm "${SIMULATION_YAML}"
     run -1 --separate-stderr cscli config backup "${backupdir}"
-    run -0 echo "${stderr}"
-    assert_output --regexp "Failed to backup configurations: failed copy .* to .*: stat .*: no such file or directory"
+    assert_stderr --regexp "Failed to backup configurations: failed copy .* to .*: stat .*: no such file or directory"
     rm -rf -- "${backupdir:?}"
 }
 
@@ -198,47 +159,38 @@ declare stderr
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     rm -f "${LOCAL_API_CREDENTIALS}"
     run -1 --separate-stderr cscli lapi status
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 
     run -1 --separate-stderr cscli alerts list
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 
     run -1 --separate-stderr cscli decisions list
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
+    assert_stderr --partial "loading api client: while reading yaml file: open ${LOCAL_API_CREDENTIALS}: no such file or directory"
 }
 
 @test "cscli - empty LAPI credentials file" {
     LOCAL_API_CREDENTIALS=$(config_get '.api.client.credentials_path')
     truncate -s 0 "${LOCAL_API_CREDENTIALS}"
     run -1 --separate-stderr cscli lapi status
-    run -0 echo "${stderr}"
-    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 
     run -1 --separate-stderr cscli alerts list
-    run -0 echo "${stderr}"
-    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 
     run -1 --separate-stderr cscli decisions list
-    run -0 echo "${stderr}"
-    assert_output --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
+    assert_stderr --partial "no credentials or URL found in api client configuration '${LOCAL_API_CREDENTIALS}'"
 }
 
 @test "cscli - missing LAPI client settings" {
     config_set 'del(.api.client)'
     run -1 --separate-stderr cscli lapi status
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: no API client section in configuration"
+    assert_stderr --partial "loading api client: no API client section in configuration"
 
     run -1 --separate-stderr cscli alerts list
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: no API client section in configuration"
+    assert_stderr --partial "loading api client: no API client section in configuration"
 
     run -1 --separate-stderr cscli decisions list
-    run -0 echo "${stderr}"
-    assert_output --partial "loading api client: no API client section in configuration"
+    assert_stderr --partial "loading api client: no API client section in configuration"
 }
 
 @test "cscli - malformed LAPI url" {
@@ -246,19 +198,16 @@ declare stderr
     config_set "${LOCAL_API_CREDENTIALS}" '.url="https://127.0.0.1:-80"'
 
     run -1 --separate-stderr cscli lapi status
-    run -0 echo "${stderr}"
-    assert_output --partial 'parsing api url'
-    assert_output --partial 'invalid port \":-80\" after host'
+    assert_stderr --partial 'parsing api url'
+    assert_stderr --partial 'invalid port \":-80\" after host'
 
     run -1 --separate-stderr cscli alerts list
-    run -0 echo "${stderr}"
-    assert_output --partial 'parsing api url'
-    assert_output --partial 'invalid port \":-80\" after host'
+    assert_stderr --partial 'parsing api url'
+    assert_stderr --partial 'invalid port \":-80\" after host'
 
     run -1 --separate-stderr cscli decisions list
-    run -0 echo "${stderr}"
-    assert_output --partial 'parsing api url'
-    assert_output --partial 'invalid port \":-80\" after host'
+    assert_stderr --partial 'parsing api url'
+    assert_stderr --partial 'invalid port \":-80\" after host'
 }
 
 @test "cscli metrics" {
@@ -267,8 +216,7 @@ declare stderr
     assert_output --partial "ROUTE"
     assert_output --partial '/v1/watchers/login'
 
-    run -0 echo "${stderr}"
-    assert_output --partial "Local Api Metrics:"
+    assert_stderr --partial "Local Api Metrics:"
 }
 
 @test "'cscli completion' with or without configuration file" {

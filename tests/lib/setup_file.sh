@@ -126,3 +126,53 @@ is_db_sqlite() {
 }
 export -f is_db_sqlite
 
+# compare ignoring the key order, and allow "expected" without quoted identifiers
+assert_json() {
+    # validate actual, sort
+    run -0 jq -Sen "${output}"
+    local actual="${output}"
+
+    # handle stdin, quote identifiers, sort
+    local expected="$1"
+    if [[ "${expected}" == "-" ]]; then
+        expected="$(cat)"
+    fi
+    run -0 jq -Sn "${expected}"
+    expected="${output}"
+
+    #shellcheck disable=SC2016
+    run jq -ne --argjson a "${actual}" --argjson b "${expected}" '$a == $b'
+    #shellcheck disable=SC2154
+    if [[ "${status}" -ne 0 ]]; then
+        echo "expect: $(jq -c <<<"${expected}")"
+        echo "actual: $(jq -c <<<"${actual}")"
+        diff <(echo "${actual}") <(echo "${expected}")
+        fail "json does not match"
+    fi
+}
+export -f assert_json
+
+assert_stderr() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    assert_output "$@"
+    output="${oldout}"
+}
+export -f assert_stderr
+
+refute_stderr() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    refute_output "$@"
+    output="${oldout}"
+}
+export -f refute_stderr
+
+assert_stderr_line() {
+    oldout="${output}"
+    run -0 echo "${stderr}"
+    assert_line "$@"
+    output="${oldout}"
+}
+export -f assert_stderr_line
+

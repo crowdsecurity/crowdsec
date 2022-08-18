@@ -24,7 +24,7 @@ if [ "$1" = configure ]; then
         echo Creating /etc/crowdsec/acquis.yaml
         set +e
         SILENT=true detect_services
-        SILENT=true genacquisition
+        SILENT=true TMP_ACQUIS_FILE_SKIP=skip genacquisition
         set -e
         COLLECTIONS=true
     fi
