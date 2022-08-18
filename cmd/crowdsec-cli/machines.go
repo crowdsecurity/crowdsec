@@ -1,13 +1,13 @@
 package main
 
 import (
+	"bytes"
 	saferand "crypto/rand"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math/big"
-	"os"
 	"strings"
 	"time"
 
@@ -109,6 +109,61 @@ func displayLastHeartBeat(m *ent.Machine, fancy bool) string {
 	return hbDisplay
 }
 
+func getAgents(dbClient *database.Client) ([]byte, error) {
+	w := bytes.NewBuffer(nil)
+	machines, err := dbClient.ListMachines()
+	if err != nil {
+		return nil, fmt.Errorf("unable to list machines: %s", err)
+	}
+	if csConfig.Cscli.Output == "human" {
+		table := tablewriter.NewWriter(w)
+		table.SetCenterSeparator("")
+		table.SetColumnSeparator("")
+
+		table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+		table.SetAlignment(tablewriter.ALIGN_LEFT)
+		table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
+		for _, w := range machines {
+			var validated string
+			if w.IsValidated {
+				validated = emoji.CheckMark.String()
+			} else {
+				validated = emoji.Prohibited.String()
+			}
+			table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
+		}
+		table.Render()
+	} else if csConfig.Cscli.Output == "json" {
+		x, err := json.MarshalIndent(machines, "", " ")
+		if err != nil {
+			log.Fatalf("failed to unmarshal")
+		}
+		return x, nil
+	} else if csConfig.Cscli.Output == "raw" {
+		csvwriter := csv.NewWriter(w)
+		err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
+		if err != nil {
+			log.Fatalf("failed to write header: %s", err)
+		}
+		for _, w := range machines {
+			var validated string
+			if w.IsValidated {
+				validated = "true"
+			} else {
+				validated = "false"
+			}
+			err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
+			if err != nil {
+				log.Fatalf("failed to write raw output : %s", err)
+			}
+		}
+		csvwriter.Flush()
+	} else {
+		log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
+	}
+	return w.Bytes(), nil
+}
+
 func NewMachinesCmd() *cobra.Command {
 	/* ---- DECISIONS COMMAND */
 	var cmdMachines = &cobra.Command{
@@ -149,56 +204,11 @@ Note: This command requires database direct access, so is intended to be run on 
 			}
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			machines, err := dbClient.ListMachines()
+			agents, err := getAgents(dbClient)
 			if err != nil {
-				log.Errorf("unable to list machines: %s", err)
+				log.Fatalf("unable to list machines: %s", err)
 			}
-			if csConfig.Cscli.Output == "human" {
-				table := tablewriter.NewWriter(os.Stdout)
-				table.SetCenterSeparator("")
-				table.SetColumnSeparator("")
-
-				table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-				table.SetAlignment(tablewriter.ALIGN_LEFT)
-				table.SetHeader([]string{"Name", "IP Address", "Last Update", "Status", "Version", "Auth Type", "Last Heartbeat"})
-				for _, w := range machines {
-					var validated string
-					if w.IsValidated {
-						validated = emoji.CheckMark.String()
-					} else {
-						validated = emoji.Prohibited.String()
-					}
-					table.Append([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, true)})
-				}
-				table.Render()
-			} else if csConfig.Cscli.Output == "json" {
-				x, err := json.MarshalIndent(machines, "", " ")
-				if err != nil {
-					log.Fatalf("failed to unmarshal")
-				}
-				fmt.Printf("%s", string(x))
-			} else if csConfig.Cscli.Output == "raw" {
-				csvwriter := csv.NewWriter(os.Stdout)
-				err := csvwriter.Write([]string{"machine_id", "ip_address", "updated_at", "validated", "version", "auth_type", "last_heartbeat"})
-				if err != nil {
-					log.Fatalf("failed to write header: %s", err)
-				}
-				for _, w := range machines {
-					var validated string
-					if w.IsValidated {
-						validated = "true"
-					} else {
-						validated = "false"
-					}
-					err := csvwriter.Write([]string{w.MachineId, w.IpAddress, w.UpdatedAt.Format(time.RFC3339), validated, w.Version, w.AuthType, displayLastHeartBeat(w, false)})
-					if err != nil {
-						log.Fatalf("failed to write raw output : %s", err)
-					}
-				}
-				csvwriter.Flush()
-			} else {
-				log.Errorf("unknown output '%s'", csConfig.Cscli.Output)
-			}
+			fmt.Printf("%s\n", agents)
 		},
 	}
 	cmdMachines.AddCommand(cmdMachinesList)

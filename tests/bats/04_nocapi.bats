@@ -77,6 +77,6 @@ teardown() {
     run -0 --separate-stderr cscli metrics
     assert_output --partial "ROUTE"
     assert_output --partial '/v1/watchers/login'
+    assert_output --partial "Local Api Metrics:"
 
-    assert_stderr --partial "Local Api Metrics:"
 }

@@ -162,7 +162,8 @@ func NewPostOverflowsCmd() *cobra.Command {
 cscli postoverflows list crowdsecurity/xxx`,
 		DisableAutoGenTag: true,
 		Run: func(cmd *cobra.Command, args []string) {
-			ListItems([]string{cwhub.PARSERS_OVFLW}, args, false, true, all)
+			items := ListItems([]string{cwhub.PARSERS_OVFLW}, args, false, true, all)
+			fmt.Printf("%s\n", items)
 		},
 	}
 	cmdPostOverflowsList.PersistentFlags().BoolVarP(&all, "all", "a", false, "List disabled items as well")

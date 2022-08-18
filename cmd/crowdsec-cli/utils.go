@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -165,7 +166,7 @@ func compInstalledItems(itemType string, args []string, toComplete string) ([]st
 	return comp, cobra.ShellCompDirectiveNoFileComp
 }
 
-func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) {
+func ListItems(itemTypes []string, args []string, showType bool, showHeader bool, all bool) []byte {
 
 	var hubStatusByItemType = make(map[string][]cwhub.ItemHubStatus)
 
@@ -177,6 +178,8 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		hubStatusByItemType[itemType] = cwhub.GetHubStatusForItemType(itemType, itemName, all)
 	}
 
+	w := bytes.NewBuffer(nil)
+
 	if csConfig.Cscli.Output == "human" {
 		for _, itemType := range itemTypes {
 			var statuses []cwhub.ItemHubStatus
@@ -185,8 +188,8 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 				log.Errorf("unknown item type: %s", itemType)
 				continue
 			}
-			fmt.Println(strings.ToUpper(itemType))
-			table := tablewriter.NewWriter(os.Stdout)
+			fmt.Fprintf(w, "%s\n", strings.ToUpper(itemType))
+			table := tablewriter.NewWriter(w)
 			table.SetCenterSeparator("")
 			table.SetColumnSeparator("")
 			table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
@@ -202,9 +205,9 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		if err != nil {
 			log.Fatalf("failed to unmarshal")
 		}
-		fmt.Printf("%s", string(x))
+		w.Write(x)
 	} else if csConfig.Cscli.Output == "raw" {
-		csvwriter := csv.NewWriter(os.Stdout)
+		csvwriter := csv.NewWriter(w)
 		if showHeader {
 			header := []string{"name", "status", "version", "description"}
 			if showType {
@@ -244,6 +247,7 @@ func ListItems(itemTypes []string, args []string, showType bool, showHeader bool
 		}
 		csvwriter.Flush()
 	}
+	return w.Bytes()
 }
 
 func InspectItem(name string, objecitemType string) {
