@@ -30,7 +30,18 @@ func NewBlackhole(bucketFactory *BucketFactory) (*Blackhole, error) {
 	}, nil
 }
 
-func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
+func CleanupBlackhole(lastEvent time.Time) {
+	BlackholeTracking.Range(func(key, value interface{}) bool {
+		cleanupDate := value.(BlackholeExpiration).blExpiration
+		if cleanupDate.Before(lastEvent) {
+			log.Debugf("Expiring blackhole for %s", key)
+			BlackholeTracking.Delete(key)
+		}
+		return true
+	})
+}
+
+func BlackholeGC(bucketsTomb *tomb.Tomb) error {
 	ticker := time.NewTicker(10 * time.Second)
 	for {
 		select {
@@ -42,14 +53,7 @@ func CleanupBlackhole(bucketsTomb *tomb.Tomb) error {
 			})
 			return nil
 		case <-ticker.C:
-			BlackholeTracking.Range(func(key, value interface{}) bool {
-				cleanupDate := value.(BlackholeExpiration).blExpiration
-				if cleanupDate.Before(time.Now().UTC()) {
-					log.Debugf("Expiring blackhole for %s", key)
-					BlackholeTracking.Delete(key)
-				}
-				return true
-			})
+			CleanupBlackhole(time.Now().UTC())
 		}
 	}
 }

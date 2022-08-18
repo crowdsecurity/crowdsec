@@ -70,11 +70,12 @@ func runCrowdsec(cConfig *csconfig.Config, parsers *parser.Parsers) error {
 	parserWg.Wait()
 
 	bucketWg := &sync.WaitGroup{}
-	log.Infof("BucketsGCEnabled: %v", cConfig.Crowdsec.BucketsGCEnabled)
+	//Only start the blackhole GC routine if buckets GC is not enabled, ie we are replaying a file
+	//This is because the GC routine expects events to happen in real time, which is not the case during a replay.
 	if !cConfig.Crowdsec.BucketsGCEnabled {
 		bucketsTomb.Go(func() error {
 			bucketWg.Add(1)
-			leakybucket.CleanupBlackhole(&bucketsTomb)
+			leakybucket.BlackholeGC(&bucketsTomb)
 			bucketWg.Done()
 			return nil
 		})
