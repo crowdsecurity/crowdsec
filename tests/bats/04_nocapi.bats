@@ -90,6 +90,5 @@ declare stderr
     assert_output --partial "ROUTE"
     assert_output --partial '/v1/watchers/login'
 
-    run -0 echo "${stderr}"
     assert_output --partial "Local Api Metrics:"
 }
