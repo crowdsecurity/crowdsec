@@ -16,22 +16,34 @@ import (
 )
 
 type Controller struct {
-	Ectx          context.Context
-	DBClient      *database.Client
-	APIKeyHeader  string
-	Middlewares   *middlewares.Middlewares
-	Profiles      []*csprofiles.Runtime
-	CAPIChan      chan []*models.Alert
+	Ectx         context.Context
+	DBClient     *database.Client
+	APIKeyHeader string
+	Middlewares  *middlewares.Middlewares
+	Profiles     []*csprofiles.Runtime
+
+	AlertsAddChan      chan []*models.Alert
+	DecisionDeleteChan chan []*models.Decision
+	DecisionAddChan    chan []*models.Decision
+
+	// CAPIChan      chan []*models.Alert
+	// DeleteChan    chan []*models.Decision
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
 }
 
 type ControllerV1Config struct {
-	DbClient      *database.Client
-	Ctx           context.Context
-	ProfilesCfg   []*csconfig.ProfileCfg
-	CapiChan      chan []*models.Alert
+	DbClient    *database.Client
+	Ctx         context.Context
+	ProfilesCfg []*csconfig.ProfileCfg
+
+	AlertsAddChan      chan []*models.Alert
+	DecisionDeleteChan chan []*models.Decision
+	DecisionAddChan    chan []*models.Decision
+
+	// CapiChanV1       chan []*models.Alert
+	// CapiDeleteChanV1 chan []*models.Decision
 	PluginChannel chan csplugin.ProfileAlert
 	ConsoleConfig csconfig.ConsoleConfig
 	TrustedIPs    []net.IPNet
@@ -46,14 +58,16 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 	}
 
 	v1 := &Controller{
-		Ectx:          cfg.Ctx,
-		DBClient:      cfg.DbClient,
-		APIKeyHeader:  middlewares.APIKeyHeader,
-		Profiles:      profiles,
-		CAPIChan:      cfg.CapiChan,
-		PluginChannel: cfg.PluginChannel,
-		ConsoleConfig: cfg.ConsoleConfig,
-		TrustedIPs:    cfg.TrustedIPs,
+		Ectx:               cfg.Ctx,
+		DBClient:           cfg.DbClient,
+		APIKeyHeader:       middlewares.APIKeyHeader,
+		Profiles:           profiles,
+		AlertsAddChan:      cfg.AlertsAddChan,
+		DecisionDeleteChan: cfg.DecisionDeleteChan,
+		DecisionAddChan:    cfg.DecisionAddChan,
+		PluginChannel:      cfg.PluginChannel,
+		ConsoleConfig:      cfg.ConsoleConfig,
+		TrustedIPs:         cfg.TrustedIPs,
 	}
 	v1.Middlewares, err = middlewares.NewMiddlewares(cfg.DbClient)
 	if err != nil {

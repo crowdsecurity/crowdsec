@@ -188,9 +188,9 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 		return
 	}
 
-	if c.CAPIChan != nil {
+	if c.AlertsAddChan != nil {
 		select {
-		case c.CAPIChan <- input:
+		case c.AlertsAddChan <- input:
 			log.Debug("alert sent to CAPI channel")
 		default:
 			log.Warning("Cannot send alert to Central API channel")

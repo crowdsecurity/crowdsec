@@ -214,10 +214,15 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		if err != nil {
 			return &APIServer{}, err
 		}
-		controller.CAPIChan = apiClient.alertToPush
+		controller.AlertsAddChan = apiClient.AlertsAddChan
+		/*this should be opt-in ?*/
+		controller.DecisionAddChan = apiClient.DecisionAddChan
+		controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
 	} else {
 		apiClient = nil
-		controller.CAPIChan = nil
+		controller.AlertsAddChan = nil
+		controller.DecisionAddChan = nil
+		controller.DecisionDeleteChan = nil
 	}
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {
 		controller.TrustedIPs = trustedIPs
@@ -304,6 +309,15 @@ func (s *APIServer) Run(apiReady chan bool) error {
 			}
 			return nil
 		})
+
+		s.apic.pushTomb.Go(func() error {
+			if err := s.apic.SyncDecisions(); err != nil {
+				log.Errorf("capi decisions sync: %s", err)
+				return err
+			}
+			return nil
+		})
+
 		s.apic.pullTomb.Go(func() error {
 			if err := s.apic.Pull(); err != nil {
 				log.Errorf("capi pull: %s", err)

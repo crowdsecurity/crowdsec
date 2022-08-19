@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -40,15 +41,19 @@ type apic struct {
 	metricsInterval time.Duration
 	dbClient        *database.Client
 	apiClient       *apiclient.ApiClient
-	alertToPush     chan []*models.Alert
-	mu              sync.Mutex
-	pushTomb        tomb.Tomb
-	pullTomb        tomb.Tomb
-	metricsTomb     tomb.Tomb
-	startup         bool
-	credentials     *csconfig.ApiCredentialsCfg
-	scenarioList    []string
-	consoleConfig   *csconfig.ConsoleConfig
+	//alertToPush     chan []*models.Alert
+	AlertsAddChan      chan []*models.Alert
+	DecisionDeleteChan chan []*models.Decision
+	DecisionAddChan    chan []*models.Decision
+
+	mu            sync.Mutex
+	pushTomb      tomb.Tomb
+	pullTomb      tomb.Tomb
+	metricsTomb   tomb.Tomb
+	startup       bool
+	credentials   *csconfig.ApiCredentialsCfg
+	scenarioList  []string
+	consoleConfig *csconfig.ConsoleConfig
 }
 
 func (a *apic) FetchScenariosListFromDB() ([]string, error) {
@@ -83,25 +88,28 @@ func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 		CreatedAt:       alert.CreatedAt,
 		MachineID:       alert.MachineID,
 		ScenarioTrust:   &scenarioTrust,
+		Decisions:       alert.Decisions,
 	}
 }
 
 func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, consoleConfig *csconfig.ConsoleConfig) (*apic, error) {
 	var err error
 	ret := &apic{
-		alertToPush:     make(chan []*models.Alert),
-		dbClient:        dbClient,
-		mu:              sync.Mutex{},
-		startup:         true,
-		credentials:     config.Credentials,
-		pullTomb:        tomb.Tomb{},
-		pushTomb:        tomb.Tomb{},
-		metricsTomb:     tomb.Tomb{},
-		scenarioList:    make([]string, 0),
-		consoleConfig:   consoleConfig,
-		pullInterval:    PullInterval,
-		pushInterval:    PushInterval,
-		metricsInterval: MetricsInterval,
+		AlertsAddChan:      make(chan []*models.Alert),
+		DecisionDeleteChan: make(chan []*models.Decision),
+		DecisionAddChan:    make(chan []*models.Decision),
+		dbClient:           dbClient,
+		mu:                 sync.Mutex{},
+		startup:            true,
+		credentials:        config.Credentials,
+		pullTomb:           tomb.Tomb{},
+		pushTomb:           tomb.Tomb{},
+		metricsTomb:        tomb.Tomb{},
+		scenarioList:       make([]string, 0),
+		consoleConfig:      consoleConfig,
+		pullInterval:       PullInterval,
+		pushInterval:       PushInterval,
+		metricsInterval:    MetricsInterval,
 	}
 
 	password := strfmt.Password(config.Credentials.Password)
@@ -123,6 +131,33 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
 	return ret, err
+}
+
+func (a *apic) SyncDecisions() error {
+	ticker := time.NewTicker(a.pushInterval)
+	DeletedDecisionsCache := make([]models.Decision, 0)
+	AddedDecisionsCache := make([]models.Decision, 0)
+	for {
+		select {
+		case <-ticker.C:
+			log.Printf("dumping deleted decisions")
+			log.Printf(spew.Sdump(DeletedDecisionsCache))
+			DeletedDecisionsCache = make([]models.Decision, 0)
+			log.Printf("dumping added decisions")
+			log.Printf(spew.Sdump(AddedDecisionsCache))
+			AddedDecisionsCache = make([]models.Decision, 0)
+		case deletedDecisions := <-a.DecisionDeleteChan:
+			log.Printf("got delete yo %+v", deletedDecisions)
+			for _, decision := range deletedDecisions {
+				DeletedDecisionsCache = append(DeletedDecisionsCache, *decision)
+			}
+		case addedDecisions := <-a.DecisionAddChan:
+			log.Printf("got add yo %+v", addedDecisions)
+			for _, decision := range addedDecisions {
+				AddedDecisionsCache = append(AddedDecisionsCache, *decision)
+			}
+		}
+	}
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -153,10 +188,12 @@ func (a *apic) Push() error {
 				log.Infof("Signal push: %d signals to push", len(cacheCopy))
 				go a.Send(&cacheCopy)
 			}
-		case alerts := <-a.alertToPush:
+		case alerts := <-a.AlertsAddChan:
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
+					log.Printf("decisions is : %+v", alert.Decisions)
+					a.DecisionAddChan <- alert.Decisions
 					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert)))
 				}
 			}
@@ -283,7 +320,7 @@ func (a *apic) HandleDeletedDecisions(deletedDecisions []*models.Decision, delet
 		}
 		filter["origin"] = []string{*decision.Origin}
 
-		dbCliRet, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
+		dbCliRet, _, err := a.dbClient.SoftDeleteDecisionsWithFilter(filter)
 		if err != nil {
 			return 0, errors.Wrap(err, "deleting decisions error")
 		}

@@ -48,14 +48,16 @@ func getAPIC(t *testing.T) *apic {
 	t.Helper()
 	dbClient := getDBClient(t)
 	return &apic{
-		alertToPush:  make(chan []*models.Alert),
-		dbClient:     dbClient,
-		mu:           sync.Mutex{},
-		startup:      true,
-		pullTomb:     tomb.Tomb{},
-		pushTomb:     tomb.Tomb{},
-		metricsTomb:  tomb.Tomb{},
-		scenarioList: make([]string, 0),
+		AlertsAddChan:      make(chan []*models.Alert),
+		DecisionDeleteChan: make(chan []*models.Decision),
+		DecisionAddChan:    make(chan []*models.Decision),
+		dbClient:           dbClient,
+		mu:                 sync.Mutex{},
+		startup:            true,
+		pullTomb:           tomb.Tomb{},
+		pushTomb:           tomb.Tomb{},
+		metricsTomb:        tomb.Tomb{},
+		scenarioList:       make([]string, 0),
 		consoleConfig: &csconfig.ConsoleConfig{
 			ShareManualDecisions:  types.BoolPtr(false),
 			ShareTaintedScenarios: types.BoolPtr(false),
@@ -705,7 +707,7 @@ func TestAPICPush(t *testing.T) {
 			api.apiClient = apic
 			httpmock.RegisterResponder("POST", "http://api.crowdsec.net/api/signals", httpmock.NewBytesResponder(200, []byte{}))
 			go func() {
-				api.alertToPush <- testCase.alerts
+				api.AlertsAddChan <- testCase.alerts
 				time.Sleep(time.Second)
 				api.Shutdown()
 			}()
