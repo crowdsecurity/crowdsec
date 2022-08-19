@@ -216,12 +216,10 @@ func NewServer(config *csconfig.LocalApiServerCfg) (*APIServer, error) {
 		}
 		controller.AlertsAddChan = apiClient.AlertsAddChan
 		/*this should be opt-in ?*/
-		controller.DecisionAddChan = apiClient.DecisionAddChan
 		controller.DecisionDeleteChan = apiClient.DecisionDeleteChan
 	} else {
 		apiClient = nil
 		controller.AlertsAddChan = nil
-		controller.DecisionAddChan = nil
 		controller.DecisionDeleteChan = nil
 	}
 	if trustedIPs, err := config.GetTrustedIPs(); err == nil {

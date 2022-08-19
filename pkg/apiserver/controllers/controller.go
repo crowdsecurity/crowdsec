@@ -22,7 +22,6 @@ type Controller struct {
 	Profiles           []*csconfig.ProfileCfg
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
-	DecisionAddChan    chan []*models.Decision
 	PluginChannel      chan csplugin.ProfileAlert
 	Log                *log.Logger
 	ConsoleConfig      *csconfig.ConsoleConfig
@@ -64,7 +63,6 @@ func (c *Controller) NewV1() error {
 		DbClient:           c.DBClient,
 		Ctx:                c.Ectx,
 		ProfilesCfg:        c.Profiles,
-		DecisionAddChan:    c.DecisionAddChan,
 		DecisionDeleteChan: c.DecisionDeleteChan,
 		AlertsAddChan:      c.AlertsAddChan,
 		PluginChannel:      c.PluginChannel,

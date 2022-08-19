@@ -50,7 +50,6 @@ func getAPIC(t *testing.T) *apic {
 	return &apic{
 		AlertsAddChan:      make(chan []*models.Alert),
 		DecisionDeleteChan: make(chan []*models.Decision),
-		DecisionAddChan:    make(chan []*models.Decision),
 		dbClient:           dbClient,
 		mu:                 sync.Mutex{},
 		startup:            true,

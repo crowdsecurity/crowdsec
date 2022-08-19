@@ -27,7 +27,7 @@ import (
 
 var (
 	PullInterval    = time.Hour * 2
-	PushInterval    = time.Second * 30
+	PushInterval    = time.Second * 10
 	MetricsInterval = time.Minute * 30
 )
 
@@ -36,15 +36,13 @@ var SCOPE_CAPI_ALIAS string = "crowdsecurity/community-blocklist" //we don't use
 var SCOPE_LISTS string = "lists"
 
 type apic struct {
-	pullInterval    time.Duration
-	pushInterval    time.Duration
-	metricsInterval time.Duration
-	dbClient        *database.Client
-	apiClient       *apiclient.ApiClient
-	//alertToPush     chan []*models.Alert
+	pullInterval       time.Duration
+	pushInterval       time.Duration
+	metricsInterval    time.Duration
+	dbClient           *database.Client
+	apiClient          *apiclient.ApiClient
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
-	DecisionAddChan    chan []*models.Decision
 
 	mu            sync.Mutex
 	pushTomb      tomb.Tomb
@@ -80,17 +78,20 @@ func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequ
 	apiDecisions := models.AddSignalsRequestItemDecisions{}
 	for _, decision := range decisions {
 		x := &models.AddSignalsRequestItemDecisionsItem{
-			Duration:  types.StrPtr(*decision.Duration),
-			ID:        new(int64),
-			Origin:    types.StrPtr(*decision.Origin),
-			Scenario:  types.StrPtr(*decision.Scenario),
-			Scope:     types.StrPtr(*decision.Scope),
-			Simulated: *decision.Simulated,
-			Type:      types.StrPtr(*decision.Type),
-			Until:     decision.Until,
-			Value:     types.StrPtr(*decision.Value),
+			Duration: types.StrPtr(*decision.Duration),
+			ID:       new(int64),
+			Origin:   types.StrPtr(*decision.Origin),
+			Scenario: types.StrPtr(*decision.Scenario),
+			Scope:    types.StrPtr(*decision.Scope),
+			//Simulated: *decision.Simulated,
+			Type:  types.StrPtr(*decision.Type),
+			Until: decision.Until,
+			Value: types.StrPtr(*decision.Value),
 		}
 		*x.ID = decision.ID
+		if decision.Simulated != nil {
+			x.Simulated = *decision.Simulated
+		}
 		apiDecisions = append(apiDecisions, x)
 	}
 	return apiDecisions
@@ -127,7 +128,6 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	ret := &apic{
 		AlertsAddChan:      make(chan []*models.Alert),
 		DecisionDeleteChan: make(chan []*models.Decision),
-		DecisionAddChan:    make(chan []*models.Decision),
 		dbClient:           dbClient,
 		mu:                 sync.Mutex{},
 		startup:            true,
@@ -166,25 +166,18 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 func (a *apic) SyncDecisions() error {
 	ticker := time.NewTicker(a.pushInterval)
 	DeletedDecisionsCache := make([]models.Decision, 0)
-	AddedDecisionsCache := make([]models.Decision, 0)
 	for {
 		select {
 		case <-ticker.C:
-			log.Printf("dumping deleted decisions")
-			log.Printf(spew.Sdump(DeletedDecisionsCache))
-			DeletedDecisionsCache = make([]models.Decision, 0)
-			log.Printf("dumping added decisions")
-			log.Printf(spew.Sdump(AddedDecisionsCache))
-			AddedDecisionsCache = make([]models.Decision, 0)
+			if len(DeletedDecisionsCache) > 0 {
+				log.Printf("dumping deleted decisions")
+				log.Printf(spew.Sdump(DeletedDecisionsCache))
+				DeletedDecisionsCache = make([]models.Decision, 0)
+			}
 		case deletedDecisions := <-a.DecisionDeleteChan:
 			log.Printf("got delete yo %+v", deletedDecisions)
 			for _, decision := range deletedDecisions {
 				DeletedDecisionsCache = append(DeletedDecisionsCache, *decision)
-			}
-		case addedDecisions := <-a.DecisionAddChan:
-			log.Printf("got add yo %+v", addedDecisions)
-			for _, decision := range addedDecisions {
-				AddedDecisionsCache = append(AddedDecisionsCache, *decision)
 			}
 		}
 	}
@@ -222,8 +215,6 @@ func (a *apic) Push() error {
 			var signals []*models.AddSignalsRequestItem
 			for _, alert := range alerts {
 				if ok := shouldShareAlert(alert, a.consoleConfig); ok {
-					log.Printf("decisions is : %+v", alert.Decisions)
-					a.DecisionAddChan <- alert.Decisions
 					signals = append(signals, alertToSignal(alert, getScenarioTrustOfAlert(alert)))
 				}
 			}

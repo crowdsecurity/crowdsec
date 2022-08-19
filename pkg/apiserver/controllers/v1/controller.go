@@ -24,7 +24,6 @@ type Controller struct {
 
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
-	DecisionAddChan    chan []*models.Decision
 
 	// CAPIChan      chan []*models.Alert
 	// DeleteChan    chan []*models.Decision
@@ -40,7 +39,6 @@ type ControllerV1Config struct {
 
 	AlertsAddChan      chan []*models.Alert
 	DecisionDeleteChan chan []*models.Decision
-	DecisionAddChan    chan []*models.Decision
 
 	// CapiChanV1       chan []*models.Alert
 	// CapiDeleteChanV1 chan []*models.Decision
@@ -64,7 +62,6 @@ func New(cfg *ControllerV1Config) (*Controller, error) {
 		Profiles:           profiles,
 		AlertsAddChan:      cfg.AlertsAddChan,
 		DecisionDeleteChan: cfg.DecisionDeleteChan,
-		DecisionAddChan:    cfg.DecisionAddChan,
 		PluginChannel:      cfg.PluginChannel,
 		ConsoleConfig:      cfg.ConsoleConfig,
 		TrustedIPs:         cfg.TrustedIPs,
