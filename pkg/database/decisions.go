@@ -23,7 +23,7 @@ type DecisionsByScenario struct {
 }
 
 //TBD TKO : find proper place to put and empty this
-var DeletedDecisionsChan = make(chan ent.Decision, 100)
+//var DeletedDecisionsChan = make(chan ent.Decision, 100)
 
 func BuildDecisionRequestWithFilter(query *ent.DecisionQuery, filter map[string][]string) (*ent.DecisionQuery, error) {
 
@@ -258,18 +258,18 @@ func (c *Client) QueryNewDecisionsSinceWithFilters(since time.Time, filters map[
 	return data, nil
 }
 
-func (c *Client) DeleteDecisionById(decisionId int) error {
+func (c *Client) DeleteDecisionById(decisionId int) ([]*ent.Decision, error) {
 	toDelete, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionId)).All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("DeleteDecisionById : %s", err)
-		return errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
+		return nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionId)
 	}
 	count, err := c.BulkDeleteDecisions(toDelete, false)
 	c.Log.Debugf("deleted %d decisions", count)
-	return err
+	return toDelete, err
 }
 
-func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
+func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -283,7 +283,7 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return "0", nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scope":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
@@ -294,10 +294,10 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
+				return "0", nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		default:
-			return "0", errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
+			return "0", nil, errors.Wrap(InvalidFilter, fmt.Sprintf("'%s' doesn't exist", param))
 		}
 	}
 
@@ -366,20 +366,20 @@ func (c *Client) DeleteDecisionsWithFilter(filter map[string][]string) (string, 
 			))
 		}
 	} else if ip_sz != 0 {
-		return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 
 	toDelete, err := decisions.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("DeleteDecisionsWithFilter : %s", err)
-		return "0", errors.Wrap(DeleteFail, "decisions with provided filter")
+		return "0", nil, errors.Wrap(DeleteFail, "decisions with provided filter")
 	}
 	count, err := c.BulkDeleteDecisions(toDelete, false)
-	return strconv.Itoa(count), nil
+	return strconv.Itoa(count), toDelete, nil
 }
 
-// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter
-func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, error) {
+// SoftDeleteDecisionsWithFilter updates the expiration time to now() for the decisions matching the filter, and returns the updated items
+func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (string, []*ent.Decision, error) {
 	var err error
 	var start_ip, start_sfx, end_ip, end_sfx int64
 	var ip_sz int
@@ -392,7 +392,7 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		case "contains":
 			contains, err = strconv.ParseBool(value[0])
 			if err != nil {
-				return "0", errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
+				return "0", nil, errors.Wrapf(InvalidFilter, "invalid contains value : %s", err)
 			}
 		case "scopes":
 			decisions = decisions.Where(decision.ScopeEQ(value[0]))
@@ -405,10 +405,10 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 		case "ip", "range":
 			ip_sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(value[0])
 			if err != nil {
-				return "0", errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
+				return "0", nil, errors.Wrapf(InvalidIPOrRange, "unable to convert '%s' to int: %s", value[0], err)
 			}
 		default:
-			return "0", errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
+			return "0", nil, errors.Wrapf(InvalidFilter, "'%s' doesn't exist", param)
 		}
 	}
 	if ip_sz == 4 {
@@ -480,26 +480,25 @@ func (c *Client) SoftDeleteDecisionsWithFilter(filter map[string][]string) (stri
 			))
 		}
 	} else if ip_sz != 0 {
-		return "0", errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
+		return "0", nil, errors.Wrapf(InvalidFilter, "Unknown ip size %d", ip_sz)
 	}
 	DecisionsToDelete, err := decisions.All(c.CTX)
 	if err != nil {
 		c.Log.Warningf("SoftDeleteDecisionsWithFilter : %s", err)
-		return "0", errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
+		return "0", nil, errors.Wrap(DeleteFail, "soft delete decisions with provided filter")
 	}
 
 	count, err := c.BulkDeleteDecisions(DecisionsToDelete, true)
-	return strconv.Itoa(count), err
+	return strconv.Itoa(count), DecisionsToDelete, err
 }
 
-//BulkDeleteDecisions set the expiration of a bulk of decisions to now().
-//It as well ensure those are sent to the appropriate channel for tracking
+//BulkDeleteDecisions set the expiration of a bulk of decisions to now() or hard deletes them.
+//We are doing it this way so we can return impacted decisions for sync with CAPI/PAPI
 func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDelete bool) (int, error) {
 	bulkSize := 256 //scientifically proven to be the best value for bulk delete
 	idsToDelete := make([]int, 0, bulkSize)
 	totalUpdates := 0
 	for i := 0; i < len(DecisionsToDelete); i++ {
-		DeletedDecisionsChan <- *DecisionsToDelete[i]
 		idsToDelete = append(idsToDelete, DecisionsToDelete[i].ID)
 		if len(idsToDelete) == bulkSize {
 
@@ -548,18 +547,19 @@ func (c *Client) BulkDeleteDecisions(DecisionsToDelete []*ent.Decision, softDele
 }
 
 //SoftDeleteDecisionByID set the expiration of a decision to now()
-func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, error) {
+func (c *Client) SoftDeleteDecisionByID(decisionID int) (int, []*ent.Decision, error) {
 	toUpdate, err := c.Ent.Decision.Query().Where(decision.IDEQ(decisionID)).All(c.CTX)
 
 	if err != nil || len(toUpdate) == 0 {
 		c.Log.Warningf("SoftDeleteDecisionByID : %v (nb soft deleted: %d)", err, toUpdate)
-		return 0, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
+		return 0, nil, errors.Wrapf(DeleteFail, "decision with id '%d' doesn't exist", decisionID)
 	}
 
 	if len(toUpdate) == 0 {
-		return 0, ItemNotFound
+		return 0, nil, ItemNotFound
 	}
-	return c.BulkDeleteDecisions(toUpdate, true)
+	count, err := c.BulkDeleteDecisions(toUpdate, true)
+	return count, toUpdate, err
 }
 
 func (c *Client) CountDecisionsByValue(decisionValue string) (int, error) {
