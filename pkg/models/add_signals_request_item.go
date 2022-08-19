@@ -19,8 +19,14 @@ import (
 // swagger:model AddSignalsRequestItem
 type AddSignalsRequestItem struct {
 
+	// alert id
+	AlertID int64 `json:"alert_id,omitempty"`
+
 	// created at
 	CreatedAt string `json:"created_at,omitempty"`
+
+	// decisions
+	Decisions AddSignalsRequestItemDecisions `json:"decisions,omitempty"`
 
 	// machine id
 	MachineID string `json:"machine_id,omitempty"`
@@ -38,8 +44,7 @@ type AddSignalsRequestItem struct {
 	ScenarioHash *string `json:"scenario_hash"`
 
 	// scenario trust
-	// Required: true
-	ScenarioTrust *string `json:"scenario_trust"`
+	ScenarioTrust string `json:"scenario_trust,omitempty"`
 
 	// scenario version
 	// Required: true
@@ -47,7 +52,7 @@ type AddSignalsRequestItem struct {
 
 	// source
 	// Required: true
-	Source *Source `json:"source"`
+	Source *AddSignalsRequestItemSource `json:"source"`
 
 	// start at
 	// Required: true
@@ -62,6 +67,10 @@ type AddSignalsRequestItem struct {
 func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateDecisions(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateMessage(formats); err != nil {
 		res = append(res, err)
 	}
@@ -71,10 +80,6 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	}
 
 	if err := m.validateScenarioHash(formats); err != nil {
-		res = append(res, err)
-	}
-
-	if err := m.validateScenarioTrust(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -100,6 +105,23 @@ func (m *AddSignalsRequestItem) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *AddSignalsRequestItem) validateDecisions(formats strfmt.Registry) error {
+	if swag.IsZero(m.Decisions) { // not required
+		return nil
+	}
+
+	if err := m.Decisions.Validate(formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("decisions")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("decisions")
+		}
+		return err
+	}
+
+	return nil
+}
+
 func (m *AddSignalsRequestItem) validateMessage(formats strfmt.Registry) error {
 
 	if err := validate.Required("message", "body", m.Message); err != nil {
@@ -121,15 +143,6 @@ func (m *AddSignalsRequestItem) validateScenario(formats strfmt.Registry) error 
 func (m *AddSignalsRequestItem) validateScenarioHash(formats strfmt.Registry) error {
 
 	if err := validate.Required("scenario_hash", "body", m.ScenarioHash); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *AddSignalsRequestItem) validateScenarioTrust(formats strfmt.Registry) error {
-
-	if err := validate.Required("scenario_trust", "body", m.ScenarioTrust); err != nil {
 		return err
 	}
 
@@ -187,6 +200,10 @@ func (m *AddSignalsRequestItem) validateStopAt(formats strfmt.Registry) error {
 func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.contextValidateDecisions(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.contextValidateSource(ctx, formats); err != nil {
 		res = append(res, err)
 	}
@@ -194,6 +211,20 @@ func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats str
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *AddSignalsRequestItem) contextValidateDecisions(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := m.Decisions.ContextValidate(ctx, formats); err != nil {
+		if ve, ok := err.(*errors.Validation); ok {
+			return ve.ValidateName("decisions")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("decisions")
+		}
+		return err
+	}
+
 	return nil
 }
 
