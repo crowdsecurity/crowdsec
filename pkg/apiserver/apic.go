@@ -76,19 +76,49 @@ func (a *apic) FetchScenariosListFromDB() ([]string, error) {
 	return scenarios, nil
 }
 
+func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequestItemDecisions {
+	apiDecisions := models.AddSignalsRequestItemDecisions{}
+	for _, decision := range decisions {
+		x := &models.AddSignalsRequestItemDecisionsItem{
+			Duration:  types.StrPtr(*decision.Duration),
+			ID:        new(int64),
+			Origin:    types.StrPtr(*decision.Origin),
+			Scenario:  types.StrPtr(*decision.Scenario),
+			Scope:     types.StrPtr(*decision.Scope),
+			Simulated: *decision.Simulated,
+			Type:      types.StrPtr(*decision.Type),
+			Until:     decision.Until,
+			Value:     types.StrPtr(*decision.Value),
+		}
+		*x.ID = decision.ID
+		apiDecisions = append(apiDecisions, x)
+	}
+	return apiDecisions
+}
+
 func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignalsRequestItem {
 	return &models.AddSignalsRequestItem{
 		Message:         alert.Message,
 		Scenario:        alert.Scenario,
 		ScenarioHash:    alert.ScenarioHash,
 		ScenarioVersion: alert.ScenarioVersion,
-		Source:          alert.Source,
-		StartAt:         alert.StartAt,
-		StopAt:          alert.StopAt,
-		CreatedAt:       alert.CreatedAt,
-		MachineID:       alert.MachineID,
-		ScenarioTrust:   &scenarioTrust,
-		Decisions:       alert.Decisions,
+		Source: &models.AddSignalsRequestItemSource{
+			AsName:    alert.Source.AsName,
+			AsNumber:  alert.Source.AsNumber,
+			Cn:        alert.Source.Cn,
+			IP:        alert.Source.IP,
+			Latitude:  alert.Source.Latitude,
+			Longitude: alert.Source.Longitude,
+			Range:     alert.Source.Range,
+			Scope:     alert.Source.Scope,
+			Value:     alert.Source.Value,
+		},
+		StartAt:       alert.StartAt,
+		StopAt:        alert.StopAt,
+		CreatedAt:     alert.CreatedAt,
+		MachineID:     alert.MachineID,
+		ScenarioTrust: scenarioTrust,
+		Decisions:     decisionsToApiDecisions(alert.Decisions),
 	}
 }
 
