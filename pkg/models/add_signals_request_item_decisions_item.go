@@ -49,6 +49,10 @@ type AddSignalsRequestItemDecisionsItem struct {
 	// until
 	Until string `json:"until,omitempty"`
 
+	// only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI
+	// Read Only: true
+	UUID string `json:"uuid,omitempty"`
+
 	// the value of the decision scope : an IP, a range, a username, etc
 	// Required: true
 	Value *string `json:"value"`
@@ -155,8 +159,26 @@ func (m *AddSignalsRequestItemDecisionsItem) validateValue(formats strfmt.Regist
 	return nil
 }
 
-// ContextValidate validates this add signals request item decisions item based on context it is used
+// ContextValidate validate this add signals request item decisions item based on the context it is used
 func (m *AddSignalsRequestItemDecisionsItem) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+	var res []error
+
+	if err := m.contextValidateUUID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
+	if len(res) > 0 {
+		return errors.CompositeValidationError(res...)
+	}
+	return nil
+}
+
+func (m *AddSignalsRequestItemDecisionsItem) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+		return err
+	}
+
 	return nil
 }
 

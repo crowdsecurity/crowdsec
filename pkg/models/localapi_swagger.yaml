@@ -701,8 +701,12 @@ definitions:
         description: 'only relevant for GET, ignored in POST requests'
         type: integer
         readOnly: true
+      uuid:
+        description: 'only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI'
+        type: string
+        readOnly: true
       machine_id:
-        description: 'only relevant for APIL->APIC, ignored for cscli->APIL and crowdsec->APIL'
+        description: 'only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI'
         type: string
         readOnly: true
       created_at:
@@ -858,6 +862,10 @@ definitions:
         description: (only relevant for GET ops) the unique id
         type: integer
         readOnly: true
+      uuid:
+        description: 'only relevant for LAPI->CAPI, ignored for cscli->LAPI and crowdsec->LAPI'
+        type: string
+        readOnly: true
       origin:
         description: 'the origin of the decision : cscli, crowdsec'
         type: string
@@ -967,46 +975,6 @@ definitions:
         description: "more detail on individual errors"
     title: "error response"
     description: "error response return by the API"
-  AddSignalsRequest:
-    title: "add signals request"
-    type: "array"
-    description: "All signals request model"
-    items:
-      $ref: "#/definitions/AddSignalsRequestItem"
-  AddSignalsRequestItem:
-    type: "object"
-    required:
-    - "message"
-    - "scenario"
-    - "scenario_hash"
-    - "scenario_version"
-    - "source"
-    - "start_at"
-    - "stop_at"
-    - "scenario_trust"
-    properties:
-      scenario_hash:
-        type: "string"
-      scenario:
-        type: "string"
-      created_at:
-        type: "string"
-      machine_id:
-        type: "string"
-      source:
-        $ref: "#/definitions/Source"
-      scenario_version:
-        type: "string"
-      scenario_trust:
-        type: "string"
-      message:
-        type: "string"
-        description: "a human readable message"
-      start_at:
-        type: "string"
-      stop_at:
-        type: "string"
-    title: "Signal"
 tags:
   - name: bouncers
     description: 'Operations about decisions : bans, captcha, rate-limit etc.'
