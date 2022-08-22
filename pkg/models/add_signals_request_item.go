@@ -61,6 +61,10 @@ type AddSignalsRequestItem struct {
 	// stop at
 	// Required: true
 	StopAt *string `json:"stop_at"`
+
+	// uuid
+	// Read Only: true
+	UUID string `json:"uuid,omitempty"`
 }
 
 // Validate validates this add signals request item
@@ -208,6 +212,10 @@ func (m *AddSignalsRequestItem) ContextValidate(ctx context.Context, formats str
 		res = append(res, err)
 	}
 
+	if err := m.contextValidateUUID(ctx, formats); err != nil {
+		res = append(res, err)
+	}
+
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
@@ -239,6 +247,15 @@ func (m *AddSignalsRequestItem) contextValidateSource(ctx context.Context, forma
 			}
 			return err
 		}
+	}
+
+	return nil
+}
+
+func (m *AddSignalsRequestItem) contextValidateUUID(ctx context.Context, formats strfmt.Registry) error {
+
+	if err := validate.ReadOnly(ctx, "uuid", "body", string(m.UUID)); err != nil {
+		return err
 	}
 
 	return nil
