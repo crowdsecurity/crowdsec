@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
+	"github.com/google/uuid"
 )
 
 // Decision is the model entity for the Decision schema.
@@ -45,6 +46,8 @@ type Decision struct {
 	Origin string `json:"origin,omitempty"`
 	// Simulated holds the value of the "simulated" field.
 	Simulated bool `json:"simulated,omitempty"`
+	// UUID holds the value of the "uuid" field.
+	UUID uuid.UUID `json:"uuid,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
 	Edges           DecisionEdges `json:"edges"`
@@ -87,6 +90,8 @@ func (*Decision) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullString)
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
 			values[i] = new(sql.NullTime)
+		case decision.FieldUUID:
+			values[i] = new(uuid.UUID)
 		case decision.ForeignKeys[0]: // alert_decisions
 			values[i] = new(sql.NullInt64)
 		default:
@@ -197,6 +202,12 @@ func (d *Decision) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				d.Simulated = value.Bool
 			}
+		case decision.FieldUUID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field uuid", values[i])
+			} else if value != nil {
+				d.UUID = *value
+			}
 		case decision.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field alert_decisions", value)
@@ -271,6 +282,8 @@ func (d *Decision) String() string {
 	builder.WriteString(d.Origin)
 	builder.WriteString(", simulated=")
 	builder.WriteString(fmt.Sprintf("%v", d.Simulated))
+	builder.WriteString(", uuid=")
+	builder.WriteString(fmt.Sprintf("%v", d.UUID))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
+	"github.com/google/uuid"
 
 	"entgo.io/ent"
 )
@@ -69,6 +70,7 @@ type AlertMutation struct {
 	scenarioVersion    *string
 	scenarioHash       *string
 	simulated          *bool
+	uuid               *uuid.UUID
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
@@ -1320,6 +1322,42 @@ func (m *AlertMutation) ResetSimulated() {
 	m.simulated = nil
 }
 
+// SetUUID sets the "uuid" field.
+func (m *AlertMutation) SetUUID(u uuid.UUID) {
+	m.uuid = &u
+}
+
+// UUID returns the value of the "uuid" field in the mutation.
+func (m *AlertMutation) UUID() (r uuid.UUID, exists bool) {
+	v := m.uuid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUUID returns the old "uuid" field's value of the Alert entity.
+// If the Alert object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AlertMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUUID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUUID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUUID: %w", err)
+	}
+	return oldValue.UUID, nil
+}
+
+// ResetUUID resets all changes to the "uuid" field.
+func (m *AlertMutation) ResetUUID() {
+	m.uuid = nil
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by id.
 func (m *AlertMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -1540,7 +1578,7 @@ func (m *AlertMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AlertMutation) Fields() []string {
-	fields := make([]string, 0, 22)
+	fields := make([]string, 0, 23)
 	if m.created_at != nil {
 		fields = append(fields, alert.FieldCreatedAt)
 	}
@@ -1607,6 +1645,9 @@ func (m *AlertMutation) Fields() []string {
 	if m.simulated != nil {
 		fields = append(fields, alert.FieldSimulated)
 	}
+	if m.uuid != nil {
+		fields = append(fields, alert.FieldUUID)
+	}
 	return fields
 }
 
@@ -1659,6 +1700,8 @@ func (m *AlertMutation) Field(name string) (ent.Value, bool) {
 		return m.ScenarioHash()
 	case alert.FieldSimulated:
 		return m.Simulated()
+	case alert.FieldUUID:
+		return m.UUID()
 	}
 	return nil, false
 }
@@ -1712,6 +1755,8 @@ func (m *AlertMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldScenarioHash(ctx)
 	case alert.FieldSimulated:
 		return m.OldSimulated(ctx)
+	case alert.FieldUUID:
+		return m.OldUUID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Alert field %s", name)
 }
@@ -1874,6 +1919,13 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSimulated(v)
+		return nil
+	case alert.FieldUUID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUUID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
@@ -2163,6 +2215,9 @@ func (m *AlertMutation) ResetField(name string) error {
 		return nil
 	case alert.FieldSimulated:
 		m.ResetSimulated()
+		return nil
+	case alert.FieldUUID:
+		m.ResetUUID()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert field %s", name)
@@ -3315,6 +3370,7 @@ type DecisionMutation struct {
 	value           *string
 	origin          *string
 	simulated       *bool
+	uuid            *uuid.UUID
 	clearedFields   map[string]struct{}
 	owner           *int
 	clearedowner    bool
@@ -4134,6 +4190,42 @@ func (m *DecisionMutation) ResetSimulated() {
 	m.simulated = nil
 }
 
+// SetUUID sets the "uuid" field.
+func (m *DecisionMutation) SetUUID(u uuid.UUID) {
+	m.uuid = &u
+}
+
+// UUID returns the value of the "uuid" field in the mutation.
+func (m *DecisionMutation) UUID() (r uuid.UUID, exists bool) {
+	v := m.uuid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUUID returns the old "uuid" field's value of the Decision entity.
+// If the Decision object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DecisionMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUUID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUUID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUUID: %w", err)
+	}
+	return oldValue.UUID, nil
+}
+
+// ResetUUID resets all changes to the "uuid" field.
+func (m *DecisionMutation) ResetUUID() {
+	m.uuid = nil
+}
+
 // SetOwnerID sets the "owner" edge to the Alert entity by id.
 func (m *DecisionMutation) SetOwnerID(id int) {
 	m.owner = &id
@@ -4192,7 +4284,7 @@ func (m *DecisionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DecisionMutation) Fields() []string {
-	fields := make([]string, 0, 14)
+	fields := make([]string, 0, 15)
 	if m.created_at != nil {
 		fields = append(fields, decision.FieldCreatedAt)
 	}
@@ -4235,6 +4327,9 @@ func (m *DecisionMutation) Fields() []string {
 	if m.simulated != nil {
 		fields = append(fields, decision.FieldSimulated)
 	}
+	if m.uuid != nil {
+		fields = append(fields, decision.FieldUUID)
+	}
 	return fields
 }
 
@@ -4271,6 +4366,8 @@ func (m *DecisionMutation) Field(name string) (ent.Value, bool) {
 		return m.Origin()
 	case decision.FieldSimulated:
 		return m.Simulated()
+	case decision.FieldUUID:
+		return m.UUID()
 	}
 	return nil, false
 }
@@ -4308,6 +4405,8 @@ func (m *DecisionMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldOrigin(ctx)
 	case decision.FieldSimulated:
 		return m.OldSimulated(ctx)
+	case decision.FieldUUID:
+		return m.OldUUID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Decision field %s", name)
 }
@@ -4414,6 +4513,13 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSimulated(v)
+		return nil
+	case decision.FieldUUID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUUID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)
@@ -4619,6 +4725,9 @@ func (m *DecisionMutation) ResetField(name string) error {
 		return nil
 	case decision.FieldSimulated:
 		m.ResetSimulated()
+		return nil
+	case decision.FieldUUID:
+		m.ResetUUID()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision field %s", name)

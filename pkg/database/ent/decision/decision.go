@@ -39,6 +39,8 @@ const (
 	FieldOrigin = "origin"
 	// FieldSimulated holds the string denoting the simulated field in the database.
 	FieldSimulated = "simulated"
+	// FieldUUID holds the string denoting the uuid field in the database.
+	FieldUUID = "uuid"
 	// EdgeOwner holds the string denoting the owner edge name in mutations.
 	EdgeOwner = "owner"
 	// Table holds the table name of the decision in the database.
@@ -69,6 +71,7 @@ var Columns = []string{
 	FieldValue,
 	FieldOrigin,
 	FieldSimulated,
+	FieldUUID,
 }
 
 // ForeignKeys holds the SQL foreign-keys that are owned by the "decisions"

@@ -33,6 +33,7 @@ var (
 		{Name: "scenario_version", Type: field.TypeString, Nullable: true},
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
+		{Name: "uuid", Type: field.TypeUUID},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -43,7 +44,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "alerts_machines_alerts",
-				Columns:    []*schema.Column{AlertsColumns[23]},
+				Columns:    []*schema.Column{AlertsColumns[24]},
 				RefColumns: []*schema.Column{MachinesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -94,6 +95,7 @@ var (
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
+		{Name: "uuid", Type: field.TypeUUID},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.
@@ -104,7 +106,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "decisions_alerts_decisions",
-				Columns:    []*schema.Column{DecisionsColumns[15]},
+				Columns:    []*schema.Column{DecisionsColumns[16]},
 				RefColumns: []*schema.Column{AlertsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},

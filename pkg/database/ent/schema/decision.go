@@ -7,6 +7,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
+	"github.com/google/uuid"
 )
 
 // Decision holds the schema definition for the Decision entity.
@@ -37,6 +38,7 @@ func (Decision) Fields() []ent.Field {
 		field.String("value"),
 		field.String("origin"),
 		field.Bool("simulated").Default(false),
+		field.UUID("uuid", uuid.UUID{}), //this uuid is mostly here to ensure that CAPI/PAPI has a unique id for each decision
 	}
 }
 

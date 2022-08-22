@@ -9,6 +9,7 @@ import (
 	"time"
 
 	jwt "github.com/appleboy/gin-jwt/v2"
+	"github.com/google/uuid"
 
 	"github.com/crowdsecurity/crowdsec/pkg/csplugin"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent"
@@ -132,7 +133,14 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 	stopFlush := false
 	for _, alert := range input {
 		alert.MachineID = machineID
+		//generate uuid here for alert
+		alert.UUID = uuid.NewString()
+
 		if len(alert.Decisions) != 0 {
+			//alert already has a decision (cscli decisions add etc.), generate uuid here
+			for _, decision := range alert.Decisions {
+				decision.UUID = uuid.NewString()
+			}
 			for pIdx, profile := range c.Profiles {
 				_, matched, err := profile.EvaluateProfile(alert)
 				if err != nil {
@@ -160,11 +168,13 @@ func (c *Controller) CreateAlert(gctx *gin.Context) {
 				gctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 				return
 			}
-
 			if !matched {
 				continue
 			}
-
+			for _, decision := range profileDecisions {
+				decision.UUID = uuid.NewString()
+			}
+			//generate uuid here for alert
 			if len(alert.Decisions) == 0 { // non manual decision
 				alert.Decisions = append(alert.Decisions, profileDecisions...)
 			}

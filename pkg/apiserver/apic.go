@@ -86,6 +86,7 @@ func decisionsToApiDecisions(decisions []*models.Decision) models.AddSignalsRequ
 			Type:  types.StrPtr(*decision.Type),
 			Until: decision.Until,
 			Value: types.StrPtr(*decision.Value),
+			UUID:  decision.UUID,
 		}
 		*x.ID = decision.ID
 		if decision.Simulated != nil {
@@ -119,6 +120,7 @@ func alertToSignal(alert *models.Alert, scenarioTrust string) *models.AddSignals
 		MachineID:     alert.MachineID,
 		ScenarioTrust: scenarioTrust,
 		Decisions:     decisionsToApiDecisions(alert.Decisions),
+		UUID:          alert.UUID,
 	}
 }
 

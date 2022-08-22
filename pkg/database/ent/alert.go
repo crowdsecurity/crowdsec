@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
+	"github.com/google/uuid"
 )
 
 // Alert is the model entity for the Alert schema.
@@ -61,6 +62,8 @@ type Alert struct {
 	ScenarioHash string `json:"scenarioHash,omitempty"`
 	// Simulated holds the value of the "simulated" field.
 	Simulated bool `json:"simulated,omitempty"`
+	// UUID holds the value of the "uuid" field.
+	UUID uuid.UUID `json:"uuid,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the AlertQuery when eager-loading is set.
 	Edges          AlertEdges `json:"edges"`
@@ -138,6 +141,8 @@ func (*Alert) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullString)
 		case alert.FieldCreatedAt, alert.FieldUpdatedAt, alert.FieldStartedAt, alert.FieldStoppedAt:
 			values[i] = new(sql.NullTime)
+		case alert.FieldUUID:
+			values[i] = new(uuid.UUID)
 		case alert.ForeignKeys[0]: // machine_alerts
 			values[i] = new(sql.NullInt64)
 		default:
@@ -295,6 +300,12 @@ func (a *Alert) assignValues(columns []string, values []interface{}) error {
 			} else if value.Valid {
 				a.Simulated = value.Bool
 			}
+		case alert.FieldUUID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field uuid", values[i])
+			} else if value != nil {
+				a.UUID = *value
+			}
 		case alert.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for edge-field machine_alerts", value)
@@ -398,6 +409,8 @@ func (a *Alert) String() string {
 	builder.WriteString(a.ScenarioHash)
 	builder.WriteString(", simulated=")
 	builder.WriteString(fmt.Sprintf("%v", a.Simulated))
+	builder.WriteString(", uuid=")
+	builder.WriteString(fmt.Sprintf("%v", a.UUID))
 	builder.WriteByte(')')
 	return builder.String()
 }

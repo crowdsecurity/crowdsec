@@ -17,6 +17,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
+	"github.com/google/uuid"
 )
 
 // AlertUpdate is the builder for updating Alert entities.
@@ -461,6 +462,12 @@ func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
 	if b != nil {
 		au.SetSimulated(*b)
 	}
+	return au
+}
+
+// SetUUID sets the "uuid" field.
+func (au *AlertUpdate) SetUUID(u uuid.UUID) *AlertUpdate {
+	au.mutation.SetUUID(u)
 	return au
 }
 
@@ -987,6 +994,13 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: alert.FieldSimulated,
+		})
+	}
+	if value, ok := au.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: alert.FieldUUID,
 		})
 	}
 	if au.mutation.OwnerCleared() {
@@ -1637,6 +1651,12 @@ func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
 	return auo
 }
 
+// SetUUID sets the "uuid" field.
+func (auo *AlertUpdateOne) SetUUID(u uuid.UUID) *AlertUpdateOne {
+	auo.mutation.SetUUID(u)
+	return auo
+}
+
 // SetOwnerID sets the "owner" edge to the Machine entity by ID.
 func (auo *AlertUpdateOne) SetOwnerID(id int) *AlertUpdateOne {
 	auo.mutation.SetOwnerID(id)
@@ -2184,6 +2204,13 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: alert.FieldSimulated,
+		})
+	}
+	if value, ok := auo.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: alert.FieldUUID,
 		})
 	}
 	if auo.mutation.OwnerCleared() {

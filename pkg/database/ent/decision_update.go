@@ -14,6 +14,7 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
+	"github.com/google/uuid"
 )
 
 // DecisionUpdate is the builder for updating Decision entities.
@@ -249,6 +250,12 @@ func (du *DecisionUpdate) SetNillableSimulated(b *bool) *DecisionUpdate {
 	if b != nil {
 		du.SetSimulated(*b)
 	}
+	return du
+}
+
+// SetUUID sets the "uuid" field.
+func (du *DecisionUpdate) SetUUID(u uuid.UUID) *DecisionUpdate {
+	du.mutation.SetUUID(u)
 	return du
 }
 
@@ -548,6 +555,13 @@ func (du *DecisionUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Column: decision.FieldSimulated,
 		})
 	}
+	if value, ok := du.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: decision.FieldUUID,
+		})
+	}
 	if du.mutation.OwnerCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2O,
@@ -822,6 +836,12 @@ func (duo *DecisionUpdateOne) SetNillableSimulated(b *bool) *DecisionUpdateOne {
 	if b != nil {
 		duo.SetSimulated(*b)
 	}
+	return duo
+}
+
+// SetUUID sets the "uuid" field.
+func (duo *DecisionUpdateOne) SetUUID(u uuid.UUID) *DecisionUpdateOne {
+	duo.mutation.SetUUID(u)
 	return duo
 }
 
@@ -1143,6 +1163,13 @@ func (duo *DecisionUpdateOne) sqlSave(ctx context.Context) (_node *Decision, err
 			Type:   field.TypeBool,
 			Value:  value,
 			Column: decision.FieldSimulated,
+		})
+	}
+	if value, ok := duo.mutation.UUID(); ok {
+		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
+			Type:   field.TypeUUID,
+			Value:  value,
+			Column: decision.FieldUUID,
 		})
 	}
 	if duo.mutation.OwnerCleared() {
