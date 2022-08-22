@@ -37,11 +37,8 @@ jobs:
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
-        ## FIXME: this is a temp hack because cfssl crashes when installed with go 1.19
-        #go install github.com/cloudflare/cfssl/cmd/cfssl@latest
-        #go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
-        wget https://github.com/cloudflare/cfssl/releases/download/v1.6.1/cfssl_1.6.1_linux_amd64 -O ~/go/bin/cfssl && chmod +x ~/go/bin/cfssl 
-        wget https://github.com/cloudflare/cfssl/releases/download/v1.6.1/cfssljson_1.6.1_linux_amd64 -O ~/go/bin/cfssljson && chmod +x ~/go/bin/cfssljson
+        go install github.com/cloudflare/cfssl/cmd/cfssl@master
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@master
         sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
         go install github.com/wadey/gocovmerge@latest
         sudo cp -u ~/go/bin/gocovmerge /usr/local/bin/
