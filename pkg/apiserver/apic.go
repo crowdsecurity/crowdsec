@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
 	"github.com/crowdsecurity/crowdsec/pkg/models"
 	"github.com/crowdsecurity/crowdsec/pkg/types"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-openapi/strfmt"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -164,23 +163,99 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 }
 
 func (a *apic) SyncDecisions() error {
+	defer types.CatchPanic("lapi/syncDecisionsToCAPI")
+
+	var cache models.AddSignalsRequestItemDecisions
 	ticker := time.NewTicker(a.pushInterval)
-	DeletedDecisionsCache := make([]models.Decision, 0)
+	log.Infof("Start decisions sync to CrowdSec Central API (interval: %s)", PushInterval)
+
 	for {
 		select {
+		case <-a.pushTomb.Dying(): // if one apic routine is dying, do we kill the others?
+			a.pullTomb.Kill(nil)
+			a.metricsTomb.Kill(nil)
+			log.Infof("push tomb is dying, sending cache (%d elements) before exiting", len(cache))
+			if len(cache) == 0 {
+				return nil
+			}
+			go a.SendDeletedDecisions(&cache)
+			return nil
 		case <-ticker.C:
-			if len(DeletedDecisionsCache) > 0 {
-				log.Printf("dumping deleted decisions")
-				log.Printf(spew.Sdump(DeletedDecisionsCache))
-				DeletedDecisionsCache = make([]models.Decision, 0)
+			if len(cache) > 0 {
+				a.mu.Lock()
+				cacheCopy := cache
+				cache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
+				a.mu.Unlock()
+				log.Infof("Signal push: %d signals to push", len(cacheCopy))
+				go a.SendDeletedDecisions(&cacheCopy)
 			}
 		case deletedDecisions := <-a.DecisionDeleteChan:
-			log.Printf("got delete yo %+v", deletedDecisions)
-			for _, decision := range deletedDecisions {
-				DeletedDecisionsCache = append(DeletedDecisionsCache, *decision)
+
+			if a.consoleConfig.ShareManualDecisions != nil && *a.consoleConfig.ShareManualDecisions {
+				var tmpDecisions []*models.AddSignalsRequestItemDecisionsItem
+				log.Printf("got delete yo %+v", deletedDecisions)
+				for _, decision := range deletedDecisions {
+
+					x := &models.AddSignalsRequestItemDecisionsItem{
+						Duration: types.StrPtr(*decision.Duration),
+						ID:       new(int64),
+						Origin:   types.StrPtr(*decision.Origin),
+						Scenario: types.StrPtr(*decision.Scenario),
+						Scope:    types.StrPtr(*decision.Scope),
+						Type:     types.StrPtr(*decision.Type),
+						Until:    decision.Until,
+						Value:    types.StrPtr(*decision.Value),
+					}
+					if decision.Simulated != nil {
+						x.Simulated = *decision.Simulated
+					}
+					tmpDecisions = append(tmpDecisions, x)
+				}
+
+				a.mu.Lock()
+				cache = append(cache, tmpDecisions...)
+				a.mu.Unlock()
 			}
 		}
 	}
+
+	// ticker := time.NewTicker(a.pushInterval)
+	// var DeletedDecisionsCache models.AddSignalsRequestItemDecisions
+	// DeletedDecisionsCache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
+
+	// for {
+	// 	select {
+	// 	case <-ticker.C:
+	// 		if len(DeletedDecisionsCache) > 0 {
+	// 			log.Printf("dumping deleted decisions")
+	// 			log.Printf(spew.Sdump(DeletedDecisionsCache))
+
+	// 			DeletedDecisionsCache = make([]*models.AddSignalsRequestItemDecisionsItem, 0)
+	// 		}
+	// 	case deletedDecisions := <-a.DecisionDeleteChan:
+	// 		//only share deletion if users wants to share manual decision
+	// 		if a.consoleConfig.ShareManualDecisions != nil && *a.consoleConfig.ShareManualDecisions {
+	// 			log.Printf("got delete yo %+v", deletedDecisions)
+	// 			for _, decision := range deletedDecisions {
+
+	// 				x := &models.AddSignalsRequestItemDecisionsItem{
+	// 					Duration: types.StrPtr(*decision.Duration),
+	// 					ID:       new(int64),
+	// 					Origin:   types.StrPtr(*decision.Origin),
+	// 					Scenario: types.StrPtr(*decision.Scenario),
+	// 					Scope:    types.StrPtr(*decision.Scope),
+	// 					Type:     types.StrPtr(*decision.Type),
+	// 					Until:    decision.Until,
+	// 					Value:    types.StrPtr(*decision.Value),
+	// 				}
+	// 				if decision.Simulated != nil {
+	// 					x.Simulated = *decision.Simulated
+	// 				}
+	// 				DeletedDecisionsCache = append(DeletedDecisionsCache, x)
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 // keep track of all alerts in cache and push it to CAPI every PushInterval.
@@ -263,6 +338,41 @@ func shouldShareAlert(alert *models.Alert, consoleConfig *csconfig.ConsoleConfig
 		}
 	}
 	return true
+}
+
+func (a *apic) SendDeletedDecisions(cacheOrig *models.AddSignalsRequestItemDecisions) {
+
+	var cache []*models.AddSignalsRequestItemDecisionsItem = *cacheOrig
+	var send models.AddSignalsRequestItemDecisions
+
+	bulkSize := 50
+	pageStart := 0
+	pageEnd := bulkSize
+
+	for {
+
+		if pageEnd >= len(cache) {
+			send = cache[pageStart:]
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_, _, err := a.apiClient.DecisionDelete.Add(ctx, &send)
+			if err != nil {
+				log.Errorf("Error while sending final chunk to central API : %s", err)
+				return
+			}
+			break
+		}
+		send = cache[pageStart:pageEnd]
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, _, err := a.apiClient.DecisionDelete.Add(ctx, &send)
+		if err != nil {
+			//we log it here as well, because the return value of func might be discarded
+			log.Errorf("Error while sending chunk to central API : %s", err)
+		}
+		pageStart += bulkSize
+		pageEnd += bulkSize
+	}
 }
 
 func (a *apic) Send(cacheOrig *models.AddSignalsRequest) {
