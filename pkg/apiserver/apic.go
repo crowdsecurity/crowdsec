@@ -21,6 +21,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
+	"github.com/jcuga/golongpoll/client"
+
 	"gopkg.in/tomb.v2"
 )
 
@@ -148,6 +150,10 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 	if err != nil {
 		return nil, errors.Wrapf(err, "while parsing '%s'", config.Credentials.URL)
 	}
+	PapiURL, err := url.Parse(types.PAPIBaseURL)
+	if err != nil {
+		return nil, errors.Wrapf(err, "while parsing '%s'", types.PAPIBaseURL)
+	}
 	ret.scenarioList, err = ret.FetchScenariosListFromDB()
 	if err != nil {
 		return nil, errors.Wrap(err, "while fetching scenarios from db")
@@ -157,10 +163,12 @@ func NewAPIC(config *csconfig.OnlineApiClientCfg, dbClient *database.Client, con
 		Password:       password,
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
+		PapiURL:        PapiURL,
 		VersionPrefix:  "v2",
 		Scenarios:      ret.scenarioList,
 		UpdateScenario: ret.FetchScenariosListFromDB,
 	})
+
 	return ret, err
 }
 
@@ -568,6 +576,40 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 		}
 	}
 	return alerts
+}
+
+func PapiError(err error) bool {
+	log.Warningf("PAPI ERROR : %s", err)
+	return true
+}
+
+//PullPAPI is the long polling client for real-time decisions from PAPI
+func (a *apic) PullPAPI() error {
+
+	log.Printf("YOYOYO PAPI")
+
+	if a.apiClient.PapiURL == nil {
+		log.Fatalf("-> apiClient : %p", a.apiClient)
+		return errors.New("PAPI URL is nil")
+	}
+	c, err := client.NewClient(client.ClientOptions{
+		SubscribeUrl: *a.apiClient.PapiURL,
+		Category:     "some-category",
+		HttpClient:   a.apiClient.GetClient(),
+		OnFailure:    PapiError,
+	})
+	if err != nil {
+		fmt.Println("FAILED TO CREATE LONGPOLL CLIENT: ", err)
+		return nil
+	}
+	//defer c.Close()
+	log.Printf("YOYOYO PAPI endless loop")
+
+	for event := range c.Start(time.Now()) {
+		// do something with each event
+		log.Printf("yoyoyo -> %+v", event)
+	}
+	return nil
 }
 
 //we receive only one list of decisions, that we need to break-up :
