@@ -27,6 +27,7 @@ type ApiClient struct {
 	common service
 	/*config stuff*/
 	BaseURL   *url.URL
+	PapiURL   *url.URL
 	URLPrefix string
 	UserAgent string
 	/*exposed Services*/
@@ -37,6 +38,10 @@ type ApiClient struct {
 	Metrics        *MetricsService
 	Signal         *SignalService
 	HeartBeat      *HeartBeatService
+}
+
+func (a *ApiClient) GetClient() *http.Client {
+	return a.client
 }
 
 type service struct {
@@ -59,7 +64,7 @@ func NewClient(config *Config) (*ApiClient, error) {
 		tlsconfig.Certificates = []tls.Certificate{*Cert}
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tlsconfig
-	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix}
+	c := &ApiClient{client: t.Client(), BaseURL: config.URL, UserAgent: config.UserAgent, URLPrefix: config.VersionPrefix, PapiURL: config.PapiURL}
 	c.common.client = c
 	c.Decisions = (*DecisionsService)(&c.common)
 	c.Alerts = (*AlertsService)(&c.common)
