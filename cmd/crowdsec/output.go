@@ -78,7 +78,10 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 	if err != nil {
 		return errors.Wrapf(err, "parsing api url ('%s'): %s", apiConfig.URL, err)
 	}
-
+	papiURL, err := url.Parse(types.PAPIBaseURL)
+	if err != nil {
+		return errors.Wrapf(err, "parsing polling api url ('%s'): %s", types.PAPIBaseURL, err)
+	}
 	password := strfmt.Password(apiConfig.Password)
 
 	Client, err := apiclient.NewClient(&apiclient.Config{
@@ -87,6 +90,7 @@ func runOutput(input chan types.Event, overflow chan types.Event, buckets *leaky
 		Scenarios:      scenarios,
 		UserAgent:      fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
 		URL:            apiURL,
+		PapiURL:        papiURL,
 		VersionPrefix:  "v1",
 		UpdateScenario: cwhub.GetInstalledScenariosAsString,
 	})
