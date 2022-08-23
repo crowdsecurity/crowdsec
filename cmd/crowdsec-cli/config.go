@@ -190,7 +190,7 @@ func restoreConfigFromDirectory(dirPath string) error {
 			apiCfg := csconfig.ApiCredentialsCfg{
 				Login:    oldAPICfg.MachineID,
 				Password: oldAPICfg.Password,
-				URL:      CAPIBaseURL,
+				URL:      types.CAPIBaseURL,
 			}
 			apiConfigDump, err := yaml.Marshal(apiCfg)
 			if err != nil {
