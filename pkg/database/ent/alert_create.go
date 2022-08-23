@@ -15,7 +15,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/event"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
-	"github.com/google/uuid"
 )
 
 // AlertCreate is the builder for creating a Alert entity.
@@ -326,8 +325,16 @@ func (ac *AlertCreate) SetNillableSimulated(b *bool) *AlertCreate {
 }
 
 // SetUUID sets the "uuid" field.
-func (ac *AlertCreate) SetUUID(u uuid.UUID) *AlertCreate {
-	ac.mutation.SetUUID(u)
+func (ac *AlertCreate) SetUUID(s string) *AlertCreate {
+	ac.mutation.SetUUID(s)
+	return ac
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (ac *AlertCreate) SetNillableUUID(s *string) *AlertCreate {
+	if s != nil {
+		ac.SetUUID(*s)
+	}
 	return ac
 }
 
@@ -507,9 +514,6 @@ func (ac *AlertCreate) check() error {
 	}
 	if _, ok := ac.mutation.Simulated(); !ok {
 		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Alert.simulated"`)}
-	}
-	if _, ok := ac.mutation.UUID(); !ok {
-		return &ValidationError{Name: "uuid", err: errors.New(`ent: missing required field "Alert.uuid"`)}
 	}
 	return nil
 }
@@ -716,7 +720,7 @@ func (ac *AlertCreate) createSpec() (*Alert, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := ac.mutation.UUID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUUID,
+			Type:   field.TypeString,
 			Value:  value,
 			Column: alert.FieldUUID,
 		})

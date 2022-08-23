@@ -17,7 +17,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/google/uuid"
 )
 
 // AlertUpdate is the builder for updating Alert entities.
@@ -466,8 +465,22 @@ func (au *AlertUpdate) SetNillableSimulated(b *bool) *AlertUpdate {
 }
 
 // SetUUID sets the "uuid" field.
-func (au *AlertUpdate) SetUUID(u uuid.UUID) *AlertUpdate {
-	au.mutation.SetUUID(u)
+func (au *AlertUpdate) SetUUID(s string) *AlertUpdate {
+	au.mutation.SetUUID(s)
+	return au
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (au *AlertUpdate) SetNillableUUID(s *string) *AlertUpdate {
+	if s != nil {
+		au.SetUUID(*s)
+	}
+	return au
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (au *AlertUpdate) ClearUUID() *AlertUpdate {
+	au.mutation.ClearUUID()
 	return au
 }
 
@@ -998,8 +1011,14 @@ func (au *AlertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := au.mutation.UUID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUUID,
+			Type:   field.TypeString,
 			Value:  value,
+			Column: alert.FieldUUID,
+		})
+	}
+	if au.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
 			Column: alert.FieldUUID,
 		})
 	}
@@ -1652,8 +1671,22 @@ func (auo *AlertUpdateOne) SetNillableSimulated(b *bool) *AlertUpdateOne {
 }
 
 // SetUUID sets the "uuid" field.
-func (auo *AlertUpdateOne) SetUUID(u uuid.UUID) *AlertUpdateOne {
-	auo.mutation.SetUUID(u)
+func (auo *AlertUpdateOne) SetUUID(s string) *AlertUpdateOne {
+	auo.mutation.SetUUID(s)
+	return auo
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (auo *AlertUpdateOne) SetNillableUUID(s *string) *AlertUpdateOne {
+	if s != nil {
+		auo.SetUUID(*s)
+	}
+	return auo
+}
+
+// ClearUUID clears the value of the "uuid" field.
+func (auo *AlertUpdateOne) ClearUUID() *AlertUpdateOne {
+	auo.mutation.ClearUUID()
 	return auo
 }
 
@@ -2208,8 +2241,14 @@ func (auo *AlertUpdateOne) sqlSave(ctx context.Context) (_node *Alert, err error
 	}
 	if value, ok := auo.mutation.UUID(); ok {
 		_spec.Fields.Set = append(_spec.Fields.Set, &sqlgraph.FieldSpec{
-			Type:   field.TypeUUID,
+			Type:   field.TypeString,
 			Value:  value,
+			Column: alert.FieldUUID,
+		})
+	}
+	if auo.mutation.UUIDCleared() {
+		_spec.Fields.Clear = append(_spec.Fields.Clear, &sqlgraph.FieldSpec{
+			Type:   field.TypeString,
 			Column: alert.FieldUUID,
 		})
 	}

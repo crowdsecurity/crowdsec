@@ -33,7 +33,7 @@ var (
 		{Name: "scenario_version", Type: field.TypeString, Nullable: true},
 		{Name: "scenario_hash", Type: field.TypeString, Nullable: true},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
-		{Name: "uuid", Type: field.TypeUUID},
+		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "machine_alerts", Type: field.TypeInt, Nullable: true},
 	}
 	// AlertsTable holds the schema information for the "alerts" table.
@@ -95,7 +95,7 @@ var (
 		{Name: "value", Type: field.TypeString},
 		{Name: "origin", Type: field.TypeString},
 		{Name: "simulated", Type: field.TypeBool, Default: false},
-		{Name: "uuid", Type: field.TypeUUID},
+		{Name: "uuid", Type: field.TypeString, Nullable: true},
 		{Name: "alert_decisions", Type: field.TypeInt, Nullable: true},
 	}
 	// DecisionsTable holds the schema information for the "decisions" table.

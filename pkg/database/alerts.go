@@ -445,7 +445,8 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 					SetValue(*decisionItem.Value).
 					SetScope(*decisionItem.Scope).
 					SetOrigin(*decisionItem.Origin).
-					SetSimulated(*alertItem.Simulated)
+					SetSimulated(*alertItem.Simulated).
+					SetUUID(decisionItem.UUID)
 
 				decisionBulk = append(decisionBulk, decisionCreate)
 				if len(decisionBulk) == decisionBulkSize {
@@ -490,6 +491,7 @@ func (c *Client) CreateAlertBulk(machineId string, alertList []*models.Alert) ([
 			SetSimulated(*alertItem.Simulated).
 			SetScenarioVersion(*alertItem.ScenarioVersion).
 			SetScenarioHash(*alertItem.ScenarioHash).
+			SetUUID(alertItem.UUID).
 			AddEvents(events...).
 			AddMetas(metas...)
 

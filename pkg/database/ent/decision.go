@@ -10,7 +10,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
-	"github.com/google/uuid"
 )
 
 // Decision is the model entity for the Decision schema.
@@ -47,7 +46,7 @@ type Decision struct {
 	// Simulated holds the value of the "simulated" field.
 	Simulated bool `json:"simulated,omitempty"`
 	// UUID holds the value of the "uuid" field.
-	UUID uuid.UUID `json:"uuid,omitempty"`
+	UUID string `json:"uuid,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the DecisionQuery when eager-loading is set.
 	Edges           DecisionEdges `json:"edges"`
@@ -86,12 +85,10 @@ func (*Decision) scanValues(columns []string) ([]interface{}, error) {
 			values[i] = new(sql.NullBool)
 		case decision.FieldID, decision.FieldStartIP, decision.FieldEndIP, decision.FieldStartSuffix, decision.FieldEndSuffix, decision.FieldIPSize:
 			values[i] = new(sql.NullInt64)
-		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin:
+		case decision.FieldScenario, decision.FieldType, decision.FieldScope, decision.FieldValue, decision.FieldOrigin, decision.FieldUUID:
 			values[i] = new(sql.NullString)
 		case decision.FieldCreatedAt, decision.FieldUpdatedAt, decision.FieldUntil:
 			values[i] = new(sql.NullTime)
-		case decision.FieldUUID:
-			values[i] = new(uuid.UUID)
 		case decision.ForeignKeys[0]: // alert_decisions
 			values[i] = new(sql.NullInt64)
 		default:
@@ -203,10 +200,10 @@ func (d *Decision) assignValues(columns []string, values []interface{}) error {
 				d.Simulated = value.Bool
 			}
 		case decision.FieldUUID:
-			if value, ok := values[i].(*uuid.UUID); !ok {
+			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field uuid", values[i])
-			} else if value != nil {
-				d.UUID = *value
+			} else if value.Valid {
+				d.UUID = value.String
 			}
 		case decision.ForeignKeys[0]:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -283,7 +280,7 @@ func (d *Decision) String() string {
 	builder.WriteString(", simulated=")
 	builder.WriteString(fmt.Sprintf("%v", d.Simulated))
 	builder.WriteString(", uuid=")
-	builder.WriteString(fmt.Sprintf("%v", d.UUID))
+	builder.WriteString(d.UUID)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -16,7 +16,6 @@ import (
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/machine"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/meta"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/google/uuid"
 
 	"entgo.io/ent"
 )
@@ -70,7 +69,7 @@ type AlertMutation struct {
 	scenarioVersion    *string
 	scenarioHash       *string
 	simulated          *bool
-	uuid               *uuid.UUID
+	uuid               *string
 	clearedFields      map[string]struct{}
 	owner              *int
 	clearedowner       bool
@@ -1323,12 +1322,12 @@ func (m *AlertMutation) ResetSimulated() {
 }
 
 // SetUUID sets the "uuid" field.
-func (m *AlertMutation) SetUUID(u uuid.UUID) {
-	m.uuid = &u
+func (m *AlertMutation) SetUUID(s string) {
+	m.uuid = &s
 }
 
 // UUID returns the value of the "uuid" field in the mutation.
-func (m *AlertMutation) UUID() (r uuid.UUID, exists bool) {
+func (m *AlertMutation) UUID() (r string, exists bool) {
 	v := m.uuid
 	if v == nil {
 		return
@@ -1339,7 +1338,7 @@ func (m *AlertMutation) UUID() (r uuid.UUID, exists bool) {
 // OldUUID returns the old "uuid" field's value of the Alert entity.
 // If the Alert object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AlertMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error) {
+func (m *AlertMutation) OldUUID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUUID is only allowed on UpdateOne operations")
 	}
@@ -1353,9 +1352,22 @@ func (m *AlertMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error) {
 	return oldValue.UUID, nil
 }
 
+// ClearUUID clears the value of the "uuid" field.
+func (m *AlertMutation) ClearUUID() {
+	m.uuid = nil
+	m.clearedFields[alert.FieldUUID] = struct{}{}
+}
+
+// UUIDCleared returns if the "uuid" field was cleared in this mutation.
+func (m *AlertMutation) UUIDCleared() bool {
+	_, ok := m.clearedFields[alert.FieldUUID]
+	return ok
+}
+
 // ResetUUID resets all changes to the "uuid" field.
 func (m *AlertMutation) ResetUUID() {
 	m.uuid = nil
+	delete(m.clearedFields, alert.FieldUUID)
 }
 
 // SetOwnerID sets the "owner" edge to the Machine entity by id.
@@ -1921,7 +1933,7 @@ func (m *AlertMutation) SetField(name string, value ent.Value) error {
 		m.SetSimulated(v)
 		return nil
 	case alert.FieldUUID:
-		v, ok := value.(uuid.UUID)
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -2068,6 +2080,9 @@ func (m *AlertMutation) ClearedFields() []string {
 	if m.FieldCleared(alert.FieldScenarioHash) {
 		fields = append(fields, alert.FieldScenarioHash)
 	}
+	if m.FieldCleared(alert.FieldUUID) {
+		fields = append(fields, alert.FieldUUID)
+	}
 	return fields
 }
 
@@ -2141,6 +2156,9 @@ func (m *AlertMutation) ClearField(name string) error {
 		return nil
 	case alert.FieldScenarioHash:
 		m.ClearScenarioHash()
+		return nil
+	case alert.FieldUUID:
+		m.ClearUUID()
 		return nil
 	}
 	return fmt.Errorf("unknown Alert nullable field %s", name)
@@ -3370,7 +3388,7 @@ type DecisionMutation struct {
 	value           *string
 	origin          *string
 	simulated       *bool
-	uuid            *uuid.UUID
+	uuid            *string
 	clearedFields   map[string]struct{}
 	owner           *int
 	clearedowner    bool
@@ -4191,12 +4209,12 @@ func (m *DecisionMutation) ResetSimulated() {
 }
 
 // SetUUID sets the "uuid" field.
-func (m *DecisionMutation) SetUUID(u uuid.UUID) {
-	m.uuid = &u
+func (m *DecisionMutation) SetUUID(s string) {
+	m.uuid = &s
 }
 
 // UUID returns the value of the "uuid" field in the mutation.
-func (m *DecisionMutation) UUID() (r uuid.UUID, exists bool) {
+func (m *DecisionMutation) UUID() (r string, exists bool) {
 	v := m.uuid
 	if v == nil {
 		return
@@ -4207,7 +4225,7 @@ func (m *DecisionMutation) UUID() (r uuid.UUID, exists bool) {
 // OldUUID returns the old "uuid" field's value of the Decision entity.
 // If the Decision object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *DecisionMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error) {
+func (m *DecisionMutation) OldUUID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldUUID is only allowed on UpdateOne operations")
 	}
@@ -4221,9 +4239,22 @@ func (m *DecisionMutation) OldUUID(ctx context.Context) (v uuid.UUID, err error)
 	return oldValue.UUID, nil
 }
 
+// ClearUUID clears the value of the "uuid" field.
+func (m *DecisionMutation) ClearUUID() {
+	m.uuid = nil
+	m.clearedFields[decision.FieldUUID] = struct{}{}
+}
+
+// UUIDCleared returns if the "uuid" field was cleared in this mutation.
+func (m *DecisionMutation) UUIDCleared() bool {
+	_, ok := m.clearedFields[decision.FieldUUID]
+	return ok
+}
+
 // ResetUUID resets all changes to the "uuid" field.
 func (m *DecisionMutation) ResetUUID() {
 	m.uuid = nil
+	delete(m.clearedFields, decision.FieldUUID)
 }
 
 // SetOwnerID sets the "owner" edge to the Alert entity by id.
@@ -4515,7 +4546,7 @@ func (m *DecisionMutation) SetField(name string, value ent.Value) error {
 		m.SetSimulated(v)
 		return nil
 	case decision.FieldUUID:
-		v, ok := value.(uuid.UUID)
+		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -4638,6 +4669,9 @@ func (m *DecisionMutation) ClearedFields() []string {
 	if m.FieldCleared(decision.FieldIPSize) {
 		fields = append(fields, decision.FieldIPSize)
 	}
+	if m.FieldCleared(decision.FieldUUID) {
+		fields = append(fields, decision.FieldUUID)
+	}
 	return fields
 }
 
@@ -4675,6 +4709,9 @@ func (m *DecisionMutation) ClearField(name string) error {
 		return nil
 	case decision.FieldIPSize:
 		m.ClearIPSize()
+		return nil
+	case decision.FieldUUID:
+		m.ClearUUID()
 		return nil
 	}
 	return fmt.Errorf("unknown Decision nullable field %s", name)

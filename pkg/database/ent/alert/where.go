@@ -8,7 +8,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/predicate"
-	"github.com/google/uuid"
 )
 
 // ID filters vertices based on their ID field.
@@ -249,7 +248,7 @@ func Simulated(v bool) predicate.Alert {
 }
 
 // UUID applies equality check predicate on the "uuid" field. It's identical to UUIDEQ.
-func UUID(v uuid.UUID) predicate.Alert {
+func UUID(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldUUID), v))
 	})
@@ -2601,21 +2600,21 @@ func SimulatedNEQ(v bool) predicate.Alert {
 }
 
 // UUIDEQ applies the EQ predicate on the "uuid" field.
-func UUIDEQ(v uuid.UUID) predicate.Alert {
+func UUIDEQ(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.EQ(s.C(FieldUUID), v))
 	})
 }
 
 // UUIDNEQ applies the NEQ predicate on the "uuid" field.
-func UUIDNEQ(v uuid.UUID) predicate.Alert {
+func UUIDNEQ(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.NEQ(s.C(FieldUUID), v))
 	})
 }
 
 // UUIDIn applies the In predicate on the "uuid" field.
-func UUIDIn(vs ...uuid.UUID) predicate.Alert {
+func UUIDIn(vs ...string) predicate.Alert {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -2632,7 +2631,7 @@ func UUIDIn(vs ...uuid.UUID) predicate.Alert {
 }
 
 // UUIDNotIn applies the NotIn predicate on the "uuid" field.
-func UUIDNotIn(vs ...uuid.UUID) predicate.Alert {
+func UUIDNotIn(vs ...string) predicate.Alert {
 	v := make([]interface{}, len(vs))
 	for i := range v {
 		v[i] = vs[i]
@@ -2649,30 +2648,79 @@ func UUIDNotIn(vs ...uuid.UUID) predicate.Alert {
 }
 
 // UUIDGT applies the GT predicate on the "uuid" field.
-func UUIDGT(v uuid.UUID) predicate.Alert {
+func UUIDGT(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.GT(s.C(FieldUUID), v))
 	})
 }
 
 // UUIDGTE applies the GTE predicate on the "uuid" field.
-func UUIDGTE(v uuid.UUID) predicate.Alert {
+func UUIDGTE(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.GTE(s.C(FieldUUID), v))
 	})
 }
 
 // UUIDLT applies the LT predicate on the "uuid" field.
-func UUIDLT(v uuid.UUID) predicate.Alert {
+func UUIDLT(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.LT(s.C(FieldUUID), v))
 	})
 }
 
 // UUIDLTE applies the LTE predicate on the "uuid" field.
-func UUIDLTE(v uuid.UUID) predicate.Alert {
+func UUIDLTE(v string) predicate.Alert {
 	return predicate.Alert(func(s *sql.Selector) {
 		s.Where(sql.LTE(s.C(FieldUUID), v))
+	})
+}
+
+// UUIDContains applies the Contains predicate on the "uuid" field.
+func UUIDContains(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.Contains(s.C(FieldUUID), v))
+	})
+}
+
+// UUIDHasPrefix applies the HasPrefix predicate on the "uuid" field.
+func UUIDHasPrefix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasPrefix(s.C(FieldUUID), v))
+	})
+}
+
+// UUIDHasSuffix applies the HasSuffix predicate on the "uuid" field.
+func UUIDHasSuffix(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.HasSuffix(s.C(FieldUUID), v))
+	})
+}
+
+// UUIDIsNil applies the IsNil predicate on the "uuid" field.
+func UUIDIsNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.IsNull(s.C(FieldUUID)))
+	})
+}
+
+// UUIDNotNil applies the NotNil predicate on the "uuid" field.
+func UUIDNotNil() predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.NotNull(s.C(FieldUUID)))
+	})
+}
+
+// UUIDEqualFold applies the EqualFold predicate on the "uuid" field.
+func UUIDEqualFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.EqualFold(s.C(FieldUUID), v))
+	})
+}
+
+// UUIDContainsFold applies the ContainsFold predicate on the "uuid" field.
+func UUIDContainsFold(v string) predicate.Alert {
+	return predicate.Alert(func(s *sql.Selector) {
+		s.Where(sql.ContainsFold(s.C(FieldUUID), v))
 	})
 }
 

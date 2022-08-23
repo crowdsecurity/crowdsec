@@ -12,7 +12,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/alert"
 	"github.com/crowdsecurity/crowdsec/pkg/database/ent/decision"
-	"github.com/google/uuid"
 )
 
 // DecisionCreate is the builder for creating a Decision entity.
@@ -179,8 +178,16 @@ func (dc *DecisionCreate) SetNillableSimulated(b *bool) *DecisionCreate {
 }
 
 // SetUUID sets the "uuid" field.
-func (dc *DecisionCreate) SetUUID(u uuid.UUID) *DecisionCreate {
-	dc.mutation.SetUUID(u)
+func (dc *DecisionCreate) SetUUID(s string) *DecisionCreate {
+	dc.mutation.SetUUID(s)
+	return dc
+}
+
+// SetNillableUUID sets the "uuid" field if the given value is not nil.
+func (dc *DecisionCreate) SetNillableUUID(s *string) *DecisionCreate {
+	if s != nil {
+		dc.SetUUID(*s)
+	}
 	return dc
 }
 
@@ -307,9 +314,6 @@ func (dc *DecisionCreate) check() error {
 	}
 	if _, ok := dc.mutation.Simulated(); !ok {
 		return &ValidationError{Name: "simulated", err: errors.New(`ent: missing required field "Decision.simulated"`)}
-	}
-	if _, ok := dc.mutation.UUID(); !ok {
-		return &ValidationError{Name: "uuid", err: errors.New(`ent: missing required field "Decision.uuid"`)}
 	}
 	return nil
 }
@@ -452,7 +456,7 @@ func (dc *DecisionCreate) createSpec() (*Decision, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := dc.mutation.UUID(); ok {
 		_spec.Fields = append(_spec.Fields, &sqlgraph.FieldSpec{
-			Type:   field.TypeUUID,
+			Type:   field.TypeString,
 			Value:  value,
 			Column: decision.FieldUUID,
 		})
