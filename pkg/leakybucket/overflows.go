@@ -265,6 +265,7 @@ func NewAlert(leaky *Leaky, queue *Queue) (types.RuntimeAlert, error) {
 		StartAt:         &startAt,
 		StopAt:          &stopAt,
 		Simulated:       &leaky.Simulated,
+		Labels:          &leaky.labels,
 	}
 	if leaky.BucketConfig == nil {
 		return runtimeAlert, fmt.Errorf("leaky.BucketConfig is nil")
