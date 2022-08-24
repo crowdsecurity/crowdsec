@@ -35,6 +35,19 @@ func (f BouncerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return f(ctx, mv)
 }
 
+// The ConfigItemFunc type is an adapter to allow the use of ordinary
+// function as ConfigItem mutator.
+type ConfigItemFunc func(context.Context, *ent.ConfigItemMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ConfigItemFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	mv, ok := m.(*ent.ConfigItemMutation)
+	if !ok {
+		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ConfigItemMutation", m)
+	}
+	return f(ctx, mv)
+}
+
 // The DecisionFunc type is an adapter to allow the use of ordinary
 // function as Decision mutator.
 type DecisionFunc func(context.Context, *ent.DecisionMutation) (ent.Value, error)

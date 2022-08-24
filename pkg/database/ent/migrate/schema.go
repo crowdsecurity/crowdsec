@@ -78,6 +78,20 @@ var (
 		Columns:    BouncersColumns,
 		PrimaryKey: []*schema.Column{BouncersColumns[0]},
 	}
+	// ConfigItemsColumns holds the columns for the "config_items" table.
+	ConfigItemsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeString},
+	}
+	// ConfigItemsTable holds the schema information for the "config_items" table.
+	ConfigItemsTable = &schema.Table{
+		Name:       "config_items",
+		Columns:    ConfigItemsColumns,
+		PrimaryKey: []*schema.Column{ConfigItemsColumns[0]},
+	}
 	// DecisionsColumns holds the columns for the "decisions" table.
 	DecisionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -201,6 +215,7 @@ var (
 	Tables = []*schema.Table{
 		AlertsTable,
 		BouncersTable,
+		ConfigItemsTable,
 		DecisionsTable,
 		EventsTable,
 		MachinesTable,

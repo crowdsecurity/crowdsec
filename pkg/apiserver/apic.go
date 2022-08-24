@@ -579,35 +579,67 @@ func fillAlertsWithDecisions(alerts []*models.Alert, decisions []*models.Decisio
 }
 
 func PapiError(err error) bool {
-	log.Warningf("PAPI ERROR : %s", err)
+	log.Warningf("PAPI/ERROR : %s", err)
 	return true
 }
+
+var PAPI_PULL_KEY = "papi:last_pull"
 
 //PullPAPI is the long polling client for real-time decisions from PAPI
 func (a *apic) PullPAPI() error {
 
-	log.Printf("YOYOYO PAPI")
+	defer types.CatchPanic("lapi/PullPAPI")
+	log.Infof("Starting Polling API Pull")
 
 	if a.apiClient.PapiURL == nil {
-		log.Fatalf("-> apiClient : %p", a.apiClient)
 		return errors.New("PAPI URL is nil")
 	}
 	c, err := client.NewClient(client.ClientOptions{
 		SubscribeUrl: *a.apiClient.PapiURL,
-		Category:     "some-category",
-		HttpClient:   a.apiClient.GetClient(),
-		OnFailure:    PapiError,
+		//Category:     "some-category",
+		HttpClient: a.apiClient.GetClient(),
+		OnFailure:  PapiError,
 	})
 	if err != nil {
-		fmt.Println("FAILED TO CREATE LONGPOLL CLIENT: ", err)
-		return nil
+		return errors.Wrap(err, "failed to create PAPI client")
 	}
-	//defer c.Close()
-	log.Printf("YOYOYO PAPI endless loop")
 
-	for event := range c.Start(time.Now()) {
+	lastTimestamp := time.Now().UTC()
+	lastTimestampStr, err := a.dbClient.GetConfigItem(PAPI_PULL_KEY)
+	if err != nil {
+		log.Warningf("failed to get liast timestamp -> %s", err)
+	}
+	//value doesn't exist, it's first time
+	if lastTimestampStr == nil {
+		binTime, err := lastTimestamp.MarshalText()
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal last timestamp")
+		}
+		a.dbClient.SetConfigItem(PAPI_PULL_KEY, string(binTime))
+	} else {
+		if err := lastTimestamp.UnmarshalText([]byte(*lastTimestampStr)); err != nil {
+			return errors.Wrap(err, "failed to unmarshal last timestamp")
+		}
+	}
+
+	for event := range c.Start(lastTimestamp) {
+		//update last timestamp in database
+		binTime, err := time.Now().UTC().MarshalText()
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal last timestamp")
+		}
+		a.dbClient.SetConfigItem(PAPI_PULL_KEY, string(binTime))
+
 		// do something with each event
 		log.Printf("yoyoyo -> %+v", event)
+		//
+		msg := event.Data.(models.Alert)
+		ret, err := a.dbClient.CreateAlert("", []*models.Alert{&msg})
+		if err != nil {
+			log.Errorf("Failed to create alerts in DB: %s", err)
+		}
+		log.Printf("ret --> %+v", ret)
+
 	}
 	return nil
 }
