@@ -63,10 +63,10 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 
 	/**/
 	reason := ""
-	if *alert.Scenario != "" {
+	if alert.Scenario != nil && *alert.Scenario != "" {
 		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
-	} else if *alert.Message != "" {
-		reason = fmt.Sprintf("%s by %s", *alert.Scenario, src)
+	} else if alert.Message != nil && *alert.Message != "" {
+		reason = fmt.Sprintf("%s by %s", *alert.Message, src)
 	} else {
 		reason = fmt.Sprintf("empty scenario by %s", src)
 	}

@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -595,10 +596,11 @@ func (a *apic) PullPAPI() error {
 		return errors.New("PAPI URL is nil")
 	}
 	c, err := client.NewClient(client.ClientOptions{
-		SubscribeUrl: *a.apiClient.PapiURL,
-		//Category:     "some-category",
-		HttpClient: a.apiClient.GetClient(),
-		OnFailure:  PapiError,
+		SubscribeUrl:   *a.apiClient.PapiURL,
+		Category:       "some-category",
+		HttpClient:     a.apiClient.GetClient(),
+		OnFailure:      PapiError,
+		LoggingEnabled: true,
 	})
 	if err != nil {
 		return errors.Wrap(err, "failed to create PAPI client")
@@ -622,23 +624,55 @@ func (a *apic) PullPAPI() error {
 		}
 	}
 
+	log.Printf("starting polling at %s", lastTimestamp)
 	for event := range c.Start(lastTimestamp) {
 		//update last timestamp in database
-		binTime, err := time.Now().UTC().MarshalText()
+		newTime := time.Now().UTC()
+		binTime, err := newTime.MarshalText()
 		if err != nil {
 			return errors.Wrap(err, "failed to marshal last timestamp")
 		}
-		a.dbClient.SetConfigItem(PAPI_PULL_KEY, string(binTime))
+		if err := a.dbClient.SetConfigItem(PAPI_PULL_KEY, string(binTime)); err != nil {
+			return errors.Wrap(err, "failed to set last timestamp")
+		} else {
+			log.Infof("set last timestamp to %s", newTime)
+		}
 
 		// do something with each event
 		log.Printf("yoyoyo -> %+v", event)
-		//
-		msg := event.Data.(models.Alert)
-		ret, err := a.dbClient.CreateAlert("", []*models.Alert{&msg})
+		//log.Printf("yoyoyo -> %s", event)
+
+		bin, err := json.Marshal(event.Data)
+		if err != nil {
+			return errors.Wrap(err, "failed to marshal event data")
+		}
+		alert := models.Alert{}
+
+		if err := json.Unmarshal(bin, &alert); err != nil {
+			return errors.Wrap(err, "failed to unmarshal event data")
+		}
+
+		/*Fix the alert with missing mandatory items*/
+		alert.StartAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+		alert.StopAt = types.StrPtr(time.Now().UTC().Format(time.RFC3339))
+		alert.EventsCount = types.Int32Ptr(0)
+		alert.Capacity = types.Int32Ptr(0)
+		alert.Leakspeed = types.StrPtr("")
+		alert.Simulated = types.BoolPtr(false)
+		alert.ScenarioHash = types.StrPtr("")
+		alert.ScenarioVersion = types.StrPtr("")
+		alert.Message = types.StrPtr("")
+		alert.Scenario = types.StrPtr("")
+		alert.Source = &models.Source{}
+		alert.Source.Scope = types.StrPtr(SCOPE_CAPI)
+		alert.Source.Value = types.StrPtr("")
+
+		a.AlertsAddChan <- []*models.Alert{&alert}
+		ret, err := a.dbClient.CreateAlert("", []*models.Alert{&alert})
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
 		}
-		log.Printf("ret --> %+v", ret)
+		log.Printf("ret--> %s", ret)
 
 	}
 	return nil
