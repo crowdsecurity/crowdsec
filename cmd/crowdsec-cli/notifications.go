@@ -154,12 +154,17 @@ func NewNotificationsCmd() *cobra.Command {
 		},
 	}
 	cmdNotifications.AddCommand(cmdNotificationsInspect)
-
+	var remediation bool
+	var alertOverride string
 	var cmdNotificationsReinject = &cobra.Command{
-		Use:               "reinject",
-		Short:             "reinject alerts into notifications system",
-		Long:              `Reinject alerts into notifications system`,
-		Example:           `cscli notifications reinject <alert_id>`,
+		Use:   "reinject",
+		Short: "reinject alert into notifications system",
+		Long:  `Reinject alert into notifications system`,
+		Example: `
+cscli notifications reinject <alert_id>
+cscli notifications reinject <alert_id> --remediation
+cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"notification/test"}'
+`,
 		Args:              cobra.ExactArgs(1),
 		DisableAutoGenTag: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -203,6 +208,16 @@ func NewNotificationsCmd() *cobra.Command {
 			alert, _, err := Client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
 				return errors.Wrapf(err, fmt.Sprintf("can't find alert with id %s", args[0]))
+			}
+
+			if alertOverride != "" {
+				if err = json.Unmarshal([]byte(alertOverride), alert); err != nil {
+					return errors.Wrapf(err, "Can't unmarshal the data given in the alert flag: %s")
+				}
+			}
+
+			if remediation {
+				alert.Remediation = true
 			}
 
 			// second we start plugins
@@ -259,6 +274,8 @@ func NewNotificationsCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmdNotificationsReinject.Flags().BoolVarP(&remediation, "remediation", "r", false, "Overwrite remediation flag to match default profile configuration")
+	cmdNotificationsReinject.Flags().StringVarP(&alertOverride, "alert", "a", "", "JSON string used to override alert fields (see crowdsec/pkg/models/alert.go in the source tree for the full definition of the object")
 	cmdNotifications.AddCommand(cmdNotificationsReinject)
 	return cmdNotifications
 }
