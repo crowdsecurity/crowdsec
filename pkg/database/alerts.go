@@ -95,6 +95,88 @@ func formatAlertAsString(machineId string, alert *models.Alert) []string {
 	return retStr
 }
 
+//CreateOrUpdateAlert is used to insert alerts from PAPI :
+// - check if alert with UUID already exists. If no, inserts as-is
+// - if alert with UUID already exists, check if underlying decisions with UUID already exists. If no, update alert with decisions
+// - if alert with UUID already exists and underlying decisions with UUID already exists, do nothing
+func (c *Client) CreateOrUpdateAlert(machineID string, alertItem *models.Alert) (string, error) {
+
+	if alertItem.UUID == "" {
+		return "", fmt.Errorf("alert UUID is empty")
+	}
+
+	count, err := c.Ent.Alert.Query().Where(alert.UUID(alertItem.UUID)).Count(c.CTX)
+	if err != nil && !ent.IsNotFound(err) {
+		return "", errors.Wrap(err, "unable to query alerts for uuid %s")
+	}
+	//alert is found, check associated decisions
+	if count == 1 {
+		for _, decisionItem := range alertItem.Decisions {
+			count, err := c.Ent.Decision.Query().Where(decision.UUID(decisionItem.UUID)).Count(c.CTX)
+			if err != nil && !ent.IsNotFound(err) { //let's not error the whole thing, just skip
+				log.Warningf("unable to query decisions for uuid %s (alert %s)", decisionItem.UUID, alertItem.UUID)
+				continue
+			}
+			//does count returns IsNotFound ?
+			if count == 0 || ent.IsNotFound(err) {
+				var start_ip, start_sfx, end_ip, end_sfx int64
+				var sz int
+
+				if strings.ToLower(*decisionItem.Scope) == "ip" || strings.ToLower(*decisionItem.Scope) == "range" {
+					sz, start_ip, start_sfx, end_ip, end_sfx, err = types.Addr2Ints(*decisionItem.Value)
+					if err != nil {
+						log.Warningf("unable to parse %s : %s", *decisionItem.Value, err)
+						continue
+					}
+				}
+				log.Warningf("decision %s not found for alert %s, creating it", decisionItem.UUID, alertItem.UUID)
+				decisionDuration, err := time.ParseDuration(*decisionItem.Duration)
+				if err != nil {
+					log.Warningf("invalid duration %s for decision %s", *decisionItem.Duration, decisionItem.UUID)
+					continue
+				}
+				decisionUntil := time.Now().UTC().Add(decisionDuration)
+				//insert decision
+				createdDecision, err := c.Ent.Decision.Create().
+					SetUntil(decisionUntil).
+					SetScenario(*decisionItem.Scenario).
+					SetType(*decisionItem.Type).
+					SetStartIP(start_ip).
+					SetEndIP(end_ip).
+					SetStartSuffix(start_sfx).
+					SetEndSuffix(end_sfx).
+					SetIPSize(int64(sz)).
+					SetScope(*decisionItem.Scope).
+					SetValue(*decisionItem.Value).
+					SetOrigin(*decisionItem.Origin).
+					SetSimulated(*decisionItem.Simulated).
+					SetUUID(decisionItem.UUID).Save(c.CTX)
+				if err != nil {
+					log.Warningf("failed to create decision %s : %s", decisionItem.UUID, err)
+					continue
+				}
+				err = c.Ent.Alert.Update().Where(alert.UUID(alertItem.UUID)).AddDecisions(createdDecision).Exec(c.CTX)
+				if err != nil {
+					log.Errorf("failed to add decision %s to alert %s : %s", decisionItem.UUID, alertItem.UUID, err)
+				}
+			} else {
+				log.Debugf("decision %s found for alert %s, skipping", decisionItem.UUID, alertItem.UUID)
+			}
+		}
+
+	} else if count == 0 { //alert is not found, insert it - that's the hot path
+		ret, err := c.CreateAlert(machineID, []*models.Alert{alertItem})
+		if err != nil {
+			return "", errors.Wrap(err, "unable to create alert")
+		}
+		return ret[0], nil
+	} else {
+		return "", fmt.Errorf("multiple alerts with same UUID %s", alertItem.UUID)
+	}
+
+	return "", nil
+}
+
 func (c *Client) CreateAlert(machineID string, alertList []*models.Alert) ([]string, error) {
 	pageStart := 0
 	pageEnd := bulkSize

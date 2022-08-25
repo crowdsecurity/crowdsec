@@ -668,7 +668,7 @@ func (a *apic) PullPAPI() error {
 		alert.Source.Value = types.StrPtr("")
 
 		a.AlertsAddChan <- []*models.Alert{&alert}
-		ret, err := a.dbClient.CreateAlert("", []*models.Alert{&alert})
+		ret, err := a.dbClient.CreateOrUpdateAlert("", &alert)
 		if err != nil {
 			log.Errorf("Failed to create alerts in DB: %s", err)
 		}
