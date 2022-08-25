@@ -195,7 +195,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if err != nil {
 				return errors.Wrapf(err, "error parsing the URL of the API")
 			}
-			Client, err := apiclient.NewClient(&apiclient.Config{
+			client, err := apiclient.NewClient(&apiclient.Config{
 				MachineID:     csConfig.API.Client.Credentials.Login,
 				Password:      strfmt.Password(csConfig.API.Client.Credentials.Password),
 				UserAgent:     fmt.Sprintf("crowdsec/%s", cwversion.VersionStr()),
@@ -205,7 +205,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 			if err != nil {
 				return errors.Wrapf(err, "error creating the client for the API")
 			}
-			alert, _, err := Client.Alerts.GetByID(context.Background(), id)
+			alert, _, err := client.Alerts.GetByID(context.Background(), id)
 			if err != nil {
 				return errors.Wrapf(err, fmt.Sprintf("can't find alert with id %s", args[0]))
 			}
