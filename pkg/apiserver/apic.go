@@ -666,7 +666,7 @@ func (a *apic) PullPAPI() error {
 		alert.Source = &models.Source{}
 		alert.Source.Scope = types.StrPtr(SCOPE_CAPI)
 		alert.Source.Value = types.StrPtr("")
-
+		//send only if create was ojk
 		a.AlertsAddChan <- []*models.Alert{&alert}
 		ret, err := a.dbClient.CreateOrUpdateAlert("", &alert)
 		if err != nil {
