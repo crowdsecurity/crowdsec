@@ -212,7 +212,7 @@ cscli notifications reinject <alert_id> -a '{"remediation": true,"scenario":"not
 
 			if alertOverride != "" {
 				if err = json.Unmarshal([]byte(alertOverride), alert); err != nil {
-					return errors.Wrapf(err, "Can't unmarshal the data given in the alert flag: %s")
+					return errors.Wrapf(err, "Can't unmarshal the data given in the alert flag")
 				}
 			}
 
