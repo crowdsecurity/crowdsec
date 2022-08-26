@@ -609,7 +609,8 @@ func (a *apic) PullPAPI() error {
 	lastTimestamp := time.Now().UTC()
 	lastTimestampStr, err := a.dbClient.GetConfigItem(PAPI_PULL_KEY)
 	if err != nil {
-		return errors.Wrap(err, "failed to get last timestamp for papi pull")
+		log.Warningf("failed to get last timestamp for papi pull: %s", err)
+		//return errors.Wrap(err, "failed to get last timestamp for papi pull")
 	}
 	//value doesn't exist, it's first time we're pulling
 	if lastTimestampStr == nil {
