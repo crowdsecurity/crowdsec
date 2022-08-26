@@ -3,6 +3,7 @@ package journalctlacquisition
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"testing"
 	"time"
@@ -279,7 +280,9 @@ journalctl_filter:
 
 func TestMain(m *testing.M) {
 	if os.Getenv("USE_SYSTEM_JOURNALCTL") == "" {
-		os.Setenv("PATH", "./test_files"+":"+os.Getenv("PATH"))
+		currentDir, _ := os.Getwd()
+		fullPath := filepath.Join(currentDir, "test_files")
+		os.Setenv("PATH", fullPath+":"+os.Getenv("PATH"))
 	}
 	os.Exit(m.Run())
 }

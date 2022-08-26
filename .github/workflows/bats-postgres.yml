@@ -35,10 +35,10 @@ jobs:
           sudo chmod +w /etc/machine-id
           echo githubciXXXXXXXXXXXXXXXXXXXXXXXX | sudo tee /etc/machine-id
 
-    - name: "Set up Go 1.17"
+    - name: "Set up Go 1.19"
       uses: actions/setup-go@v3
       with:
-        go-version: 1.17
+        go-version: 1.19
       id: go
 
     - name: "Check out CrowdSec repository"
@@ -51,8 +51,8 @@ jobs:
       run: |
         sudo apt -qq -y -o=Dpkg::Use-Pty=0 install build-essential daemonize jq netcat-openbsd
         go install github.com/mikefarah/yq/v4@latest
-        go install github.com/cloudflare/cfssl/cmd/cfssl@latest
-        go install github.com/cloudflare/cfssl/cmd/cfssljson@latest
+        go install github.com/cloudflare/cfssl/cmd/cfssl@master
+        go install github.com/cloudflare/cfssl/cmd/cfssljson@master
         sudo cp -u ~/go/bin/yq ~/go/bin/cfssl ~/go/bin/cfssljson /usr/local/bin/
 
     - name: "Build crowdsec and fixture (DB_BACKEND: pgx)"
