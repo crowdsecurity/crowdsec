@@ -27,8 +27,9 @@ var AuthStringToType map[string]mail.AuthType = map[string]mail.AuthType{
 }
 
 var EncryptionStringToType map[string]mail.Encryption = map[string]mail.Encryption{
-	"ssltls": mail.EncryptionSTARTTLS,
-	"none":   mail.EncryptionNone,
+	"ssltls":   mail.EncryptionSSLTLS,
+	"starttls": mail.EncryptionSTARTTLS,
+	"none":     mail.EncryptionNone,
 }
 
 type PluginConfig struct {
